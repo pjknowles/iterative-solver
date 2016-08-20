@@ -8,6 +8,7 @@ diis::diis(size_t AmpLength, size_t ResLength, size_t OtherLength, size_t maxDim
   TotalLength_=AmpLength+ResLength+OtherLength;
   setOptions(maxDim,threshold,DiisMode);
   store_ = new diisStorage(maxDim*TotalLength_*sizeof(double));
+  m_LastResidualNormSq=1e99; // so it can be tested even before extrapolation is done
   Reset();
 }
 
@@ -25,7 +26,7 @@ void diis::setOptions(size_t maxDim, double threshold, DiisMode_type DiisMode)
    threshold_ = threshold;
    DiisMode_ = DiisMode;
    Reset();
-   std::cout << "maxDim_ set to "<<maxDim_<<" in setOptions"<<std::endl;
+//   std::cout << "maxDim_ set to "<<maxDim_<<" in setOptions"<<std::endl;
 }
 
 void diis::Reset()
@@ -60,13 +61,13 @@ void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const E
     es.compute(-Mat);
     Ews = es.eigenvalues();
 
-    std::cout << "Mat="<<Mat<<std::endl;
-    std::cout << "Ews="<<Ews<<std::endl;
-    std::cout << "In="<<In<<std::endl;
-    std::cout << "es.eigenvectors()="<<es.eigenvectors()<<std::endl;
+//    std::cout << "Mat="<<Mat<<std::endl;
+//    std::cout << "Ews="<<Ews<<std::endl;
+//    std::cout << "In="<<In<<std::endl;
+//    std::cout << "es.eigenvectors()="<<es.eigenvectors()<<std::endl;
 
     Xv = In.transpose()*es.eigenvectors();
-    std::cout << "Xv="<<Xv<<std::endl;
+//    std::cout << "Xv="<<Xv<<std::endl;
     for (size_t iEw = 0; iEw != nDim; ++ iEw)
         if (std::abs(Ews(iEw)) >= Thr)
             Xv(iEw) /= -Ews(iEw);
@@ -74,11 +75,11 @@ void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const E
             // no positive semi-definiteness is assumed!
         else
             Xv(iEw) = 0.;
-    std::cout << "Xv="<<Xv<<std::endl;
+//    std::cout << "Xv="<<Xv<<std::endl;
     Out = es.eigenvectors() * Xv;
-    std::cout << "Out="<<Out<<std::endl;
+//    std::cout << "Out="<<Out<<std::endl;
     Out=Out.block(0,0,Out.size()-1,1);
-    std::cout << "Out="<<Out<<std::endl;
+//    std::cout << "Out="<<Out<<std::endl;
 }
 
 
@@ -86,7 +87,7 @@ void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const E
 void diis::extrapolate (double* Amp, double* Res, double* Other, double weight)
 {
   if (maxDim_ <= 1 || DiisMode_ == disabled) return;
-  std::cout << "Amp="<<Amp<<", &Amp="<<&Amp<<std::endl;
+//  std::cout << "Amp="<<Amp<<", &Amp="<<&Amp<<std::endl;
 
   double fThisResidualDot = Dot(Res,Res,ResLength_);
   m_LastResidualNormSq = fThisResidualDot;
@@ -97,7 +98,7 @@ void diis::extrapolate (double* Amp, double* Res, double* Other, double weight)
       return;
 
   uint iThis = m_iNext;
-  std::cout<< "m_iNext "<<m_iNext<<std::endl;
+//  std::cout<< "m_iNext "<<m_iNext<<std::endl;
   assert(iThis < maxDim_);
   if (iThis >= m_iVectorAge.size()) m_iVectorAge.resize(iThis+1);
   if (iThis >= m_ErrorMatrix.cols()) m_ErrorMatrix.conservativeResize(iThis+1,iThis+1);
@@ -138,12 +139,12 @@ void diis::extrapolate (double* Amp, double* Res, double* Other, double weight)
   // write current amplitude and residual vectors to their designated place
   dump(Amp,Res,Other,iUsedVecs[iThis]);
 //  std::cout << "m_Weights.cols() "<<m_Weights.cols()<<std::endl;
-  std::cout << "m_Weights.size() "<<m_Weights.size()<<std::endl;
+//  std::cout << "m_Weights.size() "<<m_Weights.size()<<std::endl;
   if (m_Weights.size()<=iUsedVecs[iThis]) m_Weights.resize(iUsedVecs[iThis]+1);
-  std::cout << "iUsedVecs[iThis] "<<iUsedVecs[iThis]<<std::endl;
+//  std::cout << "iUsedVecs[iThis] "<<iUsedVecs[iThis]<<std::endl;
 //  std::cout << "m_Weights.cols() "<<m_Weights.cols()<<std::endl;
 //  std::cout << "m_Weights.rows() "<<m_Weights.rows()<<std::endl;
-  std::cout << "m_Weights.size() "<<m_Weights.size()<<std::endl;
+//  std::cout << "m_Weights.size() "<<m_Weights.size()<<std::endl;
   m_Weights[iUsedVecs[iThis]] = weight;
 
   // go through previous residual vectors and form the dot products with them
@@ -188,7 +189,7 @@ void diis::extrapolate (double* Amp, double* Res, double* Other, double weight)
 
   // invert the system, determine extrapolation coefficients.
   LinearSolveSymSvd(Coeffs, B, Rhs, nDim+1, 1.0e-10);
-  std::cout << "Combination of iteration vectors: "<<Coeffs<<std::endl;
+  std::cout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;
 
   // Find a storage place for the vector in the next round. Either
   // an empty slot or the oldest vector.
@@ -233,29 +234,29 @@ void diis::InterpolateFrom(double* result, double fOwnCoeff, Eigen::VectorXd Coe
   size_t buffer_size=1024;
   std::vector<double> buffer(std::min(buffer_size,length));
   for (size_t i=0; i<length; i++) result[i]=0;
-      std::cout << "start diis::InterpolateFrom, initial offset="<<offset<<" Coeffs="<<Coeffs<<std::endl;
-          std::cout << "length="<<length<<std::endl;
-      std::cout << "Coeffs.rows()="<<Coeffs.rows()<<std::endl;
-      std::cout << "Coeffs.cols()="<<Coeffs.cols()<<std::endl;
-      std::cout << "Coeffs.size()="<<Coeffs.size()<<std::endl;
+//      std::cout << "start diis::InterpolateFrom, initial offset="<<offset<<" Coeffs="<<Coeffs<<std::endl;
+//          std::cout << "length="<<length<<std::endl;
+//      std::cout << "Coeffs.rows()="<<Coeffs.rows()<<std::endl;
+//      std::cout << "Coeffs.cols()="<<Coeffs.cols()<<std::endl;
+//      std::cout << "Coeffs.size()="<<Coeffs.size()<<std::endl;
   for (uint i=0; i<Coeffs.rows(); i++) {
-      std::cout << "i="<<i<<std::endl;
-      std::cout << "offset="<<offset<<std::endl;
+//      std::cout << "i="<<i<<std::endl;
+//      std::cout << "offset="<<offset<<std::endl;
       for (uint block=0; block<length; block+=buffer.size()) {
           store_->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),offset+block*sizeof(double));
-          std::cout << "buffer: "<<buffer[0]<<std::endl;
-          std::cout << "Coeffs: "<<Coeffs[i]<<std::endl;
-          std::cout << "buffer.size()="<<buffer.size()<<std::endl;
-          std::cout << "length-block="<<length-block<<std::endl;
+//          std::cout << "buffer: "<<buffer[0]<<std::endl;
+//          std::cout << "Coeffs: "<<Coeffs[i]<<std::endl;
+//          std::cout << "buffer.size()="<<buffer.size()<<std::endl;
+//          std::cout << "length-block="<<length-block<<std::endl;
           for (size_t j=0; j<std::min(buffer.size(),length-block); j++) {
             result[j+block] += buffer[j] * Coeffs[i];
             }
-          std::cout << "Updated result: "<<result[0]<<" "<<result[1]<<std::endl;
+//          std::cout << "Updated result: "<<result[0]<<" "<<result[1]<<std::endl;
         }
-      std::cout << "offset="<<offset<<std::endl;
-      std::cout << "Incrementing offset by "<< TotalLength_*sizeof(double)<<std::endl;
+//      std::cout << "offset="<<offset<<std::endl;
+//      std::cout << "Incrementing offset by "<< TotalLength_*sizeof(double)<<std::endl;
       offset += TotalLength_*sizeof(double);
-      std::cout << "offset="<<offset<<std::endl;
+//      std::cout << "offset="<<offset<<std::endl;
     }
 }
 
@@ -321,7 +322,7 @@ void diisStorage::write(const double *buffer, size_t length, size_t address)
 {
   dumpFile_.seekg(address);//,std::ios::beg);
   dumpFile_.write((char*) buffer,length);
-  std::cout << "diisStorage::write at address "<< address << ", length="<<length<<","<< buffer[0]<<std::endl;
+//  std::cout << "diisStorage::write at address "<< address << ", length="<<length<<","<< buffer[0]<<std::endl;
   if (length+address > size_) size_ = length+address;
 }
 
@@ -330,6 +331,6 @@ void diisStorage::read(double *buffer, size_t length, size_t address)
   if (address+length > size_) throw std::range_error("diisStorage: attempt to load from beyond end of storage");
   dumpFile_.seekg(address);//,std::ios::beg);
   dumpFile_.read((char*) buffer,length);
-  std::cout << "diisStorage::read at address "<< address << ", length="<<length<<","<< buffer[0]<<std::endl;
+//  std::cout << "diisStorage::read at address "<< address << ", length="<<length<<","<< buffer[0]<<std::endl;
 }
 

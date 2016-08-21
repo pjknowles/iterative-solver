@@ -264,11 +264,6 @@ diisStorage::diisStorage(size_t lengthHint)
   size_=0;
 }
 
-size_t diisStorage::size()
-{
-  return size_;
-}
-
 diisStorage::~diisStorage()
 {
   dumpFile_.close();
@@ -290,3 +285,7 @@ void diisStorage::read(double *buffer, size_t length, size_t address)
 //  std::cout << "diisStorage::read at address "<< address << ", length="<<length<<","<< buffer[0]<<std::endl;
 }
 
+size_t diisStorage::size()
+{
+  return size_;
+}

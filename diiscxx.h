@@ -94,17 +94,28 @@ public:
    * \param lengthHint A provided estimate of the total amount of storage that is likely to be needed.
    */
   diisStorage(size_t lengthHint=0);
+  ~diisStorage();
+  /*!
+   * \brief Write data to the store.
+   * \param buffer Provides the data to be written.
+   * \param length Length of data, in bytes.
+   * \param address Offset in store, in bytes.
+   */
+  virtual void write(const double* buffer, size_t length, size_t address);
+  /*!
+   * \brief Read data from the store.
+   * \param buffer Receives the data to be read.
+   * \param length Length of data, in bytes.
+   * \param address Offset in store, in bytes.
+   */
+  virtual void read(double* buffer, size_t length, size_t address);
   /*!
    * \brief Query the total storage used.
    */
-  size_t size();
-  virtual void write(const double* buffer, size_t length, size_t address);
-  virtual void read(double* buffer, size_t length, size_t address);
-  ~diisStorage();
+  virtual size_t size();
 private:
   std::fstream dumpFile_;
-protected:
-  size_t size_; // internally store number of bytes used
+  size_t size_; //< total storage (bytes) used
 };
 
 #endif // DIISCXX_H

@@ -5,6 +5,40 @@ using namespace IterativeSolver;
 
 IterativeSolverBase::IterativeSolverBase() : buffer_size_(1024) {}
 
+double Dot(double* a, double* b, size_t n)
+{
+  double result=0;
+  for (size_t k=0; k<n; k++) result+=a[k]*b[k];
+  return result;
+}
+
+std::vector<double> IterativeSolverBase::StorageDot(Storage* store, double* vector, size_t length , size_t nVector)
+{
+  std::vector<double> result(nVector);
+  std::vector<double> buffer(std::min(buffer_size_,length));
+  for (unsigned int i=0; i<nVector; i++) {
+      result[i] = 0;
+      for (unsigned int block=0; block<length; block+=buffer.size()) {
+          store->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),(i*length+block)*sizeof(double));
+          result[i] += Dot(&vector[block],&buffer[0],std::min(buffer.size(),length-block));
+        }
+    }
+  return result;
+}
+void IterativeSolverBase::StorageCombine(Storage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length, std::vector<unsigned int>& iUsedVecs)
+{
+  std::vector<double> buffer(std::min(buffer_size_,length));
+  for (size_t i=0; i<length; i++) result[i]=0;
+  for (unsigned int i=0; i<Coeffs.rows(); i++) {
+      for (unsigned int block=0; block<length; block+=buffer.size()) {
+          store_->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),(iUsedVecs[i]*length+block)*sizeof(double));
+          for (size_t j=0; j<std::min(buffer.size(),length-block); j++) {
+              result[j+block] += buffer[j] * Coeffs[i];
+            }
+        }
+    }
+}
+
 diis::diis(std::vector<size_t> lengths, size_t maxDim, double threshold, DiisMode_type DiisMode, size_t buffer_size)
   : lengths_(lengths), maxDim_ (maxDim), threshold_(threshold), DiisMode_(DiisMode), verbosity_(-1)
 {
@@ -34,13 +68,6 @@ void diis::setOptions(size_t maxDim, double threshold, DiisMode_type DiisMode)
 void diis::Reset()
 {
 
-}
-
-double Dot(double* a, double* b, size_t n)
-{
-  double result=0;
-  for (size_t k=0; k<n; k++) result+=a[k]*b[k];
-  return result;
 }
 
 void diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr)
@@ -147,7 +174,7 @@ void diis::extrapolate (std::vector<double*> vectors, double weight)
 //        }
 //    }
 //  }
-  std::vector<double> ResDot = overlapsWithStore(store_[0], vectors[0], lengths_[0], nDim);
+  std::vector<double> ResDot = StorageDot(store_[0], vectors[0], lengths_[0], nDim);
   if (iThis >= nDim) ResDot.resize(iThis+1);
   ResDot[iThis] = fThisResidualDot;
 
@@ -217,35 +244,8 @@ void diis::extrapolate (std::vector<double*> vectors, double weight)
 //  TR.InterpolateFrom( Coeffs[iThis], Coeffs.data(), ResRecs, AmpRecs,
 //      nDim, iThis, *m_Storage.pDevice, m_Memory );
   for (uint k=0; k<vectors.size(); k++) {
-   InterpolateFrom(store_[k],vectors[k],Coeffs,lengths_[k],iUsedVecs);
+   StorageCombine(store_[k],vectors[k],Coeffs,lengths_[k],iUsedVecs);
 }
-}
-
-std::vector<double> IterativeSolverBase::overlapsWithStore(Storage* store, double* vector, size_t length , size_t nVector)
-{
-  std::vector<double> result(nVector);
-  std::vector<double> buffer(std::min(buffer_size_,length));
-  for (unsigned int i=0; i<nVector; i++) {
-      result[i] = 0;
-      for (unsigned int block=0; block<length; block+=buffer.size()) {
-          store->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),(i*length+block)*sizeof(double));
-          result[i] += Dot(&vector[block],&buffer[0],std::min(buffer.size(),length-block));
-        }
-    }
-  return result;
-}
-void IterativeSolverBase::InterpolateFrom(Storage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length, std::vector<unsigned int>& iUsedVecs)
-{
-  std::vector<double> buffer(std::min(buffer_size_,length));
-  for (size_t i=0; i<length; i++) result[i]=0;
-  for (unsigned int i=0; i<Coeffs.rows(); i++) {
-      for (unsigned int block=0; block<length; block+=buffer.size()) {
-          store_->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),(iUsedVecs[i]*length+block)*sizeof(double));
-          for (size_t j=0; j<std::min(buffer.size(),length-block); j++) {
-              result[j+block] += buffer[j] * Coeffs[i];
-            }
-        }
-    }
 }
 
 void diis::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, uint iThis)

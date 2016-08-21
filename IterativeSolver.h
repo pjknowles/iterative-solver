@@ -20,8 +20,8 @@ public:
   IterativeSolverBase();
 protected:
   size_t buffer_size_;
-  void InterpolateFrom(Storage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length, std::vector<unsigned int> &iUsedVecs);
-  std::vector<double> overlapsWithStore(Storage* store, double* vector, size_t length , size_t nVector);
+  void StorageCombine(Storage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length, std::vector<unsigned int> &iUsedVecs);
+  std::vector<double> StorageDot(Storage* store, double* vector, size_t length , size_t nVector);
 };
 class diis : public IterativeSolverBase
 {

@@ -34,6 +34,7 @@ public:
   /*!
    * \brief discards previous iteration vectors, but does not clear records
    */
+  void setVerbosity(int verbosity) { verbosity_=verbosity;}
   void Reset();
   /*!
    * \brief Introduce a new iteration vector, and perform extrapolation
@@ -61,6 +62,7 @@ private:
   size_t maxDim_;
   unsigned int nDim_;
   size_t buffer_size_;
+  int verbosity_;
   //> 0xffff: no vector in this slot. Otherwise: number of iterations
   // the vector in this slot has already been inside the DIIS system.
   std::vector<uint> m_iVectorAge;
@@ -68,6 +70,7 @@ private:
   // find vectors which are not considered too bad for extrapolation purposes.
   void FindUsefulVectors(uint *iUsedVecs, uint &nDimUsed, double &fBaseScale, uint iThis);
   void InterpolateFrom(diisStorage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length);
+  void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr);
 
   Eigen::MatrixXd m_ErrorMatrix;
   std::vector<double> m_Weights;

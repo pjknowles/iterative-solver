@@ -3,7 +3,7 @@
 
 
 diis::diis(std::vector<size_t> lengths, size_t maxDim, double threshold, DiisMode_type DiisMode, size_t buffer_size)
-  : lengths_(lengths), maxDim_ (maxDim), threshold_(threshold), DiisMode_(DiisMode), buffer_size_(buffer_size)
+  : lengths_(lengths), maxDim_ (maxDim), threshold_(threshold), DiisMode_(DiisMode), buffer_size_(buffer_size), verbosity_(-1)
 {
   setOptions(maxDim,threshold,DiisMode);
   for (std::vector<size_t>::const_iterator l=lengths.begin(); l!=lengths.end(); l++)
@@ -39,7 +39,7 @@ double Dot(double* a, double* b, size_t n)
   return result;
 }
 
-void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr)
+void diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr)
 {
     Eigen::VectorXd Ews(nDim);
     Eigen::VectorXd Xv(nDim); // input vectors in EV basis.
@@ -47,10 +47,13 @@ void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const E
     es.compute(-Mat);
     Ews = es.eigenvalues();
 
-//    std::cout << "Mat="<<Mat<<std::endl;
-//    std::cout << "Ews="<<Ews<<std::endl;
-//    std::cout << "In="<<In<<std::endl;
-//    std::cout << "es.eigenvectors()="<<es.eigenvectors()<<std::endl;
+    if (verbosity_ > 1) {
+        std::cout << "diis::LinearSolveSymSvd"<<std::endl;
+        std::cout << "Mat="<<Mat<<std::endl;
+        std::cout << "Ews="<<Ews<<std::endl;
+        std::cout << "In="<<In<<std::endl;
+        std::cout << "es.eigenvectors()="<<es.eigenvectors()<<std::endl;
+      }
 
     Xv = In.transpose()*es.eigenvectors();
 //    std::cout << "Xv="<<Xv<<std::endl;
@@ -61,9 +64,9 @@ void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const E
             // no positive semi-definiteness is assumed!
         else
             Xv(iEw) = 0.;
-//    std::cout << "Xv="<<Xv<<std::endl;
+    if (verbosity_ > 1) std::cout << "Xv="<<Xv<<std::endl;
     Out = es.eigenvectors() * Xv;
-//    std::cout << "Out="<<Out<<std::endl;
+    if (verbosity_ > 1) std::cout << "Out="<<Out<<std::endl;
     Out=Out.block(0,0,Out.size()-1,1);
 //    std::cout << "Out="<<Out<<std::endl;
 }

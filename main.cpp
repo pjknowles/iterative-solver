@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
   doubles res;res.push_back(1);res.push_back(1);
   std::vector<size_t> lengths; lengths.push_back(res.size()); lengths.push_back(amp.size());
   diis d(lengths,6,1e+6,diis::DIIS);
+  d.setVerbosity(2);
 //  diis DIIS(amp.size(),res.size(),nullptr);
 //  for (int i=0; i<10000 && (std::fabs(res[0]) > 1e-20 || std::fabs(res[1]) > 1e-20); i++) {
   for (int i=0; i<10000 && d.fLastResidual() > 1e-20; i++) {

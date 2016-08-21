@@ -16,9 +16,8 @@ namespace IterativeSolver {
 class Storage;
 class IterativeSolverBase
 {
-public:
-  IterativeSolverBase();
 protected:
+  IterativeSolverBase();
   size_t buffer_size_;
   void StorageCombine(Storage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length, std::vector<unsigned int> &iUsedVecs);
   std::vector<double> StorageDot(Storage* store, double* vector, size_t length , size_t nVector);

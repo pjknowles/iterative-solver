@@ -1,23 +1,21 @@
 #include "diiscxx.h"
 #include <algorithm>
-#include <numeric>
 
-diis::diis(size_t AmpLength, size_t ResLength, size_t OtherLength, size_t maxDim, double threshold, DiisMode_type DiisMode)
-  : AmpLength_(AmpLength), ResLength_(ResLength==0 ? AmpLength : ResLength), OtherLength_(OtherLength), maxDim_ (maxDim), threshold_(threshold), DiisMode_(DiisMode)
+
+diis::diis(std::vector<size_t> lengths, size_t maxDim, double threshold, DiisMode_type DiisMode, size_t buffer_size)
+  : lengths_(lengths), maxDim_ (maxDim), threshold_(threshold), DiisMode_(DiisMode), buffer_size_(buffer_size)
 {
-  TotalLength_=AmpLength+ResLength+OtherLength;
   setOptions(maxDim,threshold,DiisMode);
-  store_ = new diisStorage(maxDim*TotalLength_*sizeof(double));
+  for (std::vector<size_t>::const_iterator l=lengths.begin(); l!=lengths.end(); l++)
+    store_.push_back(new diisStorage(maxDim*(*l)*sizeof(double)));
   m_LastResidualNormSq=1e99; // so it can be tested even before extrapolation is done
   Reset();
 }
 
-//diis::diis(size_t AmpLength, size_t maxDim, double threshold, DiisMode_type DiisMode)
-//  : diis(AmpLength, 0, 0, threshold, DiisMode) {}
-
 diis::~diis()
 {
-  delete store_;
+  for (std::vector<diisStorage*>::const_iterator s=store_.begin(); s!=store_.end(); s++)
+    delete *s;
 }
 
 void diis::setOptions(size_t maxDim, double threshold, DiisMode_type DiisMode)
@@ -41,18 +39,6 @@ double Dot(double* a, double* b, size_t n)
   return result;
 }
 
-void diis::dump(double *Amp, double* Res, double* Other, unsigned int index)
-{
-  if (Amp != nullptr) store_->write(Amp,AmpLength_*sizeof(double),index*TotalLength_*sizeof(double));
-  if (Res != nullptr) store_->write(Res,ResLength_*sizeof(double),(index*TotalLength_+AmpLength_)*sizeof(double));
-  if (Other != nullptr) store_->write(Other,OtherLength_*sizeof(double),(index*TotalLength_+AmpLength_+ResLength_)*sizeof(double));
-}
-void diis::load(double *Amp, double* Res, double* Other, unsigned int index)
-{
-  if (Amp != nullptr) store_->read(Amp,AmpLength_*sizeof(double),index*TotalLength_*sizeof(double));
-  if (Res != nullptr) store_->read(Res,ResLength_*sizeof(double),(index*TotalLength_+AmpLength_)*sizeof(double));
-  if (Other != nullptr) store_->read(Other,OtherLength_*sizeof(double),(index*TotalLength_+AmpLength_+ResLength_)*sizeof(double));
-}
 void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr)
 {
     Eigen::VectorXd Ews(nDim);
@@ -84,12 +70,11 @@ void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const E
 
 
 
-void diis::extrapolate (double* Amp, double* Res, double* Other, double weight)
+void diis::extrapolate (std::vector<double*> vectors, double weight)
 {
   if (maxDim_ <= 1 || DiisMode_ == disabled) return;
-//  std::cout << "Amp="<<Amp<<", &Amp="<<&Amp<<std::endl;
 
-  double fThisResidualDot = Dot(Res,Res,ResLength_);
+  double fThisResidualDot = Dot(vectors[0],vectors[0],lengths_[0]);
   m_LastResidualNormSq = fThisResidualDot;
 
   if ( m_iNext == 0 && fThisResidualDot > threshold_ )
@@ -124,39 +109,25 @@ void diis::extrapolate (double* Amp, double* Res, double* Other, double weight)
           break;
       }
 
-  /*
-  // make array of sub-records describing all present subspace vectors
-  FStorageDevice::FRecord
-      ResRecs[ nMaxDiisCapacity + 1 ],
-      AmpRecs[ nMaxDiisCapacity + 1 ];
-  assert( nDim < nMaxDiisCapacity );
-  for ( uint i = 0; i < nDim; ++ i ){
-      ResRecs[i] = ResidualRecord(iUsedVecs[i]);
-      AmpRecs[i] = AmplitudeRecord(iUsedVecs[i]);
-  }
-  */
-
-  // write current amplitude and residual vectors to their designated place
-  dump(Amp,Res,Other,iUsedVecs[iThis]);
-//  std::cout << "m_Weights.cols() "<<m_Weights.cols()<<std::endl;
-//  std::cout << "m_Weights.size() "<<m_Weights.size()<<std::endl;
+  // write current residual and other vectors to their designated place
+  for (unsigned int k=0; k<lengths_.size(); k++)
+   store_[k]->write(vectors[k],lengths_[k]*sizeof(double),iUsedVecs[iThis]*lengths_[k]*sizeof(double));
   if (m_Weights.size()<=iUsedVecs[iThis]) m_Weights.resize(iUsedVecs[iThis]+1);
-//  std::cout << "iUsedVecs[iThis] "<<iUsedVecs[iThis]<<std::endl;
-//  std::cout << "m_Weights.cols() "<<m_Weights.cols()<<std::endl;
-//  std::cout << "m_Weights.rows() "<<m_Weights.rows()<<std::endl;
-//  std::cout << "m_Weights.size() "<<m_Weights.size()<<std::endl;
   m_Weights[iUsedVecs[iThis]] = weight;
 
   // go through previous residual vectors and form the dot products with them
   std::vector<double> ResDot(nDim);
-  // use Amp as a temporary buffer
-  assert(AmpLength_ >= ResLength_);
+  {
+  std::vector<double> buffer(std::min(buffer_size_,lengths_[0]));
   for (uint i=0; i<nDim; i++) {
-      load(nullptr,Amp,nullptr,iUsedVecs[i]);
-      ResDot[i] = Dot(Amp,Res,ResLength_);
+      ResDot[i] = 0;
+      for (uint block=0; block<lengths_[0]; block+=buffer.size()) {
+          store_[0]->read(&buffer[0],std::min(buffer.size(),lengths_[0]-block)*sizeof(double),(i*lengths_[0]+block)*sizeof(double));
+          ResDot[i] += Dot(vectors[block],&buffer[0],std::min(buffer.size(),lengths_[0]-block));
+        }
     }
-  load(Amp,nullptr,nullptr,iUsedVecs[iThis]); // .. and restore Amp
   ResDot[iThis] = fThisResidualDot;
+  }
 
   // update resident error matrix with new residual-dots
   for ( uint i = 0; i < nDim; ++ i ) {
@@ -224,40 +195,25 @@ void diis::extrapolate (double* Amp, double* Res, double* Other, double weight)
   m_LastAmplitudeCoeff = Coeffs[iThis];
 //  TR.InterpolateFrom( Coeffs[iThis], Coeffs.data(), ResRecs, AmpRecs,
 //      nDim, iThis, *m_Storage.pDevice, m_Memory );
-  if (Amp != nullptr) InterpolateFrom(Amp,Coeffs[iThis],Coeffs,AmpLength_,0);
-  if (Res != nullptr) InterpolateFrom(Res,Coeffs[iThis],Coeffs,ResLength_,AmpLength_*sizeof(double));
-  if (Other != nullptr) InterpolateFrom(Other,Coeffs[iThis],Coeffs,OtherLength_,(ResLength_+AmpLength_)*sizeof(double));
+  for (uint k=0; k<vectors.size(); k++) {
+   InterpolateFrom(store_[k],vectors[k],Coeffs,lengths_[k]);
+}
 }
 
-void diis::InterpolateFrom(double* result, double fOwnCoeff, Eigen::VectorXd Coeffs, size_t length, size_t offset)
+void diis::InterpolateFrom(diisStorage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length)
 {
-  size_t buffer_size=1024;
-  std::vector<double> buffer(std::min(buffer_size,length));
+  std::vector<double> buffer(std::min(buffer_size_,length));
   for (size_t i=0; i<length; i++) result[i]=0;
-//      std::cout << "start diis::InterpolateFrom, initial offset="<<offset<<" Coeffs="<<Coeffs<<std::endl;
-//          std::cout << "length="<<length<<std::endl;
-//      std::cout << "Coeffs.rows()="<<Coeffs.rows()<<std::endl;
-//      std::cout << "Coeffs.cols()="<<Coeffs.cols()<<std::endl;
-//      std::cout << "Coeffs.size()="<<Coeffs.size()<<std::endl;
   for (uint i=0; i<Coeffs.rows(); i++) {
-//      std::cout << "i="<<i<<std::endl;
-//      std::cout << "offset="<<offset<<std::endl;
       for (uint block=0; block<length; block+=buffer.size()) {
-          store_->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),offset+block*sizeof(double));
-//          std::cout << "buffer: "<<buffer[0]<<std::endl;
-//          std::cout << "Coeffs: "<<Coeffs[i]<<std::endl;
-//          std::cout << "buffer.size()="<<buffer.size()<<std::endl;
-//          std::cout << "length-block="<<length-block<<std::endl;
+          store_->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),(i*length+block)*sizeof(double));
+  std::cout << "InterpolateFrom buffer ="; for (size_t j=0; j<length; j++) std::cout <<" "<<buffer[j]; std::cout <<std::endl;
           for (size_t j=0; j<std::min(buffer.size(),length-block); j++) {
             result[j+block] += buffer[j] * Coeffs[i];
             }
-//          std::cout << "Updated result: "<<result[0]<<" "<<result[1]<<std::endl;
         }
-//      std::cout << "offset="<<offset<<std::endl;
-//      std::cout << "Incrementing offset by "<< TotalLength_*sizeof(double)<<std::endl;
-      offset += TotalLength_*sizeof(double);
-//      std::cout << "offset="<<offset<<std::endl;
     }
+  std::cout << "InterpolateFrom result ="; for (size_t j=0; j<length; j++) std::cout <<" "<<result[j]; std::cout <<std::endl;
 }
 
 void diis::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, uint iThis)

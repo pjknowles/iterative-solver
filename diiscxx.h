@@ -5,6 +5,7 @@
 #include <vector>
 #include <fstream>
 #include <algorithm>
+#include <numeric>
 #include <Eigen/Dense>
 
 #define nullptr NULL
@@ -18,15 +19,16 @@ public:
   enum DiisMode_type {disabled, DIIS, KAIN};
 /*!
    * \brief diis
-   * \param AmpLength
-   * \param ResLength
-   * \param OtherLength
+   * \param lengths A list of lengths of vectors that will be extrapolated.
+   * The first vector
+   * will be the one that is analysed to construct the extrapolation, and the remainder only have
+   * the extrapolation applied to them.
    * \param maxDim Maximum DIIS dimension allowed
    * \param threshold Residual threshold for inclusion of a vector in the DIIS state.
-   * \param DiisMode
+   * \param DiisMode Whether to perform DIIS, KAIN, or nothing.
+   * \param buffer_size The size of blocks used in accessing old vectors on backing store.
    */
-  diis(size_t AmpLength, size_t ResLength, size_t OtherLength, size_t maxDim=6, double threshold=1e-3, DiisMode_type DiisMode=DIIS);
-//  diis(size_t AmpLength, size_t maxDim=6, double threshold=1e-3, DiisMode_type DiisMode=DIIS);
+  diis(std::vector<size_t> lengths, size_t maxDim=6, double threshold=1e-3, DiisMode_type DiisMode=DIIS, size_t buffer_size=1024);
   ~diis();
   void setOptions(size_t maxDim=6, double threshold=1e-3, enum DiisMode_type DiisMode=DIIS);
   /*!
@@ -35,12 +37,13 @@ public:
   void Reset();
   /*!
    * \brief Introduce a new iteration vector, and perform extrapolation
-   * \param Amp
-   * \param Res
-   * \param Other
+   * \param vectors A list of vectors that will be extrapolated.
+   * The first vector
+   * will be the one that is analysed to construct the extrapolation, and the remainder only have
+   * the extrapolation applied to them.
    * \param weight
    */
-  void extrapolate (double *Amp, double* Res=nullptr, double* Other=nullptr, double weight=1.0);
+  void extrapolate (std::vector<double*> vectors, double weight=1.0);
 
   double fLastResidual() const { return m_LastResidualNormSq; }
   double fLastCoeff() const { return m_LastAmplitudeCoeff; }
@@ -50,22 +53,21 @@ public:
 private:
   typedef unsigned int uint;
   diis();
-  size_t AmpLength_;
-  size_t ResLength_;
-  size_t OtherLength_;
-  size_t TotalLength_;
+  std::vector<size_t> lengths_;
+  size_t totalLength() { std::accumulate(lengths_.begin(),lengths_.end(),0); }
   enum DiisMode_type DiisMode_;
-  diisStorage* store_;
+  std::vector<diisStorage*> store_; // files for each vector
   double threshold_;
   size_t maxDim_;
   unsigned int nDim_;
+  size_t buffer_size_;
   //> 0xffff: no vector in this slot. Otherwise: number of iterations
   // the vector in this slot has already been inside the DIIS system.
   std::vector<uint> m_iVectorAge;
   uint m_iNext; //< next vector to be overwritten. nDim+1 if nDim < MaxDim_.
   // find vectors which are not considered too bad for extrapolation purposes.
   void FindUsefulVectors(uint *iUsedVecs, uint &nDimUsed, double &fBaseScale, uint iThis);
-  void InterpolateFrom(double* result, double fOwnCoeff, Eigen::VectorXd Coeffs, size_t length, size_t offset);
+  void InterpolateFrom(diisStorage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length);
 
   Eigen::MatrixXd m_ErrorMatrix;
   std::vector<double> m_Weights;
@@ -77,8 +79,8 @@ private:
       // coefficient the actual new vector got in the last DIIS step
       m_LastAmplitudeCoeff;
 
-  void dump(double *Amp, double* Res, double* Other, unsigned int index);
-  void load(double *Amp, double* Res, double* Other, unsigned int index);
+  void dump(std::vector<double *> vectors, unsigned int index);
+  void load(std::vector<double*> vectors, unsigned int index);
 };
 
 /*!

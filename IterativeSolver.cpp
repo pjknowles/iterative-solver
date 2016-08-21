@@ -3,9 +3,12 @@
 
 using namespace IterativeSolver;
 
+IterativeSolverBase::IterativeSolverBase() : buffer_size_(1024) {}
+
 diis::diis(std::vector<size_t> lengths, size_t maxDim, double threshold, DiisMode_type DiisMode, size_t buffer_size)
-  : lengths_(lengths), maxDim_ (maxDim), threshold_(threshold), DiisMode_(DiisMode), buffer_size_(buffer_size), verbosity_(-1)
+  : lengths_(lengths), maxDim_ (maxDim), threshold_(threshold), DiisMode_(DiisMode), verbosity_(-1)
 {
+  buffer_size_=buffer_size;
   setOptions(maxDim,threshold,DiisMode);
   for (std::vector<size_t>::const_iterator l=lengths.begin(); l!=lengths.end(); l++)
     store_.push_back(new Storage(maxDim*(*l)*sizeof(double)));
@@ -87,7 +90,7 @@ void diis::extrapolate (std::vector<double*> vectors, double weight)
       return;
 
   uint iThis = m_iNext;
-//  std::cout<< "m_iNext "<<m_iNext<<std::endl;
+  if (verbosity_ > 1) std::cout<< "iThis=m_iNext "<<m_iNext<<std::endl;
   assert(iThis < maxDim_);
   if (iThis >= m_iVectorAge.size()) m_iVectorAge.resize(iThis+1);
   if (iThis >= m_ErrorMatrix.cols()) m_ErrorMatrix.conservativeResize(iThis+1,iThis+1);
@@ -95,6 +98,12 @@ void diis::extrapolate (std::vector<double*> vectors, double weight)
   for ( uint i = 0; i < m_iVectorAge.size(); ++ i )
       m_iVectorAge[i] += 1;
   m_iVectorAge[iThis] = 0;
+  if (verbosity_>1) {
+      std::cout << "iVectorAge:";
+      for (std::vector<uint>::const_iterator a=m_iVectorAge.begin(); a!=m_iVectorAge.end(); a++)
+        std::cout << " "<<*a;
+      std::cout << std::endl;
+    }
 
   // find set of vectors actually used in the current run and
   // find their common size scale.
@@ -106,6 +115,12 @@ void diis::extrapolate (std::vector<double*> vectors, double weight)
       double
       fBaseScale;
   FindUsefulVectors(&iUsedVecs[0], nDim, fBaseScale, iThis);
+  if (verbosity_>1) {
+      std::cout << "iUsedVecs:";
+      for (std::vector<uint>::const_iterator a=iUsedVecs.begin(); a!=iUsedVecs.end(); a++)
+        std::cout << " "<<*a;
+      std::cout << std::endl;
+    }
   // transform iThis into a relative index.
   for ( uint i = 0; i < nDim; ++ i )
       if ( iThis == iUsedVecs[i] ) {
@@ -114,24 +129,28 @@ void diis::extrapolate (std::vector<double*> vectors, double weight)
       }
 
   // write current residual and other vectors to their designated place
+  if (verbosity_>0) std::cout << "write current vectors to record "<<iUsedVecs[iThis]<<std::endl;
   for (unsigned int k=0; k<lengths_.size(); k++)
    store_[k]->write(vectors[k],lengths_[k]*sizeof(double),iUsedVecs[iThis]*lengths_[k]*sizeof(double));
   if (m_Weights.size()<=iUsedVecs[iThis]) m_Weights.resize(iUsedVecs[iThis]+1);
   m_Weights[iUsedVecs[iThis]] = weight;
 
   // go through previous residual vectors and form the dot products with them
-  std::vector<double> ResDot(nDim);
-  {
-  std::vector<double> buffer(std::min(buffer_size_,lengths_[0]));
-  for (uint i=0; i<nDim; i++) {
-      ResDot[i] = 0;
-      for (uint block=0; block<lengths_[0]; block+=buffer.size()) {
-          store_[0]->read(&buffer[0],std::min(buffer.size(),lengths_[0]-block)*sizeof(double),(i*lengths_[0]+block)*sizeof(double));
-          ResDot[i] += Dot(vectors[block],&buffer[0],std::min(buffer.size(),lengths_[0]-block));
-        }
-    }
+//  std::vector<double> ResDot(nDim);
+//  {
+//  std::vector<double> buffer(std::min(buffer_size_,lengths_[0]));
+//  for (uint i=0; i<nDim; i++) {
+//      ResDot[i] = 0;
+//      for (uint block=0; block<lengths_[0]; block+=buffer.size()) {
+//          store_[0]->read(&buffer[0],std::min(buffer.size(),lengths_[0]-block)*sizeof(double),(i*lengths_[0]+block)*sizeof(double));
+//          ResDot[i] += Dot(&vectors[0][block],&buffer[0],std::min(buffer.size(),lengths_[0]-block));
+//        }
+//    }
+//  }
+  std::vector<double> ResDot = overlapsWithStore(store_[0], vectors[0], lengths_[0], nDim);
+  if (iThis >= nDim) ResDot.resize(iThis+1);
   ResDot[iThis] = fThisResidualDot;
-  }
+
 
   // update resident error matrix with new residual-dots
   for ( uint i = 0; i < nDim; ++ i ) {
@@ -164,12 +183,10 @@ void diis::extrapolate (std::vector<double*> vectors, double weight)
 
   // invert the system, determine extrapolation coefficients.
   LinearSolveSymSvd(Coeffs, B, Rhs, nDim+1, 1.0e-10);
-  std::cout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;
+  if (verbosity_>1) std::cout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;
 
   // Find a storage place for the vector in the next round. Either
   // an empty slot or the oldest vector.
-  std::cout << "At next slot choice: m_iVectorAge =";
-  for (std::vector<uint>::iterator k=m_iVectorAge.begin(); k!=m_iVectorAge.end(); k++) std::cout << " "<<*k; std::cout <<std::endl;
   uint iOldestAge = m_iVectorAge[0];
   m_iNext = 0;
   if (m_iVectorAge.size() < maxDim_) {
@@ -200,24 +217,35 @@ void diis::extrapolate (std::vector<double*> vectors, double weight)
 //  TR.InterpolateFrom( Coeffs[iThis], Coeffs.data(), ResRecs, AmpRecs,
 //      nDim, iThis, *m_Storage.pDevice, m_Memory );
   for (uint k=0; k<vectors.size(); k++) {
-   InterpolateFrom(store_[k],vectors[k],Coeffs,lengths_[k]);
+   InterpolateFrom(store_[k],vectors[k],Coeffs,lengths_[k],iUsedVecs);
 }
 }
 
-void diis::InterpolateFrom(Storage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length)
+std::vector<double> IterativeSolverBase::overlapsWithStore(Storage* store, double* vector, size_t length , size_t nVector)
+{
+  std::vector<double> result(nVector);
+  std::vector<double> buffer(std::min(buffer_size_,length));
+  for (unsigned int i=0; i<nVector; i++) {
+      result[i] = 0;
+      for (unsigned int block=0; block<length; block+=buffer.size()) {
+          store->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),(i*length+block)*sizeof(double));
+          result[i] += Dot(&vector[block],&buffer[0],std::min(buffer.size(),length-block));
+        }
+    }
+  return result;
+}
+void IterativeSolverBase::InterpolateFrom(Storage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length, std::vector<unsigned int>& iUsedVecs)
 {
   std::vector<double> buffer(std::min(buffer_size_,length));
   for (size_t i=0; i<length; i++) result[i]=0;
-  for (uint i=0; i<Coeffs.rows(); i++) {
-      for (uint block=0; block<length; block+=buffer.size()) {
-          store_->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),(i*length+block)*sizeof(double));
-  std::cout << "InterpolateFrom buffer ="; for (size_t j=0; j<length; j++) std::cout <<" "<<buffer[j]; std::cout <<std::endl;
+  for (unsigned int i=0; i<Coeffs.rows(); i++) {
+      for (unsigned int block=0; block<length; block+=buffer.size()) {
+          store_->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),(iUsedVecs[i]*length+block)*sizeof(double));
           for (size_t j=0; j<std::min(buffer.size(),length-block); j++) {
-            result[j+block] += buffer[j] * Coeffs[i];
+              result[j+block] += buffer[j] * Coeffs[i];
             }
         }
     }
-  std::cout << "InterpolateFrom result ="; for (size_t j=0; j<length; j++) std::cout <<" "<<result[j]; std::cout <<std::endl;
 }
 
 void diis::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, uint iThis)

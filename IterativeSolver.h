@@ -14,7 +14,16 @@
 namespace IterativeSolver {
 
 class Storage;
-class diis
+class IterativeSolverBase
+{
+public:
+  IterativeSolverBase();
+protected:
+  size_t buffer_size_;
+  void InterpolateFrom(Storage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length, std::vector<unsigned int> &iUsedVecs);
+  std::vector<double> overlapsWithStore(Storage* store, double* vector, size_t length , size_t nVector);
+};
+class diis : public IterativeSolverBase
 {
 public:
   enum DiisMode_type {disabled, DIIS, KAIN};
@@ -62,7 +71,6 @@ private:
   double threshold_;
   size_t maxDim_;
   unsigned int nDim_;
-  size_t buffer_size_;
   int verbosity_;
   //> 0xffff: no vector in this slot. Otherwise: number of iterations
   // the vector in this slot has already been inside the DIIS system.
@@ -70,7 +78,6 @@ private:
   uint m_iNext; //< next vector to be overwritten. nDim+1 if nDim < MaxDim_.
   // find vectors which are not considered too bad for extrapolation purposes.
   void FindUsefulVectors(uint *iUsedVecs, uint &nDimUsed, double &fBaseScale, uint iThis);
-  void InterpolateFrom(Storage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length);
   void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr);
 
   Eigen::MatrixXd m_ErrorMatrix;
@@ -83,8 +90,6 @@ private:
       // coefficient the actual new vector got in the last DIIS step
       m_LastAmplitudeCoeff;
 
-  void dump(std::vector<double *> vectors, unsigned int index);
-  void load(std::vector<double*> vectors, unsigned int index);
 };
 
 /*!

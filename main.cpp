@@ -8,7 +8,7 @@ using namespace IterativeSolver;
 
 typedef std::vector<double> doubles;
 
-bool rosenbrock=false;
+bool rosenbrock=true;
 
 doubles residual(const doubles x) {
   doubles result;
@@ -36,11 +36,11 @@ doubles hessd(const doubles x) {
 int main(int argc, char *argv[])
 {
   cout << "Test DIIS" << endl;
-  doubles amp;amp.push_back(0.9);amp.push_back(0.9);
+  doubles amp;amp.push_back(0.8);amp.push_back(0.8);
   doubles res;res.push_back(1);res.push_back(1);
   std::vector<size_t> lengths; lengths.push_back(res.size()); lengths.push_back(amp.size());
   diis d(lengths,6,1e+6,diis::DIIS);
-  d.setVerbosity(2);
+//  d.setVerbosity(2);
   for (int i=1; i<10000 && d.fLastResidual() > 1e-20; i++) {
     res=residual(amp);
     std::cout <<i<< "before extrapolate amp: "<<amp[0]-1<<", "<<amp[1]-1<<std::endl;

@@ -28,7 +28,7 @@ public:
    * \param DiisMode Whether to perform DIIS, KAIN, or nothing.
    * \param buffer_size The size of blocks used in accessing old vectors on backing store.
    */
-  diis(std::vector<size_t> lengths, size_t maxDim=6, double threshold=1e-3, DiisMode_type DiisMode=DIIS, size_t buffer_size=1024);
+  diis(std::vector<size_t> lengths, size_t maxDim=6, double threshold=1e6, DiisMode_type DiisMode=DIIS, size_t buffer_size=1024);
   ~diis();
   void setOptions(size_t maxDim=6, double threshold=1e-3, enum DiisMode_type DiisMode=DIIS);
   /*!

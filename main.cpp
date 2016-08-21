@@ -1,9 +1,10 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include "diiscxx.h"
+#include "IterativeSolver.h"
 
 using namespace std;
+using namespace IterativeSolver;
 
 typedef std::vector<double> doubles;
 
@@ -40,14 +41,12 @@ int main(int argc, char *argv[])
   std::vector<size_t> lengths; lengths.push_back(res.size()); lengths.push_back(amp.size());
   diis d(lengths,6,1e+6,diis::DIIS);
   d.setVerbosity(2);
-//  diis DIIS(amp.size(),res.size(),nullptr);
-//  for (int i=0; i<10000 && (std::fabs(res[0]) > 1e-20 || std::fabs(res[1]) > 1e-20); i++) {
-  for (int i=0; i<10000 && d.fLastResidual() > 1e-20; i++) {
+  for (int i=1; i<10000 && d.fLastResidual() > 1e-20; i++) {
     res=residual(amp);
     std::cout <<i<< "before extrapolate amp: "<<amp[0]-1<<", "<<amp[1]-1<<std::endl;
     std::cout <<i<< "before extrapolate res: "<<res[0]<<", "<<res[1]<<std::endl;
-    std::vector<double*> vectors;vectors.push_back(&res[0]);vectors.push_back(&amp[0]);
 //    d.extrapolate({&amp[0],&res[0]});
+    std::vector<double*> vectors;vectors.push_back(&res[0]);vectors.push_back(&amp[0]);
     d.extrapolate(vectors);
     std::cout <<i<< "fLastResidual="<<d.fLastResidual()<<std::endl;
     std::cout <<i<< "fLastCoeff="<<d.fLastCoeff()<<std::endl;

@@ -11,8 +11,9 @@
 #define nullptr NULL
 #define VecNotPresent 0xffff
 
+namespace IterativeSolver {
 
-class diisStorage;
+class Storage;
 class diis
 {
 public:
@@ -57,7 +58,7 @@ private:
   std::vector<size_t> lengths_;
   size_t totalLength() { std::accumulate(lengths_.begin(),lengths_.end(),0); }
   enum DiisMode_type DiisMode_;
-  std::vector<diisStorage*> store_; // files for each vector
+  std::vector<Storage*> store_; // files for each vector
   double threshold_;
   size_t maxDim_;
   unsigned int nDim_;
@@ -69,7 +70,7 @@ private:
   uint m_iNext; //< next vector to be overwritten. nDim+1 if nDim < MaxDim_.
   // find vectors which are not considered too bad for extrapolation purposes.
   void FindUsefulVectors(uint *iUsedVecs, uint &nDimUsed, double &fBaseScale, uint iThis);
-  void InterpolateFrom(diisStorage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length);
+  void InterpolateFrom(Storage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length);
   void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr);
 
   Eigen::MatrixXd m_ErrorMatrix;
@@ -87,17 +88,19 @@ private:
 };
 
 /*!
- * \brief The diisStorage class provides auxiliary storage (usually on an external file) for the diis class
+ * \brief The Storage class provides auxiliary storage (usually on an external file) for
+ * iterative solvers.
  */
-class diisStorage
+class Storage
 {
 public:
   /*!
-   * \brief diisStorage
+   * \brief Storage
    * \param lengthHint A provided estimate of the total amount of storage that is likely to be needed.
+   * \param option An implementation-dependent parameter that controls operation
    */
-  diisStorage(size_t lengthHint=0);
-  ~diisStorage();
+  Storage(size_t lengthHint=0, int option=0);
+  ~Storage();
   /*!
    * \brief Write data to the store.
    * \param buffer Provides the data to be written.
@@ -120,5 +123,7 @@ private:
   std::fstream dumpFile_;
   size_t size_; //< total storage (bytes) used
 };
+
+}
 
 #endif // DIISCXX_H

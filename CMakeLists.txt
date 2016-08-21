@@ -6,7 +6,6 @@ add_executable(${PROJECT_NAME} ${SRC_LIST})
 include_directories(Eigen )
 add_definitions(-DEIGEN_USE_MKL_ALL)
 
-set(MKL_ROOT /opt/intel/mkl)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 find_package(MKL)
 if (MKL_FOUND)

@@ -1,20 +1,21 @@
-#include "diiscxx.h"
+#include "IterativeSolver.h"
 #include <algorithm>
 
+using namespace IterativeSolver;
 
 diis::diis(std::vector<size_t> lengths, size_t maxDim, double threshold, DiisMode_type DiisMode, size_t buffer_size)
   : lengths_(lengths), maxDim_ (maxDim), threshold_(threshold), DiisMode_(DiisMode), buffer_size_(buffer_size), verbosity_(-1)
 {
   setOptions(maxDim,threshold,DiisMode);
   for (std::vector<size_t>::const_iterator l=lengths.begin(); l!=lengths.end(); l++)
-    store_.push_back(new diisStorage(maxDim*(*l)*sizeof(double)));
+    store_.push_back(new Storage(maxDim*(*l)*sizeof(double)));
   m_LastResidualNormSq=1e99; // so it can be tested even before extrapolation is done
   Reset();
 }
 
 diis::~diis()
 {
-  for (std::vector<diisStorage*>::const_iterator s=store_.begin(); s!=store_.end(); s++)
+  for (std::vector<Storage*>::const_iterator s=store_.begin(); s!=store_.end(); s++)
     delete *s;
 }
 
@@ -203,7 +204,7 @@ void diis::extrapolate (std::vector<double*> vectors, double weight)
 }
 }
 
-void diis::InterpolateFrom(diisStorage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length)
+void diis::InterpolateFrom(Storage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length)
 {
   std::vector<double> buffer(std::min(buffer_size_,length));
   for (size_t i=0; i<length; i++) result[i]=0;
@@ -258,7 +259,7 @@ void diis::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, ui
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
-diisStorage::diisStorage(size_t lengthHint)
+Storage::Storage(size_t lengthHint, int option)
 {
   char *tmpname=strdup("tmpfileXXXXXX");
   mkstemp(tmpname);
@@ -267,28 +268,28 @@ diisStorage::diisStorage(size_t lengthHint)
   size_=0;
 }
 
-diisStorage::~diisStorage()
+Storage::~Storage()
 {
   dumpFile_.close();
 }
 
-void diisStorage::write(const double *buffer, size_t length, size_t address)
+void Storage::write(const double *buffer, size_t length, size_t address)
 {
   dumpFile_.seekg(address);//,std::ios::beg);
   dumpFile_.write((char*) buffer,length);
-//  std::cout << "diisStorage::write at address "<< address << ", length="<<length<<","<< buffer[0]<<std::endl;
+//  std::cout << "Storage::write at address "<< address << ", length="<<length<<","<< buffer[0]<<std::endl;
   if (length+address > size_) size_ = length+address;
 }
 
-void diisStorage::read(double *buffer, size_t length, size_t address)
+void Storage::read(double *buffer, size_t length, size_t address)
 {
-  if (address+length > size_) throw std::range_error("diisStorage: attempt to load from beyond end of storage");
+  if (address+length > size_) throw std::range_error("Storage: attempt to load from beyond end of storage");
   dumpFile_.seekg(address);//,std::ios::beg);
   dumpFile_.read((char*) buffer,length);
-//  std::cout << "diisStorage::read at address "<< address << ", length="<<length<<","<< buffer[0]<<std::endl;
+//  std::cout << "Storage::read at address "<< address << ", length="<<length<<","<< buffer[0]<<std::endl;
 }
 
-size_t diisStorage::size()
+size_t Storage::size()
 {
   return size_;
 }

@@ -3,7 +3,49 @@
 
 using namespace IterativeSolver;
 
-IterativeSolverBase::IterativeSolverBase() : buffer_size_(1024) {}
+IterativeSolverBase::IterativeSolverBase(size_t length, size_t buffer_size) : length_(length), buffer_size_(buffer_size), preconditioner_store_(nullptr) {}
+
+IterativeSolverBase::~IterativeSolverBase()
+{
+  if (preconditioner_store_ != nullptr) delete preconditioner_store_;
+}
+
+
+#include <limits>
+void IterativeSolverBase::addPreconditioner(double *d, double shift, bool absolute)
+{
+    double shifter = shift;
+    if (not absolute) {
+        shifter=std::numeric_limits<double>::min();
+        for (size_t k=0; k<length_; k++)
+          if (d[k]<-shifter) shifter=-d[k];
+        shifter +=  shift;
+        if (shift == 0) shift+=1e-14; // to avoid division by zero
+      }
+    preconditioner_store_ = new Storage(sizeof(double)*length_);
+  std::vector<double> buffer(std::min(buffer_size_,length_));
+  for (size_t block=0; block<length_; block+=buffer.size()) {
+      for (size_t k=0; k<std::min(buffer_size_,length_-block); k++)
+        buffer[k] = 1/(d[block+k] + shift);
+      preconditioner_store_->write(&buffer[0],std::min(buffer.size(),length_-block)*sizeof(double),(block)*sizeof(double));
+        }
+}
+
+void IterativeSolverBase::update(const double *residual, double *solution)
+{
+  if (preconditioner_store_ == nullptr) {
+      for (size_t k=0; k<length_; k++)
+        solution[k] -= residual[k];
+    } else {
+      std::vector<double> buffer(std::min(buffer_size_,length_));
+      for (size_t block=0; block<length_; block+=buffer.size()) {
+          preconditioner_store_->read(&buffer[0],std::min(buffer.size(),length_-block)*sizeof(double),(block)*sizeof(double));
+          for (size_t j=0; j<std::min(buffer.size(),length_-block); j++) {
+              solution[j+block] += residual[j] * buffer[j];
+            }
+        }
+    }
+}
 
 double Dot(double* a, double* b, size_t n)
 {
@@ -18,20 +60,20 @@ std::vector<double> IterativeSolverBase::StorageDot(Storage* store, double* vect
   std::vector<double> buffer(std::min(buffer_size_,length));
   for (unsigned int i=0; i<nVector; i++) {
       result[i] = 0;
-      for (unsigned int block=0; block<length; block+=buffer.size()) {
+      for (size_t block=0; block<length; block+=buffer.size()) {
           store->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),(i*length+block)*sizeof(double));
           result[i] += Dot(&vector[block],&buffer[0],std::min(buffer.size(),length-block));
         }
     }
   return result;
 }
-void IterativeSolverBase::StorageCombine(Storage* store_, double* result,  Eigen::VectorXd Coeffs, size_t length, std::vector<unsigned int>& iUsedVecs)
+void IterativeSolverBase::StorageCombine(Storage* store, double* result,  Eigen::VectorXd Coeffs, size_t length, std::vector<unsigned int>& iUsedVecs)
 {
   std::vector<double> buffer(std::min(buffer_size_,length));
   for (size_t i=0; i<length; i++) result[i]=0;
   for (unsigned int i=0; i<Coeffs.rows(); i++) {
-      for (unsigned int block=0; block<length; block+=buffer.size()) {
-          store_->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),(iUsedVecs[i]*length+block)*sizeof(double));
+      for (size_t block=0; block<length; block+=buffer.size()) {
+          store->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),(iUsedVecs[i]*length+block)*sizeof(double));
           for (size_t j=0; j<std::min(buffer.size(),length-block); j++) {
               result[j+block] += buffer[j] * Coeffs[i];
             }
@@ -39,10 +81,9 @@ void IterativeSolverBase::StorageCombine(Storage* store_, double* result,  Eigen
     }
 }
 
-diis::diis(std::vector<size_t> lengths, size_t maxDim, double threshold, DiisMode_type DiisMode, size_t buffer_size)
-  : lengths_(lengths), maxDim_ (maxDim), threshold_(threshold), DiisMode_(DiisMode), verbosity_(-1)
+Diis::Diis(std::vector<size_t> lengths, size_t maxDim, double threshold, DiisMode_type DiisMode, size_t buffer_size)
+  : IterativeSolverBase(lengths[0],buffer_size), lengths_(lengths), maxDim_ (maxDim), threshold_(threshold), DiisMode_(DiisMode), verbosity_(-1), m_iNext(0)
 {
-  buffer_size_=buffer_size;
   setOptions(maxDim,threshold,DiisMode);
   for (std::vector<size_t>::const_iterator l=lengths.begin(); l!=lengths.end(); l++)
     store_.push_back(new Storage(maxDim*(*l)*sizeof(double)));
@@ -50,27 +91,29 @@ diis::diis(std::vector<size_t> lengths, size_t maxDim, double threshold, DiisMod
   Reset();
 }
 
-diis::~diis()
+Diis::~Diis()
 {
   for (std::vector<Storage*>::const_iterator s=store_.begin(); s!=store_.end(); s++)
     delete *s;
 }
 
-void diis::setOptions(size_t maxDim, double threshold, DiisMode_type DiisMode)
+void Diis::setOptions(size_t maxDim, double threshold, DiisMode_type DiisMode)
 {
    maxDim_ = maxDim;
    threshold_ = threshold;
    DiisMode_ = DiisMode;
+   if (DiisMode_ == KAIN) throw std::invalid_argument("KAIN not yet supported");
+
    Reset();
 //   std::cout << "maxDim_ set to "<<maxDim_<<" in setOptions"<<std::endl;
 }
 
-void diis::Reset()
+void Diis::Reset()
 {
 
 }
 
-void diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr)
+void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr)
 {
     Eigen::VectorXd Ews(nDim);
     Eigen::VectorXd Xv(nDim); // input vectors in EV basis.
@@ -104,7 +147,7 @@ void diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
 
 
 
-void diis::extrapolate (std::vector<double*> vectors, double weight)
+void Diis::extrapolate (std::vector<double*> vectors, double weight)
 {
   if (maxDim_ <= 1 || DiisMode_ == disabled) return;
 
@@ -248,7 +291,17 @@ void diis::extrapolate (std::vector<double*> vectors, double weight)
 }
 }
 
-void diis::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, uint iThis)
+void Diis::iterate(double *residual, double *solution, double weight, std::vector<double *> other)
+{
+  std::vector<double*> vectors;
+  vectors.push_back(residual);
+  vectors.push_back(solution);
+  for (std::vector<double*>::const_iterator o=other.begin(); o!=other.end(); o++) vectors.push_back(*o);
+  extrapolate(vectors,weight);
+  update(residual,solution);
+}
+
+void Diis::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, uint iThis)
 {
     // remove lines from the system which correspond to vectors which are too bad
     // to be really useful for extrapolation purposes, but which might break

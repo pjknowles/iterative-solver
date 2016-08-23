@@ -2,7 +2,8 @@ project(IterativeSolver)
 cmake_minimum_required(VERSION 2.8)
 add_subdirectory(Eigen)
 aux_source_directory(. SRC_LIST)
-add_executable(${PROJECT_NAME} ${SRC_LIST})
+add_executable(${PROJECT_NAME}-test ${SRC_LIST})
+add_library (${PROJECT_NAME} ${SRC_LIST})
 include_directories(Eigen )
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
@@ -23,7 +24,6 @@ target_link_libraries(${PROJECT_NAME} -lm -ldl)
 endif (BLAS_FOUND)
 endif (MKL_FOUND)
 
-#include_directories(/opt/intel/mkl/include)
 
 find_package(Doxygen)
 if(DOXYGEN_FOUND)

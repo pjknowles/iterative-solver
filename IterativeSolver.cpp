@@ -3,13 +3,14 @@
 
 using namespace IterativeSolver;
 
-IterativeSolverBase::IterativeSolverBase(size_t length, size_t buffer_size) : length_(length), buffer_size_(buffer_size), preconditioner_store_(nullptr), globalSum_(noOp) {}
+IterativeSolverBase::IterativeSolverBase(size_t length, size_t buffer_size, vectorFunction globalSum) : length_(length), buffer_size_(buffer_size), preconditioner_store_(nullptr), globalSum_(globalSum) {}
 
 IterativeSolverBase::~IterativeSolverBase()
 {
   if (preconditioner_store_ != nullptr) delete preconditioner_store_;
 }
 
+void IterativeSolver::noOp(double* buffer, size_t length) { }
 
 #include <limits>
 void IterativeSolverBase::addPreconditioner(double *d, double shift, bool absolute)
@@ -65,6 +66,7 @@ std::vector<double> IterativeSolverBase::StorageDot(Storage* store, double* vect
           result[i] += Dot(&vector[block],&buffer[0],std::min(buffer.size(),length-block));
         }
     }
+  globalSum_(&result[0],result.size()); // possibly the vector is partitioned across processors, and need to aggregate for entire dot product
   return result;
 }
 void IterativeSolverBase::StorageCombine(Storage* store, double* result,  Eigen::VectorXd Coeffs, size_t length, std::vector<unsigned int>& iUsedVecs)
@@ -81,8 +83,8 @@ void IterativeSolverBase::StorageCombine(Storage* store, double* result,  Eigen:
     }
 }
 
-Diis::Diis(std::vector<size_t> lengths, size_t maxDim, double threshold, DiisMode_type DiisMode, size_t buffer_size)
-  : IterativeSolverBase(lengths[0],buffer_size), lengths_(lengths), maxDim_ (maxDim), threshold_(threshold), DiisMode_(DiisMode), verbosity_(-1), m_iNext(0)
+Diis::Diis(std::vector<size_t> lengths, size_t maxDim, double threshold, DiisMode_type DiisMode, size_t buffer_size, vectorFunction globalSum)
+  : IterativeSolverBase(lengths[0],buffer_size,globalSum), lengths_(lengths), maxDim_ (maxDim), threshold_(threshold), DiisMode_(DiisMode), verbosity_(-1), m_iNext(0)
 {
   setOptions(maxDim,threshold,DiisMode);
   for (std::vector<size_t>::const_iterator l=lengths.begin(); l!=lengths.end(); l++)
@@ -152,6 +154,7 @@ void Diis::extrapolate (std::vector<double*> vectors, double weight)
   if (maxDim_ <= 1 || DiisMode_ == disabled) return;
 
   double fThisResidualDot = Dot(vectors[0],vectors[0],lengths_[0]);
+  globalSum_(&fThisResidualDot,1);
   m_LastResidualNormSq = fThisResidualDot;
 
   if ( m_iNext == 0 && fThisResidualDot > threshold_ )
@@ -206,17 +209,6 @@ void Diis::extrapolate (std::vector<double*> vectors, double weight)
   m_Weights[iUsedVecs[iThis]] = weight;
 
   // go through previous residual vectors and form the dot products with them
-//  std::vector<double> ResDot(nDim);
-//  {
-//  std::vector<double> buffer(std::min(buffer_size_,lengths_[0]));
-//  for (uint i=0; i<nDim; i++) {
-//      ResDot[i] = 0;
-//      for (uint block=0; block<lengths_[0]; block+=buffer.size()) {
-//          store_[0]->read(&buffer[0],std::min(buffer.size(),lengths_[0]-block)*sizeof(double),(i*lengths_[0]+block)*sizeof(double));
-//          ResDot[i] += Dot(&vectors[0][block],&buffer[0],std::min(buffer.size(),lengths_[0]-block));
-//        }
-//    }
-//  }
   std::vector<double> ResDot = StorageDot(store_[0], vectors[0], lengths_[0], nDim);
   if (iThis >= nDim) ResDot.resize(iThis+1);
   ResDot[iThis] = fThisResidualDot;

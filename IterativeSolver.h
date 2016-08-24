@@ -18,17 +18,31 @@ namespace IterativeSolver {
 class Storage;
 
 /*!
+ * \brief Does nothing.
+ * \param buffer
+ * \param length
+ */
+void noOp(double* buffer, size_t length);
+/*!
  * \brief A base class for iterative solvers such as DIIS, KAIN, Davidson. The class provides support for preconditioned update, with the preconditioner being
  * stored once in advance of use.
  */
 class IterativeSolverBase
 {
 protected:
-  IterativeSolverBase(size_t length, size_t buffer_size=1024);
+  typedef void (*vectorFunction)(double*, size_t);
+  /*!
+   * \brief IterativeSolverBase
+   * \param length The length of the vectors on which extrapolation will be based.
+   * \param buffer_size Size of blocks for processing vectors on backing store.
+   * \param globalSum A function that in a parallel environment sums globally, then broadcasts, the vector supplied to it.
+   */
+  IterativeSolverBase(size_t length, size_t buffer_size=1024, vectorFunction globalSum=&IterativeSolver::noOp);
   ~IterativeSolverBase();
   size_t buffer_size_;
   void StorageCombine(Storage* store, double* result,  Eigen::VectorXd Coeffs, size_t length, std::vector<unsigned int> &iUsedVecs);
   std::vector<double> StorageDot(Storage* store, double* vector, size_t length , size_t nVector);
+  vectorFunction globalSum_;
 public:
   /*!
    * \brief Declare and store a preconditioner for iterative updates of the form solution[k] += preconditioner[k] * residual[k]
@@ -45,11 +59,10 @@ public:
    * \param solution On input, the current solution. On exit, the updated solution.
    */
   void update(const double* residual, double* solution);
+  void setGlobalSum(vectorFunction globalSum=&IterativeSolver::noOp) {globalSum_=globalSum;}
 private:
   size_t length_;
   Storage* preconditioner_store_;
-  void (*globalSum_(double* buffer, size_t length));
-  void noOp(double* buffer, size_t length);
 };
 
 /*!
@@ -89,8 +102,9 @@ public:
    * \param threshold Residual threshold for inclusion of a vector in the DIIS state.
    * \param DiisMode Whether to perform DIIS, KAIN, or nothing.
    * \param buffer_size The size of blocks used in accessing old vectors on backing store.
+   * \param globalSum A function that in a parallel environment sums globally, then broadcasts, the vector supplied to it.
    */
-  Diis(std::vector<size_t> lengths, size_t maxDim=6, double threshold=1e6, DiisMode_type DiisMode=DIIS, size_t buffer_size=1024);
+  Diis(std::vector<size_t> lengths, size_t maxDim=6, double threshold=1e6, DiisMode_type DiisMode=DIIS, size_t buffer_size=1024, vectorFunction globalSum=&IterativeSolver::noOp);
   ~Diis();
   void setOptions(size_t maxDim=6, double threshold=1e-3, enum DiisMode_type DiisMode=DIIS);
   void setVerbosity(int verbosity) { verbosity_=verbosity;}

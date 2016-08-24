@@ -10,6 +10,11 @@ typedef std::vector<double> doubles;
 
 bool rosenbrock=true;
 
+void globalsum(double* buffer, size_t length)
+{
+  std::cout << "globalsum"; for (size_t k=0; k<length; k++) std::cout << " "<<buffer[k]; std:cout << endl;
+}
+
 doubles residual(const doubles x) {
   doubles result;
   if (rosenbrock) {
@@ -39,6 +44,9 @@ void simple() {
   std::vector<double> diag(2); diag[0]=700; diag[1]=200; // preconditioner
   std::vector<size_t> lengths; lengths.push_back(g.size()); lengths.push_back(x.size());
   Diis d(lengths);
+//  d.setGlobalSum(&globalsum);
+//  auto gs = [](double* buffer, size_t length){std::cout << "hello"<<std::endl;};
+//  d.setGlobalSum(&gs);
   d.addPreconditioner(&diag[0],0,true);
   for (int iteration=1; iteration < 1000 && d.fLastResidual() > 1e-25; iteration++) {
       g[0]=2*x[0]-2+400*x[0]*(x[0]*x[0]-x[1]); g[1]=200*(x[1]-x[0]*x[0]); // Rosenbrock function gradient

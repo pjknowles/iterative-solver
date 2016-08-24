@@ -41,7 +41,7 @@ void IterativeSolverBase::update(const double *residual, double *solution)
       for (size_t block=0; block<length_; block+=buffer.size()) {
           preconditioner_store_->read(&buffer[0],std::min(buffer.size(),length_-block)*sizeof(double),(block)*sizeof(double));
           for (size_t j=0; j<std::min(buffer.size(),length_-block); j++) {
-              solution[j+block] += residual[j] * buffer[j];
+              solution[j+block] -= residual[j+block] * buffer[j];
             }
         }
     }

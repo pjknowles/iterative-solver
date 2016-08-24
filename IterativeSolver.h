@@ -48,6 +48,8 @@ public:
 private:
   size_t length_;
   Storage* preconditioner_store_;
+  void (*globalSum_(double* buffer, size_t length));
+  void noOp(double* buffer, size_t length);
 };
 
 /*!

@@ -3,7 +3,7 @@
 
 using namespace IterativeSolver;
 
-IterativeSolverBase::IterativeSolverBase(size_t length, size_t buffer_size) : length_(length), buffer_size_(buffer_size), preconditioner_store_(nullptr) {}
+IterativeSolverBase::IterativeSolverBase(size_t length, size_t buffer_size) : length_(length), buffer_size_(buffer_size), preconditioner_store_(nullptr), globalSum_(noOp) {}
 
 IterativeSolverBase::~IterativeSolverBase()
 {

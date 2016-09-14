@@ -62,10 +62,12 @@ namespace IterativeSolver {
      * \return
      */
     virtual ParameterVector& operator=(const ParameterVector& other);
-  private:
+  protected:
     int variance_;
+  private:
     size_t length_;
     ParameterScalar* buffer_;
+    std::vector<ParameterScalar> buff;
   };
 
   class ParameterVectorSet : private std::vector<ParameterVector>

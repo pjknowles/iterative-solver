@@ -7,7 +7,7 @@ ParameterVector::ParameterVector(int variance) :
 {
 
 }
-ParameterVector::ParameterVector(Scalar* buffer, size_t length, int variance) :
+ParameterVector::ParameterVector(ParameterScalar* buffer, size_t length, int variance) :
   buffer_(buffer), length_(length), variance_(variance)
 {
 

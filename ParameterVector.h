@@ -6,18 +6,18 @@
 
 
 namespace IterativeSolver {
-  typedef double Scalar;
+  typedef double ParameterScalar;
 
   class ParameterVector
   {
   public:
     ParameterVector(int variance=0);
-    ParameterVector(Scalar* buffer, size_t length, int variance=0);
+    ParameterVector(ParameterScalar* buffer, size_t length, int variance=0);
     virtual ~ParameterVector();
   private:
     int variance_;
     size_t length_;
-    Scalar* buffer_;
+    ParameterScalar* buffer_;
   };
 
   class ParameterVectorSet : private std::vector<ParameterVector>

@@ -3,92 +3,45 @@
 
 using namespace IterativeSolver;
 
-IterativeSolverBase::IterativeSolverBase(size_t length, size_t buffer_size, vectorFunction globalSum) : length_(length), buffer_size_(buffer_size), preconditioner_store_(nullptr), globalSum_(globalSum) {}
+IterativeSolverBase::IterativeSolverBase(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
+:  updateFunction_(updateFunction), residualFunction_(residualFunction), verbosity_(0), ethresh_(1e-6), cthresh_(0), gthresh_(0)
+{}
 
 IterativeSolverBase::~IterativeSolverBase()
 {
-  if (preconditioner_store_ != nullptr) delete preconditioner_store_;
 }
 
-void IterativeSolver::noOp(double* buffer, size_t length) { }
 
 #include <limits>
-void IterativeSolverBase::addPreconditioner(double *d, double shift, bool absolute)
-{
-    double shifter = shift;
-    if (not absolute) {
-        shifter=std::numeric_limits<double>::min();
-        for (size_t k=0; k<length_; k++)
-          if (d[k]<-shifter) shifter=-d[k];
-        shifter +=  shift;
-        if (shift == 0) shift+=1e-14; // to avoid division by zero
-      }
-    preconditioner_store_ = new Storage(sizeof(double)*length_);
-  std::vector<double> buffer(std::min(buffer_size_,length_));
-  for (size_t block=0; block<length_; block+=buffer.size()) {
-      for (size_t k=0; k<std::min(buffer_size_,length_-block); k++)
-        buffer[k] = 1/(d[block+k] + shift);
-      preconditioner_store_->write(&buffer[0],std::min(buffer.size(),length_-block)*sizeof(double),(block)*sizeof(double));
-        }
-}
+//void IterativeSolverBase::addPreconditioner(double *d, double shift, bool absolute)
+//{
+//    double shifter = shift;
+//    if (not absolute) {
+//        shifter=std::numeric_limits<double>::min();
+//        for (size_t k=0; k<length_; k++)
+//          if (d[k]<-shifter) shifter=-d[k];
+//        shifter +=  shift;
+//        if (shift == 0) shift+=1e-14; // to avoid division by zero
+//      }
+//    preconditioner_store_ = new Storage(sizeof(double)*length_);
+//  std::vector<double> buffer(std::min(buffer_size_,length_));
+//  for (size_t block=0; block<length_; block+=buffer.size()) {
+//      for (size_t k=0; k<std::min(buffer_size_,length_-block); k++)
+//        buffer[k] = 1/(d[block+k] + shift);
+//      preconditioner_store_->write(&buffer[0],std::min(buffer.size(),length_-block)*sizeof(double),(block)*sizeof(double));
+//        }
+//}
 
-void IterativeSolverBase::update(const double *residual, double *solution)
-{
-  if (preconditioner_store_ == nullptr) {
-      for (size_t k=0; k<length_; k++)
-        solution[k] -= residual[k];
-    } else {
-      std::vector<double> buffer(std::min(buffer_size_,length_));
-      for (size_t block=0; block<length_; block+=buffer.size()) {
-          preconditioner_store_->read(&buffer[0],std::min(buffer.size(),length_-block)*sizeof(double),(block)*sizeof(double));
-          for (size_t j=0; j<std::min(buffer.size(),length_-block); j++) {
-              solution[j+block] -= residual[j+block] * buffer[j];
-            }
-        }
-    }
-}
+//void IterativeSolverBase::update(const ParameterVectorSet &residual, ParameterVectorSet &solution)
+//{
+//    updateFunction_(residual,solution,0);
+//}
 
-double Dot(double* a, double* b, size_t n)
-{
-  double result=0;
-  for (size_t k=0; k<n; k++) result+=a[k]*b[k];
-  return result;
-}
 
-std::vector<double> IterativeSolverBase::StorageDot(Storage* store, double* vector, size_t length , size_t nVector)
+Diis::Diis(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
+  : IterativeSolverBase(updateFunction, residualFunction), m_iNext(0)
 {
-  std::vector<double> result(nVector);
-  std::vector<double> buffer(std::min(buffer_size_,length));
-  for (unsigned int i=0; i<nVector; i++) {
-      result[i] = 0;
-      for (size_t block=0; block<length; block+=buffer.size()) {
-          store->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),(i*length+block)*sizeof(double));
-          result[i] += Dot(&vector[block],&buffer[0],std::min(buffer.size(),length-block));
-        }
-    }
-  globalSum_(&result[0],result.size()); // possibly the vector is partitioned across processors, and need to aggregate for entire dot product
-  return result;
-}
-void IterativeSolverBase::StorageCombine(Storage* store, double* result,  Eigen::VectorXd Coeffs, size_t length, std::vector<unsigned int>& iUsedVecs)
-{
-  std::vector<double> buffer(std::min(buffer_size_,length));
-  for (size_t i=0; i<length; i++) result[i]=0;
-  for (unsigned int i=0; i<Coeffs.rows(); i++) {
-      for (size_t block=0; block<length; block+=buffer.size()) {
-          store->read(&buffer[0],std::min(buffer.size(),length-block)*sizeof(double),(iUsedVecs[i]*length+block)*sizeof(double));
-          for (size_t j=0; j<std::min(buffer.size(),length-block); j++) {
-              result[j+block] += buffer[j] * Coeffs[i];
-            }
-        }
-    }
-}
-
-Diis::Diis(std::vector<size_t> lengths, size_t maxDim, double threshold, DiisMode_type DiisMode, size_t buffer_size, vectorFunction globalSum)
-  : IterativeSolverBase(lengths[0],buffer_size,globalSum), lengths_(lengths), maxDim_ (maxDim), threshold_(threshold), DiisMode_(DiisMode), verbosity_(-1), m_iNext(0)
-{
-  setOptions(maxDim,threshold,DiisMode);
-  for (std::vector<size_t>::const_iterator l=lengths.begin(); l!=lengths.end(); l++)
-    store_.push_back(new Storage(maxDim*(*l)*sizeof(double)));
+  setOptions();
   m_LastResidualNormSq=1e99; // so it can be tested even before extrapolation is done
   Reset();
 }
@@ -149,12 +102,12 @@ void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
 
 
 
-void Diis::extrapolate (std::vector<double*> vectors, double weight)
+void Diis::extrapolate (ParameterVectorSet vectors, double weight)
 {
   if (maxDim_ <= 1 || DiisMode_ == disabled) return;
 
   double fThisResidualDot = Dot(vectors[0],vectors[0],lengths_[0]);
-  globalSum_(&fThisResidualDot,1);
+  residualFunction_(&fThisResidualDot,1);
   m_LastResidualNormSq = fThisResidualDot;
 
   if ( m_iNext == 0 && fThisResidualDot > threshold_ )

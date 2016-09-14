@@ -38,18 +38,12 @@ namespace IterativeSolver {
     ParameterVector(int variance=0);
     virtual ~ParameterVector();
     /*!
-     * \brief Calculate the residual for equations to be solved.
-     * THIS IS MAYBE NOT GOOD DESIGN SINCE THE CLASS THEN DEPENDS ON WHAT SORT OF EQUATIONS ARE TO BE SOLVED.
-     * \param g On exit, will contain the residual added to any previous contents of g
-     */
-    virtual void residual(ParameterVector & g) const = 0;
-    /*!
      * \brief Add a constant times another object to this object
      * \param a The factor to multiply.
      * \param other The object to be added to this.
      * \return
      */
-    virtual void axpy(ParameterScalar a, ParameterVector& other);
+    virtual void axpy(ParameterScalar a, const ParameterVector& other);
     /*!
      * \brief Scalar product of two objects.
      * \param other The object to be contracted with this.
@@ -72,6 +66,18 @@ namespace IterativeSolver {
 
   class ParameterVectorSet : private std::vector<ParameterVector>
   {
+  public:
+        using std::vector<ParameterVector>::size;
+        using std::vector<ParameterVector>::operator[];
+        using std::vector<ParameterVector>::iterator;
+        using std::vector<ParameterVector>::const_iterator;
+        using std::vector<ParameterVector>::begin;
+        using std::vector<ParameterVector>::end;
+        using std::vector<ParameterVector>::push_back;
+        using std::vector<ParameterVector>::pop_back;
+        using std::vector<ParameterVector>::resize;
+        using std::vector<ParameterVector>::front;
+        using std::vector<ParameterVector>::back;
 
   };
 

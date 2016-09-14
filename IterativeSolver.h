@@ -6,6 +6,7 @@
 #include <fstream>
 #include <algorithm>
 #include <numeric>
+#include "ParameterVector.h"
 #include <Eigen/Dense>
 
 #ifndef nullptr
@@ -18,51 +19,78 @@ namespace IterativeSolver {
 class Storage;
 
 /*!
- * \brief Does nothing.
- * \param buffer
- * \param length
+ * \brief Place-holding template for residual calculation. It just returns the input as output.
+ * \param inputs The parameters.
+ * \param outputs On output, contains the corresponding residual vectors.
+ * \param shift
  */
-void noOp(double* buffer, size_t length);
+void noOp(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, ParameterScalar shift=0) { outputs=inputs; }
 /*!
- * \brief A base class for iterative solvers such as DIIS, KAIN, Davidson. The class provides support for preconditioned update, with the preconditioner being
- * stored once in advance of use.
+ * \brief Place-holding template for update calculation. It just returns the input as output.
+ * \param inputs The parameters.
+ * \param outputs On output, contains the corresponding residual vectors.
+ * \param shift
+ */
+void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, ParameterScalar shift=0) {
+    for (size_t k=0; k<inputs.size(); k++)
+        outputs[k].axpy(-1,inputs[k]);
+}
+/*!
+ * \brief A base class for iterative solvers such as DIIS, KAIN, Davidson. The class provides support for preconditioned update, via a provided function.
  */
 class IterativeSolverBase
 {
 protected:
-  typedef void (*vectorFunction)(double*, size_t);
+  typedef void (*ParameterSetTransformation)(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, ParameterScalar shift);
   /*!
    * \brief IterativeSolverBase
-   * \param length The length of the vectors on which extrapolation will be based.
-   * \param buffer_size Size of blocks for processing vectors on backing store.
-   * \param globalSum A function that in a parallel environment sums globally, then broadcasts, the vector supplied to it.
+   * \param updateFunction A function that applies a preconditioner to a residual to give an update. Used by methods iterate() and solve().
+   * \param residualFunction A function that evaluates the residual vectors. Used by method solve(); does not have to be provided if iterations are constructed explicitly in the calling program.
    */
-  IterativeSolverBase(size_t length, size_t buffer_size=1024, vectorFunction globalSum=&IterativeSolver::noOp);
-  ~IterativeSolverBase();
-  size_t buffer_size_;
-  void StorageCombine(Storage* store, double* result,  Eigen::VectorXd Coeffs, size_t length, std::vector<unsigned int> &iUsedVecs);
-  std::vector<double> StorageDot(Storage* store, double* vector, size_t length , size_t nVector);
-  vectorFunction globalSum_;
+  IterativeSolverBase(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
+  virtual ~IterativeSolverBase();
+protected:
+  /*!
+   * \brief The function that will take the current solution and residual, and produce the predicted solution.
+   */
+  ParameterSetTransformation updateFunction_;
+  /*!
+   * \brief The function that will take a current solution and calculate the residual.
+   */
+  ParameterSetTransformation residualFunction_;
 public:
   /*!
-   * \brief Declare and store a preconditioner for iterative updates of the form solution[k] += preconditioner[k] * residual[k]
-   * \param d A vector of values specifying approximate jacobian diagonal elements, possibly shifted by a constant factor
-   * \param shift A level shift which will be applied to the jacobian
-   * \param absolute If false, every element of d should have the lowest value in d subtracted before use
-   *
-   * The preconditioner is then defined and stored as preconditioner[k] = 1/(d[k] + shift - absolute ? 0 : min(d))
+   * \brief Take, typically, a current solution and residual, and return new solution.
+   * In the context of Lanczos-like methods, the input will be a current expansion vector and the result of
+   * acting on it with the matrix, and the output will be a new expansion vector.
+   * \param residual
+   * \param solution
    */
-  void addPreconditioner(double* d, double shift=0, bool absolute=false);
+  virtual bool iterate(const ParameterVectorSet & residual, ParameterVectorSet & solution);
   /*!
-   * \brief Iterative update, solution[k] -= residual[k] * preconditioner[k]. If no preconditioner has been defined, then it is taken to be unity.
-   * \param residual The residual vector.
-   * \param solution On input, the current solution. On exit, the updated solution.
+   * \brief Solve iteratively by repeated calls to residualFunction() and iterate().
+   * \param residual Ignored on input; on exit, contains the final residual; used as working space.
+   * \param solution On input, contains an initial guess; on exit, contains the final solution.
+   * \return Whether or not convergence has been reached.
    */
-  void update(const double* residual, double* solution);
-  void setGlobalSum(vectorFunction globalSum=&IterativeSolver::noOp) {globalSum_=globalSum;}
-private:
-  size_t length_;
-  Storage* preconditioner_store_;
+  void solve(ParameterVectorSet & residual, ParameterVectorSet & solution);
+  /*!
+   * \brief Control level of output
+   * \param verbosity The higher the number, the more output.
+   */
+  void setVerbosity(int verbosity) { verbosity_=verbosity;}
+  /*!
+   * \brief Set convergence thresholds
+   * \param ethresh If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
+   * \param cthresh If norm of update is less than this, converged, irrespective of ethresh and gthresh.
+   * \param gthresh If norm of residual is less than this, converged, irrespective ofecthresh and cthresh.
+   */
+  void setThresholds(double ethresh, double cthresh=0, double gthresh=0) { ethresh_=ethresh; cthresh_=cthresh; gthresh_=gthresh;}
+protected:
+  int verbosity_;
+  double ethresh_;
+  double cthresh_;
+  double gthresh_;
 };
 
 /*!
@@ -101,13 +129,11 @@ public:
    * \param maxDim Maximum DIIS dimension allowed
    * \param threshold Residual threshold for inclusion of a vector in the DIIS state.
    * \param DiisMode Whether to perform DIIS, KAIN, or nothing.
-   * \param buffer_size The size of blocks used in accessing old vectors on backing store.
    * \param globalSum A function that in a parallel environment sums globally, then broadcasts, the vector supplied to it.
    */
-  Diis(std::vector<size_t> lengths, size_t maxDim=6, double threshold=1e6, DiisMode_type DiisMode=DIIS, size_t buffer_size=1024, vectorFunction globalSum=&IterativeSolver::noOp);
+  Diis(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
   ~Diis();
   void setOptions(size_t maxDim=6, double threshold=1e-3, enum DiisMode_type DiisMode=DIIS);
-  void setVerbosity(int verbosity) { verbosity_=verbosity;}
   /*!
    * \brief discards previous iteration vectors, but does not clear records
    */
@@ -120,7 +146,7 @@ public:
    * the extrapolation applied to them.
    * \param weight Weight to be given to this vector.
    */
-  void extrapolate (std::vector<double*> vectors, double weight=1.0);
+  void extrapolate (ParameterVectorSet vectors, double weight=1.0);
 
   /*!
    * \brief Perform DIIS extrapolation based on a residual vector, and then update the extrapolated solution with the extrapolated residual
@@ -158,7 +184,6 @@ private:
   double threshold_;
   size_t maxDim_;
   unsigned int nDim_;
-  int verbosity_;
   //> 0xffff: no vector in this slot. Otherwise: number of iterations
   // the vector in this slot has already been inside the DIIS system.
   std::vector<uint> m_iVectorAge;

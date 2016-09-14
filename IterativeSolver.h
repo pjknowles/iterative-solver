@@ -15,22 +15,20 @@
 
 namespace IterativeSolver {
 
-class Storage;
-
 /*!
  * \brief Place-holding template for residual calculation. It just returns the input as output.
  * \param inputs The parameters.
  * \param outputs On output, contains the corresponding residual vectors.
  * \param shift
  */
-void noOp(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, ParameterScalar shift=0) { outputs=inputs; }
+void noOp(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=0) { outputs=inputs; }
 /*!
  * \brief Place-holding template for update calculation. It just returns the input as output.
  * \param inputs The parameters.
  * \param outputs On output, contains the corresponding residual vectors.
  * \param shift
  */
-void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, ParameterScalar shift=0) {
+void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=0) {
     for (size_t k=0; k<inputs.size(); k++)
         outputs[k].axpy(-1,inputs[k]);
 }
@@ -40,7 +38,7 @@ void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSet & out
 class IterativeSolverBase
 {
 protected:
-  typedef void (*ParameterSetTransformation)(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, ParameterScalar shift);
+  typedef void (*ParameterSetTransformation)(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift);
   /*!
    * \brief IterativeSolverBase
    * \param updateFunction A function that applies a preconditioner to a residual to give an update. Used by methods iterate() and solve().
@@ -52,11 +50,11 @@ protected:
   /*!
    * \brief The function that will take the current solution and residual, and produce the predicted solution.
    */
-  ParameterSetTransformation updateFunction_;
+  ParameterSetTransformation m_updateFunction;
   /*!
    * \brief The function that will take a current solution and calculate the residual.
    */
-  ParameterSetTransformation residualFunction_;
+  ParameterSetTransformation m_residualFunction;
 public:
   /*!
    * \brief Take, typically, a current solution and residual, and return new solution.
@@ -72,64 +70,25 @@ public:
    * \param solution On input, contains an initial guess; on exit, contains the final solution.
    * \return Whether or not convergence has been reached.
    */
-  void solve(ParameterVectorSet & residual, ParameterVectorSet & solution);
+  virtual void solve(ParameterVectorSet & residual, ParameterVectorSet & solution);
   /*!
    * \brief Control level of output
    * \param verbosity The higher the number, the more output.
    */
-  void setVerbosity(int verbosity) { verbosity_=verbosity;}
+  void setVerbosity(int verbosity) { m_verbosity=verbosity;}
   /*!
    * \brief Set convergence threshold
    * \param thresh If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
    */
-  void setThresholds(double thresh) { thresh_=thresh;}
+  void setThresholds(double thresh) { m_thresh=thresh;}
 protected:
   double calculateError(const ParameterVectorSet & residual, const ParameterVectorSet & solution);
   std::vector<double> calculateErrors(const ParameterVectorSet & residual, const ParameterVectorSet & solution);
-  int verbosity_;
-  double thresh_;
-  std::vector<ParameterVectorSet> residuals_;
-  std::vector<ParameterVectorSet> solutions_;
+  int m_verbosity;
+  double m_thresh;
+  std::vector<ParameterVectorSet> m_residuals;
+  std::vector<ParameterVectorSet> m_solutions;
 };
 
-
-/*!
- * \brief The Storage class provides auxiliary storage (usually on an external file) for
- * iterative solvers.
- */
-class Storage
-{
-public:
-  /*!
-   * \brief Storage
-   * \param lengthHint A provided estimate of the total amount of storage that is likely to be needed.
-   * \param option An implementation-dependent parameter that controls operation
-   */
-  Storage(size_t lengthHint=0, int option=0);
-  ~Storage();
-  /*!
-   * \brief Write data to the store.
-   * \param buffer Provides the data to be written.
-   * \param length Length of data, in bytes.
-   * \param address Offset in store, in bytes.
-   */
-  virtual void write(const double* buffer, size_t length, size_t address);
-  /*!
-   * \brief Read data from the store.
-   * \param buffer Receives the data to be read.
-   * \param length Length of data, in bytes.
-   * \param address Offset in store, in bytes.
-   */
-  virtual void read(double* buffer, size_t length, size_t address);
-  /*!
-   * \brief Query the total storage used.
-   */
-  virtual size_t size();
-private:
-  std::fstream dumpFile_;
-  size_t size_; //< total storage (bytes) used
-};
-
-}
 
 #endif // ITERATIVESOLVER_H

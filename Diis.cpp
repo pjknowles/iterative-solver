@@ -40,7 +40,7 @@ void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
     es.compute(-Mat);
     Ews = es.eigenvalues();
 
-    if (verbosity_ > 1) {
+    if (m_verbosity > 1) {
         std::cout << "diis::LinearSolveSymSvd"<<std::endl;
         std::cout << "Mat="<<Mat<<std::endl;
         std::cout << "Ews="<<Ews<<std::endl;
@@ -57,9 +57,9 @@ void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
             // no positive semi-definiteness is assumed!
         else
             Xv(iEw) = 0.;
-    if (verbosity_ > 1) std::cout << "Xv="<<Xv<<std::endl;
+    if (m_verbosity > 1) std::cout << "Xv="<<Xv<<std::endl;
     Out = es.eigenvectors() * Xv;
-    if (verbosity_ > 1) std::cout << "Out="<<Out<<std::endl;
+    if (m_verbosity > 1) std::cout << "Out="<<Out<<std::endl;
     Out=Out.block(0,0,Out.size()-1,1);
 //    std::cout << "Out="<<Out<<std::endl;
 }
@@ -71,7 +71,7 @@ void Diis::extrapolate (ParameterVectorSet vectors, double weight)
   if (maxDim_ <= 1 || DiisMode_ == disabled) return;
 
   double fThisResidualDot = Dot(vectors[0],vectors[0],lengths_[0]);
-  residualFunction_(&fThisResidualDot,1);
+  m_residualFunction(&fThisResidualDot,1);
   m_LastResidualNormSq = fThisResidualDot;
 
   if ( m_iNext == 0 && fThisResidualDot > threshold_ )
@@ -80,7 +80,7 @@ void Diis::extrapolate (ParameterVectorSet vectors, double weight)
       return;
 
   uint iThis = m_iNext;
-  if (verbosity_ > 1) std::cout<< "iThis=m_iNext "<<m_iNext<<std::endl;
+  if (m_verbosity > 1) std::cout<< "iThis=m_iNext "<<m_iNext<<std::endl;
   assert(iThis < maxDim_);
   if (iThis >= m_iVectorAge.size()) m_iVectorAge.resize(iThis+1);
   if (iThis >= m_ErrorMatrix.cols()) m_ErrorMatrix.conservativeResize(iThis+1,iThis+1);
@@ -88,7 +88,7 @@ void Diis::extrapolate (ParameterVectorSet vectors, double weight)
   for ( uint i = 0; i < m_iVectorAge.size(); ++ i )
       m_iVectorAge[i] += 1;
   m_iVectorAge[iThis] = 0;
-  if (verbosity_>1) {
+  if (m_verbosity>1) {
       std::cout << "iVectorAge:";
       for (std::vector<uint>::const_iterator a=m_iVectorAge.begin(); a!=m_iVectorAge.end(); a++)
         std::cout << " "<<*a;
@@ -105,7 +105,7 @@ void Diis::extrapolate (ParameterVectorSet vectors, double weight)
       double
       fBaseScale;
   FindUsefulVectors(&iUsedVecs[0], nDim, fBaseScale, iThis);
-  if (verbosity_>1) {
+  if (m_verbosity>1) {
       std::cout << "iUsedVecs:";
       for (std::vector<uint>::const_iterator a=iUsedVecs.begin(); a!=iUsedVecs.end(); a++)
         std::cout << " "<<*a;
@@ -119,7 +119,7 @@ void Diis::extrapolate (ParameterVectorSet vectors, double weight)
       }
 
   // write current residual and other vectors to their designated place
-  if (verbosity_>0) std::cout << "write current vectors to record "<<iUsedVecs[iThis]<<std::endl;
+  if (m_verbosity>0) std::cout << "write current vectors to record "<<iUsedVecs[iThis]<<std::endl;
   for (unsigned int k=0; k<lengths_.size(); k++)
    store_[k]->write(vectors[k],lengths_[k]*sizeof(double),iUsedVecs[iThis]*lengths_[k]*sizeof(double));
   if (m_Weights.size()<=iUsedVecs[iThis]) m_Weights.resize(iUsedVecs[iThis]+1);
@@ -162,7 +162,7 @@ void Diis::extrapolate (ParameterVectorSet vectors, double weight)
 
   // invert the system, determine extrapolation coefficients.
   LinearSolveSymSvd(Coeffs, B, Rhs, nDim+1, 1.0e-10);
-  if (verbosity_>1) std::cout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;
+  if (m_verbosity>1) std::cout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;
 
   // Find a storage place for the vector in the next round. Either
   // an empty slot or the oldest vector.

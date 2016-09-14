@@ -4,7 +4,7 @@
 using namespace IterativeSolver;
 
 IterativeSolverBase::IterativeSolverBase(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
-:  updateFunction_(updateFunction), residualFunction_(residualFunction), verbosity_(0), thresh_(1e-6)
+:  m_updateFunction(updateFunction), m_residualFunction(residualFunction), m_verbosity(0), m_thresh(1e-6)
 {}
 
 IterativeSolverBase::~IterativeSolverBase()
@@ -39,10 +39,13 @@ IterativeSolverBase::~IterativeSolverBase()
 
 bool IterativeSolverBase::iterate(const ParameterVectorSet &residual, ParameterVectorSet &solution)
 {
-    residuals_.push_back(residual);
-    solutions_.push_back(solution);
-    updateFunction_(residual,solution,0);
-    return calculateError(residual,solution) < thresh_;
+    if (false)
+        ParameterVectorSet x; x=residual;m_residuals.push_back(x);
+    else
+    m_residuals.push_back(residual);
+    m_solutions.push_back(solution);
+    m_updateFunction(residual,solution,0);
+    return calculateError(residual,solution) < m_thresh;
 }
 
 std::vector<double> IterativeSolverBase::calculateErrors(const ParameterVectorSet &residual, const ParameterVectorSet &solution)

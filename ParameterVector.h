@@ -44,11 +44,12 @@ namespace IterativeSolver {
      */
     virtual void residual(ParameterVector & g) const = 0;
     /*!
-     * \brief Multiply by scalar
+     * \brief Add a constant times another object to this object
      * \param a The factor to multiply.
+     * \param other The object to be added to this.
      * \return
      */
-    virtual ParameterVector& operator*=(ParameterScalar a);
+    virtual void axpy(ParameterScalar a, ParameterVector& other);
     /*!
      * \brief Scalar product of two objects.
      * \param other The object to be contracted with this.

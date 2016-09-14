@@ -21,17 +21,18 @@ ParameterVector& ParameterVector::operator=(const ParameterVector& other)
  return *this;
 }
 
-ParameterVector& ParameterVector::operator *=(ParameterScalar a)
+void ParameterVector::axpy(ParameterScalar a, ParameterVector& other)
 {
-    if (this->buffer_!=nullptr) { //both in memory
-        for (size_t k=0; k<length_; k++) buffer_[k] *= a;
+    if (this->variance_ != other.variance_) throw std::logic_error("mismatching co/contravariance");
+    if (this->buffer_!=nullptr && other.buffer_!=nullptr) { // both in memory
+        for (size_t k=0; k<length_; k++) buffer_[k] += a*other.buffer_[k];
     }
     else throw std::logic_error("implementation incomplete");
- return *this;
 }
 
 ParameterScalar ParameterVector::operator*(const ParameterVector& other) const
 {
+    if (this->variance_ * other.variance_ > 0) throw std::logic_error("mismatching co/contravariance");
     ParameterScalar result=0;
     if (this->buffer_!=nullptr && other.buffer_!=nullptr) { // both in memory
         for (size_t k=0; k<length_; k++) result += buffer_[k]*other.buffer_[k];

@@ -12,4 +12,5 @@ for each solver type. Redesign this.
 - convergence criterion should normally be g.c but could optionally provide a metric tensor different to the kernel being solved.
 - handle errors, including lack of convergency, with try/throw/catch
 - tag vectors sent to residual routine with on/off switch - normally all on, but near convergence some may be off, meaning I don't want the residual
+- extrapolate vectors other than solution and residual
 

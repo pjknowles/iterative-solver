@@ -79,6 +79,7 @@ namespace IterativeSolver {
         using std::vector<ParameterVector>::front;
         using std::vector<ParameterVector>::back;
 
+      std::vector<bool> active;
   };
 
 }

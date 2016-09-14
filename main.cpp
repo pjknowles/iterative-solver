@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include "IterativeSolver.h"
+#include "Diis.h"
 
 using namespace std;
 using namespace IterativeSolver;

@@ -1,6 +1,6 @@
 project(IterativeSolver)
 cmake_minimum_required(VERSION 2.8)
-add_subdirectory(Eigen)
+#add_subdirectory(Eigen)
 aux_source_directory(. SRC_LIST)
 add_executable(${PROJECT_NAME}-test ${SRC_LIST})
 add_library (${PROJECT_NAME} ${SRC_LIST})

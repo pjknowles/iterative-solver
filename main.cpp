@@ -21,8 +21,9 @@ void residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std:
 	  result.push_back(x[0]-1);
 	  result.push_back(x[1]-1);
 	    }
-	  std::cout << "in residual result="<<result[0]<<","<<result[1]<<std::endl;
+	  std::cout << "in residual result="<<result[0]<<","<<result[1]<<" size="<<result.size()<<std::endl;
 	  ParameterVector pr(&result[0],result.size());
+	  std::cout << "pr: "<<pr<<" size="<<pr.size()<<std::endl;
 	  outputs.front()=pr;
 }
 

@@ -61,9 +61,9 @@ namespace IterativeSolver {
      * \return
      */
     virtual ParameterVector& operator=(const ParameterVector& other);
-    virtual ParameterScalar& operator[](size_t pos) { return this->buff[pos];}
+    virtual ParameterScalar& operator[](size_t pos) { if (buffer_ != nullptr) return buffer_[pos]; else return this->buff[pos];}
     const virtual ParameterScalar& operator[](size_t pos) const { return this->buff[pos];}
-    virtual size_t size() const {return this->buff.size();}
+    virtual size_t size() const {if (buffer_ != nullptr) return length_; else return this->buff.size();}
   protected:
     int variance_;
   private:

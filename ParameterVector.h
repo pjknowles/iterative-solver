@@ -60,6 +60,9 @@ namespace IterativeSolver {
      * \return
      */
     virtual ParameterVector& operator=(const ParameterVector& other);
+    virtual ParameterScalar& operator[](size_t pos) { return this->buff[pos];}
+    const virtual ParameterScalar& operator[](size_t pos) const { return this->buff[pos];}
+    virtual size_t size() const {return this->buff.size();}
   protected:
     int variance_;
   private:
@@ -68,24 +71,55 @@ namespace IterativeSolver {
     std::vector<ParameterScalar> buff;
   };
 
-  class ParameterVectorSet : private std::vector<ParameterVector>
-  {
-  public:
-	  ParameterVectorSet() : std::vector<ParameterVector>() {};
-        using std::vector<ParameterVector>::size;
-        using std::vector<ParameterVector>::operator[];
-        using std::vector<ParameterVector>::iterator;
-        using std::vector<ParameterVector>::const_iterator;
-        using std::vector<ParameterVector>::begin;
-        using std::vector<ParameterVector>::end;
-        using std::vector<ParameterVector>::push_back;
-        using std::vector<ParameterVector>::pop_back;
-        using std::vector<ParameterVector>::resize;
-        using std::vector<ParameterVector>::front;
-        using std::vector<ParameterVector>::back;
+#include <iostream>
+ inline std::ostream& operator<<(std::ostream& os, ParameterVector const& pv) {
+//	 os << "ParameterVector object:";
+//	 for (size_t k=0; k<pv.size(); k++)
+//		 os <<" "<< pv[k];
+//	 os << std::endl;
+	 return os;
+ }
 
-      std::vector<bool> active;
-  };
+  class ParameterVectorSetDodgy : private std::vector<ParameterVector>
+    {
+    public:
+  	  ParameterVectorSetDodgy() : std::vector<ParameterVector>() {};
+          using std::vector<ParameterVector>::size;
+          using std::vector<ParameterVector>::operator[];
+          using std::vector<ParameterVector>::iterator;
+          using std::vector<ParameterVector>::const_iterator;
+          using std::vector<ParameterVector>::begin;
+          using std::vector<ParameterVector>::end;
+          using std::vector<ParameterVector>::push_back;
+          using std::vector<ParameterVector>::pop_back;
+          using std::vector<ParameterVector>::resize;
+          using std::vector<ParameterVector>::front;
+          using std::vector<ParameterVector>::back;
+
+        std::vector<bool> active;
+    };
+  class ParameterVectorSet
+    {
+    public:
+  	  ParameterVectorSet() {}
+  	  size_t size() const { return this->pvs.size();}
+  	  ParameterVector& operator[](size_t pos) { return this->pvs[pos];}
+  	  const ParameterVector& operator[](size_t pos) const { return pvs[pos];}
+  	  ParameterVector& front() { return pvs.front();}
+  	  const ParameterVector& front() const { return pvs.front();}
+  	  ParameterVector& back() { return pvs.back();}
+  	  const ParameterVector& back() const { return pvs.back();}
+  	  void push_back(const ParameterVector& val) { pvs.push_back(val); active.push_back(true);}
+
+  	  std::vector<bool> active;
+    private:
+        std::vector<ParameterVector> pvs;
+    };
+//  inline std::ostream& operator<<(std::ostream& os, const ParameterVectorSet& pvs) {
+//	  for (size_t k=0; k<pvs.size(); k++)
+//		  os << pvs[k];
+//	 return os;
+//  }
 
 }
 

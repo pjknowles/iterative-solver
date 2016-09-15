@@ -44,7 +44,6 @@ std::vector<double> IterativeSolverBase::calculateErrors(const ParameterVectorSe
 double IterativeSolverBase::calculateError(const ParameterVectorSet &residual, const ParameterVectorSet &solution)
 {
     std::vector<double> errs(1);
-    std::cout<<"Hello"<<std::endl;
     errs=calculateErrors(residual,solution);
     return std::sqrt(std::inner_product(errs.begin(),errs.end(),errs.begin(),0));
 }

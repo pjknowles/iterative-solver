@@ -75,7 +75,8 @@ public:
    * Corresponding other vectors whose sequence will be extrapolated.
    * \param options can contain "weight=xxx" where xxx is the weight to be given to this vector.
    */
-  bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
+//  bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
+//  bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="") { ParameterVectorSet other; return iterate(residual,solution,other,options); } // FIXME why necessary? Inherit?
 
   /*!
    * \brief Return the square L2 norm of the extrapolated residual from the last call to extrapolate() or iterate().

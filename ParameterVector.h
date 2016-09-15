@@ -71,6 +71,7 @@ namespace IterativeSolver {
   class ParameterVectorSet : private std::vector<ParameterVector>
   {
   public:
+	  ParameterVectorSet() : std::vector<ParameterVector>() {};
         using std::vector<ParameterVector>::size;
         using std::vector<ParameterVector>::operator[];
         using std::vector<ParameterVector>::iterator;

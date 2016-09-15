@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <vector>
+#include <iostream>
 #ifndef nullptr
 #define nullptr NULL
 #endif
@@ -71,12 +72,11 @@ namespace IterativeSolver {
     std::vector<ParameterScalar> buff;
   };
 
-#include <iostream>
  inline std::ostream& operator<<(std::ostream& os, ParameterVector const& pv) {
-//	 os << "ParameterVector object:";
-//	 for (size_t k=0; k<pv.size(); k++)
-//		 os <<" "<< pv[k];
-//	 os << std::endl;
+	 os << "ParameterVector object:";
+	 for (size_t k=0; k<pv.size(); k++)
+		 os <<" "<< pv[k];
+	 os << std::endl;
 	 return os;
  }
 
@@ -115,11 +115,11 @@ namespace IterativeSolver {
     private:
         std::vector<ParameterVector> pvs;
     };
-//  inline std::ostream& operator<<(std::ostream& os, const ParameterVectorSet& pvs) {
-//	  for (size_t k=0; k<pvs.size(); k++)
-//		  os << pvs[k];
-//	 return os;
-//  }
+  inline std::ostream& operator<<(std::ostream& os, const ParameterVectorSet& pvs) {
+	  for (size_t k=0; k<pvs.size(); k++)
+		  os << pvs[k];
+	 return os;
+  }
 
 }
 

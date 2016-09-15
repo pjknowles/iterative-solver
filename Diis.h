@@ -35,18 +35,15 @@ public:
                       , KAIN ///< Krylov Accelerated Inexact Newton
                      };
 /*!
-   * \brief diis
-   * \param lengths A list of lengths of vectors that will be extrapolated.
-   * The first vector
-   * will be the one that is analysed to construct the extrapolation, and the remainder only have
-   * the extrapolation applied to them.
-   * \param maxDim Maximum DIIS dimension allowed
-   * \param threshold Residual threshold for inclusion of a vector in the DIIS state.
-   * \param DiisMode Whether to perform DIIS, KAIN, or nothing.
-   * \param globalSum A function that in a parallel environment sums globally, then broadcasts, the vector supplied to it.
    */
   Diis(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
   ~Diis();
+  /*!
+   * \brief Set options for DIIS.
+   * \param maxDim Maximum DIIS dimension allowed
+   * \param threshold Residual threshold for inclusion of a vector in the DIIS state.
+   * \param DiisMode Whether to perform DIIS, KAIN, or nothing.
+   */
   void setOptions(size_t maxDim=6, double threshold=1e-3, enum DiisMode_type DiisMode=DIIS);
   /*!
    * \brief discards previous iteration vectors, but does not clear records
@@ -54,25 +51,29 @@ public:
   void Reset();
   /*!
    * \brief Introduce a new iteration vector, and perform extrapolation
-   * \param vectors A list of vectors that will be extrapolated.
-   * The first vector
-   * will be the one that is analysed to construct the extrapolation, and the remainder only have
-   * the extrapolation applied to them.
-   * \param weight Weight to be given to this vector.
+   * \param residual
+   * The vector that
+   * will be the one that is analysed to construct the extrapolation.
+   * \param solution
+   * The current solution that gave rise to residual, and which will be extrapolated to a new predicted solution.
+   * \param other (optional)
+   * Corresponding other vectors whose sequence will be extrapolated.
+   * \param options can contain "weight=xxx" where xxx is the weight to be given to this vector.
    */
-//  void extrapolate (ParameterVectorSet vectors, double weight=1.0);
   void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
 
   /*!
    * \brief Perform DIIS extrapolation based on a residual vector, and then update the extrapolated solution with the extrapolated residual
-   * \param residual The residual vector. On exit, it contains the extrapolated residual.
-   * \param solution The current solution vector. On exit, it contains the extrapolated and updated solution.
-   * \param weight Weight to be given to this vector.
-   * \param other Any other vectors that should be extrapolated.
-   *
    * The function performs extrapolate() followed by update().
-   * The lengths of the vectors must have been declared in the object constructor,
-   * with the two (equal) lengths of residual and solution coming before, in order, any contents of other.
+   * \brief Introduce a new iteration vector, and perform extrapolation
+   * \param residual
+   * The vector that
+   * will be the one that is analysed to construct the extrapolation.
+   * \param solution
+   * The current solution that gave rise to residual, and which will be extrapolated and updated to a new predicted solution.
+   * \param other (optional)
+   * Corresponding other vectors whose sequence will be extrapolated.
+   * \param options can contain "weight=xxx" where xxx is the weight to be given to this vector.
    */
   bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
 

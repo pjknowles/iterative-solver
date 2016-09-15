@@ -60,7 +60,8 @@ public:
    * the extrapolation applied to them.
    * \param weight Weight to be given to this vector.
    */
-  void extrapolate (ParameterVectorSet vectors, double weight=1.0);
+//  void extrapolate (ParameterVectorSet vectors, double weight=1.0);
+  void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
 
   /*!
    * \brief Perform DIIS extrapolation based on a residual vector, and then update the extrapolated solution with the extrapolated residual
@@ -73,7 +74,7 @@ public:
    * The lengths of the vectors must have been declared in the object constructor,
    * with the two (equal) lengths of residual and solution coming before, in order, any contents of other.
    */
-  void iterate (double* residual, double* solution, double weight=1.0, std::vector<double*> other=std::vector<double*>(0));
+  bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
 
   /*!
    * \brief Return the square L2 norm of the extrapolated residual from the last call to extrapolate() or iterate().
@@ -91,10 +92,7 @@ public:
 private:
   typedef unsigned int uint;
   Diis();
-  std::vector<size_t> lengths_;
-  size_t totalLength() { return std::accumulate(lengths_.begin(),lengths_.end(),0); }
   enum DiisMode_type DiisMode_;
-  std::vector<Storage*> store_; // files for each vector
   double threshold_;
   size_t maxDim_;
   unsigned int nDim_;

@@ -21,14 +21,14 @@ namespace IterativeSolver {
  * \param outputs On output, contains the corresponding residual vectors.
  * \param shift
  */
-void noOp(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=0) { outputs=inputs; }
+void noOp(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>()) { outputs=inputs; }
 /*!
  * \brief Place-holding template for update calculation. It just returns the input as output.
  * \param inputs The parameters.
  * \param outputs On output, contains the corresponding residual vectors.
  * \param shift
  */
-void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=0) {
+void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>()) {
     for (size_t k=0; k<inputs.size(); k++)
         outputs[k].axpy(-1,inputs[k]);
 }
@@ -60,10 +60,15 @@ public:
    * \brief Take, typically, a current solution and residual, and return new solution.
    * In the context of Lanczos-like methods, the input will be a current expansion vector and the result of
    * acting on it with the matrix, and the output will be a new expansion vector.
-   * \param residual
-   * \param solution
+   * iterate() saves the vectors, calls extrapolate(), calls m_updateFunction(), calls calculateErrors(), and then assesses the error.
+   * Derivative classes may often be able to be implemented by changing only extrapolate(), not iterate() or solve().
+   * \param residual On input, the residual for solution on entry. On exit, the extrapolated residual.
+   * \param solution On input, the current solution or expansion vector. On exit, the next solution or expansion vector.
+   * \param other Optional additional vectors that should be extrapolated.
+   * \param options A string of options to be interpreted by extrapolate().
    */
-  virtual bool iterate(const ParameterVectorSet & residual, ParameterVectorSet & solution);
+  virtual bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
+  virtual bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="") { ParameterVectorSet other; return iterate(residual,solution,other,options); }
   /*!
    * \brief Solve iteratively by repeated calls to residualFunction() and iterate().
    * \param residual Ignored on input; on exit, contains the final residual; used as working space.
@@ -82,13 +87,17 @@ public:
    */
   void setThresholds(double thresh) { m_thresh=thresh;}
 protected:
+  virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
+  virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="") { ParameterVectorSet other; extrapolate(residual,solution,other,options); }
   double calculateError(const ParameterVectorSet & residual, const ParameterVectorSet & solution);
   std::vector<double> calculateErrors(const ParameterVectorSet & residual, const ParameterVectorSet & solution);
   int m_verbosity;
   double m_thresh;
   std::vector<ParameterVectorSet> m_residuals;
   std::vector<ParameterVectorSet> m_solutions;
+  std::vector<ParameterVectorSet> m_others;
 };
+}
 
 
 #endif // ITERATIVESOLVER_H

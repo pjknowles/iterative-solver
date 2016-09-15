@@ -51,6 +51,10 @@ namespace IterativeSolver {
      */
     virtual ParameterScalar operator*(const ParameterVector& other) const;
     /*!
+     * \brief Set the contents of the object to zero.
+     */
+    virtual void zero();
+    /*!
      * \brief Copy from one object to another, allocating storage if needed
      * \param other The source of data.
      * \return

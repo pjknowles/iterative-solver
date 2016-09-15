@@ -12,8 +12,6 @@ Diis::Diis(ParameterSetTransformation updateFunction, ParameterSetTransformation
 
 Diis::~Diis()
 {
-  for (std::vector<Storage*>::const_iterator s=store_.begin(); s!=store_.end(); s++)
-    delete *s;
 }
 
 void Diis::setOptions(size_t maxDim, double threshold, DiisMode_type DiisMode)
@@ -66,12 +64,17 @@ void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
 
 
 
-void Diis::extrapolate (ParameterVectorSet vectors, double weight)
+//void Diis::extrapolate (ParameterVectorSet vectors, double weight)
+  void Diis::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options)
 {
-  if (maxDim_ <= 1 || DiisMode_ == disabled) return;
+	  double weight=1.0;
+	  size_t pos=options.find("weight=");
+	  if (pos != std::string::npos)  throw std::logic_error("parsing of weight not implemented yet"); //FIXME
+	  if (maxDim_ <= 1 || DiisMode_ == disabled) return;
 
-  double fThisResidualDot = Dot(vectors[0],vectors[0],lengths_[0]);
-  m_residualFunction(&fThisResidualDot,1);
+	  if (residual.size() > 1) throw std::logic_error("DIIS does not handle multiple solutions");
+
+  double fThisResidualDot = residual.front() * residual.front();
   m_LastResidualNormSq = fThisResidualDot;
 
   if ( m_iNext == 0 && fThisResidualDot > threshold_ )
@@ -118,15 +121,13 @@ void Diis::extrapolate (ParameterVectorSet vectors, double weight)
           break;
       }
 
-  // write current residual and other vectors to their designated place
-  if (m_verbosity>0) std::cout << "write current vectors to record "<<iUsedVecs[iThis]<<std::endl;
-  for (unsigned int k=0; k<lengths_.size(); k++)
-   store_[k]->write(vectors[k],lengths_[k]*sizeof(double),iUsedVecs[iThis]*lengths_[k]*sizeof(double));
   if (m_Weights.size()<=iUsedVecs[iThis]) m_Weights.resize(iUsedVecs[iThis]+1);
   m_Weights[iUsedVecs[iThis]] = weight;
 
   // go through previous residual vectors and form the dot products with them
-  std::vector<double> ResDot = StorageDot(store_[0], vectors[0], lengths_[0], nDim);
+  std::vector<double> ResDot;
+  for (std::vector<ParameterVectorSet>::iterator p=m_residuals.begin(); p!=m_residuals.end(); p++)
+	  ResDot.push_back(residual.front() * p->front());
   if (iThis >= nDim) ResDot.resize(iThis+1);
   ResDot[iThis] = fThisResidualDot;
 
@@ -193,21 +194,15 @@ void Diis::extrapolate (ParameterVectorSet vectors, double weight)
   // now actually perform the extrapolation on the residuals
   // and amplitudes.
   m_LastAmplitudeCoeff = Coeffs[iThis];
-//  TR.InterpolateFrom( Coeffs[iThis], Coeffs.data(), ResRecs, AmpRecs,
-//      nDim, iThis, *m_Storage.pDevice, m_Memory );
-  for (uint k=0; k<vectors.size(); k++) {
-   StorageCombine(store_[k],vectors[k],Coeffs,lengths_[k],iUsedVecs);
-}
-}
-
-void Diis::iterate(double *residual, double *solution, double weight, std::vector<double *> other)
-{
-  std::vector<double*> vectors;
-  vectors.push_back(residual);
-  vectors.push_back(solution);
-  for (std::vector<double*>::const_iterator o=other.begin(); o!=other.end(); o++) vectors.push_back(*o);
-  extrapolate(vectors,weight);
-  update(residual,solution);
+  for (size_t l=0; l<residual.size(); l++) residual[l].zero();
+  for (size_t l=0; l<solution.size(); l++) solution[l].zero();
+  for (size_t l=0; l<other.size(); l++) other[l].zero();
+  for (size_t k=0; k<Coeffs.rows(); k++) {
+	  residual.front().axpy(Coeffs[k],m_residuals[iUsedVecs[k]].front());
+	  solution.front().axpy(Coeffs[k],m_solutions[iUsedVecs[k]].front());
+	  for (size_t l=0; l<other.size(); l++)
+		  other[l].axpy(Coeffs[k],m_others[iUsedVecs[k]][l]);
+  }
 }
 
 void Diis::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, uint iThis)

@@ -6,7 +6,7 @@ using namespace IterativeSolver;
 ParameterVector::ParameterVector(size_t length) :
     m_buffer(length), m_variance(0)
 {
-std::cout <<"ParameterVector bare constructor"<<std::endl;
+//std::cout <<"ParameterVector bare constructor"<<std::endl;
 }
 
 ParameterVector::~ParameterVector() {}

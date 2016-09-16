@@ -18,18 +18,18 @@ IterativeSolverBase::~IterativeSolverBase()
 bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorSet &solution, ParameterVectorSet &other, std::string options)
 {
 	m_residuals.push_back(residual); m_solutions.push_back(solution); m_others.push_back(other);
-	if (m_verbosity>3)
+    if (m_verbosity>3) {
 	  std::cout <<"added to m_residuals, now size="<<m_residuals.size()<<std::endl;
-	if (m_verbosity>3)
-	  std::cout << "latest residual: "<<m_residuals.back()<<std::endl;
-	  std::cout << "latest solution: "<<m_solutions.back()<<std::endl;
+      std::cout << "latest residual: "<<m_residuals.back()<<std::endl;
+      std::cout << "latest solution: "<<m_solutions.back()<<std::endl;
+    }
        double err = calculateError(residual,solution);
     extrapolate(residual,solution,other,options);
-	  std::cout << "after extrapolate solution: "<<solution<<std::endl;
+//	  std::cout << "after extrapolate solution: "<<solution<<std::endl;
 	m_updateFunction(residual,solution,std::vector<ParameterScalar>());
-    std::cout << "iterate() final extrapolated and updated solution: "<<solution<<std::endl;
-    std::cout << "iterate() final extrapolated and updated residual: "<<residual<<std::endl;
-    std::cout << "error: "<<err<<", m_thresh="<<m_thresh<<std::endl;
+//    std::cout << "iterate() final extrapolated and updated solution: "<<solution<<std::endl;
+//    std::cout << "iterate() final extrapolated and updated residual: "<<residual<<std::endl;
+//    std::cout << "error: "<<err<<", m_thresh="<<m_thresh<<std::endl;
         return err < m_thresh;
 }
 

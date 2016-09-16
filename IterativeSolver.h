@@ -30,6 +30,18 @@ inline void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSe
 }
 /*!
  * \brief A base class for iterative solvers such as DIIS, KAIN, Davidson. The class provides support for preconditioned update, via a provided function.
+ *
+ * Two drivers are provided: the calling program can set up its own iterative loop, and in each loop call residualFunction() and iterate(); this gives the flexibility to pass additional parameters
+ * to residualFunction(). The simpler mode of use is a single call to solve(), which manages the iterations itself.
+ *
+ * Classes that derive from this will, in the simplest case, need to provide just the extrapolate() method that governs how the solution and residual vectors from successive iterations
+ * should be combined to form an optimum solution with minimal residual.  In more complicated cases - for example, in Davidson's method, where the preconditioner depends on the current energy -
+ * it will be necessary to reimplement also the iterate() method.
+ *
+ * The underlying vector spaces are accessed through instances of the ParameterVectorSet class (or derivatives). These consist of a set of ParameterVector objects, which are the vectors themselves; the ParameterVectorSet
+ * object has dimension greater than one in, for example, multi-root diagonalisations where the residual is calculated simultaneously for a number of vectors.
+ * Two instances of ParameterVectorSet have to be passed to iterate() or solve(), and these are used to construct solutions and residuals; this class also creates unlimited additional instances of ParameterVectorSet,
+ * and in memory-sensitive environments, consideration might be given to implementing a derivative of ParameterVectorSet where the data is resident in external storage.
  */
 class IterativeSolverBase
 {

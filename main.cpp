@@ -1,4 +1,5 @@
 #include "Diis.h"
+#include "Davidson.h"
 
 int main(int argc, char *argv[])
 {

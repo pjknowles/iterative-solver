@@ -126,6 +126,13 @@ void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
           iThis = i;
           break;
       }
+  // store current vectors into their position in the array mapped by iUsedVecs
+  if (iUsedVecs[iThis] != m_residuals.size()-1)
+  {
+      m_solutions[iUsedVecs[iThis]]=solution;m_solutions.pop_back();
+      m_residuals[iUsedVecs[iThis]]=residual;m_residuals.pop_back();
+      m_others[iUsedVecs[iThis]]=other;m_others.pop_back();
+  }
 
   if (m_Weights.size()<=iUsedVecs[iThis]) m_Weights.resize(iUsedVecs[iThis]+1);
   m_Weights[iUsedVecs[iThis]] = weight;
@@ -212,7 +219,7 @@ void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
   for (size_t l=0; l<other.size(); l++) other[l].zero();
   for (size_t k=0; k<Coeffs.rows(); k++) {
       std::cout << "extrapolation k="<<k<<",iUsedVecs[k]="<<iUsedVecs[k]<<std::endl;
-      std::cout << "add solution "<<m_solutions[iUsedVecs[k]].front()<<" with factor "<<Coeffs[k]<<std::endl;
+      std::cout << "add solution "<<iUsedVecs[k]<<m_solutions[iUsedVecs[k]].front()<<" with factor "<<Coeffs[k]<<std::endl;
 	  residual.front().axpy(Coeffs[k],m_residuals[iUsedVecs[k]].front());
 	  solution.front().axpy(Coeffs[k],m_solutions[iUsedVecs[k]].front());
 	  for (size_t l=0; l<other.size(); l++)

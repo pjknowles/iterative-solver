@@ -59,8 +59,9 @@ void simple() {
   ParameterVectorSet g; g.push_back(ParameterVector(2));
   std::cout << "after constructing g "<<g<<std::endl;
   Diis d(&updater,&residual);
+  d.setVerbosity(5);
   bool converged=false;
-  for (int iteration=1; iteration < 15 && not converged; iteration++) {
+  for (int iteration=1; iteration < 108 && not converged; iteration++) {
   std::cout << "before residual, x "<<x<<std::endl;
       residual(x,g);
       converged = d.iterate(g,x);

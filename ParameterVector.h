@@ -4,10 +4,6 @@
 #include <cstddef>
 #include <vector>
 #include <iostream>
-#ifndef nullptr
-#define nullptr NULL
-#endif
-
 
 namespace IterativeSolver {
   typedef double ParameterScalar;
@@ -43,9 +39,6 @@ namespace IterativeSolver {
      * \return
      */
     virtual ParameterVector& operator=(const ParameterVector& other);
-    virtual ParameterScalar& operator[](size_t pos) { return this->m_buffer[pos];}
-    const virtual ParameterScalar& operator[](size_t pos) const { return this->m_buffer[pos];}
-    virtual size_t size() const { return this->m_buffer.size();}
       /*!
      * \brief Record the co/contra-variance status of the object
      * \param variance
@@ -59,7 +52,14 @@ namespace IterativeSolver {
   protected:
   private:
     int m_variance;
+    /*!
+     * \brief For a simple implementation, just use an STL vector. Classes that inherit are free to do things differently.
+     */
     std::vector<ParameterScalar> m_buffer;
+  public:
+    virtual ParameterScalar& operator[](size_t pos) { return this->m_buffer[pos];}
+    const virtual ParameterScalar& operator[](size_t pos) const { return this->m_buffer[pos];}
+    virtual size_t size() const { return this->m_buffer.size();}
   };
 
  inline std::ostream& operator<<(std::ostream& os, ParameterVector const& pv) {
@@ -70,6 +70,9 @@ namespace IterativeSolver {
 	 return os;
  }
 
+ /*!
+   * \brief A container for a collection of ParameterVector objects
+   */
   class ParameterVectorSet
     {
     public:
@@ -82,7 +85,12 @@ namespace IterativeSolver {
   	  ParameterVector& back() { return pvs.back();}
   	  const ParameterVector& back() const { return pvs.back();}
   	  void push_back(const ParameterVector& val) { pvs.push_back(val); active.push_back(true);}
+      void pop_back() { pvs.pop_back(); active.pop_back();}
+      void resize(size_t length) { pvs.resize(length); active.resize(length);}
 
+      /*!
+       * \brief A place to record whether each member of the set is meant to be considered active
+       */
   	  std::vector<bool> active;
     private:
         std::vector<ParameterVector> pvs;

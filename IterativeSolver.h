@@ -9,10 +9,6 @@
 #include "ParameterVector.h"
 #include <Eigen/Dense>
 
-#ifndef nullptr
-#define nullptr NULL
-#endif
-
 namespace IterativeSolver {
 
 /*!

@@ -8,6 +8,14 @@
 namespace IterativeSolver {
   typedef double ParameterScalar;
 
+/*!
+   * \brief A class to hold expansion vectors and residual vectors for use by IterativeSolver classes.
+   *
+   * The base implementation provided here just stores the data internally as a one-dimensional, but an inheriting class could adopt
+   * a structured layout, and could store externally and/or distributed across processes, so long as all of the public methods function correctly.
+   * The operator<<(), operator[]() and size() methods provided in this base class refer to the std::vector that is used in the simple base implementation, and should not normally be used in production,
+   * so that derivative classes are free to avoid defining them. They are typically used in debugging.
+   */
   class ParameterVector
   {
   public:
@@ -63,11 +71,11 @@ namespace IterativeSolver {
   };
 
  inline std::ostream& operator<<(std::ostream& os, ParameterVector const& pv) {
-	 os << "ParameterVector object:";
-	 for (size_t k=0; k<pv.size(); k++)
-		 os <<" "<< pv[k];
-	 os << std::endl;
-	 return os;
+     os << "ParameterVector object:";
+     for (size_t k=0; k<pv.size(); k++)
+         os <<" "<< pv[k];
+     os << std::endl;
+     return os;
  }
 
  /*!

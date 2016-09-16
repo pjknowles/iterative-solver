@@ -75,7 +75,7 @@ public:
    * \param solution On input, contains an initial guess; on exit, contains the final solution.
    * \return Whether or not convergence has been reached.
    */
-  virtual void solve(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="");
+  virtual bool solve(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="");
   /*!
    * \brief Control level of output
    * \param verbosity The higher the number, the more output.

@@ -44,7 +44,7 @@ public:
    * \param threshold Residual threshold for inclusion of a vector in the DIIS state.
    * \param DiisMode Whether to perform DIIS, KAIN, or nothing.
    */
-  void setOptions(size_t maxDim=6, double threshold=1e-3, enum DiisMode_type DiisMode=DIIS);
+  void setOptions(size_t maxDim=6, double acceptanceThreshold=1e6, enum DiisMode_type DiisMode=DIIS);
   /*!
    * \brief discards previous iteration vectors, but does not clear records
    */
@@ -90,14 +90,14 @@ public:
   double fLastCoeff() const { return m_LastAmplitudeCoeff; }
   unsigned int nLastDim() const {return std::count(m_iVectorAge.begin(),m_iVectorAge.end(),VecNotPresent);}
   unsigned int nNextVec() const { return m_iNext; }
-  unsigned int nMaxDim() const { return maxDim_; }
+  unsigned int nMaxDim() const { return m_maxDim; }
 private:
   typedef unsigned int uint;
   Diis();
-  enum DiisMode_type DiisMode_;
-  double threshold_;
-  size_t maxDim_;
-  unsigned int nDim_;
+  enum DiisMode_type m_DiisMode;
+  double m_acceptanceThreshold;
+  size_t m_maxDim;
+  unsigned int m_nDim;
   //> 0xffff: no vector in this slot. Otherwise: number of iterations
   // the vector in this slot has already been inside the DIIS system.
   std::vector<uint> m_iVectorAge;

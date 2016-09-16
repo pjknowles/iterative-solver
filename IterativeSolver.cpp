@@ -17,9 +17,17 @@ IterativeSolverBase::~IterativeSolverBase()
 bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorSet &solution, ParameterVectorSet &other, std::string options)
 {
 	m_residuals.push_back(residual); m_solutions.push_back(solution); m_others.push_back(other);
+	if (m_verbosity>3)
+	  std::cout <<"added to m_residuals, now size="<<m_residuals.size()<<std::endl;
+	if (m_verbosity>3)
+	  std::cout << "latest residual: "<<m_residuals.back()<<std::endl;
+	  std::cout << "latest solution: "<<m_solutions.back()<<std::endl;
 	extrapolate(residual,solution,other,options);
+	  std::cout << "after extrapolate solution: "<<solution<<std::endl;
 	m_updateFunction(residual,solution,std::vector<ParameterScalar>());
-	return calculateError(residual,solution) < m_thresh;
+    std::cout << "iterate() final extrapolated and updated solution: "<<solution<<std::endl;
+    std::cout << "iterate() final extrapolated and updated residual: "<<residual<<std::endl;
+        return calculateError(residual,solution) < m_thresh;
 }
 
 
@@ -28,9 +36,10 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
 
  }
 
- void IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options)
+ bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options)
  {
 	 throw std::logic_error("solve not written yet"); // FIXME
+   return false;
  }
 
 std::vector<double> IterativeSolverBase::calculateErrors(const ParameterVectorSet &residual, const ParameterVectorSet &solution)

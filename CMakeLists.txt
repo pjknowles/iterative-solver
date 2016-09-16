@@ -6,7 +6,7 @@ add_executable(${PROJECT_NAME}-test ${SRC_LIST})
 #add_library (${PROJECT_NAME} ${SRC_LIST})
 include_directories(Eigen )
 
-# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+#  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 # find_package(MKL)
 # if (MKL_FOUND)
 # include_directories(${MKL_INCLUDE_DIRS})

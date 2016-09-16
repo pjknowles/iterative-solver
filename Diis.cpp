@@ -5,6 +5,7 @@ using namespace IterativeSolver;
 Diis::Diis(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
   : IterativeSolverBase(updateFunction, residualFunction), m_iNext(0)
 {
+  std::cout <<"Diis constructor"<<std::endl;
   setOptions();
   m_LastResidualNormSq=1e99; // so it can be tested even before extrapolation is done
   Reset();
@@ -14,15 +15,16 @@ Diis::~Diis()
 {
 }
 
-void Diis::setOptions(size_t maxDim, double threshold, DiisMode_type DiisMode)
+void Diis::setOptions(size_t maxDim, double acceptanceThreshold, DiisMode_type DiisMode)
 {
-   maxDim_ = maxDim;
-   threshold_ = threshold;
-   DiisMode_ = DiisMode;
-   if (DiisMode_ == KAIN) throw std::invalid_argument("KAIN not yet supported");
+   m_maxDim = maxDim;
+   m_acceptanceThreshold = acceptanceThreshold;
+   m_DiisMode = DiisMode;
+   if (m_DiisMode == KAIN) throw std::invalid_argument("KAIN not yet supported");
 
    Reset();
-//   std::cout << "maxDim_ set to "<<maxDim_<<" in setOptions"<<std::endl;
+   if (m_verbosity>-1)
+     std::cout << "m_maxDim set to "<<m_maxDim<<" in setOptions"<<std::endl;
 }
 
 void Diis::Reset()
@@ -64,27 +66,31 @@ void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
 
 
 
-//void Diis::extrapolate (ParameterVectorSet vectors, double weight)
   void Diis::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options)
 {
+	  std::cout << "Enter Diis::extrapolate"<<std::endl;
+	  std::cout << "residual : "<<residual<<std::endl;
+	  std::cout << "solution : "<<solution<<std::endl;
 	  double weight=1.0;
 	  size_t pos=options.find("weight=");
 	  if (pos != std::string::npos)  throw std::logic_error("parsing of weight not implemented yet"); //FIXME
-	  if (maxDim_ <= 1 || DiisMode_ == disabled) return;
+	  if (m_maxDim <= 1 || m_DiisMode == disabled) return;
 
 	  if (residual.size() > 1) throw std::logic_error("DIIS does not handle multiple solutions");
 
   double fThisResidualDot = residual.front() * residual.front();
   m_LastResidualNormSq = fThisResidualDot;
 
-  if ( m_iNext == 0 && fThisResidualDot > threshold_ )
+  if (m_verbosity>1)
+    std::cout << "m_iNext="<<m_iNext<<", fThisResidualDot="<<fThisResidualDot<<", m_acceptanceThreshold="<<m_acceptanceThreshold<<std::endl;
+  if ( m_iNext == 0 && fThisResidualDot > m_acceptanceThreshold )
       // current vector is to be considered too wrong to be useful for DIIS
       // purposes. Don't store it.
       return;
 
   uint iThis = m_iNext;
   if (m_verbosity > 1) std::cout<< "iThis=m_iNext "<<m_iNext<<std::endl;
-  assert(iThis < maxDim_);
+  assert(iThis < m_maxDim);
   if (iThis >= m_iVectorAge.size()) m_iVectorAge.resize(iThis+1);
   if (iThis >= m_ErrorMatrix.cols()) m_ErrorMatrix.conservativeResize(iThis+1,iThis+1);
   m_ErrorMatrix(iThis,iThis)=fThisResidualDot;
@@ -169,7 +175,7 @@ void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
   // an empty slot or the oldest vector.
   uint iOldestAge = m_iVectorAge[0];
   m_iNext = 0;
-  if (m_iVectorAge.size() < maxDim_) {
+  if (m_iVectorAge.size() < m_maxDim) {
     m_iNext = m_iVectorAge.size(); m_iVectorAge.push_back(0);
     } else
     for ( uint i = m_iVectorAge.size(); i != 0; -- i ){
@@ -178,6 +184,7 @@ void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
           m_iNext = i-1;
       }
   }
+  if (m_verbosity>1) std::cout << "Next iteration slot "<<m_iNext<<std::endl;
 
 //     bool
 //         PrintDiisState = true;
@@ -194,15 +201,26 @@ void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
   // now actually perform the extrapolation on the residuals
   // and amplitudes.
   m_LastAmplitudeCoeff = Coeffs[iThis];
+  std::cout << "m_solutions.front(): "<<m_solutions.front()<<std::endl;
   for (size_t l=0; l<residual.size(); l++) residual[l].zero();
+  std::cout << "m_solutions.front(): "<<m_solutions.front()<<std::endl;
   for (size_t l=0; l<solution.size(); l++) solution[l].zero();
+  std::cout << "residual at "<<&residual[0]<<std::endl;
+  std::cout << "solution at "<<&solution[0]<<std::endl;
+  std::cout << "m_solutions.front() at "<<&m_solutions.front()[0]<<std::endl;
+  std::cout << "m_solutions.front(): "<<m_solutions.front()<<std::endl;
   for (size_t l=0; l<other.size(); l++) other[l].zero();
   for (size_t k=0; k<Coeffs.rows(); k++) {
+      std::cout << "extrapolation k="<<k<<",iUsedVecs[k]="<<iUsedVecs[k]<<std::endl;
+      std::cout << "add solution "<<m_solutions[iUsedVecs[k]].front()<<" with factor "<<Coeffs[k]<<std::endl;
 	  residual.front().axpy(Coeffs[k],m_residuals[iUsedVecs[k]].front());
 	  solution.front().axpy(Coeffs[k],m_solutions[iUsedVecs[k]].front());
 	  for (size_t l=0; l<other.size(); l++)
 		  other[l].axpy(Coeffs[k],m_others[iUsedVecs[k]][l]);
   }
+  if (m_verbosity>2)
+    std::cout << "Diis.extrapolate() final extrapolated solution: "<<solution.front()<<std::endl;
+    std::cout << "Diis.extrapolate() final extrapolated residual: "<<residual.front()<<std::endl;
 }
 
 void Diis::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, uint iThis)

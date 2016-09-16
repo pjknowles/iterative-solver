@@ -3,10 +3,9 @@
 using namespace IterativeSolver;
 
 Diis::Diis(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
-  : IterativeSolverBase(updateFunction, residualFunction), m_iNext(0)
+  : IterativeSolverBase(updateFunction, residualFunction)
 {
   setOptions();
-  m_LastResidualNormSq=1e99; // so it can be tested even before extrapolation is done
   Reset();
 }
 
@@ -28,7 +27,9 @@ void Diis::setOptions(size_t maxDim, double acceptanceThreshold, DiisMode_type D
 
 void Diis::Reset()
 {
-
+    m_iNext=0;
+    m_iVectorAge.resize(0);
+    m_LastResidualNormSq=1e99; // so it can be tested even before extrapolation is done
 }
 
 void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr)
@@ -282,21 +283,29 @@ void _Rosenbrock_updater(const ParameterVectorSet & psg, ParameterVectorSet & ps
 
 void Diis::test(int verbosity)
 {
-    if (verbosity>=0) std::cout << "Test Diis class"<<std::endl;
-  ParameterVectorSet x; x.push_back(ParameterVector(2));
-  x.front()[0]=x.front()[1]=0.9; // initial guess
-  ParameterVectorSet g; g.push_back(ParameterVector(2));
-  Diis d(&_Rosenbrock_updater,&_Rosenbrock_residual);
-  d.setVerbosity(verbosity-1);
-  bool converged=false;
-  for (int iteration=1; iteration < 108 && not converged; iteration++) {
-      _Rosenbrock_residual(x,g);
-      converged = d.iterate(g,x);
-      if (verbosity>0)
-      std::cout << "iteration "<<iteration<<", Residual norm = "<<std::sqrt(d.fLastResidual())
-                  << ", Distance from solution = "<<std::sqrt((x.front()[0]-1)*(x.front()[0]-1)+(x.front()[1]-1)*(x.front()[1]-1))
-              <<", converged? "<<converged
-      <<std::endl;
+    ParameterVectorSet x; x.push_back(ParameterVector(2));
+    ParameterVectorSet g; g.push_back(ParameterVector(2));
+    Diis d(&_Rosenbrock_updater,&_Rosenbrock_residual);
+
+    if (verbosity>=0) std::cout << "Test Diis::solver"<<std::endl;
+    x.front()[0]=x.front()[1]=0.9; // initial guess
+    d.setVerbosity(verbosity);
+    d.solve(g,x);
+    std::cout  << "Distance from solution = "<<std::sqrt((x.front()[0]-1)*(x.front()[0]-1)+(x.front()[1]-1)*(x.front()[1]-1)) <<std::endl;
+    d.Reset();
+
+    if (verbosity>=0) std::cout << "Test Diis::iterate"<<std::endl;
+    d.setVerbosity(verbosity-1);
+    x.front()[0]=x.front()[1]=0.9; // initial guess
+    bool converged=false;
+    for (int iteration=1; iteration < 108 && not converged; iteration++) {
+        _Rosenbrock_residual(x,g);
+        converged = d.iterate(g,x);
+        if (verbosity>0)
+            std::cout << "iteration "<<iteration<<", Residual norm = "<<std::sqrt(d.fLastResidual())
+                      << ", Distance from solution = "<<std::sqrt((x.front()[0]-1)*(x.front()[0]-1)+(x.front()[1]-1)*(x.front()[1]-1))
+                    <<", converged? "<<converged
+                   <<std::endl;
     }
 }
 

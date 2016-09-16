@@ -41,8 +41,17 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
 
  bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options)
  {
-	 throw std::logic_error("solve not written yet"); // FIXME
-   return false;
+         bool converged=false;
+         size_t max_iterations=1000; //FIXME
+     for (size_t iteration=0; not converged; iteration++) {
+         m_residualFunction(solution,residual,std::vector<double>());
+         converged = iterate(residual,solution);
+         if (m_verbosity>0)
+         std::cout << "iteration "<<iteration<<", Residual norm = "<<999
+                 <<", converged? "<<converged
+         <<std::endl;
+     }
+   return converged;
  }
 
 std::vector<double> IterativeSolverBase::calculateErrors(const ParameterVectorSet &residual, const ParameterVectorSet &solution)

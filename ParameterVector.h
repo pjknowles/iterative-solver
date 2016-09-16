@@ -70,24 +70,6 @@ namespace IterativeSolver {
 	 return os;
  }
 
-  class ParameterVectorSetDodgy : private std::vector<ParameterVector>
-    {
-    public:
-  	  ParameterVectorSetDodgy() : std::vector<ParameterVector>() {};
-          using std::vector<ParameterVector>::size;
-          using std::vector<ParameterVector>::operator[];
-          using std::vector<ParameterVector>::iterator;
-          using std::vector<ParameterVector>::const_iterator;
-          using std::vector<ParameterVector>::begin;
-          using std::vector<ParameterVector>::end;
-          using std::vector<ParameterVector>::push_back;
-          using std::vector<ParameterVector>::pop_back;
-          using std::vector<ParameterVector>::resize;
-          using std::vector<ParameterVector>::front;
-          using std::vector<ParameterVector>::back;
-
-        std::vector<bool> active;
-    };
   class ParameterVectorSet
     {
     public:
@@ -105,6 +87,7 @@ namespace IterativeSolver {
     private:
         std::vector<ParameterVector> pvs;
     };
+
   inline std::ostream& operator<<(std::ostream& os, const ParameterVectorSet& pvs) {
 	  for (size_t k=0; k<pvs.size(); k++)
 		  os << pvs[k];

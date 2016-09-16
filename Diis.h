@@ -41,7 +41,7 @@ public:
   /*!
    * \brief Set options for DIIS.
    * \param maxDim Maximum DIIS dimension allowed
-   * \param threshold Residual threshold for inclusion of a vector in the DIIS state.
+   * \param acceptanceThreshold Residual threshold for inclusion of a vector in the DIIS state.
    * \param DiisMode Whether to perform DIIS, KAIN, or nothing.
    */
   void setOptions(size_t maxDim=6, double acceptanceThreshold=1e6, enum DiisMode_type DiisMode=DIIS);
@@ -58,25 +58,9 @@ public:
    * The current solution that gave rise to residual, and which will be extrapolated to a new predicted solution.
    * \param other (optional)
    * Corresponding other vectors whose sequence will be extrapolated.
-   * \param options can contain "weight=xxx" where xxx is the weight to be given to this vector.
+   * \param options can contain "weight=xxx" where xxx is the weight to be given to this vector. These options would normally be passed as the corresponding parameter in iterate().
    */
   void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
-
-  /*!
-   * \brief Perform DIIS extrapolation based on a residual vector, and then update the extrapolated solution with the extrapolated residual
-   * The function performs extrapolate() followed by update().
-   * \brief Introduce a new iteration vector, and perform extrapolation
-   * \param residual
-   * The vector that
-   * will be the one that is analysed to construct the extrapolation.
-   * \param solution
-   * The current solution that gave rise to residual, and which will be extrapolated and updated to a new predicted solution.
-   * \param other (optional)
-   * Corresponding other vectors whose sequence will be extrapolated.
-   * \param options can contain "weight=xxx" where xxx is the weight to be given to this vector.
-   */
-//  bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
-//  bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="") { ParameterVectorSet other; return iterate(residual,solution,other,options); } // FIXME why necessary? Inherit?
 
   /*!
    * \brief Return the square L2 norm of the extrapolated residual from the last call to extrapolate() or iterate().
@@ -91,6 +75,14 @@ public:
   unsigned int nLastDim() const {return std::count(m_iVectorAge.begin(),m_iVectorAge.end(),VecNotPresent);}
   unsigned int nNextVec() const { return m_iNext; }
   unsigned int nMaxDim() const { return m_maxDim; }
+  /*!
+   * \brief Test the correct operation of the module. If an error is found, an exception is thrown.
+   * \param verbosity How much to print.
+   * - -1 Nothing at all is printed.
+   * - 0 (default) Just a message that the test is taking place.
+   * - 1, 2, 3,... more detail.
+   */
+  static void test(int verbosity=0);
 private:
   typedef unsigned int uint;
   Diis();

@@ -262,3 +262,41 @@ void Diis::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, ui
     if ( fBaseScale <= 0. )
         fBaseScale = 1.;
 }
+
+void _Rosenbrock_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>()) {
+    ParameterVector x=psx.front();
+    ParameterVector result(2);
+      result[0]=(2*x[0]-2+400*x[0]*(x[0]*x[0]-x[1])); result[1]=(200*(x[1]-x[0]*x[0])); // Rosenbrock
+      outputs.front()=result;
+}
+
+void _Rosenbrock_updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift) {
+       ParameterVector c=psc.front();
+       ParameterVector g=psg.front();
+    ParameterVector diag(2);
+    diag[0]=700; diag[1]=200;
+            c[0] -=g[0]/diag[0];
+            c[1] -=g[1]/diag[1];
+    psc.front()=c;
+}
+
+void Diis::test(int verbosity)
+{
+    if (verbosity>=0) std::cout << "Test Diis class"<<std::endl;
+  ParameterVectorSet x; x.push_back(ParameterVector(2));
+  x.front()[0]=x.front()[1]=0.9; // initial guess
+  ParameterVectorSet g; g.push_back(ParameterVector(2));
+  Diis d(&_Rosenbrock_updater,&_Rosenbrock_residual);
+  d.setVerbosity(verbosity-1);
+  bool converged=false;
+  for (int iteration=1; iteration < 108 && not converged; iteration++) {
+      _Rosenbrock_residual(x,g);
+      converged = d.iterate(g,x);
+      if (verbosity>0)
+      std::cout << "iteration "<<iteration<<", Residual norm = "<<std::sqrt(d.fLastResidual())
+                  << ", Distance from solution = "<<std::sqrt((x.front()[0]-1)*(x.front()[0]-1)+(x.front()[1]-1)*(x.front()[1]-1))
+              <<", converged? "<<converged
+      <<std::endl;
+    }
+}
+

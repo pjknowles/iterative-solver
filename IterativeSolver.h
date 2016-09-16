@@ -73,6 +73,7 @@ public:
    * \brief Solve iteratively by repeated calls to residualFunction() and iterate().
    * \param residual Ignored on input; on exit, contains the final residual; used as working space.
    * \param solution On input, contains an initial guess; on exit, contains the final solution.
+   * \param options A string of options to be interpreted by extrapolate().
    * \return Whether or not convergence has been reached.
    */
   virtual bool solve(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="");

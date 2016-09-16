@@ -1,5 +1,6 @@
 #include "IterativeSolver.h"
 #include <algorithm>
+#include <numeric>
 
 using namespace IterativeSolver;
 
@@ -22,12 +23,14 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
 	if (m_verbosity>3)
 	  std::cout << "latest residual: "<<m_residuals.back()<<std::endl;
 	  std::cout << "latest solution: "<<m_solutions.back()<<std::endl;
-	extrapolate(residual,solution,other,options);
+       double err = calculateError(residual,solution);
+    extrapolate(residual,solution,other,options);
 	  std::cout << "after extrapolate solution: "<<solution<<std::endl;
 	m_updateFunction(residual,solution,std::vector<ParameterScalar>());
     std::cout << "iterate() final extrapolated and updated solution: "<<solution<<std::endl;
     std::cout << "iterate() final extrapolated and updated residual: "<<residual<<std::endl;
-        return calculateError(residual,solution) < m_thresh;
+    std::cout << "error: "<<err<<", m_thresh="<<m_thresh<<std::endl;
+        return err < m_thresh;
 }
 
 
@@ -52,7 +55,9 @@ std::vector<double> IterativeSolverBase::calculateErrors(const ParameterVectorSe
 
 double IterativeSolverBase::calculateError(const ParameterVectorSet &residual, const ParameterVectorSet &solution)
 {
-    std::vector<double> errs(1);
+    std::vector<double> errs;
     errs=calculateErrors(residual,solution);
-    return std::sqrt(std::inner_product(errs.begin(),errs.end(),errs.begin(),0));
+    double result=0;
+    for (std::vector<double>::iterator e=errs.begin(); e!=errs.end(); e++) result+=(*e)*(*e);
+    return std::sqrt(result);
 }

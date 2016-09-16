@@ -16,27 +16,9 @@ namespace IterativeSolver {
   {
   public:
       /*!
-     * \brief Construct an object from provided data. The data buffer will be assumed to continue
-     * to exist whilst this object exists, but may have its contents changed externally.
-     * \param buffer The data buffer.
-     * \param length The length of the data buffer.
-     * \param variance
-     * - -1: covariant vector
-     * - +1: contravariant vector
-     * - 0: self-dual vector
-     * The class is expected to check that appropriate combinations of vectors are provided in methods that perform linear algebra functions.
+     * \brief Construct an object without any data.
      */
-    ParameterVector(ParameterScalar* buffer, size_t length, int variance=0);
-      /*!
-     * \brief Construct an object without any data. Subsequent assignment of data to the object via the overloaded = operator should result in the data
-     * being stored internally, either in memory or on external storage.
-     * \param variance
-     * - -1: covariant vector
-     * - +1: contravariant vector
-     * - 0: self-dual vector
-     * The class is expected to check that appropriate combinations of vectors are provided in methods that perform linear algebra functions.
-     */
-    ParameterVector(int variance=0);
+    ParameterVector(size_t length=0);
     virtual ~ParameterVector();
     /*!
      * \brief Add a constant times another object to this object
@@ -56,20 +38,28 @@ namespace IterativeSolver {
      */
     virtual void zero();
     /*!
-     * \brief Copy from one object to another, allocating storage if needed
+     * \brief Copy from one object to another, adjusting size if needed.
      * \param other The source of data.
      * \return
      */
     virtual ParameterVector& operator=(const ParameterVector& other);
-    virtual ParameterScalar& operator[](size_t pos) { if (buffer_ != nullptr) return buffer_[pos]; else return this->buff[pos];}
-    const virtual ParameterScalar& operator[](size_t pos) const { return this->buff[pos];}
-    virtual size_t size() const {if (buffer_ != nullptr) return length_; else return this->buff.size();}
+    virtual ParameterScalar& operator[](size_t pos) { return this->m_buffer[pos];}
+    const virtual ParameterScalar& operator[](size_t pos) const { return this->m_buffer[pos];}
+    virtual size_t size() const { return this->m_buffer.size();}
+      /*!
+     * \brief Record the co/contra-variance status of the object
+     * \param variance
+     * - -1: covariant vector
+     * - +1: contravariant vector
+     * - 0: self-dual vector
+     * The class is expected to check that appropriate combinations of vectors are provided in methods that perform linear algebra functions.
+     */
+    void setVariance(int variance=0) {m_variance=variance;}
+    int variance() {return m_variance;}
   protected:
-    int variance_;
   private:
-    size_t length_;
-    ParameterScalar* buffer_;
-    std::vector<ParameterScalar> buff;
+    int m_variance;
+    std::vector<ParameterScalar> m_buffer;
   };
 
  inline std::ostream& operator<<(std::ostream& os, ParameterVector const& pv) {

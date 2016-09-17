@@ -95,6 +95,15 @@ namespace IterativeSolver {
   	  void push_back(const ParameterVector& val) { pvs.push_back(val); active.push_back(true);}
       void pop_back() { pvs.pop_back(); active.pop_back();}
       void resize(size_t length) { pvs.resize(length); active.resize(length);}
+    /*!
+     * \brief Add a constant times another object to this object
+     * \param a The factor to multiply.
+     * \param other The object to be added to this.
+     * \return
+     */
+    void axpy(ParameterScalar a, const ParameterVectorSet& other) {
+      for (size_t k=0; k<size(); k++) this->pvs[k].axpy(a,other[k]);
+    }
 
       /*!
        * \brief A place to record whether each member of the set is meant to be considered active

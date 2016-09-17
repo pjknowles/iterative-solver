@@ -134,6 +134,7 @@ void DIIS::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
       m_solutions[iUsedVecs[iThis]]=solution;m_solutions.pop_back();
       m_residuals[iUsedVecs[iThis]]=residual;m_residuals.pop_back();
       m_others[iUsedVecs[iThis]]=other;m_others.pop_back();
+      m_lastVectorIndex=iUsedVecs[iThis];
   }
 
   if (m_Weights.size()<=iUsedVecs[iThis]) m_Weights.resize(iUsedVecs[iThis]+1);
@@ -291,15 +292,9 @@ void DIIS::test(int verbosity,
     DIIS d(&_Rosenbrock_updater,&_Rosenbrock_residual);
     d.setOptions(maxDim, acceptanceThreshold, mode);
 
-    if (verbosity>=0) std::cout << "Test DIIS::solver, difficulty="<<difficulty<<std::endl;
-    x.front()[0]=x.front()[1]=1-difficulty; // initial guess
-    d.setVerbosity(verbosity);
-    d.solve(g,x);
-    std::cout  << "Distance from solution = "<<std::sqrt((x.front()[0]-1)*(x.front()[0]-1)+(x.front()[1]-1)*(x.front()[1]-1)) <<std::endl;
-    d.Reset();
-
     if (verbosity>=0) std::cout << "Test DIIS::iterate, difficulty="<<difficulty<<std::endl;
-    d.setVerbosity(verbosity-1);
+    d.Reset();
+    d.m_verbosity=verbosity-1;
     x.front()[0]=x.front()[1]=1-difficulty; // initial guess
     bool converged=false;
     for (int iteration=1; iteration < 1000 && not converged; iteration++) {
@@ -311,5 +306,13 @@ void DIIS::test(int verbosity,
                     <<", converged? "<<converged
                    <<std::endl;
     }
+
+    if (verbosity>=0) std::cout << "Test DIIS::solver, difficulty="<<difficulty<<std::endl;
+    d.Reset();
+    x.front()[0]=x.front()[1]=1-difficulty; // initial guess
+    d.m_verbosity=verbosity;
+    d.solve(g,x);
+    std::cout  << "Distance from solution = "<<std::sqrt((x.front()[0]-1)*(x.front()[0]-1)+(x.front()[1]-1)*(x.front()[1]-1)) <<std::endl;
+
 }
 

@@ -89,25 +89,26 @@ public:
    */
   virtual bool solve(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="");
   /*!
-   * \brief Control level of output
-   * \param verbosity The higher the number, the more output.
-   */
-  void setVerbosity(int verbosity) { m_verbosity=verbosity;}
-  /*!
    * \brief Set convergence threshold
-   * \param thresh If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
    */
   void setThresholds(double thresh) { m_thresh=thresh;}
+
+public:
+  int m_verbosity; //!< How much to print.
+  int m_maxIterations; //!< Maximum number of iterations in solve()
+  double m_thresh; //!< If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
+  std::vector<double> m_errors; //!< Error at last iteration
+  double m_error; //!< worst error at last iteration
+  size_t m_worst; //!< worst-converged solution, ie m_error = m_errors[m_worst]
+
 protected:
   virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
   virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="") { ParameterVectorSet other; extrapolate(residual,solution,other,options); }
-  double calculateError(const ParameterVectorSet & residual, const ParameterVectorSet & solution);
-  std::vector<double> calculateErrors(const ParameterVectorSet & residual, const ParameterVectorSet & solution);
-  int m_verbosity;
-  double m_thresh;
+  void calculateErrors(const ParameterVectorSet & solution);
   std::vector<ParameterVectorSet> m_residuals;
   std::vector<ParameterVectorSet> m_solutions;
   std::vector<ParameterVectorSet> m_others;
+  size_t m_lastVectorIndex;
 };
 }
 

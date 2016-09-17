@@ -27,24 +27,24 @@ namespace IterativeSolver {
  *   }
  * \endcode
  */
-class Diis : public IterativeSolverBase
+class DIIS : public IterativeSolverBase
 {
 public:
-  enum DiisMode_type {disabled ///< No extrapolation is performed
-                      , DIIS ///< Direct Inversion in the Iterative Subspace
-                      , KAIN ///< Krylov Accelerated Inexact Newton
+  enum DIISmode_type {disabled ///< No extrapolation is performed
+                      , DIISmode ///< Direct Inversion in the Iterative Subspace
+                      , KAINmode ///< Krylov Accelerated Inexact Newton
                      };
 /*!
    */
-  Diis(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
-  ~Diis();
+  DIIS(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
+  ~DIIS();
   /*!
    * \brief Set options for DIIS.
    * \param maxDim Maximum DIIS dimension allowed
    * \param acceptanceThreshold Residual threshold for inclusion of a vector in the DIIS state.
-   * \param DiisMode Whether to perform DIIS, KAIN, or nothing.
+   * \param mode Whether to perform DIIS, KAIN, or nothing.
    */
-  void setOptions(size_t maxDim=6, double acceptanceThreshold=1e6, enum DiisMode_type DiisMode=DIIS);
+  virtual void setOptions(size_t maxDim=6, double acceptanceThreshold=1e6, enum DIISmode_type mode=DIISmode);
   /*!
    * \brief discards previous iteration vectors, but does not clear records
    */
@@ -81,12 +81,20 @@ public:
    * - -1 Nothing at all is printed.
    * - 0 (default) Just a message that the test is taking place.
    * - 1, 2, 3,... more detail.
+   * \param maxDim Maximum DIIS dimension allowed
+   * \param acceptanceThreshold Residual threshold for inclusion of a vector in the DIIS state.
+   * \param mode Whether to perform DIIS, KAIN, or nothing.
+   * \param difficulty Level of numerical challenge, ranging from 0 to 1.
    */
-  static void test(int verbosity=0);
+  static void test(int verbosity=0,
+                   size_t maxDim=6,
+                   double acceptanceThreshold=1e6,
+                   enum DIISmode_type mode=DIISmode,
+                   double difficulty=0.1);
 private:
   typedef unsigned int uint;
-  Diis();
-  enum DiisMode_type m_DiisMode;
+  DIIS();
+  enum DIISmode_type m_DIISmode;
   double m_acceptanceThreshold;
   size_t m_maxDim;
   unsigned int m_nDim;
@@ -108,6 +116,20 @@ private:
       // coefficient the actual new vector got in the last DIIS step
       m_LastAmplitudeCoeff;
 
+};
+
+class KAIN : public DIIS
+{
+public:
+  KAIN(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp)
+      : DIIS(updateFunction,residualFunction) {}
+  void setOptions(size_t maxDim=6,
+                  double acceptanceThreshold=1e6,
+                  enum DIISmode_type mode=KAINmode)
+  { std::cout << "KAIN setOptions"<<std::endl;
+      DIIS::setOptions(maxDim,acceptanceThreshold,mode); }
+private:
+  KAIN();
 };
 
 }

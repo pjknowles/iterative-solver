@@ -2,37 +2,39 @@
 
 using namespace IterativeSolver;
 
-Diis::Diis(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
+DIIS::DIIS(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
   : IterativeSolverBase(updateFunction, residualFunction)
 {
   setOptions();
   Reset();
 }
 
-Diis::~Diis()
+DIIS::~DIIS()
 {
 }
 
-void Diis::setOptions(size_t maxDim, double acceptanceThreshold, DiisMode_type DiisMode)
+void DIIS::setOptions(size_t maxDim, double acceptanceThreshold, DIISmode_type mode)
 {
    m_maxDim = maxDim;
    m_acceptanceThreshold = acceptanceThreshold;
-   m_DiisMode = DiisMode;
-   if (m_DiisMode == KAIN) throw std::invalid_argument("KAIN not yet supported");
+   m_DIISmode = mode;
+   if (m_DIISmode == KAINmode) throw std::invalid_argument("KAIN not yet supported");
 
    Reset();
+   if (m_verbosity>1)
+     std::cout << "m_DIISmode set to "<<m_DIISmode<<" in setOptions"<<std::endl;
    if (m_verbosity>1)
      std::cout << "m_maxDim set to "<<m_maxDim<<" in setOptions"<<std::endl;
 }
 
-void Diis::Reset()
+void DIIS::Reset()
 {
     m_iNext=0;
     m_iVectorAge.resize(0);
     m_LastResidualNormSq=1e99; // so it can be tested even before extrapolation is done
 }
 
-void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr)
+void DIIS::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr)
 {
     Eigen::VectorXd Ews(nDim);
     Eigen::VectorXd Xv(nDim); // input vectors in EV basis.
@@ -66,15 +68,15 @@ void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
 
 
 
-  void Diis::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options)
+  void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options)
 {
-//	  std::cout << "Enter Diis::extrapolate"<<std::endl;
+//	  std::cout << "Enter DIIS::extrapolate"<<std::endl;
 //	  std::cout << "residual : "<<residual<<std::endl;
 //	  std::cout << "solution : "<<solution<<std::endl;
 	  double weight=1.0;
 	  size_t pos=options.find("weight=");
 	  if (pos != std::string::npos)  throw std::logic_error("parsing of weight not implemented yet"); //FIXME
-	  if (m_maxDim <= 1 || m_DiisMode == disabled) return;
+	  if (m_maxDim <= 1 || m_DIISmode == disabled) return;
 
 	  if (residual.size() > 1) throw std::logic_error("DIIS does not handle multiple solutions");
 
@@ -194,8 +196,8 @@ void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
   if (m_verbosity>1) std::cout << "Next iteration slot "<<m_iNext<<std::endl;
 
 //     bool
-//         PrintDiisState = true;
-//     if ( PrintDiisState ) {
+//         PrintDIISstate = true;
+//     if ( PrintDIISstate ) {
 //         std::ostream &xout = std::cout;
 //         xout << "  iUsedVecs: "; for ( uint i = 0; i < nDim; ++ i ) xout << " " << iUsedVecs[i]; xout << std::endl;
 //         PrintMatrixGen( xout, m_ErrorMatrix.data(), nMaxDim(), 1, nMaxDim(), m_ErrorMatrix.nStride(), "DIIS-B (resident)" );
@@ -226,12 +228,12 @@ void Diis::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
 		  other[l].axpy(Coeffs[k],m_others[iUsedVecs[k]][l]);
   }
   if (m_verbosity>2) {
-    std::cout << "Diis.extrapolate() final extrapolated solution: "<<solution.front()<<std::endl;
-    std::cout << "Diis.extrapolate() final extrapolated residual: "<<residual.front()<<std::endl;
+    std::cout << "DIIS.extrapolate() final extrapolated solution: "<<solution.front()<<std::endl;
+    std::cout << "DIIS.extrapolate() final extrapolated residual: "<<residual.front()<<std::endl;
   }
 }
 
-void Diis::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, uint iThis)
+void DIIS::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, uint iThis)
 {
     // remove lines from the system which correspond to vectors which are too bad
     // to be really useful for extrapolation purposes, but which might break
@@ -281,22 +283,24 @@ static void _Rosenbrock_updater(const ParameterVectorSet & psg, ParameterVectorS
     psc.front()=c;
 }
 
-void Diis::test(int verbosity)
+void DIIS::test(int verbosity,
+                size_t maxDim, double acceptanceThreshold, DIISmode_type mode, double difficulty)
 {
     ParameterVectorSet x; x.push_back(ParameterVector(2));
     ParameterVectorSet g; g.push_back(ParameterVector(2));
-    Diis d(&_Rosenbrock_updater,&_Rosenbrock_residual);
+    DIIS d(&_Rosenbrock_updater,&_Rosenbrock_residual);
+    d.setOptions(maxDim, acceptanceThreshold, mode);
 
-    if (verbosity>=0) std::cout << "Test Diis::solver"<<std::endl;
-    x.front()[0]=x.front()[1]=0.9; // initial guess
+    if (verbosity>=0) std::cout << "Test DIIS::solver, difficulty="<<difficulty<<std::endl;
+    x.front()[0]=x.front()[1]=1-difficulty; // initial guess
     d.setVerbosity(verbosity);
     d.solve(g,x);
     std::cout  << "Distance from solution = "<<std::sqrt((x.front()[0]-1)*(x.front()[0]-1)+(x.front()[1]-1)*(x.front()[1]-1)) <<std::endl;
     d.Reset();
 
-    if (verbosity>=0) std::cout << "Test Diis::iterate"<<std::endl;
+    if (verbosity>=0) std::cout << "Test DIIS::iterate, difficulty="<<difficulty<<std::endl;
     d.setVerbosity(verbosity-1);
-    x.front()[0]=x.front()[1]=0.9; // initial guess
+    x.front()[0]=x.front()[1]=1-difficulty; // initial guess
     bool converged=false;
     for (int iteration=1; iteration < 1000 && not converged; iteration++) {
         _Rosenbrock_residual(x,g);

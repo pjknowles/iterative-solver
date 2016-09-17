@@ -31,6 +31,9 @@ inline void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSe
 /*!
  * \brief A base class for iterative solvers such as DIIS, KAIN, Davidson. The class provides support for preconditioned update, via a provided function.
  *
+ * The user needs to provide the two routines residualFunction() and updateFunction() through the class constructor. These define the problem being solved: the first should calculate the residual
+ * or action vector from a solution vector, and the second should update a provided solution vector using a provided residual vector.  The user also needs to provide an initial guess in the call to solve() or iterate().
+ *
  * Two drivers are provided: the calling program can set up its own iterative loop, and in each loop call residualFunction() and iterate(); this gives the flexibility to pass additional parameters
  * to residualFunction(). The simpler mode of use is a single call to solve(), which manages the iterations itself.
  *

@@ -21,7 +21,6 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
   m_updateFunction(residual,solution,m_updateShift);
   calculateErrors(solution,residual);
   adjustUpdate(solution);
-  std::cout << "end of iterate. m_error="<<m_error<<std::endl;
   return m_error < m_thresh;
 }
 
@@ -49,7 +48,7 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
   for (size_t k=0; k<solution.size(); k++)
     solution.active[k] = (m_errors[k] > m_thresh);
   if (m_orthogonalize) {
-      std::cout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
+//      std::cout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
       for (size_t kkk=0; kkk<solution.size(); kkk++) {
           if (solution.active[kkk]) {
               size_t l=0;
@@ -69,10 +68,13 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
                     }
                 }
               double s= solution[kkk]*solution[kkk];
-              solution[kkk].axpy(1/std::sqrt(s)-1,solution[kkk]);
+              if (s <= 0)
+                solution.active[kkk]=false;
+              else
+                solution[kkk].axpy(1/std::sqrt(s)-1,solution[kkk]);
             }
         }
-      std::cout << "IterativeSolverBase::adjustUpdate solution after orthogonalization: "<<solution<<std::endl;
+//      std::cout << "IterativeSolverBase::adjustUpdate solution after orthogonalization: "<<solution<<std::endl;
     }
 }
 

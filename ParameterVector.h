@@ -118,9 +118,10 @@ namespace IterativeSolver {
     };
 
   inline std::ostream& operator<<(std::ostream& os, const ParameterVectorSet& pvs) {
-	  for (size_t k=0; k<pvs.size(); k++)
-		  os << pvs[k];
-	 return os;
+    for (size_t k=0; k<pvs.size(); k++)
+      if (pvs.active[k])
+        os << pvs[k];
+    return os;
   }
 
 }

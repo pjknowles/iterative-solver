@@ -20,6 +20,7 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
   extrapolate(residual,solution,other,options);
   m_updateFunction(residual,solution,m_updateShift);
   calculateErrors(solution);
+  moderateUpdate(solution);
   return m_error < m_thresh;
 }
 
@@ -40,6 +41,11 @@ bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSe
         std::cout << "iteration "<<iteration<<", error["<<m_worst<<"] = "<<m_error <<std::endl;
     }
   return converged;
+}
+
+void IterativeSolverBase::moderateUpdate(ParameterVectorSet &solution)
+{
+
 }
 
 void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution)

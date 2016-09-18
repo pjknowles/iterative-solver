@@ -104,6 +104,10 @@ namespace IterativeSolver {
     void axpy(ParameterScalar a, const ParameterVectorSet& other) {
       for (size_t k=0; k<size(); k++) this->pvs[k].axpy(a,other[k]);
     }
+    /*!
+     * \brief Set the contents of the object to zero.
+     */
+    void zero() { for (size_t k=0; k<size(); k++) this->pvs[k].zero(); }
 
       /*!
        * \brief A place to record whether each member of the set is meant to be considered active

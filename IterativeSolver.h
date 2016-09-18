@@ -91,6 +91,9 @@ public:
   /*!
    * \brief Set convergence threshold
    */
+
+  virtual void moderateUpdate(ParameterVectorSet & solution);
+
   void setThresholds(double thresh) { m_thresh=thresh;}
 
 public:

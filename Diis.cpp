@@ -5,6 +5,8 @@ using namespace IterativeSolver;
 DIIS::DIIS(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
   : IterativeSolverBase(updateFunction, residualFunction)
 {
+  m_orthogonalize = false;
+  m_true_extrapolated_residual = false;
   setOptions();
   Reset();
 }

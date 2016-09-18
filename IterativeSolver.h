@@ -92,7 +92,7 @@ public:
    * \brief Set convergence threshold
    */
 
-  virtual void moderateUpdate(ParameterVectorSet & solution);
+  virtual void adjustUpdate(ParameterVectorSet & solution);
 
   void setThresholds(double thresh) { m_thresh=thresh;}
 
@@ -103,11 +103,13 @@ public:
   std::vector<double> m_errors; //!< Error at last iteration
   double m_error; //!< worst error at last iteration
   size_t m_worst; //!< worst-converged solution, ie m_error = m_errors[m_worst]
+  bool m_orthogonalize; ///< Whether or not to orthogonalize the result of update() to all previous expansion vectors (appropriate only for linear methods).
+  bool m_true_extrapolated_residual; ///< true for linear matrix methods, where the extrapolated residual is faithful, but false for non-linear equation solvers where it isn't.
 
 protected:
   virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
   virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="") { ParameterVectorSet other; extrapolate(residual,solution,other,options); }
-  void calculateErrors(const ParameterVectorSet & solution);
+  void calculateErrors(const ParameterVectorSet & solution, const ParameterVectorSet &residual);
   std::vector<ParameterVectorSet> m_residuals;
   std::vector<ParameterVectorSet> m_solutions;
   std::vector<ParameterVectorSet> m_others;

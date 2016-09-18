@@ -3,8 +3,10 @@ using namespace IterativeSolver;
 
 Davidson::Davidson(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
   : IterativeSolverBase(updateFunction, residualFunction)
-  , m_roots(-1), m_orthogonalize(true)
+  , m_roots(-1)
 {
+  m_orthogonalize = true;
+  m_true_extrapolated_residual = true;
 }
 
 void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options)
@@ -33,14 +35,17 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
       }
     }
   std::cout << "Davidson::extrapolate m_SubspaceMatrix: "<<m_SubspaceMatrix<<std::endl;
+  std::cout << "Davidson::extrapolate m_SubspaceOverlap: "<<m_SubspaceOverlap<<std::endl;
   {
   Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> s(m_SubspaceMatrix,m_SubspaceOverlap);
   m_Eigenvalues=s.eigenvalues();
+  std::cout << "Unsorted eigenvalues: "<<s.eigenvalues()<<std::endl;
   m_SubspaceEigenvectors=s.eigenvectors();
   // sort
   std::vector<size_t> map;
   for (size_t k=0; k<m_SubspaceMatrix.rows(); k++) {
-      size_t ll=0;
+      size_t ll;
+      for (ll=0; std::count(map.begin(),map.end(),ll)!=0; ll++) ;
       for (size_t l=0; l<m_SubspaceMatrix.rows(); l++) {
           if (std::count(map.begin(),map.end(),l)==0) {
               if (s.eigenvalues()(l).real() < s.eigenvalues()(ll).real())
@@ -83,6 +88,12 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
   std::cout << "exit from extrapolate, solution "<<solution<<std::endl;
 }
 
+Eigen::VectorXd Davidson::eigenvalues()
+{
+Eigen::VectorXd result(m_roots);
+  for (size_t root=0; root<m_roots; root++) result(root)=m_Eigenvalues[root].real();
+  return result;
+}
 
 static Eigen::MatrixXd testmatrix;
 
@@ -112,7 +123,7 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity)
   testmatrix.resize(dimension,dimension);
   for (size_t k=0; k<dimension; k++)
     for (size_t l=0; l<dimension; l++)
-      testmatrix(l,k)=1;
+      testmatrix(l,k)=-1;
 
   Davidson d(&_updater,&_residual);
   d.m_roots=roots;
@@ -122,13 +133,17 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity)
   ParameterVectorSet g;
   for (size_t root=0; root<d.m_roots; root++) {
       x.push_back(ParameterVector(dimension));
-      x.front().zero();x.front()[root]=1;
+      x.back().zero();x.back()[root]=1;
+      std::cout << "x.size() "<<x.size()<<std::endl;
+      std::cout << "x.back() "<<x.back()<<std::endl;
       g.push_back(ParameterVector(dimension));
     }
   std::cout << "roots="<<roots<<std::endl;
   std::cout << "initial x="<<x<<std::endl;
 
   d.solve(g,x);
+
+  std::cout << "Eigenvalues: "<<d.eigenvalues()<<std::endl;
 
 
 }

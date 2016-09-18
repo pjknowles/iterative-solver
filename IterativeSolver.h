@@ -109,6 +109,7 @@ protected:
   std::vector<ParameterVectorSet> m_solutions;
   std::vector<ParameterVectorSet> m_others;
   size_t m_lastVectorIndex;
+  std::vector<ParameterScalar> m_updateShift;
 };
 }
 

@@ -18,7 +18,7 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
   m_residuals.push_back(residual); m_solutions.push_back(solution); m_others.push_back(other);
   m_lastVectorIndex=m_residuals.size()-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
   extrapolate(residual,solution,other,options);
-  m_updateFunction(residual,solution,std::vector<ParameterScalar>());
+  m_updateFunction(residual,solution,m_updateShift);
   calculateErrors(solution);
   return m_error < m_thresh;
 }

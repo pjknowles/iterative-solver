@@ -10,22 +10,16 @@ class Davidson : public IterativeSolverBase
 public:
     Davidson();
     Davidson(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
-    public:
-      /*!
-       * \brief Take, a current expansion vector and residual, and return new expansion vector.
-       * \param residual
-       * \param solution
-       * \return Whether or not convergence has been reached.
-       */
-      bool iterate(const ParameterVectorSet & residual, ParameterVectorSet & solution);
-      /*!
-       * \brief Solve iteratively by repeated calls to residualFunction() and iterate().
-       * \param residual Ignored on input; on exit, contains the final residual; used as working space.
-       * \param solution On input, contains an initial guess; on exit, contains the final solution.
-       */
-      void solve(ParameterVectorSet & residual, ParameterVectorSet & solution);
+    static void test(size_t dimension, size_t roots=1, int verbosity=0);
+protected:
+  virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
+public:
+      int m_roots; ///< How many roots to calculate (defaults to size of solution and residual vectors)
 private:
     Eigen::MatrixXd m_SubspaceMatrix;
+    Eigen::MatrixXd m_SubspaceOverlap;
+    Eigen::MatrixXd m_SubspaceEigenvectors;
+    Eigen::VectorXd m_Eigenvalues;
 };
 }
 

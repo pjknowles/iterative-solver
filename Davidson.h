@@ -10,7 +10,7 @@ class Davidson : public IterativeSolverBase
 public:
     Davidson();
     Davidson(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
-    static void test(size_t dimension, size_t roots=1, int verbosity=0);
+    static void test(size_t dimension, size_t roots=1, int verbosity=0, int problem=0);
 protected:
   virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
 public:

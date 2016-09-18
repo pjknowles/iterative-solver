@@ -119,12 +119,19 @@ static void _updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, s
 }
 
 
-void Davidson::test(size_t dimension, size_t roots, int verbosity)
+void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
 {
   testmatrix.resize(dimension,dimension);
   for (size_t k=0; k<dimension; k++)
     for (size_t l=0; l<dimension; l++)
-      testmatrix(l,k)=-1;
+      if (problem==0)
+        testmatrix(l,k)=-1;
+      else if (problem==1)
+        testmatrix(l,k)=l+k+2;
+      else if (problem==2)
+        testmatrix(l,k)=( k==l ? k+1 : 1);
+      else
+        throw std::logic_error("invalid problem in Davidson::test");
 
   Davidson d(&_updater,&_residual);
   d.m_roots=roots;

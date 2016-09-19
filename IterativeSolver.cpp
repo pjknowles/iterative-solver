@@ -147,9 +147,3 @@ void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, co
   m_error = *max_element(m_errors.begin(),m_errors.end());
   m_worst = max_element(m_errors.begin(),m_errors.end())-m_errors.begin();
 }
-
-#if defined(__PGI) && ! defined(MOLPRO)
-// https://www.molpro.net/bugzilla/show_bug.cgi?id=5012
-__m128d _mm_castsi128_pd(__m128i x) { __m128d result; memcpy(&result,&x,16); }
-__m128i _mm_castpd_si128(__m128d x) { __m128i result; memcpy(&result,&x,16); }
-#endif

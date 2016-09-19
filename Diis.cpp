@@ -65,7 +65,7 @@ void DIIS::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
     Out = es.eigenvectors() * Xv;
     if (m_verbosity > 1) std::cout << "Out="<<Out<<std::endl;
     Out=Out.block(0,0,Out.size()-1,1);
-//    std::cout << "Out="<<Out<<std::endl;
+    if (m_verbosity > 1) std::cout << "Out="<<Out<<std::endl;
 }
 
 

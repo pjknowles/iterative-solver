@@ -34,7 +34,6 @@ void IterativeSolverBase::extrapolate(ParameterVectorSet & residual, ParameterVe
 bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options)
 {
   bool converged=false;
-  size_t max_iterations=1000; //FIXME
   for (size_t iteration=1; iteration <= m_maxIterations && not converged; iteration++) {
       m_residualFunction(solution,residual,std::vector<double>());
       converged = iterate(residual,solution);
@@ -147,3 +146,9 @@ void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, co
   m_error = *max_element(m_errors.begin(),m_errors.end());
   m_worst = max_element(m_errors.begin(),m_errors.end())-m_errors.begin();
 }
+
+#if defined(__PGI) && ! defined(MOLPRO)
+// https://www.molpro.net/bugzilla/show_bug.cgi?id=5012
+__m128d _mm_castsi128_pd(__m128i x) { throw std::logic_error("undefined cast function called"); }
+__m128i _mm_castpd_si128(__m128d x) { throw std::logic_error("undefined cast function called"); }
+#endif

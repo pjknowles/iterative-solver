@@ -110,12 +110,18 @@ public:
 protected:
   virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
   virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="") { ParameterVectorSet other; extrapolate(residual,solution,other,options); }
+  void calculateSubspaceMatrix(ParameterVectorSet & residual, ParameterVectorSet & solution);
+  void diagonalizeSubspaceMatrix();
   void calculateErrors(const ParameterVectorSet & solution, const ParameterVectorSet &residual);
   std::vector<ParameterVectorSet> m_residuals;
   std::vector<ParameterVectorSet> m_solutions;
   std::vector<ParameterVectorSet> m_others;
   size_t m_lastVectorIndex;
   std::vector<ParameterScalar> m_updateShift;
+  Eigen::MatrixXd m_subspaceMatrix;
+  Eigen::MatrixXd m_subspaceOverlap;
+  Eigen::MatrixXcd m_subspaceEigenvectors;
+  Eigen::VectorXcd m_subspaceEigenvalues;
 };
 }
 

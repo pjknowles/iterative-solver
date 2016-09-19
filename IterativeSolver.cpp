@@ -1,6 +1,7 @@
 #include "IterativeSolver.h"
 #include <algorithm>
 #include <numeric>
+#include <stdexcept>
 
 using namespace IterativeSolver;
 

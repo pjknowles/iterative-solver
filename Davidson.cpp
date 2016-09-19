@@ -5,8 +5,8 @@ Davidson::Davidson(ParameterSetTransformation updateFunction, ParameterSetTransf
   : IterativeSolverBase(updateFunction, residualFunction)
   , m_roots(-1), m_singularity_shift(1e-8)
 {
+  m_linear = true;
   m_orthogonalize = true;
-  m_true_extrapolated_residual = true;
 }
 
 void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options)
@@ -96,6 +96,7 @@ std::vector<double> result;
   return result;
 }
 
+// testing code below here
 static Eigen::MatrixXd testmatrix;
 
 static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>()) {
@@ -121,6 +122,7 @@ static void _updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, s
 
 void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
 {
+  std::cout << "Test IterativeSolver::Davidson dimension="<<dimension<<", roots="<<roots<<", problem="<<problem<<std::endl;
   testmatrix.resize(dimension,dimension);
   for (size_t k=0; k<dimension; k++)
     for (size_t l=0; l<dimension; l++)
@@ -151,6 +153,17 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
 
   std::vector<double> ev=d.eigenvalues();
   std::cout << "Eigenvalues: "; for (std::vector<double>::const_iterator e=ev.begin(); e!=ev.end(); e++) std::cout<<" "<<*e;std::cout<<std::endl;
+  std::cout << "Reported errors: "; for (std::vector<double>::const_iterator e=d.m_errors.begin(); e!=d.m_errors.end(); e++) std::cout<<" "<<*e;std::cout<<std::endl;
+
+  _residual(g,x);
+  std::vector<double> errors;
+  for (size_t root=0; root<d.m_roots; root++) {
+      g[root].axpy(-ev[root],x[root]);
+      errors.push_back(g[root]*g[root]);
+    }
+  std::cout << "Square residual norms: "; for (std::vector<double>::const_iterator e=errors.begin(); e!=errors.end(); e++) std::cout<<" "<<*e;std::cout<<std::endl;
+  // be noisy about obvious problems
+  if (*std::max_element(errors.begin(),errors.end())>1e-8) throw std::runtime_error("IterativeSolver::Davidson has failed tests");
 
 
 }

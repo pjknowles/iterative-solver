@@ -6,7 +6,6 @@ DIIS::DIIS(ParameterSetTransformation updateFunction, ParameterSetTransformation
   : IterativeSolverBase(updateFunction, residualFunction)
 {
   m_orthogonalize = false;
-  m_true_extrapolated_residual = false;
   setOptions();
   Reset();
 }

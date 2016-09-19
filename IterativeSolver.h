@@ -97,6 +97,8 @@ public:
   void setThresholds(double thresh) { m_thresh=thresh;}
 
 public:
+  bool m_linear; ///< Whether residuals are linear functions of the corresponding expansion vectors.
+  bool m_hermitian; ///< Whether residuals can be assumed to be the action of an underlying self-adjoint operator.
   int m_verbosity; //!< How much to print.
   int m_maxIterations; //!< Maximum number of iterations in solve()
   double m_thresh; //!< If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
@@ -104,7 +106,6 @@ public:
   double m_error; //!< worst error at last iteration
   size_t m_worst; //!< worst-converged solution, ie m_error = m_errors[m_worst]
   bool m_orthogonalize; ///< Whether or not to orthogonalize the result of update() to all previous expansion vectors (appropriate only for linear methods).
-  bool m_true_extrapolated_residual; ///< true for linear matrix methods, where the extrapolated residual is faithful, but false for non-linear equation solvers where it isn't.
 
 protected:
   virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");

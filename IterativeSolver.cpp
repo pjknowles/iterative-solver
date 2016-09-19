@@ -5,7 +5,8 @@
 using namespace IterativeSolver;
 
 IterativeSolverBase::IterativeSolverBase(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
-:  m_updateFunction(updateFunction), m_residualFunction(residualFunction), m_verbosity(0), m_thresh(1e-12), m_maxIterations(1000), m_orthogonalize(false), m_true_extrapolated_residual(false)
+:  m_updateFunction(updateFunction), m_residualFunction(residualFunction), m_verbosity(0), m_thresh(1e-12), m_maxIterations(1000), m_orthogonalize(false)
+, m_linear(false), m_hermitian(false)
 {}
 
 IterativeSolverBase::~IterativeSolverBase()
@@ -84,7 +85,7 @@ void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, co
   step.axpy(-1,m_solutions[m_lastVectorIndex]);
   m_errors.clear();
   for (size_t k=0; k<solution.size(); k++)
-    if (m_true_extrapolated_residual)
+    if (m_linear) // we can use the extrapolated residual if the problem is linear
       m_errors.push_back(residual.active[k] ? std::fabs(residual[k]*step[k]) : 0);
     else
       m_errors.push_back(m_residuals[m_lastVectorIndex].active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]*step[k]) : 0);

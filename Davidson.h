@@ -16,8 +16,6 @@ protected:
 public:
       int m_roots; ///< How many roots to calculate (defaults to size of solution and residual vectors)
       std::vector<double> eigenvalues(); ///< The calculated eigenvalues
-private:
-    double m_singularity_shift; ///< Amount added to shifts to avoid 0/0
 };
 }
 

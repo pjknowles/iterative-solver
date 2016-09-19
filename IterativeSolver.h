@@ -122,6 +122,7 @@ protected:
   Eigen::MatrixXd m_subspaceOverlap;
   Eigen::MatrixXcd m_subspaceEigenvectors;
   Eigen::VectorXcd m_subspaceEigenvalues;
+  double m_singularity_shift; ///< Amount added to shifts to avoid 0/0
 };
 }
 

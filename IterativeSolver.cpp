@@ -6,7 +6,7 @@ using namespace IterativeSolver;
 
 IterativeSolverBase::IterativeSolverBase(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
 :  m_updateFunction(updateFunction), m_residualFunction(residualFunction), m_verbosity(0), m_thresh(1e-12), m_maxIterations(1000), m_orthogonalize(false)
-, m_linear(false), m_hermitian(false)
+, m_linear(false), m_hermitian(false), m_singularity_shift(1e-8)
 {}
 
 IterativeSolverBase::~IterativeSolverBase()

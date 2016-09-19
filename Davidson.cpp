@@ -4,7 +4,7 @@ using namespace IterativeSolver;
 
 Davidson::Davidson(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
   : IterativeSolverBase(updateFunction, residualFunction)
-  , m_roots(-1), m_singularity_shift(1e-8)
+  , m_roots(-1)
 {
   m_linear = true;
   m_orthogonalize = true;

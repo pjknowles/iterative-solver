@@ -1,6 +1,7 @@
 #include "Diis.h"
 #include "Davidson.h"
 
+extern "C" { void IterativeSolverFTest();}
 int main(int argc, char *argv[])
 {
   IterativeSolver::DIIS::test(1);
@@ -14,5 +15,6 @@ int main(int argc, char *argv[])
   IterativeSolver::Davidson::test(9,1,1,1);
   IterativeSolver::Davidson::test(9,1,1,2);
 //  IterativeSolver::Davidson::test(9,2,9,1);
+  IterativeSolverFTest();
   return 0;
 }

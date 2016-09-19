@@ -1,4 +1,5 @@
 #include "Diis.h"
+#include <stdexcept>
 
 using namespace IterativeSolver;
 

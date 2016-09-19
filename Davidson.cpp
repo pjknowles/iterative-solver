@@ -1,4 +1,5 @@
 #include "Davidson.h"
+#include <stdexcept>
 using namespace IterativeSolver;
 
 Davidson::Davidson(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)

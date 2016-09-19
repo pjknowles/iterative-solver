@@ -15,9 +15,9 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
 //  std::cout << "entry to extrapolate, residual "<<residual<<std::endl;
 //  std::cout << "entry to extrapolate, solution "<<solution<<std::endl;
   if (m_roots<1) m_roots=solution.size(); // number of roots defaults to size of solution
-  size_t old_size=m_SubspaceMatrix.rows();
-  m_SubspaceMatrix.conservativeResize(old_size+residual.size(),old_size+residual.size());
-  m_SubspaceOverlap.conservativeResize(old_size+residual.size(),old_size+residual.size());
+  size_t old_size=m_subspaceMatrix.rows();
+  m_subspaceMatrix.conservativeResize(old_size+residual.size(),old_size+residual.size());
+  m_subspaceOverlap.conservativeResize(old_size+residual.size(),old_size+residual.size());
   size_t k=old_size;
   for (size_t kkk=0; kkk<residual.size(); kkk++) {
       if (residual.active[kkk]) {
@@ -25,8 +25,8 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
       for (size_t ll=0; ll<m_solutions.size(); ll++) {
           for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
               if (m_solutions[ll].active[lll]) {
-                  m_SubspaceMatrix(k,l) = m_SubspaceMatrix(l,k) = m_solutions[ll][lll] * residual[kkk];
-                  m_SubspaceOverlap(k,l) = m_SubspaceOverlap(l,k) = m_solutions[ll][lll] * solution[kkk];
+                  m_subspaceMatrix(k,l) = m_subspaceMatrix(l,k) = m_solutions[ll][lll] * residual[kkk];
+                  m_subspaceOverlap(k,l) = m_subspaceOverlap(l,k) = m_solutions[ll][lll] * solution[kkk];
                   l++;
                 }
             }
@@ -35,37 +35,37 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
       }
     }
   if (m_verbosity>3) {
-      std::cout << "Davidson::extrapolate m_SubspaceMatrix: "<<m_SubspaceMatrix<<std::endl;
-      std::cout << "Davidson::extrapolate m_SubspaceOverlap: "<<m_SubspaceOverlap<<std::endl;
+      std::cout << "Davidson::extrapolate m_subspaceMatrix: "<<m_subspaceMatrix<<std::endl;
+      std::cout << "Davidson::extrapolate m_subspaceOverlap: "<<m_subspaceOverlap<<std::endl;
     }
   {
-  Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> s(m_SubspaceMatrix,m_SubspaceOverlap);
-  m_Eigenvalues=s.eigenvalues();
-  m_SubspaceEigenvectors=s.eigenvectors();
+  Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> s(m_subspaceMatrix,m_subspaceOverlap);
+  m_subspaceEigenvalues=s.eigenvalues();
+  m_subspaceEigenvectors=s.eigenvectors();
   // sort
   std::vector<size_t> map;
-  for (size_t k=0; k<m_SubspaceMatrix.rows(); k++) {
+  for (size_t k=0; k<m_subspaceMatrix.rows(); k++) {
       size_t ll;
       for (ll=0; std::count(map.begin(),map.end(),ll)!=0; ll++) ;
-      for (size_t l=0; l<m_SubspaceMatrix.rows(); l++) {
+      for (size_t l=0; l<m_subspaceMatrix.rows(); l++) {
           if (std::count(map.begin(),map.end(),l)==0) {
               if (s.eigenvalues()(l).real() < s.eigenvalues()(ll).real())
                   ll=l;
           }
       }
       map.push_back(ll);
-      m_Eigenvalues[k]=s.eigenvalues()(ll);
-      for (size_t l=0; l<m_SubspaceMatrix.rows(); l++) m_SubspaceEigenvectors(l,k)=s.eigenvectors()(l,ll);
+      m_subspaceEigenvalues[k]=s.eigenvalues()(ll);
+      for (size_t l=0; l<m_subspaceMatrix.rows(); l++) m_subspaceEigenvectors(l,k)=s.eigenvectors()(l,ll);
   }
-  Eigen::MatrixXcd overlap=m_SubspaceEigenvectors.transpose()*m_SubspaceOverlap*m_SubspaceEigenvectors;
+  Eigen::MatrixXcd overlap=m_subspaceEigenvectors.transpose()*m_subspaceOverlap*m_subspaceEigenvectors;
   for (size_t k=0; k<overlap.rows(); k++)
       for (size_t l=0; l<overlap.rows(); l++)
-          m_SubspaceEigenvectors(l,k) /= std::sqrt(overlap(k,k).real());
+          m_subspaceEigenvectors(l,k) /= std::sqrt(overlap(k,k).real());
   }
 
 
-  if (m_verbosity>1) std::cout << "Subspace eigenvalues"<<std::endl<<m_Eigenvalues<<std::endl;
-  if (m_verbosity>2) std::cout << "Subspace eigenvectors"<<std::endl<<m_SubspaceEigenvectors<<std::endl;
+  if (m_verbosity>1) std::cout << "Subspace eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
+  if (m_verbosity>2) std::cout << "Subspace eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
   residual.zero();
   solution.zero();
   for (size_t kkk=0; kkk<residual.size(); kkk++) {
@@ -73,17 +73,17 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
       for (size_t ll=0; ll<m_solutions.size(); ll++) {
           for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
               if (m_solutions[ll].active[lll]) {
-                  solution[kkk].axpy(m_SubspaceEigenvectors(l,kkk).real(),m_solutions[ll][lll]);
-                  residual[kkk].axpy(m_SubspaceEigenvectors(l,kkk).real(),m_residuals[ll][lll]);
+                  solution[kkk].axpy(m_subspaceEigenvectors(l,kkk).real(),m_solutions[ll][lll]);
+                  residual[kkk].axpy(m_subspaceEigenvectors(l,kkk).real(),m_residuals[ll][lll]);
                   l++;
               }
           }
       }
-      residual[kkk].axpy(-m_Eigenvalues(kkk).real(),solution[kkk]);
+      residual[kkk].axpy(-m_subspaceEigenvalues(kkk).real(),solution[kkk]);
   }
 
   m_updateShift.resize(m_roots);
-  for (size_t root=0; root<m_roots; root++) m_updateShift[root]=m_singularity_shift-m_Eigenvalues[root].real();
+  for (size_t root=0; root<m_roots; root++) m_updateShift[root]=m_singularity_shift-m_subspaceEigenvalues[root].real();
 
 //  std::cout << "exit from extrapolate, residual "<<residual<<std::endl;
 //  std::cout << "exit from extrapolate, solution "<<solution<<std::endl;
@@ -92,7 +92,7 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
 std::vector<double> Davidson::eigenvalues()
 {
 std::vector<double> result;
-  for (size_t root=0; root<m_roots; root++) result.push_back(m_Eigenvalues[root].real());
+  for (size_t root=0; root<m_roots; root++) result.push_back(m_subspaceEigenvalues[root].real());
   return result;
 }
 

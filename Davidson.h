@@ -17,10 +17,10 @@ public:
       int m_roots; ///< How many roots to calculate (defaults to size of solution and residual vectors)
       std::vector<double> eigenvalues(); ///< The calculated eigenvalues
 private:
-    Eigen::MatrixXd m_SubspaceMatrix;
-    Eigen::MatrixXd m_SubspaceOverlap;
-    Eigen::MatrixXcd m_SubspaceEigenvectors;
-    Eigen::VectorXcd m_Eigenvalues;
+    Eigen::MatrixXd m_subspaceMatrix;
+    Eigen::MatrixXd m_subspaceOverlap;
+    Eigen::MatrixXcd m_subspaceEigenvectors;
+    Eigen::VectorXcd m_subspaceEigenvalues;
     double m_singularity_shift; ///< Amount added to shifts to avoid 0/0
 };
 }

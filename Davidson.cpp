@@ -14,14 +14,14 @@ Davidson::Davidson(ParameterSetTransformation updateFunction, ParameterSetTransf
 void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options)
 {
   assert(solution.size()==residual.size());
-//  std::cout << "entry to extrapolate, residual "<<residual<<std::endl;
-//  std::cout << "entry to extrapolate, solution "<<solution<<std::endl;
+//  xout << "entry to extrapolate, residual "<<residual<<std::endl;
+//  xout << "entry to extrapolate, solution "<<solution<<std::endl;
   if (m_roots<1) m_roots=solution.size(); // number of roots defaults to size of solution
   calculateSubspaceMatrix(residual,solution);
   diagonalizeSubspaceMatrix();
 
-  if (m_verbosity>1) std::cout << "Subspace eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
-  if (m_verbosity>2) std::cout << "Subspace eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
+  if (m_verbosity>1) xout << "Subspace eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
+  if (m_verbosity>2) xout << "Subspace eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
   residual.zero();
   solution.zero();
   for (size_t kkk=0; kkk<residual.size(); kkk++) {
@@ -39,16 +39,16 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
   }
 
   m_updateShift.resize(m_roots);
-  for (size_t root=0; root<m_roots; root++) m_updateShift[root]=m_singularity_shift-m_subspaceEigenvalues[root].real();
+  for (size_t root=0; root<(size_t)m_roots; root++) m_updateShift[root]=m_singularity_shift-m_subspaceEigenvalues[root].real();
 
-//  std::cout << "exit from extrapolate, residual "<<residual<<std::endl;
-//  std::cout << "exit from extrapolate, solution "<<solution<<std::endl;
+//  xout << "exit from extrapolate, residual "<<residual<<std::endl;
+//  xout << "exit from extrapolate, solution "<<solution<<std::endl;
 }
 
 std::vector<double> Davidson::eigenvalues()
 {
 std::vector<double> result;
-  for (size_t root=0; root<m_roots; root++) result.push_back(m_subspaceEigenvalues[root].real());
+  for (size_t root=0; root<(size_t)m_roots; root++) result.push_back(m_subspaceEigenvalues[root].real());
   return result;
 }
 
@@ -58,27 +58,27 @@ static Eigen::MatrixXd testmatrix;
 static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>()) {
   for (size_t k=0; k<psx.size(); k++) {
     Eigen::VectorXd x(testmatrix.rows());
-    for (size_t l=0; l<testmatrix.rows(); l++) x[l] = psx[k][l];
+    for (size_t l=0; l<(size_t)testmatrix.rows(); l++) x[l] = psx[k][l];
     Eigen::VectorXd res = testmatrix * x;
-    for (size_t l=0; l<testmatrix.rows(); l++) outputs[k][l]=res[l];
+    for (size_t l=0; l<(size_t)testmatrix.rows(); l++) outputs[k][l]=res[l];
     }
 }
 
 static void _updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift) {
-//  std::cout << "updater: shift.size()="<<shift.size()<<std::endl;
-//  std::cout << "updater: psc="<<psc<<std::endl;
-//  std::cout << "updater: psg="<<psg<<std::endl;
+//  xout << "updater: shift.size()="<<shift.size()<<std::endl;
+//  xout << "updater: psc="<<psc<<std::endl;
+//  xout << "updater: psg="<<psg<<std::endl;
   for (size_t k=0; k<psc.size(); k++) {
-//      std::cout << "shift "<<shift[k]<<std::endl;
-    for (size_t l=0; l<testmatrix.rows(); l++)  psc[k][l] -= psg[k][l]/(testmatrix(l,l)+shift[k]);
+//      xout << "shift "<<shift[k]<<std::endl;
+    for (size_t l=0; l<(size_t)testmatrix.rows(); l++)  psc[k][l] -= psg[k][l]/(testmatrix(l,l)+shift[k]);
     }
-//  std::cout << "updater: psc="<<psc<<std::endl;
+//  xout << "updater: psc="<<psc<<std::endl;
 }
 
 
 void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
 {
-  std::cout << "Test IterativeSolver::Davidson dimension="<<dimension<<", roots="<<roots<<", problem="<<problem<<std::endl;
+  xout << "Test IterativeSolver::Davidson dimension="<<dimension<<", roots="<<roots<<", problem="<<problem<<std::endl;
   testmatrix.resize(dimension,dimension);
   for (size_t k=0; k<dimension; k++)
     for (size_t l=0; l<dimension; l++)
@@ -97,27 +97,27 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
   d.m_maxIterations=dimension;
   ParameterVectorSet x;
   ParameterVectorSet g;
-  for (size_t root=0; root<d.m_roots; root++) {
+  for (size_t root=0; root<(size_t)d.m_roots; root++) {
       x.push_back(ParameterVector(dimension));
       x.back().zero();x.back()[root]=1;
       g.push_back(ParameterVector(dimension));
     }
-  std::cout << "roots="<<roots<<std::endl;
-  std::cout << "initial x="<<x<<std::endl;
+  xout << "roots="<<roots<<std::endl;
+  xout << "initial x="<<x<<std::endl;
 
   d.solve(g,x);
 
   std::vector<double> ev=d.eigenvalues();
-  std::cout << "Eigenvalues: "; for (std::vector<double>::const_iterator e=ev.begin(); e!=ev.end(); e++) std::cout<<" "<<*e;std::cout<<std::endl;
-  std::cout << "Reported errors: "; for (std::vector<double>::const_iterator e=d.m_errors.begin(); e!=d.m_errors.end(); e++) std::cout<<" "<<*e;std::cout<<std::endl;
+  xout << "Eigenvalues: "; for (std::vector<double>::const_iterator e=ev.begin(); e!=ev.end(); e++) xout<<" "<<*e;xout<<std::endl;
+  xout << "Reported errors: "; for (std::vector<double>::const_iterator e=d.m_errors.begin(); e!=d.m_errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
 
   _residual(g,x);
   std::vector<double> errors;
-  for (size_t root=0; root<d.m_roots; root++) {
+  for (size_t root=0; root<(size_t)d.m_roots; root++) {
       g[root].axpy(-ev[root],x[root]);
       errors.push_back(g[root]*g[root]);
     }
-  std::cout << "Square residual norms: "; for (std::vector<double>::const_iterator e=errors.begin(); e!=errors.end(); e++) std::cout<<" "<<*e;std::cout<<std::endl;
+  xout << "Square residual norms: "; for (std::vector<double>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
   // be noisy about obvious problems
   if (*std::max_element(errors.begin(),errors.end())>1e-8) throw std::runtime_error("IterativeSolver::Davidson has failed tests");
 

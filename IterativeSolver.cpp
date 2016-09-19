@@ -35,11 +35,11 @@ void IterativeSolverBase::extrapolate(ParameterVectorSet & residual, ParameterVe
 bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options)
 {
   bool converged=false;
-  for (size_t iteration=1; iteration <= m_maxIterations && not converged; iteration++) {
+  for (int iteration=1; iteration <= m_maxIterations && not converged; iteration++) {
       m_residualFunction(solution,residual,std::vector<double>());
       converged = iterate(residual,solution);
       if (m_verbosity>0)
-        std::cout << "iteration "<<iteration<<", error["<<m_worst<<"] = "<<m_error <<std::endl;
+        xout << "iteration "<<iteration<<", error["<<m_worst<<"] = "<<m_error <<std::endl;
     }
   return converged;
 }
@@ -49,7 +49,7 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
   for (size_t k=0; k<solution.size(); k++)
     solution.active[k] = (m_errors[k] > m_thresh);
   if (m_orthogonalize) {
-//      std::cout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
+//      xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
       for (size_t kkk=0; kkk<solution.size(); kkk++) {
           if (solution.active[kkk]) {
               size_t l=0;
@@ -75,7 +75,7 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
                 solution[kkk].axpy(1/std::sqrt(s)-1,solution[kkk]);
             }
         }
-//      std::cout << "IterativeSolverBase::adjustUpdate solution after orthogonalization: "<<solution<<std::endl;
+//      xout << "IterativeSolverBase::adjustUpdate solution after orthogonalization: "<<solution<<std::endl;
     }
 }
 
@@ -101,8 +101,8 @@ void IterativeSolverBase::calculateSubspaceMatrix(ParameterVectorSet &residual, 
       }
     }
   if (m_verbosity>3) {
-      std::cout << "m_subspaceMatrix: "<<m_subspaceMatrix<<std::endl;
-      std::cout << "m_subspaceOverlap: "<<m_subspaceOverlap<<std::endl;
+      xout << "m_subspaceMatrix: "<<m_subspaceMatrix<<std::endl;
+      xout << "m_subspaceOverlap: "<<m_subspaceOverlap<<std::endl;
     }
 
 }
@@ -114,10 +114,10 @@ void IterativeSolverBase::diagonalizeSubspaceMatrix()
   m_subspaceEigenvectors=s.eigenvectors();
   // sort
   std::vector<size_t> map;
-  for (size_t k=0; k<m_subspaceMatrix.rows(); k++) {
+  for (Eigen::Index k=0; k<m_subspaceMatrix.rows(); k++) {
       size_t ll;
       for (ll=0; std::count(map.begin(),map.end(),ll)!=0; ll++) ;
-      for (size_t l=0; l<m_subspaceMatrix.rows(); l++) {
+      for (Eigen::Index l=0; l<m_subspaceMatrix.rows(); l++) {
           if (std::count(map.begin(),map.end(),l)==0) {
               if (s.eigenvalues()(l).real() < s.eigenvalues()(ll).real())
                   ll=l;
@@ -125,11 +125,11 @@ void IterativeSolverBase::diagonalizeSubspaceMatrix()
       }
       map.push_back(ll);
       m_subspaceEigenvalues[k]=s.eigenvalues()(ll);
-      for (size_t l=0; l<m_subspaceMatrix.rows(); l++) m_subspaceEigenvectors(l,k)=s.eigenvectors()(l,ll);
+      for (Eigen::Index l=0; l<m_subspaceMatrix.rows(); l++) m_subspaceEigenvectors(l,k)=s.eigenvectors()(l,ll);
   }
   Eigen::MatrixXcd overlap=m_subspaceEigenvectors.transpose()*m_subspaceOverlap*m_subspaceEigenvectors;
-  for (size_t k=0; k<overlap.rows(); k++)
-      for (size_t l=0; l<overlap.rows(); l++)
+  for (Eigen::Index k=0; k<overlap.rows(); k++)
+      for (Eigen::Index l=0; l<overlap.rows(); l++)
           m_subspaceEigenvectors(l,k) /= std::sqrt(overlap(k,k).real());
   }
 

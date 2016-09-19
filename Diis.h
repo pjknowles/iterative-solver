@@ -22,7 +22,7 @@ namespace IterativeSolver {
  * for (int iteration=1; iteration < 1000 && d.fLastResidual() > 1e-25; iteration++) {
  *     g[0]=2*x[0]-2+400*x[0]*(x[0]*x[0]-x[1]); g[1]=200*(x[1]-x[0]*x[0]); // Rosenbrock function gradient
  *     d.iterate(&g[0],&x[0]);
- *     std::cout << "iteration "<<iteration<<", Residual norm = "<<std::sqrt(d.fLastResidual())
+ *     xout << "iteration "<<iteration<<", Residual norm = "<<std::sqrt(d.fLastResidual())
  *                 << ", Distance from solution = "<<std::sqrt((x[0]-1)*(x[0]-1)+(x[1]-1)*(x[1]-1))<<std::endl;
  *   }
  * \endcode
@@ -126,8 +126,7 @@ public:
   void setOptions(size_t maxDim=6,
                   double acceptanceThreshold=1e6,
                   enum DIISmode_type mode=KAINmode)
-  { std::cout << "KAIN setOptions"<<std::endl;
-      DIIS::setOptions(maxDim,acceptanceThreshold,mode); }
+  { DIIS::setOptions(maxDim,acceptanceThreshold,mode); }
 private:
   KAIN();
 };

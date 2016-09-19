@@ -150,6 +150,6 @@ void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, co
 
 #if defined(__PGI) && ! defined(MOLPRO)
 // https://www.molpro.net/bugzilla/show_bug.cgi?id=5012
-__m128d _mm_castsi128_pd(__m128i x) { throw std::logic_error("undefined cast function called"); }
-__m128i _mm_castpd_si128(__m128d x) { throw std::logic_error("undefined cast function called"); }
+__m128d _mm_castsi128_pd(__m128i x) { __m128d result; memcpy(&result,&x,16); }
+__m128i _mm_castpd_si128(__m128d x) { __m128i result; memcpy(&result,&x,16); }
 #endif

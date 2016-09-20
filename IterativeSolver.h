@@ -97,7 +97,6 @@ public:
    * \brief Set convergence threshold
    */
 
-  virtual void adjustUpdate(ParameterVectorSet & solution);
 
   void setThresholds(double thresh) { m_thresh=thresh;}
 
@@ -113,6 +112,7 @@ public:
   bool m_hermitian; ///< Whether residuals can be assumed to be the action of an underlying self-adjoint operator.
 
 protected:
+  virtual void adjustUpdate(ParameterVectorSet & solution);
   virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
   virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="") { ParameterVectorSet other; extrapolate(residual,solution,other,options); }
   void calculateSubspaceMatrix(ParameterVectorSet & residual, ParameterVectorSet & solution);

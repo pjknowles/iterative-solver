@@ -60,12 +60,14 @@ public:
    * Corresponding other vectors whose sequence will be extrapolated.
    * \param options can contain "weight=xxx" where xxx is the weight to be given to this vector. These options would normally be passed as the corresponding parameter in iterate().
    */
+protected:
   void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
 
   /*!
    * \brief Return the square L2 norm of the extrapolated residual from the last call to extrapolate() or iterate().
    * \return
    */
+public:
   double fLastResidual() const { return m_LastResidualNormSq; }
   /*!
    * \brief Return the coefficient of the last residual vector in the extrapolated residual from the last call to extrapolate() or iterate().

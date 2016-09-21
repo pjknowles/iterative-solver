@@ -5,9 +5,9 @@
 
 using namespace IterativeSolver;
 
-IterativeSolverBase::IterativeSolverBase(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
-:  m_updateFunction(updateFunction), m_residualFunction(residualFunction), m_verbosity(0), m_thresh(1e-12), m_maxIterations(1000), m_orthogonalize(false)
-, m_linear(false), m_hermitian(false), m_singularity_shift(1e-8)
+IterativeSolverBase::IterativeSolverBase(ParameterSetTransformation preconditionerFunction, ParameterSetTransformation residualFunction)
+:  m_preconditionerFunction(preconditionerFunction), m_residualFunction(residualFunction), m_verbosity(0), m_thresh(1e-12), m_maxIterations(1000), m_orthogonalize(false)
+, m_linear(false), m_hermitian(false), m_singularity_shift(1e-8), m_preconditionResiduals(false)
 {}
 
 IterativeSolverBase::~IterativeSolverBase()
@@ -20,7 +20,7 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
   m_residuals.push_back(residual); m_solutions.push_back(solution); m_others.push_back(other);
   m_lastVectorIndex=m_residuals.size()-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
   extrapolate(residual,solution,other,options);
-  m_updateFunction(residual,solution,m_updateShift);
+  m_preconditionerFunction(residual,solution,m_updateShift,true);
   calculateErrors(solution,residual);
   adjustUpdate(solution);
   return m_error < m_thresh;
@@ -36,7 +36,7 @@ bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSe
 {
   bool converged=false;
   for (int iteration=1; iteration <= m_maxIterations && not converged; iteration++) {
-      m_residualFunction(solution,residual,std::vector<double>());
+      m_residualFunction(solution,residual,std::vector<double>(),false);
       converged = iterate(residual,solution);
       if (m_verbosity>0)
         xout << "iteration "<<iteration<<", error["<<m_worst<<"] = "<<m_error <<std::endl;

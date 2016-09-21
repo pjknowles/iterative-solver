@@ -268,15 +268,17 @@ void DIIS::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, ui
         fBaseScale = 1.;
 }
 
-static void _Rosenbrock_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>()) {
+static void _Rosenbrock_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
     ParameterVector x=psx.front();
     ParameterVector result(2);
-      result[0]=(2*x[0]-2+400*x[0]*(x[0]*x[0]-x[1])); result[1]=(200*(x[1]-x[0]*x[0])); // Rosenbrock
+      if (not append) result.zero();
+      result[0]+=(2*x[0]-2+400*x[0]*(x[0]*x[0]-x[1])); result[1]+=(200*(x[1]-x[0]*x[0])); // Rosenbrock
       outputs.front()=result;
 }
 
-static void _Rosenbrock_updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift) {
+static void _Rosenbrock_updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift, bool append=true) {
        ParameterVector c=psc.front();
+      if (not append) c.zero();
        ParameterVector g=psg.front();
     ParameterVector diag(2);
     diag[0]=700; diag[1]=200;

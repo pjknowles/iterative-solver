@@ -55,19 +55,21 @@ std::vector<double> result;
 // testing code below here
 static Eigen::MatrixXd testmatrix;
 
-static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>()) {
+static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
   for (size_t k=0; k<psx.size(); k++) {
     Eigen::VectorXd x(testmatrix.rows());
     for (size_t l=0; l<(size_t)testmatrix.rows(); l++) x[l] = psx[k][l];
     Eigen::VectorXd res = testmatrix * x;
-    for (size_t l=0; l<(size_t)testmatrix.rows(); l++) outputs[k][l]=res[l];
+    if (not append) outputs[k].zero();
+    for (size_t l=0; l<(size_t)testmatrix.rows(); l++) outputs[k][l]+=res[l];
     }
 }
 
-static void _updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift) {
+static void _updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift, bool append=true) {
 //  xout << "updater: shift.size()="<<shift.size()<<std::endl;
 //  xout << "updater: psc="<<psc<<std::endl;
 //  xout << "updater: psg="<<psg<<std::endl;
+    if (not append) psc.zero();
   for (size_t k=0; k<psc.size(); k++) {
 //      xout << "shift "<<shift[k]<<std::endl;
     for (size_t l=0; l<(size_t)testmatrix.rows(); l++)  psc[k][l] -= psg[k][l]/(testmatrix(l,l)+shift[k]);

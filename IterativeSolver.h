@@ -21,23 +21,27 @@ namespace IterativeSolver {
  * \param inputs The parameters.
  * \param outputs On output, contains the corresponding residual vectors.
  * \param shift
+ * \param append Whether to add the result to the original content of outputs
  */
-inline void noOp(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>()) { outputs=inputs; }
+inline void noOp(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) { if (append) outputs=inputs; }
 /*!
  * \brief Place-holding template for update calculation. It just returns the input as output.
  * \param inputs The parameters.
+ * \param append Whether to add the result to the original content of outputs
  * \param outputs On output, contains the corresponding residual vectors.
  * \param shift
  */
-inline void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>()) {
-    for (size_t k=0; k<inputs.size(); k++)
-        outputs[k].axpy(-1,inputs[k]);
+inline void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=true) {
+    if (not append) outputs.zero();
+        for (size_t k=0; k<inputs.size(); k++)
+            outputs[k].axpy(-1,inputs[k]);
 }
 /*!
  * \brief A base class for iterative solvers such as DIIS, KAIN, Davidson. The class provides support for preconditioned update, via a provided function.
  *
- * The user needs to provide the two routines residualFunction() and updateFunction() through the class constructor. These define the problem being solved: the first should calculate the residual
- * or action vector from a solution vector, and the second should update a provided solution vector using a provided residual vector.  The user also needs to provide an initial guess in the call to solve() or iterate().
+ * The user needs to provide the two routines residualFunction() and preconditionerFunction() through the class constructor. These define the problem being solved: the first should calculate the residual
+ * or action vector from a solution vector,
+ * and the second should apply the negative of a preconditioner to a provided residual vector, optionally adding it to existing contents of a result vector.  The user also needs to provide an initial guess in the call to solve() or iterate().
  *
  * Two drivers are provided: the calling program can set up its own iterative loop, and in each loop call residualFunction() and iterate(); this gives the flexibility to pass additional parameters
  * to residualFunction(). The simpler mode of use is a single call to solve(), which manages the iterations itself.
@@ -54,19 +58,19 @@ inline void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSe
 class IterativeSolverBase
 {
 protected:
-  typedef void (*ParameterSetTransformation)(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift);
+  typedef void (*ParameterSetTransformation)(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift, bool append);
   /*!
    * \brief IterativeSolverBase
-   * \param updateFunction A function that applies a preconditioner to a residual to give an update. Used by methods iterate() and solve().
+   * \param preconditionerFunction A function that applies a preconditioner to a residual to give an update. Used by methods iterate() and solve().
    * \param residualFunction A function that evaluates the residual vectors. Used by method solve(); does not have to be provided if iterations are constructed explicitly in the calling program.
    */
-  IterativeSolverBase(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
+  IterativeSolverBase(ParameterSetTransformation preconditionerFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
   virtual ~IterativeSolverBase();
 protected:
   /*!
    * \brief The function that will take the current solution and residual, and produce the predicted solution.
    */
-  ParameterSetTransformation m_updateFunction;
+  ParameterSetTransformation m_preconditionerFunction;
   /*!
    * \brief The function that will take a current solution and calculate the residual.
    */
@@ -76,7 +80,7 @@ public:
    * \brief Take, typically, a current solution and residual, and return new solution.
    * In the context of Lanczos-like methods, the input will be a current expansion vector and the result of
    * acting on it with the matrix, and the output will be a new expansion vector.
-   * iterate() saves the vectors, calls extrapolate(), calls m_updateFunction(), calls calculateErrors(), and then assesses the error.
+   * iterate() saves the vectors, calls extrapolate(), calls m_preconditionerFunction(), calls calculateErrors(), and then assesses the error.
    * Derivative classes may often be able to be implemented by changing only extrapolate(), not iterate() or solve().
    * \param residual On input, the residual for solution on entry. On exit, the extrapolated residual.
    * \param solution On input, the current solution or expansion vector. On exit, the next solution or expansion vector.
@@ -110,6 +114,7 @@ public:
   bool m_orthogonalize; ///< Whether or not to orthogonalize the result of update() to all previous expansion vectors (appropriate only for linear methods).
   bool m_linear; ///< Whether residuals are linear functions of the corresponding expansion vectors.
   bool m_hermitian; ///< Whether residuals can be assumed to be the action of an underlying self-adjoint operator.
+  bool m_preconditionResiduals; ///< Whether the subspace algorithm should work with preconditioned or raw residual vectors
 
 protected:
   virtual void adjustUpdate(ParameterVectorSet & solution);

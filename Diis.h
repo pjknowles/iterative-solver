@@ -128,7 +128,7 @@ public:
   void setOptions(size_t maxDim=6,
                   double acceptanceThreshold=1e6,
                   enum DIISmode_type mode=KAINmode)
-  { DIIS::setOptions(maxDim,acceptanceThreshold,mode); }
+  { DIIS::setOptions(maxDim,acceptanceThreshold,mode); m_preconditionResiduals=true;}
 private:
   KAIN();
 };

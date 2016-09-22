@@ -20,7 +20,6 @@ void DIIS::setOptions(size_t maxDim, double acceptanceThreshold, DIISmode_type m
    m_maxDim = maxDim;
    m_acceptanceThreshold = acceptanceThreshold;
    m_DIISmode = mode;
-   if (m_DIISmode == KAINmode) throw std::invalid_argument("KAIN not yet supported");
 
    Reset();
    if (m_verbosity>1)

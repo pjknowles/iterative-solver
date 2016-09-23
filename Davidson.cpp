@@ -79,8 +79,8 @@ static void _updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, s
 }
 
 
-//typedef SimpleParameterVector v;
-typedef ParameterVector v;
+//typedef SimpleParameterVector ptype;
+typedef ParameterVector ptype;
 void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
 {
   xout << "Test IterativeSolver::Davidson dimension="<<dimension<<", roots="<<roots<<", problem="<<problem<<std::endl;
@@ -103,11 +103,11 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
   ParameterVectorSet x;
   ParameterVectorSet g;
   for (size_t root=0; root<(size_t)d.m_roots; root++) {
-      v* xx=new v(dimension);
+      ptype* xx=new ptype(dimension);
       xx->zero();
-      (xx)[root]=0;
+      (*xx)[root]=1;
       x.push_back(*xx);
-      v* gg=new v(dimension);
+      ptype* gg=new ptype(dimension);
       g.push_back(*gg);
     }
   xout << "roots="<<roots<<std::endl;

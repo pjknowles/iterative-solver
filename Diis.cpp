@@ -76,7 +76,7 @@ void DIIS::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
 	  double weight=1.0;
 	  size_t pos=options.find("weight=");
 	  if (pos != std::string::npos)  throw std::logic_error("parsing of weight not implemented yet"); //FIXME
-	  if (m_maxDim <= 1 || m_DIISmode == disabled) return;
+      if (m_maxDim <= 1 || m_DIISmode == disabled) return;
 
 	  if (residual.size() > 1) throw std::logic_error("DIIS does not handle multiple solutions");
 
@@ -136,6 +136,9 @@ void DIIS::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
       m_others[iUsedVecs[iThis]]=other;m_others.pop_back();
       m_lastVectorIndex=iUsedVecs[iThis];
   }
+//  xout << "after replacing expansion vector"<<std::endl;
+//  for (auto vs=m_solutions.begin(); vs!=m_solutions.end(); vs++)
+//      xout << "solution vector"<<*vs<<std::endl;
 
   if (m_Weights.size()<=iUsedVecs[iThis]) m_Weights.resize(iUsedVecs[iThis]+1);
   m_Weights[iUsedVecs[iThis]] = weight;
@@ -207,6 +210,11 @@ void DIIS::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
 //         PrintMatrixGen( xout, Coeffs.data(), 1, 1, nDim+1, 1, "DIIS-C" );
 //         xout << std::endl;
 //     }
+//  xout << "before extrapolation "<<std::endl;
+//  for (auto vs=m_solutions.begin(); vs!=m_solutions.end(); vs++)
+//      xout << "solution vector"<<*vs<<std::endl;
+//      xout << "front solution vector"<<m_solutions.front()<<std::endl;
+//      xout << "0 solution vector"<<m_solutions[0]<<std::endl;
 
   // now actually perform the extrapolation on the residuals
   // and amplitudes.
@@ -218,7 +226,9 @@ void DIIS::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
 //  xout << "residual at "<<&residual[0]<<std::endl;
 //  xout << "solution at "<<&solution[0]<<std::endl;
 //  xout << "m_solutions.front() at "<<&m_solutions.front()[0]<<std::endl;
+//  xout << "m_solutions.size(): "<<m_solutions.size()<<std::endl;
 //  xout << "m_solutions.front(): "<<m_solutions.front()<<std::endl;
+//  xout << "m_solutions.front()[0]: "<<m_solutions.front()[0]<<std::endl;
   for (size_t l=0; l<other.size(); l++) other[l].zero();
   for (size_t k=0; k<Coeffs.rows(); k++) {
 //      xout << "extrapolation k="<<k<<",iUsedVecs[k]="<<iUsedVecs[k]<<std::endl;
@@ -267,30 +277,26 @@ void DIIS::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, ui
         fBaseScale = 1.;
 }
 
+// testing code below here
+#include "SimpleParameterVector.h"
 static void _Rosenbrock_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
-    ParameterVector x=psx.front();
-    ParameterVector result(2);
-      if (not append) result.zero();
-      result[0]+=(2*x[0]-2+400*x[0]*(x[0]*x[0]-x[1])); result[1]+=(200*(x[1]-x[0]*x[0])); // Rosenbrock
-      outputs.front()=result;
+      if (not append) outputs.front().zero();
+      outputs.front()[0]+=(2*psx.front()[0]-2+400*psx.front()[0]*(psx.front()[0]*psx.front()[0]-psx.front()[1])); outputs.front()[1]+=(200*(psx.front()[1]-psx.front()[0]*psx.front()[0])); // Rosenbrock
 }
 
 static void _Rosenbrock_updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift, bool append=true) {
-       ParameterVector c=psc.front();
-      if (not append) c.zero();
-       ParameterVector g=psg.front();
-    ParameterVector diag(2);
-    diag[0]=700; diag[1]=200;
-            c[0] -=g[0]/diag[0];
-            c[1] -=g[1]/diag[1];
-    psc.front()=c;
+      if (not append) psc.front().zero();
+            psc.front()[0] -=psg.front()[0]/700;
+            psc.front()[1] -=psg.front()[1]/200;
 }
 
 void DIIS::test(int verbosity,
                 size_t maxDim, double acceptanceThreshold, DIISmode_type mode, double difficulty)
 {
-    ParameterVectorSet x; x.push_back(ParameterVector(2));
-    ParameterVectorSet g; g.push_back(ParameterVector(2));
+    ParameterVector xx(2);
+    ParameterVector gg(2);
+    ParameterVectorSet x; x.push_back(xx);
+    ParameterVectorSet g; g.push_back(gg);
     DIIS d(&_Rosenbrock_updater,&_Rosenbrock_residual);
     d.setOptions(maxDim, acceptanceThreshold, mode);
 
@@ -298,6 +304,8 @@ void DIIS::test(int verbosity,
     d.Reset();
     d.m_verbosity=verbosity-1;
     x.front()[0]=x.front()[1]=1-difficulty; // initial guess
+    xout << "initial guess"<<x[0]<<std::endl;
+    xout << "initial guess"<<x<<std::endl;
     bool converged=false;
     for (int iteration=1; iteration < 1000 && not converged; iteration++) {
         _Rosenbrock_residual(x,g);

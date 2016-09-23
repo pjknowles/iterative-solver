@@ -19,6 +19,11 @@ ParameterVector& ParameterVector::operator=(const ParameterVector& other)
     return *this;
 }
 
+ParameterVector* ParameterVector::clone() const
+{
+  return new ParameterVector(*this);
+}
+
 void ParameterVector::axpy(ParameterScalar a, const ParameterVector& other)
 {
     if (this->m_variance != other.m_variance) throw std::logic_error("mismatching co/contravariance");
@@ -37,4 +42,12 @@ ParameterScalar ParameterVector::operator*(const ParameterVector& other) const
     for (size_t k=0; k<m_buffer.size(); k++) result += m_buffer[k] * other.m_buffer[k];
     return result;
 }
+
+
+
+  ParameterScalar& ParameterVector::operator[](size_t pos) { return this->m_buffer[pos];}
+  const ParameterScalar& ParameterVector::operator[](size_t pos) const { return this->m_buffer[pos];}
+  size_t ParameterVector::size() const { return this->m_buffer.size();}
+
+
 

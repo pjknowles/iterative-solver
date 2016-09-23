@@ -26,7 +26,10 @@ IterativeSolverBase::~IterativeSolverBase()
 bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorSet &solution, ParameterVectorSet &other, std::string options)
 {
     if (m_preconditionResiduals) m_preconditionerFunction(residual,residual,m_updateShift,false);
-  m_residuals.push_back(residual); m_solutions.push_back(solution); m_others.push_back(other);
+  m_residuals.push_back(residual);
+  m_solutions.push_back(solution); m_others.push_back(other);
+//  std::cout << "@@ solution at "<<&solution[0]<<std::endl;
+//  std::cout << "@@ m_solutions.back() at "<<&m_solutions.back()[0]<<std::endl;
   m_lastVectorIndex=m_residuals.size()-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
   extrapolate(residual,solution,other,options);
   m_preconditionerFunction(residual,solution,m_updateShift,true);

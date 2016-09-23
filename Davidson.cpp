@@ -53,6 +53,7 @@ std::vector<double> result;
 }
 
 // testing code below here
+#include "SimpleParameterVector.h"
 static Eigen::MatrixXd testmatrix;
 
 static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
@@ -78,6 +79,8 @@ static void _updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, s
 }
 
 
+//typedef SimpleParameterVector v;
+typedef ParameterVector v;
 void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
 {
   xout << "Test IterativeSolver::Davidson dimension="<<dimension<<", roots="<<roots<<", problem="<<problem<<std::endl;
@@ -100,9 +103,12 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
   ParameterVectorSet x;
   ParameterVectorSet g;
   for (size_t root=0; root<(size_t)d.m_roots; root++) {
-      x.push_back(ParameterVector(dimension));
-      x.back().zero();x.back()[root]=1;
-      g.push_back(ParameterVector(dimension));
+      v* xx=new v(dimension);
+      xx->zero();
+      (xx)[root]=0;
+      x.push_back(*xx);
+      v* gg=new v(dimension);
+      g.push_back(*gg);
     }
   xout << "roots="<<roots<<std::endl;
   xout << "initial x="<<x<<std::endl;
@@ -123,5 +129,9 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
   // be noisy about obvious problems
   if (*std::max_element(errors.begin(),errors.end())>1e-8) throw std::runtime_error("IterativeSolver::Davidson has failed tests");
 
+  for (size_t root=0; root<(size_t)d.m_roots; root++) {
+      delete &x[root][0];
+      delete &g[root][0];
+  }
 
 }

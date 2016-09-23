@@ -57,6 +57,7 @@ namespace IterativeSolver {
      */
     void setVariance(int variance=0) {m_variance=variance;}
     int variance() {return m_variance;}
+    virtual ParameterVector* clone() const;
   protected:
   private:
     int m_variance;
@@ -65,9 +66,9 @@ namespace IterativeSolver {
      */
     std::vector<ParameterScalar> m_buffer;
   public:
-    virtual ParameterScalar& operator[](size_t pos) { return this->m_buffer[pos];}
-    const virtual ParameterScalar& operator[](size_t pos) const { return this->m_buffer[pos];}
-    virtual size_t size() const { return this->m_buffer.size();}
+    virtual ParameterScalar& operator[](size_t pos);
+    const virtual ParameterScalar& operator[](size_t pos) const;
+    virtual size_t size() const;
   };
 
  inline std::ostream& operator<<(std::ostream& os, ParameterVector const& pv) {
@@ -84,17 +85,47 @@ namespace IterativeSolver {
   class ParameterVectorSet
     {
     public:
-  	  ParameterVectorSet() {}
+      ParameterVectorSet() {}
+      ParameterVectorSet(const ParameterVectorSet& source)
+  {
+    for (size_t k=0; k<source.size(); k++) {
+        push_back(*source.pvs[k]);
+        active[k] = source.active[k];
+      }
+  }
+
+      ~ParameterVectorSet() { while(pvs.size()>0) pvs.pop_back();}
   	  size_t size() const { return this->pvs.size();}
-  	  ParameterVector& operator[](size_t pos) { return this->pvs[pos];}
-  	  const ParameterVector& operator[](size_t pos) const { return pvs[pos];}
-  	  ParameterVector& front() { return pvs.front();}
-  	  const ParameterVector& front() const { return pvs.front();}
-  	  ParameterVector& back() { return pvs.back();}
-  	  const ParameterVector& back() const { return pvs.back();}
-  	  void push_back(const ParameterVector& val) { pvs.push_back(val); active.push_back(true);}
-      void pop_back() { pvs.pop_back(); active.pop_back();}
+      ParameterVector& operator[](size_t pos) { return *pvs[pos];}
+      const ParameterVector& operator[](size_t pos) const { return *pvs[pos];}
+      ParameterVector& front() { return *(pvs.front());}
+      const ParameterVector& front() const { return *(pvs.front());}
+      ParameterVector& back() { return *(pvs.back());}
+      const ParameterVector& back() const { return *(pvs.back());}
+      void push_back(ParameterVector* val)
+{
+          pvs.push_back(val);
+          owned.push_back(false);
+          active.push_back(true);
+      }
+
+      void push_back(ParameterVector& val)
+{
+          pvs.push_back(val.clone());
+          owned.push_back(true);
+          active.push_back(true);
+      }
+      void pop_back() { if (pvs.size() <=0) return; if (owned.back()) delete pvs.back(); pvs.pop_back(); active.pop_back(); owned.pop_back();}
       void resize(size_t length) { pvs.resize(length); active.resize(length);}
+      ParameterVectorSet& operator=(const ParameterVectorSet& source)
+      {
+          while(pvs.size()>0) pvs.pop_back();
+          for (size_t k=0; k<source.size(); k++) {
+              push_back(*source.pvs[k]);
+              active[k] = source.active[k];
+          }
+          return *this;
+      }
     /*!
      * \brief Add a constant times another object to this object
      * \param a The factor to multiply.
@@ -102,25 +133,28 @@ namespace IterativeSolver {
      * \return
      */
     void axpy(ParameterScalar a, const ParameterVectorSet& other) {
-      for (size_t k=0; k<size(); k++) this->pvs[k].axpy(a,other[k]);
+      for (size_t k=0; k<size(); k++) this->pvs[k]->axpy(a,other[k]);
     }
     /*!
      * \brief Set the contents of the object to zero.
      */
-    void zero() { for (size_t k=0; k<size(); k++) this->pvs[k].zero(); }
+    void zero() { for (size_t k=0; k<size(); k++) this->pvs[k]->zero(); }
 
       /*!
        * \brief A place to record whether each member of the set is meant to be considered active
        */
-  	  std::vector<bool> active;
+    std::vector<bool> active;
     private:
-        std::vector<ParameterVector> pvs;
-    };
+    std::vector<bool> owned; ///< whether the ParameterVector objects pointed to are owned by this container (and therefore destroyed in the destructor)
+    std::vector<ParameterVector*> pvs; // contain pointers to support polymorphism
+  };
 
   inline std::ostream& operator<<(std::ostream& os, const ParameterVectorSet& pvs) {
-    for (size_t k=0; k<pvs.size(); k++)
+    for (size_t k=0; k<pvs.size(); k++) {
+        os << " pvs.active[k] "<<pvs.active[k]<<std::endl;
       if (pvs.active[k])
-        os << pvs[k];
+        os << (pvs[k]);
+    }
     return os;
   }
 

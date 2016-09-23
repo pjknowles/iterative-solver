@@ -295,8 +295,8 @@ void DIIS::test(int verbosity,
 {
     ParameterVector xx(2);
     ParameterVector gg(2);
-    ParameterVectorSet x; x.push_back(xx);
-    ParameterVectorSet g; g.push_back(gg);
+    ParameterVectorSet x; x.push_back(&xx);
+    ParameterVectorSet g; g.push_back(&gg);
     DIIS d(&_Rosenbrock_updater,&_Rosenbrock_residual);
     d.setOptions(maxDim, acceptanceThreshold, mode);
 

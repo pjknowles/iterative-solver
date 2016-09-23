@@ -9,6 +9,14 @@ ParameterVector::ParameterVector(size_t length) :
 {
 }
 
+ParameterVector::ParameterVector(const ParameterVector &source)
+{
+    std::cout << "ParameterVector:: copy constructor"<<std::endl;
+    *this = source;
+//    this->operator=(source);
+    std::cout << "ParameterVector:: copy constructor, size()="<<size()<<std::endl;
+}
+
 ParameterVector::~ParameterVector() {}
 
 
@@ -16,11 +24,16 @@ ParameterVector& ParameterVector::operator=(const ParameterVector& other)
 {
     m_buffer.resize(other.m_buffer.size());
     for (size_t k=0; k<m_buffer.size(); k++) m_buffer[k] = other.m_buffer[k];
+    m_variance = other.m_variance;
+    std::cout << "ParameterVector::operator=, size()="<<size()<<std::endl;
     return *this;
 }
 
 ParameterVector* ParameterVector::clone() const
 {
+    std::cout <<"ParameterVector::clone *this="<<*this<<std::endl;
+  ParameterVector* result = new ParameterVector(*this);
+    std::cout <<"ParameterVector::clone *result="<<*result<<std::endl;
   return new ParameterVector(*this);
 }
 

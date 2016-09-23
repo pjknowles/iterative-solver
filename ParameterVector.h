@@ -3,6 +3,8 @@
 
 #include <cstddef>
 #include <vector>
+#include <string>
+#include <sstream>
 #include <iostream>
 
 namespace IterativeSolver {
@@ -23,6 +25,7 @@ namespace IterativeSolver {
      * \brief Construct an object without any data.
      */
     ParameterVector(size_t length=0);
+    ParameterVector(const ParameterVector &source);
     virtual ~ParameterVector();
     /*!
      * \brief Add a constant times another object to this object
@@ -58,6 +61,11 @@ namespace IterativeSolver {
     void setVariance(int variance=0) {m_variance=variance;}
     int variance() {return m_variance;}
     virtual ParameterVector* clone() const;
+    virtual std::string str() const { std::ostringstream os; os << "ParameterVector object:";
+                                      for (size_t k=0; k<size(); k++)
+                                          os <<" "<< (*this)[k];
+                                      os << std::endl;
+                                       return os.str();}
   protected:
   private:
     int m_variance;
@@ -72,10 +80,7 @@ namespace IterativeSolver {
   };
 
  inline std::ostream& operator<<(std::ostream& os, ParameterVector const& pv) {
-     os << "ParameterVector object:";
-     for (size_t k=0; k<pv.size(); k++)
-         os <<" "<< pv[k];
-     os << std::endl;
+     os << pv.str();
      return os;
  }
 
@@ -89,7 +94,7 @@ namespace IterativeSolver {
       ParameterVectorSet(const ParameterVectorSet& source)
   {
     for (size_t k=0; k<source.size(); k++) {
-        push_back(*source.pvs[k]);
+        push_back_clone(source.pvs[k]);
         active[k] = source.active[k];
       }
   }
@@ -109,9 +114,12 @@ namespace IterativeSolver {
           active.push_back(true);
       }
 
-      void push_back(ParameterVector& val)
+      void push_back_clone(ParameterVector* val)
 {
-          pvs.push_back(val.clone());
+          std::cout << "push_back_clone val="<<*val<<std::endl;
+          std::cout << "push_back_clone val->clone()="<<*val->clone()<<std::endl;
+          pvs.push_back(val->clone());
+          std::cout << "push_back_clone pvs.back()="<<*pvs.back()<<std::endl;
           owned.push_back(true);
           active.push_back(true);
       }
@@ -121,7 +129,7 @@ namespace IterativeSolver {
       {
           while(pvs.size()>0) pvs.pop_back();
           for (size_t k=0; k<source.size(); k++) {
-              push_back(*source.pvs[k]);
+              push_back_clone(source.pvs[k]);
               active[k] = source.active[k];
           }
           return *this;

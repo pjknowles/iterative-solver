@@ -59,6 +59,7 @@ static Eigen::MatrixXd testmatrix;
 static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
   for (size_t k=0; k<psx.size(); k++) {
     Eigen::VectorXd x(testmatrix.rows());
+    if (psx[k].size() != testmatrix.rows()) throw std::logic_error("psx wrong size");
     for (size_t l=0; l<(size_t)testmatrix.rows(); l++) x[l] = psx[k][l];
     Eigen::VectorXd res = testmatrix * x;
     if (not append) outputs[k].zero();
@@ -79,8 +80,8 @@ static void _updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, s
 }
 
 
-//typedef SimpleParameterVector ptype;
-typedef ParameterVector ptype;
+typedef SimpleParameterVector ptype;
+//typedef ParameterVector ptype;
 void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
 {
   xout << "Test IterativeSolver::Davidson dimension="<<dimension<<", roots="<<roots<<", problem="<<problem<<std::endl;
@@ -106,9 +107,11 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
       ptype* xx=new ptype(dimension);
       xx->zero();
       (*xx)[root]=1;
-      x.push_back(*xx);
+      xout << "*xx: "<<*xx<<std::endl;
+      x.push_back_clone(xx);
+      xout << "x.back(): "<<x.back()<<std::endl;
       ptype* gg=new ptype(dimension);
-      g.push_back(*gg);
+      g.push_back_clone(gg);
     }
   xout << "roots="<<roots<<std::endl;
   xout << "initial x="<<x<<std::endl;

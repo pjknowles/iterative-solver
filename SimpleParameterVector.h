@@ -65,11 +65,6 @@ public:
   size_t size() const;
 };
 
-inline std::ostream& operator<<(std::ostream& os, SimpleParameterVector const& pv) {
-   os << pv.str();
-   return os;
-}
-
 }
 
 #endif // SIMPLEPARAMETERVECTOR_H

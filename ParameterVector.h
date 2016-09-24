@@ -20,18 +20,15 @@ namespace IterativeSolver {
    * Deriving implementations are free to make their own data storage arrangements, including
    * storing
    * externally and/or distributed across processes, so long as all of the public methods function correctly.
-   * The operator<<(), operator[]() and size() methods provided in this base class
+   * The str(), operator[]() and size() methods provided in this base class
    * offer direct access to that data, for which there may be no meaningful implementation,
    * so they should not normally be referenced. However they are defined so that
    * code that uses objects of this class can be tested in conjunction with a derivative
-   * class that does provide implementations of these methods.
+   * class that does provide real implementations of these methods.
    */
   class ParameterVector
   {
   public:
-      /*!
-     * \brief Construct an object without any data.
-     */
     ParameterVector(){}
     ParameterVector(const ParameterVector &source){}
     virtual ~ParameterVector(){}
@@ -61,23 +58,51 @@ namespace IterativeSolver {
      * The class is expected to check that appropriate combinations of vectors are provided in methods that perform linear algebra functions.
      */
     virtual void setVariance(int variance=0)=0;
+    /*!
+     * \brief Report the co/contra-variance status of the object
+     * \return
+     * - -1: covariant vector
+     * - +1: contravariant vector
+     * - 0: self-dual vector
+     */
     virtual int variance()=0;
+    /*!
+     * \brief Make a copy of the object
+     * \return A pointer to the new object
+     */
     virtual ParameterVector* clone() const=0;
+    /*!
+     * \brief Make a printable representation of the object
+     * (optional implementation).
+     * \return
+     */
     virtual std::string str() const =0;
+    /*!
+     * \brief Access an element of the object's data
+     * (optional implementation).
+     * \param pos
+     * \return
+     */
+    virtual ParameterScalar& operator[](size_t pos)=0;
+    const virtual ParameterScalar& operator[](size_t pos) const=0;
+    /*!
+     * \brief Report the size of the object's data
+     * (optional implementation).
+     * \return
+     */
+    virtual size_t size() const=0;
   protected:
   private:
     int m_variance;
-  public:
-    virtual ParameterScalar& operator[](size_t pos)=0;
-    const virtual ParameterScalar& operator[](size_t pos) const=0;
-    virtual size_t size() const=0;
   };
 
- inline std::ostream& operator<<(std::ostream& os, ParameterVector const& pv)
- {
-   os << pv.str();
-   return os;
-}
+  /*!
+  * \brief Stream a ParameterVector object using its str() method.
+  * \param os
+  * \param pv
+  * \return
+  */
+ inline std::ostream& operator<<(std::ostream& os, const ParameterVector* pv) { os << pv->str(); return os; }
  /*!
    * \brief A container for a collection of ParameterVector objects
    */
@@ -110,10 +135,7 @@ namespace IterativeSolver {
 
       void push_back_clone(ParameterVector* val)
 {
-//          std::cout << "push_back_clone val="<<*val<<std::endl;
-//          std::cout << "push_back_clone val->clone()="<<*val->clone()<<std::endl;
           pvs.push_back(val->clone());
-//          std::cout << "push_back_clone pvs.back()="<<*pvs.back()<<std::endl;
           owned.push_back(true);
           active.push_back(true);
       }
@@ -154,7 +176,7 @@ namespace IterativeSolver {
   inline std::ostream& operator<<(std::ostream& os, const ParameterVectorSet& pvs) {
     for (size_t k=0; k<pvs.size(); k++) {
       if (pvs.active[k])
-        os << *pvs[k];
+        os << pvs[k];
     }
     return os;
   }

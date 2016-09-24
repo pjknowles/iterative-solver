@@ -80,7 +80,7 @@ void DIIS::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
 
 	  if (residual.size() > 1) throw std::logic_error("DIIS does not handle multiple solutions");
 
-  double fThisResidualDot = residual.front() * residual.front();
+  double fThisResidualDot = residual.front()->dot(residual.front());
   m_LastResidualNormSq = fThisResidualDot;
 
   if (m_verbosity>1)
@@ -146,7 +146,7 @@ void DIIS::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
   // go through previous residual vectors and form the dot products with them
   std::vector<double> ResDot;
   for (std::vector<ParameterVectorSet>::iterator p=m_residuals.begin(); p!=m_residuals.end(); p++)
-	  ResDot.push_back(residual.front() * p->front());
+          ResDot.push_back(residual.front()->dot(p->front()));
   if (iThis >= nDim) ResDot.resize(iThis+1);
   ResDot[iThis] = fThisResidualDot;
 
@@ -220,23 +220,23 @@ void DIIS::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
   // and amplitudes.
   m_LastAmplitudeCoeff = Coeffs[iThis];
 //  xout << "m_solutions.front(): "<<m_solutions.front()<<std::endl;
-  for (size_t l=0; l<residual.size(); l++) residual[l].zero();
+  for (size_t l=0; l<residual.size(); l++) residual[l]->zero();
 //  xout << "m_solutions.front(): "<<m_solutions.front()<<std::endl;
-  for (size_t l=0; l<solution.size(); l++) solution[l].zero();
+  for (size_t l=0; l<solution.size(); l++) solution[l]->zero();
 //  xout << "residual at "<<&residual[0]<<std::endl;
 //  xout << "solution at "<<&solution[0]<<std::endl;
 //  xout << "m_solutions.front() at "<<&m_solutions.front()[0]<<std::endl;
 //  xout << "m_solutions.size(): "<<m_solutions.size()<<std::endl;
 //  xout << "m_solutions.front(): "<<m_solutions.front()<<std::endl;
 //  xout << "m_solutions.front()[0]: "<<m_solutions.front()[0]<<std::endl;
-  for (size_t l=0; l<other.size(); l++) other[l].zero();
+  for (size_t l=0; l<other.size(); l++) other[l]->zero();
   for (size_t k=0; k<Coeffs.rows(); k++) {
 //      xout << "extrapolation k="<<k<<",iUsedVecs[k]="<<iUsedVecs[k]<<std::endl;
 //      xout << "add solution "<<iUsedVecs[k]<<m_solutions[iUsedVecs[k]].front()<<" with factor "<<Coeffs[k]<<std::endl;
-	  residual.front().axpy(Coeffs[k],m_residuals[iUsedVecs[k]].front());
-	  solution.front().axpy(Coeffs[k],m_solutions[iUsedVecs[k]].front());
+	  residual.front()->axpy(Coeffs[k],m_residuals[iUsedVecs[k]].front());
+	  solution.front()->axpy(Coeffs[k],m_solutions[iUsedVecs[k]].front());
 	  for (size_t l=0; l<other.size(); l++)
-		  other[l].axpy(Coeffs[k],m_others[iUsedVecs[k]][l]);
+		  other[l]->axpy(Coeffs[k],m_others[iUsedVecs[k]][l]);
   }
   if (m_verbosity>2) {
     xout << "DIIS.extrapolate() final extrapolated solution: "<<solution.front()<<std::endl;
@@ -280,21 +280,21 @@ void DIIS::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, ui
 // testing code below here
 #include "SimpleParameterVector.h"
 static void _Rosenbrock_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
-      if (not append) outputs.front().zero();
-      outputs.front()[0]+=(2*psx.front()[0]-2+400*psx.front()[0]*(psx.front()[0]*psx.front()[0]-psx.front()[1])); outputs.front()[1]+=(200*(psx.front()[1]-psx.front()[0]*psx.front()[0])); // Rosenbrock
+      if (not append) outputs.front()->zero();
+      (*outputs.front())[0]+=(2*(*psx.front())[0]-2+400*(*psx.front())[0]*((*psx.front())[0]*(*psx.front())[0]-(*psx.front())[1])); (*outputs.front())[1]+=(200*((*psx.front())[1]-(*psx.front())[0]*(*psx.front())[0])); // Rosenbrock
 }
 
 static void _Rosenbrock_updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift, bool append=true) {
-      if (not append) psc.front().zero();
-            psc.front()[0] -=psg.front()[0]/700;
-            psc.front()[1] -=psg.front()[1]/200;
+      if (not append) psc.front()->zero();
+            (*psc.front())[0] -=(*psg.front())[0]/700;
+            (*psc.front())[1] -=(*psg.front())[1]/200;
 }
 
 void DIIS::test(int verbosity,
                 size_t maxDim, double acceptanceThreshold, DIISmode_type mode, double difficulty)
 {
-    ParameterVector xx(2);
-    ParameterVector gg(2);
+    SimpleParameterVector xx(2);
+    SimpleParameterVector gg(2);
     ParameterVectorSet x; x.push_back(&xx);
     ParameterVectorSet g; g.push_back(&gg);
     DIIS d(&_Rosenbrock_updater,&_Rosenbrock_residual);
@@ -303,7 +303,7 @@ void DIIS::test(int verbosity,
     if (verbosity>=0) xout << "Test DIIS::iterate, difficulty="<<difficulty<<std::endl;
     d.Reset();
     d.m_verbosity=verbosity-1;
-    x.front()[0]=x.front()[1]=1-difficulty; // initial guess
+    (*x.front())[0]=(*x.front())[1]=1-difficulty; // initial guess
     xout << "initial guess"<<x[0]<<std::endl;
     xout << "initial guess"<<x<<std::endl;
     bool converged=false;
@@ -312,17 +312,17 @@ void DIIS::test(int verbosity,
         converged = d.iterate(g,x);
         if (verbosity>0)
             xout << "iteration "<<iteration<<", Residual norm = "<<std::sqrt(d.fLastResidual())
-                      << ", Distance from solution = "<<std::sqrt((x.front()[0]-1)*(x.front()[0]-1)+(x.front()[1]-1)*(x.front()[1]-1))
+                      << ", Distance from solution = "<<std::sqrt(((*x.front())[0]-1)*((*x.front())[0]-1)+((*x.front())[1]-1)*((*x.front())[1]-1))
                     <<", converged? "<<converged
                    <<std::endl;
     }
 
     if (verbosity>=0) xout << "Test DIIS::solver, difficulty="<<difficulty<<std::endl;
     d.Reset();
-    x.front()[0]=x.front()[1]=1-difficulty; // initial guess
+    (*x.front())[0]=(*x.front())[1]=1-difficulty; // initial guess
     d.m_verbosity=verbosity;
     d.solve(g,x);
-    xout  << "Distance from solution = "<<std::sqrt((x.front()[0]-1)*(x.front()[0]-1)+(x.front()[1]-1)*(x.front()[1]-1)) <<std::endl;
+    xout  << "Distance from solution = "<<std::sqrt(((*x.front())[0]-1)*((*x.front())[0]-1)+((*x.front())[1]-1)*((*x.front())[1]-1)) <<std::endl;
 
 }
 

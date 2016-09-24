@@ -19,13 +19,13 @@ public:
    * \param other The object to be added to this.
    * \return
    */
-  void axpy(ParameterScalar a, const SimpleParameterVector& other);
+  void axpy(ParameterScalar a, const ParameterVector *other);
   /*!
    * \brief Scalar product of two objects.
    * \param other The object to be contracted with this.
    * \return
    */
-  ParameterScalar operator*(const SimpleParameterVector& other) const;
+  ParameterScalar dot(const ParameterVector *other) const;
   /*!
    * \brief Set the contents of the object to zero.
    */

@@ -34,7 +34,7 @@ inline void noOp(const ParameterVectorSet & inputs, ParameterVectorSet & outputs
 inline void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=true) {
     if (not append) outputs.zero();
         for (size_t k=0; k<inputs.size(); k++)
-            outputs[k].axpy(-1,inputs[k]);
+            outputs[k]->axpy(-1,inputs[k]);
 }
 /*!
  * \brief A base class for iterative solvers such as DIIS, KAIN, Davidson. The class provides support for preconditioned update, via a provided function.

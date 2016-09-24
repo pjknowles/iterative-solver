@@ -29,13 +29,13 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
       for (size_t ll=0; ll<m_solutions.size(); ll++) {
           for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
               if (m_solutions[ll].active[lll]) {
-                  solution[kkk].axpy(m_subspaceEigenvectors(l,kkk).real(),m_solutions[ll][lll]);
-                  residual[kkk].axpy(m_subspaceEigenvectors(l,kkk).real(),m_residuals[ll][lll]);
+                  solution[kkk]->axpy(m_subspaceEigenvectors(l,kkk).real(),m_solutions[ll][lll]);
+                  residual[kkk]->axpy(m_subspaceEigenvectors(l,kkk).real(),m_residuals[ll][lll]);
                   l++;
               }
           }
       }
-      residual[kkk].axpy(-m_subspaceEigenvalues(kkk).real(),solution[kkk]);
+      residual[kkk]->axpy(-m_subspaceEigenvalues(kkk).real(),solution[kkk]);
   }
 
   m_updateShift.resize(m_roots);
@@ -43,6 +43,8 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
 
 //  xout << "exit from extrapolate, residual "<<residual<<std::endl;
 //  xout << "exit from extrapolate, solution "<<solution<<std::endl;
+//  xout << "exit from extrapolate, m_subspaceEigenvalues[0] "<<m_subspaceEigenvalues[0]<<std::endl;
+//  xout << "exit from extrapolate, m_updateShift[0] "<<m_updateShift[0]<<std::endl;
 }
 
 std::vector<double> Davidson::eigenvalues()
@@ -59,11 +61,11 @@ static Eigen::MatrixXd testmatrix;
 static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
   for (size_t k=0; k<psx.size(); k++) {
     Eigen::VectorXd x(testmatrix.rows());
-    if (psx[k].size() != testmatrix.rows()) throw std::logic_error("psx wrong size");
-    for (size_t l=0; l<(size_t)testmatrix.rows(); l++) x[l] = psx[k][l];
+    if (psx[k]->size() != testmatrix.rows()) throw std::logic_error("psx wrong size");
+    for (size_t l=0; l<(size_t)testmatrix.rows(); l++) x[l] = (*psx[k])[l];
     Eigen::VectorXd res = testmatrix * x;
-    if (not append) outputs[k].zero();
-    for (size_t l=0; l<(size_t)testmatrix.rows(); l++) outputs[k][l]+=res[l];
+    if (not append) outputs[k]->zero();
+    for (size_t l=0; l<(size_t)testmatrix.rows(); l++) (*outputs[k])[l]+=res[l];
     }
 }
 
@@ -71,12 +73,15 @@ static void _updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, s
 //  xout << "updater: shift.size()="<<shift.size()<<std::endl;
 //  xout << "updater: psc="<<psc<<std::endl;
 //  xout << "updater: psg="<<psg<<std::endl;
+//  xout << "updater append="<<append<<std::endl;
+//  xout << "updater shift.size()="<<shift.size()<<std::endl;
     if (not append) psc.zero();
   for (size_t k=0; k<psc.size(); k++) {
 //      xout << "shift "<<shift[k]<<std::endl;
-    for (size_t l=0; l<(size_t)testmatrix.rows(); l++)  psc[k][l] -= psg[k][l]/(testmatrix(l,l)+shift[k]);
+    for (size_t l=0; l<(size_t)testmatrix.rows(); l++)  (*psc[k])[l] -= (*psg[k])[l]/(testmatrix(l,l)+shift[k]);
     }
-//  xout << "updater: psc="<<psc<<std::endl;
+//  xout << "updater: final psc="<<psc<<std::endl;
+//  exit(0);
 }
 
 
@@ -107,9 +112,9 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
       ptype* xx=new ptype(dimension);
       xx->zero();
       (*xx)[root]=1;
-      xout << "*xx: "<<*xx<<std::endl;
+//      xout << "*xx: "<<*xx<<std::endl;
       x.push_back_clone(xx);
-      xout << "x.back(): "<<x.back()<<std::endl;
+//      xout << "x.back(): "<<x.back()<<std::endl;
       ptype* gg=new ptype(dimension);
       g.push_back_clone(gg);
     }
@@ -125,8 +130,8 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
   _residual(g,x);
   std::vector<double> errors;
   for (size_t root=0; root<(size_t)d.m_roots; root++) {
-      g[root].axpy(-ev[root],x[root]);
-      errors.push_back(g[root]*g[root]);
+      g[root]->axpy(-ev[root],x[root]);
+      errors.push_back(g[root]->dot(g[root]));
     }
   xout << "Square residual norms: "; for (std::vector<double>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
   // be noisy about obvious problems

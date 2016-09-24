@@ -33,13 +33,13 @@ namespace IterativeSolver {
      * \param other The object to be added to this.
      * \return
      */
-    virtual void axpy(ParameterScalar a, const ParameterVector& other);
+    virtual void axpy(ParameterScalar a, const ParameterVector* other);
     /*!
      * \brief Scalar product of two objects.
      * \param other The object to be contracted with this.
      * \return
      */
-    virtual ParameterScalar operator*(const ParameterVector& other) const;
+    virtual ParameterScalar dot(const ParameterVector* other) const;
     /*!
      * \brief Set the contents of the object to zero.
      */
@@ -101,12 +101,12 @@ namespace IterativeSolver {
 
       ~ParameterVectorSet() { while(pvs.size()>0) pvs.pop_back();}
   	  size_t size() const { return this->pvs.size();}
-      ParameterVector& operator[](size_t pos) { return *pvs[pos];}
-      const ParameterVector& operator[](size_t pos) const { return *pvs[pos];}
-      ParameterVector& front() { return *(pvs.front());}
-      const ParameterVector& front() const { return *(pvs.front());}
-      ParameterVector& back() { return *(pvs.back());}
-      const ParameterVector& back() const { return *(pvs.back());}
+      ParameterVector* operator[](size_t pos) { return pvs[pos];}
+      const ParameterVector* operator[](size_t pos) const { return pvs[pos];}
+      ParameterVector* front() { return (pvs.front());}
+      const ParameterVector* front() const { return (pvs.front());}
+      ParameterVector* back() { return (pvs.back());}
+      const ParameterVector* back() const { return (pvs.back());}
       void push_back(ParameterVector* val)
 {
           pvs.push_back(val);
@@ -116,10 +116,10 @@ namespace IterativeSolver {
 
       void push_back_clone(ParameterVector* val)
 {
-          std::cout << "push_back_clone val="<<*val<<std::endl;
-          std::cout << "push_back_clone val->clone()="<<*val->clone()<<std::endl;
+//          std::cout << "push_back_clone val="<<*val<<std::endl;
+//          std::cout << "push_back_clone val->clone()="<<*val->clone()<<std::endl;
           pvs.push_back(val->clone());
-          std::cout << "push_back_clone pvs.back()="<<*pvs.back()<<std::endl;
+//          std::cout << "push_back_clone pvs.back()="<<*pvs.back()<<std::endl;
           owned.push_back(true);
           active.push_back(true);
       }
@@ -159,9 +159,8 @@ namespace IterativeSolver {
 
   inline std::ostream& operator<<(std::ostream& os, const ParameterVectorSet& pvs) {
     for (size_t k=0; k<pvs.size(); k++) {
-        os << " pvs.active[k] "<<pvs.active[k]<<std::endl;
       if (pvs.active[k])
-        os << (pvs[k]);
+        os << *pvs[k];
     }
     return os;
   }

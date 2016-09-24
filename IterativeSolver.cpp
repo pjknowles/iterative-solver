@@ -68,23 +68,23 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
               for (size_t ll=0; ll<m_solutions.size(); ll++) {
                   for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
                       if (m_solutions[ll].active[lll]) {
-                          double s = -(m_solutions[ll][lll] * solution[kkk]) / (m_solutions[ll][lll] * m_solutions[ll][lll]);
-                          solution[kkk].axpy(s,m_solutions[ll][lll]);
+                          double s = -(m_solutions[ll][lll]->dot(solution[kkk])) / (m_solutions[ll][lll]->dot(m_solutions[ll][lll]));
+                          solution[kkk]->axpy(s,m_solutions[ll][lll]);
                           l++;
                         }
                     }
                 }
               for (size_t lll=0; lll<kkk; lll++) {
                   if (solution.active[lll]) {
-                      double s = solution[lll] * solution[kkk];
-                      solution[kkk].axpy(-s,solution[lll]);
+                      double s = solution[lll]->dot(solution[kkk]);
+                      solution[kkk]->axpy(-s,solution[lll]);
                     }
                 }
-              double s= solution[kkk]*solution[kkk];
+              double s= solution[kkk]->dot(solution[kkk]);
               if (s <= 0)
                 solution.active[kkk]=false;
               else
-                solution[kkk].axpy(1/std::sqrt(s)-1,solution[kkk]);
+                solution[kkk]->axpy(1/std::sqrt(s)-1,solution[kkk]);
             }
         }
 //      xout << "IterativeSolverBase::adjustUpdate solution after orthogonalization: "<<solution<<std::endl;
@@ -103,8 +103,13 @@ void IterativeSolverBase::calculateSubspaceMatrix(ParameterVectorSet &residual, 
       for (size_t ll=0; ll<m_solutions.size(); ll++) {
           for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
               if (m_solutions[ll].active[lll]) {
-                  m_subspaceMatrix(k,l) = m_subspaceMatrix(l,k) = m_solutions[ll][lll] * residual[kkk];
-                  m_subspaceOverlap(k,l) = m_subspaceOverlap(l,k) = m_solutions[ll][lll] * solution[kkk];
+                  m_subspaceMatrix(k,l) = m_subspaceMatrix(l,k) = m_solutions[ll][lll]->dot(residual[kkk]);
+                  m_subspaceOverlap(k,l) = m_subspaceOverlap(l,k) = m_solutions[ll][lll]->dot(solution[kkk]);
+//                  std::cout << "subspace calc, *m_solutions[ll][lll] "<<*m_solutions[ll][lll]<<std::endl;
+//                  std::cout << "subspace calc, solution[kkk] "<<*solution[kkk]<<std::endl;
+//                  std::cout << "subspace calc, solution[kkk] "<<solution[kkk]->str()<<std::endl;
+//                  std::cout << "subspace calc, product "<<solution[kkk]->dot(m_solutions[ll][lll])<<std::endl;
+//                  std::cout << "subspace calc, product "<<m_solutions[ll][lll]->dot(solution[kkk])<<std::endl;
                   l++;
                 }
             }
@@ -153,9 +158,9 @@ void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, co
   m_errors.clear();
   for (size_t k=0; k<solution.size(); k++)
     if (m_linear) // we can use the extrapolated residual if the problem is linear
-      m_errors.push_back(residual.active[k] ? std::fabs(residual[k]*step[k]) : 0);
+      m_errors.push_back(residual.active[k] ? std::fabs(residual[k]->dot(step[k])) : 0);
     else
-      m_errors.push_back(m_residuals[m_lastVectorIndex].active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]*step[k]) : 0);
+      m_errors.push_back(m_residuals[m_lastVectorIndex].active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]->dot(step[k])) : 0);
   m_error = *max_element(m_errors.begin(),m_errors.end());
   m_worst = max_element(m_errors.begin(),m_errors.end())-m_errors.begin();
 }

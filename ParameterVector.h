@@ -11,12 +11,20 @@ namespace IterativeSolver {
   typedef double ParameterScalar;
 
 /*!
-   * \brief A class to hold expansion vectors and residual vectors for use by IterativeSolver classes.
+   * \brief An abstract base class for holding expansion vectors and residual vectors
+   * for use by IterativeSolver classes.
    *
-   * The base implementation provided here just stores the data internally as a one-dimensional, but an inheriting class could adopt
-   * a structured layout, and could store externally and/or distributed across processes, so long as all of the public methods function correctly.
-   * The operator<<(), operator[]() and size() methods provided in this base class refer to the std::vector that is used in the simple base implementation, and should not normally be used in production,
-   * so that derivative classes are free to avoid defining them. They are typically used in debugging.
+   * Deriving implementations should implement all of the public methods, together with ensuring
+   * that the
+   * copy operator=() performs a deep copy to make a completely independent clone.
+   * Deriving implementations are free to make their own data storage arrangements, including
+   * storing
+   * externally and/or distributed across processes, so long as all of the public methods function correctly.
+   * The operator<<(), operator[]() and size() methods provided in this base class
+   * offer direct access to that data, for which there may be no meaningful implementation,
+   * so they should not normally be referenced. However they are defined so that
+   * code that uses objects of this class can be tested in conjunction with a derivative
+   * class that does provide implementations of these methods.
    */
   class ParameterVector
   {
@@ -24,32 +32,26 @@ namespace IterativeSolver {
       /*!
      * \brief Construct an object without any data.
      */
-    ParameterVector(size_t length=0);
-    ParameterVector(const ParameterVector &source);
-    virtual ~ParameterVector();
+    ParameterVector(){}
+    ParameterVector(const ParameterVector &source){}
+    virtual ~ParameterVector(){}
     /*!
      * \brief Add a constant times another object to this object
      * \param a The factor to multiply.
      * \param other The object to be added to this.
      * \return
      */
-    virtual void axpy(ParameterScalar a, const ParameterVector* other);
+    virtual void axpy(ParameterScalar a, const ParameterVector* other)=0;
     /*!
      * \brief Scalar product of two objects.
      * \param other The object to be contracted with this.
      * \return
      */
-    virtual ParameterScalar dot(const ParameterVector* other) const;
+    virtual ParameterScalar dot(const ParameterVector* other) const=0;
     /*!
      * \brief Set the contents of the object to zero.
      */
-    virtual void zero();
-    /*!
-     * \brief Copy from one object to another, adjusting size if needed.
-     * \param other The source of data.
-     * \return
-     */
-    virtual ParameterVector& operator=(const ParameterVector& other);
+    virtual void zero()=0;
       /*!
      * \brief Record the co/contra-variance status of the object
      * \param variance
@@ -58,32 +60,24 @@ namespace IterativeSolver {
      * - 0: self-dual vector
      * The class is expected to check that appropriate combinations of vectors are provided in methods that perform linear algebra functions.
      */
-    void setVariance(int variance=0) {m_variance=variance;}
-    int variance() {return m_variance;}
-    virtual ParameterVector* clone() const;
-    virtual std::string str() const { std::ostringstream os; os << "ParameterVector object:";
-                                      for (size_t k=0; k<size(); k++)
-                                          os <<" "<< (*this)[k];
-                                      os << std::endl;
-                                       return os.str();}
+    virtual void setVariance(int variance=0)=0;
+    virtual int variance()=0;
+    virtual ParameterVector* clone() const=0;
+    virtual std::string str() const =0;
   protected:
   private:
     int m_variance;
-    /*!
-     * \brief For a simple implementation, just use an STL vector. Classes that inherit are free to do things differently.
-     */
-    std::vector<ParameterScalar> m_buffer;
   public:
-    virtual ParameterScalar& operator[](size_t pos);
-    const virtual ParameterScalar& operator[](size_t pos) const;
-    virtual size_t size() const;
+    virtual ParameterScalar& operator[](size_t pos)=0;
+    const virtual ParameterScalar& operator[](size_t pos) const=0;
+    virtual size_t size() const=0;
   };
 
- inline std::ostream& operator<<(std::ostream& os, ParameterVector const& pv) {
-     os << pv.str();
-     return os;
- }
-
+ inline std::ostream& operator<<(std::ostream& os, ParameterVector const& pv)
+ {
+   os << pv.str();
+   return os;
+}
  /*!
    * \brief A container for a collection of ParameterVector objects
    */

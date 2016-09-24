@@ -10,7 +10,7 @@
 namespace IterativeSolver {
   typedef double ParameterScalar;
 
-/*!
+  /*!
    * \brief An abstract base class for holding expansion vectors and residual vectors
    * for use by IterativeSolver classes.
    *
@@ -49,7 +49,7 @@ namespace IterativeSolver {
      * \brief Set the contents of the object to zero.
      */
     virtual void zero()=0;
-      /*!
+    /*!
      * \brief Record the co/contra-variance status of the object
      * \param variance
      * - -1: covariant vector
@@ -102,54 +102,54 @@ namespace IterativeSolver {
   * \param pv
   * \return
   */
- inline std::ostream& operator<<(std::ostream& os, const ParameterVector* pv) { os << pv->str(); return os; }
- /*!
+  inline std::ostream& operator<<(std::ostream& os, const ParameterVector* pv) { os << pv->str(); return os; }
+  /*!
    * \brief A container for a collection of ParameterVector objects
    */
   class ParameterVectorSet
-    {
-    public:
-      ParameterVectorSet() {}
-      ParameterVectorSet(const ParameterVectorSet& source)
   {
-    for (size_t k=0; k<source.size(); k++) {
-        push_back_clone(source.pvs[k]);
-        active[k] = source.active[k];
-      }
-  }
+  public:
+    ParameterVectorSet() {}
+    ParameterVectorSet(const ParameterVectorSet& source)
+    {
+      for (size_t k=0; k<source.size(); k++) {
+          push_back_clone(source.pvs[k]);
+          active[k] = source.active[k];
+        }
+    }
 
-      ~ParameterVectorSet() { while(pvs.size()>0) pvs.pop_back();}
-  	  size_t size() const { return this->pvs.size();}
-      ParameterVector* operator[](size_t pos) { return pvs[pos];}
-      const ParameterVector* operator[](size_t pos) const { return pvs[pos];}
-      ParameterVector* front() { return (pvs.front());}
-      const ParameterVector* front() const { return (pvs.front());}
-      ParameterVector* back() { return (pvs.back());}
-      const ParameterVector* back() const { return (pvs.back());}
-      void push_back(ParameterVector* val)
-{
-          pvs.push_back(val);
-          owned.push_back(false);
-          active.push_back(true);
-      }
+    ~ParameterVectorSet() { while(pvs.size()>0) pvs.pop_back();}
+    size_t size() const { return this->pvs.size();}
+    ParameterVector* operator[](size_t pos) { return pvs[pos];}
+    const ParameterVector* operator[](size_t pos) const { return pvs[pos];}
+    ParameterVector* front() { return (pvs.front());}
+    const ParameterVector* front() const { return (pvs.front());}
+    ParameterVector* back() { return (pvs.back());}
+    const ParameterVector* back() const { return (pvs.back());}
+    void push_back(ParameterVector* val)
+    {
+      pvs.push_back(val);
+      owned.push_back(false);
+      active.push_back(true);
+    }
 
-      void push_back_clone(ParameterVector* val)
-{
-          pvs.push_back(val->clone());
-          owned.push_back(true);
-          active.push_back(true);
-      }
-      void pop_back() { if (pvs.size() <=0) return; if (owned.back()) delete pvs.back(); pvs.pop_back(); active.pop_back(); owned.pop_back();}
-      void resize(size_t length) { pvs.resize(length); active.resize(length);}
-      ParameterVectorSet& operator=(const ParameterVectorSet& source)
-      {
-          while(pvs.size()>0) pvs.pop_back();
-          for (size_t k=0; k<source.size(); k++) {
-              push_back_clone(source.pvs[k]);
-              active[k] = source.active[k];
-          }
-          return *this;
-      }
+    void push_back_clone(ParameterVector* val)
+    {
+      pvs.push_back(val->clone());
+      owned.push_back(true);
+      active.push_back(true);
+    }
+    void pop_back() { if (pvs.size() <=0) return; if (owned.back()) delete pvs.back(); pvs.pop_back(); active.pop_back(); owned.pop_back();}
+    void resize(size_t length) { pvs.resize(length); active.resize(length);}
+    ParameterVectorSet& operator=(const ParameterVectorSet& source)
+    {
+      while(pvs.size()>0) pvs.pop_back();
+      for (size_t k=0; k<source.size(); k++) {
+          push_back_clone(source.pvs[k]);
+          active[k] = source.active[k];
+        }
+      return *this;
+    }
     /*!
      * \brief Add a constant times another object to this object
      * \param a The factor to multiply.
@@ -164,20 +164,20 @@ namespace IterativeSolver {
      */
     void zero() { for (size_t k=0; k<size(); k++) this->pvs[k]->zero(); }
 
-      /*!
+    /*!
        * \brief A place to record whether each member of the set is meant to be considered active
        */
     std::vector<bool> active;
-    private:
+  private:
     std::vector<bool> owned; ///< whether the ParameterVector objects pointed to are owned by this container (and therefore destroyed in the destructor)
     std::vector<ParameterVector*> pvs; // contain pointers to support polymorphism
   };
 
   inline std::ostream& operator<<(std::ostream& os, const ParameterVectorSet& pvs) {
     for (size_t k=0; k<pvs.size(); k++) {
-      if (pvs.active[k])
-        os << pvs[k];
-    }
+        if (pvs.active[k])
+          os << pvs[k];
+      }
     return os;
   }
 

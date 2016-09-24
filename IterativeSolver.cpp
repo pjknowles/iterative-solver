@@ -25,11 +25,11 @@ IterativeSolverBase::~IterativeSolverBase()
 
 bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorSet &solution, ParameterVectorSet &other, std::string options)
 {
-    if (m_preconditionResiduals) m_preconditionerFunction(residual,residual,m_updateShift,false);
+  if (m_preconditionResiduals) m_preconditionerFunction(residual,residual,m_updateShift,false);
   m_residuals.push_back(residual);
   m_solutions.push_back(solution); m_others.push_back(other);
-//  std::cout << "@@ solution at "<<&solution[0]<<std::endl;
-//  std::cout << "@@ m_solutions.back() at "<<&m_solutions.back()[0]<<std::endl;
+  //  std::cout << "@@ solution at "<<&solution[0]<<std::endl;
+  //  std::cout << "@@ m_solutions.back() at "<<&m_solutions.back()[0]<<std::endl;
   m_lastVectorIndex=m_residuals.size()-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
   extrapolate(residual,solution,other,options);
   m_preconditionerFunction(residual,solution,m_updateShift,true);
@@ -61,7 +61,7 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
   for (size_t k=0; k<solution.size(); k++)
     solution.active[k] = (m_errors[k] > m_thresh);
   if (m_orthogonalize) {
-//      xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
+      //      xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
       for (size_t kkk=0; kkk<solution.size(); kkk++) {
           if (solution.active[kkk]) {
               size_t l=0;
@@ -87,7 +87,7 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
                 solution[kkk]->axpy(1/std::sqrt(s)-1,solution[kkk]);
             }
         }
-//      xout << "IterativeSolverBase::adjustUpdate solution after orthogonalization: "<<solution<<std::endl;
+      //      xout << "IterativeSolverBase::adjustUpdate solution after orthogonalization: "<<solution<<std::endl;
     }
 }
 
@@ -99,23 +99,23 @@ void IterativeSolverBase::calculateSubspaceMatrix(ParameterVectorSet &residual, 
   size_t k=old_size;
   for (size_t kkk=0; kkk<residual.size(); kkk++) {
       if (residual.active[kkk]) {
-      size_t l=0;
-      for (size_t ll=0; ll<m_solutions.size(); ll++) {
-          for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
-              if (m_solutions[ll].active[lll]) {
-                  m_subspaceMatrix(k,l) = m_subspaceMatrix(l,k) = m_solutions[ll][lll]->dot(residual[kkk]);
-                  m_subspaceOverlap(k,l) = m_subspaceOverlap(l,k) = m_solutions[ll][lll]->dot(solution[kkk]);
-//                  std::cout << "subspace calc, *m_solutions[ll][lll] "<<*m_solutions[ll][lll]<<std::endl;
-//                  std::cout << "subspace calc, solution[kkk] "<<*solution[kkk]<<std::endl;
-//                  std::cout << "subspace calc, solution[kkk] "<<solution[kkk]->str()<<std::endl;
-//                  std::cout << "subspace calc, product "<<solution[kkk]->dot(m_solutions[ll][lll])<<std::endl;
-//                  std::cout << "subspace calc, product "<<m_solutions[ll][lll]->dot(solution[kkk])<<std::endl;
-                  l++;
+          size_t l=0;
+          for (size_t ll=0; ll<m_solutions.size(); ll++) {
+              for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
+                  if (m_solutions[ll].active[lll]) {
+                      m_subspaceMatrix(k,l) = m_subspaceMatrix(l,k) = m_solutions[ll][lll]->dot(residual[kkk]);
+                      m_subspaceOverlap(k,l) = m_subspaceOverlap(l,k) = m_solutions[ll][lll]->dot(solution[kkk]);
+                      //                  std::cout << "subspace calc, *m_solutions[ll][lll] "<<*m_solutions[ll][lll]<<std::endl;
+                      //                  std::cout << "subspace calc, solution[kkk] "<<*solution[kkk]<<std::endl;
+                      //                  std::cout << "subspace calc, solution[kkk] "<<solution[kkk]->str()<<std::endl;
+                      //                  std::cout << "subspace calc, product "<<solution[kkk]->dot(m_solutions[ll][lll])<<std::endl;
+                      //                  std::cout << "subspace calc, product "<<m_solutions[ll][lll]->dot(solution[kkk])<<std::endl;
+                      l++;
+                    }
                 }
             }
+          k++;
         }
-      k++;
-      }
     }
   if (m_verbosity>3) {
       xout << "m_subspaceMatrix: "<<m_subspaceMatrix<<std::endl;
@@ -137,18 +137,18 @@ void IterativeSolverBase::diagonalizeSubspaceMatrix()
       for (Eigen::Index l=0; l<m_subspaceMatrix.rows(); l++) {
           if (std::count(map.begin(),map.end(),l)==0) {
               if (s.eigenvalues()(l).real() < s.eigenvalues()(ll).real())
-                  ll=l;
-          }
-      }
+                ll=l;
+            }
+        }
       map.push_back(ll);
       m_subspaceEigenvalues[k]=s.eigenvalues()(ll);
       for (Eigen::Index l=0; l<m_subspaceMatrix.rows(); l++) m_subspaceEigenvectors(l,k)=s.eigenvectors()(l,ll);
-  }
+    }
   Eigen::MatrixXcd overlap=m_subspaceEigenvectors.transpose()*m_subspaceOverlap*m_subspaceEigenvectors;
   for (Eigen::Index k=0; k<overlap.rows(); k++)
-      for (Eigen::Index l=0; l<overlap.rows(); l++)
-          m_subspaceEigenvectors(l,k) /= std::sqrt(overlap(k,k).real());
-  }
+    for (Eigen::Index l=0; l<overlap.rows(); l++)
+      m_subspaceEigenvectors(l,k) /= std::sqrt(overlap(k,k).real());
+}
 
 
 void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, const ParameterVectorSet &residual)

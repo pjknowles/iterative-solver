@@ -7,7 +7,7 @@ namespace IterativeSolver {
 
 #define VecNotPresent 0xffff
 
-/*!
+  /*!
  * \brief A class that encapsulates accelerated convergence of non-linear equations through the DIIS or related methods.
  *
  * Example of simplest use, with DIIS extrapolation based on the residual as error vector:
@@ -27,29 +27,29 @@ namespace IterativeSolver {
  *   }
  * \endcode
  */
-class DIIS : public IterativeSolverBase
-{
-public:
-  enum DIISmode_type {disabled ///< No extrapolation is performed
-                      , DIISmode ///< Direct Inversion in the Iterative Subspace
-                      , KAINmode ///< Krylov Accelerated Inexact Newton
-                     };
-/*!
+  class DIIS : public IterativeSolverBase
+  {
+  public:
+    enum DIISmode_type {disabled ///< No extrapolation is performed
+                        , DIISmode ///< Direct Inversion in the Iterative Subspace
+                        , KAINmode ///< Krylov Accelerated Inexact Newton
+                       };
+    /*!
    */
-  DIIS(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
-  ~DIIS();
-  /*!
+    DIIS(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
+    ~DIIS();
+    /*!
    * \brief Set options for DIIS.
    * \param maxDim Maximum DIIS dimension allowed
    * \param acceptanceThreshold Residual threshold for inclusion of a vector in the DIIS state.
    * \param mode Whether to perform DIIS, KAIN, or nothing.
    */
-  virtual void setOptions(size_t maxDim=6, double acceptanceThreshold=1e6, enum DIISmode_type mode=DIISmode);
-  /*!
+    virtual void setOptions(size_t maxDim=6, double acceptanceThreshold=1e6, enum DIISmode_type mode=DIISmode);
+    /*!
    * \brief discards previous iteration vectors, but does not clear records
    */
-  void Reset();
-  /*!
+    void Reset();
+    /*!
    * \brief Introduce a new iteration vector, and perform extrapolation
    * \param residual
    * The vector that
@@ -60,24 +60,24 @@ public:
    * Corresponding other vectors whose sequence will be extrapolated.
    * \param options can contain "weight=xxx" where xxx is the weight to be given to this vector. These options would normally be passed as the corresponding parameter in iterate().
    */
-protected:
-  void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
+  protected:
+    void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
 
-  /*!
+    /*!
    * \brief Return the square L2 norm of the extrapolated residual from the last call to extrapolate() or iterate().
    * \return
    */
-public:
-  double fLastResidual() const { return m_LastResidualNormSq; }
-  /*!
+  public:
+    double fLastResidual() const { return m_LastResidualNormSq; }
+    /*!
    * \brief Return the coefficient of the last residual vector in the extrapolated residual from the last call to extrapolate() or iterate().
    * \return
    */
-  double fLastCoeff() const { return m_LastAmplitudeCoeff; }
-  unsigned int nLastDim() const {return std::count(m_iVectorAge.begin(),m_iVectorAge.end(),VecNotPresent);}
-  unsigned int nNextVec() const { return m_iNext; }
-  unsigned int nMaxDim() const { return m_maxDim; }
-  /*!
+    double fLastCoeff() const { return m_LastAmplitudeCoeff; }
+    unsigned int nLastDim() const {return std::count(m_iVectorAge.begin(),m_iVectorAge.end(),VecNotPresent);}
+    unsigned int nNextVec() const { return m_iNext; }
+    unsigned int nMaxDim() const { return m_maxDim; }
+    /*!
    * \brief Test the correct operation of the module. If an error is found, an exception is thrown.
    * \param verbosity How much to print.
    * - -1 Nothing at all is printed.
@@ -88,50 +88,50 @@ public:
    * \param mode Whether to perform DIIS, KAIN, or nothing.
    * \param difficulty Level of numerical challenge, ranging from 0 to 1.
    */
-  static void test(int verbosity=0,
-                   size_t maxDim=6,
-                   double acceptanceThreshold=1e6,
-                   enum DIISmode_type mode=DIISmode,
-                   double difficulty=0.1);
-private:
-  typedef unsigned int uint;
-  DIIS();
-  enum DIISmode_type m_DIISmode;
-  double m_acceptanceThreshold;
-  size_t m_maxDim;
-  unsigned int m_nDim;
-  //> 0xffff: no vector in this slot. Otherwise: number of iterations
-  // the vector in this slot has already been inside the DIIS system.
-  std::vector<uint> m_iVectorAge;
-  uint m_iNext; //< next vector to be overwritten. nDim+1 if nDim < MaxDim_.
-  // find vectors which are not considered too bad for extrapolation purposes.
-  void FindUsefulVectors(uint *iUsedVecs, uint &nDimUsed, double &fBaseScale, uint iThis);
-  void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr);
+    static void test(int verbosity=0,
+                     size_t maxDim=6,
+                     double acceptanceThreshold=1e6,
+                     enum DIISmode_type mode=DIISmode,
+                     double difficulty=0.1);
+  private:
+    typedef unsigned int uint;
+    DIIS();
+    enum DIISmode_type m_DIISmode;
+    double m_acceptanceThreshold;
+    size_t m_maxDim;
+    unsigned int m_nDim;
+    //> 0xffff: no vector in this slot. Otherwise: number of iterations
+    // the vector in this slot has already been inside the DIIS system.
+    std::vector<uint> m_iVectorAge;
+    uint m_iNext; //< next vector to be overwritten. nDim+1 if nDim < MaxDim_.
+    // find vectors which are not considered too bad for extrapolation purposes.
+    void FindUsefulVectors(uint *iUsedVecs, uint &nDimUsed, double &fBaseScale, uint iThis);
+    void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr);
 
-  Eigen::MatrixXd m_ErrorMatrix;
-  std::vector<double> m_Weights;
+    Eigen::MatrixXd m_ErrorMatrix;
+    std::vector<double> m_Weights;
 
-  // the following variables are kept for informative/displaying purposes
-  double
-      // dot(R,R) of last residual vector fed into this state.
-      m_LastResidualNormSq,
-      // coefficient the actual new vector got in the last DIIS step
-      m_LastAmplitudeCoeff;
+    // the following variables are kept for informative/displaying purposes
+    double
+    // dot(R,R) of last residual vector fed into this state.
+    m_LastResidualNormSq,
+    // coefficient the actual new vector got in the last DIIS step
+    m_LastAmplitudeCoeff;
 
-};
+  };
 
-class KAIN : public DIIS
-{
-public:
-  KAIN(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp)
+  class KAIN : public DIIS
+  {
+  public:
+    KAIN(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp)
       : DIIS(updateFunction,residualFunction) {}
-  void setOptions(size_t maxDim=6,
-                  double acceptanceThreshold=1e6,
-                  enum DIISmode_type mode=KAINmode)
-  { DIIS::setOptions(maxDim,acceptanceThreshold,mode); m_preconditionResiduals=true;}
-private:
-  KAIN();
-};
+    void setOptions(size_t maxDim=6,
+                    double acceptanceThreshold=1e6,
+                    enum DIISmode_type mode=KAINmode)
+    { DIIS::setOptions(maxDim,acceptanceThreshold,mode); m_preconditionResiduals=true;}
+  private:
+    KAIN();
+  };
 
 }
 

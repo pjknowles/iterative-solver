@@ -14,8 +14,6 @@ Davidson::Davidson(ParameterSetTransformation updateFunction, ParameterSetTransf
 void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options)
 {
   assert(solution.size()==residual.size());
-//  xout << "entry to extrapolate, residual "<<residual<<std::endl;
-//  xout << "entry to extrapolate, solution "<<solution<<std::endl;
   if (m_roots<1) m_roots=solution.size(); // number of roots defaults to size of solution
   calculateSubspaceMatrix(residual,solution);
   diagonalizeSubspaceMatrix();
@@ -32,24 +30,19 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
                   solution[kkk]->axpy(m_subspaceEigenvectors(l,kkk).real(),m_solutions[ll][lll]);
                   residual[kkk]->axpy(m_subspaceEigenvectors(l,kkk).real(),m_residuals[ll][lll]);
                   l++;
-              }
-          }
-      }
+                }
+            }
+        }
       residual[kkk]->axpy(-m_subspaceEigenvalues(kkk).real(),solution[kkk]);
-  }
+    }
 
   m_updateShift.resize(m_roots);
   for (size_t root=0; root<(size_t)m_roots; root++) m_updateShift[root]=m_singularity_shift-m_subspaceEigenvalues[root].real();
-
-//  xout << "exit from extrapolate, residual "<<residual<<std::endl;
-//  xout << "exit from extrapolate, solution "<<solution<<std::endl;
-//  xout << "exit from extrapolate, m_subspaceEigenvalues[0] "<<m_subspaceEigenvalues[0]<<std::endl;
-//  xout << "exit from extrapolate, m_updateShift[0] "<<m_updateShift[0]<<std::endl;
 }
 
 std::vector<double> Davidson::eigenvalues()
 {
-std::vector<double> result;
+  std::vector<double> result;
   for (size_t root=0; root<(size_t)m_roots; root++) result.push_back(m_subspaceEigenvalues[root].real());
   return result;
 }
@@ -60,33 +53,24 @@ static Eigen::MatrixXd testmatrix;
 
 static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
   for (size_t k=0; k<psx.size(); k++) {
-    Eigen::VectorXd x(testmatrix.rows());
-    if (psx[k]->size() != testmatrix.rows()) throw std::logic_error("psx wrong size");
-    for (size_t l=0; l<(size_t)testmatrix.rows(); l++) x[l] = (*psx[k])[l];
-    Eigen::VectorXd res = testmatrix * x;
-    if (not append) outputs[k]->zero();
-    for (size_t l=0; l<(size_t)testmatrix.rows(); l++) (*outputs[k])[l]+=res[l];
+      Eigen::VectorXd x(testmatrix.rows());
+      if (psx[k]->size() != testmatrix.rows()) throw std::logic_error("psx wrong size");
+      for (size_t l=0; l<(size_t)testmatrix.rows(); l++) x[l] = (*psx[k])[l];
+      Eigen::VectorXd res = testmatrix * x;
+      if (not append) outputs[k]->zero();
+      for (size_t l=0; l<(size_t)testmatrix.rows(); l++) (*outputs[k])[l]+=res[l];
     }
 }
 
 static void _updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift, bool append=true) {
-//  xout << "updater: shift.size()="<<shift.size()<<std::endl;
-//  xout << "updater: psc="<<psc<<std::endl;
-//  xout << "updater: psg="<<psg<<std::endl;
-//  xout << "updater append="<<append<<std::endl;
-//  xout << "updater shift.size()="<<shift.size()<<std::endl;
-    if (not append) psc.zero();
+  if (not append) psc.zero();
   for (size_t k=0; k<psc.size(); k++) {
-//      xout << "shift "<<shift[k]<<std::endl;
-    for (size_t l=0; l<(size_t)testmatrix.rows(); l++)  (*psc[k])[l] -= (*psg[k])[l]/(testmatrix(l,l)+shift[k]);
+      for (size_t l=0; l<(size_t)testmatrix.rows(); l++)  (*psc[k])[l] -= (*psg[k])[l]/(testmatrix(l,l)+shift[k]);
     }
-//  xout << "updater: final psc="<<psc<<std::endl;
-//  exit(0);
 }
 
 
 typedef SimpleParameterVector ptype;
-//typedef ParameterVector ptype;
 void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
 {
   xout << "Test IterativeSolver::Davidson dimension="<<dimension<<", roots="<<roots<<", problem="<<problem<<std::endl;
@@ -112,9 +96,7 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
       ptype* xx=new ptype(dimension);
       xx->zero();
       (*xx)[root]=1;
-//      xout << "*xx: "<<*xx<<std::endl;
       x.push_back_clone(xx);
-//      xout << "x.back(): "<<x.back()<<std::endl;
       ptype* gg=new ptype(dimension);
       g.push_back_clone(gg);
     }
@@ -140,6 +122,6 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
   for (size_t root=0; root<(size_t)d.m_roots; root++) {
       delete &x[root][0];
       delete &g[root][0];
-  }
+    }
 
 }

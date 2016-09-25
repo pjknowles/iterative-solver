@@ -117,7 +117,7 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
     }
   xout << "Square residual norms: "; for (std::vector<double>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
   // be noisy about obvious problems
-  if (*std::max_element(errors.begin(),errors.end())>1e-8) throw std::runtime_error("IterativeSolver::Davidson has failed tests");
+  if (*std::max_element(errors.begin(),errors.end())>1e-7) throw std::runtime_error("IterativeSolver::Davidson has failed tests");
 
   for (size_t root=0; root<(size_t)d.m_roots; root++) {
       delete &x[root][0];

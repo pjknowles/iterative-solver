@@ -14,7 +14,8 @@ int main(int argc, char *argv[])
   IterativeSolver::Davidson::test(9,1,1,0);
   IterativeSolver::Davidson::test(9,1,1,1);
   IterativeSolver::Davidson::test(9,1,1,2);
-//  IterativeSolver::Davidson::test(9,2,9,1);
+  IterativeSolver::Davidson::test(9,2,1,2);
+  IterativeSolver::Davidson::test(99,3,1,2);
   IterativeSolverFTest();
   return 0;
 }

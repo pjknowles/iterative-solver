@@ -25,15 +25,15 @@ IterativeSolverBase::~IterativeSolverBase()
 
 bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorSet &solution, ParameterVectorSet &other, std::string options)
 {
+  for (size_t k=0; k<residual.size(); k++) residual.active[k] = residual.active[k] && solution.active[k];
   if (m_preconditionResiduals) m_preconditionerFunction(residual,residual,m_updateShift,false);
   m_residuals.push_back(residual);
   m_solutions.push_back(solution); m_others.push_back(other);
-  //  std::cout << "@@ solution at "<<&solution[0]<<std::endl;
-  //  std::cout << "@@ m_solutions.back() at "<<&m_solutions.back()[0]<<std::endl;
   m_lastVectorIndex=m_residuals.size()-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
   extrapolate(residual,solution,other,options);
   m_preconditionerFunction(residual,solution,m_updateShift,true);
   calculateErrors(solution,residual);
+//  xout << "Errors:"; for (auto e=m_errors.begin(); e!=m_errors.end(); e++) xout << " "<<*e<<"("<<(*e<m_thresh)<<")"; xout <<std::endl;
   adjustUpdate(solution);
   return m_error < m_thresh;
 }
@@ -94,8 +94,9 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
 void IterativeSolverBase::calculateSubspaceMatrix(ParameterVectorSet &residual, ParameterVectorSet &solution)
 {
   size_t old_size=m_subspaceMatrix.rows();
-  m_subspaceMatrix.conservativeResize(old_size+residual.size(),old_size+residual.size());
-  m_subspaceOverlap.conservativeResize(old_size+residual.size(),old_size+residual.size());
+  size_t new_size=old_size+std::count(residual.active.begin(),residual.active.end(),true);
+  m_subspaceMatrix.conservativeResize(new_size,new_size);
+  m_subspaceOverlap.conservativeResize(new_size,new_size);
   size_t k=old_size;
   for (size_t kkk=0; kkk<residual.size(); kkk++) {
       if (residual.active[kkk]) {
@@ -118,8 +119,8 @@ void IterativeSolverBase::calculateSubspaceMatrix(ParameterVectorSet &residual, 
         }
     }
   if (m_verbosity>3) {
-      xout << "m_subspaceMatrix: "<<m_subspaceMatrix<<std::endl;
-      xout << "m_subspaceOverlap: "<<m_subspaceOverlap<<std::endl;
+      xout << "m_subspaceMatrix: "<<std::endl<<m_subspaceMatrix<<std::endl;
+      xout << "m_subspaceOverlap: "<<std::endl<<m_subspaceOverlap<<std::endl;
     }
 
 }

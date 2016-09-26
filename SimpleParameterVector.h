@@ -47,12 +47,14 @@ namespace IterativeSolver {
     void setVariance(int variance=0) {m_variance=variance;}
     int variance() {return m_variance;}
     SimpleParameterVector* clone() const;
-    std::string str() const { std::ostringstream os; os << "SimpleParameterVector object:";
-                              for (size_t k=0; k<size(); k++)
-                                os <<" "<< (*this)[k];
-                                                      os << std::endl;
-                                                                              return os.str();}
-  protected:
+    std::string str() const {
+        std::ostringstream os; os << "SimpleParameterVector object:";
+        for (size_t k=0; k<size(); k++)
+            os <<" "<< (*this)[k];
+        os << std::endl;
+        return os.str();
+    }
+
   private:
     int m_variance;
     /*!

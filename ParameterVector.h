@@ -113,40 +113,40 @@ namespace IterativeSolver {
     ParameterVectorSet(const ParameterVectorSet& source)
     {
       for (size_t k=0; k<source.size(); k++) {
-          push_back_clone(source.pvs[k]);
-          active[k] = source.active[k];
+          push_back_clone(source.m_pvs[k]);
+          m_active[k] = source.m_active[k];
         }
     }
 
-    ~ParameterVectorSet() { while(pvs.size()>0) pvs.pop_back();}
-    size_t size() const { return this->pvs.size();}
-    ParameterVector* operator[](size_t pos) { return pvs[pos];}
-    const ParameterVector* operator[](size_t pos) const { return pvs[pos];}
-    ParameterVector* front() { return (pvs.front());}
-    const ParameterVector* front() const { return (pvs.front());}
-    ParameterVector* back() { return (pvs.back());}
-    const ParameterVector* back() const { return (pvs.back());}
+    ~ParameterVectorSet() { while(m_pvs.size()>0) m_pvs.pop_back();}
+    size_t size() const { return this->m_pvs.size();}
+    ParameterVector* operator[](size_t pos) { return m_pvs[pos];}
+    const ParameterVector* operator[](size_t pos) const { return m_pvs[pos];}
+    ParameterVector* front() { return (m_pvs.front());}
+    const ParameterVector* front() const { return (m_pvs.front());}
+    ParameterVector* back() { return (m_pvs.back());}
+    const ParameterVector* back() const { return (m_pvs.back());}
     void push_back(ParameterVector* val)
     {
-      pvs.push_back(val);
-      owned.push_back(false);
-      active.push_back(true);
+      m_pvs.push_back(val);
+      m_owned.push_back(false);
+      m_active.push_back(true);
     }
 
     void push_back_clone(ParameterVector* val)
     {
-      pvs.push_back(val->clone());
-      owned.push_back(true);
-      active.push_back(true);
+      m_pvs.push_back(val->clone());
+      m_owned.push_back(true);
+      m_active.push_back(true);
     }
-    void pop_back() { if (pvs.size() <=0) return; if (owned.back()) delete pvs.back(); pvs.pop_back(); active.pop_back(); owned.pop_back();}
-    void resize(size_t length) { pvs.resize(length); active.resize(length);}
+    void pop_back() { if (m_pvs.size() <=0) return; if (m_owned.back()) delete m_pvs.back(); m_pvs.pop_back(); m_active.pop_back(); m_owned.pop_back();}
+    void resize(size_t length) { m_pvs.resize(length); m_active.resize(length);}
     ParameterVectorSet& operator=(const ParameterVectorSet& source)
     {
-      while(pvs.size()>0) pvs.pop_back();
+      while(m_pvs.size()>0) m_pvs.pop_back();
       for (size_t k=0; k<source.size(); k++) {
-          push_back_clone(source.pvs[k]);
-          active[k] = source.active[k];
+          push_back_clone(source.m_pvs[k]);
+          m_active[k] = source.m_active[k];
         }
       return *this;
     }
@@ -157,25 +157,25 @@ namespace IterativeSolver {
      * \return
      */
     void axpy(ParameterScalar a, const ParameterVectorSet& other) {
-      for (size_t k=0; k<size(); k++) this->pvs[k]->axpy(a,other[k]);
+      for (size_t k=0; k<size(); k++) this->m_pvs[k]->axpy(a,other[k]);
     }
     /*!
      * \brief Set the contents of the object to zero.
      */
-    void zero() { for (size_t k=0; k<size(); k++) this->pvs[k]->zero(); }
+    void zero() { for (size_t k=0; k<size(); k++) this->m_pvs[k]->zero(); }
 
     /*!
        * \brief A place to record whether each member of the set is meant to be considered active
        */
-    std::vector<bool> active;
+    std::vector<bool> m_active;
   private:
-    std::vector<bool> owned; ///< whether the ParameterVector objects pointed to are owned by this container (and therefore destroyed in the destructor)
-    std::vector<ParameterVector*> pvs; // contain pointers to support polymorphism
+    std::vector<bool> m_owned; ///< whether the ParameterVector objects pointed to are owned by this container (and therefore destroyed in the destructor)
+    std::vector<ParameterVector*> m_pvs; // contain pointers to support polymorphism
   };
 
   inline std::ostream& operator<<(std::ostream& os, const ParameterVectorSet& pvs) {
     for (size_t k=0; k<pvs.size(); k++) {
-        if (pvs.active[k])
+        if (pvs.m_active[k])
           os << pvs[k];
       }
     return os;

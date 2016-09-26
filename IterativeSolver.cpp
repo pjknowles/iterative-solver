@@ -25,7 +25,7 @@ IterativeSolverBase::~IterativeSolverBase()
 
 bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorSet &solution, ParameterVectorSet &other, std::string options)
 {
-  for (size_t k=0; k<residual.size(); k++) residual.active[k] = residual.active[k] && solution.active[k];
+  for (size_t k=0; k<residual.size(); k++) residual.m_active[k] = residual.m_active[k] && solution.m_active[k];
   if (m_preconditionResiduals) m_preconditionerFunction(residual,residual,m_updateShift,false);
   m_residuals.push_back(residual);
   m_solutions.push_back(solution); m_others.push_back(other);
@@ -59,15 +59,15 @@ bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSe
 void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
 {
   for (size_t k=0; k<solution.size(); k++)
-    solution.active[k] = (m_errors[k] > m_thresh);
+    solution.m_active[k] = (m_errors[k] > m_thresh);
   if (m_orthogonalize) {
       //      xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
       for (size_t kkk=0; kkk<solution.size(); kkk++) {
-          if (solution.active[kkk]) {
+          if (solution.m_active[kkk]) {
               size_t l=0;
               for (size_t ll=0; ll<m_solutions.size(); ll++) {
                   for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
-                      if (m_solutions[ll].active[lll]) {
+                      if (m_solutions[ll].m_active[lll]) {
                           double s = -(m_solutions[ll][lll]->dot(solution[kkk])) / (m_solutions[ll][lll]->dot(m_solutions[ll][lll]));
                           solution[kkk]->axpy(s,m_solutions[ll][lll]);
                           l++;
@@ -75,14 +75,14 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
                     }
                 }
               for (size_t lll=0; lll<kkk; lll++) {
-                  if (solution.active[lll]) {
+                  if (solution.m_active[lll]) {
                       double s = solution[lll]->dot(solution[kkk]);
                       solution[kkk]->axpy(-s,solution[lll]);
                     }
                 }
               double s= solution[kkk]->dot(solution[kkk]);
               if (s <= 0)
-                solution.active[kkk]=false;
+                solution.m_active[kkk]=false;
               else
                 solution[kkk]->axpy(1/std::sqrt(s)-1,solution[kkk]);
             }
@@ -94,16 +94,16 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
 void IterativeSolverBase::calculateSubspaceMatrix(ParameterVectorSet &residual, ParameterVectorSet &solution)
 {
   size_t old_size=m_subspaceMatrix.rows();
-  size_t new_size=old_size+std::count(residual.active.begin(),residual.active.end(),true);
+  size_t new_size=old_size+std::count(residual.m_active.begin(),residual.m_active.end(),true);
   m_subspaceMatrix.conservativeResize(new_size,new_size);
   m_subspaceOverlap.conservativeResize(new_size,new_size);
   size_t k=old_size;
   for (size_t kkk=0; kkk<residual.size(); kkk++) {
-      if (residual.active[kkk]) {
+      if (residual.m_active[kkk]) {
           size_t l=0;
           for (size_t ll=0; ll<m_solutions.size(); ll++) {
               for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
-                  if (m_solutions[ll].active[lll]) {
+                  if (m_solutions[ll].m_active[lll]) {
                       m_subspaceMatrix(k,l) = m_subspaceMatrix(l,k) = m_solutions[ll][lll]->dot(residual[kkk]);
                       m_subspaceOverlap(k,l) = m_subspaceOverlap(l,k) = m_solutions[ll][lll]->dot(solution[kkk]);
                       //                  std::cout << "subspace calc, *m_solutions[ll][lll] "<<*m_solutions[ll][lll]<<std::endl;
@@ -159,9 +159,9 @@ void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, co
   m_errors.clear();
   for (size_t k=0; k<solution.size(); k++)
     if (m_linear) // we can use the extrapolated residual if the problem is linear
-      m_errors.push_back(residual.active[k] ? std::fabs(residual[k]->dot(step[k])) : 0);
+      m_errors.push_back(residual.m_active[k] ? std::fabs(residual[k]->dot(step[k])) : 0);
     else
-      m_errors.push_back(m_residuals[m_lastVectorIndex].active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]->dot(step[k])) : 0);
+      m_errors.push_back(m_residuals[m_lastVectorIndex].m_active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]->dot(step[k])) : 0);
   m_error = *max_element(m_errors.begin(),m_errors.end());
   m_worst = max_element(m_errors.begin(),m_errors.end())-m_errors.begin();
 }

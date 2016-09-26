@@ -26,7 +26,7 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
       size_t l=0;
       for (size_t ll=0; ll<m_solutions.size(); ll++) {
           for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
-              if (m_solutions[ll].active[lll]) {
+              if (m_solutions[ll].m_active[lll]) {
                   solution[kkk]->axpy(m_subspaceEigenvectors(l,kkk).real(),m_solutions[ll][lll]);
                   residual[kkk]->axpy(m_subspaceEigenvectors(l,kkk).real(),m_residuals[ll][lll]);
                   l++;

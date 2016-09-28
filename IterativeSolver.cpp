@@ -15,6 +15,8 @@ IterativeSolverBase::IterativeSolverBase(ParameterSetTransformation precondition
     m_linear(false),
     m_hermitian(false),
     m_preconditionResiduals(false),
+    m_age(0),
+    m_subspaceMatrixResRes(false),
     m_singularity_shift(1e-8)
 {}
 
@@ -27,9 +29,7 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
 {
   for (size_t k=0; k<residual.size(); k++) residual.m_active[k] = residual.m_active[k] && solution.m_active[k];
   if (m_preconditionResiduals) m_preconditionerFunction(residual,residual,m_updateShift,false);
-  m_residuals.push_back(residual);
-  m_solutions.push_back(solution); m_others.push_back(other);
-  m_lastVectorIndex=m_residuals.size()-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
+  m_lastVectorIndex=addVectorSet(residual,solution,other)-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
   extrapolate(residual,solution,other,options);
   m_preconditionerFunction(residual,solution,m_updateShift,true);
   calculateErrors(solution,residual);
@@ -91,12 +91,27 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
     }
 }
 
+size_t IterativeSolverBase::addVectorSet(const ParameterVectorSet &residual, const ParameterVectorSet &solution, const ParameterVectorSet &other)
+{
+    m_age++;
+    m_residuals.push_back(residual);
+    m_solutions.push_back(solution);
+    m_others.push_back(other);
+    return m_residuals.size();
+}
+
+void IterativeSolverBase::deleteVector(size_t index)
+{
+    if (index>m_residuals.size()) throw std::logic_error("invalid index");
+}
+
 void IterativeSolverBase::calculateSubspaceMatrix(ParameterVectorSet &residual, ParameterVectorSet &solution)
 {
   size_t old_size=m_subspaceMatrix.rows();
   size_t new_size=old_size+std::count(residual.m_active.begin(),residual.m_active.end(),true);
   m_subspaceMatrix.conservativeResize(new_size,new_size);
   m_subspaceOverlap.conservativeResize(new_size,new_size);
+  std::vector<ParameterVectorSet>* bra = m_subspaceMatrixResRes ? &m_residuals : &m_solutions;
   size_t k=old_size;
   for (size_t kkk=0; kkk<residual.size(); kkk++) {
       if (residual.m_active[kkk]) {
@@ -104,13 +119,8 @@ void IterativeSolverBase::calculateSubspaceMatrix(ParameterVectorSet &residual, 
           for (size_t ll=0; ll<m_solutions.size(); ll++) {
               for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
                   if (m_solutions[ll].m_active[lll]) {
-                      m_subspaceMatrix(k,l) = m_subspaceMatrix(l,k) = m_solutions[ll][lll]->dot(residual[kkk]);
+                      m_subspaceMatrix(k,l) = m_subspaceMatrix(l,k) = (*bra)[ll][lll]->dot(residual[kkk]);
                       m_subspaceOverlap(k,l) = m_subspaceOverlap(l,k) = m_solutions[ll][lll]->dot(solution[kkk]);
-                      //                  std::cout << "subspace calc, *m_solutions[ll][lll] "<<*m_solutions[ll][lll]<<std::endl;
-                      //                  std::cout << "subspace calc, solution[kkk] "<<*solution[kkk]<<std::endl;
-                      //                  std::cout << "subspace calc, solution[kkk] "<<solution[kkk]->str()<<std::endl;
-                      //                  std::cout << "subspace calc, product "<<solution[kkk]->dot(m_solutions[ll][lll])<<std::endl;
-                      //                  std::cout << "subspace calc, product "<<m_solutions[ll][lll]->dot(solution[kkk])<<std::endl;
                       l++;
                     }
                 }

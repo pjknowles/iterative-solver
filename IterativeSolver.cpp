@@ -102,7 +102,40 @@ size_t IterativeSolverBase::addVectorSet(const ParameterVectorSet &residual, con
 
 void IterativeSolverBase::deleteVector(size_t index)
 {
-    if (index>m_residuals.size()) throw std::logic_error("invalid index");
+    if (index>=m_residuals.size()) throw std::logic_error("invalid index");
+    xout << "deleteVector "<<index<<std::endl;
+    xout << "old m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
+    xout << "old m_subspaceOverlap"<<std::endl<<m_subspaceOverlap<<std::endl;
+    size_t old_size=m_subspaceMatrix.rows();
+    size_t new_size=old_size;
+    size_t l=0;
+    for (size_t ll=0; ll<m_solutions.size(); ll++) {
+        for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
+            if (m_solutions[ll].m_active[lll]) {
+                if (l == index) { // this is the one to delete
+                    m_solutions[ll].m_active[lll] = false;
+                    m_residuals[ll].m_active[lll] = false;
+                    m_others[ll].m_active[lll] = false;
+                    for (size_t l2=l+1; l2<m_subspaceMatrix.rows(); l2++) {
+                        for (size_t k=0; k<m_subspaceMatrix.rows(); k++) {
+                            m_subspaceMatrix(k,l2-1)=m_subspaceMatrix(k,l2);
+                            m_subspaceMatrix(l2-1,k)=m_subspaceMatrix(l2,k);
+                            m_subspaceOverlap(k,l2-1)=m_subspaceOverlap(k,l2);
+                            m_subspaceOverlap(l2-1,k)=m_subspaceOverlap(l2,k);
+                        }
+                    }
+                    new_size--;
+                }
+                l++;
+            }
+            if (std::count(m_solutions[ll].m_active.begin(),m_solutions[ll].m_active.end(),true)==0) { // can delete the whole thing
+            }
+        }
+    }
+    m_subspaceMatrix.conservativeResize(new_size,new_size);
+    m_subspaceOverlap.conservativeResize(new_size,new_size);
+    xout << "new m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
+    xout << "new m_subspaceOverlap"<<std::endl<<m_subspaceOverlap<<std::endl;
 }
 
 void IterativeSolverBase::calculateSubspaceMatrix(const ParameterVectorSet &residual, const ParameterVectorSet &solution)

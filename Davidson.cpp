@@ -15,7 +15,7 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
 {
   assert(solution.size()==residual.size());
   if (m_roots<1) m_roots=solution.size(); // number of roots defaults to size of solution
-  calculateSubspaceMatrix(residual,solution);
+//  calculateSubspaceMatrix(residual,solution);
   diagonalizeSubspaceMatrix();
 
   if (m_verbosity>1) xout << "Subspace eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;

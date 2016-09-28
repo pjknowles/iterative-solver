@@ -15,7 +15,7 @@ IterativeSolverBase::IterativeSolverBase(ParameterSetTransformation precondition
     m_linear(false),
     m_hermitian(false),
     m_preconditionResiduals(false),
-    m_age(0),
+    m_date(0),
     m_subspaceMatrixResRes(false),
     m_singularity_shift(1e-8)
 {}
@@ -93,10 +93,10 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
 
 size_t IterativeSolverBase::addVectorSet(const ParameterVectorSet &residual, const ParameterVectorSet &solution, const ParameterVectorSet &other)
 {
-    m_age++;
     m_residuals.push_back(residual);
     m_solutions.push_back(solution);
     m_others.push_back(other);
+    calculateSubspaceMatrix(residual,solution);
     return m_residuals.size();
 }
 
@@ -105,7 +105,7 @@ void IterativeSolverBase::deleteVector(size_t index)
     if (index>m_residuals.size()) throw std::logic_error("invalid index");
 }
 
-void IterativeSolverBase::calculateSubspaceMatrix(ParameterVectorSet &residual, ParameterVectorSet &solution)
+void IterativeSolverBase::calculateSubspaceMatrix(const ParameterVectorSet &residual, const ParameterVectorSet &solution)
 {
   size_t old_size=m_subspaceMatrix.rows();
   size_t new_size=old_size+std::count(residual.m_active.begin(),residual.m_active.end(),true);
@@ -125,6 +125,7 @@ void IterativeSolverBase::calculateSubspaceMatrix(ParameterVectorSet &residual, 
                     }
                 }
             }
+          m_dateOfBirth.push_back(++m_date);
           k++;
         }
     }

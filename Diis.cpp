@@ -7,6 +7,7 @@ DIIS::DIIS(ParameterSetTransformation updateFunction, ParameterSetTransformation
   : IterativeSolverBase(updateFunction, residualFunction)
 {
   m_orthogonalize = false;
+  m_subspaceMatrixResRes = true;
   setOptions();
   Reset();
 }
@@ -156,6 +157,11 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
       m_ErrorMatrix(iUsedVecs[i], iUsedVecs[iThis]) = ResDot[i];
       m_ErrorMatrix(iUsedVecs[iThis], iUsedVecs[i]) = ResDot[i];
     }
+
+  if (m_subspaceMatrix.rows() < 9) {
+      xout << "m_ErrorMatrix"<<std::endl<<m_ErrorMatrix<<std::endl;
+      xout << "m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
+  }
 
   // build actual DIIS system for the subspace used.
   Eigen::VectorXd

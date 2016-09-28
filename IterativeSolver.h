@@ -120,17 +120,17 @@ namespace IterativeSolver {
     virtual void adjustUpdate(ParameterVectorSet & solution);
     virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
     virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="") { ParameterVectorSet other; extrapolate(residual,solution,other,options); }
-    void calculateSubspaceMatrix(ParameterVectorSet & residual, ParameterVectorSet & solution);
+    void calculateSubspaceMatrix(const ParameterVectorSet &residual, const ParameterVectorSet &solution);
     void diagonalizeSubspaceMatrix();
     void calculateErrors(const ParameterVectorSet & solution, const ParameterVectorSet &residual);
     size_t addVectorSet(const ParameterVectorSet &residual, const ParameterVectorSet &solution, const ParameterVectorSet &other);
     void deleteVector(size_t index);
-    int m_age;
+    int m_date;
     bool m_subspaceMatrixResRes; // whether m_subspaceMatrix is Residual.Residual (true) or Solution.Residual (false)
     std::vector<ParameterVectorSet> m_residuals;
     std::vector<ParameterVectorSet> m_solutions;
     std::vector<ParameterVectorSet> m_others;
-    std::vector<int> m_ages;
+    std::vector<int> m_dateOfBirth;
     size_t m_lastVectorIndex;
     std::vector<ParameterScalar> m_updateShift;
     Eigen::MatrixXd m_subspaceMatrix;

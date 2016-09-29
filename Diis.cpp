@@ -31,8 +31,6 @@ void DIIS::setOptions(size_t maxDim, double acceptanceThreshold, DIISmode_type m
 
 void DIIS::Reset()
 {
-  m_iNext=0;
-  m_iVectorAge.resize(0);
   m_LastResidualNormSq=1e99; // so it can be tested even before extrapolation is done
 }
 
@@ -88,9 +86,7 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   size_t nDim = m_subspaceMatrix.rows();
   m_LastResidualNormSq = m_subspaceMatrix(nDim-1,nDim-1);
 
-  if (m_verbosity>1)
-    xout << "m_iNext="<<m_iNext<<", m_LastResidualNormSq="<<m_LastResidualNormSq<<", m_acceptanceThreshold="<<m_acceptanceThreshold<<std::endl;
-  if ( false && m_iNext == 0 && m_LastResidualNormSq > m_acceptanceThreshold ) {
+  if ( false && m_LastResidualNormSq > m_acceptanceThreshold ) {
     // current vector is to be considered too wrong to be useful for DIIS
     // purposes. Don't store it.
       // PJK: this does not seem to be the right thing to me. Better to leave it in and then
@@ -185,39 +181,6 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
       xout << "DIIS.extrapolate() final extrapolated solution: "<<solution.front()<<std::endl;
       xout << "DIIS.extrapolate() final extrapolated residual: "<<residual.front()<<std::endl;
     }
-}
-
-void DIIS::FindUsefulVectors(uint *iUsedVecs, uint &nDim, double &fBaseScale, uint iThis)
-{
-  // remove lines from the system which correspond to vectors which are too bad
-  // to be really useful for extrapolation purposes, but which might break
-  // numerical stability if left in.
-  double const
-      fThrBadResidual = 1e12;
-  double
-      fBestResidualDot = m_ErrorMatrix(iThis,iThis),
-      fWorstResidualDot = fBestResidualDot;
-  assert(m_iVectorAge[iThis] < VecNotPresent);
-  for ( uint i = 0; i < m_iVectorAge.size(); ++ i ) {
-      if ( m_iVectorAge[i] >= VecNotPresent ) continue;
-      fBestResidualDot = std::min( m_ErrorMatrix(i,i), fBestResidualDot );
-    }
-  nDim = 0;
-  for ( uint i = 0; i < m_iVectorAge.size(); ++ i ){
-      if ( i != iThis && m_iVectorAge[i] >= VecNotPresent )
-        continue;
-      if ( i != iThis && m_ErrorMatrix(i,i) > fBestResidualDot * fThrBadResidual) {
-          m_iVectorAge[i] = VecNotPresent; // ignore this slot next time.
-          continue;
-        }
-      fWorstResidualDot = std::max( m_ErrorMatrix(i,i), fWorstResidualDot );
-      iUsedVecs[nDim] = i;
-      ++ nDim;
-    }
-
-  fBaseScale = std::sqrt(fWorstResidualDot * fBestResidualDot);
-  if ( fBaseScale <= 0. )
-    fBaseScale = 1.;
 }
 
 // testing code below here

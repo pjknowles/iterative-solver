@@ -74,8 +74,7 @@ namespace IterativeSolver {
    * \return
    */
     double fLastCoeff() const { return m_LastAmplitudeCoeff; }
-    unsigned int nLastDim() const {return std::count(m_iVectorAge.begin(),m_iVectorAge.end(),VecNotPresent);}
-    unsigned int nNextVec() const { return m_iNext; }
+    unsigned int nLastDim() const {return m_residuals.size();}
     unsigned int nMaxDim() const { return m_maxDim; }
     /*!
    * \brief Test the correct operation of the module. If an error is found, an exception is thrown.
@@ -102,13 +101,8 @@ namespace IterativeSolver {
     unsigned int m_nDim;
     //> 0xffff: no vector in this slot. Otherwise: number of iterations
     // the vector in this slot has already been inside the DIIS system.
-    std::vector<uint> m_iVectorAge;
-    uint m_iNext; //< next vector to be overwritten. nDim+1 if nDim < MaxDim_.
-    // find vectors which are not considered too bad for extrapolation purposes.
-    void FindUsefulVectors(uint *iUsedVecs, uint &nDimUsed, double &fBaseScale, uint iThis);
     void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr);
 
-    Eigen::MatrixXd m_ErrorMatrix;
     std::vector<double> m_Weights;
 
     // the following variables are kept for informative/displaying purposes

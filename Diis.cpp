@@ -80,88 +80,53 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   if (m_maxDim <= 1 || m_DIISmode == disabled) return;
 
   if (residual.size() > 1) throw std::logic_error("DIIS does not handle multiple solutions");
+  m_lastVectorIndex=m_residuals.size()-1;
 
-  double fThisResidualDot = residual.front()->dot(residual.front());
-  m_LastResidualNormSq = fThisResidualDot;
+//  if (m_subspaceMatrix.rows() < 9) {
+//      xout << "m_subspaceMatrix on entry to DIIS::extrapolate"<<std::endl<<m_subspaceMatrix<<std::endl;
+//  }
+  size_t nDim = m_subspaceMatrix.rows();
+  m_LastResidualNormSq = m_subspaceMatrix(nDim-1,nDim-1);
 
   if (m_verbosity>1)
-    xout << "m_iNext="<<m_iNext<<", fThisResidualDot="<<fThisResidualDot<<", m_acceptanceThreshold="<<m_acceptanceThreshold<<std::endl;
-  if ( m_iNext == 0 && fThisResidualDot > m_acceptanceThreshold )
+    xout << "m_iNext="<<m_iNext<<", m_LastResidualNormSq="<<m_LastResidualNormSq<<", m_acceptanceThreshold="<<m_acceptanceThreshold<<std::endl;
+  if ( false && m_iNext == 0 && m_LastResidualNormSq > m_acceptanceThreshold ) {
     // current vector is to be considered too wrong to be useful for DIIS
     // purposes. Don't store it.
-    return;
-
-  uint iThis = m_iNext;
-  if (m_verbosity > 1) xout<< "iThis=m_iNext "<<m_iNext<<std::endl;
-  assert(iThis < m_maxDim);
-  if (iThis >= m_iVectorAge.size()) m_iVectorAge.resize(iThis+1);
-  if (iThis >= m_ErrorMatrix.cols()) m_ErrorMatrix.conservativeResize(iThis+1,iThis+1);
-  m_ErrorMatrix(iThis,iThis)=fThisResidualDot;
-  for ( uint i = 0; i < m_iVectorAge.size(); ++ i )
-    m_iVectorAge[i] += 1;
-  m_iVectorAge[iThis] = 0;
-  if (m_verbosity>1) {
-      xout << "iVectorAge:";
-      for (std::vector<uint>::const_iterator a=m_iVectorAge.begin(); a!=m_iVectorAge.end(); a++)
-        xout << " "<<*a;
-      xout << std::endl;
-    }
-
-  // find set of vectors actually used in the current run and
-  // find their common size scale.
-  uint
-      nDim;
-  std::vector<uint> iUsedVecs( m_iVectorAge.size() + 1 );
-  // ^- note: this is the DIIS dimension--the actual matrices and vectors have
-  // dimension nDim+1 due to the Lagrange-Multipliers! ?? PJK ??
-  double
-      fBaseScale;
-  FindUsefulVectors(&iUsedVecs[0], nDim, fBaseScale, iThis);
-  if (m_verbosity>1) {
-      xout << "iUsedVecs:";
-      for (std::vector<uint>::const_iterator a=iUsedVecs.begin(); a!=iUsedVecs.end(); a++)
-        xout << " "<<*a;
-      xout << std::endl;
-    }
-  // transform iThis into a relative index.
-  for ( uint i = 0; i < nDim; ++ i )
-    if ( iThis == iUsedVecs[i] ) {
-        iThis = i;
-        break;
-      }
-  // store current vectors into their position in the array mapped by iUsedVecs
-  if (iUsedVecs[iThis] != m_residuals.size()-1)
-    {
-      m_solutions[iUsedVecs[iThis]]=solution;m_solutions.pop_back();
-      m_residuals[iUsedVecs[iThis]]=residual;m_residuals.pop_back();
-      m_others[iUsedVecs[iThis]]=other;m_others.pop_back();
-      m_lastVectorIndex=iUsedVecs[iThis];
-    }
-  //  xout << "after replacing expansion vector"<<std::endl;
-  //  for (auto vs=m_solutions.begin(); vs!=m_solutions.end(); vs++)
-  //      xout << "solution vector"<<*vs<<std::endl;
-
-  if (m_Weights.size()<=iUsedVecs[iThis]) m_Weights.resize(iUsedVecs[iThis]+1);
-  m_Weights[iUsedVecs[iThis]] = weight;
-
-  // go through previous residual vectors and form the dot products with them
-  std::vector<double> ResDot;
-  for (std::vector<ParameterVectorSet>::iterator p=m_residuals.begin(); p!=m_residuals.end(); p++)
-    ResDot.push_back(residual.front()->dot(p->front()));
-  if (iThis >= nDim) ResDot.resize(iThis+1);
-  ResDot[iThis] = fThisResidualDot;
-
-
-  // update resident error matrix with new residual-dots
-  for ( uint i = 0; i < nDim; ++ i ) {
-      m_ErrorMatrix(iUsedVecs[i], iUsedVecs[iThis]) = ResDot[i];
-      m_ErrorMatrix(iUsedVecs[iThis], iUsedVecs[i]) = ResDot[i];
-    }
-
-  if (m_subspaceMatrix.rows() < 9) {
-      xout << "m_ErrorMatrix"<<std::endl<<m_ErrorMatrix<<std::endl;
-      xout << "m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
+      // PJK: this does not seem to be the right thing to me. Better to leave it in and then
+      // the extrapolation will give you something different.
+//      xout << "unacceptable vector"<<std::endl;
+      deleteVector(nDim-1);
+      return;
   }
+  m_Weights.push_back(weight);
+
+  int worst=0, best=0;
+  for (size_t i=0; i<nDim; i++) {
+      if (m_subspaceMatrix(i,i) > m_subspaceMatrix(worst,worst)) worst=i;
+      if (m_subspaceMatrix(i,i) < m_subspaceMatrix(best,best)) best=i;
+  }
+  double fBaseScale = std::sqrt(m_subspaceMatrix(worst,worst)*m_subspaceMatrix(best,best));
+
+  if (nDim > m_maxDim) { // prune away the worst/oldest vector. Algorithm to be done properly yet
+      size_t prune = worst;
+      if (true || prune == nDim-1) { // the current vector is the worst, so delete the oldest
+//          xout << "m_dataOfBirth: "; for (auto b=m_dateOfBirth.begin(); b!=m_dateOfBirth.end(); b++) xout <<(*b); xout<<std::endl;
+          prune = std::min_element(m_dateOfBirth.begin(),m_dateOfBirth.end())-m_dateOfBirth.begin();
+      }
+//      xout << "prune="<<prune<<std::endl;
+      deleteVector(prune);
+      m_Weights.erase(m_Weights.begin()+prune);
+      nDim--;
+  }
+  if (nDim != m_subspaceMatrix.rows()) throw std::logic_error("problem in pruning");
+  if (m_Weights.size() != m_subspaceMatrix.rows()) throw std::logic_error("problem in pruning weights");
+
+
+
+//  if (m_subspaceMatrix.rows() < 9) {
+//      xout << "m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
+//  }
 
   // build actual DIIS system for the subspace used.
   Eigen::VectorXd
@@ -175,56 +140,24 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   // residuals are very small.
   for ( uint nRow = 0; nRow < nDim; ++ nRow )
     for ( uint nCol = 0; nCol < nDim; ++ nCol )
-      B(nRow, nCol) = m_ErrorMatrix(iUsedVecs[nRow], iUsedVecs[nCol])/fBaseScale;
+      B(nRow, nCol) = m_subspaceMatrix(nRow, nCol)/fBaseScale;
 
   // make Lagrange/constraint lines.
   for ( uint i = 0; i < nDim; ++ i ) {
-      B(i, nDim) = -m_Weights[iUsedVecs[i]];
-      B(nDim, i) = -m_Weights[iUsedVecs[i]];
+      B(i, nDim) = -m_Weights[i];
+      B(nDim, i) = -m_Weights[i];
       Rhs[i] = 0.0;
     }
   B(nDim, nDim) = 0.0;
   Rhs[nDim] = -weight;
+//  xout << "B:"<<std::endl<<B<<std::endl;
+//  xout << "Rhs:"<<std::endl<<Rhs<<std::endl;
 
   // invert the system, determine extrapolation coefficients.
   LinearSolveSymSvd(Coeffs, B, Rhs, nDim+1, 1.0e-10);
   if (m_verbosity>1) xout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;
 
-  // Find a storage place for the vector in the next round. Either
-  // an empty slot or the oldest vector.
-  uint iOldestAge = m_iVectorAge[0];
-  m_iNext = 0;
-  if (m_iVectorAge.size() < m_maxDim) {
-      m_iNext = m_iVectorAge.size(); m_iVectorAge.push_back(0);
-    } else
-    for ( uint i = m_iVectorAge.size(); i != 0; -- i ){
-        if ( iOldestAge <= m_iVectorAge[i-1] ) {
-            iOldestAge = m_iVectorAge[i-1];
-            m_iNext = i-1;
-          }
-      }
-  if (m_verbosity>1) xout << "Next iteration slot "<<m_iNext<<std::endl;
-
-  //     bool
-  //         PrintDIISstate = true;
-  //     if ( PrintDIISstate ) {
-  //         std::ostream &xout = xout;
-  //         xout << "  iUsedVecs: "; for ( uint i = 0; i < nDim; ++ i ) xout << " " << iUsedVecs[i]; xout << std::endl;
-  //         PrintMatrixGen( xout, m_ErrorMatrix.data(), nMaxDim(), 1, nMaxDim(), m_ErrorMatrix.nStride(), "DIIS-B (resident)" );
-  //         PrintMatrixGen( xout, B.data(), nDim+1, 1, nDim+1, B.nStride(), "DIIS-B/I" );
-  //         PrintMatrixGen( xout, Rhs.data(), 1, 1, nDim+1, 1, "DIIS-Rhs" );
-  //         PrintMatrixGen( xout, Coeffs.data(), 1, 1, nDim+1, 1, "DIIS-C" );
-  //         xout << std::endl;
-  //     }
-  //  xout << "before extrapolation "<<std::endl;
-  //  for (auto vs=m_solutions.begin(); vs!=m_solutions.end(); vs++)
-  //      xout << "solution vector"<<*vs<<std::endl;
-  //      xout << "front solution vector"<<m_solutions.front()<<std::endl;
-  //      xout << "0 solution vector"<<m_solutions[0]<<std::endl;
-
-  // now actually perform the extrapolation on the residuals
-  // and amplitudes.
-  m_LastAmplitudeCoeff = Coeffs[iThis];
+  m_LastAmplitudeCoeff = Coeffs[nDim-1];
   //  xout << "m_solutions.front(): "<<m_solutions.front()<<std::endl;
   for (size_t l=0; l<residual.size(); l++) residual[l]->zero();
   //  xout << "m_solutions.front(): "<<m_solutions.front()<<std::endl;
@@ -235,14 +168,18 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   //  xout << "m_solutions.size(): "<<m_solutions.size()<<std::endl;
   //  xout << "m_solutions.front(): "<<m_solutions.front()<<std::endl;
   //  xout << "m_solutions.front()[0]: "<<m_solutions.front()[0]<<std::endl;
+  size_t k=0;
   for (size_t l=0; l<other.size(); l++) other[l]->zero();
-  for (size_t k=0; k<Coeffs.rows(); k++) {
-      //      xout << "extrapolation k="<<k<<",iUsedVecs[k]="<<iUsedVecs[k]<<std::endl;
-      //      xout << "add solution "<<iUsedVecs[k]<<m_solutions[iUsedVecs[k]].front()<<" with factor "<<Coeffs[k]<<std::endl;
-      residual.front()->axpy(Coeffs[k],m_residuals[iUsedVecs[k]].front());
-      solution.front()->axpy(Coeffs[k],m_solutions[iUsedVecs[k]].front());
+  for (size_t kk=0; kk<m_residuals.size(); kk++) {
+      if (m_residuals[kk].m_active.front()){
+//            xout << "extrapolation k="<<k<<std::endl;
+//            xout << "add solution "<<kk<<m_solutions[kk].front()<<" with factor "<<Coeffs[k]<<std::endl;
+      residual.front()->axpy(Coeffs[k],m_residuals[kk].front());
+      solution.front()->axpy(Coeffs[k],m_solutions[kk].front());
       for (size_t l=0; l<other.size(); l++)
-        other[l]->axpy(Coeffs[k],m_others[iUsedVecs[k]][l]);
+        other[l]->axpy(Coeffs[k],m_others[kk][l]);
+      k++;
+      }
     }
   if (m_verbosity>2) {
       xout << "DIIS.extrapolate() final extrapolated solution: "<<solution.front()<<std::endl;
@@ -327,7 +264,7 @@ void DIIS::test(int verbosity,
   d.Reset();
   (*x.front())[0]=(*x.front())[1]=1-difficulty; // initial guess
   d.m_verbosity=verbosity;
-  d.solve(g,x);
+//  d.solve(g,x);
   xout  << "Distance from solution = "<<std::sqrt(((*x.front())[0]-1)*((*x.front())[0]-1)+((*x.front())[1]-1)*((*x.front())[1]-1)) <<std::endl;
 
 }

@@ -103,9 +103,9 @@ size_t IterativeSolverBase::addVectorSet(const ParameterVectorSet &residual, con
 void IterativeSolverBase::deleteVector(size_t index)
 {
     if (index>=m_residuals.size()) throw std::logic_error("invalid index");
-    xout << "deleteVector "<<index<<std::endl;
-    xout << "old m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
-    xout << "old m_subspaceOverlap"<<std::endl<<m_subspaceOverlap<<std::endl;
+//    xout << "deleteVector "<<index<<std::endl;
+//    xout << "old m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
+//    xout << "old m_subspaceOverlap"<<std::endl<<m_subspaceOverlap<<std::endl;
     size_t old_size=m_subspaceMatrix.rows();
     size_t new_size=old_size;
     size_t l=0;
@@ -115,12 +115,17 @@ void IterativeSolverBase::deleteVector(size_t index)
                 if (l == index) { // this is the one to delete
                     m_solutions[ll].m_active[lll] = false;
                     m_residuals[ll].m_active[lll] = false;
-                    m_others[ll].m_active[lll] = false;
+//                    m_others[ll].m_active[lll] = false;
                     for (size_t l2=l+1; l2<m_subspaceMatrix.rows(); l2++) {
                         for (size_t k=0; k<m_subspaceMatrix.rows(); k++) {
+//                            xout << "copy from ("<<k<<","<<l2<<") to ("<<k<<","<<l2-1<<")"<<std::endl;
                             m_subspaceMatrix(k,l2-1)=m_subspaceMatrix(k,l2);
-                            m_subspaceMatrix(l2-1,k)=m_subspaceMatrix(l2,k);
                             m_subspaceOverlap(k,l2-1)=m_subspaceOverlap(k,l2);
+                        }
+                    }
+                    for (size_t l2=l+1; l2<m_subspaceMatrix.rows(); l2++) {
+                        for (size_t k=0; k<m_subspaceMatrix.rows(); k++) {
+                            m_subspaceMatrix(l2-1,k)=m_subspaceMatrix(l2,k);
                             m_subspaceOverlap(l2-1,k)=m_subspaceOverlap(l2,k);
                         }
                     }
@@ -134,8 +139,8 @@ void IterativeSolverBase::deleteVector(size_t index)
     }
     m_subspaceMatrix.conservativeResize(new_size,new_size);
     m_subspaceOverlap.conservativeResize(new_size,new_size);
-    xout << "new m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
-    xout << "new m_subspaceOverlap"<<std::endl<<m_subspaceOverlap<<std::endl;
+//    xout << "new m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
+//    xout << "new m_subspaceOverlap"<<std::endl<<m_subspaceOverlap<<std::endl;
 }
 
 void IterativeSolverBase::calculateSubspaceMatrix(const ParameterVectorSet &residual, const ParameterVectorSet &solution)
@@ -201,11 +206,12 @@ void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, co
   ParameterVectorSet step=solution;
   step.axpy(-1,m_solutions[m_lastVectorIndex]);
   m_errors.clear();
+//  xout << "last active "<<m_lastVectorIndex<<" "<<m_residuals[m_lastVectorIndex].m_active[0]<<std::endl;
   for (size_t k=0; k<solution.size(); k++)
     if (m_linear) // we can use the extrapolated residual if the problem is linear
       m_errors.push_back(residual.m_active[k] ? std::fabs(residual[k]->dot(step[k])) : 0);
     else
-      m_errors.push_back(m_residuals[m_lastVectorIndex].m_active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]->dot(step[k])) : 0);
+      m_errors.push_back(m_residuals[m_lastVectorIndex].m_active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]->dot(step[k])) : 1);
   m_error = *max_element(m_errors.begin(),m_errors.end());
   m_worst = max_element(m_errors.begin(),m_errors.end())-m_errors.begin();
 }

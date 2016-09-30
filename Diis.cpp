@@ -110,27 +110,17 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
 
   // invert the system, determine extrapolation coefficients.
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(B, Eigen::ComputeThinU | Eigen::ComputeThinV);
-  svd.setThreshold(1e-10);
+  svd.setThreshold(m_svdThreshold);
   Coeffs=svd.solve(Rhs);
   if (m_verbosity>1) xout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;
 
   m_LastAmplitudeCoeff = Coeffs[nDim-1];
-  //  xout << "m_solutions.front(): "<<m_solutions.front()<<std::endl;
-  for (size_t l=0; l<residual.size(); l++) residual[l]->zero();
-  //  xout << "m_solutions.front(): "<<m_solutions.front()<<std::endl;
-  for (size_t l=0; l<solution.size(); l++) solution[l]->zero();
-  //  xout << "residual at "<<&residual[0]<<std::endl;
-  //  xout << "solution at "<<&solution[0]<<std::endl;
-  //  xout << "m_solutions.front() at "<<&m_solutions.front()[0]<<std::endl;
-  //  xout << "m_solutions.size(): "<<m_solutions.size()<<std::endl;
-  //  xout << "m_solutions.front(): "<<m_solutions.front()<<std::endl;
-  //  xout << "m_solutions.front()[0]: "<<m_solutions.front()[0]<<std::endl;
+  residual.zero();
+  solution.zero();
   size_t k=0;
   for (size_t l=0; l<other.size(); l++) other[l]->zero();
   for (size_t kk=0; kk<m_residuals.size(); kk++) {
       if (m_residuals[kk].m_active.front()){
-//            xout << "extrapolation k="<<k<<std::endl;
-//            xout << "add solution "<<kk<<m_solutions[kk].front()<<" with factor "<<Coeffs[k]<<std::endl;
       residual.front()->axpy(Coeffs[k],m_residuals[kk].front());
       solution.front()->axpy(Coeffs[k],m_solutions[kk].front());
       for (size_t l=0; l<other.size(); l++)
@@ -158,14 +148,14 @@ static void _Rosenbrock_updater(const ParameterVectorSet & psg, ParameterVectorS
 }
 
 void DIIS::test(int verbosity,
-                size_t maxDim, double acceptanceThreshold, DIISmode_type mode, double difficulty)
+                size_t maxDim, double svdThreshold, DIISmode_type mode, double difficulty)
 {
   SimpleParameterVector xx(2);
   SimpleParameterVector gg(2);
   ParameterVectorSet x; x.push_back(&xx);
   ParameterVectorSet g; g.push_back(&gg);
   DIIS d(&_Rosenbrock_updater,&_Rosenbrock_residual);
-  d.setOptions(maxDim, acceptanceThreshold, mode);
+  d.setOptions(maxDim, svdThreshold, mode);
 
   if (verbosity>=0) xout << "Test DIIS::iterate, difficulty="<<difficulty<<std::endl;
   d.Reset();

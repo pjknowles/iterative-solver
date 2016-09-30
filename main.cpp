@@ -10,8 +10,8 @@ int main(int argc, char *argv[])
 //  IterativeSolver::DIIS::test(1,6,1e6,IterativeSolver::DIIS::disabled,0.0002);
   IterativeSolver::OldDIIS::test(1,6,1e6,IterativeSolver::OldDIIS::DIISmode,0.4);
   IterativeSolver::OldDIIS::test(1,6,1e6,IterativeSolver::OldDIIS::DIISmode,0.8);
-  IterativeSolver::DIIS::test(1,6,1e6,IterativeSolver::DIIS::DIISmode,0.8);
-//  IterativeSolver::DIIS::test(1,6,1e6,IterativeSolver::DIIS::KAINmode);
+  IterativeSolver::DIIS::test(1,6,1e-10,IterativeSolver::DIIS::DIISmode,0.8);
+//  IterativeSolver::DIIS::test(1,6,1e-10,IterativeSolver::DIIS::KAINmode);
   IterativeSolver::Davidson::test(9,1,1,0);
   IterativeSolver::Davidson::test(9,1,1,1);
   IterativeSolver::Davidson::test(9,1,1,2);

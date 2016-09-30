@@ -32,6 +32,12 @@ void DIIS::setOptions(size_t maxDim, double svdThreshold, DIISmode_type mode)
 void DIIS::Reset()
 {
   m_LastResidualNormSq=1e99; // so it can be tested even before extrapolation is done
+  m_lastVectorIndex=0;
+  while (m_subspaceMatrix.rows()>0) deleteVector(0); ;
+  m_residuals.clear();
+  m_solutions.clear();
+  m_others.clear();
+  m_Weights.clear();
 }
 
 
@@ -93,16 +99,12 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   // Factor out common size scales from the residual dots.
   // This is done to increase numerical stability for the case when _all_
   // residuals are very small.
-  for ( uint nRow = 0; nRow < nDim; ++ nRow )
-    for ( uint nCol = 0; nCol < nDim; ++ nCol )
-      B(nRow, nCol) = m_subspaceMatrix(nRow, nCol)/fBaseScale;
+      B.block(0,0,nDim,nDim) = m_subspaceMatrix/fBaseScale;
+      Rhs.head(nDim) = Eigen::VectorXd::Zero(nDim);
 
   // make Lagrange/constraint lines.
-  for ( uint i = 0; i < nDim; ++ i ) {
-      B(i, nDim) = -m_Weights[i];
-      B(nDim, i) = -m_Weights[i];
-      Rhs[i] = 0.0;
-    }
+  for ( size_t i = 0; i < nDim; ++ i )
+      B(i, nDim) =  B(nDim, i) = -m_Weights[i];
   B(nDim, nDim) = 0.0;
   Rhs[nDim] = -weight;
 //  xout << "B:"<<std::endl<<B<<std::endl;

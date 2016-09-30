@@ -40,11 +40,11 @@ namespace IterativeSolver {
     ~DIIS();
     /*!
    * \brief Set options for DIIS.
-   * \param maxDim Maximum DIIS dimension allowed
-   * \param acceptanceThreshold Residual threshold for inclusion of a vector in the DIIS state.
+   * \param maxDim Maximum DIIS dimension allowed.
+   * \param svdThreshold Threshold for singular-value truncation in linear equation solver.
    * \param mode Whether to perform DIIS, KAIN, or nothing.
    */
-    virtual void setOptions(size_t maxDim=6, double acceptanceThreshold=1e6, enum DIISmode_type mode=DIISmode);
+    virtual void setOptions(size_t maxDim=6, double svdThreshold=1e-10, enum DIISmode_type mode=DIISmode);
     /*!
    * \brief discards previous iteration vectors, but does not clear records
    */
@@ -83,23 +83,21 @@ namespace IterativeSolver {
    * - 0 (default) Just a message that the test is taking place.
    * - 1, 2, 3,... more detail.
    * \param maxDim Maximum DIIS dimension allowed
-   * \param acceptanceThreshold Residual threshold for inclusion of a vector in the DIIS state.
+   * \param svdThreshold Residual threshold for inclusion of a vector in the DIIS state.
    * \param mode Whether to perform DIIS, KAIN, or nothing.
    * \param difficulty Level of numerical challenge, ranging from 0 to 1.
    */
     static void test(int verbosity=0,
                      size_t maxDim=6,
-                     double acceptanceThreshold=1e6,
+                     double svdThreshold=1e-10,
                      enum DIISmode_type mode=DIISmode,
                      double difficulty=0.1);
   private:
     typedef unsigned int uint;
     DIIS();
     enum DIISmode_type m_DIISmode;
-    double m_acceptanceThreshold;
+    double m_svdThreshold;
     size_t m_maxDim;
-    unsigned int m_nDim;
-    void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr);
 
     std::vector<double> m_Weights;
 

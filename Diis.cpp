@@ -16,10 +16,10 @@ DIIS::~DIIS()
 {
 }
 
-void DIIS::setOptions(size_t maxDim, double acceptanceThreshold, DIISmode_type mode)
+void DIIS::setOptions(size_t maxDim, double svdThreshold, DIISmode_type mode)
 {
   m_maxDim = maxDim;
-  m_acceptanceThreshold = acceptanceThreshold;
+  m_svdThreshold = svdThreshold;
   m_DIISmode = mode;
 
   Reset();
@@ -33,38 +33,6 @@ void DIIS::Reset()
 {
   m_LastResidualNormSq=1e99; // so it can be tested even before extrapolation is done
 }
-
-void DIIS::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr)
-{
-  Eigen::VectorXd Ews(nDim);
-  Eigen::VectorXd Xv(nDim); // input vectors in EV basis.
-  Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es;
-  es.compute(-Mat);
-  Ews = es.eigenvalues();
-
-  if (m_verbosity > 3) {
-      xout << "DIIS::LinearSolveSymSvd"<<std::endl;
-      xout << "Mat="<<Mat<<std::endl;
-      xout << "Ews="<<Ews<<std::endl;
-      xout << "In="<<In<<std::endl;
-      xout << "es.eigenvectors()="<<es.eigenvectors()<<std::endl;
-    }
-
-  Xv = In.transpose()*es.eigenvectors();
-  //    xout << "Xv="<<Xv<<std::endl;
-  for (size_t iEw = 0; iEw != nDim; ++ iEw)
-    if (std::abs(Ews(iEw)) >= Thr)
-      Xv(iEw) /= -Ews(iEw);
-  // ^- note that this only screens by absolute value.
-  // no positive semi-definiteness is assumed!
-    else
-      Xv(iEw) = 0.;
-  if (m_verbosity > 1) xout << "Xv="<<Xv<<std::endl;
-  Out = es.eigenvectors() * Xv;
-  Out.conservativeResize(Out.size()-1,1);
-  if (m_verbosity > 1) xout << "Out="<<Out<<std::endl;
-}
-
 
 
 void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options)
@@ -86,15 +54,6 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   size_t nDim = m_subspaceMatrix.rows();
   m_LastResidualNormSq = m_subspaceMatrix(nDim-1,nDim-1);
 
-  if ( false && m_LastResidualNormSq > m_acceptanceThreshold ) {
-    // current vector is to be considered too wrong to be useful for DIIS
-    // purposes. Don't store it.
-      // PJK: this does not seem to be the right thing to me. Better to leave it in and then
-      // the extrapolation will give you something different.
-//      xout << "unacceptable vector"<<std::endl;
-      deleteVector(nDim-1);
-      return;
-  }
   m_Weights.push_back(weight);
 
   int worst=0, best=0;
@@ -150,7 +109,9 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
 //  xout << "Rhs:"<<std::endl<<Rhs<<std::endl;
 
   // invert the system, determine extrapolation coefficients.
-  LinearSolveSymSvd(Coeffs, B, Rhs, nDim+1, 1.0e-10);
+  Eigen::JacobiSVD<Eigen::MatrixXd> svd(B, Eigen::ComputeThinU | Eigen::ComputeThinV);
+  svd.setThreshold(1e-10);
+  Coeffs=svd.solve(Rhs);
   if (m_verbosity>1) xout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;
 
   m_LastAmplitudeCoeff = Coeffs[nDim-1];

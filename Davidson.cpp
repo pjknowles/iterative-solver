@@ -11,7 +11,7 @@ Davidson::Davidson(ParameterSetTransformation updateFunction, ParameterSetTransf
 }
 
 
-void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options)
+void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options)
 {
   assert(solution.size()==residual.size());
   if (m_roots<1) m_roots=solution.size(); // number of roots defaults to size of solution

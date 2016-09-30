@@ -61,7 +61,7 @@ namespace IterativeSolver {
    * \param options can contain "weight=xxx" where xxx is the weight to be given to this vector. These options would normally be passed as the corresponding parameter in iterate().
    */
   protected:
-    void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
+    void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());
 
     /*!
    * \brief Return the square L2 norm of the extrapolated residual from the last call to extrapolate() or iterate().

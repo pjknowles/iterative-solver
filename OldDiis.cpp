@@ -69,14 +69,14 @@ void OldDIIS::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat
 
 
 
-void OldDIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options)
+void OldDIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options)
 {
   //	  xout << "Enter OldDIIS::extrapolate"<<std::endl;
   //	  xout << "residual : "<<residual<<std::endl;
   //	  xout << "solution : "<<solution<<std::endl;
   double weight=1.0;
-  size_t pos=options.find("weight=");
-  if (pos != std::string::npos)  throw std::logic_error("parsing of weight not implemented yet"); //FIXME
+//  size_t pos=options.find("weight=");
+//  if (pos != std::string::npos)  throw std::logic_error("parsing of weight not implemented yet"); //FIXME
   if (m_maxDim <= 1 || m_OldDIISmode == disabled) return;
 
   if (residual.size() > 1) throw std::logic_error("OldDIIS does not handle multiple solutions");

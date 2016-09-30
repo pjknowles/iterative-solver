@@ -25,7 +25,7 @@ IterativeSolverBase::~IterativeSolverBase()
 }
 
 
-bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorSet &solution, ParameterVectorSet &other, std::string options)
+bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorSet &solution, ParameterVectorSet &other, const optionMap options)
 {
   for (size_t k=0; k<residual.size(); k++) residual.m_active[k] = residual.m_active[k] && solution.m_active[k];
   if (m_preconditionResiduals) m_preconditionerFunction(residual,residual,m_updateShift,false);
@@ -39,12 +39,12 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
 }
 
 
-void IterativeSolverBase::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options)
+void IterativeSolverBase::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, optionMap options)
 {
 
 }
 
-bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options)
+bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSet & solution, const optionMap options)
 {
   bool converged=false;
   for (int iteration=1; iteration <= m_maxIterations && not converged; iteration++) {

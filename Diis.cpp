@@ -41,14 +41,12 @@ void DIIS::Reset()
 }
 
 
-void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options)
+void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options)
 {
   //	  xout << "Enter DIIS::extrapolate"<<std::endl;
   //	  xout << "residual : "<<residual<<std::endl;
   //	  xout << "solution : "<<solution<<std::endl;
-  double weight=1.0;
-  size_t pos=options.find("weight=");
-  if (pos != std::string::npos)  throw std::logic_error("parsing of weight not implemented yet"); //FIXME
+  double weight=options.count("weight") ? (options.find("weight")->second) : 1.0;
   if (m_maxDim <= 1 || m_DIISmode == disabled) return;
 
   if (residual.size() > 1) throw std::logic_error("DIIS does not handle multiple solutions");
@@ -178,7 +176,8 @@ void DIIS::test(int verbosity,
   bool converged=false;
   for (int iteration=1; iteration < 1000 && not converged; iteration++) {
       _Rosenbrock_residual(x,g);
-      converged = d.iterate(g,x);
+      optionMap o; //o["weight"]=2;
+      converged = d.iterate(g,x,o);
       if (verbosity>0)
         xout << "iteration "<<iteration<<", Residual norm = "<<std::sqrt(d.fLastResidual())
              << ", Distance from solution = "<<std::sqrt(((*x.front())[0]-1)*((*x.front())[0]-1)+((*x.front())[1]-1)*((*x.front())[1]-1))

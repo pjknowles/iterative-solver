@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <map>
 #include <algorithm>
 #include <numeric>
 #include "ParameterVector.h"
@@ -87,8 +88,9 @@ namespace IterativeSolver {
    * \param other Optional additional vectors that should be extrapolated.
    * \param options A string of options to be interpreted by extrapolate().
    */
-    virtual bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
-    virtual bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="") { ParameterVectorSet other; return iterate(residual,solution,other,options); }
+    typedef std::map<std::string, double> optionMap;
+    virtual bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());
+    virtual bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, const optionMap options=optionMap()) { ParameterVectorSet other; return iterate(residual,solution,other,options); }
     /*!
    * \brief Solve iteratively by repeated calls to residualFunction() and iterate().
    * \param residual Ignored on input; on exit, contains the final residual; used as working space.
@@ -96,7 +98,7 @@ namespace IterativeSolver {
    * \param options A string of options to be interpreted by extrapolate().
    * \return Whether or not convergence has been reached.
    */
-    virtual bool solve(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="");
+    virtual bool solve(ParameterVectorSet & residual, ParameterVectorSet & solution, const optionMap options=optionMap());
     /*!
    * \brief Set convergence threshold
    */
@@ -118,8 +120,8 @@ namespace IterativeSolver {
 
   protected:
     virtual void adjustUpdate(ParameterVectorSet & solution);
-    virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, std::string options="");
-    virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, std::string options="") { ParameterVectorSet other; extrapolate(residual,solution,other,options); }
+    virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, optionMap options=optionMap());
+    virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, optionMap options=optionMap()) { ParameterVectorSet other; extrapolate(residual,solution,other,options); }
     void calculateSubspaceMatrix(const ParameterVectorSet &residual, const ParameterVectorSet &solution);
     void diagonalizeSubspaceMatrix();
     void calculateErrors(const ParameterVectorSet & solution, const ParameterVectorSet &residual);

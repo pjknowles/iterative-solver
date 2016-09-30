@@ -99,8 +99,6 @@ namespace IterativeSolver {
     double m_acceptanceThreshold;
     size_t m_maxDim;
     unsigned int m_nDim;
-    //> 0xffff: no vector in this slot. Otherwise: number of iterations
-    // the vector in this slot has already been inside the DIIS system.
     void LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, const Eigen::VectorXd& In, unsigned int nDim, double Thr);
 
     std::vector<double> m_Weights;

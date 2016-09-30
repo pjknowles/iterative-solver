@@ -42,8 +42,8 @@ void DIIS::LinearSolveSymSvd(Eigen::VectorXd& Out, const Eigen::MatrixXd& Mat, c
   es.compute(-Mat);
   Ews = es.eigenvalues();
 
-  if (m_verbosity > 1) {
-      xout << "diis::LinearSolveSymSvd"<<std::endl;
+  if (m_verbosity > 3) {
+      xout << "DIIS::LinearSolveSymSvd"<<std::endl;
       xout << "Mat="<<Mat<<std::endl;
       xout << "Ews="<<Ews<<std::endl;
       xout << "In="<<In<<std::endl;

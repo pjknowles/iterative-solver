@@ -36,7 +36,7 @@ namespace IterativeSolver {
                        };
     /*!
    */
-    DIIS(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
+    DIIS(const ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, const ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
     ~DIIS();
     /*!
    * \brief Set options for DIIS.
@@ -92,6 +92,7 @@ namespace IterativeSolver {
                      double difficulty=0.1);
     double m_svdThreshold; ///< Threshold for singular-value truncation in linear equation solver.
     size_t m_maxDim; ///< Maximum DIIS dimension allowed.
+    static void randomTest(size_t sample, size_t n=100, double alpha=0.1, double gamma=0.0, DIISmode_type mode=DIISmode);
   private:
     typedef unsigned int uint;
     DIIS();

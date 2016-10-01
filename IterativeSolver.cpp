@@ -17,7 +17,8 @@ IterativeSolverBase::IterativeSolverBase(ParameterSetTransformation precondition
     m_preconditionResiduals(false),
     m_date(0),
     m_subspaceMatrixResRes(false),
-    m_singularity_shift(1e-8)
+    m_singularity_shift(1e-8),
+    m_iterations(0)
 {}
 
 IterativeSolverBase::~IterativeSolverBase()
@@ -30,13 +31,14 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
 //  xout << "iterate"<<std::endl;
 //  xout << "residual"<<std::endl<<residual[0]<<std::endl;
 //  xout << "solution"<<std::endl<<solution[0]<<std::endl;
+  m_iterations++;
   for (size_t k=0; k<residual.size(); k++) residual.m_active[k] = residual.m_active[k] && solution.m_active[k];
   if (m_preconditionResiduals) m_preconditionerFunction(residual,residual,m_updateShift,false);
   m_lastVectorIndex=addVectorSet(residual,solution,other)-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
   extrapolate(residual,solution,other,options);
-  if (m_preconditionResiduals) {
-      solution.axpy(1,residual);
-    } else
+  if (m_preconditionResiduals)
+    solution.axpy(1,residual);
+  else
     m_preconditionerFunction(residual,solution,m_updateShift,true);
   calculateErrors(solution,residual);
 //  xout << "Errors:"; for (auto e=m_errors.begin(); e!=m_errors.end(); e++) xout << " "<<*e<<"("<<(*e<m_thresh)<<")"; xout <<std::endl;
@@ -65,7 +67,7 @@ bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSe
 void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
 {
   for (size_t k=0; k<solution.size(); k++)
-    solution.m_active[k] = (m_errors[k] > m_thresh);
+    solution.m_active[k] = (m_errors[k] >= m_thresh);
   if (m_orthogonalize) {
       //      xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
       for (size_t kkk=0; kkk<solution.size(); kkk++) {
@@ -99,6 +101,8 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
 
 size_t IterativeSolverBase::addVectorSet(const ParameterVectorSet &residual, const ParameterVectorSet &solution, const ParameterVectorSet &other)
 {
+  if (residual.m_active.front()==0) xout <<"warning: inactive residual"<<std::endl;
+  if (solution.m_active.front()==0) xout <<"warning: inactive solution"<<std::endl;
     m_residuals.push_back(residual);
     m_solutions.push_back(solution);
     m_others.push_back(other);
@@ -212,17 +216,20 @@ void IterativeSolverBase::diagonalizeSubspaceMatrix()
 }
 
 
+#include <math.h>
 void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, const ParameterVectorSet &residual)
 {
   ParameterVectorSet step=solution;
   step.axpy(-1,m_solutions[m_lastVectorIndex]);
   m_errors.clear();
 //  xout << "last active "<<m_lastVectorIndex<<" "<<m_residuals[m_lastVectorIndex].m_active[0]<<std::endl;
-  for (size_t k=0; k<solution.size(); k++)
+  for (size_t k=0; k<solution.size(); k++) {
     if (m_linear) // we can use the extrapolated residual if the problem is linear
       m_errors.push_back(residual.m_active[k] ? std::fabs(residual[k]->dot(step[k])) : 0);
     else
       m_errors.push_back(m_residuals[m_lastVectorIndex].m_active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]->dot(step[k])) : 1);
+    if (isnan(m_errors.back())) throw std::overflow_error("NaN detected in DIIS error measure");
+    }
   m_error = *max_element(m_errors.begin(),m_errors.end());
   m_worst = max_element(m_errors.begin(),m_errors.end())-m_errors.begin();
 }

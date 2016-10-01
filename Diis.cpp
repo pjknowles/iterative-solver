@@ -1,5 +1,6 @@
 #include "Diis.h"
 #include <stdexcept>
+#include <math.h>
 
 using namespace IterativeSolver;
 
@@ -59,7 +60,6 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
 //  xout << "m_LastResidualNormSq "<<m_LastResidualNormSq<<std::endl;
 
   m_Weights.push_back(weight);
-//  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
 
   Eigen::ArrayXd d = m_subspaceMatrix.diagonal().array().abs();
   int worst=0, best=0;
@@ -72,7 +72,7 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   while (nDim > m_maxDim) { // prune away the worst/oldest vector. Algorithm to be done properly yet
       size_t prune = worst;
       if (true || prune == nDim-1) { // the current vector is the worst, so delete the oldest
-//          xout << "m_dataOfBirth: "; for (auto b=m_dateOfBirth.begin(); b!=m_dateOfBirth.end(); b++) xout <<(*b); xout<<std::endl;
+//          xout << "m_dateOfBirth: "; for (auto b=m_dateOfBirth.begin(); b!=m_dateOfBirth.end(); b++) xout <<(*b); xout<<std::endl;
           prune = std::min_element(m_dateOfBirth.begin(),m_dateOfBirth.end())-m_dateOfBirth.begin();
       }
 //      xout << "prune="<<prune<<std::endl;
@@ -83,7 +83,10 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
 //  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
   }
   if (nDim != m_subspaceMatrix.rows()) throw std::logic_error("problem in pruning");
-  if (m_Weights.size() != m_subspaceMatrix.rows()) throw std::logic_error("problem in pruning weights");
+  if (m_Weights.size() != m_subspaceMatrix.rows()) {
+      xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
+      throw std::logic_error("problem after pruning weights");
+    }
 
 
 
@@ -118,7 +121,13 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   Coeffs=svd.solve(Rhs).head(nDim);
   m_LastAmplitudeCoeff = Coeffs[nDim-1];
   if (m_verbosity>1) xout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;
-
+  for (size_t k=0; k<Coeffs.rows(); k++)
+    if (isnan(Coeffs(k))) {
+        xout << "B:"<<std::endl<<B<<std::endl;
+        xout << "Rhs:"<<std::endl<<Rhs<<std::endl;
+        xout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;
+        throw std::overflow_error("NaN detected in DIIS submatrix solution");
+      }
   residual.zero();
   solution.zero();
   size_t k=0;
@@ -199,3 +208,76 @@ void DIIS::test(int verbosity,
 
 }
 
+#include <random>
+#include <chrono>
+  struct anharmonic {
+    Eigen::MatrixXd m_F;
+    double m_gamma;
+    size_t m_n;
+    anharmonic(){}
+    void set(size_t n, double alpha, double gamma)
+    {
+      m_gamma=gamma;
+      m_n=n;
+      unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+      std::default_random_engine generator (seed);
+      std::uniform_real_distribution<double> distribution(-0.5,0.5);
+
+      m_F.resize(n,n);
+      for (size_t j=0; j<n; j++) {
+          for (size_t i=0; i<n; i++)
+            m_F(i,j)=distribution(generator);
+          m_F(j,j) += (j*alpha+0.5);
+        }
+    }
+    SimpleParameterVector guess()
+    {
+      SimpleParameterVector result(m_n);
+      double value=0.3;
+      for (size_t k=0; k<m_n; k++) {
+        result[k]=value;
+        value=-value;
+        }
+      return result;
+    }
+  };
+
+  static anharmonic instance;
+
+    static void _anharmonic_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+      if (not append) outputs.front()->zero();
+      for (size_t i=0; i<instance.m_n; i++) {
+          (*outputs.front())[i] = instance.m_gamma*(*psx.front())[i];
+          for (size_t j=0; j<instance.m_n; j++)
+            (*outputs.front())[i] += instance.m_F(j,i)*(*psx.front())[j];
+        }
+    }
+    static void _anharmonic_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+      if (append) {
+          for (size_t i=0; i<instance.m_n; i++)
+            (*psc.front())[i] -= (*psg.front())[i]/instance.m_F(i,i);
+        } else {
+          for (size_t i=0; i<instance.m_n; i++)
+            (*psc.front())[i] =- (*psg.front())[i]/instance.m_F(i,i);
+        }
+    }
+void DIIS::randomTest(size_t sample, size_t n, double alpha, double gamma, DIISmode_type mode)
+{
+
+  int nfail=0;
+  unsigned int iterations=0, maxIterations=0;
+  for (size_t repeat=0; repeat < sample; repeat++) {
+      instance.set(n,alpha,gamma);
+      DIIS d(&_anharmonic_residual,&_anharmonic_preconditioner);
+      d.setMode(mode);
+      d.m_verbosity=-1;
+      d.m_maxIterations=100000;
+      SimpleParameterVector gg(n); ParameterVectorSet g; g.push_back(&gg);
+      SimpleParameterVector xx=instance.guess(); ParameterVectorSet x; x.push_back(&xx);
+      if (not d.solve(g,x)) nfail++;
+      iterations+=d.iterations();
+      if (maxIterations<d.iterations())
+        maxIterations=d.iterations();
+    }
+  xout << "sample="<<sample<<", n="<<n<<", alpha="<<alpha<<", gamma="<<gamma<<", average iterations="<<iterations/sample<<", maximum iterations="<<maxIterations<<", nfail="<<nfail<<std::endl;
+}

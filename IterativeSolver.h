@@ -65,7 +65,7 @@ namespace IterativeSolver {
    * \param preconditionerFunction A function that applies a preconditioner to a residual to give an update. Used by methods iterate() and solve().
    * \param residualFunction A function that evaluates the residual vectors. Used by method solve(); does not have to be provided if iterations are constructed explicitly in the calling program.
    */
-    IterativeSolverBase(ParameterSetTransformation preconditionerFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
+    IterativeSolverBase(const ParameterSetTransformation preconditionerFunction=&IterativeSolver::steepestDescent, const ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
     virtual ~IterativeSolverBase();
   protected:
     /*!
@@ -106,6 +106,8 @@ namespace IterativeSolver {
 
     void setThresholds(double thresh) { m_thresh=thresh;}
 
+    unsigned int iterations() { return m_iterations;}
+
   public:
     int m_verbosity; //!< How much to print.
     double m_thresh; //!< If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
@@ -140,6 +142,8 @@ namespace IterativeSolver {
     Eigen::MatrixXcd m_subspaceEigenvectors;
     Eigen::VectorXcd m_subspaceEigenvalues;
     double m_singularity_shift; ///< Amount added to shifts to avoid 0/0
+  private:
+    unsigned int m_iterations;
   };
 }
 

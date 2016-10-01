@@ -40,11 +40,9 @@ namespace IterativeSolver {
     ~DIIS();
     /*!
    * \brief Set options for DIIS.
-   * \param maxDim Maximum DIIS dimension allowed.
-   * \param svdThreshold Threshold for singular-value truncation in linear equation solver.
    * \param mode Whether to perform DIIS, KAIN, or nothing.
    */
-    virtual void setOptions(size_t maxDim=6, double svdThreshold=1e-10, enum DIISmode_type mode=DIISmode);
+    virtual void setMode(enum DIISmode_type mode=DIISmode);
     /*!
    * \brief discards previous iteration vectors, but does not clear records
    */
@@ -92,12 +90,12 @@ namespace IterativeSolver {
                      double svdThreshold=1e-10,
                      enum DIISmode_type mode=DIISmode,
                      double difficulty=0.1);
+    double m_svdThreshold; ///< Threshold for singular-value truncation in linear equation solver.
+    size_t m_maxDim; ///< Maximum DIIS dimension allowed.
   private:
     typedef unsigned int uint;
     DIIS();
     enum DIISmode_type m_DIISmode;
-    double m_svdThreshold;
-    size_t m_maxDim;
 
     std::vector<double> m_Weights;
 
@@ -115,10 +113,8 @@ namespace IterativeSolver {
   public:
     KAIN(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp)
       : DIIS(updateFunction,residualFunction) {}
-    void setOptions(size_t maxDim=6,
-                    double acceptanceThreshold=1e6,
-                    enum DIISmode_type mode=KAINmode)
-    { DIIS::setOptions(maxDim,acceptanceThreshold,mode); m_preconditionResiduals=true;}
+    void setMode( enum DIISmode_type mode=KAINmode)
+    { DIIS::setMode(mode); }
   private:
     KAIN();
   };

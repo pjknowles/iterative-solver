@@ -5,10 +5,11 @@ using namespace IterativeSolver;
 
 DIIS::DIIS(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
   : IterativeSolverBase(updateFunction, residualFunction)
+  , m_maxDim(6)
+  , m_svdThreshold(1e-10)
 {
   m_orthogonalize = false;
-  m_subspaceMatrixResRes = true;
-  setOptions();
+  setMode(DIISmode);
   Reset();
 }
 
@@ -16,17 +17,15 @@ DIIS::~DIIS()
 {
 }
 
-void DIIS::setOptions(size_t maxDim, double svdThreshold, DIISmode_type mode)
+void DIIS::setMode(DIISmode_type mode)
 {
-  m_maxDim = maxDim;
-  m_svdThreshold = svdThreshold;
   m_DIISmode = mode;
+  m_subspaceMatrixResRes = mode!=KAINmode;
+  m_preconditionResiduals = mode==KAINmode;
 
   Reset();
   if (m_verbosity>1)
-    xout << "m_DIISmode set to "<<m_DIISmode<<" in setOptions"<<std::endl;
-  if (m_verbosity>1)
-    xout << "m_maxDim set to "<<m_maxDim<<" in setOptions"<<std::endl;
+    xout << "m_DIISmode set to "<<m_DIISmode<<std::endl;
 }
 
 void DIIS::Reset()
@@ -56,27 +55,32 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
 //      xout << "m_subspaceMatrix on entry to DIIS::extrapolate"<<std::endl<<m_subspaceMatrix<<std::endl;
 //  }
   size_t nDim = m_subspaceMatrix.rows();
-  m_LastResidualNormSq = m_subspaceMatrix(nDim-1,nDim-1);
+  m_LastResidualNormSq = std::fabs(m_subspaceMatrix(nDim-1,nDim-1));
+//  xout << "m_LastResidualNormSq "<<m_LastResidualNormSq<<std::endl;
 
   m_Weights.push_back(weight);
+//  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
 
+  Eigen::ArrayXd d = m_subspaceMatrix.diagonal().array().abs();
   int worst=0, best=0;
   for (size_t i=0; i<nDim; i++) {
-      if (m_subspaceMatrix(i,i) > m_subspaceMatrix(worst,worst)) worst=i;
-      if (m_subspaceMatrix(i,i) < m_subspaceMatrix(best,best)) best=i;
+      if (d(i) > d(worst)) worst=i;
+      if (d(i) < d(best)) best=i;
   }
-  double fBaseScale = std::sqrt(m_subspaceMatrix(worst,worst)*m_subspaceMatrix(best,best));
+  double fBaseScale = std::sqrt(d(worst)*d(best));
 
-  if (nDim > m_maxDim) { // prune away the worst/oldest vector. Algorithm to be done properly yet
+  while (nDim > m_maxDim) { // prune away the worst/oldest vector. Algorithm to be done properly yet
       size_t prune = worst;
       if (true || prune == nDim-1) { // the current vector is the worst, so delete the oldest
 //          xout << "m_dataOfBirth: "; for (auto b=m_dateOfBirth.begin(); b!=m_dateOfBirth.end(); b++) xout <<(*b); xout<<std::endl;
           prune = std::min_element(m_dateOfBirth.begin(),m_dateOfBirth.end())-m_dateOfBirth.begin();
       }
 //      xout << "prune="<<prune<<std::endl;
+//  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
       deleteVector(prune);
       m_Weights.erase(m_Weights.begin()+prune);
       nDim--;
+//  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
   }
   if (nDim != m_subspaceMatrix.rows()) throw std::logic_error("problem in pruning");
   if (m_Weights.size() != m_subspaceMatrix.rows()) throw std::logic_error("problem in pruning weights");
@@ -104,17 +108,17 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   for ( size_t i = 0; i < nDim; ++ i )
       B(i, nDim) =  B(nDim, i) = -m_Weights[i];
   B(nDim, nDim) = 0.0;
-  Rhs[nDim] = -weight;
+  Rhs[nDim] = -1;
 //  xout << "B:"<<std::endl<<B<<std::endl;
 //  xout << "Rhs:"<<std::endl<<Rhs<<std::endl;
 
   // invert the system, determine extrapolation coefficients.
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(B, Eigen::ComputeThinU | Eigen::ComputeThinV);
   svd.setThreshold(m_svdThreshold);
-  Coeffs=svd.solve(Rhs);
+  Coeffs=svd.solve(Rhs).head(nDim);
+  m_LastAmplitudeCoeff = Coeffs[nDim-1];
   if (m_verbosity>1) xout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;
 
-  m_LastAmplitudeCoeff = Coeffs[nDim-1];
   residual.zero();
   solution.zero();
   size_t k=0;
@@ -142,9 +146,16 @@ static void _Rosenbrock_residual(const ParameterVectorSet & psx, ParameterVector
 }
 
 static void _Rosenbrock_updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift, bool append=true) {
-  if (not append) psc.front()->zero();
-  (*psc.front())[0] -=(*psg.front())[0]/700;
-  (*psc.front())[1] -=(*psg.front())[1]/200;
+  if (append) {
+      (*psc.front())[0] -=(*psg.front())[0]/700;
+      (*psc.front())[1] -=(*psg.front())[1]/200;
+    } else
+    {
+//      xout << "Rosenbrock preconditioner g="<<psg.front()<<std::endl;
+      (*psc.front())[0] =-(*psg.front())[0]/700;
+      (*psc.front())[1] =-(*psg.front())[1]/200;
+//      xout << "Rosenbrock preconditioner c="<<psc.front()<<std::endl;
+    }
 }
 
 void DIIS::test(int verbosity,
@@ -155,7 +166,9 @@ void DIIS::test(int verbosity,
   ParameterVectorSet x; x.push_back(&xx);
   ParameterVectorSet g; g.push_back(&gg);
   DIIS d(&_Rosenbrock_updater,&_Rosenbrock_residual);
-  d.setOptions(maxDim, svdThreshold, mode);
+  d.m_maxDim=maxDim;
+  d.m_svdThreshold=svdThreshold;
+  d.setMode(mode);
 
   if (verbosity>=0) xout << "Test DIIS::iterate, difficulty="<<difficulty<<std::endl;
   d.Reset();
@@ -169,6 +182,8 @@ void DIIS::test(int verbosity,
       optionMap o; //o["weight"]=2;
       converged = d.iterate(g,x,o);
       if (verbosity>0)
+        xout << "new x after iterate "<<x.front()<<std::endl;
+      if (verbosity>=0)
         xout << "iteration "<<iteration<<", Residual norm = "<<std::sqrt(d.fLastResidual())
              << ", Distance from solution = "<<std::sqrt(((*x.front())[0]-1)*((*x.front())[0]-1)+((*x.front())[1]-1)*((*x.front())[1]-1))
             <<", converged? "<<converged

@@ -2,7 +2,7 @@
 #include <stdexcept>
 using namespace IterativeSolver;
 
-Davidson::Davidson(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
+Davidson::Davidson(const ParameterSetTransformation updateFunction, const ParameterSetTransformation residualFunction)
   : IterativeSolverBase(updateFunction, residualFunction)
   , m_roots(-1)
 {

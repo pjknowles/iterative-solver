@@ -3,7 +3,7 @@
 
 using namespace IterativeSolver;
 
-OldDIIS::OldDIIS(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
+OldDIIS::OldDIIS(const ParameterSetTransformation updateFunction, const ParameterSetTransformation residualFunction)
   : IterativeSolverBase(updateFunction, residualFunction)
 {
   m_orthogonalize = false;

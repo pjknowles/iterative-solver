@@ -9,7 +9,7 @@ namespace IterativeSolver{
   {
   public:
     Davidson();
-    Davidson(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
+    Davidson(const ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, const ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
     static void test(size_t dimension, size_t roots=1, int verbosity=0, int problem=0);
   protected:
     virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());

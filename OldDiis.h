@@ -36,7 +36,7 @@ namespace IterativeSolver {
                        };
     /*!
    */
-    OldDIIS(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
+    OldDIIS(const ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, const ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
     ~OldDIIS();
     /*!
    * \brief Set options for OldDIIS.

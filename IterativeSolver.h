@@ -107,6 +107,7 @@ namespace IterativeSolver {
     void setThresholds(double thresh) { m_thresh=thresh;}
 
     unsigned int iterations() { return m_iterations;}
+    std::vector<double> eigenvalues(); ///< The calculated eigenvalues of m_subspaceMatrix
 
   public:
     int m_verbosity; //!< How much to print.
@@ -119,6 +120,7 @@ namespace IterativeSolver {
     bool m_linear; ///< Whether residuals are linear functions of the corresponding expansion vectors.
     bool m_hermitian; ///< Whether residuals can be assumed to be the action of an underlying self-adjoint operator.
     bool m_preconditionResiduals; ///< Whether the subspace algorithm should work with preconditioned or raw residual vectors
+    int m_roots; ///< How many roots to calculate / equations to solve (defaults to size of solution and residual vectors)
 
   protected:
     virtual void adjustUpdate(ParameterVectorSet & solution);

@@ -19,6 +19,7 @@ IterativeSolverBase::IterativeSolverBase(const ParameterSetTransformation residu
     m_subspaceMatrixResRes(false),
     m_singularity_shift(1e-8),
     m_iterations(0)
+  , m_roots(-1)
 {}
 
 IterativeSolverBase::~IterativeSolverBase()
@@ -31,6 +32,8 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
 //  xout << "iterate"<<std::endl;
 //  xout << "residual"<<std::endl<<residual[0]<<std::endl;
 //  xout << "solution"<<std::endl<<solution[0]<<std::endl;
+  if (m_roots<1) m_roots=solution.size(); // number of roots defaults to size of solution
+  assert(solution.size()==residual.size());
   m_iterations++;
   for (size_t k=0; k<residual.size(); k++) residual.m_active[k] = residual.m_active[k] && solution.m_active[k];
   if (m_preconditionResiduals) m_preconditionerFunction(residual,residual,m_updateShift,false);
@@ -232,4 +235,11 @@ void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, co
     }
   m_error = *max_element(m_errors.begin(),m_errors.end());
   m_worst = max_element(m_errors.begin(),m_errors.end())-m_errors.begin();
+}
+
+std::vector<double> IterativeSolverBase::eigenvalues()
+{
+  std::vector<double> result;
+  for (size_t root=0; root<(size_t)m_roots && root < m_subspaceEigenvalues.rows(); root++) result.push_back(m_subspaceEigenvalues[root].real());
+  return result;
 }

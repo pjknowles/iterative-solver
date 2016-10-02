@@ -19,6 +19,9 @@ class RSPT : public IterativeSolverBase
     std::vector<double> eigenvalues(); ///< The variatonally calculated eigenvalues
   private:
     RSPT();
+    ParameterVectorSet m_lastH0mE0psi;
+    std::vector<double> m_incremental_energies;
+    double m_E0;
 };
 
 }

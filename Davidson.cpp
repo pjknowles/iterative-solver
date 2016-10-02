@@ -4,7 +4,6 @@ using namespace IterativeSolver;
 
 Davidson::Davidson(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction)
   : IterativeSolverBase(residualFunction, preconditionerFunction)
-  , m_roots(-1)
 {
   m_linear = true;
   m_orthogonalize = true;
@@ -13,8 +12,6 @@ Davidson::Davidson(const ParameterSetTransformation residualFunction, const Para
 
 void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options)
 {
-  assert(solution.size()==residual.size());
-  if (m_roots<1) m_roots=solution.size(); // number of roots defaults to size of solution
   if (m_verbosity>2) xout << "Subspace matrix"<<std::endl<<m_subspaceMatrix<<std::endl;
   if (m_verbosity>2) xout << "Subspace overlap"<<std::endl<<m_subspaceOverlap<<std::endl;
   diagonalizeSubspaceMatrix();
@@ -41,12 +38,6 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
   for (size_t root=0; root<(size_t)m_roots; root++) m_updateShift[root]=m_singularity_shift-m_subspaceEigenvalues[root].real();
 }
 
-std::vector<double> Davidson::eigenvalues()
-{
-  std::vector<double> result;
-  for (size_t root=0; root<(size_t)m_roots; root++) result.push_back(m_subspaceEigenvalues[root].real());
-  return result;
-}
 
 // testing code below here
 #include "SimpleParameterVector.h"

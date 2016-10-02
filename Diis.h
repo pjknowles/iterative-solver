@@ -36,7 +36,7 @@ namespace IterativeSolver {
                        };
     /*!
    */
-    DIIS(const ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, const ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
+    DIIS(const ParameterSetTransformation residualFunction, const ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent);
     ~DIIS();
     /*!
    * \brief Set options for DIIS.
@@ -112,10 +112,10 @@ namespace IterativeSolver {
   class KAIN : public DIIS
   {
   public:
-    KAIN(ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent, ParameterSetTransformation residualFunction=&IterativeSolver::noOp)
-      : DIIS(updateFunction,residualFunction) {}
-    void setMode( enum DIISmode_type mode=KAINmode)
-    { DIIS::setMode(mode); }
+    KAIN(const ParameterSetTransformation residualFunction=&IterativeSolver::noOp, const ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent)
+      : DIIS(residualFunction,updateFunction) { setMode(KAINmode);}
+//    void setMode( enum DIISmode_type mode=KAINmode)
+//    { DIIS::setMode(mode); }
   private:
     KAIN();
   };

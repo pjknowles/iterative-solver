@@ -62,10 +62,10 @@ namespace IterativeSolver {
     typedef void (*ParameterSetTransformation)(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift, bool append);
     /*!
    * \brief IterativeSolverBase
-   * \param preconditionerFunction A function that applies a preconditioner to a residual to give an update. Used by methods iterate() and solve().
    * \param residualFunction A function that evaluates the residual vectors. Used by method solve(); does not have to be provided if iterations are constructed explicitly in the calling program.
+   * \param preconditionerFunction A function that applies a preconditioner to a residual to give an update. Used by methods iterate() and solve().
    */
-    IterativeSolverBase(const ParameterSetTransformation preconditionerFunction=&IterativeSolver::steepestDescent, const ParameterSetTransformation residualFunction=&IterativeSolver::noOp);
+    IterativeSolverBase(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction=&IterativeSolver::steepestDescent);
     virtual ~IterativeSolverBase();
   protected:
     /*!

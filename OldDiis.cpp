@@ -3,8 +3,8 @@
 
 using namespace IterativeSolver;
 
-OldDIIS::OldDIIS(const ParameterSetTransformation updateFunction, const ParameterSetTransformation residualFunction)
-  : IterativeSolverBase(updateFunction, residualFunction)
+OldDIIS::OldDIIS(const ParameterSetTransformation residualFunction, const ParameterSetTransformation updateFunction)
+  : IterativeSolverBase(residualFunction, updateFunction)
 {
   m_orthogonalize = false;
   m_subspaceMatrixResRes = true;
@@ -305,7 +305,7 @@ void OldDIIS::test(int verbosity,
   SimpleParameterVector gg(2);
   ParameterVectorSet x; x.push_back(&xx);
   ParameterVectorSet g; g.push_back(&gg);
-  OldDIIS d(&_Rosenbrock_updater,&_Rosenbrock_residual);
+  OldDIIS d(&_Rosenbrock_residual,&_Rosenbrock_updater);
   d.setOptions(maxDim, acceptanceThreshold, mode);
 
   if (verbosity>=0) xout << "Test OldDIIS::iterate, difficulty="<<difficulty<<std::endl;

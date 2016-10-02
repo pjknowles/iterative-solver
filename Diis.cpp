@@ -4,8 +4,8 @@
 
 using namespace IterativeSolver;
 
-DIIS::DIIS(ParameterSetTransformation updateFunction, ParameterSetTransformation residualFunction)
-  : IterativeSolverBase(updateFunction, residualFunction)
+DIIS::DIIS(const ParameterSetTransformation residualFunction, const ParameterSetTransformation updateFunction)
+  : IterativeSolverBase(residualFunction, updateFunction)
   , m_maxDim(6)
   , m_svdThreshold(1e-10)
 {
@@ -174,7 +174,7 @@ void DIIS::test(int verbosity,
   SimpleParameterVector gg(2);
   ParameterVectorSet x; x.push_back(&xx);
   ParameterVectorSet g; g.push_back(&gg);
-  DIIS d(&_Rosenbrock_updater,&_Rosenbrock_residual);
+  DIIS d(&_Rosenbrock_residual,&_Rosenbrock_updater);
   d.m_maxDim=maxDim;
   d.m_svdThreshold=svdThreshold;
   d.setMode(mode);
@@ -268,7 +268,7 @@ void DIIS::randomTest(size_t sample, size_t n, double alpha, double gamma, DIISm
   unsigned int iterations=0, maxIterations=0;
   for (size_t repeat=0; repeat < sample; repeat++) {
       instance.set(n,alpha,gamma);
-      DIIS d(&_anharmonic_residual,&_anharmonic_preconditioner);
+      DIIS d(&_anharmonic_preconditioner,&_anharmonic_residual);
       d.setMode(mode);
       d.m_verbosity=-1;
       d.m_maxIterations=100000;

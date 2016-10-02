@@ -2,8 +2,8 @@
 #include <stdexcept>
 using namespace IterativeSolver;
 
-Davidson::Davidson(const ParameterSetTransformation updateFunction, const ParameterSetTransformation residualFunction)
-  : IterativeSolverBase(updateFunction, residualFunction)
+Davidson::Davidson(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction)
+  : IterativeSolverBase(residualFunction, preconditionerFunction)
   , m_roots(-1)
 {
   m_linear = true;
@@ -62,7 +62,7 @@ static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outpu
     }
 }
 
-static void _updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift, bool append=true) {
+static void _preconditoner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift, bool append=true) {
   if (not append) psc.zero();
   for (size_t k=0; k<psc.size(); k++) {
       for (size_t l=0; l<(size_t)testmatrix.rows(); l++)  (*psc[k])[l] -= (*psg[k])[l]/(testmatrix(l,l)+shift[k]);
@@ -86,7 +86,7 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
       else
         throw std::logic_error("invalid problem in Davidson::test");
 
-  Davidson d(&_updater,&_residual);
+  Davidson d(&_residual,&_preconditoner);
   d.m_roots=roots;
   d.m_verbosity=verbosity;
   d.m_maxIterations=dimension;

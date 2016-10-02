@@ -5,7 +5,7 @@
 
 using namespace IterativeSolver;
 
-IterativeSolverBase::IterativeSolverBase(ParameterSetTransformation preconditionerFunction, ParameterSetTransformation residualFunction)
+IterativeSolverBase::IterativeSolverBase(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction)
   :  m_preconditionerFunction(preconditionerFunction),
     m_residualFunction(residualFunction),
     m_verbosity(0),
@@ -101,8 +101,8 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
 
 size_t IterativeSolverBase::addVectorSet(const ParameterVectorSet &residual, const ParameterVectorSet &solution, const ParameterVectorSet &other)
 {
-  if (residual.m_active.front()==0) xout <<"warning: inactive residual"<<std::endl;
-  if (solution.m_active.front()==0) xout <<"warning: inactive solution"<<std::endl;
+//  if (residual.m_active.front()==0) xout <<"warning: inactive residual"<<std::endl;
+//  if (solution.m_active.front()==0) xout <<"warning: inactive solution"<<std::endl;
     m_residuals.push_back(residual);
     m_solutions.push_back(solution);
     m_others.push_back(other);

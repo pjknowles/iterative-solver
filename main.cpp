@@ -9,11 +9,9 @@ int main(int argc, char *argv[])
   IterativeSolver::DIIS::randomTest(100,100,0.2,0.0);
   IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
   IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
-  IterativeSolver::DIIS::randomTest(100,100,0.1,3.0);
-  return 0;
+//  IterativeSolver::DIIS::randomTest(100,100,0.1,3.0);
   IterativeSolver::DIIS::test(1,6,1e-10,IterativeSolver::DIIS::KAINmode,0.0002);
   IterativeSolver::DIIS::test(1,6,1e-10,IterativeSolver::DIIS::DIISmode,0.0002);
-  return 0;
   IterativeSolver::OldDIIS::test(1);
   IterativeSolver::OldDIIS::test(1,6,1e6,IterativeSolver::OldDIIS::DIISmode,0.2);
 //  IterativeSolver::DIIS::test(1,6,1e6,IterativeSolver::DIIS::disabled,0.0002);

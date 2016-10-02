@@ -3,7 +3,7 @@ using namespace IterativeSolver;
 
 RSPT::RSPT(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction)
   : IterativeSolverBase(residualFunction, preconditionerFunction)
-  , m_roots(-1)
+  , m_roots(1)
 {
   m_linear = true;
   m_orthogonalize = false;

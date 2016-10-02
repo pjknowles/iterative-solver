@@ -13,7 +13,10 @@ class RSPT : public IterativeSolverBase
     virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());
   public:
     int m_roots; ///< How many roots to calculate (defaults to size of solution and residual vectors)
-    std::vector<double> eigenvalues(); ///< The calculated eigenvalues
+    int m_order; ///< Up to what order of perturbation theory should the energy be obtained.
+    std::vector<double> incremental_energies(); ///< The incremental energies order by order.
+    std::vector<double> energies(); ///< The total energies order by order.
+    std::vector<double> eigenvalues(); ///< The variatonally calculated eigenvalues
   private:
     RSPT();
 };

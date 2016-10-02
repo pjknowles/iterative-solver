@@ -15,7 +15,8 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
 {
   assert(solution.size()==residual.size());
   if (m_roots<1) m_roots=solution.size(); // number of roots defaults to size of solution
-//  calculateSubspaceMatrix(residual,solution);
+  if (m_verbosity>2) xout << "Subspace matrix"<<std::endl<<m_subspaceMatrix<<std::endl;
+  if (m_verbosity>2) xout << "Subspace overlap"<<std::endl<<m_subspaceOverlap<<std::endl;
   diagonalizeSubspaceMatrix();
 
   if (m_verbosity>1) xout << "Subspace eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
@@ -71,7 +72,7 @@ static void _preconditoner(const ParameterVectorSet & psg, ParameterVectorSet & 
 
 
 typedef SimpleParameterVector ptype;
-void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
+void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem, bool orthogonalize)
 {
   xout << "Test IterativeSolver::Davidson dimension="<<dimension<<", roots="<<roots<<", problem="<<problem<<std::endl;
   testmatrix.resize(dimension,dimension);
@@ -90,6 +91,7 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
   d.m_roots=roots;
   d.m_verbosity=verbosity;
   d.m_maxIterations=dimension;
+  d.m_orthogonalize=orthogonalize;
   ParameterVectorSet x;
   ParameterVectorSet g;
   for (size_t root=0; root<(size_t)d.m_roots; root++) {
@@ -102,6 +104,7 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem)
     }
   xout << "roots="<<roots<<std::endl;
   xout << "initial x="<<x<<std::endl;
+
 
   d.solve(g,x);
 

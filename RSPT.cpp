@@ -33,8 +33,11 @@ void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
       m_incremental_energies[1]=m_subspaceMatrix(0,0)-m_incremental_energies[0];
       residual.axpy(-m_subspaceMatrix(0,0),m_solutions.back());
       m_updateShift.clear();m_updateShift.push_back(-m_E0);
+      xout << "E_0="<<m_E0<<std::endl;
+      xout << "E_1="<<m_incremental_energies[1]<<std::endl;
   } else {
       m_incremental_energies.push_back(m_subspaceMatrix(n-1,0)-m_subspaceMatrix(0,0)*m_subspaceOverlap(n-1,0));
+      xout << "E_n="<<m_incremental_energies.back()<<", Eigenvalue="<<m_subspaceEigenvalues(0)<<std::endl;
       residual.axpy(1,m_lastH0mE0psi);
       residual.axpy(-m_subspaceMatrix(0,0),m_solutions.back());
       solution.zero();
@@ -55,4 +58,80 @@ void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   m_updateShift.resize(m_roots);
   for (size_t root=0; root<(size_t)m_roots; root++) m_updateShift[root]=m_singularity_shift-m_subspaceEigenvalues[root].real();
   m_lastH0mE0psi = residual; // we will need this in the next iteration // FIXME does this leak memory?
+}
+
+#include "SimpleParameterVector.h"
+#include <random>
+#include <chrono>
+  struct anharmonic {
+    Eigen::MatrixXd m_F;
+    double m_gamma;
+    size_t m_n;
+    anharmonic(){}
+    void set(size_t n, double alpha, double gamma)
+    {
+      m_gamma=gamma;
+      m_n=n;
+      unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+      std::default_random_engine generator (seed);
+      std::uniform_real_distribution<double> distribution(-0.5,0.5);
+
+      m_F.resize(n,n);
+      for (size_t j=0; j<n; j++) {
+          for (size_t i=0; i<n; i++)
+            m_F(i,j)=distribution(generator);
+          m_F(j,j) += (j*alpha+0.5);
+        }
+    }
+    SimpleParameterVector guess()
+    {
+      SimpleParameterVector result(m_n);
+      double value=0.3;
+      for (size_t k=0; k<m_n; k++) {
+        result[k]=value;
+        value=-value;
+        }
+      return result;
+    }
+  };
+
+  static anharmonic instance;
+
+    static void _anharmonic_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+      if (not append) outputs.front()->zero();
+      for (size_t i=0; i<instance.m_n; i++) {
+          (*outputs.front())[i] = instance.m_gamma*(*psx.front())[i];
+          for (size_t j=0; j<instance.m_n; j++)
+            (*outputs.front())[i] += instance.m_F(j,i)*(*psx.front())[j];
+        }
+    }
+    static void _anharmonic_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+      if (append) {
+          for (size_t i=0; i<instance.m_n; i++)
+            (*psc.front())[i] -= (*psg.front())[i]/instance.m_F(i,i);
+        } else {
+          for (size_t i=0; i<instance.m_n; i++)
+            (*psc.front())[i] =- (*psg.front())[i]/instance.m_F(i,i);
+        }
+    }
+void RSPT::test(size_t n, double alpha, double gamma)
+{
+
+  int nfail=0;
+  unsigned int iterations=0, maxIterations=0;
+  size_t sample=1;
+  for (size_t repeat=0; repeat < sample; repeat++) {
+      instance.set(n,alpha,gamma);
+      RSPT d(&_anharmonic_preconditioner,&_anharmonic_residual);
+      d.m_verbosity=-1;
+      d.m_roots=1;
+      d.m_order=10;
+      SimpleParameterVector gg(n); ParameterVectorSet g; g.push_back(&gg);
+      SimpleParameterVector xx=instance.guess(); ParameterVectorSet x; x.push_back(&xx);
+      if (not d.solve(g,x)) nfail++;
+      iterations+=d.iterations();
+      if (maxIterations<d.iterations())
+        maxIterations=d.iterations();
+    }
+  xout << "sample="<<sample<<", n="<<n<<", alpha="<<alpha<<", gamma="<<gamma<<", average iterations="<<iterations/sample<<", maximum iterations="<<maxIterations<<", nfail="<<nfail<<std::endl;
 }

@@ -1,6 +1,7 @@
 #include "Diis.h"
 #include "OldDiis.h"
 #include "Davidson.h"
+#include "RSPT.h"
 
 extern "C" { void IterativeSolverFTest();}
 int main(int argc, char *argv[])
@@ -19,11 +20,11 @@ int main(int argc, char *argv[])
 //  IterativeSolver::OldDIIS::test(1,6,1e6,IterativeSolver::OldDIIS::DIISmode,0.8);
   IterativeSolver::Davidson::test(9,1,1,2,true);
   IterativeSolver::Davidson::test(9,1,1,2,false);
-  return 0;
   IterativeSolver::Davidson::test(9,1,1,1);
   IterativeSolver::Davidson::test(9,1,1,2);
   IterativeSolver::Davidson::test(9,2,1,2);
   IterativeSolver::Davidson::test(99,3,1,2);
+  IterativeSolver::RSPT::test(99,3,1);
   IterativeSolverFTest();
   return 0;
 }

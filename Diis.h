@@ -60,6 +60,7 @@ namespace IterativeSolver {
    */
   protected:
     void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());
+    void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, const optionMap options=optionMap()) { ParameterVectorSet other; extrapolate(residual,solution,other,options); }
 
     /*!
    * \brief Return the square L2 norm of the extrapolated residual from the last call to extrapolate() or iterate().

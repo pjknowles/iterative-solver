@@ -50,7 +50,7 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
 }
 
 
-void IterativeSolverBase::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, optionMap options)
+void IterativeSolverBase::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options)
 {
 
 }

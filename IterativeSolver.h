@@ -124,8 +124,8 @@ namespace IterativeSolver {
 
   protected:
     virtual void adjustUpdate(ParameterVectorSet & solution);
-    virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, optionMap options=optionMap());
-    virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, optionMap options=optionMap()) { ParameterVectorSet other; extrapolate(residual,solution,other,options); }
+    virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());
+    virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, const optionMap options=optionMap()) { ParameterVectorSet other; extrapolate(residual,solution,other,options); }
     void calculateSubspaceMatrix(const ParameterVectorSet &residual, const ParameterVectorSet &solution);
     void diagonalizeSubspaceMatrix();
     void calculateErrors(const ParameterVectorSet & solution, const ParameterVectorSet &residual);

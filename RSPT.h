@@ -8,7 +8,7 @@ class RSPT : public IterativeSolverBase
 {
   public:
     RSPT(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction=&IterativeSolver::steepestDescent);
-    static void test (size_t n, double alpha, double gamma);
+    static void test (size_t n, double alpha);
   protected:
     virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());
   public:

@@ -65,12 +65,10 @@ void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
 #include <chrono>
   struct anharmonic {
     Eigen::MatrixXd m_F;
-    double m_gamma;
     size_t m_n;
     anharmonic(){}
-    void set(size_t n, double alpha, double gamma)
+    void set(size_t n, double alpha)
     {
-      m_gamma=gamma;
       m_n=n;
       unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
       std::default_random_engine generator (seed);
@@ -100,7 +98,7 @@ void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
     static void _anharmonic_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
       if (not append) outputs.front()->zero();
       for (size_t i=0; i<instance.m_n; i++) {
-          (*outputs.front())[i] = instance.m_gamma*(*psx.front())[i];
+          (*outputs.front())[i] = 0;
           for (size_t j=0; j<instance.m_n; j++)
             (*outputs.front())[i] += instance.m_F(j,i)*(*psx.front())[j];
         }
@@ -114,14 +112,14 @@ void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
             (*psc.front())[i] =- (*psg.front())[i]/instance.m_F(i,i);
         }
     }
-void RSPT::test(size_t n, double alpha, double gamma)
+void RSPT::test(size_t n, double alpha)
 {
 
   int nfail=0;
   unsigned int iterations=0, maxIterations=0;
   size_t sample=1;
   for (size_t repeat=0; repeat < sample; repeat++) {
-      instance.set(n,alpha,gamma);
+      instance.set(n,alpha);
       RSPT d(&_anharmonic_preconditioner,&_anharmonic_residual);
       d.m_verbosity=-1;
       d.m_roots=1;

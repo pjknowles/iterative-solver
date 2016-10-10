@@ -18,8 +18,8 @@ IterativeSolverBase::IterativeSolverBase(const ParameterSetTransformation residu
     m_date(0),
     m_subspaceMatrixResRes(false),
     m_singularity_shift(1e-8),
+    m_roots(-1),
     m_iterations(0)
-  , m_roots(-1)
 {}
 
 IterativeSolverBase::~IterativeSolverBase()
@@ -130,15 +130,15 @@ void IterativeSolverBase::deleteVector(size_t index)
                     m_solutions[ll].m_active[lll] = false;
                     m_residuals[ll].m_active[lll] = false;
 //                    m_others[ll].m_active[lll] = false;
-                    for (size_t l2=l+1; l2<m_subspaceMatrix.rows(); l2++) {
-                        for (size_t k=0; k<m_subspaceMatrix.rows(); k++) {
+                    for (int l2=l+1; l2<m_subspaceMatrix.rows(); l2++) {
+                        for (int k=0; k<m_subspaceMatrix.rows(); k++) {
 //                            xout << "copy from ("<<k<<","<<l2<<") to ("<<k<<","<<l2-1<<")"<<std::endl;
                             m_subspaceMatrix(k,l2-1)=m_subspaceMatrix(k,l2);
                             m_subspaceOverlap(k,l2-1)=m_subspaceOverlap(k,l2);
                         }
                     }
-                    for (size_t l2=l+1; l2<m_subspaceMatrix.rows(); l2++) {
-                        for (size_t k=0; k<m_subspaceMatrix.rows(); k++) {
+                    for (int l2=l+1; l2<m_subspaceMatrix.rows(); l2++) {
+                        for (int k=0; k<m_subspaceMatrix.rows(); k++) {
                             m_subspaceMatrix(l2-1,k)=m_subspaceMatrix(l2,k);
                             m_subspaceOverlap(l2-1,k)=m_subspaceOverlap(l2,k);
                         }
@@ -240,6 +240,6 @@ void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, co
 std::vector<double> IterativeSolverBase::eigenvalues()
 {
   std::vector<double> result;
-  for (size_t root=0; root<(size_t)m_roots && root < m_subspaceEigenvalues.rows(); root++) result.push_back(m_subspaceEigenvalues[root].real());
+  for (int root=0; root<(size_t)m_roots && root < m_subspaceEigenvalues.rows(); root++) result.push_back(m_subspaceEigenvalues[root].real());
   return result;
 }

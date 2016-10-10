@@ -7,6 +7,12 @@ namespace IterativeSolver{
 class RSPT : public IterativeSolverBase
 {
   public:
+    /*!
+     * \brief RSPT
+   * \param residualFunction A function that evaluates the residual vectors. Used by method solve(); does not have to be provided if iterations are constructed explicitly in the calling program.
+   * \param preconditionerFunction A function that applies a preconditioner to a residual to give an update. Used by methods iterate() and solve().
+   * Also used to construct the action of H0 if the shift parameter is zero.
+     */
     RSPT(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction=&IterativeSolver::steepestDescent);
     static void test (size_t n, double alpha);
   protected:

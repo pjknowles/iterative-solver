@@ -268,7 +268,7 @@ void DIIS::randomTest(size_t sample, size_t n, double alpha, double gamma, DIISm
   unsigned int iterations=0, maxIterations=0;
   for (size_t repeat=0; repeat < sample; repeat++) {
       instance.set(n,alpha,gamma);
-      DIIS d(&_anharmonic_preconditioner,&_anharmonic_residual);
+      DIIS d(&_anharmonic_residual,&_anharmonic_preconditioner);
       d.setMode(mode);
       d.m_verbosity=-1;
       d.m_maxIterations=100000;

@@ -11,10 +11,10 @@ int main(int argc, char *argv[])
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,3.0);
-  IterativeSolver::DIIS::test(1,6,1e-10,IterativeSolver::DIIS::KAINmode,0.0002);
+//  IterativeSolver::DIIS::test(1,6,1e-10,IterativeSolver::DIIS::KAINmode,0.0002);
   IterativeSolver::DIIS::test(1,6,1e-10,IterativeSolver::DIIS::DIISmode,0.0002);
 //  IterativeSolver::OldDIIS::test(1);
-//  IterativeSolver::OldDIIS::test(1,6,1e6,IterativeSolver::OldDIIS::DIISmode,0.2);
+  IterativeSolver::OldDIIS::test(1,6,1e6,IterativeSolver::OldDIIS::DIISmode,0.2);
 //  IterativeSolver::DIIS::test(1,6,1e6,IterativeSolver::DIIS::disabled,0.0002);
 //  IterativeSolver::OldDIIS::test(1,6,1e6,IterativeSolver::OldDIIS::DIISmode,0.4);
 //  IterativeSolver::OldDIIS::test(1,6,1e6,IterativeSolver::OldDIIS::DIISmode,0.8);
@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
   IterativeSolver::Davidson::test(9,1,1,2);
   IterativeSolver::Davidson::test(9,2,1,2);
   IterativeSolver::Davidson::test(99,3,1,2);
-  IterativeSolver::RSPT::test(99,3);
+  IterativeSolver::RSPT::test(2,3);
   IterativeSolverFTest();
   return 0;
 }

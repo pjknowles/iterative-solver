@@ -147,6 +147,7 @@ namespace IterativeSolver {
     double m_singularity_shift; ///< Amount added to shifts to avoid 0/0
   private:
     unsigned int m_iterations;
+    double m_singularity_threshold;
   };
 }
 

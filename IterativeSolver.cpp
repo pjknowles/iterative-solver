@@ -20,7 +20,8 @@ IterativeSolverBase::IterativeSolverBase(const ParameterSetTransformation residu
     m_subspaceMatrixResRes(false),
     m_singularity_shift(1e-8),
     m_roots(-1),
-    m_iterations(0)
+    m_iterations(0),
+    m_singularity_threshold(1e-25)
 {}
 
 IterativeSolverBase::~IterativeSolverBase()
@@ -195,13 +196,12 @@ void IterativeSolverBase::calculateSubspaceMatrix(const ParameterVectorSet &resi
 
 void IterativeSolverBase::diagonalizeSubspaceMatrix()
 {
-  double cut=1e-20;
   int kept=m_subspaceMatrix.rows();
   {
       Eigen::EigenSolver<Eigen::MatrixXd> ss(m_subspaceOverlap);
       Eigen::VectorXcd sse=ss.eigenvalues();
       for (int k=0; k<sse.rows(); k++) {
-          if (std::fabs(sse(k).real()) < cut)
+          if (std::fabs(sse(k).real()) < m_singularity_threshold)
               kept--;
       }
   }

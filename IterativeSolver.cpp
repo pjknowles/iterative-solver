@@ -21,7 +21,7 @@ IterativeSolverBase::IterativeSolverBase(const ParameterSetTransformation residu
     m_singularity_shift(1e-8),
     m_roots(-1),
     m_iterations(0),
-    m_singularity_threshold(1e-25)
+    m_singularity_threshold(1e-20)
 {}
 
 IterativeSolverBase::~IterativeSolverBase()
@@ -205,7 +205,7 @@ void IterativeSolverBase::diagonalizeSubspaceMatrix()
               kept--;
       }
   }
-  if (kept < m_subspaceMatrix.rows())
+  if (m_verbosity >=0 && kept < m_subspaceMatrix.rows())
       xout <<"IterativeSolver WARNING, subspace singular, pruned from "<<m_subspaceMatrix.rows()<<" to "<<kept<<std::endl;
 
   Eigen::MatrixXd H=m_subspaceMatrix.block(0,0,kept,kept);

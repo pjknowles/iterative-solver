@@ -1,4 +1,5 @@
 #include "RSPT.h"
+#include <stdexcept>
 using namespace IterativeSolver;
 
 RSPT::RSPT(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction)
@@ -21,13 +22,12 @@ void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   // |d> = -(H_0-E_0)|n>
   //     = (H-H_0-E_1)|n-1> - sum_{k=0}^{n-2} E_{n-k} |k>.
   //     = (H-E_0-E_1)|n-1> - (H_0-E_0)|n-1> - sum_{k=0}^{n-2} E_{n-k} |k>.
-  // note that <0|d>=<0|(H-H_0-E_1)|n-1> - sum_{k=0}^{n-2} E_{n-k} <0|k>. NOT RELEVANT IN GENERAL CASE
   // on exit, solution contains 0.
 
   {
   Eigen::MatrixXcd oldeigenvalues=m_subspaceEigenvalues;
   diagonalizeSubspaceMatrix();
-  if (isnan(m_subspaceEigenvalues(0).real())) m_subspaceEigenvalues=oldeigenvalues;
+  if (std::isnan(m_subspaceEigenvalues(0).real())) m_subspaceEigenvalues=oldeigenvalues;
   }
   if (m_verbosity>1) xout << "Subspace eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
   if (m_verbosity>2) xout << "Subspace eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
@@ -35,11 +35,15 @@ void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
 //      xout << "|"<<n-1<<">: "<<solution;
 //      xout << "H|"<<n-1<<">: "<<residual;
   if (n == 1) {
+      // the preconditioner function must take special action when shift=0
+      // and return H0.residual not -(H0-shift)^{-1}.residual
       std::vector<double> shift; shift.push_back(0);
       m_preconditionerFunction(solution,residual,shift,false);
 //      xout << "solution="<<solution;
 //      xout << "residual="<<residual;
       m_E0 = solution.front()->dot(residual.front());
+  }
+  if (n == 1) {
       solution.zero();
       m_incremental_energies.resize(2);
       m_incremental_energies[0]=m_E0;

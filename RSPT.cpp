@@ -110,7 +110,7 @@ double RSPT::energy(size_t order, size_t state)
       m_F.resize(n,n);
       for (size_t j=0; j<n; j++) {
           for (size_t i=0; i<j; i++)
-            m_F(i,j)=m_F(j,i)=1;//distribution(generator);
+            m_F(i,j)=m_F(j,i)=distribution(generator);
           m_F(j,j) = (j*alpha-1);
         }
 //      xout << "m_F:"<<std::endl<<m_F<<std::endl;
@@ -174,14 +174,14 @@ void RSPT::test(size_t n, double alpha)
       RSPT d(&_rsptpot_residual,&_rsptpot_preconditioner);
       d.m_verbosity=-1;
       d.m_roots=1;
-      d.m_order=100;
+      d.m_minIterations=50;
       d.m_thresh=1e-5;
-      d.m_maxIterations=88;
+      d.m_maxIterations=1000;
       SimpleParameterVector gg(n); ParameterVectorSet g; g.push_back(&gg);
       SimpleParameterVector xx=instance->guess();
       ParameterVectorSet x; x.push_back(&xx);
       d.solve(g,x);
-      if (std::fabs(d.energy(d.m_order)-d.eigenvalues().front()) > 1e-10) nfail++;
+      if (std::fabs(d.energy(d.m_minIterations)-d.eigenvalues().front()) > 1e-10) nfail++;
       xout << "Variational eigenvalue "<<d.eigenvalues().front()<<std::endl;
       for (size_t k=0; k<=d.iterations(); k++) {
           xout << "E("<<k<<") = "<<d.incremental_energies()[k]<<", cumulative="<<d.energy(k)<<", error="<<d.energy(k)-d.eigenvalues()[0]<<std::endl;

@@ -1,5 +1,4 @@
 #include "ISDiis.h"
-#include "OldDiis.h"
 #include "ISDavidson.h"
 #include "ISRSPT.h"
 
@@ -13,11 +12,7 @@ int main(int argc, char *argv[])
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,3.0);
 //  IterativeSolver::DIIS::test(1,6,1e-10,IterativeSolver::DIIS::KAINmode,0.0002);
   IterativeSolver::DIIS::test(1,6,1e-10,IterativeSolver::DIIS::DIISmode,0.0002);
-//  IterativeSolver::OldDIIS::test(1);
-  IterativeSolver::OldDIIS::test(1,6,1e6,IterativeSolver::OldDIIS::DIISmode,0.2);
 //  IterativeSolver::DIIS::test(1,6,1e6,IterativeSolver::DIIS::disabled,0.0002);
-//  IterativeSolver::OldDIIS::test(1,6,1e6,IterativeSolver::OldDIIS::DIISmode,0.4);
-//  IterativeSolver::OldDIIS::test(1,6,1e6,IterativeSolver::OldDIIS::DIISmode,0.8);
   IterativeSolver::Davidson::test(9,1,1,2,true);
   IterativeSolver::Davidson::test(9,1,1,2,false);
   IterativeSolver::Davidson::test(9,1,1,1);

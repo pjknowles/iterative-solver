@@ -1,4 +1,4 @@
-#include "RSPT.h"
+#include "ISRSPT.h"
 #include <stdexcept>
 using namespace IterativeSolver;
 

@@ -1,4 +1,4 @@
-#include "Davidson.h"
+#include "ISDavidson.h"
 #include <stdexcept>
 using namespace IterativeSolver;
 

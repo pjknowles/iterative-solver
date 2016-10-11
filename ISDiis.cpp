@@ -1,4 +1,4 @@
-#include "Diis.h"
+#include "ISDiis.h"
 #include <stdexcept>
 #include <math.h>
 

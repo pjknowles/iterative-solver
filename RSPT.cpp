@@ -43,23 +43,22 @@ void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
 //      xout << "residual="<<residual;
       m_E0 = solution.front()->dot(residual.front());
   }
-  if (n == 1) {
       solution.zero();
+      residual.zero();
+      residual.axpy(1,m_residuals.back());
+  if (n == 1) {
       m_incremental_energies.resize(2);
       m_incremental_energies[0]=m_E0;
       m_incremental_energies[1]=m_subspaceMatrix(0,0)-m_incremental_energies[0];
-      residual.zero();
-      residual.axpy(1,m_residuals.back());
       residual.axpy(-m_subspaceMatrix(0,0),m_solutions.back());
       m_updateShift.clear();m_updateShift.push_back(-m_E0);
-      xout << "E_0="<<m_E0<<std::endl;
-      xout << "E_1="<<m_incremental_energies[1]<<std::endl;
+      if (m_verbosity>=0)
+          xout << "E_0="<<m_E0<<std::endl << "E_1="<<m_incremental_energies[1]<<std::endl;
 //      xout << "d(1)after incrementing solution"<<residual<<std::endl;
   } else {
       m_incremental_energies.push_back(m_subspaceMatrix(n-1,0)-m_subspaceMatrix(0,0)*m_subspaceOverlap(n-1,0));
-      xout << "E_"<<n<<"="<<m_incremental_energies.back()<<", Eigenvalue="<<m_subspaceEigenvalues(0)<<std::endl;
-      residual.zero();
-      residual.axpy(1,m_residuals.back());
+      if (m_verbosity>=0)
+          xout << "E_"<<n<<"="<<m_incremental_energies.back()<<", Eigenvalue="<<m_subspaceEigenvalues(0)<<std::endl;
 //      xout << "d(n)=g(n-1)"<<residual<<std::endl;
       residual.axpy(1,m_lastH0mE0psi);
 //      xout << "d(n)=g(n-1)+d(n-1)"<<residual<<std::endl;
@@ -67,7 +66,6 @@ void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
 //      xout << "c(n-1) "<<m_solutions.back()<<std::endl;
       residual.axpy(-m_subspaceMatrix(0,0),m_solutions.back());
 //      xout << "d(n)=g(n-1)+d(n-1)-(E0+E1)c(n-1)"<<residual<<std::endl;
-      solution.zero();
   // this is structured for multistate, but not thought about yet
   for (size_t kkk=0; kkk<residual.size(); kkk++) {
       size_t l=0;

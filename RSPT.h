@@ -20,9 +20,8 @@ class RSPT : public IterativeSolverBase
   public:
     int m_roots; ///< How many roots to calculate (defaults to size of solution and residual vectors)
     int m_order; ///< Up to what order of perturbation theory should the energy be obtained.
-    std::vector<double> incremental_energies(); ///< The incremental energies order by order.
-    std::vector<double> energies(); ///< The total energies order by order.
-    std::vector<double> eigenvalues(); ///< The variatonally calculated eigenvalues
+    std::vector<double> incremental_energies(size_t state=0) {return m_incremental_energies;} ///< The incremental energies order by order.
+    double energy(size_t order, size_t state=0); ///< The total energy to a given order.
   private:
     RSPT();
     ParameterVectorSet m_lastH0mE0psi;
@@ -31,5 +30,6 @@ class RSPT : public IterativeSolverBase
 };
 
 }
+
 
 #endif // RSPT_H

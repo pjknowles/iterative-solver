@@ -11,6 +11,7 @@ IterativeSolverBase::IterativeSolverBase(const ParameterSetTransformation residu
     m_verbosity(0),
     m_thresh(1e-12),
     m_maxIterations(1000),
+    m_minIterations(0),
     m_orthogonalize(false),
     m_linear(false),
     m_hermitian(false),
@@ -58,7 +59,7 @@ void IterativeSolverBase::extrapolate(ParameterVectorSet & residual, ParameterVe
 bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSet & solution, const optionMap options)
 {
   bool converged=false;
-  for (int iteration=1; iteration <= m_maxIterations && not converged; iteration++) {
+  for (int iteration=1; iteration <= m_maxIterations && (not converged || iteration <= m_minIterations); iteration++) {
       m_residualFunction(solution,residual,std::vector<double>(),false);
       converged = iterate(residual,solution);
       if (m_verbosity>0)
@@ -70,7 +71,7 @@ bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSe
 void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
 {
   for (size_t k=0; k<solution.size(); k++)
-    solution.m_active[k] = (m_errors[k] >= m_thresh);
+    solution.m_active[k] = (m_errors[k] >= m_thresh || m_minIterations>m_iterations);
   if (m_orthogonalize) {
       //      xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
       for (size_t kkk=0; kkk<solution.size(); kkk++) {

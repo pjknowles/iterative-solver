@@ -8,8 +8,7 @@ RSPT::RSPT(const ParameterSetTransformation residualFunction, const ParameterSet
   m_linear = true;
   m_orthogonalize = false;
   m_singularity_shift=1e-50;
-  m_thresh=-1; // go to the requested order no matter what....
-  m_maxIterations=10; // .... but by default only a modest number
+  m_minIterations=10; // Ensure at least this order
 }
 
 void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options)
@@ -51,6 +50,7 @@ void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
       m_updateShift.clear();m_updateShift.push_back(-m_E0);
       xout << "E_0="<<m_E0<<std::endl;
       xout << "E_1="<<m_incremental_energies[1]<<std::endl;
+//      xout << "d(1)after incrementing solution"<<residual<<std::endl;
   } else {
       m_incremental_energies.push_back(m_subspaceMatrix(n-1,0)-m_subspaceMatrix(0,0)*m_subspaceOverlap(n-1,0));
       xout << "E_"<<n<<"="<<m_incremental_energies.back()<<", Eigenvalue="<<m_subspaceEigenvalues(0)<<std::endl;
@@ -110,7 +110,7 @@ double RSPT::energy(size_t order, size_t state)
       m_F.resize(n,n);
       for (size_t j=0; j<n; j++) {
           for (size_t i=0; i<j; i++)
-            m_F(i,j)=m_F(j,i)=distribution(generator);
+            m_F(i,j)=m_F(j,i)=1;//distribution(generator);
           m_F(j,j) = (j*alpha-1);
         }
 //      xout << "m_F:"<<std::endl<<m_F<<std::endl;
@@ -144,8 +144,8 @@ double RSPT::energy(size_t order, size_t state)
     }
     static void _rsptpot_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
 //        xout << "preconditioner input="<<psg<<std::endl;
-      if (shift.front()==0)
-          xout << "H0 not resolvent"<<std::endl;
+//      if (shift.front()==0)
+//          xout << "H0 not resolvent"<<std::endl;
       if (shift.front()==0)
           for (size_t i=0; i<instance->m_n; i++)
             (*psc.front())[i] = (*psg.front())[i]*instance->m_F(i,i);
@@ -175,6 +175,8 @@ void RSPT::test(size_t n, double alpha)
       d.m_verbosity=-1;
       d.m_roots=1;
       d.m_order=100;
+      d.m_thresh=1e-5;
+      d.m_maxIterations=8;
       SimpleParameterVector gg(n); ParameterVectorSet g; g.push_back(&gg);
       SimpleParameterVector xx=instance->guess();
       ParameterVectorSet x; x.push_back(&xx);

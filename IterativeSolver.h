@@ -113,6 +113,7 @@ namespace IterativeSolver {
     int m_verbosity; //!< How much to print.
     double m_thresh; //!< If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
     int m_maxIterations; //!< Maximum number of iterations in solve()
+    int m_minIterations; //!< Minimum number of iterations in solve()
     std::vector<double> m_errors; //!< Error at last iteration
     double m_error; //!< worst error at last iteration
     size_t m_worst; //!< worst-converged solution, ie m_error = m_errors[m_worst]

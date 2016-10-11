@@ -176,7 +176,7 @@ void RSPT::test(size_t n, double alpha)
       d.m_roots=1;
       d.m_order=100;
       d.m_thresh=1e-5;
-      d.m_maxIterations=8;
+      d.m_maxIterations=88;
       SimpleParameterVector gg(n); ParameterVectorSet g; g.push_back(&gg);
       SimpleParameterVector xx=instance->guess();
       ParameterVectorSet x; x.push_back(&xx);

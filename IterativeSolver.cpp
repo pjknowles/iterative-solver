@@ -195,15 +195,30 @@ void IterativeSolverBase::calculateSubspaceMatrix(const ParameterVectorSet &resi
 
 void IterativeSolverBase::diagonalizeSubspaceMatrix()
 {
-  Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> s(m_subspaceMatrix,m_subspaceOverlap);
+  double cut=1e-20;
+  int kept=m_subspaceMatrix.rows();
+  {
+      Eigen::EigenSolver<Eigen::MatrixXd> ss(m_subspaceOverlap);
+      Eigen::VectorXcd sse=ss.eigenvalues();
+      for (int k=0; k<sse.rows(); k++) {
+          if (std::fabs(sse(k).real()) < cut)
+              kept--;
+      }
+  }
+  if (kept < m_subspaceMatrix.rows())
+      xout <<"IterativeSolver WARNING, subspace singular, pruned from "<<m_subspaceMatrix.rows()<<" to "<<kept<<std::endl;
+
+  Eigen::MatrixXd H=m_subspaceMatrix.block(0,0,kept,kept);
+  Eigen::MatrixXd S=m_subspaceOverlap.block(0,0,kept,kept);
+  Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> s(H,S);
   m_subspaceEigenvalues=s.eigenvalues();
   m_subspaceEigenvectors=s.eigenvectors();
   // sort
   std::vector<size_t> map;
-  for (Eigen::Index k=0; k<m_subspaceMatrix.rows(); k++) {
+  for (Eigen::Index k=0; k<H.rows(); k++) {
       size_t ll;
       for (ll=0; std::count(map.begin(),map.end(),ll)!=0; ll++) ;
-      for (Eigen::Index l=0; l<m_subspaceMatrix.rows(); l++) {
+      for (Eigen::Index l=0; l<H.rows(); l++) {
           if (std::count(map.begin(),map.end(),l)==0) {
               if (s.eigenvalues()(l).real() < s.eigenvalues()(ll).real())
                 ll=l;
@@ -211,12 +226,14 @@ void IterativeSolverBase::diagonalizeSubspaceMatrix()
         }
       map.push_back(ll);
       m_subspaceEigenvalues[k]=s.eigenvalues()(ll);
-      for (Eigen::Index l=0; l<m_subspaceMatrix.rows(); l++) m_subspaceEigenvectors(l,k)=s.eigenvectors()(l,ll);
+      for (Eigen::Index l=0; l<H.rows(); l++) m_subspaceEigenvectors(l,k)=s.eigenvectors()(l,ll);
     }
-  Eigen::MatrixXcd overlap=m_subspaceEigenvectors.transpose()*m_subspaceOverlap*m_subspaceEigenvectors;
+  Eigen::MatrixXcd overlap=m_subspaceEigenvectors.transpose()*S*m_subspaceEigenvectors;
   for (Eigen::Index k=0; k<overlap.rows(); k++)
     for (Eigen::Index l=0; l<overlap.rows(); l++)
       m_subspaceEigenvectors(l,k) /= std::sqrt(overlap(k,k).real());
+//  xout << "eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
+//  xout << "eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
 }
 
 

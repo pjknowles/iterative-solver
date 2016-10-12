@@ -11,7 +11,7 @@ endif()
 aux_source_directory(. SRC_LIST)
 set(SRC_LIST IterativeSolver.cpp IterativeSolverF.F90 SimpleParameterVector.cpp ParameterVector.h main.cpp ISDavidson.cpp ISDiis.cpp ISRSPT.cpp)
 add_executable(${PROJECT_NAME}-test ${SRC_LIST})
-#add_library (${PROJECT_NAME} ${SRC_LIST})
+add_library (${PROJECT_NAME} ${SRC_LIST})
 include_directories(Eigen )
 
 

@@ -16,10 +16,10 @@ IterativeSolverBase::IterativeSolverBase(const ParameterSetTransformation residu
     m_linear(false),
     m_hermitian(false),
     m_preconditionResiduals(false),
+    m_roots(-1),
     m_date(0),
     m_subspaceMatrixResRes(false),
     m_singularity_shift(1e-8),
-    m_roots(-1),
     m_iterations(0),
     m_singularity_threshold(1e-20)
 {}
@@ -60,7 +60,7 @@ void IterativeSolverBase::extrapolate(ParameterVectorSet & residual, ParameterVe
 bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSet & solution, const optionMap options)
 {
   bool converged=false;
-  for (int iteration=1; iteration <= m_maxIterations && (not converged || iteration <= m_minIterations); iteration++) {
+  for (unsigned int iteration=1; iteration <= m_maxIterations && (not converged || iteration <= m_minIterations); iteration++) {
       m_residualFunction(solution,residual,std::vector<double>(),false);
       converged = iterate(residual,solution);
       if (m_verbosity>0)
@@ -258,6 +258,6 @@ void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, co
 std::vector<double> IterativeSolverBase::eigenvalues()
 {
   std::vector<double> result;
-  for (int root=0; root<(size_t)m_roots && root < m_subspaceEigenvalues.rows(); root++) result.push_back(m_subspaceEigenvalues[root].real());
+  for (unsigned int root=0; root<(size_t)m_roots && root < m_subspaceEigenvalues.rows(); root++) result.push_back(m_subspaceEigenvalues[root].real());
   return result;
 }

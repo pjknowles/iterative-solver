@@ -51,7 +51,7 @@ void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
       m_incremental_energies[0]=m_E0;
       m_incremental_energies[1]=m_subspaceMatrix(0,0)-m_incremental_energies[0];
       residual.axpy(-m_subspaceMatrix(0,0),m_solutions.back());
-      m_updateShift.clear();m_updateShift.push_back(-m_E0);
+      m_updateShift.clear();m_updateShift.push_back(m_singularity_shift-m_E0);
       if (m_verbosity>=0)
           xout << "E_0="<<m_E0<<std::endl << "E_1="<<m_incremental_energies[1]<<std::endl;
 //      xout << "d(1)after incrementing solution"<<residual<<std::endl;
@@ -79,8 +79,8 @@ void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
     }
 
   }
-  m_updateShift.resize(m_roots);
-  for (size_t root=0; root<(size_t)m_roots; root++) m_updateShift[root]=m_singularity_shift-m_subspaceMatrix(root,root);
+//  m_updateShift.resize(m_roots);
+//  for (size_t root=0; root<(size_t)m_roots; root++) m_updateShift[root]=m_singularity_shift-m_subspaceMatrix(root,root);
   m_lastH0mE0psi = residual; // we will need this in the next iteration // FIXME does this leak memory?
 //  xout << "-(H0-E0)|"<<n<<">: "<<residual<<std::endl;
 }

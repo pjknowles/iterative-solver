@@ -46,6 +46,7 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   //	  xout << "Enter DIIS::extrapolate"<<std::endl;
   //	  xout << "residual : "<<residual<<std::endl;
   //	  xout << "solution : "<<solution<<std::endl;
+    m_updateShift.clear();m_updateShift.push_back(m_singularity_shift-m_subspaceMatrix(0,0));
   double weight=options.count("weight") ? (options.find("weight")->second) : 1.0;
   if (m_maxDim <= 1 || m_DIISmode == disabled) return;
 
@@ -190,7 +191,7 @@ void DIIS::test(int verbosity,
       _Rosenbrock_residual(x,g);
       optionMap o; //o["weight"]=2;
       converged = d.iterate(g,x,o);
-      if (verbosity>0)
+      if (verbosity>2)
         xout << "new x after iterate "<<x.front()<<std::endl;
       if (verbosity>=0)
         xout << "iteration "<<iteration<<", Residual norm = "<<std::sqrt(d.fLastResidual())

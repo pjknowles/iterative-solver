@@ -29,8 +29,8 @@ namespace IterativeSolver {
   class ParameterVector
   {
   public:
-    ParameterVector(){}
-    ParameterVector(const ParameterVector &source){}
+    ParameterVector() : m_variance(0){}
+    ParameterVector(const ParameterVector &source){ *this = source; }
     virtual ~ParameterVector(){}
     /*!
      * \brief Add a constant times another object to this object
@@ -57,7 +57,7 @@ namespace IterativeSolver {
      * - 0: self-dual vector
      * The class is expected to check that appropriate combinations of vectors are provided in methods that perform linear algebra functions.
      */
-    virtual void setVariance(int variance=0)=0;
+    void setVariance(int variance=0) {m_variance=variance;}
     /*!
      * \brief Report the co/contra-variance status of the object
      * \return
@@ -65,7 +65,7 @@ namespace IterativeSolver {
      * - +1: contravariant vector
      * - 0: self-dual vector
      */
-    virtual int variance()=0;
+    int variance() const {return m_variance;}
     /*!
      * \brief Make a copy of the object
      * \return A pointer to the new object
@@ -76,21 +76,21 @@ namespace IterativeSolver {
      * (optional implementation).
      * \return
      */
-    virtual std::string str() const =0;
+    virtual std::string str() const {return "";}
     /*!
      * \brief Access an element of the object's data
      * (optional implementation).
      * \param pos
      * \return
      */
-    virtual ParameterScalar& operator[](size_t pos)=0;
-    const virtual ParameterScalar& operator[](size_t pos) const=0;
+    virtual ParameterScalar& operator[](size_t pos) {throw std::logic_error("Unimplemented IterativeSolver::ParameterVector::operator[]");}
+    const virtual ParameterScalar& operator[](size_t pos) const {throw std::logic_error("Unimplemented IterativeSolver::ParameterVector::operator[]");}
     /*!
      * \brief Report the size of the object's data
      * (optional implementation).
      * \return
      */
-    virtual size_t size() const=0;
+    virtual size_t size() const {return 0;}
   protected:
   private:
     int m_variance;

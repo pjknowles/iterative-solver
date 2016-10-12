@@ -11,7 +11,6 @@ namespace IterativeSolver {
    * \brief Construct an object without any data.
    */
     SimpleParameterVector(size_t length=0);
-    SimpleParameterVector(const SimpleParameterVector &source);
     ~SimpleParameterVector();
     /*!
    * \brief Add a constant times another object to this object
@@ -36,27 +35,10 @@ namespace IterativeSolver {
    * \return
    */
     SimpleParameterVector& operator=(const SimpleParameterVector& other);
-    /*!
-   * \brief Record the co/contra-variance status of the object
-   * \param variance
-   * - -1: covariant vector
-   * - +1: contravariant vector
-   * - 0: self-dual vector
-   * The class is expected to check that appropriate combinations of vectors are provided in methods that perform linear algebra functions.
-   */
-    void setVariance(int variance=0) {m_variance=variance;}
-    int variance() {return m_variance;}
     SimpleParameterVector* clone() const;
-    std::string str() const {
-        std::ostringstream os; os << "SimpleParameterVector object:";
-        for (size_t k=0; k<size(); k++)
-            os <<" "<< (*this)[k];
-        os << std::endl;
-        return os.str();
-    }
+    std::string str() const;
 
   private:
-    int m_variance;
     /*!
    * \brief For a simple implementation, just use an STL vector. Classes that inherit are free to do things differently.
    */

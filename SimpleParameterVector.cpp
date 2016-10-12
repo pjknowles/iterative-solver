@@ -6,13 +6,8 @@
 using namespace IterativeSolver;
 
 SimpleParameterVector::SimpleParameterVector(size_t length) :
-  m_buffer(length), m_variance(0)
+  m_buffer(length)
 {
-}
-
-SimpleParameterVector::SimpleParameterVector(const SimpleParameterVector &source)
-{
-  *this = source;
 }
 
 SimpleParameterVector::~SimpleParameterVector() {}
@@ -22,20 +17,19 @@ SimpleParameterVector& SimpleParameterVector::operator=(const SimpleParameterVec
 {
   m_buffer.resize(other.m_buffer.size());
   for (size_t k=0; k<m_buffer.size(); k++) m_buffer[k] = other.m_buffer[k];
-  m_variance = other.m_variance;
+  setVariance(other.variance());
   return *this;
 }
 
 SimpleParameterVector* SimpleParameterVector::clone() const
 {
-  SimpleParameterVector* result = new SimpleParameterVector(*this);
   return new SimpleParameterVector(*this);
 }
 
 void SimpleParameterVector::axpy(ParameterScalar a, const ParameterVector* other)
 {
   const SimpleParameterVector* othe=dynamic_cast <const SimpleParameterVector*> (other);
-  if (this->m_variance != othe->m_variance) throw std::logic_error("mismatching co/contravariance");
+  if (this->variance() != othe->variance()) throw std::logic_error("mismatching co/contravariance");
   for (size_t k=0; k<m_buffer.size(); k++) m_buffer[k] += a*othe->m_buffer[k];
 }
 
@@ -47,7 +41,7 @@ void SimpleParameterVector::zero()
 ParameterScalar SimpleParameterVector::dot(const ParameterVector *other) const
 {
   const SimpleParameterVector* othe=dynamic_cast <const SimpleParameterVector*> (other);
-  if (this->m_variance * othe->m_variance > 0) throw std::logic_error("mismatching co/contravariance");
+  if (this->variance() * othe->variance() > 0) throw std::logic_error("mismatching co/contravariance");
   ParameterScalar result=0;
   for (size_t k=0; k<m_buffer.size(); k++) result += m_buffer[k] * othe->m_buffer[k];
   return result;
@@ -57,3 +51,11 @@ ParameterScalar SimpleParameterVector::dot(const ParameterVector *other) const
 ParameterScalar& SimpleParameterVector::operator[](size_t pos) { return this->m_buffer[pos];}
 const ParameterScalar& SimpleParameterVector::operator[](size_t pos) const { return this->m_buffer[pos];}
 size_t SimpleParameterVector::size() const { return this->m_buffer.size();}
+
+std::string SimpleParameterVector::str() const {
+    std::ostringstream os; os << "SimpleParameterVector object:";
+    for (size_t k=0; k<size(); k++)
+        os <<" "<< (*this)[k];
+    os << std::endl;
+    return os.str();
+}

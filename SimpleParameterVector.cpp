@@ -21,11 +21,6 @@ SimpleParameterVector& SimpleParameterVector::operator=(const SimpleParameterVec
   return *this;
 }
 
-SimpleParameterVector* SimpleParameterVector::clone() const
-{
-  return new SimpleParameterVector(*this);
-}
-
 void SimpleParameterVector::axpy(ParameterScalar a, const ParameterVector* other)
 {
   const SimpleParameterVector* othe=dynamic_cast <const SimpleParameterVector*> (other);

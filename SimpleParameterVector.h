@@ -35,18 +35,21 @@ namespace IterativeSolver {
    * \return
    */
     SimpleParameterVector& operator=(const SimpleParameterVector& other);
-    SimpleParameterVector* clone() const;
-    std::string str() const;
+
+    // Every child of ParameterVector needs exactly this
+    SimpleParameterVector* clone() const { return new SimpleParameterVector(*this); }
+
 
   private:
     /*!
-   * \brief For a simple implementation, just use an STL vector. Classes that inherit are free to do things differently.
+   * \brief For a simple implementation, just use an STL vector.
    */
     std::vector<ParameterScalar> m_buffer;
   public:
     ParameterScalar& operator[](size_t pos);
     const ParameterScalar& operator[](size_t pos) const;
     size_t size() const;
+    std::string str() const;
   };
 
 }

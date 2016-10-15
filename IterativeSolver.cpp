@@ -52,21 +52,21 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
 }
 
 
-void IterativeSolverBase::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options)
-{
-
-}
-
 bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSet & solution, const optionMap options)
 {
   bool converged=false;
   for (unsigned int iteration=1; iteration <= m_maxIterations && (not converged || iteration <= m_minIterations); iteration++) {
       m_residualFunction(solution,residual,std::vector<double>(),false);
       converged = iterate(residual,solution);
-      if (m_verbosity>0)
-        xout << "iteration "<<iteration<<", error["<<m_worst<<"] = "<<m_error <<std::endl;
+      report();
     }
   return converged;
+}
+
+void IterativeSolverBase::report()
+{
+      if (m_verbosity>0)
+        xout << "iteration "<<m_iterations<<", error["<<m_worst<<"] = "<<m_error <<std::endl;
 }
 
 void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)

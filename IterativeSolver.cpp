@@ -66,7 +66,7 @@ bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSe
 void IterativeSolverBase::report()
 {
       if (m_verbosity>0)
-        xout << "iteration "<<m_iterations<<", error["<<m_worst<<"] = "<<m_error <<std::endl;
+        xout << "iteration "<<iterations()<<", error["<<m_worst<<"] = "<<m_error <<std::endl;
 }
 
 void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)

@@ -78,3 +78,6 @@ molpro.*
 scratchpad
 G
 build
+.cproject
+.project
+.settings

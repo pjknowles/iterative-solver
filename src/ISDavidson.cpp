@@ -40,9 +40,10 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
 
 void Davidson::report()
 {
+  std::vector<double> ev=eigenvalues();
       if (m_verbosity>0)
         xout << "iteration "<<iterations()<<", error["<<m_worst<<"] = "<<m_error
-             << ", eigenvalues: "; for (std::vector<double>::const_iterator e=eigenvalues().begin(); e!=eigenvalues().end(); e++) xout<<" "<<*e;xout<<std::endl;
+             << ", eigenvalues: "; for (std::vector<double>::const_iterator e=ev.begin(); e!=ev.end(); e++) xout<<" "<<*e;xout<<std::endl;
 }
 
 

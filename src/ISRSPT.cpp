@@ -4,12 +4,12 @@ using namespace IterativeSolver;
 
 RSPT::RSPT(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction)
   : IterativeSolverBase(residualFunction, preconditionerFunction)
-  , m_roots(1)
 {
   m_linear = true;
   m_orthogonalize = false;
   m_singularity_shift=1e-50;
   m_minIterations=10; // Ensure at least this order
+  m_roots=1;
 }
 
 void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options)

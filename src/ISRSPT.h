@@ -18,7 +18,6 @@ class RSPT : public IterativeSolverBase
   protected:
     virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());
   public:
-    int m_roots; ///< How many roots to calculate (defaults to size of solution and residual vectors)
     int m_order; ///< Up to what order of perturbation theory should the energy be obtained.
     std::vector<double> incremental_energies(size_t state=0) {return m_incremental_energies;} ///< The incremental energies order by order.
     double energy(size_t order, size_t state=0); ///< The total energy to a given order.

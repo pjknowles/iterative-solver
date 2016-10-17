@@ -6,6 +6,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <stdexcept>
 
 namespace IterativeSolver {
   typedef double ParameterScalar;

@@ -4,6 +4,13 @@
 
 namespace IterativeSolver{
 
+  /** @example RSPTexample.cpp */
+  /*!
+ * \brief A class that finds the lowest eigensolution of a matrix as a perturbation series
+ *
+ * Example of simplest use: @include RSPTexample.cpp
+ *
+ */
 class RSPT : public IterativeSolverBase
 {
   public:

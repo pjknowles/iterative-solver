@@ -106,17 +106,15 @@ namespace IterativeSolver {
 
     void setThresholds(double thresh) { m_thresh=thresh;}
 
-    unsigned int iterations() { return m_iterations;}
+    unsigned int iterations() { return m_iterations;} //!< How many iterations have occurred
     std::vector<double> eigenvalues(); ///< The calculated eigenvalues of m_subspaceMatrix
+    std::vector<double> errors() {return m_errors;} //!< Error at last iteration
 
   public:
     int m_verbosity; //!< How much to print.
     double m_thresh; //!< If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
     unsigned int m_maxIterations; //!< Maximum number of iterations in solve()
     unsigned int m_minIterations; //!< Minimum number of iterations in solve()
-    std::vector<double> m_errors; //!< Error at last iteration
-    double m_error; //!< worst error at last iteration
-    size_t m_worst; //!< worst-converged solution, ie m_error = m_errors[m_worst]
     bool m_orthogonalize; ///< Whether or not to orthogonalize the result of update() to all previous expansion vectors (appropriate only for linear methods).
     bool m_linear; ///< Whether residuals are linear functions of the corresponding expansion vectors.
     bool m_hermitian; ///< Whether residuals can be assumed to be the action of an underlying self-adjoint operator.
@@ -133,6 +131,9 @@ namespace IterativeSolver {
     void calculateErrors(const ParameterVectorSet & solution, const ParameterVectorSet &residual);
     size_t addVectorSet(const ParameterVectorSet &residual, const ParameterVectorSet &solution, const ParameterVectorSet &other);
     void deleteVector(size_t index);
+    std::vector<double> m_errors; //!< Error at last iteration
+    double m_error; //!< worst error at last iteration
+    size_t m_worst; //!< worst-converged solution, ie m_error = m_errors[m_worst]
     int m_date;
     bool m_subspaceMatrixResRes; // whether m_subspaceMatrix is Residual.Residual (true) or Solution.Residual (false)
     std::vector<ParameterVectorSet> m_residuals;
@@ -145,7 +146,6 @@ namespace IterativeSolver {
     Eigen::MatrixXd m_subspaceOverlap;
     Eigen::MatrixXcd m_subspaceEigenvectors;
     Eigen::VectorXcd m_subspaceEigenvalues;
-    double m_singularity_shift; ///< Amount added to shifts to avoid 0/0
   private:
     unsigned int m_iterations;
     double m_singularity_threshold;

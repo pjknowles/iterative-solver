@@ -35,15 +35,16 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
     }
 
   m_updateShift.resize(m_roots);
-  for (size_t root=0; root<(size_t)m_roots; root++) m_updateShift[root]=m_singularity_shift-m_subspaceEigenvalues[root].real();
+  for (size_t root=0; root<(size_t)m_roots; root++) m_updateShift[root]=-(1+std::numeric_limits<double>::epsilon())*m_subspaceEigenvalues[root].real();
 }
 
 void Davidson::report()
 {
   std::vector<double> ev=eigenvalues();
-      if (m_verbosity>0)
+      if (m_verbosity>0) {
         xout << "iteration "<<iterations()<<", error["<<m_worst<<"] = "<<m_error
              << ", eigenvalues: "; for (std::vector<double>::const_iterator e=ev.begin(); e!=ev.end(); e++) xout<<" "<<*e;xout<<std::endl;
+        }
 }
 
 

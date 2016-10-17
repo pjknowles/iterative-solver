@@ -5,6 +5,13 @@
 
 namespace IterativeSolver{
 
+  /** @example DavidsonExample.cpp */
+  /*!
+ * \brief A class that finds the lowest eigensolutions of a matrix using Davidson's method
+ *
+ * Example of simplest use: @include DavidsonExample.cpp
+ *
+ */
   class Davidson : public IterativeSolverBase
   {
   public:

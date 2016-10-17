@@ -5,27 +5,12 @@
 
 namespace IterativeSolver {
 
-#define VecNotPresent 0xffff
-
+  /** @example DIISexample.cpp */
   /*!
  * \brief A class that encapsulates accelerated convergence of non-linear equations through the DIIS or related methods.
  *
- * Example of simplest use, with DIIS extrapolation based on the residual as error vector:
- * \code
- * std::vector<double> x(2);
- * std::vector<double> g(2);
- * x[0]=x[1]=0.9; // initial guess
- * std::vector<double> diag(2); diag[0]=700; diag[1]=200; // preconditioner
- * std::vector<size_t> lengths; lengths.push_back(g.size()); lengths.push_back(x.size());
- * Diis d(lengths);
- * d.addPreconditioner(&diag[0],0,true);
- * for (int iteration=1; iteration < 1000 && d.fLastResidual() > 1e-25; iteration++) {
- *     g[0]=2*x[0]-2+400*x[0]*(x[0]*x[0]-x[1]); g[1]=200*(x[1]-x[0]*x[0]); // Rosenbrock function gradient
- *     d.iterate(&g[0],&x[0]);
- *     xout << "iteration "<<iteration<<", Residual norm = "<<std::sqrt(d.fLastResidual())
- *                 << ", Distance from solution = "<<std::sqrt((x[0]-1)*(x[0]-1)+(x[1]-1)*(x[1]-1))<<std::endl;
- *   }
- * \endcode
+ * Example of simplest use: @include DIISexample.cpp
+ *
  */
   class DIIS : public IterativeSolverBase
   {

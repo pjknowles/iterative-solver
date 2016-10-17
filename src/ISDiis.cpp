@@ -46,7 +46,7 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   //	  xout << "Enter DIIS::extrapolate"<<std::endl;
   //	  xout << "residual : "<<residual<<std::endl;
   //	  xout << "solution : "<<solution<<std::endl;
-    m_updateShift.clear();m_updateShift.push_back(m_singularity_shift-m_subspaceMatrix(0,0));
+  m_updateShift.clear();m_updateShift.push_back(-(1+std::numeric_limits<double>::epsilon())*m_subspaceMatrix(0,0));
   double weight=options.count("weight") ? (options.find("weight")->second) : 1.0;
   if (m_maxDim <= 1 || m_DIISmode == disabled) return;
 

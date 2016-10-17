@@ -19,7 +19,6 @@ IterativeSolverBase::IterativeSolverBase(const ParameterSetTransformation residu
     m_roots(-1),
     m_date(0),
     m_subspaceMatrixResRes(false),
-    m_singularity_shift(1e-8),
     m_iterations(0),
     m_singularity_threshold(1e-20)
 {}
@@ -31,9 +30,6 @@ IterativeSolverBase::~IterativeSolverBase()
 
 bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorSet &solution, ParameterVectorSet &other, const optionMap options)
 {
-//  xout << "iterate"<<std::endl;
-//  xout << "residual"<<std::endl<<residual[0]<<std::endl;
-//  xout << "solution"<<std::endl<<solution[0]<<std::endl;
   if (m_roots<1) m_roots=solution.size(); // number of roots defaults to size of solution
   assert(solution.size()==residual.size());
   m_iterations++;
@@ -46,7 +42,6 @@ bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorS
   else
     m_preconditionerFunction(residual,solution,m_updateShift,true);
   calculateErrors(solution,residual);
-//  xout << "Errors:"; for (auto e=m_errors.begin(); e!=m_errors.end(); e++) xout << " "<<*e<<"("<<(*e<m_thresh)<<")"; xout <<std::endl;
   adjustUpdate(solution);
   return m_error < m_thresh;
 }
@@ -240,8 +235,17 @@ void IterativeSolverBase::diagonalizeSubspaceMatrix()
 #include <math.h>
 void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, const ParameterVectorSet &residual)
 {
+  if (m_verbosity > 5) {
+    xout << "IterativeSolverBase::calculateErrors m_linear" <<m_linear<<std::endl;
+    xout << "IterativeSolverBase::calculateErrors solution.m_active"; for (size_t root=0; root<solution.size(); root++) xout <<" "<<solution.m_active[root]; xout <<std::endl;
+    xout << "IterativeSolverBase::calculateErrors solution "<<solution<<std::endl;
+    xout << "IterativeSolverBase::calculateErrors residual.m_active"; for (size_t root=0; root<solution.size(); root++) xout <<" "<<residual.m_active[root]; xout <<std::endl;
+    xout << "IterativeSolverBase::calculateErrors residual "<<residual<<std::endl;
+    }
   ParameterVectorSet step=solution;
   step.axpy(-1,m_solutions[m_lastVectorIndex]);
+  if (m_verbosity > 6)
+    xout << "IterativeSolverBase::calculateErrors step "<<step<<std::endl;
   m_errors.clear();
 //  xout << "last active "<<m_lastVectorIndex<<" "<<m_residuals[m_lastVectorIndex].m_active[0]<<std::endl;
   for (size_t k=0; k<solution.size(); k++) {
@@ -249,10 +253,13 @@ void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, co
       m_errors.push_back(residual.m_active[k] ? std::fabs(residual[k]->dot(step[k])) : 0);
     else
       m_errors.push_back(m_residuals[m_lastVectorIndex].m_active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]->dot(step[k])) : 1);
-    if (isnan(m_errors.back())) throw std::overflow_error("NaN detected in DIIS error measure");
+    if (isnan(m_errors.back())) throw std::overflow_error("NaN detected in error measure");
     }
   m_error = *max_element(m_errors.begin(),m_errors.end());
   m_worst = max_element(m_errors.begin(),m_errors.end())-m_errors.begin();
+  if (m_verbosity > 5) {
+      xout << "IterativeSolverBase::calculateErrors m_errors"; for (size_t root=0; root<solution.size(); root++) xout <<" "<<m_errors[root]; xout <<std::endl;
+    }
 }
 
 std::vector<double> IterativeSolverBase::eigenvalues()

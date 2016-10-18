@@ -83,7 +83,7 @@ void RSPT::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
 }
 double RSPT::energy(size_t order, size_t state)
 {
-    double result;
+    double result=0.0;
     for (size_t k=0; k<=order; k++)
         result += m_incremental_energies[k];
     return result;
@@ -96,7 +96,7 @@ double RSPT::energy(size_t order, size_t state)
     Eigen::MatrixXd m_F;
     size_t m_n;
     rsptpot(){}
-    int m_reference;
+    size_t m_reference;
     void set(size_t n, double alpha)
     {
 //        xout<<"rsptpot set"<<n<<std::endl;

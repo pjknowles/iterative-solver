@@ -83,8 +83,8 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
       nDim--;
 //  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
   }
-  if (nDim != m_subspaceMatrix.rows()) throw std::logic_error("problem in pruning");
-  if (m_Weights.size() != m_subspaceMatrix.rows()) {
+  if (nDim != (size_t)m_subspaceMatrix.rows()) throw std::logic_error("problem in pruning");
+  if (m_Weights.size() != (size_t)m_subspaceMatrix.rows()) {
       xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
       throw std::logic_error("problem after pruning weights");
     }
@@ -122,7 +122,7 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   Coeffs=svd.solve(Rhs).head(nDim);
   m_LastAmplitudeCoeff = Coeffs[nDim-1];
   if (m_verbosity>1) xout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;
-  for (size_t k=0; k<Coeffs.rows(); k++)
+  for (size_t k=0; k<(size_t)Coeffs.rows(); k++)
     if (isnan(Coeffs(k))) {
         xout << "B:"<<std::endl<<B<<std::endl;
         xout << "Rhs:"<<std::endl<<Rhs<<std::endl;

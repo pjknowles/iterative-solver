@@ -55,7 +55,7 @@ static Eigen::MatrixXd testmatrix;
 static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
   for (size_t k=0; k<psx.size(); k++) {
       Eigen::VectorXd x(testmatrix.rows());
-      if (psx[k]->size() != testmatrix.rows()) throw std::logic_error("psx wrong size");
+      if (psx[k]->size() != (size_t)testmatrix.rows()) throw std::logic_error("psx wrong size");
       for (size_t l=0; l<(size_t)testmatrix.rows(); l++) x[l] = (*psx[k])[l];
       Eigen::VectorXd res = testmatrix * x;
       if (not append) outputs[k]->zero();

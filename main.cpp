@@ -1,6 +1,6 @@
-#include "ISDiis.h"
-#include "ISDavidson.h"
-#include "ISRSPT.h"
+#include "IterativeSolver/ISDiis.h"
+#include "IterativeSolver/ISDavidson.h"
+#include "IterativeSolver/ISRSPT.h"
 
 extern "C" { void IterativeSolverFTest();}
 int main(int argc, char *argv[])

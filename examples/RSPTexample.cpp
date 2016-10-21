@@ -1,5 +1,5 @@
-#include "ISRSPT.h"
-#include "SimpleParameterVector.h"
+#include "IterativeSolver/ISRSPT.h"
+#include "IterativeSolver/SimpleParameterVector.h"
 
 using namespace IterativeSolver;
 

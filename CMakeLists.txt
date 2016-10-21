@@ -9,9 +9,9 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
     add_definitions(-DEIGEN_DONT_VECTORIZE)
 endif()
-aux_source_directory(src SRC_LIST)
-set(SRC_LIST ${SRC_LIST} src/IterativeSolverF.F90)
-include_directories(Eigen src)
+aux_source_directory(IterativeSolver SRC_LIST)
+set(SRC_LIST ${SRC_LIST} IterativeSolver/IterativeSolverF.F90)
+include_directories(Eigen .)
 add_library (${PROJECT_NAME} ${SRC_LIST})
 
 add_executable(${PROJECT_NAME}-test main.cpp)
@@ -33,7 +33,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in ${CMAKE_CURRENT_BINARY_DI
 add_custom_target(${PROJECT_NAME}-doc ALL
     DEPENDS  ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
     )
-file(GLOB doxysrc src/*.h src/*.fh examples/*)
+file(GLOB doxysrc IterativeSolver/*.h IterativeSolver/*.fh examples/*)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
 COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
 DEPENDS ${SRC_LIST} ${doxysrc} ${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile

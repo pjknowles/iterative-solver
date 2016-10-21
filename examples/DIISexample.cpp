@@ -1,5 +1,5 @@
-#include "ISDiis.h"
-#include "SimpleParameterVector.h"
+#include "IterativeSolver/ISDiis.h"
+#include "IterativeSolver/SimpleParameterVector.h"
 
 using namespace IterativeSolver;
 

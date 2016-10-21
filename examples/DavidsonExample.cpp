@@ -1,5 +1,5 @@
-#include "ISDavidson.h"
-#include "SimpleParameterVector.h"
+#include "IterativeSolver/ISDavidson.h"
+#include "IterativeSolver/SimpleParameterVector.h"
 
 using namespace IterativeSolver;
 

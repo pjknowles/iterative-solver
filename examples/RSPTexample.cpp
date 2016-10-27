@@ -1,7 +1,11 @@
 #include "IterativeSolver/ISRSPT.h"
+#include "IterativeSolver/PagedParameterVector.h"
 #include "IterativeSolver/SimpleParameterVector.h"
 
 using namespace IterativeSolver;
+
+//  typedef SimpleParameterVector pv;
+  typedef PagedParameterVector pv;
 
 // Perturbatively find lowest eigensolution of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
 static double n; // dimension of problem
@@ -57,8 +61,8 @@ int main(int argc, char *argv[])
   ParameterVectorSet g;
   ParameterVectorSet x;
   for (size_t root=0; root<solver.m_roots; root++) {
-      SimpleParameterVector* xx = new SimpleParameterVector(n); x.push_back(xx);
-      SimpleParameterVector* gg = new SimpleParameterVector(n); g.push_back(gg);
+      pv* xx = new pv(n); x.push_back(xx);
+      pv* gg = new pv(n); g.push_back(gg);
       xx->zero(); double one=1; xx->put(&one,1,root); // initial guess
     }
   if (not solver.solve(g,x)) std::cout << "Failure"<<std::endl;

@@ -1,7 +1,11 @@
 #include "IterativeSolver/ISDiis.h"
+#include "IterativeSolver/PagedParameterVector.h"
 #include "IterativeSolver/SimpleParameterVector.h"
 
 using namespace IterativeSolver;
+
+//  typedef SimpleParameterVector pv;
+  typedef PagedParameterVector pv;
 
 static double alpha;
 static double anharmonicity;
@@ -44,8 +48,8 @@ int main(int argc, char *argv[])
   anharmonicity=.5;
   DIIS solver(&_anharmonic_residual,&_anharmonic_preconditioner);
   solver.m_verbosity=1;
-  SimpleParameterVector gg(n); ParameterVectorSet g; g.push_back(&gg);
-  SimpleParameterVector xx(n); ParameterVectorSet x; x.push_back(&xx);
+  pv gg(n); ParameterVectorSet g; g.push_back(&gg);
+  pv xx(n); ParameterVectorSet x; x.push_back(&xx);
   xx.zero(); double one=1; xx.put(&one,1,0);  // initial guess
   if (not solver.solve(g,x)) std::cout << "Failure"<<std::endl;
   std::cout << "Distance of solution from origin: "<<std::sqrt(xx.dot(&xx))<<std::endl;

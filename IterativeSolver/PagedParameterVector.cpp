@@ -93,19 +93,6 @@ ParameterScalar PagedParameterVector::dot(const ParameterVector *other) const
   return result;
 }
 
-ParameterScalar& PagedParameterVector::operator[](size_t pos)
-{
-  throw std::logic_error("non-const [] cannot be implemented");
-}
-
-const ParameterScalar& PagedParameterVector::operator[](size_t pos) const
-{
-  throw std::logic_error("const [] cannot be implemented");
-//  ParameterScalar result;
-//  get(&result,1,pos);
-//  return result;
-}
-
 size_t PagedParameterVector::size() const { return m_size;}
 
 std::string PagedParameterVector::str() const {

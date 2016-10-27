@@ -23,8 +23,6 @@ static void _matrix_residual(const ParameterVectorSet & psx, ParameterVectorSet 
                 output[i] += (i+j)*psxk[j];
         }
       outputs[k]->put(&output[0],n,0);
-//      std::cout << "matrix_residual  input"; for (size_t i=0; i<n; i++) std::cout<<" "<<psxk[i]; std::cout<<std::endl;
-//      std::cout << "matrix_residual output"; for (size_t i=0; i<n; i++) std::cout<<" "<<output[i]; std::cout<<std::endl;
     }
 }
 
@@ -45,8 +43,8 @@ static void _matrix_preconditioner(const ParameterVectorSet & psg, ParameterVect
     }
 }
 
-  typedef SimpleParameterVector pv;
-//  typedef PagedParameterVector pv;
+//  typedef SimpleParameterVector pv;
+  typedef PagedParameterVector pv;
 
 int main(int argc, char *argv[])
 {

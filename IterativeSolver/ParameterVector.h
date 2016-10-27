@@ -21,7 +21,7 @@ namespace IterativeSolver {
    * Deriving implementations are free to make their own data storage arrangements, including
    * storing
    * externally and/or distributed across processes, so long as all of the public methods function correctly.
-   * The str(), operator[]() and size() methods provided in this base class
+   * The put(), get() and size() methods provided in this base class
    * offer direct access to that data, for which there may be no meaningful implementation,
    * so they should not normally be referenced. However they are defined so that
    * code that uses objects of this class can be tested in conjunction with a derivative
@@ -79,21 +79,29 @@ namespace IterativeSolver {
      */
     virtual std::string str() const {return "";}
     /*!
-     * \brief Access an element of the object's data
+     * \brief Set some of the object's data.
      * (optional implementation).
-     * \param pos
+     * \param buffer Buffer to provide the data.
+     * \param length How many numbers to provide.
+     * \param offset Offset of first number.
      * \return
      */
-    virtual ParameterScalar& operator[](size_t pos) {throw std::logic_error("Unimplemented IterativeSolver::ParameterVector::operator[]");}
-    const virtual ParameterScalar& operator[](size_t pos) const {throw std::logic_error("Unimplemented IterativeSolver::ParameterVector::operator[]");}
+    virtual void put(ParameterScalar* const buffer, size_t length, size_t offset)=0;
+    /*!
+     * \brief Fetch some of the object's data.
+     * (optional implementation).
+     * \param buffer Buffer to receive the data.
+     * \param length How many numbers to receive.
+     * \param offset Offset of first number.
+     * \return
+     */
+    virtual void get(ParameterScalar* buffer, size_t length, size_t offset) const=0;
     /*!
      * \brief Report the size of the object's data
      * (optional implementation).
      * \return
      */
     virtual size_t size() const {return 0;}
-    virtual void put(ParameterScalar* const buffer, size_t length, size_t offset)=0;
-    virtual void get(ParameterScalar* buffer, size_t length, size_t offset) const=0;
   protected:
   private:
     int m_variance;

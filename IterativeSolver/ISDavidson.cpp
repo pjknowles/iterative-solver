@@ -56,17 +56,23 @@ static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outpu
   for (size_t k=0; k<psx.size(); k++) {
       Eigen::VectorXd x(testmatrix.rows());
       if (psx[k]->size() != (size_t)testmatrix.rows()) throw std::logic_error("psx wrong size");
-      for (size_t l=0; l<(size_t)testmatrix.rows(); l++) x[l] = (*psx[k])[l];
+      psx[k]->get(&x[0],testmatrix.rows(),0);
       Eigen::VectorXd res = testmatrix * x;
       if (not append) outputs[k]->zero();
-      for (size_t l=0; l<(size_t)testmatrix.rows(); l++) (*outputs[k])[l]+=res[l];
+      outputs[k]->put(&res[0],testmatrix.rows(),0);
     }
 }
 
 static void _preconditoner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift, bool append=true) {
-  if (not append) psc.zero();
+  size_t n=testmatrix.rows();
+  std::vector<ParameterScalar> psck(n);
+  std::vector<ParameterScalar> psgk(n);
   for (size_t k=0; k<psc.size(); k++) {
-      for (size_t l=0; l<(size_t)testmatrix.rows(); l++)  (*psc[k])[l] -= (*psg[k])[l]/(testmatrix(l,l)+shift[k]);
+      psg[k]->get(&psgk[0],n,0);
+      if (not append) psc.zero();
+      psc[k]->get(&psck[0],n,0);
+      for (size_t l=0; l<n; l++)  psck[l] -= psgk[l]/(testmatrix(l,l)+shift[k]);
+      psc[k]->put(&psck[0],n,0);
     }
 }
 
@@ -97,7 +103,7 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem, 
   for (size_t root=0; root<(size_t)d.m_roots; root++) {
       ptype* xx=new ptype(dimension);
       xx->zero();
-      (*xx)[root]=1;
+      double one=1; xx->put(&one,1,root);
       x.push_back_clone(xx);
       ptype* gg=new ptype(dimension);
       g.push_back_clone(gg);

@@ -48,7 +48,6 @@ namespace IterativeSolver {
   public:
     void put(ParameterScalar* const buffer, size_t length, size_t offset);
     void get(ParameterScalar* buffer, size_t length, size_t offset) const;
-    ParameterScalar at(size_t pos) const;
     ParameterScalar& operator[](size_t pos);
     const ParameterScalar& operator[](size_t pos) const;
     size_t size() const;

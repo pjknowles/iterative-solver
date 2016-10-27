@@ -56,7 +56,6 @@ void SimpleParameterVector::get(ParameterScalar *buffer, size_t length, size_t o
         buffer[k] = m_buffer[k+offset];
 }
 
-ParameterScalar SimpleParameterVector::at(size_t pos) const { throw std::logic_error("unimplementable"); return this->m_buffer[pos];}
 ParameterScalar& SimpleParameterVector::operator[](size_t pos) { throw std::logic_error("unimplementable"); return this->m_buffer[pos];}
 const ParameterScalar& SimpleParameterVector::operator[](size_t pos) const { throw std::logic_error("unimplementable"); return this->m_buffer[pos];}
 size_t SimpleParameterVector::size() const { return this->m_buffer.size();}

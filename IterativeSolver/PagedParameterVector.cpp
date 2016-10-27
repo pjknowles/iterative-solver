@@ -93,13 +93,6 @@ ParameterScalar PagedParameterVector::dot(const ParameterVector *other) const
   return result;
 }
 
-ParameterScalar PagedParameterVector::at(size_t pos) const
-{
-    ParameterScalar result;
-    read(&result,1,pos);
-    return result;
-}
-
 ParameterScalar& PagedParameterVector::operator[](size_t pos)
 {
   throw std::logic_error("non-const [] cannot be implemented");

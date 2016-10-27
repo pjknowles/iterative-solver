@@ -56,15 +56,15 @@ void SimpleParameterVector::get(ParameterScalar *buffer, size_t length, size_t o
         buffer[k] = m_buffer[k+offset];
 }
 
-ParameterScalar SimpleParameterVector::at(size_t pos) const { return this->m_buffer[pos];}
-ParameterScalar& SimpleParameterVector::operator[](size_t pos) { return this->m_buffer[pos];}
-const ParameterScalar& SimpleParameterVector::operator[](size_t pos) const { return this->m_buffer[pos];}
+ParameterScalar SimpleParameterVector::at(size_t pos) const { throw std::logic_error("unimplementable"); return this->m_buffer[pos];}
+ParameterScalar& SimpleParameterVector::operator[](size_t pos) { throw std::logic_error("unimplementable"); return this->m_buffer[pos];}
+const ParameterScalar& SimpleParameterVector::operator[](size_t pos) const { throw std::logic_error("unimplementable"); return this->m_buffer[pos];}
 size_t SimpleParameterVector::size() const { return this->m_buffer.size();}
 
 std::string SimpleParameterVector::str() const {
     std::ostringstream os; os << "SimpleParameterVector object:";
     for (size_t k=0; k<size(); k++)
-        os <<" "<< (*this)[k];
+        os <<" "<< m_buffer[k];
     os << std::endl;
     return os.str();
 }

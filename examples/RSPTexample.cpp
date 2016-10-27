@@ -8,31 +8,42 @@ static double n; // dimension of problem
 static double alpha; // separation of diagonal elements
 
 static void _matrix_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+  std::vector<ParameterScalar> psxk(n);
+  std::vector<ParameterScalar> output(n);
   for (size_t k=0; k<psx.size(); k++) {
+      psx[k]->get(&(psxk[0]),n,0);
+      if (append)
+          outputs[k]->get(&output[0],n,0);
       for (size_t i=0; i<n; i++) {
           if (append)
-            (*outputs[k])[i] += (alpha*(i+1))*(*psx[k])[i];
+            output[i] += (alpha*(i+1))*psxk[i];
           else
-            (*outputs[k])[i] = (alpha*(i+1))*(*psx[k])[i];
+            output[i] = (alpha*(i+1))*psxk[i];
           for (size_t j=0; j<n; j++)
-            (*outputs[k])[i] += (i+j)*(*psx[k])[j];
+            output[i] += (i+j)*psxk[j];
         }
+      outputs[k]->put(&output[0],n,0);
     }
 }
 
 static void _matrix_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+  std::vector<ParameterScalar> psck(n);
+  std::vector<ParameterScalar> psgk(n);
   for (size_t k=0; k<psc.size(); k++) {
+      psg[k]->get(&psgk[0],n,0);
       if (shift[k]==0)
           for (size_t i=0; i<n; i++)
-            (*psc[k])[i] = (*psg[k])[i]*(2*i+alpha*(i+1));
+            psck[i] = psgk[i]*(2*i+alpha*(i+1));
       else if (append) {
+          psc[k]->get(&psck[0],n,0);
           for (size_t i=1; i<n; i++)
-            (*psc[k])[i] -= (*psg[k])[i]/(shift[k]+2*i+alpha*(i+1));
+            psck[i] -= psgk[i]/(shift[k]+2*i+alpha*(i+1));
         } else {
           for (size_t i=1; i<n; i++)
-            (*psc[k])[i] =- (*psg[k])[i]/(shift[k]+2*i+alpha*(i+1));
-            (*psc[k])[0] =0;
+            psck[i] =- psgk[i]/(shift[k]+2*i+alpha*(i+1));
+          psck[0] =0;
         }
+      psc[k]->put(&psck[0],n,0);
     }
 }
 
@@ -48,7 +59,7 @@ int main(int argc, char *argv[])
   for (size_t root=0; root<solver.m_roots; root++) {
       SimpleParameterVector* xx = new SimpleParameterVector(n); x.push_back(xx);
       SimpleParameterVector* gg = new SimpleParameterVector(n); g.push_back(gg);
-      xx->zero(); (*xx)[root]=1; // initial guess
+      xx->zero(); double one=1; xx->put(&one,1,root); // initial guess
     }
   if (not solver.solve(g,x)) std::cout << "Failure"<<std::endl;
       xout << "Variational eigenvalue "<<solver.eigenvalues().front()<<std::endl;

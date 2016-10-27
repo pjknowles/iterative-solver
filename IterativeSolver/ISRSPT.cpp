@@ -116,13 +116,17 @@ double RSPT::energy(size_t order, size_t state)
     }
     SimpleParameterVector guess()
     {
+      std::vector<ParameterScalar> r(m_n);
       SimpleParameterVector result(m_n);
+      double value=0.3;
       for (size_t k=0; k<m_n; k++) {
-        result[k]=0;
+        r[k]=0;
         }
-      result[m_reference]=1;
+      r[m_reference]=1;
+      result.put(&r[0],m_n,0);
       return result;
     }
+
   };
 
   static rsptpot *instance;
@@ -130,36 +134,46 @@ double RSPT::energy(size_t order, size_t state)
     static void _rsptpot_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
 //        xout << "rsptpot_residual"<<std::endl;
 //        xout << "input "<<psx<<std::endl;
-      if (not append) outputs.front()->zero();
+      std::vector<ParameterScalar> psxk(instance->m_n);
+      std::vector<ParameterScalar> output(instance->m_n);
+      psx.front()->get(&(psxk[0]),instance->m_n,0);
+      if (append)
+        outputs.front()->get(&(output[0]),instance->m_n,0);
+      else
+        outputs.front()->zero();
       for (size_t i=0; i<instance->m_n; i++) {
-          (*outputs.front())[i] = 0;
+          output[i] = 0;
           for (size_t j=0; j<instance->m_n; j++) {
-            (*outputs.front())[i] += instance->m_F(j,i)*(*psx.front())[j];
-//              xout << "add " <<instance->m_F(j,i)<<"*"<<(*psx.front())[j]<<std::endl;
+            output[i] += instance->m_F(j,i)*psxk[j];
           }
-//          xout << (*outputs.front())[i]<<std::endl;
         }
+        outputs.front()->put(&(output[0]),instance->m_n,0);
 //        xout << "output "<<outputs<<std::endl;
     }
     static void _rsptpot_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
 //        xout << "preconditioner input="<<psg<<std::endl;
 //      if (shift.front()==0)
 //          xout << "H0 not resolvent"<<std::endl;
+      std::vector<ParameterScalar> psck(instance->m_n);
+      std::vector<ParameterScalar> psgk(instance->m_n);
+      psg.front()->get(&psgk[0],instance->m_n,0);
       if (shift.front()==0)
           for (size_t i=0; i<instance->m_n; i++)
-            (*psc.front())[i] = (*psg.front())[i]*instance->m_F(i,i);
+            psck[i] = psgk[i]*instance->m_F(i,i);
       else if (append) {
+          psc.front()->get(&psck[0],instance->m_n,0);
 //          xout << "resolvent action append "<<shift.front()<<shift.front()-1<<std::endl;
 //        xout << "initial psc="<<psc<<std::endl;
           for (size_t i=0; i<instance->m_n; i++)
               if (i != instance->m_reference)
-                  (*psc.front())[i] -= (*psg.front())[i]/(instance->m_F(i,i)+shift.front());
+                  psck[i] -= psgk[i]/(instance->m_F(i,i)+shift.front());
         } else {
 //          xout << "resolvent action replace "<<shift.front()<<std::endl;
           for (size_t i=0; i<instance->m_n; i++)
-            (*psc.front())[i] =- (*psg.front())[i]/(instance->m_F(i,i)+shift.front());
-          (*psc.front())[instance->m_reference]=0;
+            psck[i] =- psgk[i]/(instance->m_F(i,i)+shift.front());
+          psck[instance->m_reference]=0;
         }
+      psc.front()->put(&psck[0],instance->m_n,0);
 //        xout << "preconditioner output="<<psc<<std::endl;
     }
 void RSPT::test(size_t n, double alpha)

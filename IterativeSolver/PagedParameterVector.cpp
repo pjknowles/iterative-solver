@@ -97,8 +97,13 @@ size_t PagedParameterVector::size() const { return m_size;}
 
 std::string PagedParameterVector::str() const {
     std::ostringstream os; os << "PagedParameterVector object:";
-    for (size_t k=0; k<size(); k++)
-        os <<" "<< (*this)[k];
+    std::vector<ParameterScalar> buffer(m_cacheSize);
+    for (size_t block=0; block<m_size; block+=buffer.size()) {
+        size_t bs=std::min(buffer.size(),m_size-block);
+        read(&buffer[0], bs, block);
+        for (size_t k=0; k<size(); k++)
+          os <<" "<< buffer[k];
+      }
     os << std::endl;
     return os.str();
 }

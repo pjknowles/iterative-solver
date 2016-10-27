@@ -151,21 +151,32 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
 // testing code below here
 #include "SimpleParameterVector.h"
 static void _Rosenbrock_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+  size_t n=2;
+  std::vector<ParameterScalar> psxk(n);
+  std::vector<ParameterScalar> output(n);
+
   if (not append) outputs.front()->zero();
-  (*outputs.front())[0]+=(2*(*psx.front())[0]-2+400*(*psx.front())[0]*((*psx.front())[0]*(*psx.front())[0]-(*psx.front())[1])); (*outputs.front())[1]+=(200*((*psx.front())[1]-(*psx.front())[0]*(*psx.front())[0])); // Rosenbrock
+  outputs.front()->get(&(psxk[0]),n,0);
+  psx.front()->get(&(psxk[0]),n,0);
+  output[0]+=(2*psxk[0]-2+400*psxk[0]*(psxk[0]*psxk[0]-psxk[1])); output[1]+=(200*(psxk[1]-psxk[0]*psxk[0])); // Rosenbrock
+  outputs.front()->put(&(psxk[0]),n,0);
 }
 
 static void _Rosenbrock_updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift, bool append=true) {
+  size_t n=2;
+  std::vector<ParameterScalar> psck(n);
+  std::vector<ParameterScalar> psgk(n);
+  psg.front()->get(&psgk[0],n,0);
   if (append) {
-      (*psc.front())[0] -=(*psg.front())[0]/700;
-      (*psc.front())[1] -=(*psg.front())[1]/200;
+      psc.front()->get(&psck[0],n,0);
+      psck[0] -=psgk[0]/700;
+      psck[1] -=psgk[1]/200;
     } else
     {
-//      xout << "Rosenbrock preconditioner g="<<psg.front()<<std::endl;
-      (*psc.front())[0] =-(*psg.front())[0]/700;
-      (*psc.front())[1] =-(*psg.front())[1]/200;
-//      xout << "Rosenbrock preconditioner c="<<psc.front()<<std::endl;
+      psck[0] =-psgk[0]/700;
+      psck[1] =-psgk[1]/200;
     }
+  psc.front()->put(&psck[0],n,0);
 }
 
 void DIIS::test(int verbosity,
@@ -183,7 +194,9 @@ void DIIS::test(int verbosity,
   if (verbosity>=0) xout << "Test DIIS::iterate, difficulty="<<difficulty<<std::endl;
   d.Reset();
   d.m_verbosity=verbosity-1;
-  (*x.front())[0]=(*x.front())[1]=1-difficulty; // initial guess
+  std::vector<ParameterScalar> xxx;
+  xxx[0]=xxx[1]=1-difficulty; // initial guess
+  xx.put(&xxx[0],2,0);
   xout << "initial guess"<<x[0]<<std::endl;
   xout << "initial guess"<<x<<std::endl;
   bool converged=false;
@@ -191,21 +204,24 @@ void DIIS::test(int verbosity,
       _Rosenbrock_residual(x,g);
       optionMap o; //o["weight"]=2;
       converged = d.iterate(g,x,o);
+      x.front()->get(&xxx[0],2,0);
       if (verbosity>2)
         xout << "new x after iterate "<<x.front()<<std::endl;
       if (verbosity>=0)
         xout << "iteration "<<iteration<<", Residual norm = "<<std::sqrt(d.fLastResidual())
-             << ", Distance from solution = "<<std::sqrt(((*x.front())[0]-1)*((*x.front())[0]-1)+((*x.front())[1]-1)*((*x.front())[1]-1))
+             << ", Distance from solution = "<<std::sqrt((xxx[0]-1)*(xxx[0]-1)+(xxx[1]-1)*(xxx[1]-1))
             <<", converged? "<<converged
            <<std::endl;
     }
 
   if (verbosity>=0) xout << "Test DIIS::solver, difficulty="<<difficulty<<std::endl;
   d.Reset();
-  (*x.front())[0]=(*x.front())[1]=1-difficulty; // initial guess
+  xxx[0]=xxx[1]=1-difficulty; // initial guess
+  xx.put(&xxx[0],2,0);
   d.m_verbosity=verbosity;
 //  d.solve(g,x);
-  xout  << "Distance from solution = "<<std::sqrt(((*x.front())[0]-1)*((*x.front())[0]-1)+((*x.front())[1]-1)*((*x.front())[1]-1)) <<std::endl;
+  x.front()->get(&xxx[0],2,0);
+  xout   << "Distance from solution = "<<std::sqrt((xxx[0]-1)*(xxx[0]-1)+(xxx[1]-1)*(xxx[1]-1));
 
 }
 
@@ -233,12 +249,14 @@ void DIIS::test(int verbosity,
     }
     SimpleParameterVector guess()
     {
+      std::vector<ParameterScalar> r(m_n);
       SimpleParameterVector result(m_n);
       double value=0.3;
       for (size_t k=0; k<m_n; k++) {
-        result[k]=value;
+        r[k]=value;
         value=-value;
         }
+      result.put(&r[0],m_n,0);
       return result;
     }
   };
@@ -246,21 +264,34 @@ void DIIS::test(int verbosity,
   static anharmonic instance;
 
     static void _anharmonic_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
-      if (not append) outputs.front()->zero();
+      std::vector<ParameterScalar> psxk(instance.m_n);
+      std::vector<ParameterScalar> output(instance.m_n);
+      psx.front()->get(&(psxk[0]),instance.m_n,0);
+      if (append)
+        outputs.front()->get(&(output[0]),instance.m_n,0);
+      else
+        outputs.front()->zero();
+
       for (size_t i=0; i<instance.m_n; i++) {
-          (*outputs.front())[i] = instance.m_gamma*(*psx.front())[i];
+          output[i] = instance.m_gamma*psxk[i];
           for (size_t j=0; j<instance.m_n; j++)
-            (*outputs.front())[i] += instance.m_F(j,i)*(*psx.front())[j];
+            output[i] += instance.m_F(j,i)*psxk[j];
         }
+      outputs.front()->put(&output[0],instance.m_n,0);
     }
     static void _anharmonic_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+      std::vector<ParameterScalar> psck(instance.m_n);
+      std::vector<ParameterScalar> psgk(instance.m_n);
+      psg.front()->get(&psgk[0],instance.m_n,0);
       if (append) {
+          psc.front()->get(&psck[0],instance.m_n,0);
           for (size_t i=0; i<instance.m_n; i++)
-            (*psc.front())[i] -= (*psg.front())[i]/instance.m_F(i,i);
+            psck[i] -= psgk[i]/instance.m_F(i,i);
         } else {
           for (size_t i=0; i<instance.m_n; i++)
-            (*psc.front())[i] =- (*psg.front())[i]/instance.m_F(i,i);
+            psck[i] =- psgk[i]/instance.m_F(i,i);
         }
+      psc.front()->put(&psck[0],instance.m_n,0);
     }
 void DIIS::randomTest(size_t sample, size_t n, double alpha, double gamma, DIISmode_type mode)
 {

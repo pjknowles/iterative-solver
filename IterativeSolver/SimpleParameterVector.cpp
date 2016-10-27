@@ -43,6 +43,20 @@ ParameterScalar SimpleParameterVector::dot(const ParameterVector *other) const
 }
 
 
+void SimpleParameterVector::put(ParameterScalar * const buffer, size_t length, size_t offset)
+{
+    for (size_t k=0; k<length; k++)
+        m_buffer[k+offset] = buffer[k];
+//    std::cout << "SimpleParameterVector::put"<<std::endl;
+}
+
+void SimpleParameterVector::get(ParameterScalar *buffer, size_t length, size_t offset) const
+{
+    for (size_t k=0; k<length; k++)
+        buffer[k] = m_buffer[k+offset];
+}
+
+ParameterScalar SimpleParameterVector::at(size_t pos) const { return this->m_buffer[pos];}
 ParameterScalar& SimpleParameterVector::operator[](size_t pos) { return this->m_buffer[pos];}
 const ParameterScalar& SimpleParameterVector::operator[](size_t pos) const { return this->m_buffer[pos];}
 size_t SimpleParameterVector::size() const { return this->m_buffer.size();}

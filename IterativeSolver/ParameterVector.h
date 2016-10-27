@@ -92,6 +92,8 @@ namespace IterativeSolver {
      * \return
      */
     virtual size_t size() const {return 0;}
+    virtual void put(ParameterScalar* const buffer, size_t length, size_t offset)=0;
+    virtual void get(ParameterScalar* buffer, size_t length, size_t offset) const=0;
   protected:
   private:
     int m_variance;

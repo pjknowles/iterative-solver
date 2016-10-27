@@ -1,17 +1,22 @@
-#ifndef SIMPLEPARAMETERVECTOR_H
-#define SIMPLEPARAMETERVECTOR_H
+#ifndef PAGEDPARAMETERVECTOR_H
+#define PAGEDPARAMETERVECTOR_H
 #include "ParameterVector.h"
+#include <fstream>
 
 namespace IterativeSolver {
 
-  class SimpleParameterVector : public ParameterVector
+  /*!
+   * \brief A class that implements ParameterVector with data held on backing store
+   */
+  class PagedParameterVector : public ParameterVector
   {
   public:
     /*!
    * \brief Construct an object without any data.
    */
-    SimpleParameterVector(size_t length=0);
-    ~SimpleParameterVector();
+    PagedParameterVector(size_t length=0);
+    PagedParameterVector(const PagedParameterVector& source);
+    ~PagedParameterVector();
     /*!
    * \brief Add a constant times another object to this object
    * \param a The factor to multiply.
@@ -34,17 +39,30 @@ namespace IterativeSolver {
    * \param other The source of data.
    * \return
    */
-    SimpleParameterVector& operator=(const SimpleParameterVector& other);
+    PagedParameterVector& operator=(const PagedParameterVector& other);
 
     // Every child of ParameterVector needs exactly this
-    SimpleParameterVector* clone() const { return new SimpleParameterVector(*this); }
+    PagedParameterVector* clone() const { return new PagedParameterVector(*this); }
 
+    /*!
+     * \brief Specify a cache size for manipulating the data
+     * \param length
+     */
+    void setCacheSize(size_t length);
 
   private:
+    void init();
     /*!
-   * \brief For a simple implementation, just use an STL vector.
+   * \brief The file to hold the data
    */
-    std::vector<ParameterScalar> m_buffer;
+    mutable std::fstream m_file;
+    mutable size_t m_size; //!< How much data
+    mutable size_t m_cacheSize; //!< cache size for implementing operations
+    std::vector<ParameterScalar> m_cache;
+    bool m_cacheDirty;
+    long long m_cacheOffset;
+    void write(ParameterScalar* const buffer, size_t length, size_t offset);
+    void read(ParameterScalar* buffer, size_t length, size_t offset) const;
   public:
     void put(ParameterScalar* const buffer, size_t length, size_t offset);
     void get(ParameterScalar* buffer, size_t length, size_t offset) const;
@@ -57,4 +75,4 @@ namespace IterativeSolver {
 
 }
 
-#endif // SIMPLEPARAMETERVECTOR_H
+#endif // PAGEDPARAMETERVECTOR_H

@@ -1,5 +1,6 @@
 #include "IterativeSolver/ISDavidson.h"
 #include "IterativeSolver/SimpleParameterVector.h"
+#include "IterativeSolver/PagedParameterVector.h"
 
 using namespace IterativeSolver;
 
@@ -8,29 +9,44 @@ static double n; // dimension of problem
 static double alpha; // separation of diagonal elements
 
 static void _matrix_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+    std::vector<ParameterScalar> psxk(n);
+    std::vector<ParameterScalar> output(n);
   for (size_t k=0; k<psx.size(); k++) {
+      psx[k]->get(&(psxk[0]),n,0);
+      if (append)
+          outputs[k]->get(&output[0],n,0);
+      else
+        for (size_t i=0; i<n; i++) output[i]=0;
       for (size_t i=0; i<n; i++) {
-          if (append)
-            (*outputs[k])[i] += (alpha*(i+1))*(*psx[k])[i];
-          else
-            (*outputs[k])[i] = (alpha*(i+1))*(*psx[k])[i];
-          for (size_t j=0; j<n; j++)
-            (*outputs[k])[i] += (i+j)*(*psx[k])[j];
+            output[i] += (alpha*(i+1))*psxk[i];
+            for (size_t j=0; j<n; j++)
+                output[i] += (i+j)*psxk[j];
         }
+      outputs[k]->put(&output[0],n,0);
+//      std::cout << "matrix_residual  input"; for (size_t i=0; i<n; i++) std::cout<<" "<<psxk[i]; std::cout<<std::endl;
+//      std::cout << "matrix_residual output"; for (size_t i=0; i<n; i++) std::cout<<" "<<output[i]; std::cout<<std::endl;
     }
 }
 
 static void _matrix_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+    std::vector<ParameterScalar> psck(n);
+    std::vector<ParameterScalar> psgk(n);
   for (size_t k=0; k<psc.size(); k++) {
+          psg[k]->get(&psgk[0],n,0);
       if (append) {
+          psc[k]->get(&psck[0],n,0);
           for (size_t i=0; i<n; i++)
-            (*psc[k])[i] -= (*psg[k])[i]/(shift[k]+2*i+alpha*(i+1));
+            psck[i] -= psgk[i]/(shift[k]+2*i+alpha*(i+1));
         } else {
           for (size_t i=0; i<n; i++)
-            (*psc[k])[i] =- (*psg[k])[i]/(shift[k]+2*i+alpha*(i+1));
+            psck[i] =- psgk[i]/(shift[k]+2*i+alpha*(i+1));
         }
+      psc[k]->put(&psck[0],n,0);
     }
 }
+
+  typedef SimpleParameterVector pv;
+//  typedef PagedParameterVector pv;
 
 int main(int argc, char *argv[])
 {
@@ -42,8 +58,8 @@ int main(int argc, char *argv[])
   ParameterVectorSet g;
   ParameterVectorSet x;
   for (size_t root=0; root<solver.m_roots; root++) {
-      SimpleParameterVector* xx = new SimpleParameterVector(n); x.push_back(xx);
-      SimpleParameterVector* gg = new SimpleParameterVector(n); g.push_back(gg);
+      pv* xx = new pv(n); x.push_back(xx);
+      pv* gg = new pv(n); g.push_back(gg);
       xx->zero(); (*xx)[root]=1; // initial guess
     }
   if (not solver.solve(g,x)) std::cout << "Failure"<<std::endl;

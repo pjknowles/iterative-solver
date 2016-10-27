@@ -194,7 +194,7 @@ void DIIS::test(int verbosity,
   if (verbosity>=0) xout << "Test DIIS::iterate, difficulty="<<difficulty<<std::endl;
   d.Reset();
   d.m_verbosity=verbosity-1;
-  std::vector<ParameterScalar> xxx;
+  std::vector<ParameterScalar> xxx(2);
   xxx[0]=xxx[1]=1-difficulty; // initial guess
   xx.put(&xxx[0],2,0);
   xout << "initial guess"<<x[0]<<std::endl;

@@ -118,10 +118,8 @@ double RSPT::energy(size_t order, size_t state)
     {
       std::vector<ParameterScalar> r(m_n);
       SimpleParameterVector result(m_n);
-      double value=0.3;
-      for (size_t k=0; k<m_n; k++) {
+      for (size_t k=0; k<m_n; k++)
         r[k]=0;
-        }
       r[m_reference]=1;
       result.put(&r[0],m_n,0);
       return result;

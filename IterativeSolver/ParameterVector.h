@@ -86,7 +86,10 @@ namespace IterativeSolver {
      * \param offset Offset of first number.
      * \return
      */
-    virtual void put(ParameterScalar* const buffer, size_t length, size_t offset)=0;
+    virtual void put(ParameterScalar* const buffer, size_t length, size_t offset)
+    {
+      throw std::logic_error("Unimplemented function");
+    }
     /*!
      * \brief Fetch some of the object's data.
      * (optional implementation).
@@ -95,13 +98,19 @@ namespace IterativeSolver {
      * \param offset Offset of first number.
      * \return
      */
-    virtual void get(ParameterScalar* buffer, size_t length, size_t offset) const=0;
+    virtual void get(ParameterScalar* buffer, size_t length, size_t offset) const
+    {
+      throw std::logic_error("Unimplemented function");
+    }
     /*!
      * \brief Report the size of the object's data
      * (optional implementation).
      * \return
      */
-    virtual size_t size() const {return 0;}
+    virtual size_t size() const //{return 0;}
+    {
+      throw std::logic_error("Unimplemented function");
+    }
   protected:
   private:
     int m_variance;

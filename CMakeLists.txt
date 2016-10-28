@@ -10,7 +10,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
     add_definitions(-DEIGEN_DONT_VECTORIZE)
 endif()
 aux_source_directory(IterativeSolver SRC_LIST)
-set(SRC_LIST ${SRC_LIST} IterativeSolver/IterativeSolverF.F90)
+set(SRC_LIST ${SRC_LIST} IterativeSolver/ParameterVector.h IterativeSolver/IterativeSolverF.F90)
 include_directories(Eigen .)
 add_library (${PROJECT_NAME} ${SRC_LIST})
 

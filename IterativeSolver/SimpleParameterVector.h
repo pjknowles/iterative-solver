@@ -4,6 +4,9 @@
 
 namespace IterativeSolver {
 
+  /*!
+   * \brief An implementation of ParameterVector that uses std::vector to store all data.
+   */
   class SimpleParameterVector : public ParameterVector
   {
   public:

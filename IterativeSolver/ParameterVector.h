@@ -15,12 +15,17 @@ namespace IterativeSolver {
    * \brief An abstract base class for holding expansion vectors and residual vectors
    * for use by IterativeSolver classes.
    *
-   * Deriving implementations should implement all of the public methods, together with ensuring
+   * Concrete implementations should implement all of the public methods, together with ensuring
    * that the
    * copy operator=() performs a deep copy to make a completely independent clone.
+   * They must also define a copy method exactly as follows.
+   * @code
+   *      DerivedParameterVector* clone() const { return new DerivedParameterVector(*this); }
+   * @endcode
    * Deriving implementations are free to make their own data storage arrangements, including
    * storing
    * externally and/or distributed across processes, so long as all of the public methods function correctly.
+   *
    * The put(), get() and size() methods provided in this base class
    * offer direct access to that data, for which there may be no meaningful implementation,
    * so they should not normally be referenced. However they are defined so that

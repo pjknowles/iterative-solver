@@ -1,6 +1,7 @@
 #ifndef PAGEDPARAMETERVECTOR_H
 #define PAGEDPARAMETERVECTOR_H
 #include "ParameterVector.h"
+#include "Storage.h"
 #include <fstream>
 
 namespace IterativeSolver {
@@ -55,7 +56,8 @@ namespace IterativeSolver {
     /*!
    * \brief The file to hold the data
    */
-    mutable std::fstream m_file;
+//    mutable std::fstream m_file;
+    mutable Storage* m_file;
     size_t m_size; //!< How much data
     size_t m_cacheSize; //!< cache size for implementing operations
     std::vector<ParameterScalar> m_cache;

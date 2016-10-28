@@ -1,5 +1,4 @@
 #include "PagedParameterVector.h"
-
 #include <stdexcept>
 #include <iostream>
 #include <string.h>
@@ -21,10 +20,7 @@ PagedParameterVector::PagedParameterVector(const PagedParameterVector& source)
 void PagedParameterVector::init()
 {
   setCacheSize(1024);
-  char *tmpname=strdup("tmpfileXXXXXX");
-  mkstemp(tmpname);
-  m_file.open (tmpname, std::ios::out | std::ios::in | std::ios::binary);
-  free(tmpname);
+  m_file = new Storage();
 }
 
 void PagedParameterVector::setCacheSize(size_t length)
@@ -35,7 +31,7 @@ void PagedParameterVector::setCacheSize(size_t length)
     m_cacheDirty=false;
 }
 
-PagedParameterVector::~PagedParameterVector() {m_file.close();}
+PagedParameterVector::~PagedParameterVector() {delete m_file;}
 
 
 PagedParameterVector& PagedParameterVector::operator=(const PagedParameterVector& other)
@@ -108,26 +104,23 @@ std::string PagedParameterVector::str() const {
     return os.str();
 }
 
-void PagedParameterVector::write(ParameterScalar* const buffer, size_t length, size_t address)
-{
-  m_file.seekg(address*sizeof(ParameterScalar));//,std::ios::beg);
-  m_file.write((char*) buffer,length*sizeof(ParameterScalar));
-  if (length+address > m_size) m_size = length+address;
-}
-
 void PagedParameterVector::put(ParameterScalar * const buffer, size_t length, size_t offset)
 {
     write(buffer,length,offset);
 }
 
-void PagedParameterVector::read(ParameterScalar* buffer, size_t length, size_t address) const
-{
-  if (address+length > m_size) throw std::range_error("Storage: attempt to load from beyond end of storage");
-  m_file.seekg(address*sizeof(ParameterScalar));//,std::ios::beg);
-  m_file.read((char*) buffer,length*sizeof(ParameterScalar));
-}
-
 void PagedParameterVector::get(ParameterScalar *buffer, size_t length, size_t offset) const
 {
     read(buffer,length,offset);
+}
+
+void PagedParameterVector::write(ParameterScalar* const buffer, size_t length, size_t address)
+{
+  m_file->write((char*) buffer,length*sizeof(ParameterScalar),address*sizeof(ParameterScalar));
+  if (length+address > m_size) m_size = length+address;
+}
+
+void PagedParameterVector::read(ParameterScalar* buffer, size_t length, size_t address) const
+{
+  m_file->read((char*) buffer,length*sizeof(ParameterScalar),address*sizeof(ParameterScalar));
 }

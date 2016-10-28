@@ -39,7 +39,7 @@ public:
    */
   virtual size_t size();
 private:
-  std::fstream m_file;
+  mutable std::fstream m_file;
   size_t size_; //< total storage (bytes) used
 };
 

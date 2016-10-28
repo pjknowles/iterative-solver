@@ -7,7 +7,7 @@ using namespace IterativeSolver;
 //  typedef SimpleParameterVector pv;
   typedef PagedParameterVector pv;
 
-// Find lowestG eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
+// Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
 static double n; // dimension of problem
 static double alpha; // separation of diagonal elements
 

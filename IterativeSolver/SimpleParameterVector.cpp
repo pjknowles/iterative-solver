@@ -47,7 +47,6 @@ void SimpleParameterVector::put(ParameterScalar * const buffer, size_t length, s
 {
     for (size_t k=0; k<length; k++)
         m_buffer[k+offset] = buffer[k];
-//    std::cout << "SimpleParameterVector::put"<<std::endl;
 }
 
 void SimpleParameterVector::get(ParameterScalar *buffer, size_t length, size_t offset) const

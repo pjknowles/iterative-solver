@@ -56,8 +56,8 @@ namespace IterativeSolver {
    * \brief The file to hold the data
    */
     mutable std::fstream m_file;
-    mutable size_t m_size; //!< How much data
-    mutable size_t m_cacheSize; //!< cache size for implementing operations
+    size_t m_size; //!< How much data
+    size_t m_cacheSize; //!< cache size for implementing operations
     std::vector<ParameterScalar> m_cache;
     bool m_cacheDirty;
     long long m_cacheOffset;

@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <stdexcept>
 
 using namespace IterativeSolver;
 

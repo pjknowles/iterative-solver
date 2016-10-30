@@ -123,7 +123,7 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
   m_LastAmplitudeCoeff = Coeffs[nDim-1];
   if (m_verbosity>1) xout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;
   for (size_t k=0; k<(size_t)Coeffs.rows(); k++)
-    if (isnan(Coeffs(k))) {
+    if (std::isnan(Coeffs(k))) {
         xout << "B:"<<std::endl<<B<<std::endl;
         xout << "Rhs:"<<std::endl<<Rhs<<std::endl;
         xout << "Combination of iteration vectors: "<<Coeffs.transpose()<<std::endl;

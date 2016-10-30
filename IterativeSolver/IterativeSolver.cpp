@@ -253,7 +253,7 @@ void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, co
       m_errors.push_back(residual.m_active[k] ? std::fabs(residual[k]->dot(step[k])) : 0);
     else
       m_errors.push_back(m_residuals[m_lastVectorIndex].m_active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]->dot(step[k])) : 1);
-    if (isnan(m_errors.back())) throw std::overflow_error("NaN detected in error measure");
+    if (std::isnan(m_errors.back())) throw std::overflow_error("NaN detected in error measure");
     }
   m_error = *max_element(m_errors.begin(),m_errors.end());
   m_worst = max_element(m_errors.begin(),m_errors.end())-m_errors.begin();

@@ -4,6 +4,7 @@
 #include "IterativeSolver/PagedParameterVector.h"
 #include "IterativeSolver/SimpleParameterVector.h"
 #include "IterativeSolver/CachedParameterVector.h"
+#include <ctime>
 
 extern "C" { void IterativeSolverFTest();}
 int main(int argc, char *argv[])
@@ -16,8 +17,8 @@ int main(int argc, char *argv[])
 
   size_t n=1000000;
   size_t repeat=1000;
-//  IterativeSolver::CachedParameterVector y(n), z(n);
-  IterativeSolver::PagedParameterVector y(n), z(n);
+  IterativeSolver::CachedParameterVector y(n), z(n);
+//  IterativeSolver::PagedParameterVector y(n), z(n);
 //  IterativeSolver::SimpleParameterVector y(n), z(n);
   y.zero();
   z.zero();
@@ -26,8 +27,10 @@ int main(int argc, char *argv[])
   y.put(&one,1,n/2);
   z.put(&one,1,n/2);
   std::cout <<y.dot(&z)<<std::endl;
+  std::clock_t start;
   for (size_t r=0; r<repeat; r++)
     y=z;
+  xout << "time="<<(std::clock()-start)/(double) CLOCKS_PER_SEC<<std::endl;
   return 0;
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.2,0.0);

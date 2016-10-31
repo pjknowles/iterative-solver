@@ -1,6 +1,5 @@
 #include "PagedParameterVector.h"
 #include <stdexcept>
-#include <iostream>
 #include <string.h>
 
 using namespace IterativeSolver;

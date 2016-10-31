@@ -1,10 +1,17 @@
 #include "IterativeSolver/ISDiis.h"
 #include "IterativeSolver/ISDavidson.h"
 #include "IterativeSolver/ISRSPT.h"
+#include "IterativeSolver/CachedParameterVector.h"
 
 extern "C" { void IterativeSolverFTest();}
 int main(int argc, char *argv[])
 {
+  IterativeSolver::CachedParameterVector x(5);
+  x.setCacheSize(2);
+  for (size_t k=0; k<x.size(); k++) x[k]=k;
+  std::cout << "x="<<x.str()<<std::endl;
+  std::cout << "x.x="<<x.dot(&x)<<std::endl;
+  return 0;
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.2,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);

@@ -1,11 +1,13 @@
 #include "IterativeSolver/ISDavidson.h"
 #include "IterativeSolver/SimpleParameterVector.h"
 #include "IterativeSolver/PagedParameterVector.h"
+#include "IterativeSolver/CachedParameterVector.h"
 
 using namespace IterativeSolver;
 
 //  typedef SimpleParameterVector pv;
-  typedef PagedParameterVector pv;
+//  typedef PagedParameterVector pv;
+  typedef CachedParameterVector pv;
 
 // Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
 static double n; // dimension of problem

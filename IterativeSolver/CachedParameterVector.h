@@ -1,5 +1,6 @@
-#ifndef PAGEDPARAMETERVECTOR_H
-#define PAGEDPARAMETERVECTOR_H
+#ifndef CACHEDPARAMETERVECTOR_H
+#define CACHEDPARAMETERVECTOR_H
+
 #include "ParameterVector.h"
 #include "Storage.h"
 
@@ -8,15 +9,15 @@ namespace IterativeSolver {
   /*!
    * \brief A class that implements ParameterVector with data held on backing store
    */
-  class PagedParameterVector : public ParameterVector
+  class CachedParameterVector : public ParameterVector
   {
   public:
     /*!
    * \brief Construct an object without any data.
    */
-    PagedParameterVector(size_t length=0);
-    PagedParameterVector(const PagedParameterVector& source);
-    ~PagedParameterVector();
+    CachedParameterVector(size_t length=0);
+    CachedParameterVector(const CachedParameterVector& source);
+    ~CachedParameterVector();
     /*!
    * \brief Add a constant times another object to this object
    * \param a The factor to multiply.
@@ -39,10 +40,10 @@ namespace IterativeSolver {
    * \param other The source of data.
    * \return
    */
-    PagedParameterVector& operator=(const PagedParameterVector& other);
+    CachedParameterVector& operator=(const CachedParameterVector& other);
 
     // Every child of ParameterVector needs exactly this
-    PagedParameterVector* clone() const { return new PagedParameterVector(*this); }
+    CachedParameterVector* clone() const { return new CachedParameterVector(*this); }
 
     /*!
      * \brief Specify a cache size for manipulating the data
@@ -59,18 +60,21 @@ namespace IterativeSolver {
     mutable Storage* m_file;
     size_t m_size; //!< How much data
     size_t m_cacheSize; //!< cache size for implementing operations
-    std::vector<ParameterScalar> m_cache;
-    bool m_cacheDirty;
-    long long m_cacheOffset;
-    void write(ParameterScalar* const buffer, size_t length, size_t offset);
+    mutable std::vector<ParameterScalar> m_cache;
+    mutable bool m_cacheDirty;
+    mutable size_t m_cacheOffset;
+    mutable bool m_cacheEmpty;
+    void flushCache() const;
+    void write(const ParameterScalar * const buffer, size_t length, size_t offset) const;
     void read(ParameterScalar* buffer, size_t length, size_t offset) const;
   public:
     void put(ParameterScalar* const buffer, size_t length, size_t offset);
     void get(ParameterScalar* buffer, size_t length, size_t offset) const;
-    size_t size() const;
+    ParameterScalar& operator[](size_t pos);
+    ParameterScalar& operator[](size_t pos) const;
+    size_t size() const {return m_size;}
     std::string str() const;
   };
 
 }
-
-#endif // PAGEDPARAMETERVECTOR_H
+#endif // CACHEDPARAMETERVECTOR_H

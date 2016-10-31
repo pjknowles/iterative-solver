@@ -1,6 +1,8 @@
 #include "IterativeSolver/ISDiis.h"
 #include "IterativeSolver/ISDavidson.h"
 #include "IterativeSolver/ISRSPT.h"
+#include "IterativeSolver/PagedParameterVector.h"
+#include "IterativeSolver/SimpleParameterVector.h"
 #include "IterativeSolver/CachedParameterVector.h"
 
 extern "C" { void IterativeSolverFTest();}
@@ -11,6 +13,21 @@ int main(int argc, char *argv[])
   for (size_t k=0; k<x.size(); k++) x[k]=k;
   std::cout << "x="<<x.str()<<std::endl;
   std::cout << "x.x="<<x.dot(&x)<<std::endl;
+
+  size_t n=1000000;
+  size_t repeat=1000;
+//  IterativeSolver::CachedParameterVector y(n), z(n);
+  IterativeSolver::PagedParameterVector y(n), z(n);
+//  IterativeSolver::SimpleParameterVector y(n), z(n);
+  y.zero();
+  z.zero();
+  y.setCacheSize(n);z.setCacheSize(n);
+  IterativeSolver::ParameterScalar one=1;
+  y.put(&one,1,n/2);
+  z.put(&one,1,n/2);
+  std::cout <<y.dot(&z)<<std::endl;
+  for (size_t r=0; r<repeat; r++)
+    y=z;
   return 0;
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.2,0.0);

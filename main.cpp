@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
   y.zero();
   z.zero();
   y.setCacheSize(n*1);z.setCacheSize(n*1);
-  y.setCacheSize(10000);z.setCacheSize(10000);
+//  y.setCacheSize(10000);z.setCacheSize(10000);
   IterativeSolver::ParameterScalar one=1;
   y.put(&one,1,n/2);
   z.put(&one,1,n/2);

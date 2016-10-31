@@ -23,11 +23,12 @@ int main(int argc, char *argv[])
   y.zero();
   z.zero();
   y.setCacheSize(n);z.setCacheSize(n);
+  y.setCacheSize(1024);z.setCacheSize(1024);
   IterativeSolver::ParameterScalar one=1;
   y.put(&one,1,n/2);
   z.put(&one,1,n/2);
   std::cout <<y.dot(&z)<<std::endl;
-  std::clock_t start;
+  std::clock_t start=std::clock();
   for (size_t r=0; r<repeat; r++)
     y=z;
   xout << "time="<<(std::clock()-start)/(double) CLOCKS_PER_SEC<<std::endl;

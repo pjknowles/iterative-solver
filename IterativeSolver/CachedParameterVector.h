@@ -76,15 +76,12 @@ namespace IterativeSolver {
 
     ParameterScalar& operator[](size_t pos) const
     {
-//      if (pos < m_cacheOffset || pos >= m_cacheOffset+m_cacheSize) { // cache not mapping right sector
-      if (pos < m_cacheOffset || pos >= m_cacheMax) { // cache not mapping right sector
-//      if (pos >= m_cacheMax || pos < m_cacheOffset) { // cache not mapping right sector
+      if (pos >= m_cacheMax || pos < m_cacheOffset) { // cache not mapping right sector
           flushCache();
           m_cacheOffset=pos;
           m_cacheMax=std::min(m_cacheOffset+m_cacheSize,m_size);
-          read(&m_cache[0],
-              std::min(m_file->size()/sizeof(ParameterScalar)-m_cacheOffset,std::min(m_cacheSize, m_size-m_cacheOffset)),
-              m_cacheOffset);
+          size_t l = std::min(m_file->size()/sizeof(ParameterScalar)-m_cacheOffset,std::min(m_cacheSize, m_size-m_cacheOffset));
+          if (l>0) read(&m_cache[0], l, m_cacheOffset);
           for (size_t k=m_file->size()/sizeof(ParameterScalar)-m_cacheOffset;k<std::min(m_cacheSize,m_size-m_cacheOffset); k++)  m_cache[k]=0;
         }
       return m_cache[pos-m_cacheOffset];

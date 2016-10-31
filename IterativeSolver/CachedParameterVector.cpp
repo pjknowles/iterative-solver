@@ -72,6 +72,9 @@ void CachedParameterVector::axpy(ParameterScalar a, const ParameterVector* other
         for (size_t k=0; k<bs; k++) (*this)[k+block] += a*buffero[k];
     }
     } else {
+      if (m_cacheSize >= m_size && othe->m_cacheSize >= othe->m_size)
+        for (size_t k=0; k<m_size; k++) this->m_cache[k] += a*othe->m_cache[k];
+      else
         for (size_t k=0; k<m_size; k++) (*this)[k] += a*(*othe)[k];
     }
 }
@@ -142,20 +145,22 @@ void CachedParameterVector::get(ParameterScalar *buffer, size_t length, size_t o
 void CachedParameterVector::flushCache(bool force) const
 {
         if (m_cacheOffset==m_cacheEmpty) return;
-      if (force || (m_cacheDirty && m_cacheSize < size())) {
+      if (force || (m_cacheDirty && m_cacheSize < m_size)) {
 //          std::cout << "flush Cache offset="<<m_cacheOffset<<" ,length="<<std::min(m_cacheSize,(size_t)size()-m_cacheOffset)<<std::endl;
 //          std::cout << "flush buffer begins "<<m_cache[0]<<std::endl;
-          write(&m_cache[0],std::min(m_cacheSize,(size_t)size()-m_cacheOffset),m_cacheOffset);
+          write(&m_cache[0],std::min(m_cacheSize,m_size-m_cacheOffset),m_cacheOffset);
           m_cacheDirty=false;
         }
 }
 
 void CachedParameterVector::write(const ParameterScalar* const buffer, size_t length, size_t address) const
 {
+//  std::cout << "write "<<length<<std::endl;
   m_file->write((char*) buffer,length*sizeof(ParameterScalar),address*sizeof(ParameterScalar));
 }
 
 void CachedParameterVector::read(ParameterScalar* buffer, size_t length, size_t address) const
 {
+//  std::cout << "read  "<<length<<std::endl;
   m_file->read((char*) buffer,length*sizeof(ParameterScalar),address*sizeof(ParameterScalar));
 }

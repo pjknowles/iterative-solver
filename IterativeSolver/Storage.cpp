@@ -7,11 +7,13 @@
 
 using namespace IterativeSolver;
 
+#include <unistd.h>
 Storage::Storage(size_t lengthHint, int option)
 {
   char *tmpname=strdup("tmpfileXXXXXX");
   mkstemp(tmpname);
   m_file.open (tmpname, std::ios::out | std::ios::in | std::ios::binary);
+  unlink(tmpname);
   free(tmpname);
   size_=0;
 }

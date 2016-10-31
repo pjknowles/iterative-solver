@@ -19,17 +19,17 @@ CachedParameterVector::CachedParameterVector(const CachedParameterVector& source
 void CachedParameterVector::init()
 {
   m_file = new Storage();
-  m_cacheEmpty=true;
+  m_cacheMax=m_cacheOffset=m_cacheEmpty=std::numeric_limits<size_t>::max();
   setCacheSize(1024);
 }
 
 void CachedParameterVector::setCacheSize(size_t length)
 {
   flushCache(true);
-    m_cacheSize = length;
-    m_cache.resize(m_cacheSize);
-    m_cacheEmpty=true;
-    m_cacheDirty=false;
+  m_cacheSize = length;
+  m_cache.resize(m_cacheSize);
+  m_cacheOffset=m_cacheEmpty;
+  m_cacheDirty=false;
 }
 
 CachedParameterVector::~CachedParameterVector() {delete m_file;}
@@ -128,8 +128,8 @@ std::string CachedParameterVector::str() const {
 void CachedParameterVector::put(ParameterScalar * const buffer, size_t length, size_t offset)
 {
   flushCache();
-    write(buffer,length,offset);
-    m_cacheEmpty=true;
+  write(buffer,length,offset);
+  m_cacheOffset=m_cacheEmpty;
   if (length+offset > m_size) m_size = length+offset;
 }
 
@@ -141,7 +141,7 @@ void CachedParameterVector::get(ParameterScalar *buffer, size_t length, size_t o
 
 void CachedParameterVector::flushCache(bool force) const
 {
-        if (m_cacheEmpty) return;
+        if (m_cacheOffset==m_cacheEmpty) return;
       if (force || (m_cacheDirty && m_cacheSize < size())) {
 //          std::cout << "flush Cache offset="<<m_cacheOffset<<" ,length="<<std::min(m_cacheSize,(size_t)size()-m_cacheOffset)<<std::endl;
 //          std::cout << "flush buffer begins "<<m_cache[0]<<std::endl;

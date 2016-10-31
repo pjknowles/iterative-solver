@@ -4,6 +4,7 @@
 #include "ParameterVector.h"
 #include "Storage.h"
 #include <algorithm>
+#include <limits>
 
 namespace IterativeSolver {
 
@@ -64,7 +65,8 @@ namespace IterativeSolver {
     mutable std::vector<ParameterScalar> m_cache;
     mutable bool m_cacheDirty;
     mutable size_t m_cacheOffset;
-    mutable bool m_cacheEmpty;
+    mutable size_t m_cacheMax;
+    size_t m_cacheEmpty;
     void flushCache(bool force=false) const;
     void write(const ParameterScalar * const buffer, size_t length, size_t offset) const;
     void read(ParameterScalar* buffer, size_t length, size_t offset) const;
@@ -74,20 +76,18 @@ namespace IterativeSolver {
 
     ParameterScalar& operator[](size_t pos) const
     {
-      if (m_cacheEmpty || pos < m_cacheOffset || pos >= m_cacheOffset+m_cacheSize) { // cache not mapping right sector
+//      if (pos < m_cacheOffset || pos >= m_cacheOffset+m_cacheSize) { // cache not mapping right sector
+      if (pos < m_cacheOffset || pos >= m_cacheMax) { // cache not mapping right sector
+//      if (pos >= m_cacheMax || pos < m_cacheOffset) { // cache not mapping right sector
           flushCache();
           m_cacheOffset=pos;
+          m_cacheMax=std::min(m_cacheOffset+m_cacheSize,m_size);
           read(&m_cache[0],
-              std::min(m_file->size()/sizeof(ParameterScalar)-m_cacheOffset,std::min(
-                         m_cacheSize,
-                         size()-m_cacheOffset)),
+              std::min(m_file->size()/sizeof(ParameterScalar)-m_cacheOffset,std::min(m_cacheSize, m_size-m_cacheOffset)),
               m_cacheOffset);
-          for (size_t k=m_file->size()/sizeof(ParameterScalar)-m_cacheOffset;k<std::min(m_cacheSize,size()-m_cacheOffset); k++)  m_cache[k]=0;
-          m_cacheEmpty=false;
-          return m_cache[0];
+          for (size_t k=m_file->size()/sizeof(ParameterScalar)-m_cacheOffset;k<std::min(m_cacheSize,m_size-m_cacheOffset); k++)  m_cache[k]=0;
         }
-      else
-        return m_cache[pos-m_cacheOffset];
+      return m_cache[pos-m_cacheOffset];
     }
 
     ParameterScalar& operator[](size_t pos)

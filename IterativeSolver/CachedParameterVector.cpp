@@ -18,12 +18,14 @@ CachedParameterVector::CachedParameterVector(const CachedParameterVector& source
 
 void CachedParameterVector::init()
 {
-  setCacheSize(1024);
   m_file = new Storage();
+  m_cacheEmpty=true;
+  setCacheSize(1024);
 }
 
 void CachedParameterVector::setCacheSize(size_t length)
 {
+  flushCache(true);
     m_cacheSize = length;
     m_cache.resize(m_cacheSize);
     m_cacheEmpty=true;
@@ -137,39 +139,10 @@ void CachedParameterVector::get(ParameterScalar *buffer, size_t length, size_t o
     read(buffer,length,offset);
 }
 
-#include <algorithm>
-ParameterScalar& CachedParameterVector::operator[](size_t pos) const
+void CachedParameterVector::flushCache(bool force) const
 {
-  if (m_cacheEmpty || pos < m_cacheOffset || pos >= m_cacheOffset+m_cacheSize) { // cache not mapping right sector
-//      std::cout << "cache miss at pos="<<pos<<std::endl;
-//      std::cout <<"m_cacheOffset="<<m_cacheOffset<<std::endl;
-//      std::cout <<"m_cacheSize="<<m_cacheSize<<std::endl;
-      flushCache();
-      m_cacheOffset=pos;
-      read(&m_cache[0],
-          std::min(m_file->size()/sizeof(ParameterScalar)-m_cacheOffset,std::min(
-                   m_cacheSize,
-                   size()-m_cacheOffset)),
-          m_cacheOffset);
-      for (size_t k=m_file->size()/sizeof(ParameterScalar)-m_cacheOffset;k<std::min(m_cacheSize,size()-m_cacheOffset); k++)  m_cache[k]=0;
-      m_cacheEmpty=false;
-      return m_cache[0];
-    }
-  else
-    return m_cache[pos-m_cacheOffset];
-}
-
-ParameterScalar& CachedParameterVector::operator[](size_t pos)
-{
-  ParameterScalar* result;
-  result = &const_cast<ParameterScalar&>(static_cast<const CachedParameterVector*>(this)->operator [](pos));
-  m_cacheDirty=true;
-  return *result;
-}
-
-void CachedParameterVector::flushCache() const
-{
-      if (m_cacheDirty) {
+        if (m_cacheEmpty) return;
+      if (force || (m_cacheDirty && m_cacheSize < size())) {
 //          std::cout << "flush Cache offset="<<m_cacheOffset<<" ,length="<<std::min(m_cacheSize,(size_t)size()-m_cacheOffset)<<std::endl;
 //          std::cout << "flush buffer begins "<<m_cache[0]<<std::endl;
           write(&m_cache[0],std::min(m_cacheSize,(size_t)size()-m_cacheOffset),m_cacheOffset);

@@ -3,6 +3,7 @@
 
 #include "ParameterVector.h"
 #include "Storage.h"
+#include <algorithm>
 
 namespace IterativeSolver {
 
@@ -17,7 +18,7 @@ namespace IterativeSolver {
    */
     CachedParameterVector(size_t length=0);
     CachedParameterVector(const CachedParameterVector& source);
-    ~CachedParameterVector();
+    virtual ~CachedParameterVector();
     /*!
    * \brief Add a constant times another object to this object
    * \param a The factor to multiply.
@@ -64,14 +65,43 @@ namespace IterativeSolver {
     mutable bool m_cacheDirty;
     mutable size_t m_cacheOffset;
     mutable bool m_cacheEmpty;
-    void flushCache() const;
+    void flushCache(bool force=false) const;
     void write(const ParameterScalar * const buffer, size_t length, size_t offset) const;
     void read(ParameterScalar* buffer, size_t length, size_t offset) const;
   public:
     void put(ParameterScalar* const buffer, size_t length, size_t offset);
     void get(ParameterScalar* buffer, size_t length, size_t offset) const;
-    ParameterScalar& operator[](size_t pos);
-    ParameterScalar& operator[](size_t pos) const;
+//    ParameterScalar& operator[](size_t pos) const;
+ParameterScalar& operator[](size_t pos) const
+{
+  if (m_cacheEmpty || pos < m_cacheOffset || pos >= m_cacheOffset+m_cacheSize) { // cache not mapping right sector
+//      std::cout << "cache miss at pos="<<pos<<std::endl;
+//      std::cout <<"m_cacheOffset="<<m_cacheOffset<<std::endl;
+//      std::cout <<"m_cacheSize="<<m_cacheSize<<std::endl;
+      flushCache();
+      m_cacheOffset=pos;
+      read(&m_cache[0],
+          std::min(m_file->size()/sizeof(ParameterScalar)-m_cacheOffset,std::min(
+                   m_cacheSize,
+                   size()-m_cacheOffset)),
+          m_cacheOffset);
+      for (size_t k=m_file->size()/sizeof(ParameterScalar)-m_cacheOffset;k<std::min(m_cacheSize,size()-m_cacheOffset); k++)  m_cache[k]=0;
+      m_cacheEmpty=false;
+      return m_cache[0];
+    }
+  else
+    return m_cache[pos-m_cacheOffset];
+}
+
+//    ParameterScalar& operator[](size_t pos);
+    ParameterScalar& operator[](size_t pos)
+    {
+      ParameterScalar* result;
+      result = &const_cast<ParameterScalar&>(static_cast<const CachedParameterVector*>(this)->operator [](pos));
+      m_cacheDirty=true;
+      return *result;
+    }
+
     size_t size() const {return m_size;}
     std::string str() const;
   };

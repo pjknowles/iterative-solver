@@ -126,6 +126,16 @@ ParameterScalar CachedParameterVector::dot(const ParameterVector *other) const
   return result;
 }
 
+void CachedParameterVector::scal(ParameterScalar a)
+{
+  if (m_cacheSize >= m_size)
+    for (size_t k=0; k<m_size; k++)
+      m_cache[k] *= a;
+  else
+    for (size_t k=0; k<m_size; k++)
+      (*this)[k] *= a;
+}
+
 std::string CachedParameterVector::str() const {
     std::ostringstream os; os << "CachedParameterVector object:";
     flushCache();

@@ -42,6 +42,10 @@ ParameterScalar SimpleParameterVector::dot(const ParameterVector *other) const
   return result;
 }
 
+void SimpleParameterVector::scal(ParameterScalar a)
+{
+  for (size_t k=0; k<m_buffer.size(); k++) m_buffer[k] *= a;
+}
 
 void SimpleParameterVector::put(ParameterScalar * const buffer, size_t length, size_t offset)
 {

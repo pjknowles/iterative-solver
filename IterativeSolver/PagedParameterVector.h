@@ -31,6 +31,11 @@ namespace IterativeSolver {
    */
     ParameterScalar dot(const ParameterVector *other) const;
     /*!
+     * \brief scal Scale the object by a factor.
+     * \param a The factor to scale by.
+     */
+    void scal(ParameterScalar a);
+    /*!
    * \brief Set the contents of the object to zero.
    */
     void zero();

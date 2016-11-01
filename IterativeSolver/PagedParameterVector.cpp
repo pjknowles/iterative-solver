@@ -88,6 +88,17 @@ ParameterScalar PagedParameterVector::dot(const ParameterVector *other) const
   return result;
 }
 
+void PagedParameterVector::scal(ParameterScalar a)
+{
+  std::vector<ParameterScalar> buffer(m_cacheSize);
+  for (size_t block=0; block<m_size; block+=buffer.size()) {
+      size_t bs=std::min(buffer.size(),m_size-block);
+      read(&buffer[0], bs, block);
+      for (size_t k=0; k<bs; k++) buffer[k] *= a;
+      write(&buffer[0], bs, block);
+    }
+}
+
 size_t PagedParameterVector::size() const { return m_size;}
 
 std::string PagedParameterVector::str() const {

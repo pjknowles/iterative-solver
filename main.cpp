@@ -9,18 +9,18 @@
 extern "C" { void IterativeSolverFTest();}
 int main(int argc, char *argv[])
 {
-  IterativeSolver::CachedParameterVector x(5);
-  x.setCacheSize(2);
-  for (size_t k=0; k<x.size(); k++) x[k]=k;
-  std::cout << "x="<<x.str()<<std::endl;
-  std::cout << "x.x="<<x.dot(&x)<<std::endl;
+//  IterativeSolver::CachedParameterVector x(5);
+//  x.setCacheSize(2);
+//  for (size_t k=0; k<x.size(); k++) x[k]=k;
+//  std::cout << "x="<<x.str()<<std::endl;
+//  std::cout << "x.x="<<x.dot(&x)<<std::endl;
 
   size_t n=10000000;
   size_t repeat=100;
   IterativeSolver::CachedParameterVector y(n), z(n);
 //  IterativeSolver::PagedParameterVector y(n), z(n);
 //  IterativeSolver::SimpleParameterVector y(n), z(n);
-  y.setCacheSize(n*1);z.setCacheSize(n*1);
+  y.setCacheSize(n-1);z.setCacheSize(n-1);
 //  y.setCacheSize(10000);z.setCacheSize(10000);
   y.zero();
   z.zero();
@@ -29,12 +29,13 @@ int main(int argc, char *argv[])
 //  z.put(&one,1,n/2);
   std::cout <<y.dot(&z)<<std::endl;
   std::clock_t start=std::clock();
-//  double result;
-  for (size_t r=0; r<repeat; r++)
+  double result;
+  for (size_t r=0; r<repeat; r++) {
 //    result += y.dot(&z);
 //    y.zero();
-//    y=z;
-    y.axpy(2.0,&z);
+    y=z;
+//    y.axpy(2.0,&z);
+    }
   xout << "time="<<(std::clock()-start)/(double) CLOCKS_PER_SEC<<std::endl;
   return 0;
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);

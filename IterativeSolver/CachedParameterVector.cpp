@@ -37,17 +37,23 @@ CachedParameterVector::~CachedParameterVector() {delete m_file;}
 
 CachedParameterVector& CachedParameterVector::operator=(const CachedParameterVector& other)
 {
-  std::vector<ParameterScalar> buffer(m_cacheSize);
   m_size=other.m_size;
   if (false) {
+  std::vector<ParameterScalar> buffer(m_cacheSize);
   for (size_t block=0; block<m_size; block+=buffer.size()) {
       size_t bs=std::min(buffer.size(),m_size-block);
       other.read(&buffer[0], bs, block);
       write(&buffer[0], bs, block);
     }
-    } else
-    for (size_t k=0; k<m_size; k++)
-      (*this)[k] = other[k];
+    } else {
+        (*this)[0] = other[0]; // to ensure cache initialisation
+    if (m_cacheSize >= m_size && other.m_cacheSize >= other.m_size)
+      for (size_t k=1; k<m_size; k++)
+        m_cache[k] = other.m_cache[k];
+    else
+      for (size_t k=1; k<m_size; k++)
+        (*this)[k] = other[k];
+    }
   setVariance(other.variance());
   return *this;
 }
@@ -110,8 +116,12 @@ ParameterScalar CachedParameterVector::dot(const ParameterVector *other) const
       for (size_t k=0; k<bs; k++) result += buffer[k] * buffero[k];
     }
     } else {
-      for (size_t k=0; k<m_size; k++)
-        result += (*this)[k] * (*othe)[k];
+      if (m_cacheSize >= m_size && othe->m_cacheSize >= othe->m_size)
+        for (size_t k=0; k<m_size; k++)
+          result += m_cache[k] * othe->m_cache[k];
+      else
+        for (size_t k=0; k<m_size; k++)
+          result += (*this)[k] * (*othe)[k];
     }
   return result;
 }

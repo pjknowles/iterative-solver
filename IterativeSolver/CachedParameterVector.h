@@ -85,9 +85,10 @@ namespace IterativeSolver {
           flushCache();
           m_cacheOffset=pos;
           m_cacheMax=std::min(m_cacheOffset+m_cacheSize,m_size);
-          size_t l = std::min(m_file->size()/sizeof(ParameterScalar)-m_cacheOffset,std::min(m_cacheSize, m_size-m_cacheOffset));
+          size_t l1 = m_file == nullptr ? 0 : m_file->size()/sizeof(ParameterScalar)-m_cacheOffset;
+          size_t l2 = std::min(m_cacheSize, m_size-m_cacheOffset);
+          size_t l=std::min(l1,l2);
           if (l>0) read(&m_cache[0], l, m_cacheOffset);
-          for (size_t k=m_file->size()/sizeof(ParameterScalar)-m_cacheOffset;k<std::min(m_cacheSize,m_size-m_cacheOffset); k++)  m_cache[k]=0;
         }
       return m_cache[pos-m_cacheOffset];
     }
@@ -95,6 +96,7 @@ namespace IterativeSolver {
     ParameterScalar& operator[](size_t pos)
     {
       ParameterScalar* result;
+      if (m_cacheSize==0) setCacheSize(m_size); // if no setCacheSize() has been issued, then the default is all in memory
       result = &const_cast<ParameterScalar&>(static_cast<const CachedParameterVector*>(this)->operator [](pos));
       m_cacheDirty=true;
       return *result;

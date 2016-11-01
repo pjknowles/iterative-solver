@@ -16,11 +16,14 @@ CachedParameterVector::CachedParameterVector(const CachedParameterVector& source
     *this = source;
 }
 
+#ifndef nullptr
+#define nullptr NULL
+#endif
 void CachedParameterVector::init()
 {
-  m_file = new Storage();
+  m_file = nullptr;
   m_cacheMax=m_cacheOffset=m_cacheEmpty=std::numeric_limits<size_t>::max();
-  setCacheSize(1024);
+  setCacheSize(0);
 }
 
 void CachedParameterVector::setCacheSize(size_t length)
@@ -30,9 +33,10 @@ void CachedParameterVector::setCacheSize(size_t length)
   m_cache.resize(m_cacheSize);
   m_cacheOffset=m_cacheEmpty;
   m_cacheDirty=false;
+  if (m_cacheSize!=0 && m_cacheSize < m_size) m_file = new Storage();
 }
 
-CachedParameterVector::~CachedParameterVector() {delete m_file;}
+CachedParameterVector::~CachedParameterVector() {if (m_file != nullptr) delete m_file;}
 
 
 CachedParameterVector& CachedParameterVector::operator=(const CachedParameterVector& other)
@@ -72,7 +76,6 @@ void CachedParameterVector::axpy(ParameterScalar a, const ParameterVector* other
       othe->read(&buffero[0], bs, block);
       if (true) {
           for (size_t k=0; k<bs; k++) buffer[k] += a*buffero[k];
-          write(&buffer[0], bs, block);
         }
       else
         for (size_t k=0; k<bs; k++) (*this)[k+block] += a*buffero[k];
@@ -176,6 +179,7 @@ void CachedParameterVector::flushCache(bool force) const
 void CachedParameterVector::write(const ParameterScalar* const buffer, size_t length, size_t address) const
 {
 //  std::cout << "write "<<length<<std::endl;
+  if (m_file == nullptr) m_file = new Storage();
   m_file->write((char*) buffer,length*sizeof(ParameterScalar),address*sizeof(ParameterScalar));
 }
 

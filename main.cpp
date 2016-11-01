@@ -20,7 +20,8 @@ int main(int argc, char *argv[])
   IterativeSolver::CachedParameterVector y(n), z(n);
 //  IterativeSolver::PagedParameterVector y(n), z(n);
 //  IterativeSolver::SimpleParameterVector y(n), z(n);
-  y.setCacheSize(n*1);z.setCacheSize(n*1);
+//  y.setCacheSize(n*1);z.setCacheSize(n*1);
+//  y.setCacheSize(n-1);z.setCacheSize(n-1);
 //  y.setCacheSize(10000);z.setCacheSize(10000);
   y.zero();
   z.zero();

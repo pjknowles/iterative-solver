@@ -153,16 +153,26 @@ std::string CachedParameterVector::str() const {
 
 void CachedParameterVector::put(ParameterScalar * const buffer, size_t length, size_t offset)
 {
-  flushCache();
-  write(buffer,length,offset);
-  m_cacheOffset=m_cacheEmpty;
+  if (std::max(m_size,length+offset) <= m_cacheSize) {
+      for (size_t k=0; k<length; k++) m_cache[k+offset] = buffer[k];
+    } else
+    {
+      flushCache();
+      write(buffer,length,offset);
+      m_cacheOffset=m_cacheEmpty;
+    }
   if (length+offset > m_size) m_size = length+offset;
 }
 
 void CachedParameterVector::get(ParameterScalar *buffer, size_t length, size_t offset) const
 {
-  flushCache();
-    read(buffer,length,offset);
+  if (m_size <= m_cacheSize) {
+      for (size_t k=0; k<length; k++) buffer[k] = m_cache[k+offset];
+    } else
+    {
+      flushCache();
+      read(buffer,length,offset);
+    }
 }
 
 void CachedParameterVector::flushCache(bool force) const

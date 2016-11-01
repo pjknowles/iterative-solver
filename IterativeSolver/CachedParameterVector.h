@@ -56,7 +56,7 @@ namespace IterativeSolver {
      * \brief Specify a cache size for manipulating the data
      * \param length
      */
-    void setCacheSize(size_t length);
+    void setCacheSize(size_t length) const;
 
   private:
     void init();
@@ -66,7 +66,7 @@ namespace IterativeSolver {
 //    mutable std::fstream m_file;
     mutable Storage* m_file;
     size_t m_size; //!< How much data
-    size_t m_cacheSize; //!< cache size for implementing operations
+    mutable size_t m_cacheSize; //!< cache size for implementing operations
     mutable std::vector<ParameterScalar> m_cache;
     mutable bool m_cacheDirty;
     mutable size_t m_cacheOffset;
@@ -82,6 +82,7 @@ namespace IterativeSolver {
     ParameterScalar& operator[](size_t pos) const
     {
       if (pos >= m_cacheMax || pos < m_cacheOffset) { // cache not mapping right sector
+          if (m_cacheSize==0) setCacheSize(m_size); // if no setCacheSize() has been issued, then the default is all in memory
           flushCache();
           m_cacheOffset=pos;
           m_cacheMax=std::min(m_cacheOffset+m_cacheSize,m_size);
@@ -96,7 +97,6 @@ namespace IterativeSolver {
     ParameterScalar& operator[](size_t pos)
     {
       ParameterScalar* result;
-      if (m_cacheSize==0) setCacheSize(m_size); // if no setCacheSize() has been issued, then the default is all in memory
       result = &const_cast<ParameterScalar&>(static_cast<const CachedParameterVector*>(this)->operator [](pos));
       m_cacheDirty=true;
       return *result;

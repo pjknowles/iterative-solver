@@ -26,7 +26,7 @@ void CachedParameterVector::init()
   setCacheSize(0);
 }
 
-void CachedParameterVector::setCacheSize(size_t length)
+void CachedParameterVector::setCacheSize(size_t length) const
 {
   flushCache(true);
   m_cacheSize = length;

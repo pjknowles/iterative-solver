@@ -225,8 +225,7 @@ void DIIS::test(int verbosity,
 
 }
 
-#include <random>
-#include <chrono>
+#include <cstdlib>
   struct anharmonic {
     Eigen::MatrixXd m_F;
     double m_gamma;
@@ -236,14 +235,11 @@ void DIIS::test(int verbosity,
     {
       m_gamma=gamma;
       m_n=n;
-      unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-      std::default_random_engine generator (seed);
-      std::uniform_real_distribution<double> distribution(-0.5,0.5);
 
       m_F.resize(n,n);
       for (size_t j=0; j<n; j++) {
           for (size_t i=0; i<n; i++)
-            m_F(i,j)=distribution(generator);
+            m_F(i,j)=-0.5 + (((double)rand())/RAND_MAX);
           m_F(j,j) += (j*alpha+0.5);
         }
     }

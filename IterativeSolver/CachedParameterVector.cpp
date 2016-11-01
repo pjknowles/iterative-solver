@@ -16,9 +16,6 @@ CachedParameterVector::CachedParameterVector(const CachedParameterVector& source
     *this = source;
 }
 
-#ifndef nullptr
-#define nullptr NULL
-#endif
 void CachedParameterVector::init()
 {
   m_file = nullptr;

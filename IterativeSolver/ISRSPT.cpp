@@ -90,8 +90,7 @@ double RSPT::energy(size_t order, size_t state)
 }
 
 #include "SimpleParameterVector.h"
-#include <random>
-#include <chrono>
+#include <cstdlib>
   struct rsptpot {
     Eigen::MatrixXd m_F;
     size_t m_n;
@@ -102,14 +101,11 @@ double RSPT::energy(size_t order, size_t state)
 //        xout<<"rsptpot set"<<n<<std::endl;
       m_n=n;
       m_reference=0; // asserting that m_F(0,0) is the lowest
-      unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-      std::default_random_engine generator (seed);
-      std::uniform_real_distribution<double> distribution(-0.5,0.5);
 
       m_F.resize(n,n);
       for (size_t j=0; j<n; j++) {
           for (size_t i=0; i<j; i++)
-            m_F(i,j)=m_F(j,i)=distribution(generator);
+            m_F(i,j)=m_F(j,i)= -0.5 + (((double)rand())/RAND_MAX);
           m_F(j,j) = (j*alpha-1);
         }
 //      xout << "m_F:"<<std::endl<<m_F<<std::endl;

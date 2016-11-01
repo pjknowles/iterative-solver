@@ -5,6 +5,9 @@
 #include "Storage.h"
 #include <algorithm>
 #include <limits>
+#ifndef nullptr
+#define nullptr NULL
+#endif
 
 namespace IterativeSolver {
 

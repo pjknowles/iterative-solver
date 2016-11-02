@@ -30,14 +30,14 @@ void Storage::write(const char *buffer, size_t length, size_t address)
   if (length+address > size_) size_ = length+address;
 }
 
-void Storage::read(char *buffer, size_t length, size_t address)
+void Storage::read(char *buffer, size_t length, size_t address) const
 {
   if (address+length > size_) throw std::range_error("Storage: attempt to load from beyond end of storage");
   m_file.seekg(address);//,std::ios::beg);
   m_file.read((char*) buffer,length);
 }
 
-size_t Storage::size()
+size_t Storage::size() const
 {
   return size_;
 }

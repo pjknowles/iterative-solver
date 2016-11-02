@@ -1,6 +1,9 @@
 #include "CachedParameterVector.h"
 #include <stdexcept>
 #include <string.h>
+#ifdef USE_MPI
+#include <mpi.h>
+#endif
 
 using namespace IterativeSolver;
 

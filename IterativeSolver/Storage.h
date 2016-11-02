@@ -33,11 +33,11 @@ public:
    * \param length Length of data, in bytes.
    * \param address Offset in store, in bytes.
    */
-  virtual void read(char *buffer, size_t length, size_t address);
+  virtual void read(char *buffer, size_t length, size_t address) const;
   /*!
    * \brief Query the total storage used.
    */
-  virtual size_t size();
+  virtual size_t size() const;
 private:
   mutable std::fstream m_file;
   size_t size_; //< total storage (bytes) used

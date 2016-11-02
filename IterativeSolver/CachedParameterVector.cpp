@@ -4,6 +4,8 @@
 
 using namespace IterativeSolver;
 
+const static size_t s_cacheEmpty=std::numeric_limits<size_t>::max();
+
 CachedParameterVector::CachedParameterVector(size_t length) :
   m_size(length)
 {
@@ -19,7 +21,7 @@ CachedParameterVector::CachedParameterVector(const CachedParameterVector& source
 void CachedParameterVector::init()
 {
   m_file = nullptr;
-  m_cacheMax=m_cacheOffset=m_cacheEmpty=std::numeric_limits<size_t>::max();
+  m_cacheMax=m_cacheOffset=s_cacheEmpty;
   setCacheSize(0);
 }
 
@@ -28,9 +30,9 @@ void CachedParameterVector::setCacheSize(size_t length) const
   flushCache(true);
   m_cacheSize = length;
   m_cache.resize(m_cacheSize);
-  m_cacheOffset=m_cacheEmpty;
+  m_cacheOffset=s_cacheEmpty;
   m_cacheDirty=false;
-  if (m_cacheSize!=0 && m_cacheSize < m_size) m_file = new Storage(); // FIXME parallel
+  if (m_cacheSize!=0 && m_cacheSize < m_size) m_file = new Storage; // FIXME parallel
 }
 
 CachedParameterVector::~CachedParameterVector() {if (m_file != nullptr) delete m_file;}
@@ -156,7 +158,7 @@ void CachedParameterVector::put(ParameterScalar * const buffer, size_t length, s
     {
       flushCache();
       write(buffer,length,offset);
-      m_cacheOffset=m_cacheEmpty;
+      m_cacheOffset=s_cacheEmpty;
     }
   if (length+offset > m_size) m_size = length+offset;
 }
@@ -174,7 +176,7 @@ void CachedParameterVector::get(ParameterScalar *buffer, size_t length, size_t o
 
 void CachedParameterVector::flushCache(bool force) const
 {
-        if (m_cacheOffset==m_cacheEmpty) return;
+        if (m_cacheOffset==s_cacheEmpty) return;
       if (force || (m_cacheDirty && m_file != nullptr)) {
 //          std::cout << "flush Cache offset="<<m_cacheOffset<<" ,length="<<std::min(m_cacheSize,(size_t)size()-m_cacheOffset)<<std::endl;
 //          std::cout << "flush buffer begins "<<m_cache[0]<<std::endl;

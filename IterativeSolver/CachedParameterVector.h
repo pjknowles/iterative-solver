@@ -84,7 +84,6 @@ namespace IterativeSolver {
     mutable bool m_cacheDirty;
     mutable size_t m_cacheOffset;
     mutable size_t m_cacheMax;
-    size_t m_cacheEmpty;
     void flushCache(bool force=false) const;
     void write(const ParameterScalar * const buffer, size_t length, size_t offset) const;
     void read(ParameterScalar* buffer, size_t length, size_t offset) const;

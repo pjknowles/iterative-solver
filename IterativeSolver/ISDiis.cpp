@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <math.h>
 
-using namespace IterativeSolver;
+using namespace LinearAlgebra;
 
 DIIS::DIIS(const ParameterSetTransformation residualFunction, const ParameterSetTransformation updateFunction)
   : IterativeSolverBase(residualFunction, updateFunction)

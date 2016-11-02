@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <stdexcept>
 
-using namespace IterativeSolver;
+using namespace LinearAlgebra;
 
 #include <unistd.h>
 Storage::Storage(size_t lengthHint, int option)

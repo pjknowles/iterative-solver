@@ -2,7 +2,7 @@
 #include "IterativeSolver/PagedParameterVector.h"
 #include "IterativeSolver/SimpleParameterVector.h"
 
-using namespace IterativeSolver;
+using namespace LinearAlgebra;
 
 //  typedef SimpleParameterVector pv;
   typedef PagedParameterVector pv;

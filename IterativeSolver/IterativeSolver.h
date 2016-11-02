@@ -15,7 +15,7 @@ extern std::ostream &xout;
 #define xout std::cout
 #endif
 
-namespace IterativeSolver {
+namespace LinearAlgebra {
 
   /*!
  * \brief Place-holding template for residual calculation. It just returns the input as output.
@@ -65,7 +65,7 @@ namespace IterativeSolver {
    * \param residualFunction A function that evaluates the residual vectors. Used by method solve(); does not have to be provided if iterations are constructed explicitly in the calling program.
    * \param preconditionerFunction A function that applies a preconditioner to a residual to give an update. Used by methods iterate() and solve().
    */
-    IterativeSolverBase(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction=&IterativeSolver::steepestDescent);
+    IterativeSolverBase(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction=&LinearAlgebra::steepestDescent);
     virtual ~IterativeSolverBase();
   protected:
     /*!

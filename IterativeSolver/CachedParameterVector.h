@@ -13,7 +13,7 @@
 #include <mpi.h>
 #endif
 
-namespace IterativeSolver {
+namespace LinearAlgebra {
 
   /*!
    * \brief A class that implements ParameterVector with data held on backing store

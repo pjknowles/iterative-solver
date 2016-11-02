@@ -2,7 +2,7 @@
 #define RSPT_H
 #include "IterativeSolver.h"
 
-namespace IterativeSolver{
+namespace LinearAlgebra{
 
   /** @example RSPTexample.cpp */
   /*!
@@ -20,7 +20,7 @@ class RSPT : public IterativeSolverBase
    * \param preconditionerFunction A function that applies a preconditioner to a residual to give an update. Used by methods iterate() and solve().
    * Also used to construct the action of H0 if the shift parameter is zero.
      */
-    RSPT(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction=&IterativeSolver::steepestDescent);
+    RSPT(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction=&LinearAlgebra::steepestDescent);
     static void test (size_t n, double alpha);
   protected:
     virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());

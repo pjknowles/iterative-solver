@@ -1,6 +1,6 @@
 #include "ISRSPT.h"
 #include <stdexcept>
-using namespace IterativeSolver;
+using namespace LinearAlgebra;
 
 RSPT::RSPT(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction)
   : IterativeSolverBase(residualFunction, preconditionerFunction)

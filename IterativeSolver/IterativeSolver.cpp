@@ -3,7 +3,7 @@
 #include <numeric>
 #include <stdexcept>
 
-using namespace IterativeSolver;
+using namespace LinearAlgebra;
 
 IterativeSolverBase::IterativeSolverBase(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction)
   :  m_preconditionerFunction(preconditionerFunction),

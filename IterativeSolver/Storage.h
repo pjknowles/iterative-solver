@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <fstream>
 
-namespace IterativeSolver {
+namespace LinearAlgebra {
 
 /*!
  * \brief The Storage class provides auxiliary storage (usually on an external file) for

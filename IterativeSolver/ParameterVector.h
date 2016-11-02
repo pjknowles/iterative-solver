@@ -8,7 +8,7 @@
 #include <iostream>
 #include <stdexcept>
 
-namespace IterativeSolver {
+namespace LinearAlgebra {
   typedef double ParameterScalar;
 
   /*!

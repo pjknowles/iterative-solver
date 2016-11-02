@@ -1,6 +1,6 @@
 #include "ISDavidson.h"
 #include <stdexcept>
-using namespace IterativeSolver;
+using namespace LinearAlgebra;
 
 Davidson::Davidson(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction)
   : IterativeSolverBase(residualFunction, preconditionerFunction)

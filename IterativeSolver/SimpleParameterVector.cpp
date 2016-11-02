@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <iostream>
 
-using namespace IterativeSolver;
+using namespace LinearAlgebra;
 
 SimpleParameterVector::SimpleParameterVector(size_t length) :
   m_buffer(length)

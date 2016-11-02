@@ -3,7 +3,7 @@
 
 #include "IterativeSolver.h"
 
-namespace IterativeSolver {
+namespace LinearAlgebra {
 
   /** @example DIISexample.cpp */
   /*!
@@ -21,7 +21,7 @@ namespace IterativeSolver {
                        };
     /*!
    */
-    DIIS(const ParameterSetTransformation residualFunction, const ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent);
+    DIIS(const ParameterSetTransformation residualFunction, const ParameterSetTransformation updateFunction=&LinearAlgebra::steepestDescent);
     ~DIIS();
     /*!
    * \brief Set options for DIIS.
@@ -98,7 +98,7 @@ namespace IterativeSolver {
   class KAIN : public DIIS
   {
   public:
-    KAIN(const ParameterSetTransformation residualFunction=&IterativeSolver::noOp, const ParameterSetTransformation updateFunction=&IterativeSolver::steepestDescent)
+    KAIN(const ParameterSetTransformation residualFunction=&LinearAlgebra::noOp, const ParameterSetTransformation updateFunction=&LinearAlgebra::steepestDescent)
       : DIIS(residualFunction,updateFunction) { setMode(KAINmode);}
 //    void setMode( enum DIISmode_type mode=KAINmode)
 //    { DIIS::setMode(mode); }

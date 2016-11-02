@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <string.h>
 
-using namespace IterativeSolver;
+using namespace LinearAlgebra;
 
 PagedParameterVector::PagedParameterVector(size_t length) :
   m_size(length)

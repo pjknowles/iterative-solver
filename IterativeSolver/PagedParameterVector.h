@@ -3,7 +3,7 @@
 #include "ParameterVector.h"
 #include "Storage.h"
 
-namespace IterativeSolver {
+namespace LinearAlgebra {
 
   /*!
    * \brief A class that implements ParameterVector with data held on backing store

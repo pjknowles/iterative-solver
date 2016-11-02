@@ -3,7 +3,7 @@
 #include "IterativeSolver.h"
 
 
-namespace IterativeSolver{
+namespace LinearAlgebra{
 
   /** @example DavidsonExample.cpp */
   /*!
@@ -15,7 +15,7 @@ namespace IterativeSolver{
   class Davidson : public IterativeSolverBase
   {
   public:
-    Davidson(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction=&IterativeSolver::steepestDescent);
+    Davidson(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction=&LinearAlgebra::steepestDescent);
     static void test(size_t dimension, size_t roots=1, int verbosity=0, int problem=0, bool orthogonalize=true);
   protected:
     virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());

@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <string.h>
 
-using namespace IterativeSolver;
+using namespace LinearAlgebra;
 
 const static size_t s_cacheEmpty=std::numeric_limits<size_t>::max();
 

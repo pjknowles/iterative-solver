@@ -2,7 +2,7 @@
 #define SIMPLEPARAMETERVECTOR_H
 #include "ParameterVector.h"
 
-namespace IterativeSolver {
+namespace LinearAlgebra {
 
   /*!
    * \brief An implementation of ParameterVector that uses std::vector to store all data.

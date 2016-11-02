@@ -77,7 +77,7 @@ namespace IterativeSolver {
    * \brief The file to hold the data
    */
     bool m_replicated; //!< whether a full copy of data is on every MPI process
-    mutable Storage* m_file;
+    mutable Storage* m_file; //!< backing store. If nullptr, this means that a file is not being used and everything is in m_cache
     size_t m_size; //!< How much data
     mutable size_t m_cacheSize; //!< cache size for implementing operations
     mutable std::vector<ParameterScalar> m_cache;

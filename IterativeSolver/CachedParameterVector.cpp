@@ -30,7 +30,7 @@ void CachedParameterVector::setCacheSize(size_t length) const
   m_cache.resize(m_cacheSize);
   m_cacheOffset=m_cacheEmpty;
   m_cacheDirty=false;
-  if (m_cacheSize!=0 && m_cacheSize < m_size) m_file = new Storage();
+  if (m_cacheSize!=0 && m_cacheSize < m_size) m_file = new Storage(); // FIXME parallel
 }
 
 CachedParameterVector::~CachedParameterVector() {if (m_file != nullptr) delete m_file;}
@@ -48,7 +48,7 @@ CachedParameterVector& CachedParameterVector::operator=(const CachedParameterVec
     }
     } else {
         (*this)[0] = other[0]; // to ensure cache initialisation
-    if (m_cacheSize >= m_size && other.m_cacheSize >= other.m_size)
+    if (m_file == nullptr && other.m_file == nullptr)
       for (size_t k=1; k<m_size; k++)
         m_cache[k] = other.m_cache[k];
     else
@@ -78,7 +78,7 @@ void CachedParameterVector::axpy(ParameterScalar a, const ParameterVector* other
         for (size_t k=0; k<bs; k++) (*this)[k+block] += a*buffero[k];
     }
     } else {
-      if (m_cacheSize >= m_size && othe->m_cacheSize >= othe->m_size)
+      if (m_file == nullptr && othe->m_file == nullptr)
         for (size_t k=0; k<m_size; k++) this->m_cache[k] += a*othe->m_cache[k];
       else
         for (size_t k=0; k<m_size; k++) (*this)[k] += a*(*othe)[k];
@@ -116,7 +116,7 @@ ParameterScalar CachedParameterVector::dot(const ParameterVector *other) const
       for (size_t k=0; k<bs; k++) result += buffer[k] * buffero[k];
     }
     } else {
-      if (m_cacheSize >= m_size && othe->m_cacheSize >= othe->m_size)
+      if (m_file == nullptr && othe->m_file == nullptr)
         for (size_t k=0; k<m_size; k++)
           result += m_cache[k] * othe->m_cache[k];
       else
@@ -128,7 +128,7 @@ ParameterScalar CachedParameterVector::dot(const ParameterVector *other) const
 
 void CachedParameterVector::scal(ParameterScalar a)
 {
-  if (m_cacheSize >= m_size)
+  if (m_file == nullptr)
     for (size_t k=0; k<m_size; k++)
       m_cache[k] *= a;
   else
@@ -150,7 +150,7 @@ std::string CachedParameterVector::str() const {
 
 void CachedParameterVector::put(ParameterScalar * const buffer, size_t length, size_t offset)
 {
-  if (std::max(m_size,length+offset) <= m_cacheSize) {
+  if (std::max(m_size,length+offset) <= m_cacheSize) { // FIXME parallel
       for (size_t k=0; k<length; k++) m_cache[k+offset] = buffer[k];
     } else
     {
@@ -163,7 +163,7 @@ void CachedParameterVector::put(ParameterScalar * const buffer, size_t length, s
 
 void CachedParameterVector::get(ParameterScalar *buffer, size_t length, size_t offset) const
 {
-  if (m_size <= m_cacheSize) {
+  if (m_file == nullptr) {
       for (size_t k=0; k<length; k++) buffer[k] = m_cache[k+offset];
     } else
     {
@@ -175,7 +175,7 @@ void CachedParameterVector::get(ParameterScalar *buffer, size_t length, size_t o
 void CachedParameterVector::flushCache(bool force) const
 {
         if (m_cacheOffset==m_cacheEmpty) return;
-      if (force || (m_cacheDirty && m_cacheSize < m_size)) {
+      if (force || (m_cacheDirty && m_file != nullptr)) {
 //          std::cout << "flush Cache offset="<<m_cacheOffset<<" ,length="<<std::min(m_cacheSize,(size_t)size()-m_cacheOffset)<<std::endl;
 //          std::cout << "flush buffer begins "<<m_cache[0]<<std::endl;
           write(&m_cache[0],std::min(m_cacheSize,m_size-m_cacheOffset),m_cacheOffset);

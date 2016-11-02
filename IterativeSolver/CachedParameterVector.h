@@ -9,6 +9,10 @@
 #define nullptr NULL
 #endif
 
+#ifdef USE_MPI
+#include <mpi.h>
+#endif
+
 namespace IterativeSolver {
 
   /*!
@@ -60,13 +64,19 @@ namespace IterativeSolver {
      * \param length
      */
     void setCacheSize(size_t length) const;
+    /*!
+     * \brief Whether a full copy of data is replicated on every MPI process
+     * \return
+     */
+    bool replicated() const;
+    void setReplicated(bool replicated) const;
 
   private:
     void init();
     /*!
    * \brief The file to hold the data
    */
-//    mutable std::fstream m_file;
+    bool m_replicated; //!< whether a full copy of data is on every MPI process
     mutable Storage* m_file;
     size_t m_size; //!< How much data
     mutable size_t m_cacheSize; //!< cache size for implementing operations

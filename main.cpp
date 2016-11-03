@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 //  IterativeSolver::PagedParameterVector y(n), z(n);
 //  IterativeSolver::SimpleParameterVector y(n), z(n);
 //  y.setCacheSize(n*1);z.setCacheSize(n*1);
-  y.setCacheSize(n-1);z.setCacheSize(n-1);
+//  y.setCacheSize(n-1);z.setCacheSize(n-1);
 //  y.setCacheSize(10000);z.setCacheSize(10000);
   y.zero();
   z.zero();
@@ -51,7 +51,8 @@ int main(int argc, char *argv[])
     y=z;
 //    y.axpy(2.0,&z);
     }
-  xout << "time="<<(std::clock()-start)/(double) CLOCKS_PER_SEC<<std::endl;
+  double t= (std::clock()-start)/(double) CLOCKS_PER_SEC;
+  xout << "time="<<t<<"s, rate="<<1e-9*repeat*n/t<<"G/s"<<std::endl;
   if (false) {
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.2,0.0);

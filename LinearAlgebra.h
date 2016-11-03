@@ -32,6 +32,8 @@ namespace LinearAlgebra {
    * class that does provide real implementations of these methods. Similarly, a dummy str()
    * virtual method is provided, which can be accessed through the << operator with the intention
    * of providing a printable representation of the object.
+   *
+   *  \tparam scalar Type of the elements of the vector.
    */
   template<class scalar>
   class vector

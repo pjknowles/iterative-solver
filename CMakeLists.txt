@@ -23,7 +23,7 @@ else()
 endif()
 
 aux_source_directory(IterativeSolver SRC_LIST)
-set(SRC_LIST ${SRC_LIST} IterativeSolver/ParameterVector.h IterativeSolver/IterativeSolverF.F90)
+set(SRC_LIST ${SRC_LIST} IterativeSolver/LinearAlgebra.h IterativeSolver/ParameterVector.h IterativeSolver/IterativeSolverF.F90)
 include_directories(Eigen .)
 add_library (${PROJECT_NAME} ${SRC_LIST})
 

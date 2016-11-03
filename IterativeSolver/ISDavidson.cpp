@@ -35,15 +35,15 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
     }
 
   m_updateShift.resize(m_roots);
-  for (size_t root=0; root<(size_t)m_roots; root++) m_updateShift[root]=-(1+std::numeric_limits<double>::epsilon())*m_subspaceEigenvalues[root].real();
+  for (size_t root=0; root<(size_t)m_roots; root++) m_updateShift[root]=-(1+std::numeric_limits<scalar>::epsilon())*m_subspaceEigenvalues[root].real();
 }
 
 void Davidson::report()
 {
-  std::vector<double> ev=eigenvalues();
+  std::vector<scalar> ev=eigenvalues();
       if (m_verbosity>0) {
         xout << "iteration "<<iterations()<<", error["<<m_worst<<"] = "<<m_error
-             << ", eigenvalues: "; for (std::vector<double>::const_iterator e=ev.begin(); e!=ev.end(); e++) xout<<" "<<*e;xout<<std::endl;
+             << ", eigenvalues: "; for (std::vector<scalar>::const_iterator e=ev.begin(); e!=ev.end(); e++) xout<<" "<<*e;xout<<std::endl;
         }
 }
 
@@ -52,7 +52,7 @@ void Davidson::report()
 #include "SimpleParameterVector.h"
 static Eigen::MatrixXd testmatrix;
 
-static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) {
   for (size_t k=0; k<psx.size(); k++) {
       Eigen::VectorXd x(testmatrix.rows());
       if (psx[k]->size() != (size_t)testmatrix.rows()) throw std::logic_error("psx wrong size");
@@ -63,10 +63,10 @@ static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outpu
     }
 }
 
-static void _preconditoner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift, bool append=true) {
+static void _preconditoner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<scalar> shift, bool append=true) {
   size_t n=testmatrix.rows();
-  std::vector<ParameterScalar> psck(n);
-  std::vector<ParameterScalar> psgk(n);
+  std::vector<scalar> psck(n);
+  std::vector<scalar> psgk(n);
   for (size_t k=0; k<psc.size(); k++) {
       psg[k]->get(&psgk[0],n,0);
       if (not append) psc.zero();
@@ -103,7 +103,7 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem, 
   for (size_t root=0; root<(size_t)d.m_roots; root++) {
       ptype* xx=new ptype(dimension);
       xx->zero();
-      double one=1; xx->put(&one,1,root);
+      scalar one=1; xx->put(&one,1,root);
       x.push_back_clone(xx);
       ptype* gg=new ptype(dimension);
       g.push_back_clone(gg);
@@ -114,17 +114,17 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem, 
 
   d.solve(g,x);
 
-  std::vector<double> ev=d.eigenvalues();
-  xout << "Eigenvalues: "; for (std::vector<double>::const_iterator e=ev.begin(); e!=ev.end(); e++) xout<<" "<<*e;xout<<std::endl;
-  xout << "Reported errors: "; for (std::vector<double>::const_iterator e=d.m_errors.begin(); e!=d.m_errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
+  std::vector<scalar> ev=d.eigenvalues();
+  xout << "Eigenvalues: "; for (std::vector<scalar>::const_iterator e=ev.begin(); e!=ev.end(); e++) xout<<" "<<*e;xout<<std::endl;
+  xout << "Reported errors: "; for (std::vector<scalar>::const_iterator e=d.m_errors.begin(); e!=d.m_errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
 
   _residual(g,x);
-  std::vector<double> errors;
+  std::vector<scalar> errors;
   for (size_t root=0; root<(size_t)d.m_roots; root++) {
       g[root]->axpy(-ev[root],x[root]);
       errors.push_back(g[root]->dot(g[root]));
     }
-  xout << "Square residual norms: "; for (std::vector<double>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
+  xout << "Square residual norms: "; for (std::vector<scalar>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
   // be noisy about obvious problems
   if (*std::max_element(errors.begin(),errors.end())>1e-7) throw std::runtime_error("IterativeSolver::Davidson has failed tests");
 

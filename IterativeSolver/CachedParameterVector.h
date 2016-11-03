@@ -1,7 +1,7 @@
 #ifndef CACHEDPARAMETERVECTOR_H
 #define CACHEDPARAMETERVECTOR_H
 
-#include "ParameterVector.h"
+#include "LinearAlgebra.h"
 #include "Storage.h"
 #include <algorithm>
 #include <limits>
@@ -13,6 +13,8 @@
 #include <mpi.h>
 #endif
 
+typedef double ParameterScalar;
+typedef LinearAlgebra::vector<ParameterScalar> ParameterVector;
 namespace LinearAlgebra {
 
   /*!

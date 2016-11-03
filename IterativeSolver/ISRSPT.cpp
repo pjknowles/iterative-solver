@@ -112,7 +112,7 @@ double RSPT::energy(size_t order, size_t state)
     }
     SimpleParameterVector guess()
     {
-      std::vector<ParameterScalar> r(m_n);
+      std::vector<scalar> r(m_n);
       SimpleParameterVector result(m_n);
       for (size_t k=0; k<m_n; k++)
         r[k]=0;
@@ -125,11 +125,11 @@ double RSPT::energy(size_t order, size_t state)
 
   static rsptpot *instance;
 
-    static void _rsptpot_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+    static void _rsptpot_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) {
 //        xout << "rsptpot_residual"<<std::endl;
 //        xout << "input "<<psx<<std::endl;
-      std::vector<ParameterScalar> psxk(instance->m_n);
-      std::vector<ParameterScalar> output(instance->m_n);
+      std::vector<scalar> psxk(instance->m_n);
+      std::vector<scalar> output(instance->m_n);
       psx.front()->get(&(psxk[0]),instance->m_n,0);
       if (append)
         outputs.front()->get(&(output[0]),instance->m_n,0);
@@ -144,12 +144,12 @@ double RSPT::energy(size_t order, size_t state)
         outputs.front()->put(&(output[0]),instance->m_n,0);
 //        xout << "output "<<outputs<<std::endl;
     }
-    static void _rsptpot_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+    static void _rsptpot_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) {
 //        xout << "preconditioner input="<<psg<<std::endl;
 //      if (shift.front()==0)
 //          xout << "H0 not resolvent"<<std::endl;
-      std::vector<ParameterScalar> psck(instance->m_n);
-      std::vector<ParameterScalar> psgk(instance->m_n);
+      std::vector<scalar> psck(instance->m_n);
+      std::vector<scalar> psgk(instance->m_n);
       psg.front()->get(&psgk[0],instance->m_n,0);
       if (shift.front()==0)
           for (size_t i=0; i<instance->m_n; i++)

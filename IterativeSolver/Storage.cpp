@@ -4,10 +4,8 @@
 #include <cstring>
 #include <cstdlib>
 #include <stdexcept>
-
-using namespace LinearAlgebra;
-
 #include <unistd.h>
+
 Storage::Storage(size_t lengthHint, int option)
 {
   char *tmpname=strdup("tmpfileXXXXXX");

@@ -150,10 +150,10 @@ void DIIS::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solut
 
 // testing code below here
 #include "SimpleParameterVector.h"
-static void _Rosenbrock_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+static void _Rosenbrock_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) {
   size_t n=2;
-  std::vector<ParameterScalar> psxk(n);
-  std::vector<ParameterScalar> output(n);
+  std::vector<scalar> psxk(n);
+  std::vector<scalar> output(n);
 
   if (not append) outputs.front()->zero();
   outputs.front()->get(&(psxk[0]),n,0);
@@ -162,10 +162,10 @@ static void _Rosenbrock_residual(const ParameterVectorSet & psx, ParameterVector
   outputs.front()->put(&(psxk[0]),n,0);
 }
 
-static void _Rosenbrock_updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift, bool append=true) {
+static void _Rosenbrock_updater(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<scalar> shift, bool append=true) {
   size_t n=2;
-  std::vector<ParameterScalar> psck(n);
-  std::vector<ParameterScalar> psgk(n);
+  std::vector<scalar> psck(n);
+  std::vector<scalar> psgk(n);
   psg.front()->get(&psgk[0],n,0);
   if (append) {
       psc.front()->get(&psck[0],n,0);
@@ -194,7 +194,7 @@ void DIIS::test(int verbosity,
   if (verbosity>=0) xout << "Test DIIS::iterate, difficulty="<<difficulty<<std::endl;
   d.Reset();
   d.m_verbosity=verbosity-1;
-  std::vector<ParameterScalar> xxx(2);
+  std::vector<scalar> xxx(2);
   xxx[0]=xxx[1]=1-difficulty; // initial guess
   xx.put(&xxx[0],2,0);
   xout << "initial guess"<<x[0]<<std::endl;
@@ -245,7 +245,7 @@ void DIIS::test(int verbosity,
     }
     SimpleParameterVector guess()
     {
-      std::vector<ParameterScalar> r(m_n);
+      std::vector<scalar> r(m_n);
       SimpleParameterVector result(m_n);
       double value=0.3;
       for (size_t k=0; k<m_n; k++) {
@@ -259,9 +259,9 @@ void DIIS::test(int verbosity,
 
   static anharmonic instance;
 
-    static void _anharmonic_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
-      std::vector<ParameterScalar> psxk(instance.m_n);
-      std::vector<ParameterScalar> output(instance.m_n);
+    static void _anharmonic_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) {
+      std::vector<scalar> psxk(instance.m_n);
+      std::vector<scalar> output(instance.m_n);
       psx.front()->get(&(psxk[0]),instance.m_n,0);
       if (append)
         outputs.front()->get(&(output[0]),instance.m_n,0);
@@ -275,9 +275,9 @@ void DIIS::test(int verbosity,
         }
       outputs.front()->put(&output[0],instance.m_n,0);
     }
-    static void _anharmonic_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
-      std::vector<ParameterScalar> psck(instance.m_n);
-      std::vector<ParameterScalar> psgk(instance.m_n);
+    static void _anharmonic_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) {
+      std::vector<scalar> psck(instance.m_n);
+      std::vector<scalar> psgk(instance.m_n);
       psg.front()->get(&psgk[0],instance.m_n,0);
       if (append) {
           psc.front()->get(&psck[0],instance.m_n,0);

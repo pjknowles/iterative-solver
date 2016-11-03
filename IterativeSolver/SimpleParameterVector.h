@@ -1,11 +1,14 @@
 #ifndef SIMPLEPARAMETERVECTOR_H
 #define SIMPLEPARAMETERVECTOR_H
-#include "ParameterVector.h"
+#include "LinearAlgebra.h"
 
 namespace LinearAlgebra {
 
+  typedef double ParameterScalar;
+  typedef LinearAlgebra::vector<ParameterScalar> ParameterVector;
+
   /*!
-   * \brief An implementation of ParameterVector that uses std::vector to store all data.
+   * \brief An implementation of LinearAlgebra::vector that uses std::vector to store all data.
    */
   class SimpleParameterVector : public ParameterVector
   {

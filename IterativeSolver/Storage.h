@@ -4,8 +4,6 @@
 #include <cstddef>
 #include <fstream>
 
-namespace LinearAlgebra {
-
 /*!
  * \brief The Storage class provides auxiliary storage (usually on an external file) for
  * iterative solvers.
@@ -42,7 +40,5 @@ private:
   mutable std::fstream m_file;
   size_t size_; //< total storage (bytes) used
 };
-
-}
 
 #endif // STORAGE_H

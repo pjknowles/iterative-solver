@@ -7,7 +7,7 @@
 #include <map>
 #include <algorithm>
 #include <numeric>
-#include "ParameterVector.h"
+#include "LinearAlgebra.h"
 #include <Eigen/Dense>
 #ifdef MOLPRO
 extern std::ostream &xout;
@@ -17,6 +17,9 @@ extern std::ostream &xout;
 
 namespace LinearAlgebra {
 
+  typedef double scalar;
+  typedef vector<scalar> ParameterVector;
+  typedef vectorSet<scalar> ParameterVectorSet;
   /*!
  * \brief Place-holding template for residual calculation. It just returns the input as output.
  * \param inputs The parameters.
@@ -24,7 +27,7 @@ namespace LinearAlgebra {
  * \param shift
  * \param append Whether to add the result to the original content of outputs
  */
-  inline void noOp(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) { if (append) outputs=inputs; }
+  inline void noOp(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) { if (append) outputs=inputs; }
   /*!
  * \brief Place-holding template for update calculation. It just returns the input as output.
  * \param inputs The parameters.
@@ -32,7 +35,7 @@ namespace LinearAlgebra {
  * \param outputs On output, contains the corresponding residual vectors.
  * \param shift
  */
-  inline void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=true) {
+  inline void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=true) {
     if (not append) outputs.zero();
     for (size_t k=0; k<inputs.size(); k++)
       outputs[k]->axpy(-1,inputs[k]);
@@ -59,7 +62,7 @@ namespace LinearAlgebra {
   class IterativeSolverBase
   {
   protected:
-    typedef void (*ParameterSetTransformation)(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift, bool append);
+    typedef void (*ParameterSetTransformation)(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<scalar> shift, bool append);
     /*!
    * \brief IterativeSolverBase
    * \param residualFunction A function that evaluates the residual vectors. Used by method solve(); does not have to be provided if iterations are constructed explicitly in the calling program.
@@ -141,7 +144,7 @@ namespace LinearAlgebra {
     std::vector<ParameterVectorSet> m_others;
     std::vector<int> m_dateOfBirth;
     size_t m_lastVectorIndex;
-    std::vector<ParameterScalar> m_updateShift;
+    std::vector<scalar> m_updateShift;
     Eigen::MatrixXd m_subspaceMatrix;
     Eigen::MatrixXd m_subspaceOverlap;
     Eigen::MatrixXcd m_subspaceEigenvectors;

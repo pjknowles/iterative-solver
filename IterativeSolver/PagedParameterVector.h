@@ -1,6 +1,6 @@
 #ifndef PAGEDPARAMETERVECTOR_H
 #define PAGEDPARAMETERVECTOR_H
-#include "ParameterVector.h"
+#include "LinearAlgebra.h"
 #include "Storage.h"
 
 namespace LinearAlgebra {
@@ -8,6 +8,8 @@ namespace LinearAlgebra {
   /*!
    * \brief A class that implements ParameterVector with data held on backing store
    */
+  typedef double ParameterScalar;
+  typedef LinearAlgebra::vector<ParameterScalar> ParameterVector;
   class PagedParameterVector : public ParameterVector
   {
   public:

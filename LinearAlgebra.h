@@ -120,7 +120,7 @@ namespace LinearAlgebra {
     virtual void get(scalar* buffer, size_t length, size_t offset) const
     { throw std::logic_error("Unimplemented function"); }
 
-    virtual scalar& operator[](size_t pos) const
+    virtual const scalar& operator[](size_t pos) const
     { throw std::logic_error("Unimplemented function"); }
     virtual scalar& operator[](size_t pos)
     { return const_cast<scalar&> (static_cast<const vector*> (this)->operator[](pos)); }

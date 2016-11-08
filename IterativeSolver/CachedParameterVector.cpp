@@ -12,7 +12,8 @@ CachedParameterVector::CachedParameterVector(size_t length) :
     init();
 }
 
-CachedParameterVector::CachedParameterVector(const CachedParameterVector& source)
+CachedParameterVector::CachedParameterVector(const CachedParameterVector& source) :
+  LinearAlgebra::vector<double>()
 {
     init();
     *this = source;
@@ -189,7 +190,7 @@ void CachedParameterVector::write(const ParameterScalar* const buffer, size_t le
 {
 //  std::cout << "write "<<length<<std::endl;
   if (m_file == nullptr) m_file = new Storage();
-  m_file->write((char*) buffer,length*sizeof(ParameterScalar),address*sizeof(ParameterScalar));
+  m_file->write((const char*) buffer,length*sizeof(ParameterScalar),address*sizeof(ParameterScalar));
 }
 
 void CachedParameterVector::read(ParameterScalar* buffer, size_t length, size_t address) const

@@ -17,7 +17,7 @@ public:
    * \param option An implementation-dependent parameter that controls operation
    */
   Storage(size_t lengthHint=0, int option=0);
-  ~Storage();
+  virtual ~Storage();
   /*!
    * \brief Write data to the store.
    * \param buffer Provides the data to be written.

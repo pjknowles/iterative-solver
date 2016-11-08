@@ -5,12 +5,14 @@
 using namespace LinearAlgebra;
 
 PagedParameterVector::PagedParameterVector(size_t length) :
+  ParameterVector(),
   m_size(length)
 {
     init();
 }
 
-PagedParameterVector::PagedParameterVector(const PagedParameterVector& source)
+PagedParameterVector::PagedParameterVector(const PagedParameterVector& source) :
+  ParameterVector()
 {
     init();
     *this = source;

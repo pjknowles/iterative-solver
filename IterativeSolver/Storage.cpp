@@ -24,7 +24,7 @@ Storage::~Storage()
 void Storage::write(const char *buffer, size_t length, size_t address)
 {
   m_file.seekg(address);//,std::ios::beg);
-  m_file.write((char*) buffer,length);
+  m_file.write((const char*) buffer,length);
   if (length+address > size_) size_ = length+address;
 }
 

@@ -93,7 +93,7 @@ namespace LinearAlgebra {
     void put(ParameterScalar* const buffer, size_t length, size_t offset);
     void get(ParameterScalar* buffer, size_t length, size_t offset) const;
 
-    ParameterScalar& operator[](size_t pos) const
+    const ParameterScalar& operator[](size_t pos) const
     {
       if (pos >= m_cacheMax || pos < m_cacheOffset) { // cache not mapping right sector
           if (m_cacheSize==0) setCacheSize(m_size); // if no setCacheSize() has been issued, then the default is all in memory

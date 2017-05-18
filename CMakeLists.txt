@@ -24,7 +24,10 @@ endif()
 
 aux_source_directory(IterativeSolver SRC_LIST)
 set(SRC_LIST ${SRC_LIST} LinearAlgebra.h IterativeSolver/IterativeSolverF.F90)
-include_directories(Eigen .)
+#find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+find_package (Eigen3 3.3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
+
 add_library (${PROJECT_NAME} ${SRC_LIST})
 
 add_executable(${PROJECT_NAME}-test main.cpp)

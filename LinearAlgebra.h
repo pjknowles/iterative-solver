@@ -96,10 +96,11 @@ namespace LinearAlgebra {
     /*!
      * \brief Make a printable representation of the object
      * (optional implementation).
+     * \param verbosity How much to print
      * \return
      */
+    virtual std::string str(int verbosity=0) const {return "";}
 
-    virtual std::string str() const {return "";}
     /*!
      * \brief Set some of the object's data.
      * (optional implementation).

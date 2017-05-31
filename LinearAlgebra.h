@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_H
 
 #include <cstddef>
+#include <climits>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -99,7 +100,7 @@ namespace LinearAlgebra {
      * \param verbosity How much to print
      * \return
      */
-    virtual std::string str(int verbosity=0) const {return "";}
+    virtual std::string str(int verbosity=0, unsigned int columns=UINT_MAX) const {return "";}
 
     /*!
      * \brief Set some of the object's data.

@@ -19,6 +19,7 @@ namespace LinearAlgebra{
     static void test(size_t dimension, size_t roots=1, int verbosity=0, int problem=0, bool orthogonalize=true);
   protected:
     virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());
+    virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, const optionMap options=optionMap()) { ParameterVectorSet other; extrapolate(residual,solution,other,options); }
     virtual void report();
     Davidson();
   };

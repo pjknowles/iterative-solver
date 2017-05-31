@@ -24,6 +24,7 @@ class RSPT : public IterativeSolverBase
     static void test (size_t n, double alpha);
   protected:
     virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());
+    virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, const optionMap options=optionMap()) { ParameterVectorSet other; extrapolate(residual,solution,other,options); }
   public:
     int m_order; ///< Up to what order of perturbation theory should the energy be obtained.
     std::vector<double> incremental_energies(size_t state=0) {return m_incremental_energies;} ///< The incremental energies order by order.

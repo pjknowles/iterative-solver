@@ -75,7 +75,7 @@ namespace LinearAlgebra {
     void put(ParameterScalar* const buffer, size_t length, size_t offset);
     void get(ParameterScalar* buffer, size_t length, size_t offset) const;
     size_t size() const;
-    std::string str() const;
+    std::string str(int verbosity=0, unsigned int columns=UINT_MAX) const;
   };
 
 }

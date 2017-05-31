@@ -97,7 +97,8 @@ namespace LinearAlgebra {
     /*!
      * \brief Make a printable representation of the object
      * (optional implementation).
-     * \param verbosity How much to print
+     * \param verbosity How much to print.
+     * \param columns Page width.
      * \return
      */
     virtual std::string str(int verbosity=0, unsigned int columns=UINT_MAX) const {return "";}

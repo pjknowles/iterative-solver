@@ -117,7 +117,7 @@ namespace LinearAlgebra {
     }
 
     size_t size() const {return m_size;}
-    std::string str() const;
+    std::string str(int verbosity=0, unsigned int columns=UINT_MAX) const;
   };
 
 }

@@ -61,7 +61,7 @@ void SimpleParameterVector::get(ParameterScalar *buffer, size_t length, size_t o
 
 size_t SimpleParameterVector::size() const { return this->m_buffer.size();}
 
-std::string SimpleParameterVector::str() const {
+std::string SimpleParameterVector::str(int verbosity, unsigned int columns) const {
     std::ostringstream os; os << "SimpleParameterVector object:";
     for (size_t k=0; k<size(); k++)
         os <<" "<< m_buffer[k];

@@ -103,7 +103,7 @@ void PagedParameterVector::scal(ParameterScalar a)
 
 size_t PagedParameterVector::size() const { return m_size;}
 
-std::string PagedParameterVector::str() const {
+std::string PagedParameterVector::str(int verbosity, unsigned int columns) const {
     std::ostringstream os; os << "PagedParameterVector object:";
     std::vector<ParameterScalar> buffer(m_cacheSize);
     for (size_t block=0; block<m_size; block+=buffer.size()) {

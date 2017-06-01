@@ -265,6 +265,6 @@ void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, co
 std::vector<double> IterativeSolverBase::eigenvalues()
 {
   std::vector<double> result;
-  for (unsigned int root=0; root<(size_t)m_roots && root < m_subspaceEigenvalues.rows(); root++) result.push_back(m_subspaceEigenvalues[root].real());
+  for (size_t root=0; root<(size_t)m_roots && root < (size_t)m_subspaceEigenvalues.rows(); root++) result.push_back(m_subspaceEigenvalues[root].real());
   return result;
 }

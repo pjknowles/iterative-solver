@@ -17,7 +17,7 @@ namespace LinearAlgebra {
    *
    * Concrete implementations should implement all of the virtual public methods, together with ensuring
    * that the
-   * copy operator=() performs a deep copy to make a completely independent clone.
+   * copy operator=() and the copy constructor perform a deep copy to make a completely independent clone.
    * They must also define a copy method exactly as follows.
    * @code
    *      DerivedVector* clone() const { return new DerivedVector(*this); }

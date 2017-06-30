@@ -139,7 +139,7 @@ void CachedParameterVector::scal(ParameterScalar a)
       (*this)[k] *= a;
 }
 
-std::string CachedParameterVector::str() const {
+std::string CachedParameterVector::str(int verbosity, unsigned int columns) const {
     std::ostringstream os; os << "CachedParameterVector object:";
     flushCache();
 //    std::cout << "@ in str, m_cacheDirty="<<m_cacheDirty<<std::endl;

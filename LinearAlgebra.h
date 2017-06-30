@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iostream>
 #include <stdexcept>
+#include <memory>
 
 namespace LinearAlgebra {
 
@@ -175,15 +176,17 @@ namespace LinearAlgebra {
         }
     }
 
+//    typedef std::shared_ptr<vector<scalar> > pv_t;
+    typedef vector<scalar> * pv_t;
     ~vectorSet<scalar>() { while(m_pvs.size()>0) m_pvs.pop_back();}
     size_t size() const { return this->m_pvs.size();}
-    vector<scalar>* operator[](size_t pos) { return m_pvs[pos];}
-    const vector<scalar>* operator[](size_t pos) const { return m_pvs[pos];}
-    vector<scalar>* front() { return (m_pvs.front());}
-    const vector<scalar>* front() const { return (m_pvs.front());}
-    vector<scalar>* back() { return (m_pvs.back());}
-    const vector<scalar>* back() const { return (m_pvs.back());}
-    void push_back(vector<scalar>* val)
+    pv_t operator[](size_t pos) { return m_pvs[pos];}
+    const pv_t operator[](size_t pos) const { return m_pvs[pos];}
+    pv_t front() { return (m_pvs.front());}
+    const pv_t front() const { return (m_pvs.front());}
+    pv_t back() { return (m_pvs.back());}
+    const pv_t back() const { return (m_pvs.back());}
+    void push_back(pv_t val)
     {
       m_pvs.push_back(val);
       m_owned.push_back(false);
@@ -229,7 +232,7 @@ namespace LinearAlgebra {
     std::vector<bool> m_active;
   private:
     std::vector<bool> m_owned; ///< whether the vector objects pointed to are owned by this container (and therefore destroyed in the destructor)
-    std::vector<vector<scalar>*> m_pvs; // contain pointers to support polymorphism
+    std::vector<pv_t> m_pvs; // contain pointers to support polymorphism
   };
 
   template <class scalar>

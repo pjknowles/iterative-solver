@@ -31,17 +31,18 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${EIGEN3_INCLUDE_DIR})
 
 add_library (${PROJECT_NAME} ${SRC_LIST})
 
+enable_testing()
 add_executable(${PROJECT_NAME}-test main.cpp)
 target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
+add_test(${PROJECT_NAME}-test ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-test ${fil})
 
-add_executable(${PROJECT_NAME}-DIISexample examples/DIISexample.cpp)
-target_link_libraries(${PROJECT_NAME}-DIISexample ${PROJECT_NAME})
-
-add_executable(${PROJECT_NAME}-RSPTexample examples/RSPTexample.cpp)
-target_link_libraries(${PROJECT_NAME}-RSPTexample ${PROJECT_NAME})
-
-add_executable(${PROJECT_NAME}-DavidsonExample examples/DavidsonExample.cpp)
-target_link_libraries(${PROJECT_NAME}-DavidsonExample ${PROJECT_NAME})
+file (GLOB TESTS examples/*.cpp)
+foreach(fil ${TESTS})
+  get_filename_component(nam ${fil} NAME_WE)
+  add_executable(${PROJECT_NAME}-${nam} examples/${nam}.cpp)
+  target_link_libraries(${PROJECT_NAME}-${nam} ${PROJECT_NAME})
+  add_test(${nam} ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-${nam})
+endforeach()
 
 
 find_package(Doxygen)

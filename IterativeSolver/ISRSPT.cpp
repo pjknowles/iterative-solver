@@ -184,9 +184,10 @@ void RSPT::test(size_t n, double alpha)
       d.m_minIterations=50;
       d.m_thresh=1e-5;
       d.m_maxIterations=1000;
-      SimpleParameterVector gg(n); ParameterVectorSet g; g.push_back(&gg);
-      SimpleParameterVector xx=instance->guess();
-      ParameterVectorSet x; x.push_back(&xx);
+//      SimpleParameterVector gg(n);
+      ParameterVectorSet g; g.push_back(std::make_shared<SimpleParameterVector>(n));
+//      SimpleParameterVector xx=instance->guess();
+      ParameterVectorSet x; x.push_back(std::make_shared<SimpleParameterVector>(instance->guess()));
       d.solve(g,x);
       if (std::fabs(d.energy(d.m_minIterations)-d.eigenvalues().front()) > 1e-10) nfail++;
       xout << "Variational eigenvalue "<<d.eigenvalues().front()<<std::endl;

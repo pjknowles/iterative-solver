@@ -58,9 +58,9 @@ int main(int argc, char *argv[])
   ParameterVectorSet g;
   ParameterVectorSet x;
   for (size_t root=0; root<solver.m_roots; root++) {
-      pv* xx = new pv(n); x.push_back(xx);
-      pv* gg = new pv(n); g.push_back(gg);
-      xx->zero(); scalar one=1; xx->put(&one,1,root); // initial guess
+     x.push_back(std::make_shared<pv>(n));
+     g.push_back(std::make_shared<pv>(n));
+     x.back()->zero(); scalar one=1; x.back()->put(&one,1,root); // initial guess
     }
   if (not solver.solve(g,x)) std::cout << "Failure"<<std::endl;
   std::cout << "Error=";
@@ -70,7 +70,5 @@ int main(int argc, char *argv[])
   for (size_t root=0; root<solver.m_roots; root++) {
       std::vector<scalar> buf(n); x[root]->get(&buf[0],n,0);
       std::cout << "Eigenvector:"; for (size_t k=0; k<n; k++) std::cout<<" "<<buf[k]; std::cout<<std::endl;
-      delete x[root];
-      delete g[root];
     }
 }

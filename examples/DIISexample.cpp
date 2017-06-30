@@ -48,10 +48,12 @@ int main(int argc, char *argv[])
   anharmonicity=.5;
   DIIS solver(&_anharmonic_residual,&_anharmonic_preconditioner);
   solver.m_verbosity=1;
-  pv gg(n); ParameterVectorSet g; g.push_back(&gg);
-  pv xx(n); ParameterVectorSet x; x.push_back(&xx);
-  xx.zero(); double one=1; xx.put(&one,1,0);  // initial guess
+  ParameterVectorSet g;
+  ParameterVectorSet x;
+  g.push_back(std::make_shared<pv>(n));
+  x.push_back(std::make_shared<pv>(n));
+  x.back()->zero(); double one=1; x.back()->put(&one,1,0);  // initial guess
   if (not solver.solve(g,x)) std::cout << "Failure"<<std::endl;
-  std::cout << "Distance of solution from origin: "<<std::sqrt(xx.dot(&xx))<<std::endl;
+  std::cout << "Distance of solution from origin: "<<std::sqrt(x[0]->dot(x[0]))<<std::endl;
   std::cout << "Error="<<solver.errors().front()<<" after "<<solver.iterations()<<" iterations"<<std::endl;
 }

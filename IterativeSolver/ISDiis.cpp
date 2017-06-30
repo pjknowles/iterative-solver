@@ -184,8 +184,8 @@ void DIIS::test(int verbosity,
 {
   SimpleParameterVector xx(2);
   SimpleParameterVector gg(2);
-  ParameterVectorSet x; x.push_back(&xx);
-  ParameterVectorSet g; g.push_back(&gg);
+  ParameterVectorSet x; x.push_back(std::shared_ptr<SimpleParameterVector>(&xx));
+  ParameterVectorSet g; g.push_back(std::shared_ptr<SimpleParameterVector>(&gg));
   DIIS d(&_Rosenbrock_residual,&_Rosenbrock_updater);
   d.m_maxDim=maxDim;
   d.m_svdThreshold=svdThreshold;
@@ -300,8 +300,8 @@ void DIIS::randomTest(size_t sample, size_t n, double alpha, double gamma, DIISm
       d.setMode(mode);
       d.m_verbosity=-1;
       d.m_maxIterations=100000;
-      SimpleParameterVector gg(n); ParameterVectorSet g; g.push_back(&gg);
-      SimpleParameterVector xx=instance.guess(); ParameterVectorSet x; x.push_back(&xx);
+      SimpleParameterVector gg(n); ParameterVectorSet g; g.push_back(std::shared_ptr<SimpleParameterVector>(&gg));
+      SimpleParameterVector xx=instance.guess(); ParameterVectorSet x; x.push_back(std::shared_ptr<SimpleParameterVector>(&xx));
       if (not d.solve(g,x)) nfail++;
       iterations+=d.iterations();
       if (maxIterations<d.iterations())

@@ -101,11 +101,11 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem, 
   ParameterVectorSet x;
   ParameterVectorSet g;
   for (size_t root=0; root<(size_t)d.m_roots; root++) {
-      ptype* xx=new ptype(dimension);
+      auto xx=std::make_shared<ptype>(dimension);
       xx->zero();
       scalar one=1; xx->put(&one,1,root);
       x.push_back_clone(xx);
-      ptype* gg=new ptype(dimension);
+      auto gg=std::make_shared<ptype>(dimension);
       g.push_back_clone(gg);
     }
   xout << "roots="<<roots<<std::endl;
@@ -128,9 +128,9 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem, 
   // be noisy about obvious problems
   if (*std::max_element(errors.begin(),errors.end())>1e-7) throw std::runtime_error("IterativeSolver::Davidson has failed tests");
 
-  for (size_t root=0; root<(size_t)d.m_roots; root++) {
-      delete &x[root][0];
-      delete &g[root][0];
-    }
+//  for (size_t root=0; root<(size_t)d.m_roots; root++) {
+//      delete &x[root][0];
+//      delete &g[root][0];
+//    }
 
 }

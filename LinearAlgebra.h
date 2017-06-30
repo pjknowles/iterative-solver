@@ -51,6 +51,7 @@ namespace LinearAlgebra {
      * \return
      */
     virtual void axpy(scalar a, const vector<scalar>* other)=0;
+    void axpy(scalar a, const std::shared_ptr<vector<scalar> > other) {axpy(a,other.get());}
 
     /*!
      * \brief Scalar product of two objects.
@@ -58,6 +59,7 @@ namespace LinearAlgebra {
      * \return
      */
     virtual scalar dot(const vector<scalar>* other) const=0;
+    scalar dot(const std::shared_ptr<vector<scalar> > other) { return dot(other.get());}
 
     /*!
      * \brief scal Scale the object by a factor.
@@ -176,8 +178,8 @@ namespace LinearAlgebra {
         }
     }
 
-//    typedef std::shared_ptr<vector<scalar> > pv_t;
-    typedef vector<scalar> * pv_t;
+    typedef std::shared_ptr<vector<scalar> > pv_t;
+//    typedef vector<scalar> * pv_t;
     ~vectorSet<scalar>() { while(m_pvs.size()>0) m_pvs.pop_back();}
     size_t size() const { return this->m_pvs.size();}
     pv_t operator[](size_t pos) { return m_pvs[pos];}
@@ -186,20 +188,20 @@ namespace LinearAlgebra {
     const pv_t front() const { return (m_pvs.front());}
     pv_t back() { return (m_pvs.back());}
     const pv_t back() const { return (m_pvs.back());}
-    void push_back(pv_t val)
+    void push_back(const pv_t val)
     {
       m_pvs.push_back(val);
       m_owned.push_back(false);
       m_active.push_back(true);
     }
 
-    void push_back_clone(vector<scalar>* val)
+    void push_back_clone(const pv_t val)
     {
-      m_pvs.push_back(val->clone());
+      m_pvs.push_back(std::shared_ptr<vector<scalar> >(val->clone()));
       m_owned.push_back(true);
       m_active.push_back(true);
     }
-    void pop_back() { if (m_pvs.size() <=0) return; if (m_owned.back()) delete m_pvs.back(); m_pvs.pop_back(); m_active.pop_back(); m_owned.pop_back();}
+    void pop_back() { if (m_pvs.size() <=0) return;  m_pvs.pop_back(); m_active.pop_back(); m_owned.pop_back();}
     void resize(size_t length) { m_pvs.resize(length); m_active.resize(length);}
     vectorSet<scalar>& operator=(const vectorSet<scalar>& source)
     {

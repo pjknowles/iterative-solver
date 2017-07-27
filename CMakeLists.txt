@@ -24,7 +24,7 @@ else()
 endif()
 
 aux_source_directory(IterativeSolver SRC_LIST)
-set(SRC_LIST ${SRC_LIST} LinearAlgebra.h IterativeSolver/IterativeSolverF.F90)
+set(SRC_LIST ${SRC_LIST} LinearAlgebra.h LAvector.h IterativeSolver/IterativeSolverF.F90)
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 find_package (Eigen3 3.3 REQUIRED)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${EIGEN3_INCLUDE_DIR})

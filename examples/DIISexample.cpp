@@ -5,48 +5,52 @@
 using namespace LinearAlgebra;
 
 //  typedef SimpleParameterVector pv;
-  typedef PagedParameterVector pv;
+typedef PagedParameterVector pv;
 
 static double alpha;
 static double anharmonicity;
 static double n;
 
-static void _anharmonic_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
-  std::vector<ParameterScalar> psxk(n);
-  std::vector<ParameterScalar> output(n);
-  psx.front()->get(&(psxk[0]),n,0);
-  if (append)
-    outputs.front()->get(&(output[0]),n,0);
-  else
-    outputs.front()->zero();
-  for (size_t i=0; i<n; i++) {
-      output[i] += (alpha*(i+1)+anharmonicity*psxk[i])*psxk[i];
-      for (size_t j=0; j<n; j++)
-        output[i] += (i+j)*psxk[j];
-    }
-  outputs.front()->put(&output[0],n,0);
-}
-static void _anharmonic_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
-  std::vector<ParameterScalar> psck(n);
-  std::vector<ParameterScalar> psgk(n);
-  psg.front()->get(&psgk[0],n,0);
-  if (append) {
-      psc.front()->get(&psck[0],n,0);
-      for (size_t i=0; i<n; i++)
-        psck[i] -= psgk[i]/(alpha*(i+1));
-    } else {
-      for (size_t i=0; i<n; i++)
-        psck[i] =- psgk[i]/(alpha*(i+1));
-    }
-  psc.front()->put(&psck[0],n,0);
-}
+struct : IterativeSolverBase::ParameterSetTransformation {
+  void operator()(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) const override {
+    std::vector<ParameterScalar> psxk(n);
+    std::vector<ParameterScalar> output(n);
+    psx.front()->get(&(psxk[0]),n,0);
+    if (append)
+      outputs.front()->get(&(output[0]),n,0);
+    else
+      outputs.front()->zero();
+    for (size_t i=0; i<n; i++) {
+        output[i] += (alpha*(i+1)+anharmonicity*psxk[i])*psxk[i];
+        for (size_t j=0; j<n; j++)
+          output[i] += (i+j)*psxk[j];
+      }
+    outputs.front()->put(&output[0],n,0);
+  }
+} _anharmonic_residual;
+struct : IterativeSolverBase::ParameterSetTransformation {
+  void operator()(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) const override {
+    std::vector<ParameterScalar> psck(n);
+    std::vector<ParameterScalar> psgk(n);
+    psg.front()->get(&psgk[0],n,0);
+    if (append) {
+        psc.front()->get(&psck[0],n,0);
+        for (size_t i=0; i<n; i++)
+          psck[i] -= psgk[i]/(alpha*(i+1));
+      } else {
+        for (size_t i=0; i<n; i++)
+          psck[i] =- psgk[i]/(alpha*(i+1));
+      }
+    psc.front()->put(&psck[0],n,0);
+  }
+} _anharmonic_preconditioner;
 
 int main(int argc, char *argv[])
 {
   alpha=1;
   n=100;
   anharmonicity=.5;
-  DIIS solver(&_anharmonic_residual,&_anharmonic_preconditioner);
+  DIIS solver(_anharmonic_residual,_anharmonic_preconditioner);
   solver.m_verbosity=1;
   ParameterVectorSet g;
   ParameterVectorSet x;

@@ -188,14 +188,14 @@ namespace LinearAlgebra {
     const pv_t front() const { return (m_pvs.front());}
     pv_t back() { return (m_pvs.back());}
     const pv_t back() const { return (m_pvs.back());}
-    void push_back(const pv_t val)
+    void push_back(const pv_t& val)
     {
       m_pvs.push_back(val);
       m_owned.push_back(false);
       m_active.push_back(true);
     }
 
-    void push_back_clone(const pv_t val)
+    void push_back_clone(const pv_t& val)
     {
       m_pvs.push_back(std::shared_ptr<vector<scalar> >(val->clone()));
       m_owned.push_back(true);

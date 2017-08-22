@@ -11,8 +11,8 @@ namespace LinearAlgebra{
  * Example of simplest use: @include RSPTexample.cpp
  *
  */
-class RSPT : public IterativeSolverBase
-{
+  class RSPT : public IterativeSolverBase
+  {
   public:
     /*!
      * \brief RSPT
@@ -20,7 +20,7 @@ class RSPT : public IterativeSolverBase
    * \param preconditionerFunction A function that applies a preconditioner to a residual to give an update. Used by methods iterate() and solve().
    * Also used to construct the action of H0 if the shift parameter is zero.
      */
-    RSPT(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction=&LinearAlgebra::steepestDescent);
+    RSPT(const ParameterSetTransformation &residualFunction, const ParameterSetTransformation &preconditionerFunction=steepestDescent);
     static void test (size_t n, double alpha);
   protected:
     virtual void extrapolate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());
@@ -34,7 +34,7 @@ class RSPT : public IterativeSolverBase
     ParameterVectorSet m_lastH0mE0psi;
     std::vector<double> m_incremental_energies;
     double m_E0;
-};
+  };
 
 }
 

@@ -2,7 +2,7 @@
 #include <stdexcept>
 using namespace LinearAlgebra;
 
-RSPT::RSPT(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction)
+RSPT::RSPT(const ParameterSetTransformation& residualFunction, const ParameterSetTransformation& preconditionerFunction)
   : IterativeSolverBase(residualFunction, preconditionerFunction)
 {
   m_linear = true;
@@ -125,7 +125,8 @@ double RSPT::energy(size_t order, size_t state)
 
   static rsptpot *instance;
 
-    static void _rsptpot_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) {
+    static struct : IterativeSolverBase::ParameterSetTransformation {
+    void operator()(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) const override {
 //        xout << "rsptpot_residual"<<std::endl;
 //        xout << "input "<<psx<<std::endl;
       std::vector<scalar> psxk(instance->m_n);
@@ -144,7 +145,9 @@ double RSPT::energy(size_t order, size_t state)
         outputs.front()->put(&(output[0]),instance->m_n,0);
 //        xout << "output "<<outputs<<std::endl;
     }
-    static void _rsptpot_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) {
+    } _rsptpot_residual;
+    static struct : IterativeSolverBase::ParameterSetTransformation {
+    void operator()(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) const override {
 //        xout << "preconditioner input="<<psg<<std::endl;
 //      if (shift.front()==0)
 //          xout << "H0 not resolvent"<<std::endl;
@@ -170,6 +173,7 @@ double RSPT::energy(size_t order, size_t state)
       psc.front()->put(&psck[0],instance->m_n,0);
 //        xout << "preconditioner output="<<psc<<std::endl;
     }
+    } _rsptpot_preconditioner;
 void RSPT::test(size_t n, double alpha)
 {
     instance = new rsptpot();
@@ -178,7 +182,7 @@ void RSPT::test(size_t n, double alpha)
   size_t sample=1;
   for (size_t repeat=0; repeat < sample; repeat++) {
       instance->set(n,alpha);
-      RSPT d(&_rsptpot_residual,&_rsptpot_preconditioner);
+      RSPT d(_rsptpot_residual,_rsptpot_preconditioner);
       d.m_verbosity=-1;
       d.m_roots=1;
       d.m_minIterations=50;

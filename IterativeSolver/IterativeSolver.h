@@ -21,27 +21,7 @@ namespace LinearAlgebra {
   typedef vector<scalar> ParameterVector;
   typedef vectorSet<scalar> ParameterVectorSet;
   /*!
- * \brief Place-holding template for residual calculation. It just returns the input as output.
- * \param inputs The parameters.
- * \param outputs On output, contains the corresponding residual vectors.
- * \param shift
- * \param append Whether to add the result to the original content of outputs
- */
-  inline void noOp(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) { if (append) outputs=inputs; }
-  /*!
- * \brief Place-holding template for update calculation. It just returns the input as output.
- * \param inputs The parameters.
- * \param append Whether to add the result to the original content of outputs
- * \param outputs On output, contains the corresponding residual vectors.
- * \param shift
- */
-  inline void steepestDescent(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=true) {
-    if (not append) outputs.zero();
-    for (size_t k=0; k<inputs.size(); k++)
-      outputs[k]->axpy(-1,inputs[k]);
-  }
-  /*!
- * \brief A base class for iterative solvers such as DIIS, KAIN, Davidson. The class provides support for preconditioned update, via a provided function.
+ * \brief A base class for iterative solvers such as DIIS, KAIN, Davidson. The class provides support for preconditioned update, via a provided functor.
  *
  * The user needs to provide the two routines residualFunction() and preconditionerFunction() through the class constructor. These define the problem being solved: the first should calculate the residual
  * or action vector from a solution vector,
@@ -61,24 +41,53 @@ namespace LinearAlgebra {
  */
   class IterativeSolverBase
   {
-  protected:
-    typedef void (*ParameterSetTransformation)(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<scalar> shift, bool append);
+  public:
+    //    typedef void (*ParameterSetTransformation)(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<scalar> shift, bool append);
+    struct ParameterSetTransformation
+    {
+      virtual void operator()(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<LinearAlgebra::scalar> shift, bool append) const =0;
+    };
+    /*!
+ * \brief Place-holding template for residual calculation. It just returns the input as output.
+ * \param inputs The parameters.
+ * \param outputs On output, contains the corresponding residual vectors.
+ * \param shift
+ * \param append Whether to add the result to the original content of outputs
+ */
+    static struct : ParameterSetTransformation {
+      void operator()(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) const override { if (append) outputs=inputs; }
+    } noOp ;
+    /*!
+ * \brief Place-holding template for update calculation. It just returns the input as output.
+ * \param inputs The parameters.
+ * \param append Whether to add the result to the original content of outputs
+ * \param outputs On output, contains the corresponding residual vectors.
+ * \param shift
+ */
+    static struct : ParameterSetTransformation {
+      void operator()(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=true) const override {
+        if (not append) outputs.zero();
+        for (size_t k=0; k<inputs.size(); k++)
+          outputs[k]->axpy(-1,inputs[k]);
+      }
+    } steepestDescent ;
+
     /*!
    * \brief IterativeSolverBase
-   * \param residualFunction A function that evaluates the residual vectors. Used by method solve(); does not have to be provided if iterations are constructed explicitly in the calling program.
-   * \param preconditionerFunction A function that applies a preconditioner to a residual to give an update. Used by methods iterate() and solve().
+   * \param residualFunction A functor that evaluates the residual vectors. Used by method solve(); does not have to be provided if iterations are constructed explicitly in the calling program.
+   * \param preconditionerFunction A functor that applies a preconditioner to a residual to give an update. Used by methods iterate() and solve().
    */
-    IterativeSolverBase(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction=&LinearAlgebra::steepestDescent);
+    IterativeSolverBase(const ParameterSetTransformation& residualFunction, const ParameterSetTransformation& preconditionerFunction=steepestDescent);
     virtual ~IterativeSolverBase();
-  protected:
+  public:
     /*!
-   * \brief The function that will take the current solution and residual, and produce the predicted solution.
+   * \brief The functor that will take the current solution and residual, and produce the predicted solution.
    */
-    ParameterSetTransformation m_preconditionerFunction;
+    const ParameterSetTransformation& m_preconditionerFunction;
     /*!
-   * \brief The function that will take a current solution and calculate the residual.
+   * \brief The functor that will take a current solution and calculate the residual.
    */
-    ParameterSetTransformation m_residualFunction;
+    const ParameterSetTransformation& m_residualFunction;
   public:
     /*!
    * \brief Take, typically, a current solution and residual, and return new solution.

@@ -21,7 +21,7 @@ namespace LinearAlgebra {
                        };
     /*!
    */
-    DIIS(const ParameterSetTransformation residualFunction, const ParameterSetTransformation updateFunction=&LinearAlgebra::steepestDescent);
+    DIIS(const ParameterSetTransformation &residualFunction, const ParameterSetTransformation &updateFunction=steepestDescent);
     ~DIIS();
     /*!
    * \brief Set options for DIIS.
@@ -98,10 +98,10 @@ namespace LinearAlgebra {
   class KAIN : public DIIS
   {
   public:
-    KAIN(const ParameterSetTransformation residualFunction=&LinearAlgebra::noOp, const ParameterSetTransformation updateFunction=&LinearAlgebra::steepestDescent)
+    KAIN(const ParameterSetTransformation& residualFunction=noOp, const ParameterSetTransformation& updateFunction=steepestDescent)
       : DIIS(residualFunction,updateFunction) { setMode(KAINmode);}
-//    void setMode( enum DIISmode_type mode=KAINmode)
-//    { DIIS::setMode(mode); }
+    //    void setMode( enum DIISmode_type mode=KAINmode)
+    //    { DIIS::setMode(mode); }
   private:
     KAIN();
   };

@@ -11,7 +11,9 @@ using namespace LinearAlgebra;
 static double n; // dimension of problem
 static double alpha; // separation of diagonal elements
 
-static void _matrix_residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+struct : IterativeSolverBase::ParameterSetTransformation {
+void operator()(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) const override {
+  std::cout << "matrix_residual() n="<<n<<std::endl;
   std::vector<ParameterScalar> psxk(n);
   std::vector<ParameterScalar> output(n);
   for (size_t k=0; k<psx.size(); k++) {
@@ -29,8 +31,11 @@ static void _matrix_residual(const ParameterVectorSet & psx, ParameterVectorSet 
       outputs[k]->put(&output[0],n,0);
     }
 }
+} _matrix_residual;
 
-static void _matrix_preconditioner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) {
+struct : IterativeSolverBase::ParameterSetTransformation {
+void operator()(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) const override {
+  std::cout << "matrix_preconditioner() n="<<n<<std::endl;
   std::vector<ParameterScalar> psck(n);
   std::vector<ParameterScalar> psgk(n);
   for (size_t k=0; k<psc.size(); k++) {
@@ -50,12 +55,13 @@ static void _matrix_preconditioner(const ParameterVectorSet & psg, ParameterVect
       psc[k]->put(&psck[0],n,0);
     }
 }
+} _matrix_preconditioner;
 
 int main(int argc, char *argv[])
 {
   alpha=100;
   n=10;
-  RSPT solver(&_matrix_residual,&_matrix_preconditioner);
+  RSPT solver(_matrix_residual,_matrix_preconditioner);
   solver.m_verbosity=1;
   solver.m_roots=1;
   ParameterVectorSet g;

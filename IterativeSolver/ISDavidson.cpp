@@ -2,7 +2,7 @@
 #include <stdexcept>
 using namespace LinearAlgebra;
 
-Davidson::Davidson(const ParameterSetTransformation residualFunction, const ParameterSetTransformation preconditionerFunction)
+Davidson::Davidson(const ParameterSetTransformation& residualFunction, const ParameterSetTransformation& preconditionerFunction)
   : IterativeSolverBase(residualFunction, preconditionerFunction)
 {
   m_linear = true;
@@ -41,10 +41,10 @@ void Davidson::extrapolate(ParameterVectorSet & residual, ParameterVectorSet & s
 void Davidson::report()
 {
   std::vector<scalar> ev=eigenvalues();
-      if (m_verbosity>0) {
-        xout << "iteration "<<iterations()<<", error["<<m_worst<<"] = "<<m_error
-             << ", eigenvalues: "; for (std::vector<scalar>::const_iterator e=ev.begin(); e!=ev.end(); e++) xout<<" "<<*e;xout<<std::endl;
-        }
+  if (m_verbosity>0) {
+      xout << "iteration "<<iterations()<<", error["<<m_worst<<"] = "<<m_error
+           << ", eigenvalues: "; for (std::vector<scalar>::const_iterator e=ev.begin(); e!=ev.end(); e++) xout<<" "<<*e;xout<<std::endl;
+    }
 }
 
 
@@ -52,29 +52,33 @@ void Davidson::report()
 #include "SimpleParameterVector.h"
 static Eigen::MatrixXd testmatrix;
 
-static void _residual(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) {
-  for (size_t k=0; k<psx.size(); k++) {
-      Eigen::VectorXd x(testmatrix.rows());
-      if (psx[k]->size() != (size_t)testmatrix.rows()) throw std::logic_error("psx wrong size");
-      psx[k]->get(&x[0],testmatrix.rows(),0);
-      Eigen::VectorXd res = testmatrix * x;
-      if (not append) outputs[k]->zero();
-      outputs[k]->put(&res[0],testmatrix.rows(),0);
-    }
-}
+static struct : IterativeSolverBase::ParameterSetTransformation {
+  void operator()(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) const {
+    for (size_t k=0; k<psx.size(); k++) {
+        Eigen::VectorXd x(testmatrix.rows());
+        if (psx[k]->size() != (size_t)testmatrix.rows()) throw std::logic_error("psx wrong size");
+        psx[k]->get(&x[0],testmatrix.rows(),0);
+        Eigen::VectorXd res = testmatrix * x;
+        if (not append) outputs[k]->zero();
+        outputs[k]->put(&res[0],testmatrix.rows(),0);
+      }
+  }
+} _residual;
 
-static void _preconditoner(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<scalar> shift, bool append=true) {
-  size_t n=testmatrix.rows();
-  std::vector<scalar> psck(n);
-  std::vector<scalar> psgk(n);
-  for (size_t k=0; k<psc.size(); k++) {
-      psg[k]->get(&psgk[0],n,0);
-      if (not append) psc.zero();
-      psc[k]->get(&psck[0],n,0);
-      for (size_t l=0; l<n; l++)  psck[l] -= psgk[l]/(testmatrix(l,l)+shift[k]);
-      psc[k]->put(&psck[0],n,0);
-    }
-}
+static struct : IterativeSolverBase::ParameterSetTransformation {
+  void operator()(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<scalar> shift, bool append=true) const {
+    size_t n=testmatrix.rows();
+    std::vector<scalar> psck(n);
+    std::vector<scalar> psgk(n);
+    for (size_t k=0; k<psc.size(); k++) {
+        psg[k]->get(&psgk[0],n,0);
+        if (not append) psc.zero();
+        psc[k]->get(&psck[0],n,0);
+        for (size_t l=0; l<n; l++)  psck[l] -= psgk[l]/(testmatrix(l,l)+shift[k]);
+        psc[k]->put(&psck[0],n,0);
+      }
+  }
+} _preconditioner;
 
 
 typedef SimpleParameterVector ptype;
@@ -93,7 +97,7 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem, 
       else
         throw std::logic_error("invalid problem in Davidson::test");
 
-  Davidson d(&_residual,&_preconditoner);
+  Davidson d(_residual,_preconditioner);
   d.m_roots=roots;
   d.m_verbosity=verbosity;
   d.m_maxIterations=dimension;
@@ -128,9 +132,9 @@ void Davidson::test(size_t dimension, size_t roots, int verbosity, int problem, 
   // be noisy about obvious problems
   if (*std::max_element(errors.begin(),errors.end())>1e-7) throw std::runtime_error("IterativeSolver::Davidson has failed tests");
 
-//  for (size_t root=0; root<(size_t)d.m_roots; root++) {
-//      delete &x[root][0];
-//      delete &g[root][0];
-//    }
+  //  for (size_t root=0; root<(size_t)d.m_roots; root++) {
+  //      delete &x[root][0];
+  //      delete &g[root][0];
+  //    }
 
 }

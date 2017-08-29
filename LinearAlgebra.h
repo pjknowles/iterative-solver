@@ -52,6 +52,7 @@ namespace LinearAlgebra {
      */
     virtual void axpy(scalar a, const vector<scalar>* other)=0;
     void axpy(scalar a, const std::shared_ptr<vector<scalar> > other) {axpy(a,other.get());}
+    void axpy(scalar a, const vector<scalar>& other) {axpy(a,&other);}
 
     /*!
      * \brief Scalar product of two objects.
@@ -60,12 +61,14 @@ namespace LinearAlgebra {
      */
     virtual scalar dot(const vector<scalar>* other) const=0;
     scalar dot(const std::shared_ptr<vector<scalar> > other) { return dot(other.get());}
+    scalar dot(const vector<scalar>& other) { return dot(&other);}
 
     /*!
      * \brief scal Scale the object by a factor.
      * \param a The factor to scale by.
      */
     virtual void scal(scalar a)=0;
+    vector<scalar>* operator*=(scalar a) { return (*this)*=a;}
 
     /*!
      * \brief Set the contents of the object to zero.

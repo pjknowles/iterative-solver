@@ -1,5 +1,6 @@
 #include "ISDavidson.h"
 #include <stdexcept>
+#include <memory>
 using namespace LinearAlgebra;
 
 Davidson::Davidson(const ParameterSetTransformation& residualFunction, const ParameterSetTransformation& preconditionerFunction)

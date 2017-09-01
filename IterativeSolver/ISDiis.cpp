@@ -1,6 +1,8 @@
 #include "ISDiis.h"
 #include <stdexcept>
+#include <memory>
 #include <math.h>
+#include <Eigen/Jacobi>
 
 using namespace LinearAlgebra;
 

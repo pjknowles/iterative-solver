@@ -1,5 +1,6 @@
 #include "ISRSPT.h"
 #include <stdexcept>
+#include <memory>
 using namespace LinearAlgebra;
 
 RSPT::RSPT(const ParameterSetTransformation& residualFunction, const ParameterSetTransformation& preconditionerFunction)

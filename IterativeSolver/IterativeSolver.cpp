@@ -71,15 +71,14 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
     solution.m_active[k] = (m_errors[k] >= m_thresh || m_minIterations>m_iterations);
   if (m_orthogonalize) {
       //      xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
+      for (auto rep=0; rep<2; rep++)
       for (size_t kkk=0; kkk<solution.size(); kkk++) {
           if (solution.m_active[kkk]) {
-              size_t l=0;
               for (size_t ll=0; ll<m_solutions.size(); ll++) {
                   for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
                       if (m_solutions[ll].m_active[lll]) {
                           double s = -(m_solutions[ll][lll]->dot(solution[kkk])) / (m_solutions[ll][lll]->dot(m_solutions[ll][lll]));
                           solution[kkk]->axpy(s,m_solutions[ll][lll]);
-                          l++;
                         }
                     }
                 }
@@ -93,7 +92,7 @@ void IterativeSolverBase::adjustUpdate(ParameterVectorSet &solution)
               if (s <= 0)
                 solution.m_active[kkk]=false;
               else
-                solution[kkk]->axpy(1/std::sqrt(s)-1,solution[kkk]);
+                solution[kkk]->scal(1/std::sqrt(s));
             }
         }
       //      xout << "IterativeSolverBase::adjustUpdate solution after orthogonalization: "<<solution<<std::endl;

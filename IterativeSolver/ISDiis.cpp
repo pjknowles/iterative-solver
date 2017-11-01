@@ -8,8 +8,8 @@ using namespace LinearAlgebra;
 
 DIIS::DIIS(const ParameterSetTransformation& residualFunction, const ParameterSetTransformation& updateFunction)
   : IterativeSolverBase(residualFunction, updateFunction)
-  , m_maxDim(6)
   , m_svdThreshold(1e-10)
+  , m_maxDim(6)
 {
   m_orthogonalize = false;
   setMode(DIISmode);

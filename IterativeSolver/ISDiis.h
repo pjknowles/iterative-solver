@@ -7,7 +7,8 @@ namespace LinearAlgebra {
 
   /** @example DIISexample.cpp */
   /*!
- * \brief A class that encapsulates accelerated convergence of non-linear equations through the DIIS or related methods.
+ * \brief A class that encapsulates accelerated convergence of non-linear equations
+ * through the DIIS or related methods.
  *
  * Example of simplest use: @include DIISexample.cpp
  *
@@ -19,9 +20,8 @@ namespace LinearAlgebra {
                         , DIISmode ///< Direct Inversion in the Iterative Subspace
                         , KAINmode ///< Krylov Accelerated Inexact Newton
                        };
-    /*!
-   */
-    DIIS(const ParameterSetTransformation &residualFunction, const ParameterSetTransformation &updateFunction=steepestDescent);
+    DIIS(const ParameterSetTransformation &residualFunction,
+         const ParameterSetTransformation &updateFunction=steepestDescent);
     ~DIIS();
     /*!
    * \brief Set options for DIIS.

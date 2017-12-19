@@ -9,6 +9,9 @@
 #include <numeric>
 #include "LinearAlgebra.h"
 #include <Eigen/Dense>
+#include <cmath>
+#undef isnan
+#undef isinf
 #ifdef MOLPRO
 extern std::ostream &xout;
 #else

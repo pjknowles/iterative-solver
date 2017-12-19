@@ -3,6 +3,7 @@
 #include <memory>
 #include <math.h>
 #include <Eigen/Jacobi>
+#include <cmath>
 
 using namespace LinearAlgebra;
 

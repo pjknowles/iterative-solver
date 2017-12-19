@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <numeric>
 #include <stdexcept>
+#include <math.h>
+#include <cmath>
 
 using namespace LinearAlgebra;
 
@@ -232,7 +234,6 @@ void IterativeSolverBase::diagonalizeSubspaceMatrix()
 }
 
 
-#include <math.h>
 void IterativeSolverBase::calculateErrors(const ParameterVectorSet &solution, const ParameterVectorSet &residual)
 {
   if (m_verbosity > 5) {

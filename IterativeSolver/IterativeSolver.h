@@ -52,22 +52,28 @@ namespace LinearAlgebra {
     };
     /*!
  * \brief Place-holding template for residual calculation. It just returns the input as output.
+ */
+    static struct : ParameterSetTransformation {
+     /*!
+       * \brief operator()
  * \param inputs The parameters.
  * \param outputs On output, contains the corresponding residual vectors.
  * \param shift
  * \param append Whether to add the result to the original content of outputs
- */
-    static struct : ParameterSetTransformation {
+       */
       void operator()(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) const override { if (append) outputs=inputs; }
     } noOp ;
     /*!
  * \brief Place-holding template for update calculation. It just returns the input as output.
+ */
+    static struct : ParameterSetTransformation {
+     /*!
+       * \brief operator()
  * \param inputs The parameters.
  * \param append Whether to add the result to the original content of outputs
  * \param outputs On output, contains the corresponding residual vectors.
  * \param shift
- */
-    static struct : ParameterSetTransformation {
+       */
       void operator()(const ParameterVectorSet & inputs, ParameterVectorSet & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=true) const override {
         if (not append) outputs.zero();
         for (size_t k=0; k<inputs.size(); k++)

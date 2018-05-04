@@ -49,7 +49,7 @@ namespace LinearAlgebra {
     PagedParameterVector& operator=(const PagedParameterVector& other);
 
     // Every child of ParameterVector needs exactly this
-    PagedParameterVector* clone() const { return new PagedParameterVector(*this); }
+    PagedParameterVector* clone(int option=0) const { return new PagedParameterVector(*this); }
 
     /*!
      * \brief Specify a cache size for manipulating the data

@@ -107,6 +107,8 @@ size_t IterativeSolverBase::addVectorSet(const ParameterVectorSet &residual, con
 //  if (solution.m_active.front()==0) xout <<"warning: inactive solution"<<std::endl;
     m_residuals.push_back(residual);
     m_solutions.push_back(solution);
+//    m_residuals.emplace_back(new ParameterVector(residual,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED|LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
+//    m_solutions.emplace_back(new ParameterVector(solution,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED|LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
     m_others.push_back(other);
     calculateSubspaceMatrix(residual,solution);
     return m_residuals.size();

@@ -94,11 +94,17 @@ namespace LinearAlgebra {
      */
     int variance() const {return m_variance;}
 
+#define LINEARALGEBRA_CLONE_ADVISE_OFFLINE 0x01
+#define LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED 0x02
     /*!
      * \brief Make a copy of the object
+     * \param option One or more of the following bit patterns combined:
+     * - \c LINEARALGEBRA_CLONE_ADVISE_OFFLINE Suggests that the copy be stored on disk
+     * - \c LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED Suggests that the copy be stored distributed across MPI ranks
+     * The implementation doesn't have to follow the suggestions
      * \return A pointer to the new object
      */
-    virtual vector<scalar>* clone() const=0;
+    virtual vector<scalar>* clone(int option=0) const=0;
 
     /*!
      * \brief Make a printable representation of the object
@@ -173,10 +179,10 @@ namespace LinearAlgebra {
   {
   public:
     vectorSet<scalar>() {}
-    vectorSet<scalar>(const vectorSet<scalar>& source)
+    vectorSet<scalar>(const vectorSet<scalar>& source, int option=0)
     {
       for (size_t k=0; k<source.size(); k++) {
-          push_back_clone(source.m_pvs[k]);
+          push_back_clone(source.m_pvs[k], option);
           m_active[k] = source.m_active[k];
         }
     }
@@ -191,16 +197,17 @@ namespace LinearAlgebra {
     const pv_t front() const { return (m_pvs.front());}
     pv_t back() { return (m_pvs.back());}
     const pv_t back() const { return (m_pvs.back());}
-    void push_back(const pv_t& val)
+    void push_back(const pv_t& val, int option=0)
     {
       m_pvs.push_back(val);
       m_owned.push_back(false);
       m_active.push_back(true);
     }
 
-    void push_back_clone(const pv_t& val)
+    void push_back_clone(const pv_t& val, int option=0)
     {
-      m_pvs.push_back(std::shared_ptr<vector<scalar> >(val->clone()));
+     std::cout << "push_back_clone option="<<option<<std::endl;
+      m_pvs.push_back(std::shared_ptr<vector<scalar> >(val->clone(option)));
       m_owned.push_back(true);
       m_active.push_back(true);
     }

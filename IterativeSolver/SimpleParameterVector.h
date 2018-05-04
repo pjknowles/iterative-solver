@@ -48,7 +48,7 @@ namespace LinearAlgebra {
     SimpleParameterVector& operator=(const SimpleParameterVector& other);
 
     // Every child of ParameterVector needs exactly this
-    SimpleParameterVector* clone() const { return new SimpleParameterVector(*this); }
+    SimpleParameterVector* clone(int option=0) const { return new SimpleParameterVector(*this); }
 
 
   private:

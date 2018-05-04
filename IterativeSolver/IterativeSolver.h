@@ -127,7 +127,24 @@ template <class scalar=double>
    * \param options A string of options to be interpreted by extrapolate().
    */
     typedef std::map<std::string, double> optionMap;
-    virtual bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap());
+    virtual bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, ParameterVectorSet & other, const optionMap options=optionMap())
+    {
+      if (m_roots<1) m_roots=solution.size(); // number of roots defaults to size of solution
+      assert(solution.size()==residual.size());
+      m_iterations++;
+      for (size_t k=0; k<residual.size(); k++) residual.m_active[k] = residual.m_active[k] && solution.m_active[k];
+      if (m_preconditionResiduals) m_preconditionerFunction(residual,residual,m_updateShift,false);
+      m_lastVectorIndex=addVectorSet(residual,solution,other)-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
+      extrapolate(residual,solution,other,options);
+      if (m_preconditionResiduals)
+        solution.axpy(1,residual);
+      else
+        m_preconditionerFunction(residual,solution,m_updateShift,true);
+      calculateErrors(solution,residual);
+      adjustUpdate(solution);
+      return m_error < m_thresh;
+    }
+
     virtual bool iterate(ParameterVectorSet & residual, ParameterVectorSet & solution, const optionMap options=optionMap()) { ParameterVectorSet other; return iterate(residual,solution,other,options); }
     /*!
    * \brief Solve iteratively by repeated calls to residualFunction() and iterate().
@@ -192,24 +209,6 @@ template <class scalar=double>
 
 
 
-
-    bool IterativeSolverBase::iterate(ParameterVectorSet &residual, ParameterVectorSet &solution, ParameterVectorSet &other, const optionMap options)
-    {
-      if (m_roots<1) m_roots=solution.size(); // number of roots defaults to size of solution
-      assert(solution.size()==residual.size());
-      m_iterations++;
-      for (size_t k=0; k<residual.size(); k++) residual.m_active[k] = residual.m_active[k] && solution.m_active[k];
-      if (m_preconditionResiduals) m_preconditionerFunction(residual,residual,m_updateShift,false);
-      m_lastVectorIndex=addVectorSet(residual,solution,other)-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
-      extrapolate(residual,solution,other,options);
-      if (m_preconditionResiduals)
-        solution.axpy(1,residual);
-      else
-        m_preconditionerFunction(residual,solution,m_updateShift,true);
-      calculateErrors(solution,residual);
-      adjustUpdate(solution);
-      return m_error < m_thresh;
-    }
 
 
     bool IterativeSolverBase::solve(ParameterVectorSet & residual, ParameterVectorSet & solution, const optionMap options)

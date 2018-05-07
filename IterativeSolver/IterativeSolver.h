@@ -45,8 +45,12 @@ template <class scalar=double>
   public:
     /*!
    * \brief IterativeSolverBase
+   * \param PP The PP block of the matrix
    */
-    IterativeSolverBase() :
+    IterativeSolverBase(
+      const Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>& PP=Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>(0,0)
+                        ) :
+      m_PP(PP),
         m_verbosity(0),
         m_thresh(1e-12),
         m_maxIterations(1000),
@@ -120,6 +124,7 @@ template <class scalar=double>
     std::vector<double> errors() {return m_errors;} //!< Error at last iteration
 
   public:
+    const Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>& m_PP; //!< The PP block of the matrix
     int m_verbosity; //!< How much to print.
     double m_thresh; //!< If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
     unsigned int m_maxIterations; //!< Maximum number of iterations in solve()

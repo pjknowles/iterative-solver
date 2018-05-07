@@ -25,9 +25,10 @@ namespace LinearAlgebra{
   using IterativeSolverBase<scalar>::m_verbosity;
     /*!
      * \brief RSPT
+   * \param PP The PP block of the matrix
      */
-    RSPT()
-      : IterativeSolverBase<scalar>()
+  RSPT( const Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>& PP=Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>(0,0) )
+      : IterativeSolverBase<scalar>(PP)
     {
       this->m_linear = true;
       this->m_orthogonalize = false;

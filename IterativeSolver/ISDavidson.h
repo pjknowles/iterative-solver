@@ -18,8 +18,12 @@ namespace LinearAlgebra{
  {
  public:
   using IterativeSolverBase<scalar>::m_verbosity;
-  Davidson()
-   : IterativeSolverBase<scalar>()
+  /*!
+   * \brief Davidson
+   * \param PP The PP block of the matrix
+   */
+  Davidson( const Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>& PP=Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>(0,0) )
+   : IterativeSolverBase<scalar>(PP)
   {
    this->m_linear=true;
    this->m_orthogonalize=true;

@@ -25,8 +25,12 @@ namespace LinearAlgebra {
                         , DIISmode ///< Direct Inversion in the Iterative Subspace
                         , KAINmode ///< Krylov Accelerated Inexact Newton
                        };
-    DIIS()
-  : IterativeSolverBase<scalar>()
+    /*!
+   * \brief DIIS
+   * \param PP The PP block of the matrix
+   */
+  DIIS( const Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>& PP=Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>(0,0) )
+   : IterativeSolverBase<scalar>(PP)
   , m_svdThreshold(1e-10)
   , m_maxDim(6)
 {

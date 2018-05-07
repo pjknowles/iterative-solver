@@ -29,47 +29,24 @@ int main(int argc, char *argv[])
 //  std::cout << "x="<<x.str()<<std::endl;
 //  std::cout << "x.x="<<x.dot(&x)<<std::endl;
 
-  size_t n=10000000;
-  size_t repeat=100;
-  LinearAlgebra::CachedParameterVector y(n), z(n);
-//  IterativeSolver::PagedParameterVector y(n), z(n);
-//  IterativeSolver::SimpleParameterVector y(n), z(n);
-//  y.setCacheSize(n*1);z.setCacheSize(n*1);
-//  y.setCacheSize(n-1);z.setCacheSize(n-1);
-//  y.setCacheSize(10000);z.setCacheSize(10000);
-  y.zero();
-  z.zero();
-//  IterativeSolver::ParameterScalar one=1;
-//  y.put(&one,1,n/2);
-//  z.put(&one,1,n/2);
-  std::cout <<y.dot(&z)<<std::endl;
-  std::clock_t start=std::clock();
-//  double result;
-  for (size_t r=0; r<repeat; r++) {
-//    result += y.dot(&z);
-//    y.zero();
-    y=z;
-//    y.axpy(2.0,&z);
-    }
-  double t= (std::clock()-start)/(double) CLOCKS_PER_SEC;
-  xout << "time="<<t<<"s, rate="<<1e-9*repeat*n/t<<"G/s"<<std::endl;
-  if (false) {
+  if (true) {
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.2,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
-  LinearAlgebra::DIIS::randomTest(100,100,0.1,3.0);
+//  LinearAlgebra::DIIS<double>::randomTest(100,100,0.1,3.0);
 //  IterativeSolver::DIIS::test(1,6,1e-10,IterativeSolver::DIIS::KAINmode,0.0002);
-  LinearAlgebra::DIIS::test(1,6,1e-10,LinearAlgebra::DIIS::DIISmode,0.2);
-  LinearAlgebra::DIIS::test(1,6,1e-10,LinearAlgebra::DIIS::DIISmode,0.0002);
+//  LinearAlgebra::DIIS<double>::test(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
+//  LinearAlgebra::DIIS<double>::test(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
 //  IterativeSolver::DIIS::test(1,6,1e6,IterativeSolver::DIIS::disabled,0.0002);
-  LinearAlgebra::Davidson::test(9,1,1,2,true);
-  LinearAlgebra::Davidson::test(9,1,1,2,false);
-  LinearAlgebra::Davidson::test(9,1,1,1);
-  LinearAlgebra::Davidson::test(9,1,1,2);
-  LinearAlgebra::Davidson::test(9,2,1,2);
-  LinearAlgebra::Davidson::test(99,3,1,2);
-  LinearAlgebra::RSPT::test(100,2e0);
+  LinearAlgebra::Davidson<double>::test(2,1,9,2,true);
+  LinearAlgebra::Davidson<double>::test(9,1,9,2,true);
+  LinearAlgebra::Davidson<double>::test(9,1,1,2,false);
+  LinearAlgebra::Davidson<double>::test(9,1,1,1);
+  LinearAlgebra::Davidson<double>::test(9,1,1,2);
+  LinearAlgebra::Davidson<double>::test(9,2,1,2);
+  LinearAlgebra::Davidson<double>::test(99,3,1,2);
+//  LinearAlgebra::RSPT<double>::test(100,2e0);
   IterativeSolverFTest();
     }
 #ifdef USE_MPI

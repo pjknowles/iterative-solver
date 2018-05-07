@@ -59,7 +59,7 @@ namespace LinearAlgebra {
     CachedParameterVector& operator=(const CachedParameterVector& other);
 
     // Every child of ParameterVector needs exactly this
-    CachedParameterVector* clone() const { return new CachedParameterVector(*this); }
+    CachedParameterVector* clone(int option=0) const { return new CachedParameterVector(*this); }
 
     /*!
      * \brief Specify a cache size for manipulating the data

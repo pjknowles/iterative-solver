@@ -3,8 +3,6 @@
 #include "IterativeSolver.h"
 #include <stdexcept>
 
-#include "SimpleParameterVector.h"
-
 namespace LinearAlgebra{
 
  /** @example DavidsonExample.cpp */
@@ -12,13 +10,14 @@ namespace LinearAlgebra{
  * \brief A class that finds the lowest eigensolutions of a matrix using Davidson's method
  *
  * Example of simplest use: @include DavidsonExample.cpp
+ * \tparam scalar Type of matrix elements
  *
  */
- template <class scalar=double, class ptype=SimpleParameterVector>
+ template <class scalar=double>
  class Davidson : public IterativeSolverBase<scalar>
  {
-  using IterativeSolverBase<scalar>::m_verbosity;
  public:
+  using IterativeSolverBase<scalar>::m_verbosity;
   Davidson()
    : IterativeSolverBase<scalar>()
   {
@@ -68,8 +67,8 @@ namespace LinearAlgebra{
   }
 
 
+ };
   // testing code below here
- public:
   /*!
    * \brief Test
    * \param dimension The dimension of the test matrix
@@ -78,8 +77,10 @@ namespace LinearAlgebra{
    * \param problem Selects which test matrix to use
    * \param orthogonalize Whether to orthogonalize expansion vectors
    * \tparam ptype Concrete class template that implements LinearAlgebra::vectorSet
+   * \tparam scalar Type of matrix elements
    */
-  static void test(size_t dimension, size_t roots=1, int verbosity=0, int problem=0, bool orthogonalize=true)
+ template <class ptype, class scalar=double>
+  static void DavidsonTest(size_t dimension, size_t roots=1, int verbosity=0, int problem=0, bool orthogonalize=true)
   {
 
    static Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> testmatrix;
@@ -111,7 +112,7 @@ namespace LinearAlgebra{
     }
    } update;
 
-   xout << "Test IterativeSolver::Davidson dimension="<<dimension<<", roots="<<roots<<", problem="<<problem<<std::endl;
+   xout << "Test IterativeSolver::Davidson dimension="<<dimension<<", roots="<<roots<<", problem="<<problem<<", orthogonalize="<<orthogonalize<<std::endl;
    testmatrix.resize(dimension,dimension);
    for (size_t k=0; k<dimension; k++)
     for (size_t l=0; l<dimension; l++)
@@ -151,14 +152,14 @@ namespace LinearAlgebra{
     update(x,g,shift);
     if (d.finalize(x,g)) break;
    }
-   // Eigen::SelfAdjointEigenSolver<Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>> es(testmatrix);
-   // xout << "true eigenvalues:\n"<<es.eigenvalues()<<std::endl;
-   // xout << "true eigenvectors:\n"<<es.eigenvectors()<<std::endl;
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>> es(testmatrix);
+    xout << "true eigenvalues: "<<es.eigenvalues().head(d.m_roots).transpose()<<std::endl;
+//    xout << "true eigenvectors:\n"<<es.eigenvectors().leftCols(d.m_roots).transpose()<<std::endl;
 
 
    std::vector<scalar> ev=d.eigenvalues();
-   xout << "Eigenvalues: "; for (typename std::vector<scalar>::const_iterator e=ev.begin(); e!=ev.end(); e++) xout<<" "<<*e;xout<<std::endl;
-   xout << "Reported errors: "; for (typename std::vector<scalar>::const_iterator e=d.m_errors.begin(); e!=d.m_errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
+   xout << "Eigenvalues: "; size_t root=0; for (const auto& e : ev) xout<<" "<<e<<"(error="<<e-es.eigenvalues()(root++)<<")";xout<<std::endl;
+   xout << "Reported errors: "; for (const auto& e: d.errors()) xout<<" "<<e;xout<<std::endl;
 
    action(x,g);
    std::vector<scalar> errors;
@@ -166,13 +167,13 @@ namespace LinearAlgebra{
     g[root]->axpy(-ev[root],x[root]);
     errors.push_back(g[root]->dot(g[root]));
    }
-   xout << "Square residual norms: "; for (typename std::vector<scalar>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
+//   xout << "Square residual norms: "; for (typename std::vector<scalar>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
+   xout << "Square residual norms: "; for (const auto& e: errors) xout<<" "<<e;xout<<std::endl;
    // be noisy about obvious problems
    if (*std::max_element(errors.begin(),errors.end())>1e-7) throw std::runtime_error("IterativeSolver::Davidson has failed tests");
 
   }
 
- };
 }
 
 #endif // DAVIDSON_H

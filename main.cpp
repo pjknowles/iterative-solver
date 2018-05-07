@@ -23,29 +23,25 @@ int main(int argc, char *argv[])
 //    std::cout << "MPI process number "<<rank<<std::endl;
   }
 #endif
-//  IterativeSolver::CachedParameterVector x(5);
-//  x.setCacheSize(2);
-//  for (size_t k=0; k<x.size(); k++) x[k]=k;
-//  std::cout << "x="<<x.str()<<std::endl;
-//  std::cout << "x.x="<<x.dot(&x)<<std::endl;
 
   if (true) {
+   using namespace LinearAlgebra;
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.2,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
 //  LinearAlgebra::DIIS<double>::randomTest(100,100,0.1,3.0);
-//  IterativeSolver::DIIS::test(1,6,1e-10,IterativeSolver::DIIS::KAINmode,0.0002);
-//  LinearAlgebra::DIIS<double>::test(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
-//  LinearAlgebra::DIIS<double>::test(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
-//  IterativeSolver::DIIS::test(1,6,1e6,IterativeSolver::DIIS::disabled,0.0002);
-  LinearAlgebra::Davidson<double>::test(2,1,1,2,true);
-  LinearAlgebra::Davidson<double>::test(9,1,1,2,true);
-  LinearAlgebra::Davidson<double>::test(9,1,1,2,false);
-  LinearAlgebra::Davidson<double>::test(9,1,1,1);
-  LinearAlgebra::Davidson<double>::test(9,1,1,2);
-  LinearAlgebra::Davidson<double>::test(9,2,1,2);
-  LinearAlgebra::Davidson<double>::test(99,3,1,2);
+  DIISTest<SimpleParameterVector>(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
+  DIISTest<SimpleParameterVector>(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
+//  DIISTest<SimpleParameterVector>(1,6,1e-3,LinearAlgebra::DIIS<double>::disabled,0.0002);
+  DavidsonTest<SimpleParameterVector>(2,1,1,2,true);
+  DavidsonTest<SimpleParameterVector>(9,1,1,2,true);
+  DavidsonTest<SimpleParameterVector>(9,1,1,2,false);
+  DavidsonTest<SimpleParameterVector>(9,1,1,1);
+  DavidsonTest<SimpleParameterVector>(9,1,1,2);
+  DavidsonTest<SimpleParameterVector>(9,2,1,2);
+  DavidsonTest<SimpleParameterVector>(100,3,1,2);
+  DavidsonTest<SimpleParameterVector>(100,3,1,2,false);
 //  LinearAlgebra::RSPT<double>::test(100,2e0);
   IterativeSolverFTest();
     }

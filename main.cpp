@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
   DavidsonTest<SimpleParameterVector>(9,2,1,2);
   DavidsonTest<SimpleParameterVector>(100,3,1,2);
   DavidsonTest<SimpleParameterVector>(100,3,1,2,false);
-//  LinearAlgebra::RSPT<double>::test(100,2e0);
+//  RSPTTest<SimpleParameterVector,double>(100,2e0);
   IterativeSolverFTest();
     }
 #ifdef USE_MPI

@@ -1,0 +1,23 @@
+# This is a sample build configuration for C++ – Make.
+# Check our guides at https://confluence.atlassian.com/x/5Q4SMw for more examples.
+# Only use spaces to indent your .yml configuration.
+# -----
+# You can specify a custom docker image from Docker Hub as your build environment.
+image: pjknowles/opensuse:tumbleweed
+
+pipelines:
+  default:
+    - step:
+        caches:
+          - cmake
+        script: # Modify the commands below to build your repository.
+          - # zypper -n install eigen3-devel cmake gcc-fortran gcc-c++ openmpi-devel openmpi-libs blas-devel libblas3 git doxygen texlive-epstopdf ghostscript
+          - ln -s /usr /usr/usr
+          - git submodule update --init --recursive
+          - mkdir -p build && cd build
+          - cmake ..
+          - make -j
+          - ctest -V
+definitions:
+  caches:
+    cmake: build

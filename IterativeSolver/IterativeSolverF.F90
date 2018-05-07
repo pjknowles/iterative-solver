@@ -1,5 +1,7 @@
 !> @brief IterativeSolver Fortran binding
 MODULE IterativeSolverF
+ TYPE Davidson
+ END TYPE Davidson
 CONTAINS
  SUBROUTINE IterativeSolverFTest() BIND(C,name='IterativeSolverFTest')
  PRINT *, 'Test Fortran binding of IterativeSolver'

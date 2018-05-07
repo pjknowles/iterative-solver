@@ -39,8 +39,8 @@ int main(int argc, char *argv[])
 //  LinearAlgebra::DIIS<double>::test(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
 //  LinearAlgebra::DIIS<double>::test(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
 //  IterativeSolver::DIIS::test(1,6,1e6,IterativeSolver::DIIS::disabled,0.0002);
-  LinearAlgebra::Davidson<double>::test(2,1,9,2,true);
-  LinearAlgebra::Davidson<double>::test(9,1,9,2,true);
+  LinearAlgebra::Davidson<double>::test(2,1,1,2,true);
+  LinearAlgebra::Davidson<double>::test(9,1,1,2,true);
   LinearAlgebra::Davidson<double>::test(9,1,1,2,false);
   LinearAlgebra::Davidson<double>::test(9,1,1,1);
   LinearAlgebra::Davidson<double>::test(9,1,1,2);

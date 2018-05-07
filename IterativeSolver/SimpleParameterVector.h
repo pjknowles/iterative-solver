@@ -17,6 +17,11 @@ namespace LinearAlgebra {
    * \brief Construct an object without any data.
    */
     SimpleParameterVector(size_t length=0);
+    SimpleParameterVector(const SimpleParameterVector& source, int option=0) {
+//     std::cout << "SimpleParameterVector constructor, option="<<option<<std::endl;
+     *this = source;
+    }
+
     ~SimpleParameterVector();
     /*!
    * \brief Add a constant times another object to this object
@@ -48,7 +53,7 @@ namespace LinearAlgebra {
     SimpleParameterVector& operator=(const SimpleParameterVector& other);
 
     // Every child of ParameterVector needs exactly this
-    SimpleParameterVector* clone(int option=0) const { return new SimpleParameterVector(*this); }
+    SimpleParameterVector* clone(int option=0) const { return new SimpleParameterVector(*this,option); }
 
 
   private:

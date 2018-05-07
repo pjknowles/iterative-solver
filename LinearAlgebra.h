@@ -18,13 +18,14 @@ namespace LinearAlgebra {
    * Concrete implementations should implement all of the virtual public methods, together with ensuring
    * that the
    * copy operator=() and the copy constructor perform a deep copy to make a completely independent clone.
-   * They must also define a copy method exactly as follows.
-   * @code
-   *      DerivedVector* clone() const { return new DerivedVector(*this); }
-   * @endcode
    * Deriving implementations are free to make their own data storage arrangements, including
    * storing
    * externally and/or distributed across processes, so long as all of the public methods function correctly.
+   *
+   * Implementations must also define a copy method exactly as follows.
+   * @code
+   *      DerivedVector* clone(int option=0) const { return new DerivedVector(*this, option);  }
+   * @endcode
    *
    * The operator[](), put(), get() and size() methods provided in this base class
    * offer an interface for direct access to the object's data,
@@ -42,7 +43,14 @@ namespace LinearAlgebra {
   {
   public:
     vector<scalar>() : m_variance(0){}
-    vector<scalar>(const vector<scalar> &source){ *this = source; }
+    /*!
+     * \brief copy constructor
+     * \param source
+     * \param option  might contain advisory information that can be consulted by the implementation:
+     * - \c LINEARALGEBRA_CLONE_ADVISE_OFFLINE Slow offline storage can be used, and the client would prefer to save memory by doing so
+     * - \c LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED MPI-distributed storage can be used, and the client would prefer to save memory by doing so
+     */
+    vector<scalar>(const vector<scalar> &source, int option=0){ *this = source; }
     virtual ~vector<scalar>(){}
     /*!
      * \brief Add a constant times another object to this object
@@ -206,7 +214,6 @@ namespace LinearAlgebra {
 
     void push_back_clone(const pv_t& val, int option=0)
     {
-     std::cout << "push_back_clone option="<<option<<std::endl;
       m_pvs.push_back(std::shared_ptr<vector<scalar> >(val->clone(option)));
       m_owned.push_back(true);
       m_active.push_back(true);

@@ -285,11 +285,9 @@ template <class scalar=double>
     {
       if (residual.m_active.front()==0) xout <<"warning: inactive residual"<<std::endl;
       if (solution.m_active.front()==0) xout <<"warning: inactive solution"<<std::endl;
-        m_residuals.push_back(residual);
-        m_solutions.push_back(solution);
-    //    m_residuals.emplace_back(new ParameterVector(residual,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED|LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
-    //    m_solutions.emplace_back(new ParameterVector(solution,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED|LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
-        m_others.push_back(other);
+        m_residuals.emplace_back(vectorSet<scalar>(residual,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED|LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
+        m_solutions.emplace_back(vectorSet<scalar>(solution,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED|LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
+        m_others.emplace_back(vectorSet<scalar>(other,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED|LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
         calculateSubspaceMatrix(residual,solution);
         return m_residuals.size();
     }

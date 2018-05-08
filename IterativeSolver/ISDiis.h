@@ -315,7 +315,8 @@ static struct {
     }
 
   x.front()->get(&xxx[0],2,0);
-  xout   << "Distance from solution = "<<std::sqrt((xxx[0]-1)*(xxx[0]-1)+(xxx[1]-1)*(xxx[1]-1));
+  xout   << "Distance from solution = "<<std::sqrt((xxx[0]-1)*(xxx[0]-1)+(xxx[1]-1)*(xxx[1]-1))
+           <<std::endl;
 
 }
 

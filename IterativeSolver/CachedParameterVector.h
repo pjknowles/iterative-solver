@@ -5,9 +5,6 @@
 #include "Storage.h"
 #include <algorithm>
 #include <limits>
-#ifndef nullptr
-#define nullptr NULL
-#endif
 
 #ifdef USE_MPI
 #include <mpi.h>

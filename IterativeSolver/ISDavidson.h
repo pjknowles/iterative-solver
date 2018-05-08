@@ -189,14 +189,14 @@ namespace LinearAlgebra{
   }
   extern "C" void IterativeSolverDavidsonInterpolate(double* c, double* g, double* eigenvalue) {
    vectorSet<double> cc,gg;
-   for (size_t root=0; root < instance->m_roots; root++) {
+   for (int root=0; root < instance->m_roots; root++) {
     cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
     cc.back()->put(&c[root*instance->m_dimension],instance->m_dimension,0);
     gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
     gg.back()->put(&g[root*instance->m_dimension],instance->m_dimension,0);
    }
    instance->interpolate(cc,gg);
-   for (size_t root=0; root < instance->m_roots; root++) {
+   for (int root=0; root < instance->m_roots; root++) {
     cc[root]->get(&c[root*instance->m_dimension],instance->m_dimension,0);
     gg[root]->get(&g[root*instance->m_dimension],instance->m_dimension,0);
     eigenvalue[root] = instance->eigenvalues()[root];
@@ -205,14 +205,14 @@ namespace LinearAlgebra{
 
   extern "C" int IterativeSolverDavidsonFinalize(double* c, double* g, double* error) {
    vectorSet<double> cc,gg;
-   for (size_t root=0; root < instance->m_roots; root++) {
+   for (int root=0; root < instance->m_roots; root++) {
     cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
     cc.back()->put(&c[root*instance->m_dimension],instance->m_dimension,0);
     gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
     gg.back()->put(&g[root*instance->m_dimension],instance->m_dimension,0);
    }
    bool result = instance->finalize(cc,gg);
-   for (size_t root=0; root < instance->m_roots; root++) {
+   for (int root=0; root < instance->m_roots; root++) {
     cc[root]->get(&c[root*instance->m_dimension],instance->m_dimension,0);
     error[root] = instance->errors()[root];
    }

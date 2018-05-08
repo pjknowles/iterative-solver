@@ -356,6 +356,8 @@ template <class scalar=double>
     Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_subspaceOverlap;
     Eigen::MatrixXcd m_subspaceEigenvectors; // FIXME templating
     Eigen::VectorXcd m_subspaceEigenvalues; // FIXME templating
+  public:
+    size_t m_dimension;
   private:
     unsigned int m_iterations;
     double m_singularity_threshold;

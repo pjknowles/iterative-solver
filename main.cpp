@@ -40,6 +40,7 @@ int main(int argc, char *argv[])
   DavidsonTest<SimpleParameterVector>(9,1,1,1);
   DavidsonTest<SimpleParameterVector>(9,1,1,2);
   DavidsonTest<SimpleParameterVector>(9,2,1,2);
+  DavidsonTest<SimpleParameterVector>(100,1,1,2);
   DavidsonTest<SimpleParameterVector>(100,3,1,2);
   DavidsonTest<SimpleParameterVector>(100,3,1,2,false);
 //  RSPTTest<SimpleParameterVector,double>(100,2e0);

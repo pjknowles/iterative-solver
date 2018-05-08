@@ -113,7 +113,10 @@ namespace LinearAlgebra{
   public:
     int m_order; ///< Up to what order of perturbation theory should the energy be obtained.
     std::vector<double> incremental_energies(size_t state=0) {return m_incremental_energies;} ///< The incremental energies order by order.
-    double energy(size_t order, size_t state=0) ///< The total energy to a given order.
+///> The total energy to a given order.
+    double energy(size_t order, ///< the desired maximum order of perturbation theory
+                  size_t state=0 ///< the desired state
+                               )
 {
     double result=0.0;
     for (size_t k=0; k<=order; k++)

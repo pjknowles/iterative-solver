@@ -2,12 +2,13 @@
 #define DAVIDSON_H
 #include "IterativeSolver.h"
 #include <stdexcept>
+#include "SimpleParameterVector.h"
 
 namespace LinearAlgebra{
 
  /** @example DavidsonExample.cpp */
  /*!
- * \brief A class that finds the lowest eigensolutions of a matrix using Davidson's method
+ * \brief A class that finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos
  *
  * Example of simplest use: @include DavidsonExample.cpp
  * \tparam scalar Type of matrix elements
@@ -176,6 +177,46 @@ namespace LinearAlgebra{
    // be noisy about obvious problems
    if (*std::max_element(errors.begin(),errors.end())>1e-7) throw std::runtime_error("IterativeSolver::Davidson has failed tests");
 
+  }
+
+  using v = SimpleParameterVector;
+
+  static std::unique_ptr<Davidson<double> > instance;
+  extern "C" void IterativeSolverDavidsonInitialize(size_t nQ, size_t nP, size_t nroot, double* PP) {
+   instance.reset(new Davidson<double>(Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> >(PP,nP,nP)));
+   instance->m_dimension=nQ;
+   instance->m_roots=nroot;
+  }
+  extern "C" void IterativeSolverDavidsonInterpolate(double* c, double* g, double* eigenvalue) {
+   vectorSet<double> cc,gg;
+   for (size_t root=0; root < instance->m_roots; root++) {
+    cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
+    cc.back()->put(&c[root*instance->m_dimension],instance->m_dimension,0);
+    gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
+    gg.back()->put(&g[root*instance->m_dimension],instance->m_dimension,0);
+   }
+   instance->interpolate(cc,gg);
+   for (size_t root=0; root < instance->m_roots; root++) {
+    cc[root]->get(&c[root*instance->m_dimension],instance->m_dimension,0);
+    gg[root]->get(&g[root*instance->m_dimension],instance->m_dimension,0);
+    eigenvalue[root] = instance->eigenvalues()[root];
+   }
+  }
+
+  extern "C" int IterativeSolverDavidsonFinalize(double* c, double* g, double* error) {
+   vectorSet<double> cc,gg;
+   for (size_t root=0; root < instance->m_roots; root++) {
+    cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
+    cc.back()->put(&c[root*instance->m_dimension],instance->m_dimension,0);
+    gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
+    gg.back()->put(&g[root*instance->m_dimension],instance->m_dimension,0);
+   }
+   bool result = instance->finalize(cc,gg);
+   for (size_t root=0; root < instance->m_roots; root++) {
+    cc[root]->get(&c[root*instance->m_dimension],instance->m_dimension,0);
+    error[root] = instance->errors()[root];
+   }
+   return result;
   }
 
 }

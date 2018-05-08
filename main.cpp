@@ -31,19 +31,19 @@ int main(int argc, char *argv[])
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
 //  LinearAlgebra::DIIS<double>::randomTest(100,100,0.1,3.0);
-  DIISTest<CachedParameterVector>(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
-  DIISTest<CachedParameterVector>(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
-//  DIISTest<CachedParameterVector>(1,6,1e-3,LinearAlgebra::DIIS<double>::disabled,0.0002);
-  DavidsonTest<CachedParameterVector>(2,1,1,2,true);
-  DavidsonTest<CachedParameterVector>(9,1,1,2,true);
-  DavidsonTest<CachedParameterVector>(9,1,1,2,false);
-  DavidsonTest<CachedParameterVector>(9,1,1,1);
-  DavidsonTest<CachedParameterVector>(9,1,1,2);
-  DavidsonTest<CachedParameterVector>(9,2,1,2);
-  DavidsonTest<CachedParameterVector>(100,1,1,2);
-  DavidsonTest<CachedParameterVector>(100,3,1,2);
-  DavidsonTest<CachedParameterVector>(100,3,1,2,false);
-//  RSPTTest<CachedParameterVector,double>(100,2e0);
+  DIISTest<CachedParameterVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
+  DIISTest<CachedParameterVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
+//  DIISTest<CachedParameterVector<double> >(1,6,1e-3,LinearAlgebra::DIIS<double>::disabled,0.0002);
+  DavidsonTest<CachedParameterVector<double> >(2,1,1,2,true);
+  DavidsonTest<CachedParameterVector<double> >(9,1,1,2,true);
+  DavidsonTest<CachedParameterVector<double> >(9,1,1,2,false);
+  DavidsonTest<CachedParameterVector<double> >(9,1,1,1);
+  DavidsonTest<CachedParameterVector<double> >(9,1,1,2);
+  DavidsonTest<CachedParameterVector<double> >(9,2,1,2);
+  DavidsonTest<CachedParameterVector<double> >(100,1,1,2);
+  DavidsonTest<CachedParameterVector<double> >(100,3,1,2);
+  DavidsonTest<CachedParameterVector<double> >(100,3,1,2,false);
+//  RSPTTest<CachedParameterVector<double> ,double>(100,2e0);
   IterativeSolverFTest();
     }
 #ifdef USE_MPI

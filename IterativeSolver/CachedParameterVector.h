@@ -10,6 +10,10 @@
 
 #ifdef USE_MPI
 #include <mpi.h>
+#else
+using MPI_Comm = int;
+constexpr MPI_Comm MPI_COMM_WORLD=0;
+constexpr MPI_Comm MPI_COMM_NULL=0;
 #endif
 
 namespace LinearAlgebra {
@@ -20,7 +24,8 @@ namespace LinearAlgebra {
    * \brief A class that implements LinearAlgebra::vector<scalar> with data optionally held on backing store, and optionally distributed
    * over MPI ranks
    */
- template <class scalar=double, class Allocator =
+ template <class scalar=double , MPI_Comm mpi_communicator = MPI_COMM_WORLD
+           , class Allocator =
           #ifdef MEMORY_MEMORY_H
            memory::allocator<scalar>
           #else
@@ -33,13 +38,13 @@ namespace LinearAlgebra {
   /*!
    * \brief Construct an object without any data.
    */
-  CachedParameterVector(size_t length=0) : LinearAlgebra::vector<scalar>(), m_size(length)
+  CachedParameterVector(size_t length=0, int option=0) : LinearAlgebra::vector<scalar>(), m_size(length), m_communicator(mpi_communicator)
   {
-   init();
+   init(option);
   }
-  CachedParameterVector(const CachedParameterVector& source) : LinearAlgebra::vector<scalar>()
+  CachedParameterVector(const CachedParameterVector& source, int option=0) : LinearAlgebra::vector<scalar>(), m_communicator(mpi_communicator)
   {
-   init();
+   init(option);
    *this = source;
   }
 
@@ -190,20 +195,38 @@ namespace LinearAlgebra {
      */
   bool replicated() const;
   void setReplicated(bool replicated) const;
+  void distribute(MPI_Comm communicator = mpi_communicator) {
+   m_communicator = communicator;
+#ifdef USE_MPI
+#endif
+  }
 
  private:
-  void init()
+//  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
+#define default_offline_buffer_size 102400
+  void init(int option)
   {
    m_file = nullptr;
    m_cacheMax=m_cacheOffset=s_cacheEmpty;
-   setCacheSize(0);
-   m_replicated = true;
+   setCacheSize(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option ? std::min(m_size,(size_t)default_offline_buffer_size) : 0);
+#ifdef USE_MPI
+   m_replicated = ! LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option;
+    MPI_Comm_Size(mpi_communicator, m_mpi_size);
+    MPI_Comm_Rank(mpi_communicator, m_mpi_rank);
+#else
+    m_replicated=true;
+    m_mpi_size=1;
+    m_mpi_rank=1;
+#endif
   }
 
   /*!
    * \brief The file to hold the data
    */
   bool m_replicated; //!< whether a full copy of data is on every MPI process
+  const MPI_Comm m_communicator; //!< the MPI communicator for distributed data
+  int m_mpi_size;
+  int m_mpi_rank;
   mutable Storage* m_file; //!< backing store. If nullptr, this means that a file is not being used and everything is in m_cache
   size_t m_size; //!< How much data
   mutable size_t m_cacheSize; //!< cache size for implementing operations

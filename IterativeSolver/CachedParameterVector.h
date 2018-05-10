@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string.h>
 
+
 #ifdef USE_MPI
 #include <mpi.h>
 #else
@@ -42,7 +43,7 @@ namespace LinearAlgebra {
   {
    init(option);
   }
-  CachedParameterVector(const CachedParameterVector& source, int option=0) : LinearAlgebra::vector<scalar>(), m_communicator(mpi_communicator)
+  CachedParameterVector(const CachedParameterVector& source, int option=0) : LinearAlgebra::vector<scalar>(), m_size(source.m_size), m_communicator(mpi_communicator)
   {
    init(option);
    *this = source;
@@ -174,7 +175,7 @@ namespace LinearAlgebra {
 
 
   // Every child of LinearAlgebra::vector<scalar> needs exactly this
-  CachedParameterVector* clone(int option=0) const { return new CachedParameterVector(*this); }
+  CachedParameterVector* clone(int option=0) const { std::cout << "in CachedParameterVector clone, option="<<option<<std::endl;return new CachedParameterVector(*this, option); }
 
   /*!
      * \brief Specify a cache size for manipulating the data
@@ -203,12 +204,13 @@ namespace LinearAlgebra {
 
  private:
 //  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
-#define default_offline_buffer_size 102400
+#define default_offline_buffer_size 1
   void init(int option)
   {
    m_file = nullptr;
    m_cacheMax=m_cacheOffset=s_cacheEmpty;
-   setCacheSize(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option ? std::min(m_size,(size_t)default_offline_buffer_size) : 0);
+   if (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)
+    m_cacheSize=(size_t)default_offline_buffer_size;
 #ifdef USE_MPI
    m_replicated = ! LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option;
     MPI_Comm_Size(mpi_communicator, m_mpi_size);
@@ -218,11 +220,10 @@ namespace LinearAlgebra {
     m_mpi_size=1;
     m_mpi_rank=1;
 #endif
+    setCacheSize(0);
+   xout << "new CachedParameterVector m_size="<<m_size<<", option="<<option<<" cache size="<<m_cacheSize<<std::endl;
   }
 
-  /*!
-   * \brief The file to hold the data
-   */
   bool m_replicated; //!< whether a full copy of data is on every MPI process
   const MPI_Comm m_communicator; //!< the MPI communicator for distributed data
   int m_mpi_size;
@@ -234,6 +235,41 @@ namespace LinearAlgebra {
   mutable bool m_cacheDirty;
   mutable size_t m_cacheOffset;
   mutable size_t m_cacheMax;
+
+  struct cache {
+   const Storage& file;
+   const off_t offset;
+   const size_t length;
+   std::vector<scalar> buffer;
+   const scalar* begin() const { return buffer.data();}
+   const scalar* end() const { return buffer.data()+length;}
+   scalar* begin() {return buffer.data();}
+   scalar* end() {return buffer.data()+length;}
+   bool dirty;
+   mutable std::fstream m_file;
+   cache(const Storage& file, const off_t offset, const size_t length)
+    : file(file), offset(offset), length(length) {
+    dirty=false;
+    if (std::min(length,static_cast<size_t>(file.size()-offset)))
+     file.read(buffer.data(),std::min(length,static_cast<size_t>(file.size()-offset)),offset);
+   }
+   ~cache() {
+    if (dirty && length)
+     file.write(buffer.data(),length,offset);
+   }
+   cache& operator++() {
+    this->~cache();
+    this->cache(file,offset+length,length);
+    return *this;}
+   cache operator++(int) {
+    return cache (file,offset+length,length);
+  }
+  };
+
+
+  struct cache& cache_begin() { return cache(0,m_cacheSize); }
+  struct cache& cache_end() { return cache(m_cacheSize,m_cacheSize); }
+
   void flushCache(bool force=false) const
   {
    if (m_cacheOffset==s_cacheEmpty) return;
@@ -244,6 +280,7 @@ namespace LinearAlgebra {
     m_cacheDirty=false;
    }
   }
+
   void write(const scalar * const buffer, size_t length, size_t offset) const
   {
    //  std::cout << "write "<<length<<std::endl;
@@ -285,6 +322,7 @@ namespace LinearAlgebra {
   const scalar& operator[](size_t pos) const
   {
    if (pos >= m_cacheMax || pos < m_cacheOffset) { // cache not mapping right sector
+    xout << "cache miss, m_cacheMax="<<m_cacheMax<<", m_cacheOffset="<<m_cacheOffset <<std::endl;
     if (m_cacheSize==0) setCacheSize(m_size); // if no setCacheSize() has been issued, then the default is all in memory
     flushCache();
     m_cacheOffset=pos;

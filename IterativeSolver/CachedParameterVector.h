@@ -17,9 +17,16 @@ namespace LinearAlgebra {
  const static size_t s_cacheEmpty=std::numeric_limits<size_t>::max();
 
  /*!
-   * \brief A class that implements LinearAlgebra::vector<scalar> with data held on backing store
+   * \brief A class that implements LinearAlgebra::vector<scalar> with data optionally held on backing store, and optionally distributed
+   * over MPI ranks
    */
- template <class scalar=double>
+ template <class scalar=double, class Allocator =
+          #ifdef MEMORY_MEMORY_H
+           memory::allocator<scalar>
+          #else
+           std::allocator<scalar>
+          #endif
+>
  class CachedParameterVector : public LinearAlgebra::vector<scalar>
  {
  public:
@@ -50,8 +57,8 @@ namespace LinearAlgebra {
    if (this->variance() != othe->variance()) throw std::logic_error("mismatching co/contravariance");
    if (false) {
     flushCache();
-    std::vector<scalar> buffer(m_cacheSize);
-    std::vector<scalar> buffero(m_cacheSize);
+    std::vector<scalar,Allocator> buffer(m_cacheSize);
+    std::vector<scalar,Allocator> buffero(m_cacheSize);
     for (size_t block=0; block<m_size; block+=buffer.size()) {
      size_t bs=std::min(buffer.size(),m_size-block);
      read(&buffer[0], bs, block);
@@ -81,8 +88,8 @@ namespace LinearAlgebra {
    if (this->variance() != othe->variance()) throw std::logic_error("mismatching co/contravariance");
    scalar result=0;
    if (false) {
-    std::vector<scalar> buffer(m_cacheSize);
-    std::vector<scalar> buffero(m_cacheSize);
+    std::vector<scalar,Allocator> buffer(m_cacheSize);
+    std::vector<scalar,Allocator> buffero(m_cacheSize);
     for (size_t block=0; block<m_size; block+=buffer.size()) {
      size_t bs=std::min(buffer.size(),m_size-block);
      read(&buffer[0], bs, block);
@@ -121,7 +128,7 @@ namespace LinearAlgebra {
   {
    if (false) {
     flushCache();
-    std::vector<scalar> buffer(m_cacheSize);
+    std::vector<scalar,Allocator> buffer(m_cacheSize);
     for (size_t k=0; k<m_cacheSize; k++) buffer[k] += 0;
     for (size_t block=0; block<m_size; block+=buffer.size()) {
      size_t bs=std::min(buffer.size(),m_size-block);
@@ -141,7 +148,7 @@ namespace LinearAlgebra {
   {
    m_size=other.m_size;
    if (false) {
-    std::vector<scalar> buffer(m_cacheSize);
+    std::vector<scalar,Allocator> buffer(m_cacheSize);
     for (size_t block=0; block<m_size; block+=buffer.size()) {
      size_t bs=std::min(buffer.size(),m_size-block);
      other.read(&buffer[0], bs, block);
@@ -190,6 +197,7 @@ namespace LinearAlgebra {
    m_file = nullptr;
    m_cacheMax=m_cacheOffset=s_cacheEmpty;
    setCacheSize(0);
+   m_replicated = true;
   }
 
   /*!
@@ -199,7 +207,7 @@ namespace LinearAlgebra {
   mutable Storage* m_file; //!< backing store. If nullptr, this means that a file is not being used and everything is in m_cache
   size_t m_size; //!< How much data
   mutable size_t m_cacheSize; //!< cache size for implementing operations
-  mutable std::vector<scalar> m_cache;
+  mutable std::vector<scalar,Allocator> m_cache;
   mutable bool m_cacheDirty;
   mutable size_t m_cacheOffset;
   mutable size_t m_cacheMax;

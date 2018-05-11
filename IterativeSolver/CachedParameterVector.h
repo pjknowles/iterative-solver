@@ -7,7 +7,9 @@
 #include <limits>
 #include <stdexcept>
 #include <string.h>
-
+#include <cstddef>
+#include <unistd.h>
+#include <fstream>
 
 #ifdef USE_MPI
 #include <mpi.h>
@@ -50,7 +52,7 @@ namespace LinearAlgebra {
   }
 
   virtual ~CachedParameterVector()
-  {if (m_file != nullptr) delete m_file;}
+  {}
   /*!
    * \brief Add a constant times another object to this object
    * \param a The factor to multiply.
@@ -61,6 +63,7 @@ namespace LinearAlgebra {
   {
    const CachedParameterVector* othe=dynamic_cast <const CachedParameterVector*> (other);
    if (this->variance() != othe->variance()) throw std::logic_error("mismatching co/contravariance");
+   if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
    if (false) {
     flushCache();
     std::vector<scalar,Allocator> buffer(m_cacheSize);
@@ -228,7 +231,6 @@ namespace LinearAlgebra {
   const MPI_Comm m_communicator; //!< the MPI communicator for distributed data
   int m_mpi_size;
   int m_mpi_rank;
-  mutable Storage* m_file; //!< backing store. If nullptr, this means that a file is not being used and everything is in m_cache
   size_t m_size; //!< How much data
   mutable size_t m_cacheSize; //!< cache size for implementing operations
   mutable std::vector<scalar,Allocator> m_cache;
@@ -236,10 +238,10 @@ namespace LinearAlgebra {
   mutable size_t m_cacheOffset;
   mutable size_t m_cacheMax;
 
-  struct cache {
-   const Storage& file;
-   const off_t offset;
-   const size_t length;
+  struct window {
+   const off_t offset; ///< the offset in mapped data of the first element of the cache window
+   size_t length;///< the size of the cache window
+   const size_t datasize; ///< the size of the vector being mapped
    std::vector<scalar> buffer;
    const scalar* begin() const { return buffer.data();}
    const scalar* end() const { return buffer.data()+length;}
@@ -247,52 +249,46 @@ namespace LinearAlgebra {
    scalar* end() {return buffer.data()+length;}
    bool dirty;
    mutable std::fstream m_file;
-   cache(const Storage& file, const off_t offset, const size_t length)
-    : file(file), offset(offset), length(length) {
+   size_t filesize;
+   window(size_t datasize, size_t length=default_offline_buffer_size)
+    :  datasize(datasize) {
+    char *tmpname=strdup("tmpfileXXXXXX");
+    mkstemp(tmpname);
+    m_file.open (tmpname, std::ios::out | std::ios::in | std::ios::binary);
+    unlink(tmpname);
+    free(tmpname);
+    filesize=0;
+    slide(0,length);
+   }
+
+   void slide(const off_t offset, size_t length) {
+    if (dirty && this->length) {
+     m_file.seekg(this->offset*sizeof(scalar));
+     m_file.write(buffer.data(),this->length*sizeof(scalar));
+    }
+    this->offset = offset;
+    this->length = std::min(length,static_cast<size_t>(datasize-offset));
+    buffer.resize(this->length);
+    if (std::min(this->length,static_cast<size_t>(filesize-offset))) {
+     m_file.seekg(offset*sizeof(scalar));
+     m_file.read(buffer.data(),std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar));
+   }
     dirty=false;
-    if (std::min(length,static_cast<size_t>(file.size()-offset)))
-     file.read(buffer.data(),std::min(length,static_cast<size_t>(file.size()-offset)),offset);
-   }
-   ~cache() {
-    if (dirty && length)
-     file.write(buffer.data(),length,offset);
-   }
-   cache& operator++() {
-    this->~cache();
-    this->cache(file,offset+length,length);
-    return *this;}
-   cache operator++(int) {
-    return cache (file,offset+length,length);
   }
+
+   ~window() {
+    slide(filesize,0);
+    m_file.close();
+   }
+
+   window& operator++() {
+    slide(offset+length,std::min(datasize-offset-length,length));
+    return *this;
+   }
+  private:
+   window operator++(int) {return this;}
   };
 
-
-  struct cache& cache_begin() { return cache(0,m_cacheSize); }
-  struct cache& cache_end() { return cache(m_cacheSize,m_cacheSize); }
-
-  void flushCache(bool force=false) const
-  {
-   if (m_cacheOffset==s_cacheEmpty) return;
-   if (force || (m_cacheDirty && m_file != nullptr)) {
-    //          std::cout << "flush Cache offset="<<m_cacheOffset<<" ,length="<<std::min(m_cacheSize,(size_t)size()-m_cacheOffset)<<std::endl;
-    //          std::cout << "flush buffer begins "<<m_cache[0]<<std::endl;
-    write(&m_cache[0],std::min(m_cacheSize,m_size-m_cacheOffset),m_cacheOffset);
-    m_cacheDirty=false;
-   }
-  }
-
-  void write(const scalar * const buffer, size_t length, size_t offset) const
-  {
-   //  std::cout << "write "<<length<<std::endl;
-   if (m_file == nullptr) m_file = new Storage();
-   m_file->write((const char*) buffer,length*sizeof(scalar),offset*sizeof(scalar));
-  }
-
-  void read(scalar* buffer, size_t length, size_t offset) const
-  {
-   //  std::cout << "read  "<<length<<std::endl;
-   m_file->read((char*) buffer,length*sizeof(scalar),offset*sizeof(scalar));
-  }
  public:
   void put(scalar* const buffer, size_t length, size_t offset)
   {

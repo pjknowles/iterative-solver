@@ -3,7 +3,7 @@
 #include "IterativeSolver/ISRSPT.h"
 #include "IterativeSolver/PagedParameterVector.h"
 #include "IterativeSolver/SimpleParameterVector.h"
-#include "IterativeSolver/CachedParameterVector.h"
+#include "IterativeSolver/PagedVector.h"
 #include <ctime>
 #ifdef USE_MPI
 #include <mpi.h>
@@ -31,19 +31,19 @@ int main(int argc, char *argv[])
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
 //  LinearAlgebra::DIIS<double>::randomTest(100,100,0.1,3.0);
-  DIISTest<CachedParameterVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
-  DIISTest<CachedParameterVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
-//  DIISTest<CachedParameterVector<double> >(1,6,1e-3,LinearAlgebra::DIIS<double>::disabled,0.0002);
-  DavidsonTest<CachedParameterVector<double> >(2,1,1,2,true);
-  DavidsonTest<CachedParameterVector<double> >(9,1,1,2,true);
-  DavidsonTest<CachedParameterVector<double> >(9,1,1,2,false);
-  DavidsonTest<CachedParameterVector<double> >(9,1,1,1);
-  DavidsonTest<CachedParameterVector<double> >(9,1,1,2);
-  DavidsonTest<CachedParameterVector<double> >(9,2,1,2);
-  DavidsonTest<CachedParameterVector<double> >(100,1,1,2);
-  DavidsonTest<CachedParameterVector<double> >(100,3,1,2);
-  DavidsonTest<CachedParameterVector<double> >(100,3,1,2,false);
-//  RSPTTest<CachedParameterVector<double> ,double>(100,2e0);
+  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
+  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
+//  DIISTest<PagedVector<double> >(1,6,1e-3,LinearAlgebra::DIIS<double>::disabled,0.0002);
+  DavidsonTest<PagedVector<double> >(2,1,1,2,true);
+  DavidsonTest<PagedVector<double> >(9,1,1,2,true);
+  DavidsonTest<PagedVector<double> >(9,1,1,2,false);
+  DavidsonTest<PagedVector<double> >(9,1,1,1);
+  DavidsonTest<PagedVector<double> >(9,1,1,2);
+  DavidsonTest<PagedVector<double> >(9,2,1,2);
+  DavidsonTest<PagedVector<double> >(100,1,1,2);
+  DavidsonTest<PagedVector<double> >(100,3,1,2);
+  DavidsonTest<PagedVector<double> >(100,3,1,2,false);
+//  RSPTTest<PagedVector<double> ,double>(100,2e0);
   IterativeSolverFTest();
     }
 #ifdef USE_MPI

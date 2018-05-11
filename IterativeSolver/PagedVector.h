@@ -1,5 +1,5 @@
-#ifndef CACHEDPARAMETERVECTOR_H
-#define CACHEDPARAMETERVECTOR_H
+#ifndef PAGEDVECTOR_H
+#define PAGEDVECTOR_H
 
 #include "LinearAlgebra.h"
 #include "Storage.h"
@@ -35,27 +35,27 @@ namespace LinearAlgebra {
            std::allocator<scalar>
           #endif
 >
- class CachedParameterVector : public LinearAlgebra::vector<scalar>
+ class PagedVector : public LinearAlgebra::vector<scalar>
  {
  public:
   /*!
    * \brief Construct an object without any data.
    */
-  CachedParameterVector(size_t length=0, int option=0) : LinearAlgebra::vector<scalar>(), m_size(length), m_communicator(mpi_communicator), m_cache(length)
+  PagedVector(size_t length=0, int option=0) : LinearAlgebra::vector<scalar>(), m_size(length), m_communicator(mpi_communicator), m_cache(length)
   {
    init(option);
   }
-  CachedParameterVector(const CachedParameterVector& source, int option=0) : LinearAlgebra::vector<scalar>(), m_size(source.m_size), m_communicator(mpi_communicator), m_cache(source.m_size)
+  PagedVector(const PagedVector& source, int option=0) : LinearAlgebra::vector<scalar>(), m_size(source.m_size), m_communicator(mpi_communicator), m_cache(source.m_size)
   {
    init(option);
    *this = source;
   }
 
-  virtual ~CachedParameterVector()
+  virtual ~PagedVector()
   {}
 
   // Every child of LinearAlgebra::vector<scalar> needs exactly this
-  CachedParameterVector* clone(int option=0) const { std::cout << "in CachedParameterVector clone, option="<<option<<std::endl;return new CachedParameterVector(*this, option); }
+  PagedVector* clone(int option=0) const { std::cout << "in PagedVector clone, option="<<option<<std::endl;return new PagedVector(*this, option); }
 
   /*!
      * \brief Specify a cache size for manipulating the data
@@ -97,7 +97,7 @@ namespace LinearAlgebra {
     m_mpi_rank=1;
 #endif
     m_cache.move(0,(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length);
-   xout << "new CachedParameterVector m_size="<<m_size<<", option="<<option<<" cache size="<<m_cache.length<<std::endl;
+   xout << "new PagedVector m_size="<<m_size<<", option="<<option<<" cache size="<<m_cache.length<<std::endl;
   }
 
   bool m_replicated; //!< whether a full copy of data is on every MPI process
@@ -210,7 +210,7 @@ namespace LinearAlgebra {
   scalar& operator[](size_t pos)
   {
    scalar* result;
-   result = &const_cast<scalar&>(static_cast<const CachedParameterVector*>(this)->operator [](pos));
+   result = &const_cast<scalar&>(static_cast<const PagedVector*>(this)->operator [](pos));
    m_cache.dirty=true;
    return *result;
   }
@@ -218,7 +218,7 @@ namespace LinearAlgebra {
   size_t size() const {return m_size;}
 
   std::string str(int verbosity=0, unsigned int columns=UINT_MAX) const {
-   std::ostringstream os; os << "CachedParameterVector object:";
+   std::ostringstream os; os << "PagedVector object:";
    for (size_t k=0; k<size(); k++)
     os <<" "<< (*this)[k];
    os << std::endl;
@@ -233,7 +233,7 @@ namespace LinearAlgebra {
    */
   void axpy(scalar a, const LinearAlgebra::vector<scalar> *other)
   {
-   const CachedParameterVector* othe=dynamic_cast <const CachedParameterVector*> (other);
+   const PagedVector* othe=dynamic_cast <const PagedVector*> (other);
    if (this->variance() != othe->variance()) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
    if (this->m_replicated != othe->m_replicated) throw std::logic_error("mismatching replication status");
@@ -251,7 +251,7 @@ namespace LinearAlgebra {
    */
   scalar dot(const vector<scalar> *other) const
   {
-   const CachedParameterVector* othe=dynamic_cast <const CachedParameterVector*> (other);
+   const PagedVector* othe=dynamic_cast <const PagedVector*> (other);
    if (this->variance() * othe->variance() < 0) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
    if (this->m_replicated != othe->m_replicated) throw std::logic_error("mismatching replication status");
@@ -296,7 +296,7 @@ namespace LinearAlgebra {
    * \param other The source of data.
    * \return
    */
-  CachedParameterVector& operator=(const CachedParameterVector& other)
+  PagedVector& operator=(const PagedVector& other)
   {
    m_size=other.m_size;
    this->setVariance(other.variance());
@@ -321,4 +321,4 @@ namespace LinearAlgebra {
  };
 
 }
-#endif // CACHEDPARAMETERVECTOR_H
+#endif // PAGEDVECTOR_H

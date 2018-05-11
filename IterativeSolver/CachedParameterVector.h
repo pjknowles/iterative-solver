@@ -41,11 +41,11 @@ namespace LinearAlgebra {
   /*!
    * \brief Construct an object without any data.
    */
-  CachedParameterVector(size_t length=0, int option=0) : LinearAlgebra::vector<scalar>(), m_size(length), m_communicator(mpi_communicator)
+  CachedParameterVector(size_t length=0, int option=0) : LinearAlgebra::vector<scalar>(), m_size(length), m_communicator(mpi_communicator), m_cache(length)
   {
    init(option);
   }
-  CachedParameterVector(const CachedParameterVector& source, int option=0) : LinearAlgebra::vector<scalar>(), m_size(source.m_size), m_communicator(mpi_communicator)
+  CachedParameterVector(const CachedParameterVector& source, int option=0) : LinearAlgebra::vector<scalar>(), m_size(source.m_size), m_communicator(mpi_communicator), m_cache(source.m_size)
   {
    init(option);
    *this = source;
@@ -53,6 +53,178 @@ namespace LinearAlgebra {
 
   virtual ~CachedParameterVector()
   {}
+
+  // Every child of LinearAlgebra::vector<scalar> needs exactly this
+  CachedParameterVector* clone(int option=0) const { std::cout << "in CachedParameterVector clone, option="<<option<<std::endl;return new CachedParameterVector(*this, option); }
+
+  /*!
+     * \brief Specify a cache size for manipulating the data
+     * \param length
+     */
+  void setCacheSize(size_t length) const
+  {
+   m_cache.move(0,length);
+  }
+  /*!
+     * \brief Whether a full copy of data is replicated on every MPI process
+     * \return
+     */
+  bool replicated() const { return m_replicated;}
+  void setReplicated(bool replicated) {
+   m_cache.move(0,0);
+   m_replicated = replicated;
+   if (replicated) {
+    m_segment_offset=0;
+    m_segment_length=m_size;
+   } else {
+    m_segment_offset = ((m_size-1) / m_mpi_size + 1) * m_mpi_rank;
+    m_segment_length = std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset);
+   }
+  }
+
+ private:
+//  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
+#define default_offline_buffer_size 1
+  void init(int option)
+  {
+#ifdef USE_MPI
+   setReplicated( ! LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option);
+    MPI_Comm_Size(m_communicator, m_mpi_size);
+    MPI_Comm_Rank(m_communicator, m_mpi_rank);
+#else
+    setReplicated(true);
+    m_mpi_size=1;
+    m_mpi_rank=1;
+#endif
+    m_cache.move(0,(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length);
+   xout << "new CachedParameterVector m_size="<<m_size<<", option="<<option<<" cache size="<<m_cache.length<<std::endl;
+  }
+
+  bool m_replicated; //!< whether a full copy of data is on every MPI process
+  size_t m_segment_offset; //!< offset in the overall data object of this process' data
+  size_t m_segment_length; //!< length of this process' data
+  const MPI_Comm m_communicator; //!< the MPI communicator for distributed data
+  int m_mpi_size;
+  int m_mpi_rank;
+  size_t m_size; //!< How much data
+  mutable size_t m_cacheSize; //!< cache size for implementing operations
+  mutable bool m_cacheDirty;
+  mutable size_t m_cacheOffset;
+  mutable size_t m_cacheMax;
+
+  struct window {
+   mutable size_t offset; ///< the offset in mapped data of the first element of the cache window
+   mutable size_t length;///< the size of the cache window
+   const size_t preferred_length; ///< the default for the size of the cache window
+   const size_t datasize; ///< the size of the vector being mapped
+   mutable std::vector<scalar> buffer;
+   const scalar* begin() const { return buffer.data();}
+   const scalar* end() const { return buffer.data()+length;}
+   scalar* begin() {return buffer.data();}
+   scalar* end() {return buffer.data()+length;}
+   mutable bool dirty;
+   mutable std::fstream m_file;
+   size_t filesize;
+   window(size_t datasize, size_t length=default_offline_buffer_size)
+    :  datasize(datasize), preferred_length(length) {
+    char *tmpname=strdup("tmpfileXXXXXX");
+    mkstemp(tmpname);
+    m_file.open (tmpname, std::ios::out | std::ios::in | std::ios::binary);
+    unlink(tmpname);
+    free(tmpname);
+    filesize=0;
+    move(0,length);
+   }
+
+   void move(const size_t offset, size_t length=0) const {
+    if (!length) length=preferred_length;
+    if (dirty && this->length) {
+     m_file.seekg(this->offset*sizeof(scalar));
+     m_file.write( (const char*)buffer.data(), this->length*sizeof(scalar));
+    }
+    this->offset = offset;
+    this->length = std::min(length,static_cast<size_t>(datasize-offset));
+    buffer.resize(this->length);
+    if (std::min(this->length,static_cast<size_t>(filesize-offset))) {
+     m_file.seekg(offset*sizeof(scalar));
+     m_file.read((char*)buffer.data(),std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar));
+   }
+    dirty=false;
+  }
+
+   void ensure(const size_t offset) const {
+    if (offset < this->offset || offset >= this->offset+this->length) move(offset,this->preferred_length);
+   }
+
+   ~window() {
+    move(filesize,0);
+    m_file.close();
+   }
+
+   const window& operator++() const {
+    move(offset+length);
+    return *this;
+   }
+  private:
+   window operator++(int) {return this;}
+  };
+  window m_cache;
+
+  void flushCache() {m_cache.ensure(0);}
+
+ public:
+
+  /*!
+   * \brief Place the contents
+   * \param buffer
+   * \param length
+   * \param offset
+   */
+  void put(scalar* const buffer, size_t length, size_t offset)
+  {
+   size_t off=std::max(offset,this->m_segment_offset);
+   for (m_cache.move(off); off < offset+length && m_cache.length; ++m_cache, off += m_cache.length) {
+    for (size_t k=0; k<m_cache.length; k++) m_cache.buffer[k] = buffer[off+k];
+    m_cache.dirty = true;
+   }
+  }
+
+  void get(scalar* buffer, size_t length, size_t offset) const
+  {
+   size_t off=std::max(offset,this->m_segment_offset);
+   for (m_cache.move(off); off < offset+length && m_cache.length; ++m_cache, off += m_cache.length)
+    for (size_t k=0; k<m_cache.length; k++) buffer[off+k] = m_cache.buffer[k];
+  }
+
+
+  const scalar& operator[](size_t pos) const
+  {
+   if (pos >= m_cache.offset+m_segment_offset+m_cache.length || pos < m_cache.offset+m_segment_offset) { // cache not mapping right sector
+    xout << "cache miss"<<std::endl;
+    if (pos >= m_segment_offset+m_segment_length || pos < m_segment_offset) throw std::logic_error("operator[] finds index out of range");
+    m_cache.move(pos-m_segment_offset);
+   }
+   return m_cache.buffer[pos-m_cache.offset-m_segment_offset];
+  }
+
+  scalar& operator[](size_t pos)
+  {
+   scalar* result;
+   result = &const_cast<scalar&>(static_cast<const CachedParameterVector*>(this)->operator [](pos));
+   m_cache.dirty=true;
+   return *result;
+  }
+
+  size_t size() const {return m_size;}
+
+  std::string str(int verbosity=0, unsigned int columns=UINT_MAX) const {
+   std::ostringstream os; os << "CachedParameterVector object:";
+   for (size_t k=0; k<size(); k++)
+    os <<" "<< (*this)[k];
+   os << std::endl;
+   return os.str();
+  }
+
   /*!
    * \brief Add a constant times another object to this object
    * \param a The factor to multiply.
@@ -64,25 +236,11 @@ namespace LinearAlgebra {
    const CachedParameterVector* othe=dynamic_cast <const CachedParameterVector*> (other);
    if (this->variance() != othe->variance()) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
-   if (false) {
-    flushCache();
-    std::vector<scalar,Allocator> buffer(m_cacheSize);
-    std::vector<scalar,Allocator> buffero(m_cacheSize);
-    for (size_t block=0; block<m_size; block+=buffer.size()) {
-     size_t bs=std::min(buffer.size(),m_size-block);
-     read(&buffer[0], bs, block);
-     othe->read(&buffero[0], bs, block);
-     if (true) {
-      for (size_t k=0; k<bs; k++) buffer[k] += a*buffero[k];
-     }
-     else
-      for (size_t k=0; k<bs; k++) (*this)[k+block] += a*buffero[k];
-    }
-   } else {
-    if (m_file == nullptr && othe->m_file == nullptr)
-     for (size_t k=0; k<m_size; k++) this->m_cache[k] += a*othe->m_cache[k];
-    else
-     for (size_t k=0; k<m_size; k++) (*this)[k] += a*(*othe)[k];
+   if (this->m_replicated != othe->m_replicated) throw std::logic_error("mismatching replication status");
+   for (m_cache.ensure(0), othe->m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe->m_cache ) {
+     for (size_t i=0; i<m_cache.length; i++)
+      m_cache.buffer[i] += a * othe->m_cache.buffer[i];
+     m_cache.dirty = true;
    }
   }
 
@@ -94,25 +252,17 @@ namespace LinearAlgebra {
   scalar dot(const vector<scalar> *other) const
   {
    const CachedParameterVector* othe=dynamic_cast <const CachedParameterVector*> (other);
-   if (this->variance() != othe->variance()) throw std::logic_error("mismatching co/contravariance");
+   if (this->variance() * othe->variance() < 0) throw std::logic_error("mismatching co/contravariance");
+   if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
+   if (this->m_replicated != othe->m_replicated) throw std::logic_error("mismatching replication status");
    scalar result=0;
-   if (false) {
-    std::vector<scalar,Allocator> buffer(m_cacheSize);
-    std::vector<scalar,Allocator> buffero(m_cacheSize);
-    for (size_t block=0; block<m_size; block+=buffer.size()) {
-     size_t bs=std::min(buffer.size(),m_size-block);
-     read(&buffer[0], bs, block);
-     othe->read(&buffero[0], bs, block);
-     for (size_t k=0; k<bs; k++) result += buffer[k] * buffero[k];
-    }
-   } else {
-    if (m_file == nullptr && othe->m_file == nullptr)
-     for (size_t k=0; k<m_size; k++)
-      result += m_cache[k] * othe->m_cache[k];
-    else
-     for (size_t k=0; k<m_size; k++)
-      result += (*this)[k] * (*othe)[k];
+   for (m_cache.ensure(0), othe->m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe->m_cache ) {
+     for (size_t i=0; i<m_cache.length; i++)
+      result += m_cache.buffer[i] * othe->m_cache.buffer[i];
    }
+#ifdef USE_MPI
+    MPI_Allreduce(&result,result,1,MPI_DOUBLE,MPI_SUM,mpi_communicator); // FIXME needs attention for non-double
+#endif
    return result;
   }
 
@@ -122,12 +272,11 @@ namespace LinearAlgebra {
      */
   void scal(scalar a)
   {
-   if (m_file == nullptr)
-    for (size_t k=0; k<m_size; k++)
-     m_cache[k] *= a;
-   else
-    for (size_t k=0; k<m_size; k++)
-     (*this)[k] *= a;
+   for (m_cache.ensure(0); m_cache.length; ++m_cache) {
+     for (size_t i=0; i<m_cache.length; i++)
+      m_cache.buffer[i] *= a;
+     m_cache.dirty=true;
+   }
   }
 
   /*!
@@ -135,16 +284,10 @@ namespace LinearAlgebra {
    */
   void zero()
   {
-   if (false) {
-    flushCache();
-    std::vector<scalar,Allocator> buffer(m_cacheSize);
-    for (size_t k=0; k<m_cacheSize; k++) buffer[k] += 0;
-    for (size_t block=0; block<m_size; block+=buffer.size()) {
-     size_t bs=std::min(buffer.size(),m_size-block);
-     write(&buffer[0], bs, block);
-    }
-   } else {
-    for (size_t k=0; k<m_size; k++) (*this)[k] = 0;
+   for (m_cache.ensure(0); m_cache.length; ++m_cache) {
+     for (size_t i=0; i<m_cache.length; i++)
+      m_cache.buffer[i] = 0;
+     m_cache.dirty=true;
    }
   }
 
@@ -156,201 +299,24 @@ namespace LinearAlgebra {
   CachedParameterVector& operator=(const CachedParameterVector& other)
   {
    m_size=other.m_size;
-   if (false) {
-    std::vector<scalar,Allocator> buffer(m_cacheSize);
-    for (size_t block=0; block<m_size; block+=buffer.size()) {
-     size_t bs=std::min(buffer.size(),m_size-block);
-     other.read(&buffer[0], bs, block);
-     write(&buffer[0], bs, block);
-    }
-   } else {
-    (*this)[0] = other[0]; // to ensure cache initialisation
-    if (m_file == nullptr && other.m_file == nullptr)
-     for (size_t k=1; k<m_size; k++)
-      m_cache[k] = other.m_cache[k];
-    else
-     for (size_t k=1; k<m_size; k++)
-      (*this)[k] = other[k];
-   }
    this->setVariance(other.variance());
+   if (m_replicated == other.m_replicated) {
+    for (m_cache.ensure(0), other.m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++other.m_cache ) {
+     for (size_t i=0; i<m_cache.length; i++)
+      m_cache.buffer[i] = other.m_cache.buffer[i];
+     m_cache.dirty = true;
+    }
+   }
+#ifdef USE_MPI
+   else if (m_replicated) { // replicated -> distributed
+   }
+   else { // distributed -> replicated
+
+   }
+#endif
    return *this;
   }
 
-
-  // Every child of LinearAlgebra::vector<scalar> needs exactly this
-  CachedParameterVector* clone(int option=0) const { std::cout << "in CachedParameterVector clone, option="<<option<<std::endl;return new CachedParameterVector(*this, option); }
-
-  /*!
-     * \brief Specify a cache size for manipulating the data
-     * \param length
-     */
-  void setCacheSize(size_t length) const
-  {
-   flushCache(true);
-   m_cacheSize = length;
-   m_cache.resize(m_cacheSize);
-   m_cacheOffset=s_cacheEmpty;
-   m_cacheDirty=false;
-   if (m_cacheSize!=0 && m_cacheSize < m_size) m_file = new Storage; // FIXME parallel
-  }
-  /*!
-     * \brief Whether a full copy of data is replicated on every MPI process
-     * \return
-     */
-  bool replicated() const;
-  void setReplicated(bool replicated) const;
-  void distribute(MPI_Comm communicator = mpi_communicator) {
-   m_communicator = communicator;
-#ifdef USE_MPI
-#endif
-  }
-
- private:
-//  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
-#define default_offline_buffer_size 1
-  void init(int option)
-  {
-   m_file = nullptr;
-   m_cacheMax=m_cacheOffset=s_cacheEmpty;
-   if (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)
-    m_cacheSize=(size_t)default_offline_buffer_size;
-#ifdef USE_MPI
-   m_replicated = ! LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option;
-    MPI_Comm_Size(mpi_communicator, m_mpi_size);
-    MPI_Comm_Rank(mpi_communicator, m_mpi_rank);
-#else
-    m_replicated=true;
-    m_mpi_size=1;
-    m_mpi_rank=1;
-#endif
-    setCacheSize(0);
-   xout << "new CachedParameterVector m_size="<<m_size<<", option="<<option<<" cache size="<<m_cacheSize<<std::endl;
-  }
-
-  bool m_replicated; //!< whether a full copy of data is on every MPI process
-  const MPI_Comm m_communicator; //!< the MPI communicator for distributed data
-  int m_mpi_size;
-  int m_mpi_rank;
-  size_t m_size; //!< How much data
-  mutable size_t m_cacheSize; //!< cache size for implementing operations
-  mutable std::vector<scalar,Allocator> m_cache;
-  mutable bool m_cacheDirty;
-  mutable size_t m_cacheOffset;
-  mutable size_t m_cacheMax;
-
-  struct window {
-   const off_t offset; ///< the offset in mapped data of the first element of the cache window
-   size_t length;///< the size of the cache window
-   const size_t datasize; ///< the size of the vector being mapped
-   std::vector<scalar> buffer;
-   const scalar* begin() const { return buffer.data();}
-   const scalar* end() const { return buffer.data()+length;}
-   scalar* begin() {return buffer.data();}
-   scalar* end() {return buffer.data()+length;}
-   bool dirty;
-   mutable std::fstream m_file;
-   size_t filesize;
-   window(size_t datasize, size_t length=default_offline_buffer_size)
-    :  datasize(datasize) {
-    char *tmpname=strdup("tmpfileXXXXXX");
-    mkstemp(tmpname);
-    m_file.open (tmpname, std::ios::out | std::ios::in | std::ios::binary);
-    unlink(tmpname);
-    free(tmpname);
-    filesize=0;
-    slide(0,length);
-   }
-
-   void slide(const off_t offset, size_t length) {
-    if (dirty && this->length) {
-     m_file.seekg(this->offset*sizeof(scalar));
-     m_file.write(buffer.data(),this->length*sizeof(scalar));
-    }
-    this->offset = offset;
-    this->length = std::min(length,static_cast<size_t>(datasize-offset));
-    buffer.resize(this->length);
-    if (std::min(this->length,static_cast<size_t>(filesize-offset))) {
-     m_file.seekg(offset*sizeof(scalar));
-     m_file.read(buffer.data(),std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar));
-   }
-    dirty=false;
-  }
-
-   ~window() {
-    slide(filesize,0);
-    m_file.close();
-   }
-
-   window& operator++() {
-    slide(offset+length,std::min(datasize-offset-length,length));
-    return *this;
-   }
-  private:
-   window operator++(int) {return this;}
-  };
-
- public:
-  void put(scalar* const buffer, size_t length, size_t offset)
-  {
-   if (std::max(m_size,length+offset) <= m_cacheSize) { // FIXME parallel
-    for (size_t k=0; k<length; k++) m_cache[k+offset] = buffer[k];
-   } else
-   {
-    flushCache();
-    write(buffer,length,offset);
-    m_cacheOffset=s_cacheEmpty;
-   }
-   if (length+offset > m_size) m_size = length+offset;
-  }
-
-  void get(scalar* buffer, size_t length, size_t offset) const
-  {
-   if (m_file == nullptr) {
-    for (size_t k=0; k<length; k++) buffer[k] = m_cache[k+offset];
-   } else
-   {
-    flushCache();
-    read(buffer,length,offset);
-   }
-  }
-
-
-  const scalar& operator[](size_t pos) const
-  {
-   if (pos >= m_cacheMax || pos < m_cacheOffset) { // cache not mapping right sector
-    xout << "cache miss, m_cacheMax="<<m_cacheMax<<", m_cacheOffset="<<m_cacheOffset <<std::endl;
-    if (m_cacheSize==0) setCacheSize(m_size); // if no setCacheSize() has been issued, then the default is all in memory
-    flushCache();
-    m_cacheOffset=pos;
-    m_cacheMax=std::min(m_cacheOffset+m_cacheSize,m_size);
-    size_t l1 = m_file == nullptr ? 0 : m_file->size()/sizeof(scalar)-m_cacheOffset;
-    size_t l2 = std::min(m_cacheSize, m_size-m_cacheOffset);
-    size_t l=std::min(l1,l2);
-    if (l>0) read(&m_cache[0], l, m_cacheOffset);
-   }
-   return m_cache[pos-m_cacheOffset];
-  }
-
-  scalar& operator[](size_t pos)
-  {
-   scalar* result;
-   result = &const_cast<scalar&>(static_cast<const CachedParameterVector*>(this)->operator [](pos));
-   m_cacheDirty=true;
-   return *result;
-  }
-
-  size_t size() const {return m_size;}
-  std::string str(int verbosity=0, unsigned int columns=UINT_MAX) const {
-   std::ostringstream os; os << "CachedParameterVector object:";
-   flushCache();
-   //    std::cout << "@ in str, m_cacheDirty="<<m_cacheDirty<<std::endl;
-   for (size_t k=0; k<size(); k++) {
-    //        std::cout << "k="<<k<<", m_cacheDirty="<<m_cacheDirty<<std::endl;
-    os <<" "<< (*this)[k];
-   }
-   os << std::endl;
-   return os.str();
-  }
 
  };
 

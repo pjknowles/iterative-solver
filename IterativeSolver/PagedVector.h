@@ -70,6 +70,7 @@ namespace LinearAlgebra {
      * \return
      */
   bool replicated() const { return m_replicated;}
+ private:
   void setReplicated(bool replicated) {
    m_cache.move(0,0);
    m_replicated = replicated;
@@ -96,7 +97,8 @@ namespace LinearAlgebra {
     m_mpi_size=1;
     m_mpi_rank=1;
 #endif
-    m_cache.move(0,(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length);
+    m_cache.preferred_length = (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length;
+    m_cache.move(0);
    xout << "new PagedVector m_size="<<m_size<<", option="<<option<<" cache size="<<m_cache.length<<std::endl;
   }
 
@@ -107,15 +109,11 @@ namespace LinearAlgebra {
   int m_mpi_size;
   int m_mpi_rank;
   size_t m_size; //!< How much data
-  mutable size_t m_cacheSize; //!< cache size for implementing operations
-  mutable bool m_cacheDirty;
-  mutable size_t m_cacheOffset;
-  mutable size_t m_cacheMax;
 
   struct window {
    mutable size_t offset; ///< the offset in mapped data of the first element of the cache window
    mutable size_t length;///< the size of the cache window
-   const size_t preferred_length; ///< the default for the size of the cache window
+   size_t preferred_length; ///< the default for the size of the cache window
    const size_t datasize; ///< the size of the vector being mapped
    mutable std::vector<scalar> buffer;
    const scalar* begin() const { return buffer.data();}
@@ -300,18 +298,19 @@ namespace LinearAlgebra {
   {
    m_size=other.m_size;
    this->setVariance(other.variance());
-   if (m_replicated == other.m_replicated) {
-    for (m_cache.ensure(0), other.m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++other.m_cache ) {
+    for (m_cache.ensure(m_segment_offset), other.m_cache.move(other.m_segment_offset,m_cache.length); m_cache.length && other.m_cache.length; ++m_cache, ++other.m_cache ) {
      for (size_t i=0; i<m_cache.length; i++)
       m_cache.buffer[i] = other.m_cache.buffer[i];
      m_cache.dirty = true;
     }
-   }
 #ifdef USE_MPI
-   else if (m_replicated) { // replicated -> distributed
-   }
-   else { // distributed -> replicated
-
+   if (m_replicated && ! other.m_replicated) { // replicated <- distributed
+     size_t lenseg = ((m_size-1) / m_mpi_size + 1);
+    for (int rank=0; rank < m_mpi_size; rank++) {
+     size_t off = lenseg * rank;
+     for (m_cache.ensure(off); m_cache.length && off < lenseg*(rank+1); off+= m_cache.length, ++m_cache)
+      MPI_Bcast(m_cache.buffer.data(),m_cache.length,MPI_DOUBLE,rank,mpi_communicator); // needs attention for non-double
+    }
    }
 #endif
    return *this;

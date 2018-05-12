@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
 
   if (true) {
    using namespace LinearAlgebra;
+   PagedVectorTest<double> t1(10000);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.2,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);

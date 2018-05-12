@@ -21,8 +21,6 @@ constexpr MPI_Comm MPI_COMM_NULL=0;
 
 namespace LinearAlgebra {
 
- const static size_t s_cacheEmpty=std::numeric_limits<size_t>::max();
-
  /*!
    * \brief A class that implements LinearAlgebra::vector<scalar> with data optionally held on backing store, and optionally distributed
    * over MPI ranks
@@ -48,7 +46,9 @@ namespace LinearAlgebra {
   PagedVector(const PagedVector& source, int option=0) : LinearAlgebra::vector<scalar>(), m_size(source.m_size), m_communicator(mpi_communicator), m_cache(source.m_size)
   {
    init(option);
+//   xout << "in copy constructor, before copy, source: "<<source.str()<<std::endl;
    *this = source;
+//   xout << "in copy constructor, after copy, source: "<<source.str()<<std::endl;
   }
 
   virtual ~PagedVector()
@@ -85,7 +85,7 @@ namespace LinearAlgebra {
 
  private:
 //  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
-#define default_offline_buffer_size 1
+#define default_offline_buffer_size 102400
   void init(int option)
   {
 #ifdef USE_MPI
@@ -99,7 +99,7 @@ namespace LinearAlgebra {
 #endif
     m_cache.preferred_length = (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length;
     m_cache.move(0);
-   xout << "new PagedVector m_size="<<m_size<<", option="<<option<<" cache size="<<m_cache.length<<std::endl;
+//   xout << "new PagedVector m_size="<<m_size<<", option="<<option<<" cache size="<<m_cache.length<<std::endl;
   }
 
   bool m_replicated; //!< whether a full copy of data is on every MPI process
@@ -122,30 +122,36 @@ namespace LinearAlgebra {
    scalar* end() {return buffer.data()+length;}
    mutable bool dirty;
    mutable std::fstream m_file;
-   size_t filesize;
+   mutable size_t filesize;
    window(size_t datasize, size_t length=default_offline_buffer_size)
-    :  datasize(datasize), preferred_length(length) {
+    :  datasize(datasize), preferred_length(length), filesize(0), offset(0), length(0), dirty(false) {
+//    xout << "window constructor datasize="<<datasize<<", length="<<length<<std::endl;
     char *tmpname=strdup("tmpfileXXXXXX");
     mkstemp(tmpname);
     m_file.open (tmpname, std::ios::out | std::ios::in | std::ios::binary);
     unlink(tmpname);
     free(tmpname);
-    filesize=0;
     move(0,length);
+//    xout << "window constructor ends, filesize="<<filesize<<", length="<<length<<std::endl;
    }
 
    void move(const size_t offset, size_t length=0) const {
     if (!length) length=preferred_length;
+//    xout << "move offset="<<offset<<", length="<<length<<", this->length="<<this->length<<std::endl;
     if (dirty && this->length) {
      m_file.seekg(this->offset*sizeof(scalar));
+//     xout << "write to "<<this->offset<<":";for (size_t i=0; i<this->length; i++) xout <<" "<<buffer[i]; xout <<std::endl;
      m_file.write( (const char*)buffer.data(), this->length*sizeof(scalar));
+     if (filesize < this->offset+this->length) filesize = this->offset+this->length;
     }
     this->offset = offset;
     this->length = std::min(length,static_cast<size_t>(datasize-offset));
     buffer.resize(this->length);
+//    xout << "buffer resized to length="<<this->length<<"; offset="<<offset<<", filesize="<<filesize<<std::endl;
     if (std::min(this->length,static_cast<size_t>(filesize-offset))) {
      m_file.seekg(offset*sizeof(scalar));
      m_file.read((char*)buffer.data(),std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar));
+//     xout << "read from "<<this->offset<<":";for (size_t i=0; i<this->length; i++) xout <<" "<<buffer[i]; xout <<std::endl;
    }
     dirty=false;
   }
@@ -160,14 +166,18 @@ namespace LinearAlgebra {
    }
 
    const window& operator++() const {
-    move(offset+length);
+//    xout << "operator++ entry offset="<<offset<<", length="<<length<<std::endl;
+    move(offset+length,length);
+//    xout << "operator++ exit  offset="<<offset<<", length="<<length<<std::endl;
     return *this;
    }
   private:
    window operator++(int) {return this;}
   };
+ public:
   window m_cache;
 
+ private:
   void flushCache() {m_cache.ensure(0);}
 
  public:
@@ -198,7 +208,7 @@ namespace LinearAlgebra {
   const scalar& operator[](size_t pos) const
   {
    if (pos >= m_cache.offset+m_segment_offset+m_cache.length || pos < m_cache.offset+m_segment_offset) { // cache not mapping right sector
-    xout << "cache miss"<<std::endl;
+//    xout << "cache miss"<<std::endl;
     if (pos >= m_segment_offset+m_segment_length || pos < m_segment_offset) throw std::logic_error("operator[] finds index out of range");
     m_cache.move(pos-m_segment_offset);
    }
@@ -299,6 +309,8 @@ namespace LinearAlgebra {
    m_size=other.m_size;
    this->setVariance(other.variance());
     for (m_cache.ensure(m_segment_offset), other.m_cache.move(other.m_segment_offset,m_cache.length); m_cache.length && other.m_cache.length; ++m_cache, ++other.m_cache ) {
+//     xout << "buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
+//     for (size_t i=0; i<m_cache.length; i++) xout <<" "<<other.m_cache.buffer[i]; xout <<std::endl;
      for (size_t i=0; i<m_cache.length; i++)
       m_cache.buffer[i] = other.m_cache.buffer[i];
      m_cache.dirty = true;
@@ -318,6 +330,27 @@ namespace LinearAlgebra {
 
 
  };
+ template <class scalar>
+ inline std::ostream& operator<<(std::ostream& os, PagedVector<scalar> const& obj) { return os << obj.str(); }
 
+ template <class scalar>
+ class PagedVectorTest  {
+ public:
+  PagedVectorTest(size_t n) {
+  PagedVector<scalar> v1(n);
+  for (size_t i=0; i<v1.size(); i++)
+   v1[i]=i;
+//  std::cout << "v1 after assign: "<<v1<<std::endl;
+  PagedVector<scalar> v2(v1,3);
+//  std::cout << "v1 after assigning v2: "<<v1<<std::endl;
+//  std::cout << "v2 after assigning v2: "<<v2<<std::endl;
+  v1.m_cache.move(0);
+//  std::cout << "v1 "<<v1.str()<<std::endl;
+//  std::cout << "v2 "<<v2.str()<<std::endl;
+  std::cout << "v1.v2 error: " <<v2.dot(&v1)-(n*(n-1)*(2*n-1))/6 << std::endl;
+  std::cout << "v1.v1 error: " <<v1.dot(&v1)-(n*(n-1)*(2*n-1))/6 << std::endl;
+ }
+
+};
 }
 #endif // PAGEDVECTOR_H

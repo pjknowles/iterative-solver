@@ -86,7 +86,7 @@ namespace LinearAlgebra {
 
  private:
 //  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
-#define default_offline_buffer_size 102400
+#define default_offline_buffer_size 1024
   void init(int option)
   {
 #ifdef USE_MPI
@@ -198,7 +198,8 @@ namespace LinearAlgebra {
       size_t off=offset;
    for (m_cache.move(off); off < offset+length && m_cache.length; ++m_cache, off += m_cache.length) {
 //       xout << "in put, cache window "<<m_cache.offset<<", length="<<m_cache.length<<std::endl;
-    for (size_t k=0; k<std::min(offset+length-m_cache.offset,m_cache.length); k++) m_cache.buffer[k] = buffer[buffer_offset-offset+off+k];
+    for (size_t k=0; k<std::min(offset+length-m_cache.offset,m_cache.length); k++)
+        m_cache.buffer[k] = buffer[buffer_offset-offset+off+k];
     m_cache.dirty = true;
    }
   }
@@ -211,7 +212,8 @@ namespace LinearAlgebra {
       offset-=this->m_segment_offset;
       size_t off=offset;
    for (m_cache.move(off); off < offset+length && m_cache.length; ++m_cache, off += m_cache.length)
-    for (size_t k=0; k<m_cache.length; k++) buffer[buffer_offset-offset+off+k] = m_cache.buffer[k];
+    for (size_t k=0; k<std::min(offset+length-m_cache.offset,m_cache.length); k++)
+        buffer[buffer_offset-offset+off+k] = m_cache.buffer[k];
   }
 
 

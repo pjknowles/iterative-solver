@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
   DavidsonTest<PagedVector<double> >(100,1,1,2);
   DavidsonTest<PagedVector<double> >(100,3,1,2);
   DavidsonTest<PagedVector<double> >(100,3,1,2,false);
+  DavidsonTest<PagedVector<double> >(1100,3,1,2,true);
 //  RSPTTest<PagedVector<double> ,double>(100,2e0);
   IterativeSolverFTest();
     }

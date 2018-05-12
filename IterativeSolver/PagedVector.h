@@ -55,7 +55,8 @@ namespace LinearAlgebra {
   {}
 
   // Every child of LinearAlgebra::vector<scalar> needs exactly this
-  PagedVector* clone(int option=0) const { std::cout << "in PagedVector clone, option="<<option<<std::endl;return new PagedVector(*this, option); }
+  PagedVector* clone(int option=0) const {// std::cout << "in PagedVector clone, option="<<option<<std::endl;
+                                           return new PagedVector(*this, option); }
 
   /*!
      * \brief Specify a cache size for manipulating the data
@@ -190,18 +191,27 @@ namespace LinearAlgebra {
    */
   void put(scalar* const buffer, size_t length, size_t offset)
   {
-   size_t off=std::max(offset,this->m_segment_offset);
+      size_t buffer_offset=0;
+      if (offset < m_segment_offset) { buffer_offset = m_segment_offset-offset; offset = m_segment_offset; length -= m_segment_offset-offset;}
+      if (offset+length > std::min(m_size,m_segment_offset+m_segment_length)) length = std::min(m_size,m_segment_offset+m_segment_length)-offset;
+      offset-=this->m_segment_offset;
+      size_t off=offset;
    for (m_cache.move(off); off < offset+length && m_cache.length; ++m_cache, off += m_cache.length) {
-    for (size_t k=0; k<m_cache.length; k++) m_cache.buffer[k] = buffer[off+k];
+//       xout << "in put, cache window "<<m_cache.offset<<", length="<<m_cache.length<<std::endl;
+    for (size_t k=0; k<std::min(offset+length-m_cache.offset,m_cache.length); k++) m_cache.buffer[k] = buffer[buffer_offset-offset+off+k];
     m_cache.dirty = true;
    }
   }
 
   void get(scalar* buffer, size_t length, size_t offset) const
   {
-   size_t off=std::max(offset,this->m_segment_offset);
+      size_t buffer_offset=0;
+      if (offset < m_segment_offset) { buffer_offset = m_segment_offset-offset; offset = m_segment_offset; length -= m_segment_offset-offset;}
+      if (offset+length > std::min(m_size,m_segment_offset+m_segment_length)) length = std::min(m_size,m_segment_offset+m_segment_length)-offset;
+      offset-=this->m_segment_offset;
+      size_t off=offset;
    for (m_cache.move(off); off < offset+length && m_cache.length; ++m_cache, off += m_cache.length)
-    for (size_t k=0; k<m_cache.length; k++) buffer[off+k] = m_cache.buffer[k];
+    for (size_t k=0; k<m_cache.length; k++) buffer[buffer_offset-offset+off+k] = m_cache.buffer[k];
   }
 
 
@@ -242,6 +252,8 @@ namespace LinearAlgebra {
   void axpy(scalar a, const LinearAlgebra::vector<scalar> *other)
   {
    const PagedVector* othe=dynamic_cast <const PagedVector*> (other);
+//   std::cout << "PagedVector::axpy this="<<*this<<std::endl;
+//   std::cout << "PagedVector::axpy othe="<<*othe<<std::endl;
    if (this->variance() != othe->variance()) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
    if (this->m_replicated != othe->m_replicated) throw std::logic_error("mismatching replication status");

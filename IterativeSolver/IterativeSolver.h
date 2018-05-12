@@ -80,6 +80,10 @@ template <class scalar=double>
    */
     virtual void interpolate( vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
     {
+//      for (size_t kkk=0; kkk<solution.size(); kkk++)
+//          xout << "interpolate solution: "<<solution[kkk]<<std::endl;
+//      for (size_t kkk=0; kkk<residual.size(); kkk++)
+//          xout << "interpolate residual: "<<residual[kkk]<<std::endl;
       if (m_roots<1) m_roots=solution.size(); // number of roots defaults to size of solution
       assert(solution.size()==residual.size());
       m_iterations++;
@@ -181,6 +185,10 @@ template <class scalar=double>
 
     void calculateSubspaceMatrix(const vectorSet<scalar> &residual, const vectorSet<scalar> &solution)
     {
+//      for (size_t kkk=0; kkk<solution.size(); kkk++)
+//          xout << "solution: "<<solution[kkk]<<std::endl;
+//      for (size_t kkk=0; kkk<residual.size(); kkk++)
+//          xout << "residual: "<<residual[kkk]<<std::endl;
 //      xout << "calculateSubspaceMatrix"<<std::endl;
 //      xout << "residual"<<std::endl<<residual[0]<<std::endl;
 //      xout << "solution"<<std::endl<<solution[0]<<std::endl;
@@ -198,7 +206,7 @@ template <class scalar=double>
               for (size_t ll=0; ll<m_solutions.size(); ll++) {
                   for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
                       if (m_solutions[ll].m_active[lll]) {
-    //  xout << "bra"<<std::endl<<(*bra)[ll][lll]<<std::endl;
+//      xout << "bra"<<std::endl<<(*bra)[ll][lll]<<std::endl;
                           m_subspaceMatrix(k,l) = m_subspaceMatrix(l,k) = (*bra)[ll][lll]->dot(residual[kkk]);
                           m_subspaceOverlap(k,l) = m_subspaceOverlap(l,k) = m_solutions[ll][lll]->dot(solution[kkk]);
                           l++;
@@ -288,8 +296,12 @@ template <class scalar=double>
 
     size_t addVectorSet(const vectorSet<scalar> &solution, const vectorSet<scalar> &residual, const vectorSet<scalar> &other)
     {
-      if (residual.m_active.front()==0) xout <<"warning: inactive residual"<<std::endl;
-      if (solution.m_active.front()==0) xout <<"warning: inactive solution"<<std::endl;
+//      if (residual.m_active.front()==0) xout <<"warning: inactive residual"<<std::endl;
+//      if (solution.m_active.front()==0) xout <<"warning: inactive solution"<<std::endl;
+//      for (size_t kkk=0; kkk<solution.size(); kkk++)
+//          xout << "addVectorSet solution: "<<solution[kkk]<<std::endl;
+//      for (size_t kkk=0; kkk<residual.size(); kkk++)
+//          xout << "addVectorSet residual: "<<residual[kkk]<<std::endl;
         m_residuals.emplace_back(vectorSet<scalar>(residual,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED|LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
         m_solutions.emplace_back(vectorSet<scalar>(solution,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED|LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
         m_others.emplace_back(vectorSet<scalar>(other,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED|LINEARALGEBRA_CLONE_ADVISE_OFFLINE));

@@ -189,7 +189,7 @@ namespace LinearAlgebra {
     vectorSet<scalar>() {}
     vectorSet<scalar>(const vectorSet<scalar>& source, int option=0)
     {
-     std::cout << "vectorSet<scalar> about to push_back_clone option="<<option<<std::endl;
+//     std::cout << "vectorSet<scalar> about to push_back_clone option="<<option<<std::endl;
       for (size_t k=0; k<source.size(); k++) {
           push_back_clone(source.m_pvs[k], option);
           m_active[k] = source.m_active[k];
@@ -215,7 +215,7 @@ namespace LinearAlgebra {
 
     void push_back_clone(const pv_t& val, int option=0)
     {
-     std::cout << "in push_back_clone, about to call clone method with option "<<option<<std::endl;
+//     std::cout << "in push_back_clone, about to call clone method with option "<<option<<std::endl;
       m_pvs.push_back(std::shared_ptr<vector<scalar> >(val->clone(option)));
       m_owned.push_back(true);
       m_active.push_back(true);

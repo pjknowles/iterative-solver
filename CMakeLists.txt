@@ -36,6 +36,10 @@ add_executable(${PROJECT_NAME}-test main.cpp)
 target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 add_test(${PROJECT_NAME}-test ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-test ${fil})
 
+add_executable(PagedVector-test PagedVector-test.cpp)
+target_link_libraries(PagedVector-test ${PROJECT_NAME})
+add_test(PagedVector-test ${CMAKE_CURRENT_BINARY_DIR}/PagedVector-test)
+
 file (GLOB TESTS examples/*.cpp)
 foreach(fil ${TESTS})
   get_filename_component(nam ${fil} NAME_WE)

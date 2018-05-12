@@ -47,6 +47,8 @@ namespace LinearAlgebra{
     for (size_t ll=0; ll<this->m_solutions.size(); ll++) {
      for (size_t lll=0; lll<this->m_solutions[ll].size(); lll++) {
       if (this->m_solutions[ll].m_active[lll]) {
+          if (m_verbosity>2) xout << "Davidson::extrapolate kkk="<<kkk<<", ll="<<ll<<", lll="<<lll<<", l="<<l<<std::endl;
+          if (m_verbosity>2) xout << "Eigenvectors:\n"<<this->m_subspaceEigenvectors(l,kkk).real()<<std::endl;
        solution[kkk]->axpy(this->m_subspaceEigenvectors(l,kkk).real(),this->m_solutions[ll][lll]);
        residual[kkk]->axpy(this->m_subspaceEigenvectors(l,kkk).real(),this->m_residuals[ll][lll]);
        l++;
@@ -143,14 +145,24 @@ namespace LinearAlgebra{
    for (size_t root=0; root<(size_t)d.m_roots; root++) {
     auto xx=std::make_shared<ptype>(dimension);
     xx->zero();
+//    xout << "zeroed xx="<<xx<<std::endl;
     scalar one=1; xx->put(&one,1,root);
+//    xout << "constructed xx="<<xx<<std::endl;
     x.push_back_clone(xx);
     auto gg=std::make_shared<ptype>(dimension);
     g.push_back_clone(gg);
    }
 
    for (size_t iteration=0; iteration<dimension; iteration++) {
+//      for (size_t kkk=0; kkk<x.size(); kkk++)
+//          xout << "before action x: "<<x[kkk]<<std::endl;
+//      for (size_t kkk=0; kkk<g.size(); kkk++)
+//          xout << "before action g: "<<g[kkk]<<std::endl;
     action(x,g);
+//      for (size_t kkk=0; kkk<x.size(); kkk++)
+//          xout << "after action x: "<<x[kkk]<<std::endl;
+//      for (size_t kkk=0; kkk<g.size(); kkk++)
+//          xout << "after action g: "<<g[kkk]<<std::endl;
     d.interpolate(x,g);
     std::vector<scalar> shift;
     for (size_t root=0; root<(size_t)d.m_roots; root++) shift.push_back(-d.eigenvalues()[root]+1e-14);
@@ -158,7 +170,7 @@ namespace LinearAlgebra{
     if (d.finalize(x,g)) break;
    }
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>> es(testmatrix);
-    xout << "true eigenvalues: "<<es.eigenvalues().head(d.m_roots).transpose()<<std::endl;
+//    xout << "true eigenvalues: "<<es.eigenvalues().head(d.m_roots).transpose()<<std::endl;
 //    xout << "true eigenvectors:\n"<<es.eigenvectors().leftCols(d.m_roots).transpose()<<std::endl;
 
 

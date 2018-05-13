@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
   if (true) {
    using namespace LinearAlgebra;
    for (int option=0; option<4; option++)
-   PagedVectorTest<double>(10,option);
+   PagedVectorTest<double>(2,option);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.2,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);

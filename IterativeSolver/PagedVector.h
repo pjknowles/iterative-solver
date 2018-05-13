@@ -47,9 +47,9 @@ namespace LinearAlgebra {
   PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector) : LinearAlgebra::vector<scalar>(), m_size(source.m_size), m_communicator(mpi_communicator), m_cache(source.m_size)
   {
    init(option);
-//   xout << "in copy constructor, before copy, source: "<<source.str()<<std::endl;
+//   std::cout << "in copy constructor, before copy, source: "<<source.str()<<std::endl;
    *this = source;
-//   xout << "in copy constructor, after copy, source: "<<source.str()<<std::endl;
+//   std::cout << "in copy constructor, after copy, source: "<<source.str()<<std::endl;
   }
 
   virtual ~PagedVector()
@@ -88,6 +88,7 @@ namespace LinearAlgebra {
     m_mpi_size=1;
     m_mpi_rank=0;
 #endif
+//    if (m_mpi_rank==0) std::cout << "m_size="<<m_size<< ", m_mpi_size="<<m_mpi_size<<", m_replicated="<<m_replicated<<std::endl;
     if (m_replicated) {
      m_segment_offset=0;
      m_segment_length=m_size;
@@ -97,7 +98,8 @@ namespace LinearAlgebra {
     }
     m_cache.preferred_length = (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length;
     m_cache.move(0);
-//   xout << "new PagedVector m_size="<<m_size<<", option="<<option<<" cache size="<<m_cache.length<<std::endl;
+//   std::cout << "new PagedVector m_size="<<m_size<<", option="<<option<<" cache size="<<m_cache.length<<std::endl;
+//    std::cout << "m_mpi_rank="<<m_mpi_rank<< ", m_segment_offset="<<m_segment_offset<<", m_segment_length="<<m_segment_length<<std::endl;
   }
 
   bool m_replicated; //!< whether a full copy of data is on every MPI process
@@ -123,33 +125,34 @@ namespace LinearAlgebra {
    mutable size_t filesize;
    window(size_t datasize, size_t length=default_offline_buffer_size)
     :  datasize(datasize), preferred_length(length), filesize(0), offset(0), length(0), dirty(false) {
-//    xout << "window constructor datasize="<<datasize<<", length="<<length<<std::endl;
+//    std::cout << "window constructor datasize="<<datasize<<", length="<<length<<std::endl;
     char *tmpname=strdup("tmpfileXXXXXX");
     mkstemp(tmpname);
     m_file.open (tmpname, std::ios::out | std::ios::in | std::ios::binary);
+    if (!m_file.is_open() ) throw std::runtime_error(std::string("Cannot open cache file ")+tmpname);
     unlink(tmpname);
     free(tmpname);
     move(0,length);
-//    xout << "window constructor ends, filesize="<<filesize<<", length="<<length<<std::endl;
+//    std::cout << "window constructor ends, filesize="<<filesize<<", length="<<length<<std::endl;
    }
 
    void move(const size_t offset, size_t length=0) const {
     if (!length) length=preferred_length;
-//    xout << "move offset="<<offset<<", length="<<length<<", this->length="<<this->length<<std::endl;
+//    std::cout << "move offset="<<offset<<", length="<<length<<", this->length="<<this->length<<", this->offset="<<this->offset<<std::endl;
     if (dirty && this->length) {
-     m_file.seekg(this->offset*sizeof(scalar));
-//     xout << "write to "<<this->offset<<":";for (size_t i=0; i<this->length; i++) xout <<" "<<buffer[i]; xout <<std::endl;
+     m_file.seekp(this->offset*sizeof(scalar));
+//     std::cout << "write to "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
      m_file.write( (const char*)buffer.data(), this->length*sizeof(scalar));
      if (filesize < this->offset+this->length) filesize = this->offset+this->length;
     }
     this->offset = offset;
     this->length = std::min(length,static_cast<size_t>(datasize-offset));
     buffer.resize(this->length);
-//    xout << "buffer resized to length="<<this->length<<"; offset="<<offset<<", filesize="<<filesize<<std::endl;
+//    std::cout << "buffer resized to length="<<this->length<<"; offset="<<offset<<", filesize="<<filesize<<std::endl;
     if (std::min(this->length,static_cast<size_t>(filesize-offset))) {
      m_file.seekg(offset*sizeof(scalar));
      m_file.read((char*)buffer.data(),std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar));
-//     xout << "read from "<<this->offset<<":";for (size_t i=0; i<this->length; i++) xout <<" "<<buffer[i]; xout <<std::endl;
+//     std::cout << "read from "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
    }
     dirty=false;
   }
@@ -164,9 +167,9 @@ namespace LinearAlgebra {
    }
 
    const window& operator++() const {
-//    xout << "operator++ entry offset="<<offset<<", length="<<length<<std::endl;
+//    std::cout << "operator++ entry offset="<<offset<<", length="<<length<<std::endl;
     move(offset+length,length);
-//    xout << "operator++ exit  offset="<<offset<<", length="<<length<<std::endl;
+//    std::cout << "operator++ exit  offset="<<offset<<", length="<<length<<std::endl;
     return *this;
    }
   private:
@@ -188,38 +191,44 @@ namespace LinearAlgebra {
    */
   void put(scalar* const buffer, size_t length, size_t offset)
   {
-      size_t buffer_offset=0;
-      if (offset < m_segment_offset) { buffer_offset = m_segment_offset-offset; offset = m_segment_offset; length -= m_segment_offset-offset;}
-      if (offset+length > std::min(m_size,m_segment_offset+m_segment_length)) length = std::min(m_size,m_segment_offset+m_segment_length)-offset;
-      offset-=this->m_segment_offset;
-      size_t off=offset;
+   size_t buffer_offset=0;
+   if (offset < m_segment_offset) { buffer_offset = m_segment_offset-offset; offset = m_segment_offset; length -= m_segment_offset-offset;}
+   if (offset+length > std::min(m_size,m_segment_offset+m_segment_length)) length = std::min(m_size,m_segment_offset+m_segment_length)-offset;
+   offset-=this->m_segment_offset;
+   size_t off=offset;
+   //       std::cout << "in put, m_segment_offset "<<m_segment_offset<<", m_segment_length="<<m_segment_length<<std::endl;
    for (m_cache.move(off); off < offset+length && m_cache.length; ++m_cache, off += m_cache.length) {
-//       xout << "in put, cache window "<<m_cache.offset<<", length="<<m_cache.length<<std::endl;
+    //       std::cout << "in put, cache window "<<m_cache.offset<<", length="<<m_cache.length<<std::endl;
+    //       std::cout << "buffer_offset="<<buffer_offset<<", offset="<<offset<<", off="<<off<<std::endl;
+    //       std::cout << "offset+length-m_cache.offset="<<offset+length-m_cache.offset<<", m_cache.length="<<m_cache.length
+    //                 <<", loop limit="<<std::min(offset+length-m_cache.offset,m_cache.length)<<std::endl;
     for (size_t k=0; k<std::min(offset+length-m_cache.offset,m_cache.length); k++)
-        m_cache.buffer[k] = buffer[buffer_offset-offset+off+k];
+     m_cache.buffer[k] = buffer[buffer_offset-offset+off+k];
+    //    std::cout << "cache buffer:";  for (size_t k=0; k<std::min(offset+length-m_cache.offset,m_cache.length); k++) std::cout << " "<<m_cache.buffer[k]; std::cout << std::endl;
     m_cache.dirty = true;
    }
   }
 
   void get(scalar* buffer, size_t length, size_t offset) const
   {
-      size_t buffer_offset=0;
-      if (offset < m_segment_offset) { buffer_offset = m_segment_offset-offset; offset = m_segment_offset; length -= m_segment_offset-offset;}
-      if (offset+length > std::min(m_size,m_segment_offset+m_segment_length)) length = std::min(m_size,m_segment_offset+m_segment_length)-offset;
-      offset-=this->m_segment_offset;
-      size_t off=offset;
+   size_t buffer_offset=0;
+   if (offset < m_segment_offset) { buffer_offset = m_segment_offset-offset; offset = m_segment_offset; length -= m_segment_offset-offset;}
+   if (offset+length > std::min(m_size,m_segment_offset+m_segment_length)) length = std::min(m_size,m_segment_offset+m_segment_length)-offset;
+   offset-=this->m_segment_offset;
+   size_t off=offset;
    for (m_cache.move(off); off < offset+length && m_cache.length; ++m_cache, off += m_cache.length)
     for (size_t k=0; k<std::min(offset+length-m_cache.offset,m_cache.length); k++)
-        buffer[buffer_offset-offset+off+k] = m_cache.buffer[k];
+     buffer[buffer_offset-offset+off+k] = m_cache.buffer[k];
   }
 
 
   const scalar& operator[](size_t pos) const
   {
    if (pos >= m_cache.offset+m_segment_offset+m_cache.length || pos < m_cache.offset+m_segment_offset) { // cache not mapping right sector
-//    xout << "cache miss"<<std::endl;
+//    std::cout << "cache miss"<<std::endl;
     if (pos >= m_segment_offset+m_segment_length || pos < m_segment_offset) throw std::logic_error("operator[] finds index out of range");
     m_cache.move(pos-m_segment_offset);
+//    std::cout << "cache offset="<<m_cache.offset<<", cache length=" <<m_cache.length<<std::endl;
    }
    return m_cache.buffer[pos-m_cache.offset-m_segment_offset];
   }
@@ -236,8 +245,8 @@ namespace LinearAlgebra {
 
   std::string str(int verbosity=0, unsigned int columns=UINT_MAX) const {
    std::ostringstream os; os << "PagedVector object:";
-   for (size_t k=0; k<size(); k++)
-    os <<" "<< (*this)[k];
+   for (size_t k=0; k<m_segment_length; k++)
+    os <<" "<< (*this)[m_segment_offset+k];
    os << std::endl;
    return os.str();
   }
@@ -276,9 +285,13 @@ namespace LinearAlgebra {
    if (this->m_replicated != othe->m_replicated) throw std::logic_error("mismatching replication status");
    scalar result=0;
    if (this == other) {
+//    std::cout <<"dot self="<<std::endl;
     for (m_cache.ensure(0); m_cache.length; ++m_cache) {
-     for (size_t i=0; i<m_cache.length; i++)
+//    std::cout <<"dot self cache length ="<<m_cache.length<<std::endl;
+     for (size_t i=0; i<m_cache.length; i++) {
+//      std::cout << "take i="<<i<<", buffer[i]="<<m_cache.buffer[i]<<std::endl;
       result += m_cache.buffer[i] * m_cache.buffer[i];
+     }
     }
    } else {
     for (m_cache.ensure(0), othe->m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe->m_cache ) {
@@ -287,7 +300,9 @@ namespace LinearAlgebra {
     }
    }
 #ifdef USE_MPI
-   MPI_Allreduce(&result,&result,1,MPI_DOUBLE,MPI_SUM,m_communicator); // FIXME needs attention for non-double
+//    std::cout <<"dot result="<<result<<std::endl;
+   if (!m_replicated)
+    MPI_Allreduce(&result,&result,1,MPI_DOUBLE,MPI_SUM,m_communicator); // FIXME needs attention for non-double
 #endif
    return result;
   }
@@ -327,8 +342,8 @@ namespace LinearAlgebra {
    m_size=other.m_size;
    this->setVariance(other.variance());
     for (m_cache.ensure(m_segment_offset), other.m_cache.move(other.m_segment_offset,m_cache.length); m_cache.length && other.m_cache.length; ++m_cache, ++other.m_cache ) {
-//     xout << "buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
-//     for (size_t i=0; i<m_cache.length; i++) xout <<" "<<other.m_cache.buffer[i]; xout <<std::endl;
+//     std::cout << "buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
+//     for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[i]; std::cout <<std::endl;
      for (size_t i=0; i<m_cache.length; i++)
       m_cache.buffer[i] = other.m_cache.buffer[i];
      m_cache.dirty = true;
@@ -355,19 +370,22 @@ namespace LinearAlgebra {
  class PagedVectorTest  {
  public:
   PagedVectorTest(size_t n, int option=3) {
-  PagedVector<scalar> v1(n,option);
-  for (size_t i=0; i<v1.size(); i++)
-   v1[i]=i;
-//  std::cout << "v1 after assign: "<<v1<<std::endl;
-  PagedVector<scalar> v2(v1,option);
-//  std::cout << "v1 after assigning v2: "<<v1<<std::endl;
-//  std::cout << "v2 after assigning v2: "<<v2<<std::endl;
-  v1.m_cache.move(0);
-//  std::cout << "v1 "<<v1.str()<<std::endl;
-//  std::cout << "v2 "<<v2.str()<<std::endl;
-  std::cout << "v1.v2 error: " <<v2.dot(&v1)-(n*(n-1)*(2*n-1))/6 << std::endl;
-  std::cout << "v1.v1 error: " <<v1.dot(&v1)-(n*(n-1)*(2*n-1))/6 << std::endl;
- }
+   PagedVector<scalar> v1(n,option);
+   std::cout << "PagedVectorTest, n="<<n<<", replicated="<<v1.replicated()<<std::endl;
+   std::vector<scalar> vv;
+   for (size_t i=0; i<v1.size(); i++)
+    vv.push_back(i);
+   v1.put(vv.data(),vv.size(),0);
+   std::cout << "v1 after assign: "<<v1<<std::endl;
+   PagedVector<scalar> v2(v1,option);
+   //  std::cout << "v1 after assigning v2: "<<v1<<std::endl;
+   //  std::cout << "v2 after assigning v2: "<<v2<<std::endl;
+   v1.m_cache.move(0);
+   //  std::cout << "v1 "<<v1.str()<<std::endl;
+   //  std::cout << "v2 "<<v2.str()<<std::endl;
+   std::cout << "v1.v2 error: " <<v2.dot(&v1)-(n*(n-1)*(2*n-1))/6 << std::endl;
+   std::cout << "v1.v1 error: " <<v1.dot(&v1)-(n*(n-1)*(2*n-1))/6 << std::endl;
+  }
 
 };
 }

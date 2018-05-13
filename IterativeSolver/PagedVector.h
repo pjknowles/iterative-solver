@@ -18,6 +18,8 @@ using MPI_Comm = int;
 constexpr MPI_Comm MPI_COMM_WORLD=0;
 constexpr MPI_Comm MPI_COMM_NULL=0;
 #endif
+extern MPI_Comm MPI_Comm_PagedVector;
+MPI_Comm MPI_Comm_PagedVector=MPI_COMM_WORLD;
 
 namespace LinearAlgebra {
 
@@ -25,8 +27,7 @@ namespace LinearAlgebra {
    * \brief A class that implements LinearAlgebra::vector<scalar> with data optionally held on backing store, and optionally distributed
    * over MPI ranks
    */
- template <class scalar=double , MPI_Comm mpi_communicator = MPI_COMM_WORLD
-           , class Allocator =
+ template <class scalar=double  , class Allocator =
           #ifdef MEMORY_MEMORY_H
            memory::allocator<scalar>
           #else
@@ -39,11 +40,11 @@ namespace LinearAlgebra {
   /*!
    * \brief Construct an object without any data.
    */
-  PagedVector(size_t length=0, int option=0) : LinearAlgebra::vector<scalar>(), m_size(length), m_communicator(mpi_communicator), m_cache(length)
+  PagedVector(size_t length=0, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector) : LinearAlgebra::vector<scalar>(), m_size(length), m_communicator(mpi_communicator), m_cache(length)
   {
    init(option);
   }
-  PagedVector(const PagedVector& source, int option=0) : LinearAlgebra::vector<scalar>(), m_size(source.m_size), m_communicator(mpi_communicator), m_cache(source.m_size)
+  PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector) : LinearAlgebra::vector<scalar>(), m_size(source.m_size), m_communicator(mpi_communicator), m_cache(source.m_size)
   {
    init(option);
 //   xout << "in copy constructor, before copy, source: "<<source.str()<<std::endl;
@@ -73,6 +74,7 @@ namespace LinearAlgebra {
   bool replicated() const { return m_replicated;}
  private:
   void setReplicated(bool replicated) {
+//   std::cout << "setReplicated "<<replicated<<std::endl;
    m_cache.move(0,0);
    m_replicated = replicated;
    if (replicated) {
@@ -86,13 +88,14 @@ namespace LinearAlgebra {
 
  private:
 //  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
-#define default_offline_buffer_size 1024
+#define default_offline_buffer_size 2
   void init(int option)
   {
 #ifdef USE_MPI
-   setReplicated( ! LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option);
-    MPI_Comm_Size(m_communicator, m_mpi_size);
-    MPI_Comm_Rank(m_communicator, m_mpi_rank);
+//   std::cout << "option="<<option<<std::endl;
+   setReplicated( !(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option));
+    MPI_Comm_size(m_communicator, &m_mpi_size);
+    MPI_Comm_rank(m_communicator, &m_mpi_rank);
 #else
     setReplicated(true);
     m_mpi_size=1;
@@ -278,12 +281,19 @@ namespace LinearAlgebra {
    if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
    if (this->m_replicated != othe->m_replicated) throw std::logic_error("mismatching replication status");
    scalar result=0;
-   for (m_cache.ensure(0), othe->m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe->m_cache ) {
+   if (this == other) {
+    for (m_cache.ensure(0); m_cache.length; ++m_cache) {
+     for (size_t i=0; i<m_cache.length; i++)
+      result += m_cache.buffer[i] * m_cache.buffer[i];
+    }
+   } else {
+    for (m_cache.ensure(0), othe->m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe->m_cache ) {
      for (size_t i=0; i<m_cache.length; i++)
       result += m_cache.buffer[i] * othe->m_cache.buffer[i];
+    }
    }
 #ifdef USE_MPI
-    MPI_Allreduce(&result,result,1,MPI_DOUBLE,MPI_SUM,mpi_communicator); // FIXME needs attention for non-double
+   MPI_Allreduce(&result,&result,1,MPI_DOUBLE,MPI_SUM,m_communicator); // FIXME needs attention for non-double
 #endif
    return result;
   }
@@ -335,7 +345,7 @@ namespace LinearAlgebra {
     for (int rank=0; rank < m_mpi_size; rank++) {
      size_t off = lenseg * rank;
      for (m_cache.ensure(off); m_cache.length && off < lenseg*(rank+1); off+= m_cache.length, ++m_cache)
-      MPI_Bcast(m_cache.buffer.data(),m_cache.length,MPI_DOUBLE,rank,mpi_communicator); // needs attention for non-double
+      MPI_Bcast(m_cache.buffer.data(),m_cache.length,MPI_DOUBLE,rank,m_communicator); // needs attention for non-double
     }
    }
 #endif
@@ -350,12 +360,12 @@ namespace LinearAlgebra {
  template <class scalar>
  class PagedVectorTest  {
  public:
-  PagedVectorTest(size_t n) {
-  PagedVector<scalar> v1(n);
+  PagedVectorTest(size_t n, int option=3) {
+  PagedVector<scalar> v1(n,option);
   for (size_t i=0; i<v1.size(); i++)
    v1[i]=i;
 //  std::cout << "v1 after assign: "<<v1<<std::endl;
-  PagedVector<scalar> v2(v1,3);
+  PagedVector<scalar> v2(v1,option);
 //  std::cout << "v1 after assigning v2: "<<v1<<std::endl;
 //  std::cout << "v2 after assigning v2: "<<v2<<std::endl;
   v1.m_cache.move(0);

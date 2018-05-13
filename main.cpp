@@ -19,14 +19,15 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
     int size;
     MPI_Comm_size(MPI_COMM_WORLD,&size);
-    if (rank==0) std::cout << size<<" MPI processs"<<(size>1?"es ":"")<<std::endl;
+    if (rank==0) std::cout << size<<" MPI process"<<(size>1?"es ":"")<<std::endl;
 //    std::cout << "MPI process number "<<rank<<std::endl;
   }
 #endif
 
   if (true) {
    using namespace LinearAlgebra;
-   PagedVectorTest<double> t1(10000);
+   for (int option=0; option<4; option++)
+   PagedVectorTest<double>(10,option);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.2,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);

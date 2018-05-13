@@ -72,35 +72,29 @@ namespace LinearAlgebra {
      * \return
      */
   bool replicated() const { return m_replicated;}
- private:
-  void setReplicated(bool replicated) {
-//   std::cout << "setReplicated "<<replicated<<std::endl;
-   m_cache.move(0,0);
-   m_replicated = replicated;
-   if (replicated) {
-    m_segment_offset=0;
-    m_segment_length=m_size;
-   } else {
-    m_segment_offset = ((m_size-1) / m_mpi_size + 1) * m_mpi_rank;
-    m_segment_length = std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset);
-   }
-  }
 
  private:
 //  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
 #define default_offline_buffer_size 2
   void init(int option)
   {
+   m_replicated = true;
 #ifdef USE_MPI
 //   std::cout << "option="<<option<<std::endl;
-   setReplicated( !(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option));
     MPI_Comm_size(m_communicator, &m_mpi_size);
     MPI_Comm_rank(m_communicator, &m_mpi_rank);
+   if(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option) m_replicated=false;
 #else
-    setReplicated(true);
     m_mpi_size=1;
-    m_mpi_rank=1;
+    m_mpi_rank=0;
 #endif
+    if (m_replicated) {
+     m_segment_offset=0;
+     m_segment_length=m_size;
+    } else {
+     m_segment_offset = ((m_size-1) / m_mpi_size + 1) * m_mpi_rank;
+     m_segment_length = std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset);
+    }
     m_cache.preferred_length = (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length;
     m_cache.move(0);
 //   xout << "new PagedVector m_size="<<m_size<<", option="<<option<<" cache size="<<m_cache.length<<std::endl;

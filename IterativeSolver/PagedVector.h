@@ -139,7 +139,6 @@ namespace LinearAlgebra {
 //    std::cout << "m_mpi_rank="<<m_mpi_rank<< ", m_segment_offset="<<m_segment_offset<<", m_segment_length="<<m_segment_length<<std::endl;
   }
 
- public: // for debug
   size_t m_size; //!< How much data
   const MPI_Comm m_communicator; //!< the MPI communicator for distributed data
   int m_mpi_size;
@@ -450,7 +449,7 @@ namespace LinearAlgebra {
  public:
   PagedVectorTest(size_t n, int option=3) : status(true) {
    PagedVector<scalar> v1(n,option);
-   if (v1.m_mpi_rank==0) std::cout << "PagedVectorTest, n="<<n<<", replicated="<<v1.replicated()<<std::endl;
+//   if (v1.m_mpi_rank==0) std::cout << "PagedVectorTest, n="<<n<<", replicated="<<v1.replicated()<<std::endl;
    std::vector<scalar> vv;
    for (size_t i=0; i<v1.size(); i++)
     vv.push_back(i);

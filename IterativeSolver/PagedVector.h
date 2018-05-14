@@ -52,7 +52,7 @@ namespace LinearAlgebra {
   {
 //   init(option);
     m_cache.preferred_length = (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length;
-   std::cout << m_mpi_rank << " in constructor m_segment_length="<<m_segment_length<<std::endl;
+   std::cout << m_mpi_rank << " in constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
   }
   PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector)
    : LinearAlgebra::vector<scalar>(), m_size(source.m_size),
@@ -64,7 +64,7 @@ namespace LinearAlgebra {
   {
 //   init(option);
 //   std::cout << "in copy constructor, before copy, source: "<<source.str()<<std::endl;
-   std::cout << m_mpi_rank << " in copy constructor m_segment_length="<<m_segment_length<<std::endl;
+   std::cout << m_mpi_rank << " in copy constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
     m_cache.preferred_length = (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length;
    *this = source;
 //   std::cout << "in copy constructor, after copy, source: "<<source.str()<<std::endl;
@@ -106,7 +106,7 @@ namespace LinearAlgebra {
    int result;
    MPI_Comm_rank(m_communicator, &result);
 #else
-    int result=1;
+    int result=0;
 #endif
     return result;
   }

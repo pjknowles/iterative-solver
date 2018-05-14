@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
         auto v1 = PagedVector<double>(v0,i);
         for (auto j=i-i%2; j<=i; j++) {
          auto v2 = PagedVector<double>(v0,j);
-//         std::cout <<i<<","<<j<<": "<< v2.dot(&v1) <<"=="<< v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3<<std::endl;;
+         std::cout <<i<<","<<j<<": "<< v2.dot(v1) <<"=="<< v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3<<std::endl;;
          result &= v2.dot(v1) == v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3;
          result &= v2.dot(v2) == v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3;
         }
@@ -62,6 +62,8 @@ int main(int argc, char *argv[])
         v2.axpy(-3,v1);
 //         std::cout << v2.dot(v2) <<std::endl;
          result &= v2.dot(v2) <1e-20;
+         std::cout << "result "<<result<<v2.dot(v2)<<std::endl;
+       std::cout << "reads="<<v2.m_cache.reads << " writes="<<v2.m_cache.writes<<std::endl;
         }
        REQUIRE(result);
       }

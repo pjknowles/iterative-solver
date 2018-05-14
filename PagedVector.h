@@ -47,10 +47,12 @@ namespace LinearAlgebra {
      m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
      m_segment_offset(m_replicated ? 0 : ((m_size-1) / m_mpi_size + 1) * m_mpi_rank),
      m_segment_length(m_replicated ? m_size : std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset)),
-     m_cache(m_segment_length)
+     m_cache(m_segment_length, (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length)
   {
 //   init(option);
-    m_cache.preferred_length = (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length;
+    std::cout <<" option "<<( option)<<std::endl;
+    std::cout <<"LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option "<<(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)<<std::endl;
+    std::cout <<"cache preferred length "<<m_cache.preferred_length<<std::endl;
 //   std::cout << m_mpi_rank << " in constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
   }
   PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector)
@@ -59,12 +61,14 @@ namespace LinearAlgebra {
      m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
      m_segment_offset(m_replicated ? 0 : ((m_size-1) / m_mpi_size + 1) * m_mpi_rank),
      m_segment_length(m_replicated ? m_size : std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset)),
-     m_cache(m_segment_length)
+     m_cache(m_segment_length, (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length)
   {
 //   init(option);
 //   std::cout << "in copy constructor, before copy, source: "<<source.str()<<std::endl;
 //   std::cout << m_mpi_rank << " in copy constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
-    m_cache.preferred_length = (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length;
+//    std::cout <<" option "<<( option)<<std::endl;
+//    std::cout <<"LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option "<<(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)<<std::endl;
+//    std::cout <<"cache preferred length "<<m_cache.preferred_length<<std::endl;
    *this = source;
 //   std::cout << "in copy constructor, after copy, source: "<<source.str()<<std::endl;
   }
@@ -149,9 +153,12 @@ namespace LinearAlgebra {
   struct window {
    mutable size_t offset; ///< the offset in mapped data of the first element of the cache window
    mutable size_t length;///< the size of the cache window
-   size_t preferred_length; ///< the default for the size of the cache window
+   const size_t preferred_length; ///< the default for the size of the cache window
    const size_t datasize; ///< the size of the vector being mapped
    mutable std::vector<scalar> buffer;
+   mutable size_t writes; ///< how many bytes written
+   mutable size_t reads; ///< how many bytes read
+   bool io; ///< whether backing store is needed
    const scalar* begin() const { return buffer.data();}
    const scalar* end() const { return buffer.data()+length;}
    scalar* begin() {return buffer.data();}
@@ -160,14 +167,19 @@ namespace LinearAlgebra {
    mutable std::fstream m_file;
    mutable size_t filesize;
    window(size_t datasize, size_t length=default_offline_buffer_size)
-    :  datasize(datasize), preferred_length(length), filesize(0), offset(datasize+1), length(0), dirty(false) {
+    :  datasize(datasize), preferred_length(length), filesize(0), offset(datasize+1), length(0), dirty(false), writes(0), reads(0) {
 //    std::cout << "window constructor datasize="<<datasize<<", length="<<length<<std::endl;
-    char *tmpname=strdup("tmpfileXXXXXX");
-    mkstemp(tmpname);
-    m_file.open (tmpname, std::ios::out | std::ios::in | std::ios::binary);
-    if (!m_file.is_open() ) throw std::runtime_error(std::string("Cannot open cache file ")+tmpname);
-    unlink(tmpname);
-    free(tmpname);
+    io = this->datasize > preferred_length;
+//    io = true;
+    std::cout << "io="<<io<<std::endl;
+    if (io) {
+     char *tmpname=strdup("tmpfileXXXXXX");
+     mkstemp(tmpname);
+     m_file.open (tmpname, std::ios::out | std::ios::in | std::ios::binary);
+     if (!m_file.is_open() ) throw std::runtime_error(std::string("Cannot open cache file ")+tmpname);
+     unlink(tmpname);
+     free(tmpname);
+    }
     move(0,length);
 //    std::cout << "window constructor ends, filesize="<<filesize<<", length="<<length<<std::endl;
    }
@@ -175,20 +187,22 @@ namespace LinearAlgebra {
    void move(const size_t offset, size_t length=0) const {
     if (!length) length=preferred_length;
 //    std::cout << "move offset="<<offset<<", length="<<length<<", this->length="<<this->length<<", this->offset="<<this->offset<<std::endl;
-    if (dirty && this->length) {
+    if (dirty && this->length && io) {
      m_file.seekp(this->offset*sizeof(scalar));
 //     std::cout << "write to "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
      m_file.write( (const char*)buffer.data(), this->length*sizeof(scalar));
+     writes += this->length*sizeof(scalar);
      if (filesize < this->offset+this->length) filesize = this->offset+this->length;
     }
     this->offset = offset;
     this->length = std::min(length,static_cast<size_t>(datasize-offset));
     buffer.resize(this->length);
 //    std::cout << "buffer resized to length="<<this->length<<"; offset="<<offset<<", filesize="<<filesize<<std::endl;
-    if (std::min(this->length,static_cast<size_t>(filesize-offset))) {
+    if (std::min(this->length,static_cast<size_t>(filesize-offset)) && io) {
      m_file.seekg(offset*sizeof(scalar));
      m_file.read((char*)buffer.data(),std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar));
 //     std::cout << "read from "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
+     reads += std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar);
    }
     dirty=false;
   }
@@ -201,7 +215,7 @@ namespace LinearAlgebra {
 
    ~window() {
     move(filesize,0);
-    m_file.close();
+    if (io) m_file.close();
    }
 
    const window& operator++() const {
@@ -332,9 +346,9 @@ namespace LinearAlgebra {
      }
     }
    } else {
-//    std::cout <<m_mpi_rank<< " dot replication="<<m_replicated<<othe.m_replicated<<std::endl;
-//    std::cout <<m_mpi_rank<< " dot m_segment_offset="<<m_segment_offset<<othe.m_segment_offset<<std::endl;
-//    std::cout <<m_mpi_rank<< " dot m_segment_length="<<m_segment_length<<othe.m_segment_length<<std::endl;
+    std::cout <<m_mpi_rank<< " dot replication="<<m_replicated<<othe.m_replicated<<std::endl;
+    std::cout <<m_mpi_rank<< " dot m_segment_offset="<<m_segment_offset<<othe.m_segment_offset<<std::endl;
+    std::cout <<m_mpi_rank<< " dot m_segment_length="<<m_segment_length<<othe.m_segment_length<<std::endl;
     for (m_cache.ensure(0), othe.m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe.m_cache ) {
      for (size_t i=0; i<m_cache.length; i++) {
 //      std::cout <<m_mpi_rank<< " take i="<<i<<", buffer[i]="<<m_cache.buffer[i]<<", other="<<othe.m_cache.buffer[i]<<std::endl;

@@ -450,7 +450,7 @@ namespace LinearAlgebra {
  public:
   PagedVectorTest(size_t n, int option=3) : status(true) {
    PagedVector<scalar> v1(n,option);
-   std::cout << "PagedVectorTest, n="<<n<<", replicated="<<v1.replicated()<<std::endl;
+   if (v1.m_mpi_rank==0) std::cout << "PagedVectorTest, n="<<n<<", replicated="<<v1.replicated()<<std::endl;
    std::vector<scalar> vv;
    for (size_t i=0; i<v1.size(); i++)
     vv.push_back(i);
@@ -465,10 +465,10 @@ namespace LinearAlgebra {
    //  std::cout << "v2 "<<v2.str()<<std::endl;
    double v1v2error = v2.dot(&v1)-(n*(n-1)*(2*n-1))/6;
    double v1v1error = 0;//v1.dot(&v1)-(n*(n-1)*(2*n-1))/6;
-   std::cout << "v1.v2 error: " <<v1v2error << std::endl;
-   std::cout << "v1.v1 error: " <<v1v1error << std::endl;
+//   std::cout << "v1.v2 error: " <<v1v2error << std::endl;
+//   std::cout << "v1.v1 error: " <<v1v1error << std::endl;
    status = status && v1v1error==0 && v1v2error==0;
-   std::cout <<v2.m_mpi_rank<< " v2 after all: "<<v2<<std::endl;
+//   std::cout <<v2.m_mpi_rank<< " v2 after all: "<<v2<<std::endl;
   }
   bool status;
 

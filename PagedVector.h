@@ -295,17 +295,17 @@ namespace LinearAlgebra {
    * \param other The object to be added to this.
    * \return
    */
-  void axpy(scalar a, const LinearAlgebra::vector<scalar> *other)
+  void axpy(scalar a, const LinearAlgebra::vector<scalar> &other)
   {
-   const PagedVector* othe=dynamic_cast <const PagedVector*> (other);
+   const PagedVector& othe=dynamic_cast <const PagedVector&> (other);
 //   std::cout << "PagedVector::axpy this="<<*this<<std::endl;
 //   std::cout << "PagedVector::axpy othe="<<*othe<<std::endl;
-   if (this->variance() != othe->variance()) throw std::logic_error("mismatching co/contravariance");
+   if (this->variance() != othe.variance()) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
-   if (this->m_replicated != othe->m_replicated) throw std::logic_error("mismatching replication status");
-   for (m_cache.ensure(0), othe->m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe->m_cache ) {
+   if (this->m_replicated != othe.m_replicated) throw std::logic_error("mismatching replication status");
+   for (m_cache.ensure(0), othe.m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe.m_cache ) {
      for (size_t i=0; i<m_cache.length; i++)
-      m_cache.buffer[i] += a * othe->m_cache.buffer[i];
+      m_cache.buffer[i] += a * othe.m_cache.buffer[i];
      m_cache.dirty = true;
    }
   }
@@ -315,14 +315,14 @@ namespace LinearAlgebra {
    * \param other The object to be contracted with this.
    * \return
    */
-  scalar dot(const vector<scalar> *other) const
+  scalar dot(const vector<scalar> &other) const
   {
-   const PagedVector* othe=dynamic_cast <const PagedVector*> (other);
-   if (this->variance() * othe->variance() < 0) throw std::logic_error("mismatching co/contravariance");
+   const PagedVector& othe=dynamic_cast <const PagedVector&> (other);
+   if (this->variance() * othe.variance() < 0) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
-   if (this->m_replicated != othe->m_replicated) throw std::logic_error("mismatching replication status");
+   if (this->m_replicated != othe.m_replicated) throw std::logic_error("mismatching replication status");
    scalar result=0;
-   if (this == other) {
+   if (this == &other) {
 //    std::cout <<m_mpi_rank<<" dot self="<<std::endl;
     for (m_cache.ensure(0); m_cache.length; ++m_cache) {
 //    std::cout <<m_mpi_rank<<" dot self cache length ="<<m_cache.length<<", offset="<<m_cache.offset<<std::endl;
@@ -332,13 +332,13 @@ namespace LinearAlgebra {
      }
     }
    } else {
-//    std::cout <<m_mpi_rank<< " dot replication="<<m_replicated<<othe->m_replicated<<std::endl;
-//    std::cout <<m_mpi_rank<< " dot m_segment_offset="<<m_segment_offset<<othe->m_segment_offset<<std::endl;
-//    std::cout <<m_mpi_rank<< " dot m_segment_length="<<m_segment_length<<othe->m_segment_length<<std::endl;
-    for (m_cache.ensure(0), othe->m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe->m_cache ) {
+//    std::cout <<m_mpi_rank<< " dot replication="<<m_replicated<<othe.m_replicated<<std::endl;
+//    std::cout <<m_mpi_rank<< " dot m_segment_offset="<<m_segment_offset<<othe.m_segment_offset<<std::endl;
+//    std::cout <<m_mpi_rank<< " dot m_segment_length="<<m_segment_length<<othe.m_segment_length<<std::endl;
+    for (m_cache.ensure(0), othe.m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe.m_cache ) {
      for (size_t i=0; i<m_cache.length; i++) {
-//      std::cout <<m_mpi_rank<< " take i="<<i<<", buffer[i]="<<m_cache.buffer[i]<<", other="<<othe->m_cache.buffer[i]<<std::endl;
-      result += m_cache.buffer[i] * othe->m_cache.buffer[i];
+//      std::cout <<m_mpi_rank<< " take i="<<i<<", buffer[i]="<<m_cache.buffer[i]<<", other="<<othe.m_cache.buffer[i]<<std::endl;
+      result += m_cache.buffer[i] * othe.m_cache.buffer[i];
      }
     }
    }
@@ -461,8 +461,8 @@ namespace LinearAlgebra {
    v1.m_cache.move(0);
    //  std::cout << "v1 "<<v1.str()<<std::endl;
    //  std::cout << "v2 "<<v2.str()<<std::endl;
-   double v1v2error = v2.dot(&v1)-(n*(n-1)*(2*n-1))/6;
-   double v1v1error = 0;//v1.dot(&v1)-(n*(n-1)*(2*n-1))/6;
+   double v1v2error = v2.dot(v1)-(n*(n-1)*(2*n-1))/6;
+   double v1v1error = 0;//v1.dot(v1)-(n*(n-1)*(2*n-1))/6;
 //   std::cout << "v1.v2 error: " <<v1v2error << std::endl;
 //   std::cout << "v1.v1 error: " <<v1v1error << std::endl;
    status = status && v1v1error==0 && v1v2error==0;

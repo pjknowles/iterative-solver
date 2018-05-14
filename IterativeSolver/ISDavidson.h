@@ -49,13 +49,13 @@ namespace LinearAlgebra{
       if (this->m_solutions[ll].m_active[lll]) {
           if (m_verbosity>2) xout << "Davidson::extrapolate kkk="<<kkk<<", ll="<<ll<<", lll="<<lll<<", l="<<l<<std::endl;
           if (m_verbosity>2) xout << "Eigenvectors:\n"<<this->m_subspaceEigenvectors(l,kkk).real()<<std::endl;
-       solution[kkk]->axpy(this->m_subspaceEigenvectors(l,kkk).real(),this->m_solutions[ll][lll]);
-       residual[kkk]->axpy(this->m_subspaceEigenvectors(l,kkk).real(),this->m_residuals[ll][lll]);
+       solution[kkk]->axpy(this->m_subspaceEigenvectors(l,kkk).real(),*this->m_solutions[ll][lll]);
+       residual[kkk]->axpy(this->m_subspaceEigenvectors(l,kkk).real(),*this->m_residuals[ll][lll]);
        l++;
       }
      }
     }
-    residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(),solution[kkk]);
+    residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(),*solution[kkk]);
    }
 
    this->m_updateShift.resize(this->m_roots);
@@ -181,8 +181,8 @@ namespace LinearAlgebra{
    action(x,g);
    std::vector<scalar> errors;
    for (size_t root=0; root<(size_t)d.m_roots; root++) {
-    g[root]->axpy(-ev[root],x[root]);
-    errors.push_back(g[root]->dot(g[root]));
+    g[root]->axpy(-ev[root],*x[root]);
+    errors.push_back(g[root]->dot(*g[root]));
    }
 //   xout << "Square residual norms: "; for (typename std::vector<scalar>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
    xout << "Square residual norms: "; for (const auto& e: errors) xout<<" "<<e;xout<<std::endl;

@@ -153,18 +153,18 @@ namespace LinearAlgebra {
        for (size_t ll=0; ll<m_solutions.size(); ll++) {
         for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
          if (m_solutions[ll].m_active[lll]) {
-          double s = -(m_solutions[ll][lll]->dot(solution[kkk])) / (m_solutions[ll][lll]->dot(m_solutions[ll][lll]));
-          solution[kkk]->axpy(s,m_solutions[ll][lll]);
+          double s = -(m_solutions[ll][lll]->dot(*solution[kkk])) / (m_solutions[ll][lll]->dot(*m_solutions[ll][lll]));
+          solution[kkk]->axpy(s,*m_solutions[ll][lll]);
          }
         }
        }
        for (size_t lll=0; lll<kkk; lll++) {
         if (solution.m_active[lll]) {
-         double s = solution[lll]->dot(solution[kkk]);
-         solution[kkk]->axpy(-s,solution[lll]);
+         double s = solution[lll]->dot(*solution[kkk]);
+         solution[kkk]->axpy(-s,*solution[lll]);
         }
        }
-       double s= solution[kkk]->dot(solution[kkk]);
+       double s= solution[kkk]->dot(*solution[kkk]);
        if (s <= 0)
         solution.m_active[kkk]=false;
        else
@@ -207,8 +207,8 @@ namespace LinearAlgebra {
       for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
        if (m_solutions[ll].m_active[lll]) {
         //      xout << "bra"<<std::endl<<(*bra)[ll][lll]<<std::endl;
-        m_subspaceMatrix(k,l) = m_subspaceMatrix(l,k) = (*bra)[ll][lll]->dot(residual[kkk]);
-        m_subspaceOverlap(k,l) = m_subspaceOverlap(l,k) = m_solutions[ll][lll]->dot(solution[kkk]);
+        m_subspaceMatrix(k,l) = m_subspaceMatrix(l,k) = (*bra)[ll][lll]->dot(*residual[kkk]);
+        m_subspaceOverlap(k,l) = m_subspaceOverlap(l,k) = m_solutions[ll][lll]->dot(*solution[kkk]);
         l++;
        }
       }
@@ -282,9 +282,9 @@ namespace LinearAlgebra {
    //  xout << "last active "<<m_lastVectorIndex<<" "<<m_residuals[m_lastVectorIndex].m_active[0]<<std::endl;
    for (size_t k=0; k<solution.size(); k++) {
     if (m_linear) // we can use the extrapolated residual if the problem is linear
-     m_errors.push_back(residual.m_active[k] ? std::fabs(residual[k]->dot(step[k])) : 0);
+     m_errors.push_back(residual.m_active[k] ? std::fabs(residual[k]->dot(*step[k])) : 0);
     else
-     m_errors.push_back(m_residuals[m_lastVectorIndex].m_active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]->dot(step[k])) : 1);
+     m_errors.push_back(m_residuals[m_lastVectorIndex].m_active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]->dot(*step[k])) : 1);
     if (std::isnan(m_errors.back())) throw std::overflow_error("NaN detected in error measure");
    }
    m_error = *max_element(m_errors.begin(),m_errors.end());

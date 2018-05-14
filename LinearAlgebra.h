@@ -58,18 +58,14 @@ namespace LinearAlgebra {
      * \param other The object to be added to this.
      * \return
      */
-    virtual void axpy(scalar a, const vector<scalar>* other)=0;
-    void axpy(scalar a, const std::shared_ptr<vector<scalar> > other) {axpy(a,other.get());}
-    void axpy(scalar a, const vector<scalar>& other) {axpy(a,&other);}
+    virtual void axpy(scalar a, const vector<scalar>& other)=0;
 
     /*!
      * \brief Scalar product of two objects.
      * \param other The object to be contracted with this.
      * \return
      */
-    virtual scalar dot(const vector<scalar>* other) const=0;
-    scalar dot(const std::shared_ptr<vector<scalar> > other) { return dot(other.get());}
-    scalar dot(const vector<scalar>& other) { return dot(&other);}
+    virtual scalar dot(const vector<scalar>& other) const=0;
 
     /*!
      * \brief scal Scale the object by a factor.
@@ -239,7 +235,7 @@ namespace LinearAlgebra {
      * \return
      */
     void axpy(scalar a, const vectorSet<scalar>& other) {
-      for (size_t k=0; k<size(); k++) this->m_pvs[k]->axpy(a,other[k]);
+      for (size_t k=0; k<size(); k++) this->m_pvs[k]->axpy(a,*other[k]);
     }
 
     /*!

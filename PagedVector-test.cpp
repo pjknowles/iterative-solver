@@ -44,8 +44,8 @@ int main(int argc, char *argv[])
         for (auto j=i-i%2; j<=i; j++) {
          auto v2 = PagedVector<double>(v0,j);
 //         std::cout <<i<<","<<j<<": "<< v2.dot(&v1) <<"=="<< v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3<<std::endl;;
-         result &= v2.dot(&v1) == v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3;
-         result &= v2.dot(&v2) == v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3;
+         result &= v2.dot(v1) == v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3;
+         result &= v2.dot(v2) == v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3;
         }
        }
        REQUIRE(result);
@@ -58,10 +58,10 @@ int main(int argc, char *argv[])
        for (auto i=0; i<4; i++) {
         auto v1 = PagedVector<double>(v0,i);
         auto v2 = PagedVector<double>(v0,i);
-        v2.axpy(2,&v1);
-        v2.axpy(-3,&v1);
-//         std::cout << v2.dot(&v2) <<std::endl;
-         result &= v2.dot(&v2) <1e-20;
+        v2.axpy(2,v1);
+        v2.axpy(-3,v1);
+//         std::cout << v2.dot(v2) <<std::endl;
+         result &= v2.dot(v2) <1e-20;
         }
        REQUIRE(result);
       }
@@ -74,9 +74,9 @@ int main(int argc, char *argv[])
         auto v1 = PagedVector<double>(v0,i);
         auto v2 = PagedVector<double>(v0,i);
         v2.scal(3);
-        v2.axpy(-3,&v1);
-//         std::cout << v2.dot(&v2) <<std::endl;
-         result &= v2.dot(&v2) <1e-20;
+        v2.axpy(-3,v1);
+//         std::cout << v2.dot(v2) <<std::endl;
+         result &= v2.dot(v2) <1e-20;
         }
        REQUIRE(result);
       }
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
         auto v2 = PagedVector<double>(v0,i);
         v2.zero();
 //         std::cout << v2.dot(&v2) <<std::endl;
-         result &= v2.dot(&v2) <1e-20;
+         result &= v2.dot(v2) <1e-20;
         }
        REQUIRE(result);
       }

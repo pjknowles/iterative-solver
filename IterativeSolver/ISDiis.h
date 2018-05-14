@@ -175,10 +175,10 @@ namespace LinearAlgebra {
   for (size_t l=0; l<other.size(); l++) other[l]->zero();
   for (size_t kk=0; kk<m_residuals.size(); kk++) {
       if (m_residuals[kk].m_active.front()){
-          residual.front()->axpy(Coeffs[k],m_residuals[kk].front());
-          solution.front()->axpy(Coeffs[k],m_solutions[kk].front());
+          residual.front()->axpy(Coeffs[k],*m_residuals[kk].front());
+          solution.front()->axpy(Coeffs[k],*m_solutions[kk].front());
           for (size_t l=0; l<other.size(); l++)
-            other[l]->axpy(Coeffs[k],m_others[kk][l]);
+            other[l]->axpy(Coeffs[k],*m_others[kk][l]);
           k++;
         }
     }

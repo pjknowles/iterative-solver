@@ -37,7 +37,7 @@ namespace LinearAlgebra {
  class PagedVector : public LinearAlgebra::vector<scalar>
  {
 //  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
-#define default_offline_buffer_size 2
+#define default_offline_buffer_size 1024
  public:
   /*!
    * \brief Construct an object without any data.
@@ -52,7 +52,7 @@ namespace LinearAlgebra {
   {
 //   init(option);
     m_cache.preferred_length = (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length;
-   std::cout << m_mpi_rank << " in constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
+//   std::cout << m_mpi_rank << " in constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
   }
   PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector)
    : LinearAlgebra::vector<scalar>(), m_size(source.m_size),
@@ -64,7 +64,7 @@ namespace LinearAlgebra {
   {
 //   init(option);
 //   std::cout << "in copy constructor, before copy, source: "<<source.str()<<std::endl;
-   std::cout << m_mpi_rank << " in copy constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
+//   std::cout << m_mpi_rank << " in copy constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
     m_cache.preferred_length = (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length;
    *this = source;
 //   std::cout << "in copy constructor, after copy, source: "<<source.str()<<std::endl;
@@ -139,6 +139,7 @@ namespace LinearAlgebra {
 //    std::cout << "m_mpi_rank="<<m_mpi_rank<< ", m_segment_offset="<<m_segment_offset<<", m_segment_length="<<m_segment_length<<std::endl;
   }
 
+ public: // for debug
   size_t m_size; //!< How much data
   const MPI_Comm m_communicator; //!< the MPI communicator for distributed data
   int m_mpi_size;
@@ -161,8 +162,8 @@ namespace LinearAlgebra {
    mutable std::fstream m_file;
    mutable size_t filesize;
    window(size_t datasize, size_t length=default_offline_buffer_size)
-    :  datasize(datasize), preferred_length(length), filesize(0), offset(0), length(0), dirty(false) {
-    std::cout << "window constructor datasize="<<datasize<<", length="<<length<<std::endl;
+    :  datasize(datasize), preferred_length(length), filesize(0), offset(datasize+1), length(0), dirty(false) {
+//    std::cout << "window constructor datasize="<<datasize<<", length="<<length<<std::endl;
     char *tmpname=strdup("tmpfileXXXXXX");
     mkstemp(tmpname);
     m_file.open (tmpname, std::ios::out | std::ios::in | std::ios::binary);
@@ -195,7 +196,9 @@ namespace LinearAlgebra {
   }
 
    void ensure(const size_t offset) const {
+//    std::cout << "ensure offset="<<offset<<(offset < this->offset || offset >= this->offset+this->length)<<", preferred_length="<<preferred_length<<std::endl;
     if (offset < this->offset || offset >= this->offset+this->length) move(offset,this->preferred_length);
+//    std::cout <<"after move, offset="<<this->offset<<", length="<<this->length<<std::endl;
    }
 
    ~window() {
@@ -322,25 +325,31 @@ namespace LinearAlgebra {
    if (this->m_replicated != othe->m_replicated) throw std::logic_error("mismatching replication status");
    scalar result=0;
    if (this == other) {
-    std::cout <<m_mpi_rank<<" dot self="<<std::endl;
+//    std::cout <<m_mpi_rank<<" dot self="<<std::endl;
     for (m_cache.ensure(0); m_cache.length; ++m_cache) {
-    std::cout <<m_mpi_rank<<" dot self cache length ="<<m_cache.length<<", offset="<<m_cache.offset<<std::endl;
+//    std::cout <<m_mpi_rank<<" dot self cache length ="<<m_cache.length<<", offset="<<m_cache.offset<<std::endl;
      for (size_t i=0; i<m_cache.length; i++) {
-      std::cout <<m_mpi_rank<< " take i="<<i<<", buffer[i]="<<m_cache.buffer[i]<<std::endl;
+//      std::cout <<m_mpi_rank<< " take i="<<i<<", buffer[i]="<<m_cache.buffer[i]<<std::endl;
       result += m_cache.buffer[i] * m_cache.buffer[i];
      }
     }
    } else {
+//    std::cout <<m_mpi_rank<< " dot replication="<<m_replicated<<othe->m_replicated<<std::endl;
+//    std::cout <<m_mpi_rank<< " dot m_segment_offset="<<m_segment_offset<<othe->m_segment_offset<<std::endl;
+//    std::cout <<m_mpi_rank<< " dot m_segment_length="<<m_segment_length<<othe->m_segment_length<<std::endl;
     for (m_cache.ensure(0), othe->m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe->m_cache ) {
-     for (size_t i=0; i<m_cache.length; i++)
+     for (size_t i=0; i<m_cache.length; i++) {
+//      std::cout <<m_mpi_rank<< " take i="<<i<<", buffer[i]="<<m_cache.buffer[i]<<", other="<<othe->m_cache.buffer[i]<<std::endl;
       result += m_cache.buffer[i] * othe->m_cache.buffer[i];
+     }
     }
    }
 #ifdef USE_MPI
-    std::cout <<m_mpi_rank<<" dot result before reduce="<<result<<std::endl;
-   if (!m_replicated)
+//    std::cout <<m_mpi_rank<<" dot result before reduce="<<result<<std::endl;
+   if (!m_replicated) {
     MPI_Allreduce(&result,&result,1,MPI_DOUBLE,MPI_SUM,m_communicator); // FIXME needs attention for non-double
-    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
+//    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
+   }
 #endif
    return result;
   }
@@ -379,11 +388,20 @@ namespace LinearAlgebra {
   {
    m_size=other.m_size;
    this->setVariance(other.variance());
-    for (m_cache.ensure(m_segment_offset), other.m_cache.move(other.m_segment_offset,m_cache.length); m_cache.length && other.m_cache.length; ++m_cache, ++other.m_cache ) {
-//     std::cout << "buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
+//     std::cout <<m_mpi_rank<< " operator=() m_segment_offset="<<m_segment_offset<<"="<<other.m_segment_offset<<" for "<<m_segment_length<<"="<<other.m_segment_length<<std::endl;
+//     std::cout <<m_mpi_rank<< " other="<<other<<std::endl;
+//     m_cache.ensure( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset); std::cout << "m_cache.length="<<m_cache.length<<std::endl;
+//     other.m_cache.ensure( (m_replicated == other.m_replicated) ? 0: m_segment_offset); std::cout << "other.m_cache.length="<<other.m_cache.length<<std::endl;
+    for (m_cache.ensure( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset),
+         other.m_cache.move((m_replicated == other.m_replicated) ? 0: m_segment_offset,m_cache.length);
+         m_cache.length && other.m_cache.length;
+         ++m_cache, ++other.m_cache ) {
+//     std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
 //     for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[i]; std::cout <<std::endl;
-     for (size_t i=0; i<m_cache.length; i++)
+     for (size_t i=0; i<m_cache.length; i++) {
       m_cache.buffer[i] = other.m_cache.buffer[i];
+//      std::cout <<m_mpi_rank<<" buffer["<<i<<"]="<<m_cache.buffer[i]<<std::endl;
+     }
      m_cache.dirty = true;
     }
 #ifdef USE_MPI
@@ -399,6 +417,29 @@ namespace LinearAlgebra {
    return *this;
   }
 
+  bool operator==(const PagedVector& other)
+  {
+   if (this->variance() != other.variance()) throw std::logic_error("mismatching co/contravariance");
+   if (this->m_size != other.m_size) throw std::logic_error("mismatching lengths");
+   int diff=0;
+    for (m_cache.ensure( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset),
+         other.m_cache.move((m_replicated == other.m_replicated) ? 0: m_segment_offset,m_cache.length);
+         m_cache.length && other.m_cache.length;
+         ++m_cache, ++other.m_cache ) {
+     for (size_t i=0; i<m_cache.length; i++) {
+      diff = diff || m_cache.buffer[i] == other.m_cache.buffer[i];
+     }
+     m_cache.dirty = true;
+    }
+#ifdef USE_MPI
+   if (!m_replicated && ! other.m_replicated) {
+    for (int rank=0; rank < m_mpi_size; rank++) {
+      MPI_Allreduce(&diff,&diff,1,MPI_INT,MPI_SUM,m_communicator);
+    }
+   }
+#endif
+   return diff;
+  }
 
  };
  template <class scalar>
@@ -407,23 +448,29 @@ namespace LinearAlgebra {
  template <class scalar>
  class PagedVectorTest  {
  public:
-  PagedVectorTest(size_t n, int option=3) {
+  PagedVectorTest(size_t n, int option=3) : status(true) {
    PagedVector<scalar> v1(n,option);
    std::cout << "PagedVectorTest, n="<<n<<", replicated="<<v1.replicated()<<std::endl;
    std::vector<scalar> vv;
    for (size_t i=0; i<v1.size(); i++)
     vv.push_back(i);
    v1.put(vv.data(),vv.size(),0);
-   std::cout << "v1 after assign: "<<v1<<std::endl;
+//   std::cout <<v1.m_mpi_rank<< " v1 after assign: "<<v1<<std::endl;
    PagedVector<scalar> v2(v1,option);
    //  std::cout << "v1 after assigning v2: "<<v1<<std::endl;
    //  std::cout << "v2 after assigning v2: "<<v2<<std::endl;
+//   std::cout <<v2.m_mpi_rank<< " v2 after assign: "<<v2<<std::endl;
    v1.m_cache.move(0);
    //  std::cout << "v1 "<<v1.str()<<std::endl;
    //  std::cout << "v2 "<<v2.str()<<std::endl;
-   std::cout << "v1.v2 error: " <<v2.dot(&v1)-(n*(n-1)*(2*n-1))/6 << std::endl;
-   std::cout << "v1.v1 error: " <<v1.dot(&v1)-(n*(n-1)*(2*n-1))/6 << std::endl;
+   double v1v2error = v2.dot(&v1)-(n*(n-1)*(2*n-1))/6;
+   double v1v1error = 0;//v1.dot(&v1)-(n*(n-1)*(2*n-1))/6;
+   std::cout << "v1.v2 error: " <<v1v2error << std::endl;
+   std::cout << "v1.v1 error: " <<v1v1error << std::endl;
+   status = status && v1v1error==0 && v1v2error==0;
+   std::cout <<v2.m_mpi_rank<< " v2 after all: "<<v2<<std::endl;
   }
+  bool status;
 
 };
 }

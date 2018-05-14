@@ -36,18 +36,36 @@ namespace LinearAlgebra {
 >
  class PagedVector : public LinearAlgebra::vector<scalar>
  {
+//  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
+#define default_offline_buffer_size 2
  public:
   /*!
    * \brief Construct an object without any data.
    */
-  PagedVector(size_t length=0, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector) : LinearAlgebra::vector<scalar>(), m_size(length), m_communicator(mpi_communicator), m_cache(length)
+  PagedVector(size_t length=0, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector)
+   : LinearAlgebra::vector<scalar>(), m_size(length),
+     m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()), m_communicator(mpi_communicator),
+     m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
+     m_segment_offset(m_replicated ? 0 : ((m_size-1) / m_mpi_size + 1) * m_mpi_rank),
+     m_segment_length(m_replicated ? m_size : std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset)),
+     m_cache(m_segment_length)
   {
-   init(option);
+//   init(option);
+    m_cache.preferred_length = (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length;
+   std::cout << m_mpi_rank << " in constructor m_segment_length="<<m_segment_length<<std::endl;
   }
-  PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector) : LinearAlgebra::vector<scalar>(), m_size(source.m_size), m_communicator(mpi_communicator), m_cache(source.m_size)
+  PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector)
+   : LinearAlgebra::vector<scalar>(), m_size(source.m_size),
+     m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()), m_communicator(mpi_communicator),
+     m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
+     m_segment_offset(m_replicated ? 0 : ((m_size-1) / m_mpi_size + 1) * m_mpi_rank),
+     m_segment_length(m_replicated ? m_size : std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset)),
+     m_cache(m_segment_length)
   {
-   init(option);
+//   init(option);
 //   std::cout << "in copy constructor, before copy, source: "<<source.str()<<std::endl;
+   std::cout << m_mpi_rank << " in copy constructor m_segment_length="<<m_segment_length<<std::endl;
+    m_cache.preferred_length = (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length;
    *this = source;
 //   std::cout << "in copy constructor, after copy, source: "<<source.str()<<std::endl;
   }
@@ -74,8 +92,27 @@ namespace LinearAlgebra {
   bool replicated() const { return m_replicated;}
 
  private:
-//  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
-#define default_offline_buffer_size 2
+  int mpi_size() {
+#ifdef USE_MPI
+   int result;
+   MPI_Comm_size(m_communicator, &result);
+#else
+    int result=1;
+#endif
+    return result;
+  }
+  int mpi_rank() {
+#ifdef USE_MPI
+   int result;
+   MPI_Comm_rank(m_communicator, &result);
+#else
+    int result=1;
+#endif
+    return result;
+  }
+  size_t seglength(size_t length){
+   return length;
+  }
   void init(int option)
   {
    m_replicated = true;
@@ -102,13 +139,13 @@ namespace LinearAlgebra {
 //    std::cout << "m_mpi_rank="<<m_mpi_rank<< ", m_segment_offset="<<m_segment_offset<<", m_segment_length="<<m_segment_length<<std::endl;
   }
 
-  bool m_replicated; //!< whether a full copy of data is on every MPI process
-  size_t m_segment_offset; //!< offset in the overall data object of this process' data
-  size_t m_segment_length; //!< length of this process' data
+  size_t m_size; //!< How much data
   const MPI_Comm m_communicator; //!< the MPI communicator for distributed data
   int m_mpi_size;
   int m_mpi_rank;
-  size_t m_size; //!< How much data
+  bool m_replicated; //!< whether a full copy of data is on every MPI process
+  size_t m_segment_offset; //!< offset in the overall data object of this process' data
+  size_t m_segment_length; //!< length of this process' data
 
   struct window {
    mutable size_t offset; ///< the offset in mapped data of the first element of the cache window
@@ -125,7 +162,7 @@ namespace LinearAlgebra {
    mutable size_t filesize;
    window(size_t datasize, size_t length=default_offline_buffer_size)
     :  datasize(datasize), preferred_length(length), filesize(0), offset(0), length(0), dirty(false) {
-//    std::cout << "window constructor datasize="<<datasize<<", length="<<length<<std::endl;
+    std::cout << "window constructor datasize="<<datasize<<", length="<<length<<std::endl;
     char *tmpname=strdup("tmpfileXXXXXX");
     mkstemp(tmpname);
     m_file.open (tmpname, std::ios::out | std::ios::in | std::ios::binary);
@@ -285,11 +322,11 @@ namespace LinearAlgebra {
    if (this->m_replicated != othe->m_replicated) throw std::logic_error("mismatching replication status");
    scalar result=0;
    if (this == other) {
-//    std::cout <<"dot self="<<std::endl;
+    std::cout <<m_mpi_rank<<" dot self="<<std::endl;
     for (m_cache.ensure(0); m_cache.length; ++m_cache) {
-//    std::cout <<"dot self cache length ="<<m_cache.length<<std::endl;
+    std::cout <<m_mpi_rank<<" dot self cache length ="<<m_cache.length<<", offset="<<m_cache.offset<<std::endl;
      for (size_t i=0; i<m_cache.length; i++) {
-//      std::cout << "take i="<<i<<", buffer[i]="<<m_cache.buffer[i]<<std::endl;
+      std::cout <<m_mpi_rank<< " take i="<<i<<", buffer[i]="<<m_cache.buffer[i]<<std::endl;
       result += m_cache.buffer[i] * m_cache.buffer[i];
      }
     }
@@ -300,9 +337,10 @@ namespace LinearAlgebra {
     }
    }
 #ifdef USE_MPI
-//    std::cout <<"dot result="<<result<<std::endl;
+    std::cout <<m_mpi_rank<<" dot result before reduce="<<result<<std::endl;
    if (!m_replicated)
     MPI_Allreduce(&result,&result,1,MPI_DOUBLE,MPI_SUM,m_communicator); // FIXME needs attention for non-double
+    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
 #endif
    return result;
   }

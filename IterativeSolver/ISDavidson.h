@@ -2,7 +2,7 @@
 #define DAVIDSON_H
 #include "IterativeSolver.h"
 #include <stdexcept>
-#include "SimpleParameterVector.h"
+#include "PagedVector.h"
 
 namespace LinearAlgebra{
 
@@ -191,7 +191,7 @@ namespace LinearAlgebra{
 
   }
 
-  using v = SimpleParameterVector;
+  using v = PagedVector<double>;
 
   static std::unique_ptr<Davidson<double> > instance;
   extern "C" void IterativeSolverDavidsonInitialize(size_t nQ, size_t nP, size_t nroot, double* PP) {

@@ -1,9 +1,7 @@
 #include "IterativeSolver/ISDiis.h"
 #include "IterativeSolver/ISDavidson.h"
 #include "IterativeSolver/ISRSPT.h"
-#include "IterativeSolver/PagedParameterVector.h"
-#include "IterativeSolver/SimpleParameterVector.h"
-#include "IterativeSolver/PagedVector.h"
+#include "PagedVector.h"
 #include <ctime>
 #ifdef USE_MPI
 #include <mpi.h>

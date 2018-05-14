@@ -1,4 +1,4 @@
-#include "IterativeSolver/PagedVector.h"
+#include "PagedVector.h"
 #define CATCH_CONFIG_RUNNER
 #include "catch.hpp"
    using namespace LinearAlgebra;

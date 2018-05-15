@@ -36,7 +36,7 @@ namespace LinearAlgebra {
  class PagedVector : public LinearAlgebra::vector<scalar>
  {
 //  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
-#define default_offline_buffer_size 1024
+#define default_offline_buffer_size 5000
  public:
   /*!
    * \brief Construct an object without any data.
@@ -156,8 +156,8 @@ namespace LinearAlgebra {
    const size_t preferred_length; ///< the default for the size of the cache window
    const size_t datasize; ///< the size of the vector being mapped
    mutable std::vector<scalar> buffer;
-   mutable size_t writes; ///< how many bytes written
-   mutable size_t reads; ///< how many bytes read
+   mutable size_t writes; ///< how many scalars written
+   mutable size_t reads; ///< how many scalars read
    bool io; ///< whether backing store is needed
    const scalar* begin() const { return buffer.data();}
    const scalar* end() const { return buffer.data()+length;}
@@ -186,12 +186,13 @@ namespace LinearAlgebra {
 
    void move(const size_t offset, size_t length=0) const {
     if (!length) length=preferred_length;
-//        std::cout << "move offset="<<offset<<", length="<<length<<", this->length="<<this->length<<", this->offset="<<this->offset<<std::endl;
+//    std::cout << "move offset="<<offset<<", length="<<length<<", this->length="<<this->length<<", this->offset="<<this->offset<<" this->io="<<this->io<<std::endl;
     if (dirty && this->length && io) {
      m_file.seekp(this->offset*sizeof(scalar));
 //          std::cout << "write to "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
+//     std::cout << "write to "<<this->offset<<std::endl;
      m_file.write( (const char*)buffer.data(), this->length*sizeof(scalar));
-     writes += this->length*sizeof(scalar);
+     writes += this->length;
      if (filesize < this->offset+this->length) filesize = this->offset+this->length;
     }
     this->offset = offset;
@@ -201,10 +202,12 @@ namespace LinearAlgebra {
     if (std::min(this->length,static_cast<size_t>(filesize-offset)) && io) {
      m_file.seekg(offset*sizeof(scalar));
      m_file.read((char*)buffer.data(),std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar));
-     //     std::cout << "read from "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
-     reads += std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar);
+//     std::cout << "read from "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
+//     std::cout << "read from "<<this->offset<<std::endl;
+     reads += std::min(this->length,static_cast<size_t>(filesize-offset));
     }
     dirty=false;
+//    std::cout << "move done"<<std::endl;
    }
 
    void ensure(const size_t offset) const {
@@ -450,7 +453,6 @@ namespace LinearAlgebra {
      for (size_t i=0; i<m_cache.length; i++) {
       diff = diff || m_cache.buffer[i] == other.m_cache.buffer[i];
      }
-     m_cache.dirty = true;
     }
 #ifdef USE_MPI
    if (!m_replicated && ! other.m_replicated) {

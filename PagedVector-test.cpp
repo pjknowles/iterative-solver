@@ -30,19 +30,31 @@ int main(int argc, char *argv[])
        PagedVector<double> v0(10000);
        for (auto i=0; i<v0.size(); i++) v0[i]=2*i+1;
        bool result = true;
-       for (auto i=0; i<4; i++)
-        result &= PagedVector<double>(v0,i)==v0;
+       for (auto i=0; i<4; i++) {
+        auto v2 = PagedVector<double>(v0,i);
+        result &= v2==v0;
+        std::cout <<"option "<<i<< ", reads="<<v2.m_cache.reads << " writes="<<v2.m_cache.writes<<std::endl;
+       }
+//       std::cout <<"After Copy Constructor "<<PagedVector<double>(v0,1)<<std::endl;
+//       auto test = PagedVector<double>(v0,1);
+//       std::cout <<"After Copy Constructor "<<test<<std::endl;
        REQUIRE(result);
       }
 
       TEST_CASE("PagedVector dot product") {
        PagedVector<double> v0(10000);
        for (auto i=0; i<v0.size(); i++) v0[i]=2*i+1;
+//       std::cout << "v0="<<v0<<std::endl;
        bool result = true;
        for (auto i=0; i<4; i++) {
+//       std::cout << "before copy to v1 v0="<<v0<<std::endl;
         auto v1 = PagedVector<double>(v0,i);
+//       std::cout << "after copy to v1 v0="<<v0<<std::endl;
+//       std::cout << "after copy to v1 v1="<<v0<<std::endl;
         for (auto j=i-i%2; j<=i; j++) {
          auto v2 = PagedVector<double>(v0,j);
+//         std::cout << "v0="<<v0<<std::endl;
+//         std::cout << "v2="<<v2<<std::endl;
          std::cout <<i<<","<<j<<": "<< v2.dot(v1) <<"=="<< v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3<<std::endl;;
          result &= v2.dot(v1) == v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3;
          result &= v2.dot(v2) == v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3;
@@ -62,7 +74,7 @@ int main(int argc, char *argv[])
         v2.axpy(-3,v1);
 //         std::cout << v2.dot(v2) <<std::endl;
          result &= v2.dot(v2) <1e-20;
-         std::cout << "result "<<result<<v2.dot(v2)<<std::endl;
+//         std::cout << "result "<<result<<v2.dot(v2)<<std::endl;
        std::cout << "reads="<<v2.m_cache.reads << " writes="<<v2.m_cache.writes<<std::endl;
         }
        REQUIRE(result);

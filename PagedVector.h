@@ -50,9 +50,9 @@ namespace LinearAlgebra {
      m_cache(m_segment_length, (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length)
   {
 //   init(option);
-    std::cout <<" option "<<( option)<<std::endl;
-    std::cout <<"LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option "<<(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)<<std::endl;
-    std::cout <<"cache preferred length "<<m_cache.preferred_length<<std::endl;
+//    std::cout <<" option "<<( option)<<std::endl;
+//    std::cout <<"LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option "<<(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)<<std::endl;
+//    std::cout <<"cache preferred length "<<m_cache.preferred_length<<std::endl;
 //   std::cout << m_mpi_rank << " in constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
   }
   PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector)
@@ -170,8 +170,6 @@ namespace LinearAlgebra {
     :  datasize(datasize), preferred_length(length), filesize(0), offset(datasize+1), length(0), dirty(false), writes(0), reads(0) {
 //    std::cout << "window constructor datasize="<<datasize<<", length="<<length<<std::endl;
     io = this->datasize > preferred_length;
-//    io = true;
-    std::cout << "io="<<io<<std::endl;
     if (io) {
      char *tmpname=strdup("tmpfileXXXXXX");
      mkstemp(tmpname);
@@ -180,32 +178,34 @@ namespace LinearAlgebra {
      unlink(tmpname);
      free(tmpname);
     }
+    else
+     buffer.resize(length);
     move(0,length);
 //    std::cout << "window constructor ends, filesize="<<filesize<<", length="<<length<<std::endl;
    }
 
    void move(const size_t offset, size_t length=0) const {
     if (!length) length=preferred_length;
-//    std::cout << "move offset="<<offset<<", length="<<length<<", this->length="<<this->length<<", this->offset="<<this->offset<<std::endl;
+//        std::cout << "move offset="<<offset<<", length="<<length<<", this->length="<<this->length<<", this->offset="<<this->offset<<std::endl;
     if (dirty && this->length && io) {
      m_file.seekp(this->offset*sizeof(scalar));
-//     std::cout << "write to "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
+//          std::cout << "write to "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
      m_file.write( (const char*)buffer.data(), this->length*sizeof(scalar));
      writes += this->length*sizeof(scalar);
      if (filesize < this->offset+this->length) filesize = this->offset+this->length;
     }
     this->offset = offset;
     this->length = std::min(length,static_cast<size_t>(datasize-offset));
-    buffer.resize(this->length);
-//    std::cout << "buffer resized to length="<<this->length<<"; offset="<<offset<<", filesize="<<filesize<<std::endl;
+    if (io) buffer.resize(this->length);
+    //    std::cout << "buffer resized to length="<<this->length<<"; offset="<<offset<<", filesize="<<filesize<<std::endl;
     if (std::min(this->length,static_cast<size_t>(filesize-offset)) && io) {
      m_file.seekg(offset*sizeof(scalar));
      m_file.read((char*)buffer.data(),std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar));
-//     std::cout << "read from "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
+     //     std::cout << "read from "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
      reads += std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar);
-   }
+    }
     dirty=false;
-  }
+   }
 
    void ensure(const size_t offset) const {
 //    std::cout << "ensure offset="<<offset<<(offset < this->offset || offset >= this->offset+this->length)<<", preferred_length="<<preferred_length<<std::endl;
@@ -346,9 +346,9 @@ namespace LinearAlgebra {
      }
     }
    } else {
-    std::cout <<m_mpi_rank<< " dot replication="<<m_replicated<<othe.m_replicated<<std::endl;
-    std::cout <<m_mpi_rank<< " dot m_segment_offset="<<m_segment_offset<<othe.m_segment_offset<<std::endl;
-    std::cout <<m_mpi_rank<< " dot m_segment_length="<<m_segment_length<<othe.m_segment_length<<std::endl;
+//    std::cout <<m_mpi_rank<< " dot replication="<<m_replicated<<othe.m_replicated<<std::endl;
+//    std::cout <<m_mpi_rank<< " dot m_segment_offset="<<m_segment_offset<<othe.m_segment_offset<<std::endl;
+//    std::cout <<m_mpi_rank<< " dot m_segment_length="<<m_segment_length<<othe.m_segment_length<<std::endl;
     for (m_cache.ensure(0), othe.m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe.m_cache ) {
      for (size_t i=0; i<m_cache.length; i++) {
 //      std::cout <<m_mpi_rank<< " take i="<<i<<", buffer[i]="<<m_cache.buffer[i]<<", other="<<othe.m_cache.buffer[i]<<std::endl;
@@ -399,32 +399,41 @@ namespace LinearAlgebra {
   PagedVector& operator=(const PagedVector& other)
   {
    m_size=other.m_size;
+   constexpr bool pr=false;//bool pr=m_size<3;
+   if (pr) std::cout << "operator= entry, other="<<other<<std::endl;
    this->setVariance(other.variance());
-//     std::cout <<m_mpi_rank<< " operator=() m_segment_offset="<<m_segment_offset<<"="<<other.m_segment_offset<<" for "<<m_segment_length<<"="<<other.m_segment_length<<std::endl;
-//     std::cout <<m_mpi_rank<< " other="<<other<<std::endl;
-//     m_cache.ensure( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset); std::cout << "m_cache.length="<<m_cache.length<<std::endl;
-//     other.m_cache.ensure( (m_replicated == other.m_replicated) ? 0: m_segment_offset); std::cout << "other.m_cache.length="<<other.m_cache.length<<std::endl;
-    for (m_cache.ensure( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset),
-         other.m_cache.move((m_replicated == other.m_replicated) ? 0: m_segment_offset,m_cache.length);
-         m_cache.length && other.m_cache.length;
-         ++m_cache, ++other.m_cache ) {
-//     std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
-//     for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[i]; std::cout <<std::endl;
-     for (size_t i=0; i<m_cache.length; i++) {
-      m_cache.buffer[i] = other.m_cache.buffer[i];
-//      std::cout <<m_mpi_rank<<" buffer["<<i<<"]="<<m_cache.buffer[i]<<std::endl;
-     }
-     m_cache.dirty = true;
+   if (pr) std::cout <<m_mpi_rank<< " operator=() m_segment_offset="<<m_segment_offset<<"="<<other.m_segment_offset<<" for "<<m_segment_length<<"="<<other.m_segment_length<<std::endl;
+   if (pr) std::cout <<m_mpi_rank<< " other="<<other<<std::endl;
+   size_t cachelength = std::min(m_cache.preferred_length,other.m_cache.preferred_length);
+   size_t off=0, otheroff=0;
+   //     m_cache.ensure( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset); std::cout << "m_cache.length="<<m_cache.length<<std::endl;
+   //     other.m_cache.ensure( (m_replicated == other.m_replicated) ? 0: m_segment_offset); std::cout << "other.m_cache.length="<<other.m_cache.length<<std::endl;
+   m_cache.move( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset,m_cache.io ? cachelength : m_size);
+   other.m_cache.move((m_replicated == other.m_replicated) ? 0: m_segment_offset,other.m_cache.io ? cachelength : other.m_size);
+   while(m_cache.length && other.m_cache.length && off < m_size && otheroff < other.m_size ) {
+    if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
+//    for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
+    for (size_t i=0; i<m_cache.length; i++) {
+     m_cache.buffer[off+i] = other.m_cache.buffer[otheroff+i];
+//     if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
     }
+    m_cache.dirty = true;
+    if (m_cache.io) ++m_cache; else off+=cachelength;
+    if (other.m_cache.io) ++other.m_cache; else otheroff+=cachelength;
+    if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
+   }
+   if (pr) std::cout << "operator= after copy loop, other="<<other<<std::endl;
+   if (pr) std::cout << "operator= after copy loop, this="<<*this<<std::endl;
 #ifdef USE_MPI
    if (m_replicated && ! other.m_replicated) { // replicated <- distributed
-     size_t lenseg = ((m_size-1) / m_mpi_size + 1);
+    size_t lenseg = ((m_size-1) / m_mpi_size + 1);
     for (int rank=0; rank < m_mpi_size; rank++) {
      size_t off = lenseg * rank;
      for (m_cache.ensure(off); m_cache.length && off < lenseg*(rank+1); off+= m_cache.length, ++m_cache)
       MPI_Bcast(m_cache.buffer.data(),m_cache.length,MPI_DOUBLE,rank,m_communicator); // needs attention for non-double
     }
    }
+   //   if (pr) std::cout << "operator= after bcast, other="<<other<<std::endl;
 #endif
    return *this;
   }

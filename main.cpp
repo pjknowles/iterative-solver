@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
   DavidsonTest<PagedVector<double> >(9,1,1,2,false);
   DavidsonTest<PagedVector<double> >(9,1,1,1);
   DavidsonTest<PagedVector<double> >(9,1,1,2);
-  DavidsonTest<PagedVector<double> >(9,2,1,2);
+  DavidsonTest<PagedVector<double> >(9,2,7,2);
   DavidsonTest<PagedVector<double> >(100,1,1,2);
   DavidsonTest<PagedVector<double> >(100,3,1,2);
   DavidsonTest<PagedVector<double> >(100,3,1,2,false);

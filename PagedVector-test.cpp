@@ -110,6 +110,16 @@ int main(int argc, char *argv[])
        REQUIRE(result);
       }
 
+      TEST_CASE("PagedVector put()") {
+       PagedVector<double> v0(10);
+       v0.zero();
+       double one=1;
+       size_t offset=1;
+       v0.put(&one,1,offset);
+       REQUIRE(v0[0]==0);
+       REQUIRE(v0[offset]==one);
+      }
+
 //      TEST_CASE("PagedVector 0") {
 //       REQUIRE(PagedVectorTest<double>(2,0).status);
 //      }

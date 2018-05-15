@@ -251,15 +251,15 @@ namespace LinearAlgebra {
    if (offset+length > std::min(m_size,m_segment_offset+m_segment_length)) length = std::min(m_size,m_segment_offset+m_segment_length)-offset;
    offset-=this->m_segment_offset;
    size_t off=offset;
-   //       std::cout << "in put, m_segment_offset "<<m_segment_offset<<", m_segment_length="<<m_segment_length<<std::endl;
+          std::cout << "in put, m_segment_offset "<<m_segment_offset<<", m_segment_length="<<m_segment_length<<std::endl;
    for (m_cache.move(off); off < offset+length && m_cache.length; ++m_cache, off += m_cache.length) {
-    //       std::cout << "in put, cache window "<<m_cache.offset<<", length="<<m_cache.length<<std::endl;
-    //       std::cout << "buffer_offset="<<buffer_offset<<", offset="<<offset<<", off="<<off<<std::endl;
-    //       std::cout << "offset+length-m_cache.offset="<<offset+length-m_cache.offset<<", m_cache.length="<<m_cache.length
-    //                 <<", loop limit="<<std::min(offset+length-m_cache.offset,m_cache.length)<<std::endl;
+           std::cout << "in put, cache window "<<m_cache.offset<<", length="<<m_cache.length<<std::endl;
+           std::cout << "buffer_offset="<<buffer_offset<<", offset="<<offset<<", off="<<off<<std::endl;
+           std::cout << "offset+length-m_cache.offset="<<offset+length-m_cache.offset<<", m_cache.length="<<m_cache.length
+                     <<", loop limit="<<std::min(offset+length-m_cache.offset,m_cache.length)<<std::endl;
     for (size_t k=0; k<std::min(offset+length-m_cache.offset,m_cache.length); k++)
      m_cache.buffer[k] = buffer[buffer_offset-offset+off+k];
-    //    std::cout << "cache buffer:";  for (size_t k=0; k<std::min(offset+length-m_cache.offset,m_cache.length); k++) std::cout << " "<<m_cache.buffer[k]; std::cout << std::endl;
+        std::cout << "cache buffer:";  for (size_t k=0; k<std::min(offset+length-m_cache.offset,m_cache.length); k++) std::cout << " "<<m_cache.buffer[k]; std::cout << std::endl;
     m_cache.dirty = true;
    }
   }

@@ -67,7 +67,7 @@ namespace LinearAlgebra{
 //      m_preconditionerFunction(solution,residual,shift,false);
 //      xout << "solution="<<solution;
 //      xout << "residual="<<residual;
-      m_E0 = solution.front()->dot(residual.front());
+      m_E0 = solution.front()->dot(*residual.front());
   }
       solution.zero();
       residual.zero();
@@ -97,7 +97,7 @@ namespace LinearAlgebra{
       size_t l=0;
       for (size_t ll=0; ll<n-1; ll++) {
           for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
-                  residual[kkk]->axpy(-m_incremental_energies[n-ll],m_solutions[ll][lll]);
+                  residual[kkk]->axpy(-m_incremental_energies[n-ll],*m_solutions[ll][lll]);
 //      xout << "d(n)after incrementing solution"<<residual<<std::endl;
                   l++;
             }

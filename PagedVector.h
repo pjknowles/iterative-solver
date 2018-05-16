@@ -244,24 +244,41 @@ namespace LinearAlgebra {
    * \param length
    * \param offset
    */
-  void put(scalar* const buffer, size_t length, size_t offset)
+  void put(const scalar* buffer, size_t length, size_t offset)
   {
+   // first of all, focus attention only on that part of buffer which appears in [m_segment_offset,m_segment_offset+m_segment_length)
    size_t buffer_offset=0;
    if (offset < m_segment_offset) { buffer_offset = m_segment_offset-offset; offset = m_segment_offset; length -= m_segment_offset-offset;}
    if (offset+length > std::min(m_size,m_segment_offset+m_segment_length)) length = std::min(m_size,m_segment_offset+m_segment_length)-offset;
+
+   // now make relative to this mpi-rank's segment
    offset-=this->m_segment_offset;
-   size_t off=offset;
-          std::cout << "in put, m_segment_offset "<<m_segment_offset<<", m_segment_length="<<m_segment_length<<std::endl;
-   for (m_cache.move(off); off < offset+length && m_cache.length; ++m_cache, off += m_cache.length) {
-           std::cout << "in put, cache window "<<m_cache.offset<<", length="<<m_cache.length<<std::endl;
-           std::cout << "buffer_offset="<<buffer_offset<<", offset="<<offset<<", off="<<off<<std::endl;
-           std::cout << "offset+length-m_cache.offset="<<offset+length-m_cache.offset<<", m_cache.length="<<m_cache.length
-                     <<", loop limit="<<std::min(offset+length-m_cache.offset,m_cache.length)<<std::endl;
-    for (size_t k=0; k<std::min(offset+length-m_cache.offset,m_cache.length); k++)
-     m_cache.buffer[k] = buffer[buffer_offset-offset+off+k];
-        std::cout << "cache buffer:";  for (size_t k=0; k<std::min(offset+length-m_cache.offset,m_cache.length); k++) std::cout << " "<<m_cache.buffer[k]; std::cout << std::endl;
-    m_cache.dirty = true;
+   buffer_offset += this->m_segment_offset;
+
+   // first of all, process that part of the data in the initial cache window
+   for (size_t k=std::max(offset,m_cache.offset); k<std::min(offset+length,m_cache.offset+m_cache.length); k++) {
+    m_cache.buffer[k-m_cache.offset] = buffer[k+buffer_offset];
+    m_cache.dirty=true;
+    std::cout <<"in initial window m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k+buffer_offset<<"]="<<buffer[k+buffer_offset]<<std::endl;
    }
+
+   // next, process the data appearing before the initial cache window
+   size_t initial_cache_offset=m_cache.offset; size_t initial_cache_length=m_cache.length;
+   for (m_cache.move(offset); m_cache.length && m_cache.offset<initial_cache_offset; ++m_cache) {
+    for (size_t k=m_cache.offset; k<m_cache.length&&k<initial_cache_offset; k++)
+     m_cache.buffer[k-m_cache.offset] = buffer[k+buffer_offset];
+    std::cout <<"processed preceding window"<<std::endl;
+    m_cache.dirty=true;
+   }
+
+   // finally, process the data appearing after the initial cache window
+   for (m_cache.move(initial_cache_offset+initial_cache_length); m_cache.length && m_cache.offset<offset+length; ++m_cache) {
+    for (size_t k=m_cache.offset; k<m_cache.length&&k<offset+length; k++)
+     m_cache.buffer[k-m_cache.offset] = buffer[k+buffer_offset];
+    std::cout <<"processed following window"<<std::endl;
+    m_cache.dirty=true;
+   }
+
   }
 
   void get(scalar* buffer, size_t length, size_t offset) const

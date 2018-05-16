@@ -113,11 +113,14 @@ int main(int argc, char *argv[])
       TEST_CASE("PagedVector put()") {
        PagedVector<double> v0(10);
        v0.zero();
-       double one=1;
+       double val=1;
        size_t offset=1;
-       v0.put(&one,1,offset);
-       REQUIRE(v0[0]==0);
-       REQUIRE(v0[offset]==one);
+       std::cout << "v0: "<<v0<<std::endl;
+       v0.put(&val,1,offset);
+       std::cout << "v0: "<<v0<<std::endl;
+       auto test = v0.dot(v0);
+       REQUIRE(test==val*val);
+       REQUIRE(v0[offset]==val);
       }
 
 //      TEST_CASE("PagedVector 0") {

@@ -36,7 +36,7 @@ namespace LinearAlgebra {
  class PagedVector : public LinearAlgebra::vector<scalar>
  {
 //  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
-#define default_offline_buffer_size 5000
+#define default_offline_buffer_size 500
  public:
   /*!
    * \brief Construct an object without any data.

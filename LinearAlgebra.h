@@ -127,7 +127,7 @@ namespace LinearAlgebra {
      * \param offset Offset of first number.
      * \return
      */
-    virtual void put(scalar* const buffer, size_t length, size_t offset)
+    virtual void put(const scalar* buffer, size_t length, size_t offset)
     { throw std::logic_error("Unimplemented function"); }
 
     /*!

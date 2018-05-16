@@ -145,7 +145,7 @@ namespace LinearAlgebra{
    for (size_t root=0; root<(size_t)d.m_roots; root++) {
     auto xx=std::make_shared<ptype>(dimension);
     xx->zero();
-//    xout << "zeroed xx="<<xx<<std::endl;
+    xout << "zeroed xx="<<xx<<std::endl;
     scalar one=1; xx->put(&one,1,root);
     xout << "constructed xx="<<xx<<std::endl;
     x.push_back_clone(xx);
@@ -155,14 +155,14 @@ namespace LinearAlgebra{
 
    for (size_t iteration=0; iteration<dimension; iteration++) {
       for (size_t kkk=0; kkk<x.size(); kkk++)
-          xout << "before action x: "<<x[kkk]<<std::endl;
+//          xout << "before action x: "<<x[kkk]<<std::endl;
 //      for (size_t kkk=0; kkk<g.size(); kkk++)
 //          xout << "before action g: "<<g[kkk]<<std::endl;
     action(x,g);
 //      for (size_t kkk=0; kkk<x.size(); kkk++)
 //          xout << "after action x: "<<x[kkk]<<std::endl;
       for (size_t kkk=0; kkk<g.size(); kkk++)
-          xout << "after action g: "<<g[kkk]<<std::endl;
+//          xout << "after action g: "<<g[kkk]<<std::endl;
     d.addVector(x,g);
     std::vector<scalar> shift;
     for (size_t root=0; root<(size_t)d.m_roots; root++) shift.push_back(-d.eigenvalues()[root]+1e-14);

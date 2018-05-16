@@ -163,7 +163,7 @@ namespace LinearAlgebra{
 //          xout << "after action x: "<<x[kkk]<<std::endl;
       for (size_t kkk=0; kkk<g.size(); kkk++)
           xout << "after action g: "<<g[kkk]<<std::endl;
-    d.interpolate(x,g);
+    d.addVector(x,g);
     std::vector<scalar> shift;
     for (size_t root=0; root<(size_t)d.m_roots; root++) shift.push_back(-d.eigenvalues()[root]+1e-14);
     update(x,g,shift);
@@ -207,7 +207,7 @@ namespace LinearAlgebra{
     gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
     gg.back()->put(&g[root*instance->m_dimension],instance->m_dimension,0);
    }
-   instance->interpolate(cc,gg);
+   instance->addVector(cc,gg);
    for (int root=0; root < instance->m_roots; root++) {
     cc[root]->get(&c[root*instance->m_dimension],instance->m_dimension,0);
     gg[root]->get(&g[root*instance->m_dimension],instance->m_dimension,0);

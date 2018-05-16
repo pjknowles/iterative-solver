@@ -78,7 +78,7 @@ namespace LinearAlgebra {
    * \param other Optional additional vectors that should be extrapolated.
    * \param options A string of options to be interpreted by extrapolate().
    */
-  virtual void interpolate( vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
+  virtual void addVector( vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
   {
    //      for (size_t kkk=0; kkk<solution.size(); kkk++)
    //          xout << "interpolate solution: "<<solution[kkk]<<std::endl;
@@ -109,7 +109,7 @@ namespace LinearAlgebra {
    return m_error < m_thresh;
   }
 
-  virtual void interpolate(vectorSet<scalar> & solution, vectorSet<scalar> & residual, const optionMap options=optionMap()) { vectorSet<scalar> other; return interpolate(solution,residual,other,options); }
+  virtual void addVector(vectorSet<scalar> & solution, vectorSet<scalar> & residual, const optionMap options=optionMap()) { vectorSet<scalar> other; return addVector(solution,residual,other,options); }
 
   /*!
    * \brief Set convergence threshold

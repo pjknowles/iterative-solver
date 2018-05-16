@@ -298,7 +298,7 @@ static struct {
    xout <<"start of iteration "<<iteration<<std::endl;
       _Rosenbrock_residual(x,g);
       optionMap o; //o["weight"]=2;
-      d.interpolate(x,g,o);
+      d.addVector(x,g,o);
       std::vector<scalar> shift; shift.push_back(1e-10);
       _Rosenbrock_updater(x,g,shift);
       converged = d.finalize(x,g);

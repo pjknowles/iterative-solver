@@ -236,7 +236,7 @@ void RSPTTest(size_t n, double alpha)
 for (int iteration=1; (iteration < d.m_maxIterations && not converged) || iteration < d.m_minIterations; iteration++) {
    xout <<"start of iteration "<<iteration<<std::endl;
       _rsptpot_residual(x,g);
-      d.interpolate(x,g);
+      d.addVector(x,g);
       std::vector<scalar> shift; shift.push_back(1e-10);
       _rsptpot_updater(x,g,shift);
       converged = d.finalize(x,g);

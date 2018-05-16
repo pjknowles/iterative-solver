@@ -110,17 +110,37 @@ int main(int argc, char *argv[])
        REQUIRE(result);
       }
 
-      TEST_CASE("PagedVector put()") {
+      TEST_CASE("PagedVector::put()") {
        PagedVector<double> v0(10);
        v0.zero();
-       double val=1;
+       double val=99;
        size_t offset=1;
-       std::cout << "v0: "<<v0<<std::endl;
+//       std::cout << "after zero, v0: "<<v0<<std::endl;
        v0.put(&val,1,offset);
-       std::cout << "v0: "<<v0<<std::endl;
+//       std::cout << "after put, v0: "<<v0<<std::endl;
+       double val2=77;
+       v0.get(&val2,1,offset);
+//       std::cout << "after get, v0: "<<v0<<std::endl;
+//       std::cout <<val2<<std::endl;
+       REQUIRE(val==val2);
        auto test = v0.dot(v0);
        REQUIRE(test==val*val);
-       REQUIRE(v0[offset]==val);
+      }
+
+      TEST_CASE("PagedVector::operator[]()") {
+       PagedVector<double> v0(10);
+       v0.zero();
+       double val=99;
+       size_t offset=1;
+//       std::cout << "v0: "<<v0<<std::endl;
+       v0.put(&val,1,offset);
+//       std::cout << "v0: "<<v0<<std::endl;
+//       std::cout <<v0[offset]<<std::endl;
+       auto spoiler=v0.dot(v0);
+       auto test = v0[offset];
+//       std::cout << "v0: "<<v0<<std::endl;
+//       std::cout << test<<std::endl;
+       REQUIRE(test==val);
       }
 
 //      TEST_CASE("PagedVector 0") {

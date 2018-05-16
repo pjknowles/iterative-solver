@@ -185,9 +185,20 @@ namespace LinearAlgebra {
    }
 
    void move(const size_t offset, size_t length=0) const {
+    if (!io) {
+     if (offset >= datasize) {
+      this->offset=offset;
+      this->length=0;
+     }
+     else {
+      this->length=datasize;
+      this->offset=0;
+     }
+     return;
+    }
     if (!length) length=preferred_length;
 //    std::cout << "move offset="<<offset<<", length="<<length<<", this->length="<<this->length<<", this->offset="<<this->offset<<" this->io="<<this->io<<std::endl;
-    if (dirty && this->length && io) {
+    if (dirty && this->length) {
      m_file.seekp(this->offset*sizeof(scalar));
 //          std::cout << "write to "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
 //     std::cout << "write to "<<this->offset<<std::endl;
@@ -197,9 +208,9 @@ namespace LinearAlgebra {
     }
     this->offset = offset;
     this->length = std::min(length,static_cast<size_t>(datasize-offset));
-    if (io) buffer.resize(this->length);
+    buffer.resize(this->length);
     //    std::cout << "buffer resized to length="<<this->length<<"; offset="<<offset<<", filesize="<<filesize<<std::endl;
-    if (std::min(this->length,static_cast<size_t>(filesize-offset)) && io) {
+    if (std::min(this->length,static_cast<size_t>(filesize-offset))) {
      m_file.seekg(offset*sizeof(scalar));
      m_file.read((char*)buffer.data(),std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar));
 //     std::cout << "read from "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
@@ -246,36 +257,43 @@ namespace LinearAlgebra {
    */
   void put(const scalar* buffer, size_t length, size_t offset)
   {
+//   std::cout << "PagedVector::put() length="<<length<<", offset="<<offset<<std::endl;
+//   for (size_t k=0; k<length; k++) std::cout << " "<<buffer[k]; std::cout << std::endl;
+//   std::cout << "cache from "<<m_cache.offset<<" for "<<m_cache.length<<std::endl;
+//   for (size_t k=0; k<m_cache.length; k++) std::cout << " "<<m_cache.buffer[k]; std::cout << std::endl;
    // first of all, focus attention only on that part of buffer which appears in [m_segment_offset,m_segment_offset+m_segment_length)
    size_t buffer_offset=0;
    if (offset < m_segment_offset) { buffer_offset = m_segment_offset-offset; offset = m_segment_offset; length -= m_segment_offset-offset;}
    if (offset+length > std::min(m_size,m_segment_offset+m_segment_length)) length = std::min(m_size,m_segment_offset+m_segment_length)-offset;
 
-   // now make relative to this mpi-rank's segment
-   offset-=this->m_segment_offset;
-   buffer_offset += this->m_segment_offset;
+   // now make addresses relative to this mpi-rank's segment
+   offset-=this->m_segment_offset; // the offset in the segment of the first usable element of buffer
+   buffer_offset += this->m_segment_offset; // the offset in buffer of its first usable element
+
+//   std::cout << "adjusted offset="<<offset<<", buffer_offset="<<buffer_offset<<std::endl;
 
    // first of all, process that part of the data in the initial cache window
-   for (size_t k=std::max(offset,m_cache.offset); k<std::min(offset+length,m_cache.offset+m_cache.length); k++) {
-    m_cache.buffer[k-m_cache.offset] = buffer[k+buffer_offset];
+   for (size_t k=std::max(offset,m_cache.offset); k<std::min(offset+length,m_cache.offset+m_cache.length); k++) { // k is offset in segment
+    m_cache.buffer[k-m_cache.offset] = buffer[k-offset+buffer_offset];
     m_cache.dirty=true;
-    std::cout <<"in initial window m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k+buffer_offset<<"]="<<buffer[k+buffer_offset]<<std::endl;
+//    std::cout <<"in initial window, k="<<k<<", m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k-offset+buffer_offset<<"]="<<buffer[k-offset+buffer_offset]<<std::endl;
    }
 
    // next, process the data appearing before the initial cache window
    size_t initial_cache_offset=m_cache.offset; size_t initial_cache_length=m_cache.length;
    for (m_cache.move(offset); m_cache.length && m_cache.offset<initial_cache_offset; ++m_cache) {
-    for (size_t k=m_cache.offset; k<m_cache.length&&k<initial_cache_offset; k++)
-     m_cache.buffer[k-m_cache.offset] = buffer[k+buffer_offset];
-    std::cout <<"processed preceding window"<<std::endl;
+    for (size_t k=m_cache.offset; k<m_cache.length&&k<initial_cache_offset&&k<offset+length; k++) { // k is offset in segment
+     m_cache.buffer[k-m_cache.offset] = buffer[k-offset+buffer_offset];
+    }
+//    std::cout <<"processed preceding window"<<std::endl;
     m_cache.dirty=true;
    }
 
    // finally, process the data appearing after the initial cache window
    for (m_cache.move(initial_cache_offset+initial_cache_length); m_cache.length && m_cache.offset<offset+length; ++m_cache) {
     for (size_t k=m_cache.offset; k<m_cache.length&&k<offset+length; k++)
-     m_cache.buffer[k-m_cache.offset] = buffer[k+buffer_offset];
-    std::cout <<"processed following window"<<std::endl;
+     m_cache.buffer[k-m_cache.offset] = buffer[k-offset+buffer_offset];
+//    std::cout <<"processed following window"<<std::endl;
     m_cache.dirty=true;
    }
 
@@ -283,16 +301,47 @@ namespace LinearAlgebra {
 
   void get(scalar* buffer, size_t length, size_t offset) const
   {
+//   std::cout << "PagedVector::get() length="<<length<<", offset="<<offset<<std::endl;
+//   std::cout << "cache from "<<m_cache.offset<<" for "<<m_cache.length<<std::endl;
+//   for (size_t k=0; k<m_cache.length; k++) std::cout << " "<<m_cache.buffer[k]; std::cout << std::endl;
+
+   // first of all, focus attention only on that part of buffer which appears in [m_segment_offset,m_segment_offset+m_segment_length)
    size_t buffer_offset=0;
    if (offset < m_segment_offset) { buffer_offset = m_segment_offset-offset; offset = m_segment_offset; length -= m_segment_offset-offset;}
    if (offset+length > std::min(m_size,m_segment_offset+m_segment_length)) length = std::min(m_size,m_segment_offset+m_segment_length)-offset;
-   offset-=this->m_segment_offset;
-   size_t off=offset;
-   for (m_cache.move(off); off < offset+length && m_cache.length; ++m_cache, off += m_cache.length)
-    for (size_t k=0; k<std::min(offset+length-m_cache.offset,m_cache.length); k++)
-     buffer[buffer_offset-offset+off+k] = m_cache.buffer[k];
-  }
 
+   // now make addresses relative to this mpi-rank's segment
+   offset-=this->m_segment_offset; // the offset in the segment of the first usable element of buffer
+   buffer_offset += this->m_segment_offset; // the offset in buffer of its first usable element
+
+//   std::cout << "adjusted offset="<<offset<<", buffer_offset="<<buffer_offset<<std::endl;
+
+   // first of all, process that part of the data in the initial cache window
+   for (size_t k=std::max(offset,m_cache.offset); k<std::min(offset+length,m_cache.offset+m_cache.length); k++) { // k is offset in segment
+    buffer[k-offset+buffer_offset]= m_cache.buffer[k-m_cache.offset];
+//    std::cout <<"in initial window, k="<<k<<", m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k-offset+buffer_offset<<"]="<<buffer[k-offset+buffer_offset]<<std::endl;
+   }
+
+   // next, process the data appearing before the initial cache window
+   size_t initial_cache_offset=m_cache.offset; size_t initial_cache_length=m_cache.length;
+   for (m_cache.move(offset); m_cache.length && m_cache.offset<initial_cache_offset; ++m_cache) {
+//    std::cout <<"new cache window offset="<<m_cache.offset<<", length="<<m_cache.length<<std::endl;
+    for (size_t k=m_cache.offset; k<m_cache.length&&k<initial_cache_offset&&k<offset+length; k++) { // k is offset in segment
+     buffer[k-offset+buffer_offset]= m_cache.buffer[k-m_cache.offset];
+//    std::cout <<"in preceding window, k="<<k<<", m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k-offset+buffer_offset<<"]="<<buffer[k-offset+buffer_offset]<<std::endl;
+    }
+//    std::cout <<"processed preceding window"<<std::endl;
+   }
+
+   // finally, process the data appearing after the initial cache window
+   for (m_cache.move(initial_cache_offset+initial_cache_length); m_cache.length && m_cache.offset<offset+length; ++m_cache) {
+    for (size_t k=m_cache.offset; k<m_cache.length&&k<offset+length; k++)
+     buffer[k-offset+buffer_offset]= m_cache.buffer[k-m_cache.offset];
+//    std::cout <<"processed following window"<<std::endl;
+   }
+
+//   for (size_t k=0; k<length; k++) std::cout << " "<<buffer[k]; std::cout << std::endl;
+  }
 
   const scalar& operator[](size_t pos) const
   {

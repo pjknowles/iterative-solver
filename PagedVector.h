@@ -125,11 +125,9 @@ namespace LinearAlgebra {
   struct window {
    mutable size_t offset; ///< the offset in mapped data of the first element of the cache window
    mutable size_t length;///< the size of the cache window
-   const size_t preferred_length; ///< the default for the size of the cache window
    const size_t datasize; ///< the size of the vector being mapped
+   const size_t preferred_length; ///< the default for the size of the cache window
    mutable std::vector<scalar> buffer;
-   mutable size_t writes; ///< how many scalars written
-   mutable size_t reads; ///< how many scalars read
    bool io; ///< whether backing store is needed
    const scalar* begin() const { return buffer.data();}
    const scalar* end() const { return buffer.data()+length;}
@@ -138,8 +136,10 @@ namespace LinearAlgebra {
    mutable bool dirty;
    mutable std::fstream m_file;
    mutable size_t filesize;
+   mutable size_t writes; ///< how many scalars written
+   mutable size_t reads; ///< how many scalars read
    window(size_t datasize, size_t length=default_offline_buffer_size)
-    :  datasize(datasize), preferred_length(length), filesize(0), offset(datasize+1), length(0), dirty(false), writes(0), reads(0) {
+    :   offset(datasize+1), length(0), datasize(datasize), preferred_length(length), dirty(false), filesize(0), writes(0), reads(0) {
 //    std::cout << "window constructor datasize="<<datasize<<", length="<<length<<std::endl;
     io = this->datasize > preferred_length;
     if (io) {

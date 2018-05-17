@@ -28,9 +28,9 @@ int main(int argc, char *argv[])
 
       TEST_CASE("PagedVector copy constructor") {
        PagedVector<double> v0(10000);
-       for (auto i=0; i<v0.size(); i++) v0[i]=2*i+1;
+       for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;
        bool result = true;
-       for (auto i=0; i<4; i++) {
+       for (size_t i=0; i<4; i++) {
         auto v2 = PagedVector<double>(v0,i);
 //        std::cout <<"option "<<i<< ", copy-construct, reads="<<v2.m_cache.reads << " writes="<<v2.m_cache.writes<<std::endl;
         result &= v2==v0;
@@ -44,12 +44,12 @@ int main(int argc, char *argv[])
 
       TEST_CASE("PagedVector dot product") {
        PagedVector<double> v0(10000);
-       for (auto i=0; i<v0.size(); i++) v0[i]=2*i+1;
+       for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;
 //       std::cout << "v0="<<v0<<std::endl;
        bool result = true;
-       for (auto i=0; i<4; i++) {
+       for (size_t i=0; i<4; i++) {
 //       std::cout << "before copy to v1 v0="<<v0<<std::endl;
-        auto v1 = PagedVector<double>(v0,i);
+         auto v1 = PagedVector<double>(v0,i);
 //       std::cout << "after copy to v1 v0="<<v0<<std::endl;
 //       std::cout << "after copy to v1 v1="<<v0<<std::endl;
         for (auto j=i-i%2; j<=i; j++) {
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 
       TEST_CASE("PagedVector axpy()") {
        PagedVector<double> v0(10000);
-       for (auto i=0; i<v0.size(); i++) v0[i]=2*i+1;
+       for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;
        bool result = true;
        for (auto i=0; i<4; i++) {
         auto v1 = PagedVector<double>(v0,i);
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 
       TEST_CASE("PagedVector scal()") {
        PagedVector<double> v0(10000);
-       for (auto i=0; i<v0.size(); i++) v0[i]=2*i+1;
+       for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;
        bool result = true;
        for (auto i=0; i<4; i++) {
         auto v1 = PagedVector<double>(v0,i);
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
 
       TEST_CASE("PagedVector zero()") {
        PagedVector<double> v0(10000);
-       for (auto i=0; i<v0.size(); i++) v0[i]=2*i+1;
+       for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;
        bool result = true;
        for (auto i=0; i<4; i++) {
         auto v1 = PagedVector<double>(v0,i);
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
        v0.put(&val,1,offset);
 //       std::cout << "v0: "<<v0<<std::endl;
 //       std::cout <<v0[offset]<<std::endl;
-       auto spoiler=v0.dot(v0);
+//       auto spoiler=v0.dot(v0);
        auto test = v0[offset];
 //       std::cout << "v0: "<<v0<<std::endl;
 //       std::cout << test<<std::endl;

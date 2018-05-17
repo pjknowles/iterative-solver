@@ -57,7 +57,7 @@ namespace LinearAlgebra {
   }
   PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector)
    : LinearAlgebra::vector<scalar>(), m_size(source.m_size),
-     m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()), m_communicator(mpi_communicator),
+     m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
      m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
      m_segment_offset(m_replicated ? 0 : ((m_size-1) / m_mpi_size + 1) * m_mpi_rank),
      m_segment_length(m_replicated ? m_size : std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset)),
@@ -112,34 +112,6 @@ namespace LinearAlgebra {
     int result=0;
 #endif
     return result;
-  }
-  size_t seglength(size_t length){
-   return length;
-  }
-  void init(int option)
-  {
-   m_replicated = true;
-#ifdef USE_MPI
-//   std::cout << "option="<<option<<std::endl;
-    MPI_Comm_size(m_communicator, &m_mpi_size);
-    MPI_Comm_rank(m_communicator, &m_mpi_rank);
-   if(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option) m_replicated=false;
-#else
-    m_mpi_size=1;
-    m_mpi_rank=0;
-#endif
-//    if (m_mpi_rank==0) std::cout << "m_size="<<m_size<< ", m_mpi_size="<<m_mpi_size<<", m_replicated="<<m_replicated<<std::endl;
-    if (m_replicated) {
-     m_segment_offset=0;
-     m_segment_length=m_size;
-    } else {
-     m_segment_offset = ((m_size-1) / m_mpi_size + 1) * m_mpi_rank;
-     m_segment_length = std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset);
-    }
-    m_cache.preferred_length = (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length;
-    m_cache.move(0);
-//   std::cout << "new PagedVector m_size="<<m_size<<", option="<<option<<" cache size="<<m_cache.length<<std::endl;
-//    std::cout << "m_mpi_rank="<<m_mpi_rank<< ", m_segment_offset="<<m_segment_offset<<", m_segment_length="<<m_segment_length<<std::endl;
   }
 
   size_t m_size; //!< How much data

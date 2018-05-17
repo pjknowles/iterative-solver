@@ -452,30 +452,68 @@ namespace LinearAlgebra {
   {
    m_size=other.m_size;
    constexpr bool pr=false;//bool pr=m_size<3;
-   if (pr) std::cout << "operator= entry, other="<<other<<std::endl;
+//   if (pr) std::cout << "operator= entry, other="<<other<<std::endl;
+   if (pr) std::cout << "operator= entry, other.m_cache.preferred_length="<<other.m_cache.preferred_length<<", this->m_cache.preferred_length="<<this->m_cache.preferred_length<<std::endl;
+   if (pr) std::cout << "operator= entry, other.m_replicated="<<other.m_replicated<<", this->m_replicated="<<this->m_replicated<<std::endl;
    this->setVariance(other.variance());
    if (pr) std::cout <<m_mpi_rank<< " operator=() m_segment_offset="<<m_segment_offset<<"="<<other.m_segment_offset<<" for "<<m_segment_length<<"="<<other.m_segment_length<<std::endl;
-   if (pr) std::cout <<m_mpi_rank<< " other="<<other<<std::endl;
-   size_t cachelength = std::min(m_cache.preferred_length,other.m_cache.preferred_length);
-   size_t off=0, otheroff=0;
-   //     m_cache.ensure( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset); std::cout << "m_cache.length="<<m_cache.length<<std::endl;
-   //     other.m_cache.ensure( (m_replicated == other.m_replicated) ? 0: m_segment_offset); std::cout << "other.m_cache.length="<<other.m_cache.length<<std::endl;
-   m_cache.move( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset,m_cache.io ? cachelength : m_size);
-   other.m_cache.move((m_replicated == other.m_replicated) ? 0: m_segment_offset,other.m_cache.io ? cachelength : other.m_size);
-   while(m_cache.length && other.m_cache.length && off < m_size && otheroff < other.m_size ) {
-    if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
-//    for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
-    for (size_t i=0; i<m_cache.length; i++) {
-     m_cache.buffer[off+i] = other.m_cache.buffer[otheroff+i];
-//     if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
+//   if (pr) std::cout <<m_mpi_rank<< " other="<<other<<std::endl;
+   if (m_cache.io == other.m_cache.io) { // both cached or both in memory
+    size_t cachelength = std::min(m_cache.preferred_length,other.m_cache.preferred_length);
+    size_t off=0, otheroff=0;
+    //     m_cache.ensure( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset); std::cout << "m_cache.length="<<m_cache.length<<std::endl;
+    //     other.m_cache.ensure( (m_replicated == other.m_replicated) ? 0: m_segment_offset); std::cout << "other.m_cache.length="<<other.m_cache.length<<std::endl;
+    m_cache.move( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset,m_cache.io ? cachelength : m_size);
+    other.m_cache.move((m_replicated == other.m_replicated) ? 0: m_segment_offset,other.m_cache.io ? cachelength : other.m_segment_length);
+    while(m_cache.length && other.m_cache.length && off < m_size && otheroff < other.m_size ) {
+     if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
+     //    for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
+     for (size_t i=0; i<m_cache.length; i++) {
+      m_cache.buffer[off+i] = other.m_cache.buffer[otheroff+i];
+      //     if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
+     }
+     if (m_cache.io) ++m_cache; else off+=cachelength;
+     if (other.m_cache.io) ++other.m_cache; else otheroff+=cachelength;
+     if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
     }
-    m_cache.dirty = true;
-    if (m_cache.io) ++m_cache; else off+=cachelength;
-    if (other.m_cache.io) ++other.m_cache; else otheroff+=cachelength;
-    if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
+   } else if (m_cache.io) { // source in memory, result cached
+    size_t cachelength = m_cache.preferred_length;
+    size_t off=0;
+    size_t otheroff=(m_replicated == other.m_replicated) ? 0: m_segment_offset;
+    m_cache.move( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset, cachelength );
+    other.m_cache.move( 0, other.m_segment_length);
+    while(m_cache.length && off < m_segment_length && otheroff < other.m_segment_length ) {
+     if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
+     //    for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
+     for (size_t i=0; i<m_cache.length; i++) {
+      m_cache.buffer[off+i] = other.m_cache.buffer[otheroff+i];
+      //     if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
+     }
+     ++m_cache;
+     otheroff+=cachelength;
+     if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
+    }
+   } else if (other.m_cache.io) { // source cached, result in memory
+    size_t cachelength = other.m_cache.preferred_length;
+    size_t otheroff=0;
+    size_t off=(m_replicated == other.m_replicated) ? 0: other.m_segment_offset;
+    m_cache.move(0, m_segment_length);
+    other.m_cache.move((m_replicated == other.m_replicated) ? 0: m_segment_offset, cachelength );
+    while(other.m_cache.length && off < m_segment_length && otheroff < other.m_segment_length ) {
+     if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
+     //    for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
+     for (size_t i=0; i<m_cache.length; i++) {
+      m_cache.buffer[off+i] = other.m_cache.buffer[otheroff+i];
+      //     if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
+     }
+     off+=cachelength;
+     ++other.m_cache;
+     if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
+    }
    }
-   if (pr) std::cout << "operator= after copy loop, other="<<other<<std::endl;
-   if (pr) std::cout << "operator= after copy loop, this="<<*this<<std::endl;
+   m_cache.dirty = true;
+//   if (pr) std::cout << "operator= after copy loop, other="<<other<<std::endl;
+//   if (pr) std::cout << "operator= after copy loop, this="<<*this<<std::endl;
 #ifdef USE_MPI
    if (m_replicated && ! other.m_replicated) { // replicated <- distributed
     size_t lenseg = ((m_size-1) / m_mpi_size + 1);

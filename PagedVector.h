@@ -43,7 +43,7 @@ namespace LinearAlgebra {
    */
   PagedVector(size_t length=0, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector)
    : LinearAlgebra::vector<scalar>(), m_size(length),
-     m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()), m_communicator(mpi_communicator),
+     m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
      m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
      m_segment_offset(m_replicated ? 0 : ((m_size-1) / m_mpi_size + 1) * m_mpi_rank),
      m_segment_length(m_replicated ? m_size : std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset)),

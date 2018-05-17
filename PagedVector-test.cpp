@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
   return 0;
 }
 
+#ifndef none
       TEST_CASE("PagedVector copy constructor") {
        PagedVector<double> v0(10000);
        for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;
@@ -110,23 +111,27 @@ int main(int argc, char *argv[])
        REQUIRE(result);
       }
 
+#endif
       TEST_CASE("PagedVector::put()") {
-       PagedVector<double> v0(10);
+       PagedVector<double> v0(10000);
        v0.zero();
        double val=99;
-       size_t offset=1;
+       size_t offset=v0.size()/2;
 //       std::cout << "after zero, v0: "<<v0<<std::endl;
        v0.put(&val,1,offset);
 //       std::cout << "after put, v0: "<<v0<<std::endl;
        double val2=77;
+//       std::cout << "before get "<<std::endl;
        v0.get(&val2,1,offset);
 //       std::cout << "after get, v0: "<<v0<<std::endl;
-//       std::cout <<val2<<std::endl;
+//       std::cout <<"val2"<<val2<<std::endl;
        REQUIRE(val==val2);
        auto test = v0.dot(v0);
+//       std::cout <<"test"<<test<<std::endl;
        REQUIRE(test==val*val);
       }
 
+#ifndef none
       TEST_CASE("PagedVector::operator[]()") {
        PagedVector<double> v0(10);
        v0.zero();
@@ -142,6 +147,7 @@ int main(int argc, char *argv[])
 //       std::cout << test<<std::endl;
        REQUIRE(test==val);
       }
+#endif
 
 //      TEST_CASE("PagedVector 0") {
 //       REQUIRE(PagedVectorTest<double>(2,0).status);

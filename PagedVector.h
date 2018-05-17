@@ -157,6 +157,9 @@ namespace LinearAlgebra {
    }
 
    void move(const size_t offset, size_t length=0) const {
+//    std::cout << "window move begins"<<std::endl;
+//    std::cout << "window move begins, offset="<<offset<<std::endl;
+//    std::cout << "window move begins, offset="<<offset<<", length="<<length<<std::endl;
     if (!io) {
      if (offset >= datasize) {
       this->offset=offset;
@@ -166,6 +169,7 @@ namespace LinearAlgebra {
       this->length=datasize;
       this->offset=0;
      }
+//    std::cout << "window move ends !io, offset="<<offset<<", length="<<length<<std::endl;
      return;
     }
     if (!length) length=preferred_length;
@@ -191,6 +195,7 @@ namespace LinearAlgebra {
     }
     dirty=false;
 //    std::cout << "move done"<<std::endl;
+//    std::cout << "window move ends, offset="<<offset<<", length="<<length<<std::endl;
    }
 
    void ensure(const size_t offset) const {
@@ -246,29 +251,31 @@ namespace LinearAlgebra {
 
    // first of all, process that part of the data in the initial cache window
    for (size_t k=std::max(offset,m_cache.offset); k<std::min(offset+length,m_cache.offset+m_cache.length); k++) { // k is offset in segment
-    m_cache.buffer[k-m_cache.offset] = buffer[k-offset+buffer_offset];
+    m_cache.buffer[k-m_cache.offset] = buffer[k+buffer_offset-offset];
     m_cache.dirty=true;
-//    std::cout <<"in initial window, k="<<k<<", m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k-offset+buffer_offset<<"]="<<buffer[k-offset+buffer_offset]<<std::endl;
+//    std::cout <<"in initial window, k="<<k<<", m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k+buffer_offset-offset<<"]="<<buffer[k+buffer_offset-offset]<<std::endl;
    }
 
    // next, process the data appearing before the initial cache window
    size_t initial_cache_offset=m_cache.offset; size_t initial_cache_length=m_cache.length;
    for (m_cache.move(offset); m_cache.length && m_cache.offset<initial_cache_offset; ++m_cache) {
-    for (size_t k=m_cache.offset; k<m_cache.length&&k<initial_cache_offset&&k<offset+length; k++) { // k is offset in segment
-     m_cache.buffer[k-m_cache.offset] = buffer[k-offset+buffer_offset];
+    for (size_t k=std::max(offset,m_cache.offset); k<m_cache.length&&k<initial_cache_offset&&k<offset+length; k++) { // k is offset in segment
+     m_cache.buffer[k-m_cache.offset] = buffer[k+buffer_offset-offset];
     }
 //    std::cout <<"processed preceding window"<<std::endl;
     m_cache.dirty=true;
    }
 
    // finally, process the data appearing after the initial cache window
+//std::cout << "initial_cache_offset="<<initial_cache_offset<<std::endl;
    for (m_cache.move(initial_cache_offset+initial_cache_length); m_cache.length && m_cache.offset<offset+length; ++m_cache) {
     for (size_t k=m_cache.offset; k<m_cache.length&&k<offset+length; k++)
-     m_cache.buffer[k-m_cache.offset] = buffer[k-offset+buffer_offset];
+     m_cache.buffer[k-m_cache.offset] = buffer[k+buffer_offset-offset];
 //    std::cout <<"processed following window"<<std::endl;
     m_cache.dirty=true;
    }
 
+//   std::cout << "PagedVector::put() ends length="<<length<<", offset="<<offset<<std::endl;
   }
 
   void get(scalar* buffer, size_t length, size_t offset) const
@@ -290,17 +297,18 @@ namespace LinearAlgebra {
 
    // first of all, process that part of the data in the initial cache window
    for (size_t k=std::max(offset,m_cache.offset); k<std::min(offset+length,m_cache.offset+m_cache.length); k++) { // k is offset in segment
-    buffer[k-offset+buffer_offset]= m_cache.buffer[k-m_cache.offset];
-//    std::cout <<"in initial window, k="<<k<<", m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k-offset+buffer_offset<<"]="<<buffer[k-offset+buffer_offset]<<std::endl;
+    buffer[k+buffer_offset-offset]= m_cache.buffer[k-m_cache.offset];
+//    std::cout <<"in initial window, k="<<k<<", m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k+buffer_offset-offset<<"]="<<buffer[k+buffer_offset-offset]<<std::endl;
    }
 
    // next, process the data appearing before the initial cache window
    size_t initial_cache_offset=m_cache.offset; size_t initial_cache_length=m_cache.length;
    for (m_cache.move(offset); m_cache.length && m_cache.offset<initial_cache_offset; ++m_cache) {
 //    std::cout <<"new cache window offset="<<m_cache.offset<<", length="<<m_cache.length<<std::endl;
-    for (size_t k=m_cache.offset; k<m_cache.length&&k<initial_cache_offset&&k<offset+length; k++) { // k is offset in segment
-     buffer[k-offset+buffer_offset]= m_cache.buffer[k-m_cache.offset];
-//    std::cout <<"in preceding window, k="<<k<<", m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k-offset+buffer_offset<<"]="<<buffer[k-offset+buffer_offset]<<std::endl;
+    for (size_t k=std::max(offset,m_cache.offset); k<m_cache.length&&k<initial_cache_offset&&k<offset+length; k++) { // k is offset in segment
+//     std::cout << "in loop k="<<k<<", buffer_offset="<<buffer_offset<<", offset="<<offset<<" index="<<k+buffer_offset-offset<<std::endl;
+     buffer[k+buffer_offset-offset]= m_cache.buffer[k-m_cache.offset];
+//    std::cout <<"in preceding window, k="<<k<<", m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k+buffer_offset-offset<<"]="<<buffer[k+buffer_offset-offset]<<std::endl;
     }
 //    std::cout <<"processed preceding window"<<std::endl;
    }
@@ -308,11 +316,12 @@ namespace LinearAlgebra {
    // finally, process the data appearing after the initial cache window
    for (m_cache.move(initial_cache_offset+initial_cache_length); m_cache.length && m_cache.offset<offset+length; ++m_cache) {
     for (size_t k=m_cache.offset; k<m_cache.length&&k<offset+length; k++)
-     buffer[k-offset+buffer_offset]= m_cache.buffer[k-m_cache.offset];
+     buffer[k+buffer_offset-offset]= m_cache.buffer[k-m_cache.offset];
 //    std::cout <<"processed following window"<<std::endl;
    }
 
 //   for (size_t k=0; k<length; k++) std::cout << " "<<buffer[k]; std::cout << std::endl;
+//   std::cout << "PagedVector::get() ends, length="<<length<<", offset="<<offset<<std::endl;
   }
 
   const scalar& operator[](size_t pos) const
@@ -372,6 +381,7 @@ namespace LinearAlgebra {
    */
   scalar dot(const vector<scalar> &other) const
   {
+//   std::cout << "enter dot"<<std::endl;
    const PagedVector& othe=dynamic_cast <const PagedVector&> (other);
    if (this->variance() * othe.variance() < 0) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
@@ -404,6 +414,7 @@ namespace LinearAlgebra {
 //    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
    }
 #endif
+//   std::cout << "leave dot"<<std::endl;
    return result;
   }
 
@@ -481,6 +492,7 @@ namespace LinearAlgebra {
 
   bool operator==(const PagedVector& other)
   {
+//std::cout  << "operator== start"<<std::endl;
    if (this->variance() != other.variance()) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != other.m_size) throw std::logic_error("mismatching lengths");
    int diff=0;
@@ -499,6 +511,7 @@ namespace LinearAlgebra {
     }
    }
 #endif
+//std::cout  << "operator== end"<<std::endl;
    return diff;
   }
 

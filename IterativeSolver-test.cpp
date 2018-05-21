@@ -2,7 +2,6 @@
 #ifdef USE_MPI
 #include <mpi.h>
 #endif
-#include "IterativeSolver/ISDiis.h"
 #include "IterativeSolver.h"
 #include "PagedVector.h"
 namespace LinearAlgebra{
@@ -188,7 +187,7 @@ static struct {
   xout << "initial guess"<<x<<std::endl;
   bool converged=false;
   for (int iteration=1; iteration < 1000 && not converged; iteration++) {
-   xout <<"start of iteration "<<iteration<<std::endl;
+//   xout <<"start of iteration "<<iteration<<std::endl;
       _Rosenbrock_residual(x,g);
       optionMap o; //o["weight"]=2;
       d.addVector(x,g,o);
@@ -204,7 +203,7 @@ static struct {
           <<", error = "<<d.errors().front()
             <<", converged? "<<converged
            <<std::endl;
-   xout <<"end of iteration "<<iteration<<std::endl;
+//   xout <<"end of iteration "<<iteration<<std::endl;
     }
 
   x.front()->get(&xxx[0],2,0);
@@ -450,7 +449,7 @@ int main(int argc, char *argv[])
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
 //  LinearAlgebra::DIIS<double>::randomTest(100,100,0.1,3.0);
-//  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
+  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
 //  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
 //  DIISTest<PagedVector<double> >(1,6,1e-3,LinearAlgebra::DIIS<double>::disabled,0.0002);
   DavidsonTest<PagedVector<double> >(2,1,1,2,true);

@@ -21,23 +21,36 @@ extern std::ostream &xout;
 namespace LinearAlgebra {
  typedef std::map<std::string, double> optionMap;
  /*!
- * \brief A base class for iterative solvers such as DIIS, KAIN, Davidson. The class provides support for preconditioned update, via a provided functor.
+ * \brief A base class for iterative solvers for linear and non-linear equations, and linear eigensystems.
  *
  * The user needs to provide the two routines residualFunction() and preconditionerFunction() through the class constructor. These define the problem being solved: the first should calculate the residual
- * or action vector from a solution vector,
+ * or action vector from a parameter vector,
  * and the second should apply the negative of a preconditioner to a provided residual vector, optionally adding it to existing contents of a result vector.  The user also needs to provide an initial guess in the call to solve() or iterate().
  *
- * Two drivers are provided: the calling program can set up its own iterative loop, and in each loop call residualFunction() and iterate(); this gives the flexibility to pass additional parameters
- * to residualFunction(). The simpler mode of use is a single call to solve(), which manages the iterations itself.
+ * The calling program should set up its own iterative loop, and in each iteration
+ * - calculate
+ * the action of the matrix on the current expansion vector (linear), or the actual
+ * residual (non-linear)
+ * - make a call to addVector() which takes the current and previous parameters and proposes
+ * an improved estimate, and the best estimate of the residual vector.
+ * - calculate a new solution (non-linear) or expansion vector (linear) by implementing
+ * appropriate preconditioning on the residual
+ * -  make a call to endIteration()
  *
- * Classes that derive from this will, in the simplest case, need to provide just the solveReducedProblem() method that governs how the solution and residual vectors from successive iterations
- * should be combined to form an optimum solution with minimal residual.  In more complicated cases - for example, in Davidson's method, where the preconditioner depends on the current energy -
- * it will be necessary to reimplement also the iterate() method.
+ * Classes that derive from this will, in the simplest case, need to provide just the solveReducedProblem() method that governs how the parameter and residual vectors from successive iterations
+ * should be combined to form an optimum solution with minimal residual.
  *
- * The underlying vector spaces are accessed through instances of the vectorSet<scalar> class (or derivatives). These consist of a set of ParameterVector objects, which are the vectors themselves; the vectorSet<scalar>
+ * The underlying vector spaces are accessed through instances of the vectorSet<scalar> class (or derivatives). These consist of a set of pointers to vector<scalar> objects, which are the vectors themselves; the vectorSet<scalar>
  * object has dimension greater than one in, for example, multi-root diagonalisations where the residual is calculated simultaneously for a number of vectors.
- * Two instances of vectorSet<scalar> have to be passed to iterate() or solve(), and these are used to construct solutions and residuals; this class also creates unlimited additional instances of vectorSet<scalar>,
+ * Two instances of vectorSet<scalar> have to be passed to iterate() or solve(),
+ * and these are used to construct solutions and residuals;
+ * this class also creates unlimited additional instances of vectorSet<scalar>,
  * and in memory-sensitive environments, consideration might be given to implementing a derivative of vectorSet<scalar> where the data is resident in external storage.
+ * The additional instances are created with hints that they may be stored offline passed to
+ * the copy constructor.
+ * The use of pointers in vectorSet<scalar> supports polymorphism: the user is free to
+ * present instances of classes deriving from vector<scalar>, and thereby implement
+ * any special storage arrangements desired.
  */
  template <class scalar=double>
  class IterativeSolverBase
@@ -69,31 +82,29 @@ namespace LinearAlgebra {
  public:
   /*!
    * \brief Take, typically, a current solution and residual, and return new solution.
-   * In the context of Lanczos-like methods, the input will be a current expansion vector and the result of
+   * In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
    * acting on it with the matrix, and the output will be a new expansion vector.
+   * For non-linear equations, the input will be the current solution, and the output the current residual.
    * iterate() saves the vectors, calls solveReducedProblem(), calls m_preconditionerFunction(), calls calculateErrors(), and then assesses the error.
    * Derivative classes may often be able to be implemented by changing only solveReducedProblem(), not iterate() or solve().
-   * \param residual On input, the residual for solution on entry. On exit, the extrapolated residual.
-   * \param solution On input, the current solution or expansion vector. On exit, the next solution or expansion vector.
-   * \param other Optional additional vectors that should be extrapolated.
+   * \param parameters On input, the current solution or expansion vector. On exit, the next solution or expansion vector.
+   * \param action On input, the residual for solution on entry. On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
+   * \param other Optional additional vectors that should be interpolated like the residual.
    * \param options A string of options to be interpreted by solveReducedProblem().
    */
-  void addVector( vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
+  void addVector( vectorSet<scalar> & parameters, vectorSet<scalar> & action, vectorSet<scalar> & other, const optionMap options=optionMap())
   {
-   //      for (size_t kkk=0; kkk<solution.size(); kkk++)
-   //          xout << "interpolate solution: "<<solution[kkk]<<std::endl;
-   //      for (size_t kkk=0; kkk<residual.size(); kkk++)
-   //          xout << "interpolate residual: "<<residual[kkk]<<std::endl;
-   if (m_roots<1) m_roots=solution.size(); // number of roots defaults to size of solution
-   assert(solution.size()==residual.size());
+//   xout << "addVector initial parameters: "<<parameters<<std::endl;
+   if (m_roots<1) m_roots=parameters.size(); // number of roots defaults to size of parameters
+   assert(parameters.size()==action.size());
    m_iterations++;
-   for (size_t k=0; k<residual.size(); k++) residual.m_active[k] = //residual.m_active[k] &&
-                                                                   solution.m_active[k];
-   m_lastVectorIndex=addVectorSet(solution,residual,other)-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
-   solveReducedProblem(solution,residual,other,options);
+   for (size_t k=0; k<action.size(); k++) action.m_active[k] = //action.m_active[k] &&
+                                                                   parameters.m_active[k];
+   m_lastVectorIndex=addVectorSet(parameters,action,other)-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
+   solveReducedProblem(parameters,action,other,options);
   }
 
-  void addVector(vectorSet<scalar> & solution, vectorSet<scalar> & residual, const optionMap options=optionMap()) { vectorSet<scalar> other; return addVector(solution,residual,other,options); }
+  void addVector(vectorSet<scalar> & parameters, vectorSet<scalar> & action, const optionMap options=optionMap()) { vectorSet<scalar> other; return addVector(parameters,action,other,options); }
 
   /*!
      * \brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
@@ -109,6 +120,18 @@ namespace LinearAlgebra {
    adjustUpdate(solution);
    report();
    return m_error < m_thresh;
+  }
+
+  /*!
+   * \brief Get the solver's suggestion of which degrees of freedom would be best
+   * to add to the P-space.
+   * \param maximumNumber Suggest no more than this number
+   * \param threshold Suggest only axes for which the current residual and update
+   * indicate an energy improvement in the next iteration of this amount or more.
+   * \return
+   */
+  std::vector<size_t> suggestP(const vectorSet<scalar> & solution, const vectorSet<scalar>& residual, const size_t maximumNumber=1000, const scalar threshold=0) {
+   return std::vector<size_t>(0);
   }
 
   /*!

@@ -33,7 +33,7 @@ namespace LinearAlgebra {
            std::allocator<scalar>
           #endif
 >
- class PagedVector : public LinearAlgebra::vector<scalar>
+ class PagedVector : public vector<scalar>
  {
 //  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
 #define default_offline_buffer_size 500
@@ -42,7 +42,7 @@ namespace LinearAlgebra {
    * \brief Construct an object without any data.
    */
   PagedVector(size_t length=0, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector)
-   : LinearAlgebra::vector<scalar>(), m_size(length),
+   : vector<scalar>(), m_size(length),
      m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
      m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
      m_segment_offset(m_replicated ? 0 : ((m_size-1) / m_mpi_size + 1) * m_mpi_rank),
@@ -56,7 +56,7 @@ namespace LinearAlgebra {
 //   std::cout << m_mpi_rank << " in constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
   }
   PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector)
-   : LinearAlgebra::vector<scalar>(), m_size(source.m_size),
+   : vector<scalar>(), m_size(source.m_size),
      m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
      m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
      m_segment_offset(m_replicated ? 0 : ((m_size-1) / m_mpi_size + 1) * m_mpi_rank),
@@ -359,7 +359,7 @@ namespace LinearAlgebra {
    * \param other The object to be added to this.
    * \return
    */
-  void axpy(scalar a, const LinearAlgebra::vector<scalar> &other)
+  void axpy(scalar a, const vector<scalar> &other)
   {
    const PagedVector& othe=dynamic_cast <const PagedVector&> (other);
 //   std::cout << "PagedVector::axpy this="<<*this<<std::endl;

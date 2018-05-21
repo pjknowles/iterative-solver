@@ -4,7 +4,6 @@
 #endif
 #include "IterativeSolver/ISDiis.h"
 #include "IterativeSolver.h"
-#include "IterativeSolver/ISRSPT.h"
 #include "PagedVector.h"
 namespace LinearAlgebra{
   /*!
@@ -302,7 +301,132 @@ static struct {
 //    }
 //  xout << "sample="<<sample<<", n="<<n<<", alpha="<<alpha<<", gamma="<<gamma<<", average iterations="<<iterations/sample<<", maximum iterations="<<maxIterations<<", nfail="<<nfail<<std::endl;
 //}
+
+
+#include <cstdlib>
+  template <class ptype, class scalar=double>
+void RSPTTest(size_t n, double alpha)
+{
+  static struct rsptpot {
+    Eigen::MatrixXd m_F;
+    size_t m_n;
+    rsptpot(){}
+    size_t m_reference;
+    void set(size_t n, double alpha)
+    {
+//        xout<<"rsptpot set"<<n<<std::endl;
+      m_n=n;
+      m_reference=0; // asserting that m_F(0,0) is the lowest
+
+      m_F.resize(n,n);
+      for (size_t j=0; j<n; j++) {
+          for (size_t i=0; i<j; i++)
+            m_F(i,j)=m_F(j,i)= -0.5 + (((double)rand())/RAND_MAX);
+          m_F(j,j) = (j*alpha-1);
+        }
+//      xout << "m_F:"<<std::endl<<m_F<<std::endl;
+    }
+    ptype guess()
+    {
+      std::vector<scalar> r(m_n);
+      ptype result(m_n);
+      for (size_t k=0; k<m_n; k++)
+        r[k]=0;
+      r[m_reference]=1;
+      result.put(&r[0],m_n,0);
+      return result;
+    }
+
+  } instance;
+
+
+    static struct {
+    void operator()(const vectorSet<scalar> & psx, vectorSet<scalar> & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) const {
+//        xout << "rsptpot_residual"<<std::endl;
+//        xout << "input "<<psx<<std::endl;
+      std::vector<scalar> psxk(instance.m_n);
+      std::vector<scalar> output(instance.m_n);
+      psx.front()->get(&(psxk[0]),instance.m_n,0);
+      if (append)
+        outputs.front()->get(&(output[0]),instance.m_n,0);
+      else
+        outputs.front()->zero();
+      for (size_t i=0; i<instance.m_n; i++) {
+          output[i] = 0;
+          for (size_t j=0; j<instance.m_n; j++) {
+            output[i] += instance.m_F(j,i)*psxk[j];
+          }
+        }
+        outputs.front()->put(&(output[0]),instance.m_n,0);
+//        xout << "output "<<outputs<<std::endl;
+    }
+    } _rsptpot_residual;
+    static struct {
+    void operator()(vectorSet<scalar> & psc, const vectorSet<scalar> & psg, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) const {
+//        xout << "preconditioner input="<<psg<<std::endl;
+//      if (shift.front()==0)
+//          xout << "H0 not resolvent"<<std::endl;
+      std::vector<scalar> psck(instance.m_n);
+      std::vector<scalar> psgk(instance.m_n);
+      psg.front()->get(&psgk[0],instance.m_n,0);
+      if (shift.front()==0)
+          for (size_t i=0; i<instance.m_n; i++)
+            psck[i] = psgk[i]*instance.m_F(i,i);
+      else if (append) {
+          psc.front()->get(&psck[0],instance.m_n,0);
+//          xout << "resolvent action append "<<shift.front()<<shift.front()-1<<std::endl;
+//        xout << "initial psc="<<psc<<std::endl;
+          for (size_t i=0; i<instance.m_n; i++)
+              if (i != instance.m_reference)
+                  psck[i] -= psgk[i]/(instance.m_F(i,i)+shift.front());
+        } else {
+//          xout << "resolvent action replace "<<shift.front()<<std::endl;
+          for (size_t i=0; i<instance.m_n; i++)
+            psck[i] =- psgk[i]/(instance.m_F(i,i)+shift.front());
+          psck[instance.m_reference]=0;
+        }
+      psc.front()->put(&psck[0],instance.m_n,0);
+//        xout << "preconditioner output="<<psc<<std::endl;
+    }
+    } _rsptpot_updater;
+
+  int nfail=0;
+  unsigned int iterations=0, maxIterations=0;
+  size_t sample=1;
+  for (size_t repeat=0; repeat < sample; repeat++) {
+      instance.set(n,alpha);
+      RSPT<scalar> d;
+      d.m_verbosity=-1;
+      d.m_minIterations=50;
+      d.m_thresh=1e-5;
+      d.m_maxIterations=1000;
+//      ptype gg(n);
+      vectorSet<scalar> g; g.push_back(std::make_shared<ptype>(n));
+//      ptype xx=instance.guess();
+      vectorSet<scalar> x; x.push_back(std::make_shared<ptype>(instance.guess()));
+ bool converged=false;
+for (int iteration=1; (iteration < d.m_maxIterations && not converged) || iteration < d.m_minIterations; iteration++) {
+   xout <<"start of iteration "<<iteration<<std::endl;
+      _rsptpot_residual(x,g);
+      d.addVector(x,g);
+      std::vector<scalar> shift; shift.push_back(1e-10);
+      _rsptpot_updater(x,g,shift);
+      converged = d.finalize(x,g);
+   xout <<"end of iteration "<<iteration<<std::endl;
+    }
+      if (std::fabs(d.energy(d.m_minIterations)-d.eigenvalues().front()) > 1e-10) nfail++;
+      xout << "Variational eigenvalue "<<d.eigenvalues().front()<<std::endl;
+      for (size_t k=0; k<=d.iterations(); k++) {
+          xout << "E("<<k<<") = "<<d.incremental_energies()[k]<<", cumulative="<<d.energy(k)<<", error="<<d.energy(k)-d.eigenvalues()[0]<<std::endl;
+      }
+      iterations+=d.iterations();
+      if (maxIterations<d.iterations())
+        maxIterations=d.iterations();
+    }
+  xout << "sample="<<sample<<", n="<<n<<", alpha="<<alpha<<", average iterations="<<iterations/sample<<", maximum iterations="<<maxIterations<<", nfail="<<nfail<<std::endl;
 }
+}
+
 
 extern "C" { void IterativeSolverFTest();}
 int main(int argc, char *argv[])

@@ -96,7 +96,7 @@ namespace LinearAlgebra{
     std::vector<scalar> shift;
     for (size_t root=0; root<(size_t)d.m_roots; root++) shift.push_back(-d.eigenvalues()[root]+1e-14);
     update(x,g,shift);
-    if (d.finalize(x,g)) break;
+    if (d.endIteration(x,g)) break;
    }
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>> es(testmatrix);
 //    xout << "true eigenvalues: "<<es.eigenvalues().head(d.m_roots).transpose()<<std::endl;
@@ -193,7 +193,7 @@ static struct {
       d.addVector(x,g,o);
       std::vector<scalar> shift; shift.push_back(1e-10);
       _Rosenbrock_updater(x,g,shift);
-      converged = d.finalize(x,g);
+      converged = d.endIteration(x,g);
       x.front()->get(&xxx[0],2,0);
       if (verbosity>2)
         xout << "new x after iterate "<<x.front()<<std::endl;
@@ -410,7 +410,7 @@ for (int iteration=1; (iteration < d.m_maxIterations && not converged) || iterat
       d.addVector(x,g);
       std::vector<scalar> shift; shift.push_back(1e-10);
       _rsptpot_updater(x,g,shift);
-      converged = d.finalize(x,g);
+      converged = d.endIteration(x,g);
    xout <<"end of iteration "<<iteration<<std::endl;
     }
       if (std::fabs(d.energy(d.m_minIterations)-d.eigenvalues().front()) > 1e-10) nfail++;

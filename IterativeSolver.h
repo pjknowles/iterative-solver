@@ -78,7 +78,7 @@ namespace LinearAlgebra {
    * \param other Optional additional vectors that should be extrapolated.
    * \param options A string of options to be interpreted by extrapolate().
    */
-  virtual void addVector( vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
+  void addVector( vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
   {
    //      for (size_t kkk=0; kkk<solution.size(); kkk++)
    //          xout << "interpolate solution: "<<solution[kkk]<<std::endl;
@@ -93,6 +93,8 @@ namespace LinearAlgebra {
    extrapolate(solution,residual,other,options);
   }
 
+  void addVector(vectorSet<scalar> & solution, vectorSet<scalar> & residual, const optionMap options=optionMap()) { vectorSet<scalar> other; return addVector(solution,residual,other,options); }
+
   /*!
      * \brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
      * be used in the next iteration; this is done only in the case of linear solvers where the orthogonalize option is set.
@@ -101,15 +103,13 @@ namespace LinearAlgebra {
      * \param residual The residual after interpolation.
      * \return
      */
-  virtual bool finalize(vectorSet<scalar> & solution, const vectorSet<scalar> & residual)
+  virtual bool endIteration(vectorSet<scalar> & solution, const vectorSet<scalar> & residual) final
   {
    calculateErrors(solution,residual);
    adjustUpdate(solution);
    report();
    return m_error < m_thresh;
   }
-
-  virtual void addVector(vectorSet<scalar> & solution, vectorSet<scalar> & residual, const optionMap options=optionMap()) { vectorSet<scalar> other; return addVector(solution,residual,other,options); }
 
   /*!
    * \brief Set convergence threshold

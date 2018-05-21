@@ -36,7 +36,7 @@ extern "C" int IterativeSolverLinearEigensystemFinalize(double* c, double* g, do
   gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
   gg.back()->put(&g[root*instance->m_dimension],instance->m_dimension,0);
  }
- bool result = instance->finalize(cc,gg);
+ bool result = instance->endIteration(cc,gg);
  for (int root=0; root < instance->m_roots; root++) {
   cc[root]->get(&c[root*instance->m_dimension],instance->m_dimension,0);
   error[root] = instance->errors()[root];

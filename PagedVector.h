@@ -15,10 +15,7 @@
 #else
 using MPI_Comm = int;
 constexpr MPI_Comm MPI_COMM_WORLD=0;
-constexpr MPI_Comm MPI_COMM_NULL=0;
 #endif
-extern MPI_Comm MPI_Comm_PagedVector;
-MPI_Comm MPI_Comm_PagedVector=MPI_COMM_WORLD;
 
 namespace LinearAlgebra {
 
@@ -41,7 +38,7 @@ namespace LinearAlgebra {
   /*!
    * \brief Construct an object without any data.
    */
-  PagedVector(size_t length=0, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector)
+  PagedVector(size_t length=0, int option=0, MPI_Comm mpi_communicator=MPI_COMM_WORLD)
    : vector<scalar>(), m_size(length),
      m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
      m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
@@ -55,7 +52,7 @@ namespace LinearAlgebra {
 //    std::cout <<"cache preferred length "<<m_cache.preferred_length<<std::endl;
 //   std::cout << m_mpi_rank << " in constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
   }
-  PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_Comm_PagedVector)
+  PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_COMM_WORLD)
    : vector<scalar>(), m_size(source.m_size),
      m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
      m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),

@@ -150,16 +150,3 @@ int main(int argc, char *argv[])
        REQUIRE(test==val);
       }
 #endif
-
-//      TEST_CASE("PagedVector 0") {
-//       REQUIRE(PagedVectorTest<double>(2,0).status);
-//      }
-//      TEST_CASE("PagedVector offline") {
-//       REQUIRE(PagedVectorTest<double>(2,LINEARALGEBRA_CLONE_ADVISE_OFFLINE).status);
-//      }
-//      TEST_CASE("PagedVector distributed") {
-//       REQUIRE(PagedVectorTest<double>(2,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED).status);
-//      }
-//      TEST_CASE("PagedVector offline and distributed") {
-//       REQUIRE(PagedVectorTest<double>(2,LINEARALGEBRA_CLONE_ADVISE_OFFLINE&&LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED).status);
-//      }

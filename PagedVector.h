@@ -505,7 +505,7 @@ namespace LinearAlgebra {
     while(other.m_cache.length && off < m_segment_length && otheroff < other.m_segment_length ) {
      if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
      //    for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
-     for (size_t i=0; i<m_cache.length; i++) {
+     for (size_t i=0; i<other.m_cache.length; i++) {
       m_cache.buffer[off+i] = other.m_cache.buffer[otheroff+i];
       //     if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
      }
@@ -560,33 +560,5 @@ namespace LinearAlgebra {
  template <class scalar>
  inline std::ostream& operator<<(std::ostream& os, PagedVector<scalar> const& obj) { return os << obj.str(); }
 
- template <class scalar>
- class PagedVectorTest  {
- public:
-  PagedVectorTest(size_t n, int option=3) : status(true) {
-   PagedVector<scalar> v1(n,option);
-//   if (v1.m_mpi_rank==0) std::cout << "PagedVectorTest, n="<<n<<", replicated="<<v1.replicated()<<std::endl;
-   std::vector<scalar> vv;
-   for (size_t i=0; i<v1.size(); i++)
-    vv.push_back(i);
-   v1.put(vv.data(),vv.size(),0);
-//   std::cout <<v1.m_mpi_rank<< " v1 after assign: "<<v1<<std::endl;
-   PagedVector<scalar> v2(v1,option);
-   //  std::cout << "v1 after assigning v2: "<<v1<<std::endl;
-   //  std::cout << "v2 after assigning v2: "<<v2<<std::endl;
-//   std::cout <<v2.m_mpi_rank<< " v2 after assign: "<<v2<<std::endl;
-   v1.m_cache.move(0);
-   //  std::cout << "v1 "<<v1.str()<<std::endl;
-   //  std::cout << "v2 "<<v2.str()<<std::endl;
-   double v1v2error = v2.dot(v1)-(n*(n-1)*(2*n-1))/6;
-   double v1v1error = 0;//v1.dot(v1)-(n*(n-1)*(2*n-1))/6;
-//   std::cout << "v1.v2 error: " <<v1v2error << std::endl;
-//   std::cout << "v1.v1 error: " <<v1v1error << std::endl;
-   status = status && v1v1error==0 && v1v2error==0;
-//   std::cout <<v2.m_mpi_rank<< " v2 after all: "<<v2<<std::endl;
-  }
-  bool status;
-
-};
 }
 #endif // PAGEDVECTOR_H

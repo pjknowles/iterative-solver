@@ -3,7 +3,7 @@
 #include <mpi.h>
 #endif
 #include "IterativeSolver/ISDiis.h"
-#include "IterativeSolver/ISDavidson.h"
+#include "IterativeSolver.h"
 #include "IterativeSolver/ISRSPT.h"
 #include "PagedVector.h"
 namespace LinearAlgebra{
@@ -66,7 +66,7 @@ namespace LinearAlgebra{
       throw std::logic_error("invalid problem in Davidson::test");
    if (problem==3) testmatrix(0,1)=testmatrix(1,0)=1;
 
-   Davidson<scalar> d;
+   LinearEigensystem<scalar> d;
    d.m_roots=roots;
    d.m_verbosity=verbosity;
    d.m_maxIterations=dimension;

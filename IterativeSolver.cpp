@@ -8,7 +8,7 @@ using v = PagedVector<double>;
 static std::unique_ptr<LinearEigensystem<double> > instance;
 
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nP, size_t nroot, double* PP) {
- instance.reset(new LinearEigensystem<double>(Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> >(PP,nP,nP)));
+ instance.reset(new LinearEigensystem<double>());
  instance->m_dimension=nQ;
  instance->m_roots=nroot;
 }

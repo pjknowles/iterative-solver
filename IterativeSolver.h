@@ -61,9 +61,9 @@ namespace LinearAlgebra {
    * \param PP The PP block of the matrix
    */
   IterativeSolverBase(
-    const Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>& PP=Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>(0,0)
     ) :
-    m_PP(PP),
+    m_PP(0,0),
+    m_Pvectors(0),
     m_verbosity(0),
     m_thresh(1e-12),
     m_maxIterations(1000),
@@ -106,6 +106,32 @@ namespace LinearAlgebra {
 
   void addVector(vectorSet<scalar> & parameters, vectorSet<scalar> & action, const optionMap options=optionMap()) { vectorSet<scalar> other; return addVector(parameters,action,other,options); }
 
+  struct P {
+ int n;
+  };
+
+  /*!
+   * \brief Add P-space vectors to the expansion set
+   * \param Pvectors the vectors to add
+   * \param PP Matrix projected onto the existing+new, new P space
+   */
+  void addP(std::vector<P> Pvectors,
+//    const Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>& PP=Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>(0,0)
+            const std::vector<std::vector<scalar> > PP
+            ) {
+//   assert(PP.rows=m_PP.rows()+PP.cols()==PP.rows());
+   assert(PP.size()=Pvectors.size());
+   size_t old=m_PP.rows();
+   m_PP.conservativeResize(old+PP.size(),old+PP.size());
+   for (size_t n=0; n<PP.size(); n++) {
+    assert(PP[n].size()==m_PP.rows());
+    for (int i=0; i<m_PP.rows(); i++)
+     m_PP(old+n,i) = m_PP(i,old+n) = PP[n][i];
+   }
+   for (const auto& Pvector : Pvectors)
+    m_Pvectors.push_back(Pvector);
+  }
+
   /*!
      * \brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
      * be used in the next iteration; this is done only in the case of linear solvers where the orthogonalize option is set.
@@ -130,7 +156,11 @@ namespace LinearAlgebra {
    * indicate an energy improvement in the next iteration of this amount or more.
    * \return
    */
-  std::vector<size_t> suggestP(const vectorSet<scalar> & solution, const vectorSet<scalar>& residual, const size_t maximumNumber=1000, const scalar threshold=0) {
+  std::vector<size_t> suggestP(const vectorSet<scalar> & solution,
+                               const vectorSet<scalar>& residual,
+                               const size_t maximumNumber=1000,
+                               const scalar threshold=0)
+  {
    return std::vector<size_t>(0);
   }
 
@@ -151,7 +181,8 @@ namespace LinearAlgebra {
   std::vector<double> errors() {return m_errors;} //!< Error at last iteration
 
  public:
-  const Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>& m_PP; //!< The PP block of the matrix
+  Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_PP; //!< The PP block of the matrix
+  std::vector<P> m_Pvectors;
   int m_verbosity; //!< How much to print.
   double m_thresh; //!< If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
   unsigned int m_maxIterations; //!< Maximum number of iterations in solve()
@@ -423,8 +454,7 @@ namespace LinearAlgebra{
    * \brief LinearEigensystem
    * \param PP The PP block of the matrix
    */
-  LinearEigensystem( const Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>& PP=Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>(0,0) )
-   : IterativeSolverBase<scalar>(PP)
+  LinearEigensystem( )
   {
    this->m_linear=true;
    this->m_orthogonalize=true;
@@ -498,11 +528,9 @@ template <class scalar=double>
                       };
    /*!
   * \brief DIIS
-  * \param PP The PP block of the matrix
   */
- DIIS( const Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>& PP=Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>(0,0) )
-  : IterativeSolverBase<scalar>(PP)
- , m_svdThreshold(1e-10)
+ DIIS()
+ : m_svdThreshold(1e-10)
  , m_maxDim(6)
 {
  this->m_orthogonalize = false;

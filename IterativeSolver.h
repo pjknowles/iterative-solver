@@ -30,7 +30,7 @@ namespace LinearAlgebra {
  * Two drivers are provided: the calling program can set up its own iterative loop, and in each loop call residualFunction() and iterate(); this gives the flexibility to pass additional parameters
  * to residualFunction(). The simpler mode of use is a single call to solve(), which manages the iterations itself.
  *
- * Classes that derive from this will, in the simplest case, need to provide just the extrapolate() method that governs how the solution and residual vectors from successive iterations
+ * Classes that derive from this will, in the simplest case, need to provide just the solveReducedProblem() method that governs how the solution and residual vectors from successive iterations
  * should be combined to form an optimum solution with minimal residual.  In more complicated cases - for example, in Davidson's method, where the preconditioner depends on the current energy -
  * it will be necessary to reimplement also the iterate() method.
  *
@@ -71,12 +71,12 @@ namespace LinearAlgebra {
    * \brief Take, typically, a current solution and residual, and return new solution.
    * In the context of Lanczos-like methods, the input will be a current expansion vector and the result of
    * acting on it with the matrix, and the output will be a new expansion vector.
-   * iterate() saves the vectors, calls extrapolate(), calls m_preconditionerFunction(), calls calculateErrors(), and then assesses the error.
-   * Derivative classes may often be able to be implemented by changing only extrapolate(), not iterate() or solve().
+   * iterate() saves the vectors, calls solveReducedProblem(), calls m_preconditionerFunction(), calls calculateErrors(), and then assesses the error.
+   * Derivative classes may often be able to be implemented by changing only solveReducedProblem(), not iterate() or solve().
    * \param residual On input, the residual for solution on entry. On exit, the extrapolated residual.
    * \param solution On input, the current solution or expansion vector. On exit, the next solution or expansion vector.
    * \param other Optional additional vectors that should be extrapolated.
-   * \param options A string of options to be interpreted by extrapolate().
+   * \param options A string of options to be interpreted by solveReducedProblem().
    */
   void addVector( vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
   {
@@ -90,7 +90,7 @@ namespace LinearAlgebra {
    for (size_t k=0; k<residual.size(); k++) residual.m_active[k] = //residual.m_active[k] &&
                                                                    solution.m_active[k];
    m_lastVectorIndex=addVectorSet(solution,residual,other)-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
-   extrapolate(solution,residual,other,options);
+   solveReducedProblem(solution,residual,other,options);
   }
 
   void addVector(vectorSet<scalar> & solution, vectorSet<scalar> & residual, const optionMap options=optionMap()) { vectorSet<scalar> other; return addVector(solution,residual,other,options); }
@@ -176,8 +176,8 @@ namespace LinearAlgebra {
   }
  protected:
 
-  virtual void extrapolate(vectorSet<scalar> & residual, vectorSet<scalar> & solution, vectorSet<scalar> & other, const optionMap options=optionMap())=0;
-  virtual void extrapolate(vectorSet<scalar> & residual, vectorSet<scalar> & solution, const optionMap options=optionMap()) { vectorSet<scalar> other; extrapolate(residual,solution,other,options); }
+  virtual void solveReducedProblem(vectorSet<scalar> & residual, vectorSet<scalar> & solution, vectorSet<scalar> & other, const optionMap options=optionMap())=0;
+  virtual void solveReducedProblem(vectorSet<scalar> & residual, vectorSet<scalar> & solution, const optionMap options=optionMap()) { vectorSet<scalar> other; solveReducedProblem(residual,solution,other,options); }
   virtual void report()
   {
    if (m_verbosity>0)
@@ -409,7 +409,7 @@ namespace LinearAlgebra{
 
 
  protected:
-  virtual void extrapolate(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
+  virtual void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
   {
    if (m_verbosity>2) xout << "Subspace matrix"<<std::endl<<this->m_subspaceMatrix<<std::endl;
    if (m_verbosity>2) xout << "Subspace overlap"<<std::endl<<this->m_subspaceOverlap<<std::endl;
@@ -424,7 +424,7 @@ namespace LinearAlgebra{
     for (size_t ll=0; ll<this->m_solutions.size(); ll++) {
      for (size_t lll=0; lll<this->m_solutions[ll].size(); lll++) {
       if (this->m_solutions[ll].m_active[lll]) {
-          if (m_verbosity>2) xout << "LinearEigensystem::extrapolate kkk="<<kkk<<", ll="<<ll<<", lll="<<lll<<", l="<<l<<std::endl;
+          if (m_verbosity>2) xout << "LinearEigensystem::solveReducedProblem kkk="<<kkk<<", ll="<<ll<<", lll="<<lll<<", l="<<l<<std::endl;
           if (m_verbosity>2) xout << "Eigenvectors:\n"<<this->m_subspaceEigenvectors(l,kkk).real()<<std::endl;
        solution[kkk]->axpy(this->m_subspaceEigenvectors(l,kkk).real(),*this->m_solutions[ll][lll]);
        residual[kkk]->axpy(this->m_subspaceEigenvectors(l,kkk).real(),*this->m_residuals[ll][lll]);
@@ -439,7 +439,7 @@ namespace LinearAlgebra{
    for (size_t root=0; root<(size_t)this->m_roots; root++) this->m_updateShift[root]=-(1+std::numeric_limits<scalar>::epsilon())*this->m_subspaceEigenvalues[root].real();
   }
 
-  virtual void extrapolate(vectorSet<scalar> & residual, vectorSet<scalar> & solution, const optionMap options=optionMap()) { vectorSet<scalar> other; extrapolate(solution,residual,other,options); }
+  virtual void solveReducedProblem(vectorSet<scalar> & residual, vectorSet<scalar> & solution, const optionMap options=optionMap()) { vectorSet<scalar> other; solveReducedProblem(solution,residual,other,options); }
 
   virtual void report()
   {
@@ -529,9 +529,9 @@ template <class scalar=double>
   * \param options can contain "weight=xxx" where xxx is the weight to be given to this vector. These options would normally be passed as the corresponding parameter in iterate().
   */
  protected:
-   void extrapolate(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
+   void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
 {
- //	  xout << "Enter DIIS::extrapolate"<<std::endl;
+ //	  xout << "Enter DIIS::solveReducedProblem"<<std::endl;
  //	  xout << "residual : "<<residual<<std::endl;
  //	  xout << "solution : "<<solution<<std::endl;
  this->m_updateShift.clear();this->m_updateShift.push_back(-(1+std::numeric_limits<double>::epsilon())*this->m_subspaceMatrix(0,0));
@@ -542,7 +542,7 @@ template <class scalar=double>
  this->m_lastVectorIndex=this->m_residuals.size()-1;
 
  //  if (m_subspaceMatrix.rows() < 9) {
- //      xout << "m_subspaceMatrix on entry to DIIS::extrapolate"<<std::endl<<m_subspaceMatrix<<std::endl;
+ //      xout << "m_subspaceMatrix on entry to DIIS::solveReducedProblem"<<std::endl<<m_subspaceMatrix<<std::endl;
  //  }
  size_t nDim = this->m_subspaceMatrix.rows();
  this->m_LastResidualNormSq = std::fabs(this->m_subspaceMatrix(nDim-1,nDim-1));
@@ -631,21 +631,21 @@ template <class scalar=double>
        }
    }
  if (m_verbosity>2) {
-     xout << "DIIS.extrapolate() final extrapolated solution: "<<solution.front()<<std::endl;
-     xout << "DIIS.extrapolate() final extrapolated residual: "<<residual.front()<<std::endl;
+     xout << "DIIS.solveReducedProblem() final extrapolated solution: "<<solution.front()<<std::endl;
+     xout << "DIIS.solveReducedProblem() final extrapolated residual: "<<residual.front()<<std::endl;
    }
 }
 
-   void extrapolate(vectorSet<scalar> & solution, vectorSet<scalar> & residual, const optionMap options=optionMap()) { vectorSet<scalar> other; extrapolate(solution,residual,other,options); }
+   void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, const optionMap options=optionMap()) { vectorSet<scalar> other; solveReducedProblem(solution,residual,other,options); }
 
    /*!
-  * \brief Return the square L2 norm of the extrapolated residual from the last call to extrapolate() or iterate().
+  * \brief Return the square L2 norm of the extrapolated residual from the last call to solveReducedProblem() or iterate().
   * \return
   */
  public:
    double fLastResidual() const { return m_LastResidualNormSq; }
    /*!
-  * \brief Return the coefficient of the last residual vector in the extrapolated residual from the last call to extrapolate() or iterate().
+  * \brief Return the coefficient of the last residual vector in the extrapolated residual from the last call to solveReducedProblem() or iterate().
   * \return
   */
    double fLastCoeff() const { return m_LastAmplitudeCoeff; }
@@ -708,7 +708,7 @@ template <class scalar>
    }
    static void test (size_t n, double alpha);
  protected:
-   virtual void extrapolate(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
+   virtual void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
 {
  size_t n=m_solutions.size();
  // on entry, solution contains |n-1> and residual contains H|n-1>, already stored in m_solutions & m_residuals.
@@ -779,7 +779,7 @@ template <class scalar>
  m_lastH0mE0psi = residual; // we will need this in the next iteration // FIXME does this leak memory?
 //  xout << "-(H0-E0)|"<<n<<">: "<<residual<<std::endl;
 }
-   virtual void extrapolate(vectorSet<scalar> & residual, vectorSet<scalar> & solution, const optionMap options=optionMap()) { vectorSet<scalar> other; extrapolate(residual,solution,other,options); }
+   virtual void solveReducedProblem(vectorSet<scalar> & residual, vectorSet<scalar> & solution, const optionMap options=optionMap()) { vectorSet<scalar> other; solveReducedProblem(residual,solution,other,options); }
 
  public:
    int m_order; ///< Up to what order of perturbation theory should the energy be obtained.

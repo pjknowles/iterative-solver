@@ -103,7 +103,7 @@ namespace LinearAlgebra {
      * \param residual The residual after interpolation.
      * \return
      */
-  virtual bool endIteration(vectorSet<scalar> & solution, const vectorSet<scalar> & residual) final
+  bool endIteration(vectorSet<scalar> & solution, const vectorSet<scalar> & residual)
   {
    calculateErrors(solution,residual);
    adjustUpdate(solution);
@@ -138,7 +138,7 @@ namespace LinearAlgebra {
   bool m_hermitian; ///< Whether residuals can be assumed to be the action of an underlying self-adjoint operator.
   int m_roots; ///< How many roots to calculate / equations to solve (defaults to size of solution and residual vectors)
 
- protected:
+ private:
   void adjustUpdate(vectorSet<scalar> & solution)
   {
    //     xout << "m_errors[0] "<<m_errors[0]<<", m_thresh "<<m_thresh<<std::endl;
@@ -174,6 +174,7 @@ namespace LinearAlgebra {
     //      xout << "IterativeSolverBase::adjustUpdate solution after orthogonalization: "<<solution<<std::endl;
    }
   }
+ protected:
 
   virtual void extrapolate(vectorSet<scalar> & residual, vectorSet<scalar> & solution, vectorSet<scalar> & other, const optionMap options=optionMap())=0;
   virtual void extrapolate(vectorSet<scalar> & residual, vectorSet<scalar> & solution, const optionMap options=optionMap()) { vectorSet<scalar> other; extrapolate(residual,solution,other,options); }
@@ -183,6 +184,7 @@ namespace LinearAlgebra {
     xout << "iteration "<<iterations()<<", error["<<m_worst<<"] = "<<m_error <<std::endl;
   }
 
+ private:
   void calculateSubspaceMatrix(const vectorSet<scalar> &residual, const vectorSet<scalar> &solution)
   {
    //      for (size_t kkk=0; kkk<solution.size(); kkk++)
@@ -224,6 +226,7 @@ namespace LinearAlgebra {
 
   }
 
+ protected:
   void diagonalizeSubspaceMatrix()
   {
    int kept=m_subspaceMatrix.rows();

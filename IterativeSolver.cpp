@@ -7,12 +7,12 @@ using v = PagedVector<double>;
 
 static std::unique_ptr<LinearEigensystem<double> > instance;
 
-extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nP, size_t nroot, double* PP) {
+extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot) {
  instance.reset(new LinearEigensystem<double>());
- instance->m_dimension=nQ;
+ instance->m_dimension=n;
  instance->m_roots=nroot;
 }
-extern "C" void IterativeSolverLinearEigensystemInterpolate(double* c, double* g, double* eigenvalue) {
+extern "C" void IterativeSolverLinearEigensystemAddVector(double* c, double* g, double* eigenvalue) {
  vectorSet<double> cc,gg;
  for (int root=0; root < instance->m_roots; root++) {
   cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
@@ -28,7 +28,7 @@ extern "C" void IterativeSolverLinearEigensystemInterpolate(double* c, double* g
  }
 }
 
-extern "C" int IterativeSolverLinearEigensystemFinalize(double* c, double* g, double* error) {
+extern "C" int IterativeSolverLinearEigensystemEndIteration(double* c, double* g, double* error) {
  vectorSet<double> cc,gg;
  for (int root=0; root < instance->m_roots; root++) {
   cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
@@ -42,6 +42,10 @@ extern "C" int IterativeSolverLinearEigensystemFinalize(double* c, double* g, do
   error[root] = instance->errors()[root];
  }
  return result;
+}
+
+extern "C" void IterativeSolverAddP(size_t* indices, double* coefficients, double* pp) {
+
 }
 
 }

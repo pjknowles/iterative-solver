@@ -226,7 +226,7 @@ namespace LinearAlgebra {
  protected:
 
   virtual void solveReducedProblem(vectorSet<scalar> & residual, vectorSet<scalar> & solution, vectorSet<scalar> & other, const optionMap options=optionMap())=0;
-  virtual void solveReducedProblem(vectorSet<scalar> & residual, vectorSet<scalar> & solution, const optionMap options=optionMap()) { vectorSet<scalar> other; solveReducedProblem(residual,solution,other,options); }
+  void solveReducedProblem(vectorSet<scalar> & residual, vectorSet<scalar> & solution, const optionMap options=optionMap()) { vectorSet<scalar> other; solveReducedProblem(residual,solution,other,options); }
   virtual void report()
   {
    if (m_verbosity>0)
@@ -486,8 +486,6 @@ namespace LinearAlgebra{
    for (size_t root=0; root<(size_t)this->m_roots; root++) this->m_updateShift[root]=-(1+std::numeric_limits<scalar>::epsilon())*this->m_subspaceEigenvalues[root].real();
   }
 
-  virtual void solveReducedProblem(vectorSet<scalar> & residual, vectorSet<scalar> & solution, const optionMap options=optionMap()) { vectorSet<scalar> other; solveReducedProblem(solution,residual,other,options); }
-
   virtual void report()
   {
    std::vector<scalar> ev=this->eigenvalues();
@@ -681,8 +679,6 @@ template <class scalar=double>
    }
 }
 
-   void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, const optionMap options=optionMap()) { vectorSet<scalar> other; solveReducedProblem(solution,residual,other,options); }
-
    /*!
   * \brief Return the square L2 norm of the extrapolated residual from the last call to solveReducedProblem() or iterate().
   * \return
@@ -814,7 +810,6 @@ template <class scalar>
  m_lastH0mE0psi = residual; // we will need this in the next iteration // FIXME does this leak memory?
 //  xout << "-(H0-E0)|"<<n<<">: "<<residual<<std::endl;
 }
-   virtual void solveReducedProblem(vectorSet<scalar> & residual, vectorSet<scalar> & solution, const optionMap options=optionMap()) { vectorSet<scalar> other; solveReducedProblem(residual,solution,other,options); }
 
  public:
    int m_order; ///< Up to what order of perturbation theory should the energy be obtained.

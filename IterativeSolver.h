@@ -498,6 +498,85 @@ namespace LinearAlgebra{
 
  };
 
+  /** @example LinearEquationsExample.cpp */
+  /*!
+  * \brief A class that finds the solutions of linear equation systems using a generalisation of Davidson's method, i.e. preconditioned Lanczos
+  *
+  * Example of simplest use: @include LinearEquationsExample.cpp
+  * \tparam scalar Type of matrix elements
+  *
+  */
+  template <class scalar=double>
+  class LinearEquations : public IterativeSolver<scalar>
+  {
+  public:
+   using IterativeSolver<scalar>::m_verbosity;
+   /*!
+    * \brief Constructor
+    * \param rhs right-hand-side vectors. More can be added subsequently using addEquations(), provided iterations have not yet started.
+    */
+   LinearEquations(const vectorSet<scalar>& rhs = vectorSet<scalar>(0))
+   {
+    this->m_linear=true;
+    this->m_orthogonalize=true;
+    addEquations(rhs);
+   }
+
+   /*!
+    * \brief add one or more equations to the set to be solved, by specifying their right-hand-side vector
+    * \param rhs right-hand-side vectors to be added
+    */
+   void addEquations(const vectorSet<scalar>& rhs) {
+    for (const auto& v : rhs ) m_rhs.push_back(v);
+   }
+
+  private:
+   vectorSet<scalar> m_rhs;
+
+
+  protected:
+   virtual void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
+   {
+    if (m_verbosity>2) xout << "Subspace matrix"<<std::endl<<this->m_subspaceMatrix<<std::endl;
+    if (m_verbosity>2) xout << "Subspace overlap"<<std::endl<<this->m_subspaceOverlap<<std::endl;
+    this->diagonalizeSubspaceMatrix();
+
+    if (m_verbosity>1) xout << "Subspace eigenvalues"<<std::endl<<this->m_subspaceEigenvalues<<std::endl;
+    if (m_verbosity>2) xout << "Subspace eigenvectors"<<std::endl<<this->m_subspaceEigenvectors<<std::endl;
+    residual.zero();
+    solution.zero();
+    for (size_t kkk=0; kkk<residual.size(); kkk++) {
+     size_t l=0;
+     for (size_t ll=0; ll<this->m_solutions.size(); ll++) {
+      for (size_t lll=0; lll<this->m_solutions[ll].size(); lll++) {
+       if (this->m_solutions[ll].m_active[lll]) {
+           if (m_verbosity>2) xout << "LinearEquations::solveReducedProblem kkk="<<kkk<<", ll="<<ll<<", lll="<<lll<<", l="<<l<<std::endl;
+           if (m_verbosity>2) xout << "Eigenvectors:\n"<<this->m_subspaceEigenvectors(l,kkk).real()<<std::endl;
+        solution[kkk]->axpy(this->m_subspaceEigenvectors(l,kkk).real(),*this->m_solutions[ll][lll]);
+        residual[kkk]->axpy(this->m_subspaceEigenvectors(l,kkk).real(),*this->m_residuals[ll][lll]);
+        l++;
+       }
+      }
+     }
+     residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(),*solution[kkk]);
+    }
+
+    this->m_updateShift.resize(this->m_roots);
+    for (size_t root=0; root<(size_t)this->m_roots; root++) this->m_updateShift[root]=-(1+std::numeric_limits<scalar>::epsilon())*this->m_subspaceEigenvalues[root].real();
+   }
+
+   virtual void report()
+   {
+    std::vector<scalar> ev=this->eigenvalues();
+    if (m_verbosity>0) {
+     xout << "iteration "<<this->iterations()<<", error["<<this->m_worst<<"] = "<<this->m_error
+          << ", eigenvalues: "; for (const auto e : ev) xout<<" "<<e;xout<<std::endl;
+    }
+   }
+
+
+  };
+
  /** @example DIISexample.cpp */
  /*!
 * \brief A class that encapsulates accelerated convergence of non-linear equations

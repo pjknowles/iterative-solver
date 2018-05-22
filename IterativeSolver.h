@@ -745,10 +745,8 @@ template <class scalar>
  using IterativeSolverBase<scalar>::m_verbosity;
    /*!
     * \brief RSPT
-  * \param PP The PP block of the matrix
     */
- RSPT( const Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>& PP=Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>(0,0) )
-     : IterativeSolverBase<scalar>(PP)
+ RSPT()
    {
      this->m_linear = true;
      this->m_orthogonalize = false;

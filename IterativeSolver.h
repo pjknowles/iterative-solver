@@ -714,14 +714,6 @@ template <class scalar=double>
 
  };
 
- template <class scalar>
- class KAIN : public DIIS<scalar>
- {
- public:
-   KAIN()
-     : DIIS<scalar>() { setMode(this->KAINmode);}
- };
-
  /** @example RSPTexample.cpp */
  /*!
 * \brief A class that finds the lowest eigensolution of a matrix as a perturbation series

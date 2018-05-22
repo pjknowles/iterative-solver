@@ -23,10 +23,6 @@ namespace LinearAlgebra {
  /*!
  * \brief A base class for iterative solvers for linear and non-linear equations, and linear eigensystems.
  *
- * The user needs to provide the two routines residualFunction() and preconditionerFunction() through the class constructor. These define the problem being solved: the first should calculate the residual
- * or action vector from a parameter vector,
- * and the second should apply the negative of a preconditioner to a provided residual vector, optionally adding it to existing contents of a result vector.  The user also needs to provide an initial guess in the call to solve() or iterate().
- *
  * The calling program should set up its own iterative loop, and in each iteration
  * - calculate
  * the action of the matrix on the current expansion vector (linear), or the actual
@@ -58,7 +54,6 @@ namespace LinearAlgebra {
  public:
   /*!
    * \brief IterativeSolverBase
-   * \param PP The PP block of the matrix
    */
   IterativeSolverBase(
     ) :
@@ -113,20 +108,22 @@ namespace LinearAlgebra {
   /*!
    * \brief Add P-space vectors to the expansion set
    * \param Pvectors the vectors to add
-   * \param PP Matrix projected onto the existing+new, new P space
+   * \param PP Matrix projected onto the existing+new, new P space. It should be provided as a
+   * 1-dimensional array, with the existing+new index running fastest.
    */
   void addP(std::vector<P> Pvectors,
-//    const Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>& PP=Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>(0,0)
-            const std::vector<std::vector<scalar> > PP
+//    const Eigen::Matrix<scalar,Eigen:§:Dynamic,Eigen::Dynamic>& PP=Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>(0,0)
+//            const std::vector<std::vector<scalar> > PP
+            const scalar* PP
             ) {
 //   assert(PP.rows=m_PP.rows()+PP.cols()==PP.rows());
-   assert(PP.size()=Pvectors.size());
+//   assert(PP.size()=Pvectors.size());
    size_t old=m_PP.rows();
-   m_PP.conservativeResize(old+PP.size(),old+PP.size());
-   for (size_t n=0; n<PP.size(); n++) {
-    assert(PP[n].size()==m_PP.rows());
+   m_PP.conservativeResize(old+Pvectors.size(),old+Pvectors.size());
+   size_t offset=0;
+   for (size_t n=0; n<Pvectors.size(); n++) {
     for (int i=0; i<m_PP.rows(); i++)
-     m_PP(old+n,i) = m_PP(i,old+n) = PP[n][i];
+     m_PP(old+n,i) = m_PP(i,old+n) = PP[offset++];
    }
    for (const auto& Pvector : Pvectors)
     m_Pvectors.push_back(Pvector);
@@ -151,6 +148,8 @@ namespace LinearAlgebra {
   /*!
    * \brief Get the solver's suggestion of which degrees of freedom would be best
    * to add to the P-space.
+   * \param solution
+   * \param residual
    * \param maximumNumber Suggest no more than this number
    * \param threshold Suggest only axes for which the current residual and update
    * indicate an energy improvement in the next iteration of this amount or more.
@@ -452,7 +451,6 @@ namespace LinearAlgebra{
   using IterativeSolverBase<scalar>::m_verbosity;
   /*!
    * \brief LinearEigensystem
-   * \param PP The PP block of the matrix
    */
   LinearEigensystem( )
   {

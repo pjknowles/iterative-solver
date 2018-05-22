@@ -101,8 +101,13 @@ namespace LinearAlgebra {
 
   void addVector(vectorSet<scalar> & parameters, vectorSet<scalar> & action, const optionMap options=optionMap()) { vectorSet<scalar> other; return addVector(parameters,action,other,options); }
 
-  struct P {
- int n;
+  /*!
+   * \brief Specify a P-space vector as a sparse combination of parameters. The container holds a number of segments,
+   * each characterised by an offset in the full space, and a vector of coefficients starting at that offset.
+   */
+  struct Pvector {
+   std::vector<size_t> offsets;
+   std::vector<std::vector<scalar> > coefficients;
   };
 
   /*!
@@ -111,13 +116,7 @@ namespace LinearAlgebra {
    * \param PP Matrix projected onto the existing+new, new P space. It should be provided as a
    * 1-dimensional array, with the existing+new index running fastest.
    */
-  void addP(std::vector<P> Pvectors,
-//    const Eigen::Matrix<scalar,Eigen:§:Dynamic,Eigen::Dynamic>& PP=Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>(0,0)
-//            const std::vector<std::vector<scalar> > PP
-            const scalar* PP
-            ) {
-//   assert(PP.rows=m_PP.rows()+PP.cols()==PP.rows());
-//   assert(PP.size()=Pvectors.size());
+  void addP(std::vector<Pvector> Pvectors, const scalar* PP ) {
    size_t old=m_PP.rows();
    m_PP.conservativeResize(old+Pvectors.size(),old+Pvectors.size());
    size_t offset=0;
@@ -181,7 +180,7 @@ namespace LinearAlgebra {
 
  public:
   Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_PP; //!< The PP block of the matrix
-  std::vector<P> m_Pvectors;
+  std::vector<Pvector> m_Pvectors;
   int m_verbosity; //!< How much to print.
   double m_thresh; //!< If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
   unsigned int m_maxIterations; //!< Maximum number of iterations in solve()

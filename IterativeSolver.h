@@ -49,13 +49,10 @@ namespace LinearAlgebra {
  * any special storage arrangements desired.
  */
  template <class scalar=double>
- class IterativeSolverBase
+ class IterativeSolver
  {
  public:
-  /*!
-   * \brief IterativeSolverBase
-   */
-  IterativeSolverBase(
+  IterativeSolver(
     ) :
     m_PP(0,0),
     m_Pvectors(0),
@@ -73,7 +70,7 @@ namespace LinearAlgebra {
     m_singularity_threshold(1e-20)
   {}
 
-  virtual ~IterativeSolverBase() { }
+  virtual ~IterativeSolver() { }
  public:
   /*!
    * \brief Take, typically, a current solution and residual, and return new solution.
@@ -444,10 +441,10 @@ namespace LinearAlgebra{
  *
  */
  template <class scalar=double>
- class LinearEigensystem : public IterativeSolverBase<scalar>
+ class LinearEigensystem : public IterativeSolver<scalar>
  {
  public:
-  using IterativeSolverBase<scalar>::m_verbosity;
+  using IterativeSolver<scalar>::m_verbosity;
   /*!
    * \brief LinearEigensystem
    */
@@ -512,13 +509,13 @@ namespace LinearAlgebra{
 *
 */
 template <class scalar=double>
- class DIIS : public IterativeSolverBase<scalar>
+ class DIIS : public IterativeSolver<scalar>
  {
- using IterativeSolverBase<scalar>::m_residuals;
- using IterativeSolverBase<scalar>::m_solutions;
- using IterativeSolverBase<scalar>::m_others;
+ using IterativeSolver<scalar>::m_residuals;
+ using IterativeSolver<scalar>::m_solutions;
+ using IterativeSolver<scalar>::m_others;
  public:
- using IterativeSolverBase<scalar>::m_verbosity;
+ using IterativeSolver<scalar>::m_verbosity;
    enum DIISmode_type {disabled ///< No extrapolation is performed
                        , DIISmode ///< Direct Inversion in the Iterative Subspace
                        , KAINmode ///< Krylov Accelerated Inexact Newton
@@ -733,15 +730,15 @@ template <class scalar=double>
 *
 */
 template <class scalar>
- class RSPT : public IterativeSolverBase<scalar>
+ class RSPT : public IterativeSolver<scalar>
  {
- using IterativeSolverBase<scalar>::m_residuals;
- using IterativeSolverBase<scalar>::m_solutions;
- using IterativeSolverBase<scalar>::m_others;
- using IterativeSolverBase<scalar>::m_roots;
- using IterativeSolverBase<scalar>::m_linear;
+ using IterativeSolver<scalar>::m_residuals;
+ using IterativeSolver<scalar>::m_solutions;
+ using IterativeSolver<scalar>::m_others;
+ using IterativeSolver<scalar>::m_roots;
+ using IterativeSolver<scalar>::m_linear;
  public:
- using IterativeSolverBase<scalar>::m_verbosity;
+ using IterativeSolver<scalar>::m_verbosity;
    /*!
     * \brief RSPT
     */

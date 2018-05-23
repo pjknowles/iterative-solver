@@ -7,11 +7,18 @@ using v = PagedVector<double>;
 
 static std::unique_ptr<LinearEigensystem<double> > instance;
 
-extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot) {
+extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, double thresh, int maxIterations, int verbosity) {
+#ifdef USE_MPI
+ int flag;
+ MPI_Initialized(&flag);
+ if (!flag) MPI_Init(0,nullptr);
+#endif
  instance.reset(new LinearEigensystem<double>());
  instance->m_dimension=n;
  instance->m_roots=nroot;
- instance->m_verbosity=0;
+ instance->m_thresh=thresh;
+ instance->m_maxIterations=maxIterations;
+ instance->m_verbosity=verbosity;
  std::cout << "roots: "<<instance->m_roots<<std::endl;
 }
 extern "C" void IterativeSolverLinearEigensystemAddVector(double* c, double* g, double* eigenvalue) {

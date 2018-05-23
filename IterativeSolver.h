@@ -915,7 +915,7 @@ template <class scalar>
 
 
   // C interface
- extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot);
+ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh, int maxIterations, int verbosity);
  extern "C" void IterativeSolverLinearEigensystemAddVector(double* c, double* g, double* eigenvalue);
  extern "C" int IterativeSolverLinearEigensystemEndIteration(double* c, double* g, double* error);
  extern "C" void IterativeSolverAddP(size_t* indices, double* coefficients, double* pp);

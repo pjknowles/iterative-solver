@@ -548,6 +548,8 @@ namespace LinearAlgebra {
    if (this->variance() != other.variance()) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != other.m_size) throw std::logic_error("mismatching lengths");
    int diff=0;
+   size_t off=0;
+   size_t otheroff=0;
     for (m_cache.ensure( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset),
          other.m_cache.move((m_replicated == other.m_replicated) ? 0: m_segment_offset,m_cache.length);
          m_cache.length && other.m_cache.length;

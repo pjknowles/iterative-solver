@@ -1,4 +1,5 @@
 !> @brief IterativeSolver Fortran binding
+!> @example LinearEigensystemExampleF.F90
 MODULE IterativeSolverF
  USE iso_c_binding
  !PRIVATE

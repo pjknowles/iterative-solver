@@ -111,9 +111,9 @@ CONTAINS
   PRINT *, 'Test Fortran binding of IterativeSolver'
   m=1
   DO i=1,n
-   m(i,i)=i
+   m(i,i)=3*i
   END DO
-  CALL IterativeSolverLinearEigensystemInitialize(n,nroot)
+  CALL IterativeSolverLinearEigensystemInitialize(n,nroot,thresh=1d-8)
   c=0; DO i=1,nroot; c(i,i)=1; ENDDO
   DO i=1,n
    g = MATMUL(m,c)

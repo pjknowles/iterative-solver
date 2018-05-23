@@ -4,23 +4,35 @@ MODULE IterativeSolverF
  PUBLIC :: IterativeSolverLinearEigensystemInitialize
  PUBLIC :: IterativeSolverLinearEigensystemAddVector, IterativeSolverLinearEigensystemEndIteration
  PRIVATE
- INTEGER(c_size_t) :: m_nq, m_nroot
+ INTEGER(c_size_t), PUBLIC :: m_nq, m_nroot
 
  INTERFACE
-  SUBROUTINE IterativeSolverLinearEigensystemAddVector(c,g,e) BIND(C,name='IterativeSolverLinearEigensystemAddVector')
+!>@brief Add an expansion vector
+!> \param parameters On input, the current solution or expansion vector. On exit, the next solution or expansion vector.
+!> Dimensions size of space, number of roots
+!> \param action On input, the residual for solution on entry. On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
+!> Dimensions size of space, number of roots
+!> \param eigenvalue On output, the lowest eigenvalues of the reduced problem, for the number of roots sought.
+  SUBROUTINE IterativeSolverLinearEigensystemAddVector(parameters,action,eigenvalue) BIND(C,name='IterativeSolverLinearEigensystemAddVector')
    USE iso_c_binding
-   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: c
-   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: g
-   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: e
+   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
+   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: eigenvalue
   END SUBROUTINE IterativeSolverLinearEigensystemAddVector
  END INTERFACE
 
  INTERFACE
-  LOGICAL FUNCTION IterativeSolverLinearEigensystemEndIteration(c,g,error) &
+!>@brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
+!> be used in the next iteration; this is done ONLY in the CASE of linear solvers where the orthogonalize option is set.
+!> Also calculate the degree of convergence, and write progress to standard output
+!> \param solution The current solution, after interpolation and updating with the preconditioned residual.
+!> \param residual The residual after interpolation.
+!> \return .TRUE. if convergence reached for all roots
+  LOGICAL FUNCTION IterativeSolverLinearEigensystemEndIteration(solution,residual,error) &
        BIND(C,name='IterativeSolverLinearEigensystemEndIteration')
    USE iso_c_binding
-   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: c
-   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: g
+   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
+   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: error
   END FUNCTION IterativeSolverLinearEigensystemEndIteration
  END INTERFACE

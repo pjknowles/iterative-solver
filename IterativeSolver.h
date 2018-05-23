@@ -131,7 +131,7 @@ namespace LinearAlgebra {
      * Also calculate the degree of convergence, and write progress to std::cout.
      * \param solution The current solution, after interpolation and updating with the preconditioned residual.
      * \param residual The residual after interpolation.
-     * \return
+     * \return true if convergence reached for all roots
      */
   bool endIteration(vectorSet<scalar> & solution, const vectorSet<scalar> & residual)
   {

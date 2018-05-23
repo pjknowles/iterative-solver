@@ -21,33 +21,33 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
  instance->m_verbosity=verbosity;
  std::cout << "roots: "<<instance->m_roots<<std::endl;
 }
-extern "C" void IterativeSolverLinearEigensystemAddVector(double* c, double* g, double* eigenvalue) {
+extern "C" void IterativeSolverLinearEigensystemAddVector(double* parameters, double* action, double* eigenvalue) {
  vectorSet<double> cc,gg;
  for (int root=0; root < instance->m_roots; root++) {
   cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
-  cc.back()->put(&c[root*instance->m_dimension],instance->m_dimension,0);
+  cc.back()->put(&parameters[root*instance->m_dimension],instance->m_dimension,0);
   gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
-  gg.back()->put(&g[root*instance->m_dimension],instance->m_dimension,0);
+  gg.back()->put(&action[root*instance->m_dimension],instance->m_dimension,0);
  }
  instance->addVector(cc,gg);
  for (int root=0; root < instance->m_roots; root++) {
-  cc[root]->get(&c[root*instance->m_dimension],instance->m_dimension,0);
-  gg[root]->get(&g[root*instance->m_dimension],instance->m_dimension,0);
+  cc[root]->get(&parameters[root*instance->m_dimension],instance->m_dimension,0);
+  gg[root]->get(&action[root*instance->m_dimension],instance->m_dimension,0);
   eigenvalue[root] = instance->eigenvalues()[root];
  }
 }
 
-extern "C" int IterativeSolverLinearEigensystemEndIteration(double* c, double* g, double* error) {
+extern "C" int IterativeSolverLinearEigensystemEndIteration(double* solution, double* residual, double* error) {
  vectorSet<double> cc,gg;
  for (int root=0; root < instance->m_roots; root++) {
   cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
-  cc.back()->put(&c[root*instance->m_dimension],instance->m_dimension,0);
+  cc.back()->put(&solution[root*instance->m_dimension],instance->m_dimension,0);
   gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
-  gg.back()->put(&g[root*instance->m_dimension],instance->m_dimension,0);
+  gg.back()->put(&residual[root*instance->m_dimension],instance->m_dimension,0);
  }
  bool result = instance->endIteration(cc,gg);
  for (int root=0; root < instance->m_roots; root++) {
-  cc[root]->get(&c[root*instance->m_dimension],instance->m_dimension,0);
+  cc[root]->get(&solution[root*instance->m_dimension],instance->m_dimension,0);
   error[root] = instance->errors()[root];
  }
  return result;

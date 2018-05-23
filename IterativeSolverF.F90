@@ -13,7 +13,8 @@ MODULE IterativeSolverF
 !> \param action On input, the residual for solution on entry. On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
 !> Dimensions size of space, number of roots
 !> \param eigenvalue On output, the lowest eigenvalues of the reduced problem, for the number of roots sought.
-  SUBROUTINE IterativeSolverLinearEigensystemAddVector(parameters,action,eigenvalue) BIND(C,name='IterativeSolverLinearEigensystemAddVector')
+  SUBROUTINE IterativeSolverLinearEigensystemAddVector(parameters,action,eigenvalue) &
+       BIND(C,name='IterativeSolverLinearEigensystemAddVector')
    USE iso_c_binding
    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action

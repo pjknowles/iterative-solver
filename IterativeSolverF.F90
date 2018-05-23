@@ -1,6 +1,6 @@
 !> @brief IterativeSolver Fortran binding
-!> @example LinearEigensystemExampleF.F90
 MODULE IterativeSolverF
+!> @example LinearEigensystemExampleF.F90
  USE iso_c_binding
  !PRIVATE
  INTEGER(c_size_t) :: m_nq, m_np, m_nroot

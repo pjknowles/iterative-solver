@@ -36,15 +36,15 @@ int main(int argc, char *argv[])
        PagedVector<double> v0(10001);
        for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;
        bool result = true;
-       for (size_t i=3; i<4; i++) {
-        std::cout <<"option "<<i<< ", copy-construct"<<std::endl;
+       for (size_t i=0; i<4; i++) {
+//        std::cout <<"option "<<i<< ", copy-construct"<<std::endl;
         auto v2 = PagedVector<double>(v0,i);
 //        std::cout <<"option "<<i<< ", copy-construct, reads="<<v2.m_cache.reads << " writes="<<v2.m_cache.writes<<std::endl;
         result &= v2==v0;
 //        std::cout <<"option "<<i<< ", compare, reads="<<v2.m_cache.reads << " writes="<<v2.m_cache.writes<<std::endl;
-        std::cout <<rank<<"source: "<<v0<<std::endl;
-        std::cout <<rank<<"copy: "<<v2<<std::endl;
-        std::cout <<rank<<"result: "<<result<<std::endl;
+//        std::cout <<rank<<"source: "<<v0<<std::endl;
+//        std::cout <<rank<<"copy: "<<v2<<std::endl;
+//        std::cout <<rank<<"result: "<<result<<std::endl;
        }
 //       std::cout <<"After Copy Constructor "<<PagedVector<double>(v0,1)<<std::endl;
 //       auto test = PagedVector<double>(v0,1);
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
        REQUIRE(result);
       }
 
-#ifdef none
+#ifndef none
       TEST_CASE("PagedVector dot product") {
        PagedVector<double> v0(10000);
        for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;

@@ -63,7 +63,7 @@ CONTAINS
 
 !!> Unit testing of IterativeSolver Fortran binding
  SUBROUTINE IterativeSolverFTest() BIND(C,name='IterativeSolverFTest')
- INTEGER, PARAMETER :: n=100, nroot=1
+ INTEGER, PARAMETER :: n=100, nroot=2
  DOUBLE PRECISION, DIMENSION (n,n) :: m
  DOUBLE PRECISION, DIMENSION (n) :: c,g
  DOUBLE PRECISION, DIMENSION (nroot) :: e,error
@@ -73,7 +73,7 @@ CONTAINS
  DO i=1,n
   m(i,i)=i
  END DO
- CALL IterativeSolverLinearEigensystemInitialize(n,1)
+ CALL IterativeSolverLinearEigensystemInitialize(n,nroot)
  c=0
  c(1)=1
  DO i=1,n

@@ -20,8 +20,10 @@ constexpr MPI_Comm MPI_COMM_WORLD=0;
 namespace LinearAlgebra {
 
  /*!
-   * \brief A class that implements LinearAlgebra::vector<scalar> with data optionally held on backing store, and optionally distributed
+   * \brief A class that implements LinearAlgebra::vector with data optionally held on backing store, and optionally distributed
    * over MPI ranks
+   * \tparam scalar the type of elements of the vector
+   * \tparam Allocator allocates memory
    */
  template <class scalar=double  , class Allocator =
           #ifdef MEMORY_MEMORY_H
@@ -74,7 +76,7 @@ namespace LinearAlgebra {
   {}
 
   // Every child of LinearAlgebra::vector<scalar> needs exactly this
-  PagedVector* clone(int option=0) const {// std::cout << "in PagedVector clone, option="<<option<<std::endl;
+  PagedVector* clone(int option=0) const override {// std::cout << "in PagedVector clone, option="<<option<<std::endl;
                                            return new PagedVector(*this, option); }
 
   /*!
@@ -229,7 +231,7 @@ namespace LinearAlgebra {
    * \param length
    * \param offset
    */
-  void put(const scalar* buffer, size_t length, size_t offset)
+  void put(const scalar* buffer, size_t length, size_t offset) override
   {
 //   std::cout << "PagedVector::put() length="<<length<<", offset="<<offset<<std::endl;
 //   for (size_t k=0; k<length; k++) std::cout << " "<<buffer[k]; std::cout << std::endl;
@@ -275,7 +277,7 @@ namespace LinearAlgebra {
 //   std::cout << "PagedVector::put() ends length="<<length<<", offset="<<offset<<std::endl;
   }
 
-  void get(scalar* buffer, size_t length, size_t offset) const
+  void get(scalar* buffer, size_t length, size_t offset) const override
   {
 //   std::cout << "PagedVector::get() length="<<length<<", offset="<<offset<<std::endl;
 //   std::cout << "cache from "<<m_cache.offset<<" for "<<m_cache.length<<std::endl;
@@ -321,7 +323,7 @@ namespace LinearAlgebra {
 //   std::cout << "PagedVector::get() ends, length="<<length<<", offset="<<offset<<std::endl;
   }
 
-  const scalar& operator[](size_t pos) const
+  const scalar& operator[](size_t pos) const override
   {
    if (pos >= m_cache.offset+m_segment_offset+m_cache.length || pos < m_cache.offset+m_segment_offset) { // cache not mapping right sector
 //    std::cout << "cache miss"<<std::endl;
@@ -332,7 +334,7 @@ namespace LinearAlgebra {
    return m_cache.buffer[pos-m_cache.offset-m_segment_offset];
   }
 
-  scalar& operator[](size_t pos)
+  scalar& operator[](size_t pos) override
   {
    scalar* result;
    result = &const_cast<scalar&>(static_cast<const PagedVector*>(this)->operator [](pos));
@@ -340,9 +342,9 @@ namespace LinearAlgebra {
    return *result;
   }
 
-  size_t size() const {return m_size;}
+  size_t size() const override {return m_size;}
 
-  std::string str(int verbosity=0, unsigned int columns=UINT_MAX) const {
+  std::string str(int verbosity=0, unsigned int columns=UINT_MAX) const override {
    std::ostringstream os; os << "PagedVector object:";
    for (size_t k=0; k<m_segment_length; k++)
     os <<" "<< (*this)[m_segment_offset+k];
@@ -356,7 +358,7 @@ namespace LinearAlgebra {
    * \param other The object to be added to this.
    * \return
    */
-  void axpy(scalar a, const vector<scalar> &other)
+  void axpy(scalar a, const vector<scalar> &other) override
   {
    const PagedVector& othe=dynamic_cast <const PagedVector&> (other);
 //   std::cout << "PagedVector::axpy this="<<*this<<std::endl;
@@ -376,7 +378,7 @@ namespace LinearAlgebra {
    * \param other The object to be contracted with this.
    * \return
    */
-  scalar dot(const vector<scalar> &other) const
+  scalar dot(const vector<scalar> &other) const override
   {
 //   std::cout << "enter dot"<<std::endl;
    const PagedVector& othe=dynamic_cast <const PagedVector&> (other);
@@ -419,7 +421,7 @@ namespace LinearAlgebra {
      * \brief scal Scale the object by a factor.
      * \param a The factor to scale by.
      */
-  void scal(scalar a)
+  void scal(scalar a) override
   {
    for (m_cache.ensure(0); m_cache.length; ++m_cache) {
      for (size_t i=0; i<m_cache.length; i++)
@@ -431,7 +433,7 @@ namespace LinearAlgebra {
   /*!
    * \brief Set the contents of the object to zero.
    */
-  void zero()
+  void zero() override
   {
    for (m_cache.ensure(0); m_cache.length; ++m_cache) {
      for (size_t i=0; i<m_cache.length; i++)
@@ -448,31 +450,43 @@ namespace LinearAlgebra {
   PagedVector& operator=(const PagedVector& other)
   {
    m_size=other.m_size;
-   constexpr bool pr=false;//bool pr=m_size<3;
+//   constexpr bool pr=false;//bool pr=m_size<3;
+   bool pr=m_mpi_rank>0;
 //   if (pr) std::cout << "operator= entry, other="<<other<<std::endl;
    if (pr) std::cout << "operator= entry, other.m_cache.preferred_length="<<other.m_cache.preferred_length<<", this->m_cache.preferred_length="<<this->m_cache.preferred_length<<std::endl;
    if (pr) std::cout << "operator= entry, other.m_replicated="<<other.m_replicated<<", this->m_replicated="<<this->m_replicated<<std::endl;
    this->setVariance(other.variance());
    if (pr) std::cout <<m_mpi_rank<< " operator=() m_segment_offset="<<m_segment_offset<<"="<<other.m_segment_offset<<" for "<<m_segment_length<<"="<<other.m_segment_length<<std::endl;
 //   if (pr) std::cout <<m_mpi_rank<< " other="<<other<<std::endl;
-   if (m_cache.io == other.m_cache.io) { // std::cout << "both cached or both in memory"<<std::endl;
+   if (!m_cache.io && !other.m_cache.io) { std::cout << "both in memory"<<std::endl;
+    size_t off = (m_replicated && !other.m_replicated) ? other.m_segment_offset : 0;
+    size_t otheroff = (!m_replicated && other.m_replicated) ? m_segment_offset : 0;
+     for (size_t i=0; i<std::min(m_segment_length,other.m_segment_length); i++) {
+      m_cache.buffer[off+i] = other.m_cache.buffer[otheroff+i];
+           if (pr) std::cout <<m_mpi_rank<<" other.buffer["<<otheroff+i<<"]="<<other.m_cache.buffer[otheroff+i]<<std::endl;
+           if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
+     }
+   } else if (m_cache.io && other.m_cache.io) { // std::cout << "both cached"<<std::endl;
     size_t cachelength = std::min(m_cache.preferred_length,other.m_cache.preferred_length);
+//    std::cout << m_mpi_rank<<"cachelength="<<cachelength<<std::endl;
     size_t off=0, otheroff=0;
     //     m_cache.ensure( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset); std::cout << "m_cache.length="<<m_cache.length<<std::endl;
     //     other.m_cache.ensure( (m_replicated == other.m_replicated) ? 0: m_segment_offset); std::cout << "other.m_cache.length="<<other.m_cache.length<<std::endl;
-    m_cache.move( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset,m_cache.io ? cachelength : m_size);
-    other.m_cache.move((m_replicated == other.m_replicated) ? 0: m_segment_offset,other.m_cache.io ? cachelength : other.m_segment_length);
-    while(m_cache.length && other.m_cache.length && off < m_size && otheroff < other.m_size ) {
+    if (pr) std::cout << "move cache to "<< ((!m_replicated ||  other.m_replicated) ? 0: other.m_segment_offset)<<std::endl;
+    if (pr) std::cout << "move other cache to "<<((m_replicated || !other.m_replicated) ? 0: m_segment_offset)<<std::endl;
+    m_cache.move( (!m_replicated ||  other.m_replicated) ? 0: other.m_segment_offset, cachelength);
+    other.m_cache.move((m_replicated || !other.m_replicated) ? 0: m_segment_offset, cachelength);
+    while(m_cache.length && other.m_cache.length && off < m_segment_length && otheroff < other.m_segment_length ) {
      if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
-     //    for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
+     if (pr) for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
      for (size_t i=0; i<m_cache.length; i++) {
       m_cache.buffer[off+i] = other.m_cache.buffer[otheroff+i];
-      //     if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
+           if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
      }
      m_cache.dirty=true;
      if (m_cache.io) ++m_cache; else off+=cachelength;
      if (other.m_cache.io) ++other.m_cache; else otheroff+=cachelength;
-     if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
+     if (pr) std::cout <<m_mpi_rank<< "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
     }
    } else if (m_cache.io) { // std::cout<< "source in memory, result cached"<<std::endl;
     size_t cachelength = m_cache.preferred_length;

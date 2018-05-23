@@ -218,7 +218,7 @@ namespace LinearAlgebra {
     }
     void pop_back() { if (m_pvs.size() <=0) return;  m_pvs.pop_back(); m_active.pop_back(); m_owned.pop_back();}
     void resize(size_t length) { m_pvs.resize(length); m_active.resize(length);}
-    vectorSet<scalar>& operator=(const vectorSet<scalar>& source)
+    virtual vectorSet<scalar>& operator=(const vectorSet<scalar>& source)
     {
       while(m_pvs.size()>0) m_pvs.pop_back();
       for (size_t k=0; k<source.size(); k++) {

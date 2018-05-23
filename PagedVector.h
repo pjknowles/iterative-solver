@@ -409,7 +409,8 @@ namespace LinearAlgebra {
 #ifdef USE_MPI
 //    std::cout <<m_mpi_rank<<" dot result before reduce="<<result<<std::endl;
    if (!m_replicated) {
-    MPI_Allreduce(&result,&result,1,MPI_DOUBLE,MPI_SUM,m_communicator); // FIXME needs attention for non-double
+    double resultLocal = result;
+    MPI_Allreduce(&resultLocal,&result,1,MPI_DOUBLE,MPI_SUM,m_communicator); // FIXME needs attention for non-double
 //    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
    }
 #endif

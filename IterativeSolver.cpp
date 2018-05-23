@@ -11,6 +11,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
  instance.reset(new LinearEigensystem<double>());
  instance->m_dimension=n;
  instance->m_roots=nroot;
+ instance->m_verbosity=0;
  std::cout << "roots: "<<instance->m_roots<<std::endl;
 }
 extern "C" void IterativeSolverLinearEigensystemAddVector(double* c, double* g, double* eigenvalue) {

@@ -53,7 +53,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in ${CMAKE_CURRENT_BINARY_DI
 add_custom_target(${PROJECT_NAME}-doc ALL
     DEPENDS  ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
     )
-file(GLOB doxysrc IterativeSolver/*.h IterativeSolver/*.fh examples/*)
+file(GLOB doxysrc *.h *.F90 examples/*)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
 COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
 DEPENDS ${SRC_LIST} ${doxysrc} ${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile

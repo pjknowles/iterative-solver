@@ -4,7 +4,7 @@ MODULE IterativeSolverF
  PUBLIC :: IterativeSolverLinearEigensystemInitialize
  PUBLIC :: IterativeSolverLinearEigensystemAddVector, IterativeSolverLinearEigensystemEndIteration
  PRIVATE
- INTEGER(c_size_t), PUBLIC :: m_nq, m_nroot
+ INTEGER(c_size_t), PRIVATE :: m_nq, m_nroot
 
  INTERFACE
 !>@brief Add an expansion vector
@@ -24,7 +24,7 @@ MODULE IterativeSolverF
 
  INTERFACE
 !>@brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
-!> be used in the next iteration; this is done ONLY in the CASE of linear solvers where the orthogonalize option is set.
+!> be used in the next iteration; this is done only in the case of linear solvers where the orthogonalize option is set.
 !> Also calculate the degree of convergence, and write progress to standard output
 !> \param solution The current solution, after interpolation and updating with the preconditioned residual.
 !> \param residual The residual after interpolation.

@@ -6,38 +6,6 @@ MODULE IterativeSolverF
  PRIVATE
  INTEGER(c_size_t), PRIVATE :: m_nq, m_nroot
 
- INTERFACE
-!>@brief Add an expansion vector
-!> \param parameters On input, the current solution or expansion vector. On exit, the next solution or expansion vector.
-!> Dimensions size of space, number of roots
-!> \param action On input, the residual for solution on entry. On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
-!> Dimensions size of space, number of roots
-!> \param eigenvalue On output, the lowest eigenvalues of the reduced problem, for the number of roots sought.
-  SUBROUTINE IterativeSolverLinearEigensystemAddVector(parameters,action,eigenvalue) &
-       BIND(C,name='IterativeSolverLinearEigensystemAddVector')
-   USE iso_c_binding
-   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
-   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
-   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: eigenvalue
-  END SUBROUTINE IterativeSolverLinearEigensystemAddVector
- END INTERFACE
-
- INTERFACE
-!>@brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
-!> be used in the next iteration; this is done only in the case of linear solvers where the orthogonalize option is set.
-!> Also calculate the degree of convergence, and write progress to standard output
-!> \param solution The current solution, after interpolation and updating with the preconditioned residual.
-!> \param residual The residual after interpolation.
-!> \return .TRUE. if convergence reached for all roots
-  LOGICAL FUNCTION IterativeSolverLinearEigensystemEndIteration(solution,residual,error) &
-       BIND(C,name='IterativeSolverLinearEigensystemEndIteration')
-   USE iso_c_binding
-   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
-   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
-   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: error
-  END FUNCTION IterativeSolverLinearEigensystemEndIteration
- END INTERFACE
-
 CONTAINS
 
 !> @example LinearEigensystemExampleF.F90
@@ -56,13 +24,13 @@ CONTAINS
     USE iso_c_binding
     INTEGER(C_size_t), INTENT(in), VALUE :: nq
     INTEGER(C_size_t), INTENT(in), VALUE :: nroot
-    DOUBLE PRECISION, INTENT(in), VALUE :: thresh
+    REAL(c_double), INTENT(in), VALUE :: thresh
     INTEGER(C_int), INTENT(in), VALUE :: maxIterations
     INTEGER(C_int), INTENT(in), VALUE :: verbosity
    END SUBROUTINE IterativeSolverLinearEigensystemInitializeC
   END INTERFACE
   INTEGER(c_int) :: verbosityC, maxIterationsC
-  DOUBLE PRECISION :: threshC
+  REAL(c_double) :: threshC
   m_nq=INT(nq,kind=c_size_t)
   m_nroot=INT(nroot,kind=c_size_t)
   IF (PRESENT(thresh)) THEN
@@ -82,6 +50,55 @@ CONTAINS
   END IF
   CALL IterativeSolverLinearEigensystemInitializeC(m_nq,m_nroot,threshC, maxIterationsC, verbosityC)
  END SUBROUTINE IterativeSolverLinearEigensystemInitialize
+
+!>@brief Add an expansion vector
+!> \param parameters On input, the current solution or expansion vector. On exit, the next solution or expansion vector.
+!> Dimensions size of space, number of roots
+!> \param action On input, the residual for solution on entry. On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
+!> Dimensions size of space, number of roots
+!> \param eigenvalue On output, the lowest eigenvalues of the reduced problem, for the number of roots sought.
+ SUBROUTINE IterativeSolverLinearEigensystemAddVector(parameters,action,eigenvalue)
+  USE iso_c_binding
+  DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
+  DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+  DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: eigenvalue
+  INTERFACE
+   SUBROUTINE IterativeSolverLinearEigensystemAddVectorC(parameters,action,eigenvalue) &
+        BIND(C,name='IterativeSolverLinearEigensystemAddVector')
+    USE iso_c_binding
+    REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
+    REAL(c_double), DIMENSION(*), INTENT(inout) :: action
+    REAL(c_double), DIMENSION(*), INTENT(inout) :: eigenvalue
+   END SUBROUTINE IterativeSolverLinearEigensystemAddVectorC
+  END INTERFACE
+  CALL IterativeSolverLinearEigensystemAddVectorC(parameters,action,eigenvalue)
+ END SUBROUTINE IterativeSolverLinearEigensystemAddVector
+
+!>@brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
+!> be used in the next iteration; this is done only in the case of linear solvers where the orthogonalize option is set.
+!> Also calculate the degree of convergence, and write progress to standard output
+!> \param solution The current solution, after interpolation and updating with the preconditioned residual.
+!> \param residual The residual after interpolation.
+!> \param error Error indicator for each sought root.
+!> \return .TRUE. if convergence reached for all roots
+  LOGICAL FUNCTION IterativeSolverLinearEigensystemEndIteration(solution,residual,error)
+   USE iso_c_binding
+   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
+   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
+   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: error
+ INTERFACE
+  LOGICAL FUNCTION IterativeSolverLinearEigensystemEndIterationC(solution,residual,error) &
+       BIND(C,name='IterativeSolverLinearEigensystemEndIteration')
+   USE iso_c_binding
+   REAL(c_double), DIMENSION(*), INTENT(inout) :: solution
+   REAL(c_double), DIMENSION(*), INTENT(inout) :: residual
+   REAL(c_double), DIMENSION(*), INTENT(inout) :: error
+  END FUNCTION IterativeSolverLinearEigensystemEndIterationC
+ END INTERFACE
+  IterativeSolverLinearEigensystemEndIteration = &
+  IterativeSolverLinearEigensystemEndIterationC(solution,residual,error)
+  END FUNCTION IterativeSolverLinearEigensystemEndIteration
+
  
 !!> Add P-space vectors to the expansion set
  SUBROUTINE IterativeSolverAddP(indices,coefficients,pp)
@@ -93,8 +110,8 @@ CONTAINS
         BIND(C,name='IterativeSolverAddP')
     USE iso_c_binding
     INTEGER(c_size_t), INTENT(in), DIMENSION(*) :: indices
-    DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: coefficients
-    DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: pp
+    REAL(c_double), DIMENSION(*), INTENT(in) :: coefficients
+    REAL(c_double), DIMENSION(*), INTENT(in) :: pp
    END SUBROUTINE IterativeSolverAddPC
   END INTERFACE
   INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC

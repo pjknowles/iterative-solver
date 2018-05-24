@@ -67,7 +67,8 @@ namespace LinearAlgebra {
     m_date(0),
     m_subspaceMatrixResRes(false),
     m_iterations(0),
-    m_singularity_threshold(1e-20)
+    m_singularity_threshold(1e-20),
+    m_options(optionMap())
   {}
 
   virtual ~IterativeSolver() { }
@@ -76,27 +77,31 @@ namespace LinearAlgebra {
    * \brief Take, typically, a current solution and residual, and return new solution.
    * In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
    * acting on it with the matrix, and the output will be a new expansion vector.
-   * For non-linear equations, the input will be the current solution, and the output the current residual.
-   * iterate() saves the vectors, calls solveReducedProblem(), calls m_preconditionerFunction(), calls calculateErrors(), and then assesses the error.
-   * Derivative classes may often be able to be implemented by changing only solveReducedProblem(), not iterate() or solve().
-   * \param parameters On input, the current solution or expansion vector. On exit, the next solution or expansion vector.
-   * \param action On input, the residual for solution on entry. On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
+   * For non-linear equations, the input will be the current solution and residual, and the output the interpolated solution and residual.
+   * \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
+   * \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
+   * \param parametersP On exit, the interpolated solution projected onto the P space.
    * \param other Optional additional vectors that should be interpolated like the residual.
-   * \param options A string of options to be interpreted by solveReducedProblem().
    */
-  void addVector( vectorSet<scalar> & parameters, vectorSet<scalar> & action, vectorSet<scalar> & other, const optionMap options=optionMap())
+  void addVector( vectorSet<scalar> & parameters,
+                  vectorSet<scalar> & action,
+                  vectorSet<scalar> & parametersP,
+                  vectorSet<scalar> & other
+                                                )
   {
 //   xout << "addVector initial parameters: "<<parameters<<std::endl;
    if (m_roots<1) m_roots=parameters.size(); // number of roots defaults to size of parameters
    assert(parameters.size()==action.size());
+   assert(parametersP.size()==dimensionP());
    m_iterations++;
    for (size_t k=0; k<action.size(); k++) action.m_active[k] = //action.m_active[k] &&
                                                                    parameters.m_active[k];
    m_lastVectorIndex=addVectorSet(parameters,action,other)-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
-   solveReducedProblem(parameters,action,other,options);
+   solveReducedProblem(parameters,action,other,m_options);
   }
 
-  void addVector(vectorSet<scalar> & parameters, vectorSet<scalar> & action, const optionMap options=optionMap()) { vectorSet<scalar> other; return addVector(parameters,action,other,options); }
+  void addVector(vectorSet<scalar> & parameters, vectorSet<scalar> & action ) { vectorSet<scalar> parametersP; return addVector(parameters,action,parametersP); }
+  void addVector(vectorSet<scalar> & parameters, vectorSet<scalar> & action, vectorSet<scalar> & parametersP ) { vectorSet<scalar> other; return addVector(parameters,action,parametersP,other); }
 
   /*!
    * \brief Specify a P-space vector as a sparse combination of parameters. The container holds a number of segments,
@@ -108,12 +113,15 @@ namespace LinearAlgebra {
   };
 
   /*!
-   * \brief Add P-space vectors to the expansion set
+   * \brief Add P-space vectors to the expansion set for linear methods.
    * \param Pvectors the vectors to add
    * \param PP Matrix projected onto the existing+new, new P space. It should be provided as a
    * 1-dimensional array, with the existing+new index running fastest.
+   * \param parameters On exit, the interpolated solution vector.
+   * \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
+   * \param parametersP On exit, the interpolated solution projected onto the P space.
    */
-  void addP(std::vector<Pvector> Pvectors, const scalar* PP ) {
+  void addP(std::vector<Pvector> Pvectors, const scalar* PP, vectorSet<scalar> & parameters, vectorSet<scalar> & action, vectorSet<scalar> parametersP ) {
    size_t old=m_PP.rows();
    m_PP.conservativeResize(old+Pvectors.size(),old+Pvectors.size());
    size_t offset=0;
@@ -173,7 +181,9 @@ namespace LinearAlgebra {
    return result;
   }
 
-  std::vector<double> errors() {return m_errors;} //!< Error at last iteration
+  std::vector<double> errors() const {return m_errors;} //!< Error at last iteration
+
+  size_t dimensionP() const {return (size_t) m_PP.rows();} //!< Size of P space
 
  public:
   Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_PP; //!< The PP block of the matrix
@@ -186,6 +196,7 @@ namespace LinearAlgebra {
   bool m_linear; ///< Whether residuals are linear functions of the corresponding expansion vectors.
   bool m_hermitian; ///< Whether residuals can be assumed to be the action of an underlying self-adjoint operator.
   int m_roots; ///< How many roots to calculate / equations to solve (defaults to size of solution and residual vectors)
+  optionMap m_options; ///< A string of options to be interpreted by solveReducedProblem().
 
  private:
   void adjustUpdate(vectorSet<scalar> & solution)
@@ -916,7 +927,7 @@ template <class scalar>
 
   // C interface
  extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh, int maxIterations, int verbosity);
- extern "C" void IterativeSolverLinearEigensystemAddVector(double* c, double* g, double* eigenvalue);
+ extern "C" void IterativeSolverLinearEigensystemAddVector(double* parameters, double* action, double* eigenvalue, double* parametersP);
  extern "C" int IterativeSolverLinearEigensystemEndIteration(double* c, double* g, double* error);
  extern "C" void IterativeSolverAddP(size_t* indices, double* coefficients, double* pp);
 

@@ -180,6 +180,7 @@ static struct {
   if (verbosity>=0) xout << "Test DIIS::iterate, difficulty="<<difficulty<<std::endl;
   d.Reset();
   d.m_verbosity=verbosity-1;
+//  d.m_options["weight"]=2;
   std::vector<scalar> xxx(2);
   xxx[0]=xxx[1]=1-difficulty; // initial guess
   x.front()->put(&xxx[0],2,0);
@@ -189,8 +190,7 @@ static struct {
   for (int iteration=1; iteration < 1000 && not converged; iteration++) {
 //   xout <<"start of iteration "<<iteration<<std::endl;
       _Rosenbrock_residual(x,g);
-      optionMap o; //o["weight"]=2;
-      d.addVector(x,g,o);
+      d.addVector(x,g);
       std::vector<scalar> shift; shift.push_back(1e-10);
       _Rosenbrock_updater(x,g,shift);
       converged = d.endIteration(x,g);

@@ -97,7 +97,7 @@ namespace LinearAlgebra {
    for (size_t k=0; k<action.size(); k++) action.m_active[k] = //action.m_active[k] &&
                                                                    parameters.m_active[k];
    m_lastVectorIndex=addVectorSet(parameters,action,other)-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
-   solveReducedProblem(parameters,action,other,m_options);
+   solveReducedProblem(parameters,action,other);
   }
 
   void addVector(vectorSet<scalar> & parameters, vectorSet<scalar> & action ) { vectorSet<scalar> parametersP; return addVector(parameters,action,parametersP); }
@@ -197,6 +197,7 @@ namespace LinearAlgebra {
   bool m_linear; ///< Whether residuals are linear functions of the corresponding expansion vectors.
   bool m_hermitian; ///< Whether residuals can be assumed to be the action of an underlying self-adjoint operator.
   int m_roots; ///< How many roots to calculate / equations to solve (defaults to size of solution and residual vectors)
+ public:
   optionMap m_options; ///< A string of options to be interpreted by solveReducedProblem().
 
  private:
@@ -237,8 +238,8 @@ namespace LinearAlgebra {
   }
  protected:
 
-  virtual void solveReducedProblem(vectorSet<scalar> & residual, vectorSet<scalar> & solution, vectorSet<scalar> & other, const optionMap options=optionMap())=0;
-  void solveReducedProblem(vectorSet<scalar> & residual, vectorSet<scalar> & solution, const optionMap options=optionMap()) { vectorSet<scalar> other; solveReducedProblem(residual,solution,other,options); }
+  virtual void solveReducedProblem(vectorSet<scalar> & residual, vectorSet<scalar> & solution, vectorSet<scalar> & other)=0;
+  void solveReducedProblem(vectorSet<scalar> & residual, vectorSet<scalar> & solution) { vectorSet<scalar> other; solveReducedProblem(residual,solution,other); }
   virtual void report()
   {
    if (m_verbosity>0)
@@ -481,7 +482,7 @@ namespace LinearAlgebra{
 
 
  private:
-  void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap()) override
+  void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other) override
   {
    if (m_verbosity>2) xout << "Subspace matrix"<<std::endl<<this->m_QQMatrix<<std::endl;
    if (m_verbosity>2) xout << "Subspace overlap"<<std::endl<<this->m_QQOverlap<<std::endl;
@@ -511,7 +512,7 @@ namespace LinearAlgebra{
    for (size_t root=0; root<(size_t)this->m_roots; root++) this->m_updateShift[root]=-(1+std::numeric_limits<scalar>::epsilon())*this->m_subspaceEigenvalues[root].real();
   }
 
-  virtual void report()
+  void report() override
   {
    std::vector<scalar> ev=this->eigenvalues();
    if (m_verbosity>0) {
@@ -560,7 +561,7 @@ namespace LinearAlgebra{
 
 
   protected:
-   virtual void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
+   virtual void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other)
    {
     if (m_verbosity>2) xout << "Subspace matrix"<<std::endl<<this->m_QQMatrix<<std::endl;
     if (m_verbosity>2) xout << "Subspace overlap"<<std::endl<<this->m_QQOverlap<<std::endl;
@@ -666,6 +667,8 @@ template <class scalar=double>
 }
    /*!
   * \brief Introduce a new iteration vector, and perform extrapolation
+  *
+  * m_options can contain "weight=xxx" where xxx is the weight to be given to this vector.
   * \param residual
   * The vector that
   * will be the one that is analysed to construct the extrapolation.
@@ -673,16 +676,17 @@ template <class scalar=double>
   * The current solution that gave rise to residual, and which will be extrapolated to a new predicted solution.
   * \param other (optional)
   * Corresponding other vectors whose sequence will be extrapolated.
-  * \param options can contain "weight=xxx" where xxx is the weight to be given to this vector. These options would normally be passed as the corresponding parameter in iterate().
   */
  protected:
-   void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
+   void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other)
 {
  //	  xout << "Enter DIIS::solveReducedProblem"<<std::endl;
  //	  xout << "residual : "<<residual<<std::endl;
  //	  xout << "solution : "<<solution<<std::endl;
  this->m_updateShift.clear();this->m_updateShift.push_back(-(1+std::numeric_limits<double>::epsilon())*this->m_QQMatrix(0,0));
- double weight=options.count("weight") ? (options.find("weight")->second) : 1.0;
+ double weight=
+   this->m_options.count("weight") ? (
+                                       this->m_options.find("weight")->second) : 1.0;
  if (this->m_maxDim <= 1 || this->m_DIISmode == disabled) return;
 
  if (residual.size() > 1) throw std::logic_error("DIIS does not handle multiple solutions");
@@ -843,7 +847,7 @@ template <class scalar>
    }
    static void test (size_t n, double alpha);
  protected:
-   virtual void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
+   virtual void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other)
 {
  size_t n=m_solutions.size();
  // on entry, solution contains |n-1> and residual contains H|n-1>, already stored in m_solutions & m_residuals.

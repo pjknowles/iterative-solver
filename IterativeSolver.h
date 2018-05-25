@@ -454,11 +454,15 @@ namespace LinearAlgebra {
 
 namespace LinearAlgebra{
 
- /** @example LinearEigensystemExample.cpp */
+ /*! @example LinearEigensystemExample.cpp */
+ /*! @example LinearEigensystemExample-paged.cpp */
  /*!
  * \brief A class that finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos
  *
- * Example of simplest use: @include LinearEigensystemExample.cpp
+ * Example of simplest use with a simple in-memory container for eigenvectors: @include LinearEigensystemExample.cpp
+ *
+ * Example using offline distributed storage provided by the PagedVector class: @include LinearEigensystemExample-paged.cpp
+ *
  * \tparam scalar Type of matrix elements
  *
  */
@@ -477,7 +481,7 @@ namespace LinearAlgebra{
   }
 
 
- protected:
+ private:
   virtual void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
   {
    if (m_verbosity>2) xout << "Subspace matrix"<<std::endl<<this->m_QQMatrix<<std::endl;

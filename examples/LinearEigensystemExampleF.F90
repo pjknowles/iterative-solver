@@ -8,7 +8,7 @@ PROGRAM LinearEigenSystemExample
  LOGICAL :: converged
  PRINT *, 'Fortran binding of IterativeSolver'
  m=1; DO i=1,n; m(i,i)=3*i; END DO
- CALL IterativeSolverLinearEigensystemInitialize(n,nroot,thresh=1d-6)
+ CALL IterativeSolverLinearEigensystemInitialize(n,nroot,thresh=1d-7,verbosity=1)
  c=0; DO i=1,nroot; c(i,i)=1; ENDDO
  DO i=1,n
   g = MATMUL(m,c)
@@ -19,7 +19,7 @@ PROGRAM LinearEigenSystemExample
    END DO
   END DO
   converged = IterativeSolverLinearEigensystemEndIteration(c,g,error)
-  PRINT *, 'error =',error,' eigenvalue =',e
   IF (converged) EXIT
  END DO
+  PRINT *, 'error =',error,' eigenvalue =',e
 END PROGRAM LinearEigenSystemExample

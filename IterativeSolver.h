@@ -6,6 +6,7 @@
 #include <fstream>
 #include <map>
 #include <algorithm>
+#include <stdexcept>
 #include <numeric>
 #include "LinearAlgebra.h"
 #include <Eigen/Dense>
@@ -54,7 +55,6 @@ namespace LinearAlgebra {
  public:
   IterativeSolver(
     ) :
-    m_PP(0,0),
     m_Pvectors(0),
     m_verbosity(0),
     m_thresh(1e-12),
@@ -122,15 +122,14 @@ namespace LinearAlgebra {
    * \param parametersP On exit, the interpolated solution projected onto the P space.
    */
   void addP(std::vector<Pvector> Pvectors, const scalar* PP, vectorSet<scalar> & parameters, vectorSet<scalar> & action, vectorSet<scalar> parametersP ) {
-   size_t old=m_PP.rows();
-   m_PP.conservativeResize(old+Pvectors.size(),old+Pvectors.size());
+   size_t old=m_PPMatrix.rows();
+   m_PPMatrix.conservativeResize(old+Pvectors.size(),old+Pvectors.size());
    size_t offset=0;
    for (size_t n=0; n<Pvectors.size(); n++) {
-    for (int i=0; i<m_PP.rows(); i++)
-     m_PP(old+n,i) = m_PP(i,old+n) = PP[offset++];
+    m_Pvectors.push_back(Pvectors[n]);
+    for (int i=0; i<m_PPMatrix.rows(); i++)
+     m_PPMatrix(old+n,i) = m_PPMatrix(i,old+n) = PP[offset++];
    }
-   for (const auto& Pvector : Pvectors)
-    m_Pvectors.push_back(Pvector);
   }
 
   /*!
@@ -183,11 +182,13 @@ namespace LinearAlgebra {
 
   std::vector<double> errors() const {return m_errors;} //!< Error at last iteration
 
-  size_t dimensionP() const {return (size_t) m_PP.rows();} //!< Size of P space
+  size_t dimensionP() const {return (size_t) m_PPMatrix.rows();} //!< Size of P space
 
- public:
-  Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_PP; //!< The PP block of the matrix
+ private:
+  Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_PPMatrix, m_PPOverlap; //!< The PP block of the matrix
+  Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_PQMatrix, m_PQOverlap; //!< The PQ block of the matrix
   std::vector<Pvector> m_Pvectors;
+ public:
   int m_verbosity; //!< How much to print.
   double m_thresh; //!< If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
   unsigned int m_maxIterations; //!< Maximum number of iterations in solve()
@@ -254,12 +255,12 @@ namespace LinearAlgebra {
    //      xout << "calculateSubspaceMatrix"<<std::endl;
    //      xout << "residual"<<std::endl<<residual[0]<<std::endl;
    //      xout << "solution"<<std::endl<<solution[0]<<std::endl;
-   size_t old_size=m_subspaceMatrix.rows();
+   size_t old_size=m_QQMatrix.rows();
    size_t new_size=old_size+std::count(residual.m_active.begin(),residual.m_active.end(),true);
    //      xout << "old_size="<<old_size<<std::endl;
    //      xout << "new_size="<<new_size<<std::endl;
-   m_subspaceMatrix.conservativeResize(new_size,new_size);
-   m_subspaceOverlap.conservativeResize(new_size,new_size);
+   m_QQMatrix.conservativeResize(new_size,new_size);
+   m_QQOverlap.conservativeResize(new_size,new_size);
    std::vector<vectorSet<scalar>>* bra = m_subspaceMatrixResRes ? &m_residuals : &m_solutions;
    size_t k=old_size;
    for (size_t kkk=0; kkk<residual.size(); kkk++) {
@@ -269,8 +270,8 @@ namespace LinearAlgebra {
       for (size_t lll=0; lll<m_solutions[ll].size(); lll++) {
        if (m_solutions[ll].m_active[lll]) {
         //      xout << "bra"<<std::endl<<(*bra)[ll][lll]<<std::endl;
-        m_subspaceMatrix(k,l) = m_subspaceMatrix(l,k) = (*bra)[ll][lll]->dot(*residual[kkk]);
-        m_subspaceOverlap(k,l) = m_subspaceOverlap(l,k) = m_solutions[ll][lll]->dot(*solution[kkk]);
+        m_QQMatrix(k,l) = m_QQMatrix(l,k) = (*bra)[ll][lll]->dot(*residual[kkk]);
+        m_QQOverlap(k,l) = m_QQOverlap(l,k) = m_solutions[ll][lll]->dot(*solution[kkk]);
         l++;
        }
       }
@@ -280,8 +281,8 @@ namespace LinearAlgebra {
     }
    }
    if (m_verbosity>3) {
-    xout << "m_subspaceMatrix: "<<std::endl<<m_subspaceMatrix<<std::endl;
-    xout << "m_subspaceOverlap: "<<std::endl<<m_subspaceOverlap<<std::endl;
+    xout << "m_subspaceMatrix: "<<std::endl<<m_QQMatrix<<std::endl;
+    xout << "m_subspaceOverlap: "<<std::endl<<m_QQOverlap<<std::endl;
    }
 
   }
@@ -289,20 +290,20 @@ namespace LinearAlgebra {
  protected:
   void diagonalizeSubspaceMatrix()
   {
-   int kept=m_subspaceMatrix.rows();
+   int kept=m_QQMatrix.rows();
    {
-    Eigen::EigenSolver<Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> > ss(m_subspaceOverlap);
+    Eigen::EigenSolver<Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> > ss(m_QQOverlap);
     Eigen::VectorXcd sse=ss.eigenvalues();
     for (int k=0; k<sse.rows(); k++) {
      if (std::fabs(sse(k).real()) < m_singularity_threshold)
       kept--;
     }
    }
-   if (m_verbosity >=0 && kept < m_subspaceMatrix.rows())
-    xout <<"IterativeSolver WARNING, subspace singular, pruned from "<<m_subspaceMatrix.rows()<<" to "<<kept<<std::endl;
+   if (m_verbosity >=0 && kept < m_QQMatrix.rows())
+    xout <<"IterativeSolver WARNING, subspace singular, pruned from "<<m_QQMatrix.rows()<<" to "<<kept<<std::endl;
 
-   Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> H=m_subspaceMatrix.block(0,0,kept,kept);
-   Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> S=m_subspaceOverlap.block(0,0,kept,kept);
+   Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> H=m_QQMatrix.block(0,0,kept,kept);
+   Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> S=m_QQOverlap.block(0,0,kept,kept);
    Eigen::GeneralizedEigenSolver<Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>> s(H,S);
    m_subspaceEigenvalues=s.eigenvalues();
    m_subspaceEigenvectors=s.eigenvectors();
@@ -378,7 +379,7 @@ namespace LinearAlgebra {
    //    xout << "deleteVector "<<index<<std::endl;
    //    xout << "old m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
    //    xout << "old m_subspaceOverlap"<<std::endl<<m_subspaceOverlap<<std::endl;
-   size_t old_size=m_subspaceMatrix.rows();
+   size_t old_size=m_QQMatrix.rows();
    size_t new_size=old_size;
    size_t l=0;
    for (size_t ll=0; ll<m_solutions.size(); ll++) {
@@ -389,17 +390,17 @@ namespace LinearAlgebra {
        m_solutions[ll].m_active[lll] = false;
        m_residuals[ll].m_active[lll] = false;
        //                    m_others[ll].m_active[lll] = false;
-       for (int l2=l+1; l2<m_subspaceMatrix.rows(); l2++) {
-        for (int k=0; k<m_subspaceMatrix.rows(); k++) {
+       for (int l2=l+1; l2<m_QQMatrix.rows(); l2++) {
+        for (int k=0; k<m_QQMatrix.rows(); k++) {
          //                            xout << "copy from ("<<k<<","<<l2<<") to ("<<k<<","<<l2-1<<")"<<std::endl;
-         m_subspaceMatrix(k,l2-1)=m_subspaceMatrix(k,l2);
-         m_subspaceOverlap(k,l2-1)=m_subspaceOverlap(k,l2);
+         m_QQMatrix(k,l2-1)=m_QQMatrix(k,l2);
+         m_QQOverlap(k,l2-1)=m_QQOverlap(k,l2);
         }
        }
-       for (int l2=l+1; l2<m_subspaceMatrix.rows(); l2++) {
-        for (int k=0; k<m_subspaceMatrix.rows(); k++) {
-         m_subspaceMatrix(l2-1,k)=m_subspaceMatrix(l2,k);
-         m_subspaceOverlap(l2-1,k)=m_subspaceOverlap(l2,k);
+       for (int l2=l+1; l2<m_QQMatrix.rows(); l2++) {
+        for (int k=0; k<m_QQMatrix.rows(); k++) {
+         m_QQMatrix(l2-1,k)=m_QQMatrix(l2,k);
+         m_QQOverlap(l2-1,k)=m_QQOverlap(l2,k);
         }
        }
        new_size--;
@@ -410,8 +411,8 @@ namespace LinearAlgebra {
      }
     }
    }
-   m_subspaceMatrix.conservativeResize(new_size,new_size);
-   m_subspaceOverlap.conservativeResize(new_size,new_size);
+   m_QQMatrix.conservativeResize(new_size,new_size);
+   m_QQOverlap.conservativeResize(new_size,new_size);
    //    xout << "new m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
    //    xout << "new m_subspaceOverlap"<<std::endl<<m_subspaceOverlap<<std::endl;
   }
@@ -427,8 +428,8 @@ namespace LinearAlgebra {
   std::vector<int> m_dateOfBirth;
   size_t m_lastVectorIndex;
   std::vector<scalar> m_updateShift;
-  Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_subspaceMatrix;
-  Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_subspaceOverlap;
+  Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_QQMatrix;
+  Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_QQOverlap;
   Eigen::MatrixXcd m_subspaceEigenvectors; // FIXME templating
   Eigen::VectorXcd m_subspaceEigenvalues; // FIXME templating
  public:
@@ -438,8 +439,18 @@ namespace LinearAlgebra {
   double m_singularity_threshold;
 
  };
+
+ template <class scalar>
+ scalar inline operator*(const typename IterativeSolver<scalar>::Pvector& a, const typename IterativeSolver<scalar>::Pvector& b) {
+  scalar result=0;
+  for (size_t sa=0; sa<a.offsets.size(); sa++)
+   for (size_t sb=0; sb<b.offsets.size(); sb++)
+    for (size_t ia=0; ia<a.coefficients[sa].size; ia++)
+     if (a.offsets[sa]+ia >= b.offsets[sb] && a.offsets[sa]+ia < b.offsets[sb]+b.coefficients[sb].size())
+      result += a.coefficients[sa][ia] * b.coefficients[sb][a.offsets[sa]+ia-b.offsets[sb]];
+  return result;
+ }
 }
-#include <stdexcept>
 
 namespace LinearAlgebra{
 
@@ -469,8 +480,8 @@ namespace LinearAlgebra{
  protected:
   virtual void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
   {
-   if (m_verbosity>2) xout << "Subspace matrix"<<std::endl<<this->m_subspaceMatrix<<std::endl;
-   if (m_verbosity>2) xout << "Subspace overlap"<<std::endl<<this->m_subspaceOverlap<<std::endl;
+   if (m_verbosity>2) xout << "Subspace matrix"<<std::endl<<this->m_QQMatrix<<std::endl;
+   if (m_verbosity>2) xout << "Subspace overlap"<<std::endl<<this->m_QQOverlap<<std::endl;
    this->diagonalizeSubspaceMatrix();
 
    if (m_verbosity>1) xout << "Subspace eigenvalues"<<std::endl<<this->m_subspaceEigenvalues<<std::endl;
@@ -548,8 +559,8 @@ namespace LinearAlgebra{
   protected:
    virtual void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
    {
-    if (m_verbosity>2) xout << "Subspace matrix"<<std::endl<<this->m_subspaceMatrix<<std::endl;
-    if (m_verbosity>2) xout << "Subspace overlap"<<std::endl<<this->m_subspaceOverlap<<std::endl;
+    if (m_verbosity>2) xout << "Subspace matrix"<<std::endl<<this->m_QQMatrix<<std::endl;
+    if (m_verbosity>2) xout << "Subspace overlap"<<std::endl<<this->m_QQOverlap<<std::endl;
     this->diagonalizeSubspaceMatrix();
 
     if (m_verbosity>1) xout << "Subspace eigenvalues"<<std::endl<<this->m_subspaceEigenvalues<<std::endl;
@@ -644,7 +655,7 @@ template <class scalar=double>
 {
  m_LastResidualNormSq=1e99; // so it can be tested even before extrapolation is done
  this->m_lastVectorIndex=0;
- while (this->m_subspaceMatrix.rows()>0) this->deleteVector(0); ;
+ while (this->m_QQMatrix.rows()>0) this->deleteVector(0); ;
  this->m_residuals.clear();
  this->m_solutions.clear();
  this->m_others.clear();
@@ -667,7 +678,7 @@ template <class scalar=double>
  //	  xout << "Enter DIIS::solveReducedProblem"<<std::endl;
  //	  xout << "residual : "<<residual<<std::endl;
  //	  xout << "solution : "<<solution<<std::endl;
- this->m_updateShift.clear();this->m_updateShift.push_back(-(1+std::numeric_limits<double>::epsilon())*this->m_subspaceMatrix(0,0));
+ this->m_updateShift.clear();this->m_updateShift.push_back(-(1+std::numeric_limits<double>::epsilon())*this->m_QQMatrix(0,0));
  double weight=options.count("weight") ? (options.find("weight")->second) : 1.0;
  if (this->m_maxDim <= 1 || this->m_DIISmode == disabled) return;
 
@@ -677,13 +688,13 @@ template <class scalar=double>
  //  if (m_subspaceMatrix.rows() < 9) {
  //      xout << "m_subspaceMatrix on entry to DIIS::solveReducedProblem"<<std::endl<<m_subspaceMatrix<<std::endl;
  //  }
- size_t nDim = this->m_subspaceMatrix.rows();
- this->m_LastResidualNormSq = std::fabs(this->m_subspaceMatrix(nDim-1,nDim-1));
+ size_t nDim = this->m_QQMatrix.rows();
+ this->m_LastResidualNormSq = std::fabs(this->m_QQMatrix(nDim-1,nDim-1));
  //  xout << "this->m_LastResidualNormSq "<<this->m_LastResidualNormSq<<std::endl;
 
  this->m_Weights.push_back(weight);
 
- Eigen::Array<scalar,Eigen::Dynamic,Eigen::Dynamic> d = this->m_subspaceMatrix.diagonal().array().abs();
+ Eigen::Array<scalar,Eigen::Dynamic,Eigen::Dynamic> d = this->m_QQMatrix.diagonal().array().abs();
  int worst=0, best=0;
  for (size_t i=0; i<nDim; i++) {
      if (d(i) > d(worst)) worst=i;
@@ -704,8 +715,8 @@ template <class scalar=double>
      nDim--;
      //  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
    }
- if (nDim != (size_t)this->m_subspaceMatrix.rows()) throw std::logic_error("problem in pruning");
- if (m_Weights.size() != (size_t)this->m_subspaceMatrix.rows()) {
+ if (nDim != (size_t)this->m_QQMatrix.rows()) throw std::logic_error("problem in pruning");
+ if (m_Weights.size() != (size_t)this->m_QQMatrix.rows()) {
      xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
      throw std::logic_error("problem after pruning weights");
    }
@@ -726,7 +737,7 @@ template <class scalar=double>
  // Factor out common size scales from the residual dots.
  // This is done to increase numerical stability for the case when _all_
  // residuals are very small.
- B.block(0,0,nDim,nDim) = this->m_subspaceMatrix/fBaseScale;
+ B.block(0,0,nDim,nDim) = this->m_QQMatrix/fBaseScale;
  Rhs.head(nDim) = Eigen::VectorXd::Zero(nDim);
 
  // make Lagrange/constraint lines.
@@ -867,14 +878,14 @@ template <class scalar>
  if (n == 1) {
      m_incremental_energies.resize(2);
      m_incremental_energies[0]=m_E0;
-     m_incremental_energies[1]=this->m_subspaceMatrix(0,0)-m_incremental_energies[0];
-     residual.axpy(-this->m_subspaceMatrix(0,0),m_solutions.back());
+     m_incremental_energies[1]=this->m_QQMatrix(0,0)-m_incremental_energies[0];
+     residual.axpy(-this->m_QQMatrix(0,0),m_solutions.back());
      this->m_updateShift.clear();this->m_updateShift.push_back(-(1+std::numeric_limits<double>::epsilon())*m_E0);
      if (m_verbosity>=0)
          xout << "E_0="<<m_E0<<std::endl << "E_1="<<m_incremental_energies[1]<<std::endl;
 //      xout << "d(1)after incrementing solution"<<residual<<std::endl;
  } else {
-     m_incremental_energies.push_back(this->m_subspaceMatrix(n-1,0)-this->m_subspaceMatrix(0,0)*this->m_subspaceOverlap(n-1,0));
+     m_incremental_energies.push_back(this->m_QQMatrix(n-1,0)-this->m_QQMatrix(0,0)*this->m_QQOverlap(n-1,0));
      if (m_verbosity>=0)
          xout << "E_"<<n<<"="<<m_incremental_energies.back()<<", Eigenvalue="<<this->m_subspaceEigenvalues(0)<<std::endl;
 //      xout << "d(n)=g(n-1)"<<residual<<std::endl;
@@ -882,7 +893,7 @@ template <class scalar>
 //      xout << "d(n)=g(n-1)+d(n-1)"<<residual<<std::endl;
 //      xout << "H(0,0) "<<this->m_subspaceMatrix(0,0)<<std::endl;
 //      xout << "c(n-1) "<<m_solutions.back()<<std::endl;
-     residual.axpy(-this->m_subspaceMatrix(0,0),m_solutions.back());
+     residual.axpy(-this->m_QQMatrix(0,0),m_solutions.back());
 //      xout << "d(n)=g(n-1)+d(n-1)-(E0+E1)c(n-1)"<<residual<<std::endl;
  // this is structured for multistate, but not thought about yet
  for (size_t kkk=0; kkk<residual.size(); kkk++) {

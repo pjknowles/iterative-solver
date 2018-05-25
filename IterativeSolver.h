@@ -464,7 +464,6 @@ namespace LinearAlgebra{
  * Example using offline distributed storage provided by the PagedVector class: @include LinearEigensystemExample-paged.cpp
  *
  * \tparam scalar Type of matrix elements
- *
  */
  template <class scalar=double>
  class LinearEigensystem : public IterativeSolver<scalar>

@@ -481,7 +481,7 @@ namespace LinearAlgebra{
 
 
  private:
-  virtual void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap())
+  void solveReducedProblem(vectorSet<scalar> & solution, vectorSet<scalar> & residual, vectorSet<scalar> & other, const optionMap options=optionMap()) override
   {
    if (m_verbosity>2) xout << "Subspace matrix"<<std::endl<<this->m_QQMatrix<<std::endl;
    if (m_verbosity>2) xout << "Subspace overlap"<<std::endl<<this->m_QQOverlap<<std::endl;

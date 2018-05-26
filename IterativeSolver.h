@@ -97,12 +97,45 @@ namespace LinearAlgebra {
    for (size_t k=0; k<action.size(); k++) action.m_active[k] = //action.m_active[k] &&
                                                                    parameters.m_active[k];
    m_lastVectorIndex=addVectorSet(parameters,action,other)-1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
+   buildSubspace(parameters,action);
    solveReducedProblem(parameters,action,other);
   }
 
   void addVector(vectorSet<scalar> & parameters, vectorSet<scalar> & action ) { vectorSet<scalar> parametersP; return addVector(parameters,action,parametersP); }
   void addVector(vectorSet<scalar> & parameters, vectorSet<scalar> & action, vectorSet<scalar> & parametersP ) { vectorSet<scalar> other; return addVector(parameters,action,parametersP,other); }
+ private:
 
+  void buildSubspace(vectorSet<scalar> & solution, vectorSet<scalar> & residual)
+  {
+   if (m_verbosity>2) xout << "Subspace matrix"<<std::endl<<this->m_QQMatrix<<std::endl;
+   if (m_verbosity>2) xout << "Subspace overlap"<<std::endl<<this->m_QQOverlap<<std::endl;
+   this->diagonalizeSubspaceMatrix();
+
+   if (m_verbosity>1) xout << "Subspace eigenvalues"<<std::endl<<this->m_subspaceEigenvalues<<std::endl;
+   if (m_verbosity>2) xout << "Subspace eigenvectors"<<std::endl<<this->m_subspaceEigenvectors<<std::endl;
+   residual.zero();
+   solution.zero();
+   for (size_t kkk=0; kkk<residual.size(); kkk++) {
+    size_t l=0;
+    for (size_t ll=0; ll<this->m_solutions.size(); ll++) {
+     for (size_t lll=0; lll<this->m_solutions[ll].size(); lll++) {
+      if (this->m_solutions[ll].m_active[lll]) {
+          if (m_verbosity>2) xout << "LinearEigensystem::solveReducedProblem kkk="<<kkk<<", ll="<<ll<<", lll="<<lll<<", l="<<l<<std::endl;
+          if (m_verbosity>2) xout << "Eigenvectors:\n"<<this->m_subspaceEigenvectors(l,kkk).real()<<std::endl;
+       solution[kkk]->axpy(this->m_subspaceEigenvectors(l,kkk).real(),*this->m_solutions[ll][lll]);
+       residual[kkk]->axpy(this->m_subspaceEigenvectors(l,kkk).real(),*this->m_residuals[ll][lll]);
+       l++;
+      }
+     }
+    }
+    residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(),*solution[kkk]);
+   }
+
+   this->m_updateShift.resize(this->m_roots);
+   for (size_t root=0; root<(size_t)this->m_roots; root++) this->m_updateShift[root]=-(1+std::numeric_limits<scalar>::epsilon())*this->m_subspaceEigenvalues[root].real();
+  }
+
+ public:
   /*!
    * \brief Specify a P-space vector as a sparse combination of parameters. The container holds a number of segments,
    * each characterised by an offset in the full space, and a vector of coefficients starting at that offset.
@@ -429,6 +462,8 @@ namespace LinearAlgebra {
   std::vector<int> m_dateOfBirth;
   size_t m_lastVectorIndex;
   std::vector<scalar> m_updateShift;
+  Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_subspaceMatrix;
+  Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_subspaceOverlap;
   Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_QQMatrix;
   Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> m_QQOverlap;
   Eigen::MatrixXcd m_subspaceEigenvectors; // FIXME templating

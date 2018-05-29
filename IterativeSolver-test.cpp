@@ -394,8 +394,9 @@ void RSPTTest(size_t n, double alpha)
   size_t sample=1;
   for (size_t repeat=0; repeat < sample; repeat++) {
       instance.set(n,alpha);
-      RSPT<scalar> d;
+      LinearEigensystem<scalar> d;
       d.m_verbosity=-1;
+      d.m_rspt=true;
       d.m_minIterations=50;
       d.m_thresh=1e-5;
       d.m_maxIterations=1000;

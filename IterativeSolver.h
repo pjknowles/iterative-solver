@@ -57,8 +57,6 @@ namespace LinearAlgebra {
  public:
   IterativeSolver(
   ) :
-  m_residual_eigen(false),
-  m_residual_rhs(false),
     m_Pvectors(0),
     m_verbosity(0),
     m_thresh(1e-12),
@@ -70,6 +68,9 @@ namespace LinearAlgebra {
     m_roots(-1),
     m_date(0),
     m_subspaceMatrixResRes(false),
+    m_residual_eigen(false),
+    m_residual_rhs(false),
+    m_rspt(false),
     m_iterations(0),
     m_singularity_threshold(1e-20),
     m_error(0),
@@ -79,6 +80,7 @@ namespace LinearAlgebra {
 
   virtual ~IterativeSolver() = default;
 
+  bool m_rspt;
  public:
   /*!
    * \brief Take, typically, a current solution and residual, and return new solution.
@@ -527,6 +529,7 @@ namespace LinearAlgebra {
   bool m_subspaceMatrixResRes; // whether m_subspaceMatrix is Residual.Residual (true) or Solution.Residual (false)
   bool m_residual_eigen; // whether to subtract eigenvalue*solution when constructing residual
   bool m_residual_rhs; // whether to subtract rhs when constructing residual
+  // whether to use RSPT to construct solution instead of diagonalisation
   std::vector<vectorSet<scalar>> m_residuals;
   std::vector<vectorSet<scalar>> m_solutions;
   std::vector<vectorSet<scalar>> m_others;
@@ -627,12 +630,13 @@ namespace LinearAlgebra {
   }
 
   void solveReducedProblem() override {
-   if (m_verbosity > 2) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
-   if (m_verbosity > 2) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
-   this->diagonalizeSubspaceMatrix();
-   this->m_interpolation = this->m_subspaceEigenvectors.block(0,0,this->m_subspaceEigenvectors.rows(),this->m_roots).real();
-   if (m_verbosity > 1) xout << "Subspace eigenvalues" << std::endl << this->m_subspaceEigenvalues << std::endl;
-   if (m_verbosity > 2) xout << "Subspace eigenvectors" << std::endl << this->m_subspaceEigenvectors << std::endl;
+   if (this->m_rspt) {
+    throw std::logic_error("RSPT not yet implemented");
+   } else {
+    this->diagonalizeSubspaceMatrix();
+    this->m_interpolation = this->m_subspaceEigenvectors.block(0, 0, this->m_subspaceEigenvectors.rows(),
+                                                               this->m_roots).real();
+   }
 
    this->m_updateShift.resize(this->m_roots);
    for (size_t root = 0; root < (size_t) this->m_roots; root++)
@@ -786,7 +790,8 @@ namespace LinearAlgebra {
  * Corresponding other vectors whose sequence will be extrapolated.
  */
  protected:
-  void oldSolveReducedProblem(vectorSet<scalar> &solution, vectorSet<scalar> &residual, vectorSet<scalar> &other) { }
+  void oldSolveReducedProblem(vectorSet<scalar> &solution, vectorSet<scalar> &residual, vectorSet<scalar> &other) {}
+
   void solveReducedProblem() override {
    //	  xout << "Enter DIIS::solveReducedProblem"<<std::endl;
    //	  xout << "residual : "<<residual<<std::endl;
@@ -877,7 +882,7 @@ namespace LinearAlgebra {
      xout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
      throw std::overflow_error("NaN detected in DIIS submatrix solution");
     }
-    this->m_interpolation = Coeffs.head(nDim);
+   this->m_interpolation = Coeffs.head(nDim);
   }
 
   /*!
@@ -916,135 +921,7 @@ namespace LinearAlgebra {
     m_LastAmplitudeCoeff;
 
  };
-
- /** @example RSPTexample.cpp */
- /*!
-* \brief A class that finds the lowest eigensolution of a matrix as a perturbation series
-*
-* Example of simplest use: @include RSPTexample.cpp
-*
-*/
- template<class scalar>
- class RSPT : public IterativeSolver<scalar> {
-  using IterativeSolver<scalar>::m_residuals;
-  using IterativeSolver<scalar>::m_solutions;
-  using IterativeSolver<scalar>::m_others;
-  using IterativeSolver<scalar>::m_roots;
-  using IterativeSolver<scalar>::m_linear;
- public:
-  using IterativeSolver<scalar>::m_verbosity;
-
-  /*!
-   * \brief RSPT
-   */
-  RSPT() {
-   this->m_residual_rhs = false;
-   this->m_residual_eigen = false;
-   this->m_linear = true;
-   this->m_orthogonalize = false;
-   this->m_minIterations = 10; // Ensure at least this order
-   m_roots = 1;
-  }
-
-  static void test(size_t n, double alpha);
-
- protected:
-  virtual void oldSolveReducedProblem(vectorSet<scalar> &solution, vectorSet<scalar> &residual, vectorSet<scalar> &other) {
-   size_t n = m_solutions.size();
-   // on entry, solution contains |n-1> and residual contains H|n-1>, already stored in m_solutions & m_residuals.
-   // on exit, incremental_energies[n] contains E_n = <0 |H-H_0-E_1|n-1> = <0|H|n-1>-(E_0+E_1)<0|n-1>.
-   // eventually, Wigner 2n+1 rule should be implemented.
-   // on exit, residual contains
-   // |d> = -(H_0-E_0)|n>
-   //     = (H-H_0-E_1)|n-1> - sum_{k=0}^{n-2} E_{n-k} |k>.
-   //     = (H-E_0-E_1)|n-1> - (H_0-E_0)|n-1> - sum_{k=0}^{n-2} E_{n-k} |k>.
-   // on exit, solution contains 0.
-
-   {
-    Eigen::MatrixXcd oldeigenvalues = this->m_subspaceEigenvalues;
-    this->diagonalizeSubspaceMatrix();
-    if (std::isnan(this->m_subspaceEigenvalues(0).real())) this->m_subspaceEigenvalues = oldeigenvalues;
-   }
-   if (m_verbosity > 1) xout << "Subspace eigenvalues" << std::endl << this->m_subspaceEigenvalues << std::endl;
-   if (m_verbosity > 2) xout << "Subspace eigenvectors" << std::endl << this->m_subspaceEigenvectors << std::endl;
-
-//      xout << "|"<<n-1<<">: "<<solution;
-//      xout << "H|"<<n-1<<">: "<<residual;
-   if (n == 1) {
-    // the preconditioner function must take special action when shift=0
-    // and return H0.residual not -(H0-shift)^{-1}.residual
-    std::vector<double> shift;
-    shift.push_back(0);
-    throw std::logic_error("RSPT coding not complete");
-//      m_preconditionerFunction(solution,residual,shift,false);
-//      xout << "solution="<<solution;
-//      xout << "residual="<<residual;
-    m_E0 = solution.front()->dot(*residual.front());
-   }
-   solution.zero();
-   residual.zero();
-   residual.axpy(1, m_residuals.back());
-   if (n == 1) {
-    m_incremental_energies.resize(2);
-    m_incremental_energies[0] = m_E0;
-    m_incremental_energies[1] = this->m_QQMatrix(0, 0) - m_incremental_energies[0];
-    residual.axpy(-this->m_QQMatrix(0, 0), m_solutions.back());
-    this->m_updateShift.clear();
-    this->m_updateShift.push_back(-(1 + std::numeric_limits<double>::epsilon()) * m_E0);
-    if (m_verbosity >= 0)
-     xout << "E_0=" << m_E0 << std::endl << "E_1=" << m_incremental_energies[1] << std::endl;
-//      xout << "d(1)after incrementing solution"<<residual<<std::endl;
-   } else {
-    m_incremental_energies.push_back(this->m_QQMatrix(n - 1, 0) - this->m_QQMatrix(0, 0) * this->m_QQOverlap(n - 1, 0));
-    if (m_verbosity >= 0)
-     xout << "E_" << n << "=" << m_incremental_energies.back() << ", Eigenvalue=" << this->m_subspaceEigenvalues(0)
-          << std::endl;
-//      xout << "d(n)=g(n-1)"<<residual<<std::endl;
-    residual.axpy(1, m_lastH0mE0psi);
-//      xout << "d(n)=g(n-1)+d(n-1)"<<residual<<std::endl;
-//      xout << "H(0,0) "<<this->m_subspaceMatrix(0,0)<<std::endl;
-//      xout << "c(n-1) "<<m_solutions.back()<<std::endl;
-    residual.axpy(-this->m_QQMatrix(0, 0), m_solutions.back());
-//      xout << "d(n)=g(n-1)+d(n-1)-(E0+E1)c(n-1)"<<residual<<std::endl;
-    // this is structured for multistate, but not thought about yet
-    for (size_t kkk = 0; kkk < residual.size(); kkk++) {
-     size_t l = 0;
-     for (size_t ll = 0; ll < n - 1; ll++) {
-      for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
-       residual[kkk]->axpy(-m_incremental_energies[n - ll], *m_solutions[ll][lll]);
-//      xout << "d(n)after incrementing solution"<<residual<<std::endl;
-       l++;
-      }
-     }
-    }
-
-   }
-   m_lastH0mE0psi = residual; // we will need this in the next iteration // FIXME does this leak memory?
-//  xout << "-(H0-E0)|"<<n<<">: "<<residual<<std::endl;
-  }
-
- public:
-  int m_order; ///< Up to what order of perturbation theory should the energy be obtained.
-  std::vector<double> incremental_energies(
-    size_t state = 0) { return m_incremental_energies; } ///< The incremental energies order by order.
-///> The total energy to a given order.
-  double energy(size_t order, ///< the desired maximum order of perturbation theory
-                size_t state = 0 ///< the desired state
-  ) {
-   double result = 0.0;
-   for (size_t k = 0; k <= order; k++)
-    result += m_incremental_energies[k];
-   return result;
-  }
-
- private:
-  vectorSet<scalar> m_lastH0mE0psi;
-  std::vector<double> m_incremental_energies;
-  double m_E0;
- };
-
 }
-
 
 // C interface
 extern "C" void

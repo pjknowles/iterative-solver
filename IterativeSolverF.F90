@@ -99,7 +99,7 @@ CONTAINS
   IterativeSolverLinearEigensystemEndIterationC(solution,residual,error)
   END FUNCTION IterativeSolverLinearEigensystemEndIteration
 
- 
+
 !!> Add P-space vectors to the expansion set
  SUBROUTINE IterativeSolverAddP(indices,coefficients,pp)
   INTEGER, INTENT(in), DIMENSION(:) :: indices
@@ -118,7 +118,7 @@ CONTAINS
   indicesC = INT(indices,c_size_t)
   CALL IterativeSolverAddPC(indicesC,coefficients,pp)
  END SUBROUTINE IterativeSolverAddP
- 
+
 !!> Unit testing of IterativeSolver Fortran binding
  SUBROUTINE IterativeSolverFTest() BIND(C,name='IterativeSolverFTest')
   INTEGER, PARAMETER :: n=100, nroot=2

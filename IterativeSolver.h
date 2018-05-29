@@ -57,6 +57,8 @@ namespace LinearAlgebra {
  public:
   IterativeSolver(
   ) :
+  m_residual_eigen(false),
+  m_residual_rhs(false),
     m_Pvectors(0),
     m_verbosity(0),
     m_thresh(1e-12),
@@ -104,7 +106,8 @@ namespace LinearAlgebra {
    m_lastVectorIndex = addVectorSet(parameters, action, other) -
                        1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
    buildSubspace();
-   oldSolveReducedProblem(parameters, action, other);
+   solveReducedProblem();
+   doInterpolation(parameters,action,parametersP,other);
   }
 
   void addVector(vectorSet<scalar> &parameters, vectorSet<scalar> &action) {
@@ -150,7 +153,8 @@ namespace LinearAlgebra {
      m_PPMatrix(old + n, i) = m_PPMatrix(i, old + n) = PP[offset++];
    }
    buildSubspace();
-   oldSolveReducedProblem(parameters, action, other);
+   solveReducedProblem();
+   doInterpolation(parameters,action,parametersP,other);
   }
 
   void addP(std::vector<Pvector> Pvectors, const scalar *PP, vectorSet<scalar> &parameters, vectorSet<scalar> &action,
@@ -264,6 +268,8 @@ namespace LinearAlgebra {
 
  protected:
 
+  virtual void solveReducedProblem()=0;
+
   virtual void
   oldSolveReducedProblem(vectorSet<scalar> &residual, vectorSet<scalar> &solution, vectorSet<scalar> &other)=0;
 
@@ -348,11 +354,9 @@ namespace LinearAlgebra {
    * @param residual On exit, the Q contribution to the residual. The P part has to be evaluated by the caller.
    * @param solutionP On exit, the solution projected to the P space
    * @param other On exit, interpolation of the other vectors
-   * @param eigen Whether to subtract eigenvalue*solution from residual
-   * @param inhomogeneous Whether to subtract rhs from residual
    */
   void doInterpolation(vectorSet<scalar> &solution, vectorSet<scalar> &residual, vectorSet<scalar> &solutionP,
-                       vectorSet<scalar> &other, bool eigen = false, bool inhomogeneous = false) {
+                       vectorSet<scalar> &other) {
    solution.zero();
    residual.zero();
    solutionP.zero();
@@ -363,7 +367,7 @@ namespace LinearAlgebra {
      for (size_t lll = 0; lll < this->m_solutions[ll].size(); lll++) {
       if (this->m_solutions[ll].m_active[lll]) {
        if (m_verbosity > 2)
-        xout << "LinearEigensystem::solveReducedProblem kkk=" << kkk << ", ll=" << ll << ", lll=" << lll << ", l=" << l
+        xout << "LinearEigensystem::doInterpolation kkk=" << kkk << ", ll=" << ll << ", lll=" << lll << ", l=" << l
              << std::endl;
        if (m_verbosity > 2) xout << "Interpolation:\n" << this->m_interpolation(l, kkk) << std::endl;
        solution[kkk]->axpy(this->m_interpolation(l, kkk), *this->m_solutions[ll][lll]);
@@ -373,8 +377,8 @@ namespace LinearAlgebra {
       }
      }
     }
-    if (eigen) residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(), *solution[kkk]);
-    if (inhomogeneous) residual[kkk]->axpy(-1, *this->m_rhs[kkk]);
+    if (m_residual_eigen) residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(), *solution[kkk]);
+    if (m_residual_rhs) residual[kkk]->axpy(-1, *this->m_rhs[kkk]);
    }
 
   }
@@ -521,6 +525,8 @@ namespace LinearAlgebra {
   size_t m_worst; //!< worst-converged solution, ie m_error = m_errors[m_worst]
   int m_date;
   bool m_subspaceMatrixResRes; // whether m_subspaceMatrix is Residual.Residual (true) or Solution.Residual (false)
+  bool m_residual_eigen; // whether to subtract eigenvalue*solution when constructing residual
+  bool m_residual_rhs; // whether to subtract rhs when constructing residual
   std::vector<vectorSet<scalar>> m_residuals;
   std::vector<vectorSet<scalar>> m_solutions;
   std::vector<vectorSet<scalar>> m_others;
@@ -578,6 +584,8 @@ namespace LinearAlgebra {
    * \brief LinearEigensystem
    */
   LinearEigensystem() {
+   this->m_residual_rhs = false;
+   this->m_residual_eigen = true;
    this->m_linear = true;
    this->m_orthogonalize = true;
   }
@@ -618,6 +626,20 @@ namespace LinearAlgebra {
                                 this->m_subspaceEigenvalues[root].real();
   }
 
+  void solveReducedProblem() override {
+   if (m_verbosity > 2) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
+   if (m_verbosity > 2) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
+   this->diagonalizeSubspaceMatrix();
+   this->m_interpolation = this->m_subspaceEigenvectors.block(0,0,this->m_subspaceEigenvectors.rows(),this->m_roots).real();
+   if (m_verbosity > 1) xout << "Subspace eigenvalues" << std::endl << this->m_subspaceEigenvalues << std::endl;
+   if (m_verbosity > 2) xout << "Subspace eigenvectors" << std::endl << this->m_subspaceEigenvectors << std::endl;
+
+   this->m_updateShift.resize(this->m_roots);
+   for (size_t root = 0; root < (size_t) this->m_roots; root++)
+    this->m_updateShift[root] = -(1 + std::numeric_limits<scalar>::epsilon()) *
+                                this->m_subspaceEigenvalues[root].real();
+  }
+
   void report() override {
    std::vector<scalar> ev = this->eigenvalues();
    if (m_verbosity > 0) {
@@ -650,6 +672,8 @@ namespace LinearAlgebra {
    */
   LinearEquations(const vectorSet<scalar> &rhs)
     : IterativeSolver<scalar>::m_linear(true), IterativeSolver<scalar>::m_orthogonalize(true) {
+   this->m_residual_rhs = true;
+   this->m_residual_eigen = false;
    addEquations(rhs);
   }
 
@@ -666,40 +690,14 @@ namespace LinearAlgebra {
 
 
  protected:
-  virtual void oldSolveReducedProblem(vectorSet<scalar> &solution, vectorSet<scalar> &residual, vectorSet<scalar> &other) {
-   if (m_verbosity > 2) xout << "Subspace matrix" << std::endl << this->m_QQMatrix << std::endl;
-   if (m_verbosity > 2) xout << "Subspace overlap" << std::endl << this->m_QQOverlap << std::endl;
+  virtual void solveReducedProblem() {
+   throw std::runtime_error("Not yet coded");
    this->diagonalizeSubspaceMatrix();
-
-   if (m_verbosity > 1) xout << "Subspace eigenvalues" << std::endl << this->m_subspaceEigenvalues << std::endl;
-   if (m_verbosity > 2) xout << "Subspace eigenvectors" << std::endl << this->m_subspaceEigenvectors << std::endl;
-   residual.zero();
-   solution.zero();
-   for (size_t kkk = 0; kkk < residual.size(); kkk++) {
-    size_t l = 0;
-    for (size_t ll = 0; ll < this->m_solutions.size(); ll++) {
-     for (size_t lll = 0; lll < this->m_solutions[ll].size(); lll++) {
-      if (this->m_solutions[ll].m_active[lll]) {
-       if (m_verbosity > 2)
-        xout << "LinearEquations::solveReducedProblem kkk=" << kkk << ", ll=" << ll << ", lll=" << lll << ", l=" << l
-             << std::endl;
-       if (m_verbosity > 2) xout << "Eigenvectors:\n" << this->m_subspaceEigenvectors(l, kkk).real() << std::endl;
-       solution[kkk]->axpy(this->m_subspaceEigenvectors(l, kkk).real(), *this->m_solutions[ll][lll]);
-       residual[kkk]->axpy(this->m_subspaceEigenvectors(l, kkk).real(), *this->m_residuals[ll][lll]);
-       l++;
-      }
-     }
-    }
-    residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(), *solution[kkk]);
-   }
-
-   this->m_updateShift.resize(this->m_roots);
-   for (size_t root = 0; root < (size_t) this->m_roots; root++)
-    this->m_updateShift[root] = -(1 + std::numeric_limits<scalar>::epsilon()) *
-                                this->m_subspaceEigenvalues[root].real();
+   this->m_interpolation.setZero();
   }
 
   virtual void report() {
+   throw std::runtime_error("Not yet coded");
    std::vector<scalar> ev = this->eigenvalues();
    if (m_verbosity > 0) {
     xout << "iteration " << this->iterations() << ", error[" << this->m_worst << "] = " << this->m_error
@@ -738,7 +736,10 @@ namespace LinearAlgebra {
  */
   DIIS()
     : m_svdThreshold(1e-10), m_maxDim(6) {
+   this->m_residual_rhs = false;
+   this->m_residual_eigen = false;
    this->m_orthogonalize = false;
+   this->m_roots = 1;
    setMode(DIISmode);
    Reset();
   }
@@ -785,30 +786,31 @@ namespace LinearAlgebra {
  * Corresponding other vectors whose sequence will be extrapolated.
  */
  protected:
-  void oldSolveReducedProblem(vectorSet<scalar> &solution, vectorSet<scalar> &residual, vectorSet<scalar> &other) {
+  void oldSolveReducedProblem(vectorSet<scalar> &solution, vectorSet<scalar> &residual, vectorSet<scalar> &other) { }
+  void solveReducedProblem() override {
    //	  xout << "Enter DIIS::solveReducedProblem"<<std::endl;
    //	  xout << "residual : "<<residual<<std::endl;
    //	  xout << "solution : "<<solution<<std::endl;
    this->m_updateShift.clear();
-   this->m_updateShift.push_back(-(1 + std::numeric_limits<double>::epsilon()) * this->m_QQMatrix(0, 0));
+   this->m_updateShift.push_back(-(1 + std::numeric_limits<double>::epsilon()) * this->m_subspaceMatrix(0, 0));
    double weight =
      this->m_options.count("weight") ? (
        this->m_options.find("weight")->second) : 1.0;
    if (this->m_maxDim <= 1 || this->m_DIISmode == disabled) return;
 
-   if (residual.size() > 1) throw std::logic_error("DIIS does not handle multiple solutions");
-   this->m_lastVectorIndex = this->m_residuals.size() - 1;
+   if (this->m_roots > 1) throw std::logic_error("DIIS does not handle multiple solutions");
 
    //  if (m_subspaceMatrix.rows() < 9) {
    //      xout << "m_subspaceMatrix on entry to DIIS::solveReducedProblem"<<std::endl<<m_subspaceMatrix<<std::endl;
    //  }
-   size_t nDim = this->m_QQMatrix.rows();
-   this->m_LastResidualNormSq = std::fabs(this->m_QQMatrix(nDim - 1, nDim - 1));
+   size_t nDim = this->m_subspaceMatrix.rows();
+   this->m_lastVectorIndex = nDim - 1;
+   this->m_LastResidualNormSq = std::fabs(this->m_subspaceMatrix(nDim - 1, nDim - 1));
    //  xout << "this->m_LastResidualNormSq "<<this->m_LastResidualNormSq<<std::endl;
 
-   this->m_Weights.push_back(weight);
+   this->m_Weights.push_back(weight); // TODO not conformant - add style
 
-   Eigen::Array<scalar, Eigen::Dynamic, Eigen::Dynamic> d = this->m_QQMatrix.diagonal().array().abs();
+   Eigen::Array<scalar, Eigen::Dynamic, Eigen::Dynamic> d = this->m_subspaceMatrix.diagonal().array().abs();
    int worst = 0, best = 0;
    for (size_t i = 0; i < nDim; i++) {
     if (d(i) > d(worst)) worst = i;
@@ -829,8 +831,8 @@ namespace LinearAlgebra {
     nDim--;
     //  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
    }
-   if (nDim != (size_t) this->m_QQMatrix.rows()) throw std::logic_error("problem in pruning");
-   if (m_Weights.size() != (size_t) this->m_QQMatrix.rows()) {
+   if (nDim != (size_t) this->m_subspaceMatrix.rows()) throw std::logic_error("problem in pruning");
+   if (m_Weights.size() != (size_t) this->m_subspaceMatrix.rows()) {
     xout << "nDim=" << nDim << ", m_Weights.size()=" << m_Weights.size() << std::endl;
     throw std::logic_error("problem after pruning weights");
    }
@@ -851,7 +853,7 @@ namespace LinearAlgebra {
    // Factor out common size scales from the residual dots.
    // This is done to increase numerical stability for the case when _all_
    // residuals are very small.
-   B.block(0, 0, nDim, nDim) = this->m_QQMatrix / fBaseScale;
+   B.block(0, 0, nDim, nDim) = this->m_subspaceMatrix / fBaseScale;
    Rhs.head(nDim) = Eigen::VectorXd::Zero(nDim);
 
    // make Lagrange/constraint lines.
@@ -875,23 +877,7 @@ namespace LinearAlgebra {
      xout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
      throw std::overflow_error("NaN detected in DIIS submatrix solution");
     }
-   residual.zero();
-   solution.zero();
-   size_t k = 0;
-   for (size_t l = 0; l < other.size(); l++) other[l]->zero();
-   for (size_t kk = 0; kk < m_residuals.size(); kk++) {
-    if (m_residuals[kk].m_active.front()) {
-     residual.front()->axpy(Coeffs[k], *m_residuals[kk].front());
-     solution.front()->axpy(Coeffs[k], *m_solutions[kk].front());
-     for (size_t l = 0; l < other.size(); l++)
-      other[l]->axpy(Coeffs[k], *m_others[kk][l]);
-     k++;
-    }
-   }
-   if (m_verbosity > 2) {
-    xout << "DIIS.solveReducedProblem() final extrapolated solution: " << solution.front() << std::endl;
-    xout << "DIIS.solveReducedProblem() final extrapolated residual: " << residual.front() << std::endl;
-   }
+    this->m_interpolation = Coeffs.head(nDim);
   }
 
   /*!
@@ -952,6 +938,8 @@ namespace LinearAlgebra {
    * \brief RSPT
    */
   RSPT() {
+   this->m_residual_rhs = false;
+   this->m_residual_eigen = false;
    this->m_linear = true;
    this->m_orthogonalize = false;
    this->m_minIterations = 10; // Ensure at least this order

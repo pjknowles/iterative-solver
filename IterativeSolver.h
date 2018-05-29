@@ -396,8 +396,8 @@ namespace LinearAlgebra {
     }
    }
    if (m_verbosity > 3) {
-    xout << "m_subspaceMatrix: " << std::__1::endl << m_QQMatrix << std::__1::endl;
-    xout << "m_subspaceOverlap: " << std::__1::endl << m_QQOverlap << std::__1::endl;
+    xout << "m_subspaceMatrix: " << std::endl << m_QQMatrix << std::endl;
+    xout << "m_subspaceOverlap: " << std::endl << m_QQOverlap << std::endl;
    }
    return m_residuals.size();
   }

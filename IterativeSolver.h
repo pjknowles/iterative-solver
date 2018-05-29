@@ -576,12 +576,13 @@ namespace LinearAlgebra{
     * \param rhs right-hand-side vectors. More can be added subsequently using addEquations(), provided iterations have not yet started.
     */
    LinearEquations(const vectorSet<scalar>& rhs)
+   : IterativeSolver<scalar>::m_linear(true), IterativeSolver<scalar>::m_orthogonalize(true)
    {
-    this->m_linear=true;
-    this->m_orthogonalize=true;
     addEquations(rhs);
    }
-   LinearEquations() {vectorSet<scalar> rhs; this->LinearEquations(rhs);}
+   LinearEquations()
+     : IterativeSolver<scalar>::m_linear(true), IterativeSolver<scalar>::m_orthogonalize(true)
+   {}
 
    /*!
     * \brief add one or more equations to the set to be solved, by specifying their right-hand-side vector

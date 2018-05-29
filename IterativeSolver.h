@@ -376,7 +376,7 @@ namespace LinearAlgebra {
    //      xout << "new_size="<<new_size<<std::endl;
    m_QQMatrix.conservativeResize(new_size, new_size);
    m_QQOverlap.conservativeResize(new_size, new_size);
-   std::__1::vector<vectorSet<scalar>>* bra = m_subspaceMatrixResRes ? &m_residuals : &m_solutions;
+   std::vector<vectorSet<scalar>>* bra = m_subspaceMatrixResRes ? &m_residuals : &m_solutions;
    size_t k=old_size;
    for (size_t kkk=0; kkk<residual1.size(); kkk++) {
     if (residual1.m_active[kkk]) {

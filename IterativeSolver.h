@@ -272,14 +272,6 @@ namespace LinearAlgebra {
 
   virtual void solveReducedProblem()=0;
 
-  virtual void
-  oldSolveReducedProblem(vectorSet<scalar> &residual, vectorSet<scalar> &solution, vectorSet<scalar> &other)=0;
-
-  void oldSolveReducedProblem(vectorSet<scalar> &residual, vectorSet<scalar> &solution) {
-   vectorSet<scalar> other;
-   oldSolveReducedProblem(residual, solution, other);
-  }
-
   virtual void report() {
    if (m_verbosity > 0)
     xout << "iteration " << iterations() << ", error[" << m_worst << "] = " << m_error << std::endl;
@@ -595,39 +587,6 @@ namespace LinearAlgebra {
 
 
  private:
-  void
-  oldSolveReducedProblem(vectorSet<scalar> &solution, vectorSet<scalar> &residual, vectorSet<scalar> &other) override {
-   if (m_verbosity > 2) xout << "Subspace matrix" << std::endl << this->m_QQMatrix << std::endl;
-   if (m_verbosity > 2) xout << "Subspace overlap" << std::endl << this->m_QQOverlap << std::endl;
-   this->diagonalizeSubspaceMatrix();
-
-   if (m_verbosity > 1) xout << "Subspace eigenvalues" << std::endl << this->m_subspaceEigenvalues << std::endl;
-   if (m_verbosity > 2) xout << "Subspace eigenvectors" << std::endl << this->m_subspaceEigenvectors << std::endl;
-   residual.zero();
-   solution.zero();
-   for (size_t kkk = 0; kkk < residual.size(); kkk++) {
-    size_t l = 0;
-    for (size_t ll = 0; ll < this->m_solutions.size(); ll++) {
-     for (size_t lll = 0; lll < this->m_solutions[ll].size(); lll++) {
-      if (this->m_solutions[ll].m_active[lll]) {
-       if (m_verbosity > 2)
-        xout << "LinearEigensystem::solveReducedProblem kkk=" << kkk << ", ll=" << ll << ", lll=" << lll << ", l=" << l
-             << std::endl;
-       if (m_verbosity > 2) xout << "Eigenvectors:\n" << this->m_subspaceEigenvectors(l, kkk).real() << std::endl;
-       solution[kkk]->axpy(this->m_subspaceEigenvectors(l, kkk).real(), *this->m_solutions[ll][lll]);
-       residual[kkk]->axpy(this->m_subspaceEigenvectors(l, kkk).real(), *this->m_residuals[ll][lll]);
-       l++;
-      }
-     }
-    }
-    residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(), *solution[kkk]);
-   }
-
-   this->m_updateShift.resize(this->m_roots);
-   for (size_t root = 0; root < (size_t) this->m_roots; root++)
-    this->m_updateShift[root] = -(1 + std::numeric_limits<scalar>::epsilon()) *
-                                this->m_subspaceEigenvalues[root].real();
-  }
 
   void solveReducedProblem() override {
    if (this->m_rspt) {
@@ -790,8 +749,6 @@ namespace LinearAlgebra {
  * Corresponding other vectors whose sequence will be extrapolated.
  */
  protected:
-  void oldSolveReducedProblem(vectorSet<scalar> &solution, vectorSet<scalar> &residual, vectorSet<scalar> &other) {}
-
   void solveReducedProblem() override {
    //	  xout << "Enter DIIS::solveReducedProblem"<<std::endl;
    //	  xout << "residual : "<<residual<<std::endl;

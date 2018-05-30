@@ -190,12 +190,32 @@ namespace LinearAlgebra {
    * indicate an energy improvement in the next iteration of this amount or more.
    * \return
    */
-  std::vector<size_t> suggestP(const vectorSet<scalar> &solution,
-                               const vectorSet<scalar> &residual,
-                               const size_t maximumNumber = 1000,
-                               const scalar threshold = 0) {
-   return std::vector<size_t>(0);
+  std::map<size_t, scalar> suggestP(const vectorSet<scalar> &solution,
+                                    const vectorSet<scalar> &residual,
+                                    const size_t maximumNumber = 1000,
+                                    const scalar threshold = 0) {
+   std::map<size_t, scalar> result;
+   std::multimap<scalar, size_t> inverseResult;
+   for (size_t kkk = 0; kkk < solution.size(); kkk++) {
+    if (solution.m_active[kkk]) {
+     auto stateResult = solution[kkk]->select(*residual[kkk],maximumNumber,threshold);
+//      for (const auto& kv : stateResult) inverseResult.insert(std::pair<scalar,size_t>(kv.second,kv.first));
+     for (const auto& kv : stateResult)
+      if (result.count(kv.first))
+       result[kv.first] = std::max(result[kv.first],kv.second);
+      else
+       result[kv.first] = kv.second;
+    }
+   }
+   // sort and select
+   for (const auto& kv : result) inverseResult.insert(std::pair<scalar,size_t>(kv.second,kv.first));
+   size_t k=0;for ( const auto p=inverseResult.cbegin(); p!=inverseResult.cend() && k<maximumNumber; k++) {
+    result[p->second] = p->first;
+    p++;
+   }
+   return result;
   }
+
 
   /*!
    * \brief Set convergence threshold
@@ -345,7 +365,8 @@ namespace LinearAlgebra {
    * On entry, m_solution contains the interpolation
    *
    * @param solution On exit, the complete current solution (P and Q parts)
-   * @param residual On exit, the Q contribution to the residual. The P part has to be evaluated by the caller.
+   * @param residual On exit, the Q contribution to the residual. The action of the matrix on the P solution is missing,
+   * and has to be evaluated by the caller.
    * @param solutionP On exit, the solution projected to the P space
    * @param other On exit, interpolation of the other vectors
    */

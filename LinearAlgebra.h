@@ -75,6 +75,17 @@ namespace LinearAlgebra {
     vector<scalar>* operator*=(scalar a) { return (*this)*=a;}
 
     /*!
+     * Find the largest values of the object.
+     * @param measure A vector of the same size and matching covariancy, with which the largest contributions to the scalar
+     * product with *this are selected.
+     * @param maximumNumber At most this number of elements are returned.
+     * @param threshold Contributions to the scalar product smaller than this are not included.
+     * @return A std::map giving index, value pairs. value is the product of the matrix element and the corresponding element of measure.
+     *
+     */
+    virtual std::map<size_t,scalar> select (const vector<scalar>& measure, const size_t maximumNumber = 1000, const scalar threshold = 0) const = 0;
+
+    /*!
      * \brief Set the contents of the object to zero.
      */
     virtual void zero()=0;

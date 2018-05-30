@@ -444,6 +444,60 @@ namespace LinearAlgebra {
   }
 
   /*!
+    * Find the largest values of the object.
+    * @param measure A vector of the same size and matching covariancy, with which the largest contributions to the scalar
+    * product with *this are selected.
+    * @param maximumNumber At most this number of elements are returned.
+    * @param threshold Contributions to the scalar product smaller than this are not included.
+    * @return A std::map giving index, value pairs. value is the product of the matrix element and the corresponding element of measure.
+    *
+    */
+  std::map<size_t,scalar> select(const vector <scalar> &measure, const size_t maximumNumber = 1000,
+                                  const scalar threshold = 0) const override
+  {
+   std::map<size_t,scalar> result;
+   std::multimap<scalar,size_t> sortlist;
+   const auto thresh = (threshold==0) ? std::numeric_limits<double>::max() : threshold;
+   const PagedVector& measur =dynamic_cast <const PagedVector&> (measure);
+   if (this->variance() * measur.variance() < 0) throw std::logic_error("mismatching co/contravariance");
+   if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
+   if (this->m_replicated != measur.m_replicated) throw std::logic_error("mismatching replication status");
+   if (this == &measur) {
+    for (m_cache.ensure(0); m_cache.length; ++m_cache) {
+     for (size_t i=0; i<m_cache.length; i++) {
+      auto test = m_cache.buffer[i] * m_cache.buffer[i];
+      if (test < thresh) {
+       sortlist.insert(std::make_pair(test,i));
+       if (sortlist.size()>maximumNumber) sortlist.erase(std::prev(sortlist.end()));
+      }
+     }
+    }
+   } else {
+    for (m_cache.ensure(0), measur.m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++measur.m_cache ) {
+     for (size_t i=0; i<m_cache.length; i++) {
+      scalar test = m_cache.buffer[i] * measur.m_cache.buffer[i];
+      if (test < thresh) {
+       sortlist.insert(std::make_pair(test,i));
+       if (sortlist.size()>maximumNumber) sortlist.erase(std::prev(sortlist.end()));
+      }
+     }
+    }
+   }
+#ifdef USE_MPI
+   if (!m_replicated) {
+    throw std::logic_error("incomplete MPI implementation");
+   }
+#endif
+//   std::cout << "leave dot"<<std::endl;
+   while (sortlist.size()>maximumNumber) sortlist.erase(std::prev(sortlist.end()));
+   for (const auto& p : sortlist)
+    result[p.second]=p.first;
+   return result;
+
+  };
+
+
+  /*!
    * \brief Copy from one object to another, adjusting size if needed.
    * \param other The source of data.
    * \return

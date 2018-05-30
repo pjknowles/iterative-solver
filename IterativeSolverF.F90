@@ -7,6 +7,8 @@ MODULE IterativeSolverF
  INTEGER(c_size_t), PRIVATE :: m_nq, m_nroot
 
 CONTAINS
+    subroutine IterativeSolverPrivate()
+     end subroutine IterativeSolverPrivate
 
 !> @example LinearEigensystemExampleF.F90
 !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos

@@ -51,27 +51,30 @@ CONTAINS
   CALL IterativeSolverLinearEigensystemInitializeC(m_nq,m_nroot,threshC, maxIterationsC, verbosityC)
  END SUBROUTINE IterativeSolverLinearEigensystemInitialize
 
-!>@brief Add an expansion vector
-!> \param parameters On input, the current solution or expansion vector. On exit, the next solution or expansion vector.
-!> Dimensions size of space, number of roots
-!> \param action On input, the residual for solution on entry. On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
-!> Dimensions size of space, number of roots
+!> \brief Take, typically, a current solution and residual, and return new solution.
+!> In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
+!> acting on it with the matrix, and the output will be a new expansion vector.
+!> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
+!> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
+!> \param parametersP On exit, the interpolated solution projected onto the P space.
 !> \param eigenvalue On output, the lowest eigenvalues of the reduced problem, for the number of roots sought.
- SUBROUTINE IterativeSolverLinearEigensystemAddVector(parameters,action,eigenvalue)
+ SUBROUTINE IterativeSolverLinearEigensystemAddVector(parameters,action,parametersP,eigenvalue)
   USE iso_c_binding
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+  DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parametersP
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: eigenvalue
   INTERFACE
-   SUBROUTINE IterativeSolverLinearEigensystemAddVectorC(parameters,action,eigenvalue) &
+   SUBROUTINE IterativeSolverLinearEigensystemAddVectorC(parameters,action,parametersP,eigenvalue) &
         BIND(C,name='IterativeSolverLinearEigensystemAddVector')
     USE iso_c_binding
     REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
     REAL(c_double), DIMENSION(*), INTENT(inout) :: action
+    REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
     REAL(c_double), DIMENSION(*), INTENT(inout) :: eigenvalue
    END SUBROUTINE IterativeSolverLinearEigensystemAddVectorC
   END INTERFACE
-  CALL IterativeSolverLinearEigensystemAddVectorC(parameters,action,eigenvalue)
+  CALL IterativeSolverLinearEigensystemAddVectorC(parameters,action,parametersP,eigenvalue)
  END SUBROUTINE IterativeSolverLinearEigensystemAddVector
 
 !>@brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
@@ -124,6 +127,7 @@ CONTAINS
   INTEGER, PARAMETER :: n=100, nroot=2
   DOUBLE PRECISION, DIMENSION (n,n) :: m
   DOUBLE PRECISION, DIMENSION (n,nroot) :: c,g
+  DOUBLE PRECISION, DIMENSION (0,nroot) :: p
   DOUBLE PRECISION, DIMENSION (nroot) :: e,error
   INTEGER :: i,j,root
   PRINT *, 'Test Fortran binding of IterativeSolver'
@@ -135,7 +139,7 @@ CONTAINS
   c=0; DO i=1,nroot; c(i,i)=1; ENDDO
   DO i=1,n
    g = MATMUL(m,c)
-   CALL IterativeSolverLinearEigensystemAddVector(c,g,e)
+   CALL IterativeSolverLinearEigensystemAddVector(c,g,p,e)
    WRITE (6,*) 'eigenvalue',e
    DO root=1,nroot
     DO j=1,n

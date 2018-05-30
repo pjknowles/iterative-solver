@@ -21,7 +21,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
  instance->m_verbosity=verbosity;
  std::cout << "roots: "<<instance->m_roots<<std::endl;
 }
-extern "C" void IterativeSolverLinearEigensystemAddVector(double* parameters, double* action, double* eigenvalue, double* parametersP) {
+extern "C" void IterativeSolverLinearEigensystemAddVector(double* parameters, double* action, double* parametersP, double* eigenvalue) {
  vectorSet<double> cc,gg,ccp;
  for (int root=0; root < instance->m_roots; root++) {
   cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
@@ -29,7 +29,7 @@ extern "C" void IterativeSolverLinearEigensystemAddVector(double* parameters, do
   gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
   gg.back()->put(&action[root*instance->m_dimension],instance->m_dimension,0);
  }
- instance->addVector(cc,gg);
+ instance->addVector(cc,gg,ccp);
  for (int root=0; root < instance->m_roots; root++) {
   cc[root]->get(&parameters[root*instance->m_dimension],instance->m_dimension,0);
   gg[root]->get(&action[root*instance->m_dimension],instance->m_dimension,0);

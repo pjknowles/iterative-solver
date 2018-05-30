@@ -3,13 +3,10 @@ MODULE IterativeSolverF
  USE iso_c_binding
  PUBLIC :: IterativeSolverLinearEigensystemInitialize
  PUBLIC :: IterativeSolverLinearEigensystemAddVector, IterativeSolverLinearEigensystemEndIteration
- public :: iterativeSolverPrivate
  PRIVATE
  INTEGER(c_size_t), PRIVATE :: m_nq, m_nroot
 
 CONTAINS
- subroutine IterativeSolverPrivate()
- end subroutine IterativeSolverPrivate
 
 !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos
 !> Example of simplest use: @include LinearEigensystemExampleF.F90

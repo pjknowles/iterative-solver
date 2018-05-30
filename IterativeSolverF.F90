@@ -3,16 +3,15 @@ MODULE IterativeSolverF
  USE iso_c_binding
  PUBLIC :: IterativeSolverLinearEigensystemInitialize
  PUBLIC :: IterativeSolverLinearEigensystemAddVector, IterativeSolverLinearEigensystemEndIteration
+ public :: iterativeSolverPrivate
  PRIVATE
  INTEGER(c_size_t), PRIVATE :: m_nq, m_nroot
 
 CONTAINS
-    subroutine IterativeSolverPrivate()
-     end subroutine IterativeSolverPrivate
+ subroutine IterativeSolverPrivate()
+ end subroutine IterativeSolverPrivate
 
-!> @example LinearEigensystemExampleF.F90
 !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos
-!>
 !> Example of simplest use: @include LinearEigensystemExampleF.F90
  SUBROUTINE IterativeSolverLinearEigensystemInitialize(nq,nroot,thresh,maxIterations,verbosity)
   INTEGER, INTENT(in) :: nq !< dimension of matrix
@@ -60,23 +59,28 @@ CONTAINS
 !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
 !> \param parametersP On exit, the interpolated solution projected onto the P space.
 !> \param eigenvalue On output, the lowest eigenvalues of the reduced problem, for the number of roots sought.
- SUBROUTINE IterativeSolverLinearEigensystemAddVector(parameters,action,parametersP,eigenvalue)
+ SUBROUTINE IterativeSolverLinearEigensystemAddVector(parameters,action,eigenvalue,parametersP)
   USE iso_c_binding
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
-  DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parametersP
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: eigenvalue
+  DOUBLE PRECISION, DIMENSION(*), INTENT(inout), optional :: parametersP
   INTERFACE
    SUBROUTINE IterativeSolverLinearEigensystemAddVectorC(parameters,action,parametersP,eigenvalue) &
         BIND(C,name='IterativeSolverLinearEigensystemAddVector')
     USE iso_c_binding
     REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
     REAL(c_double), DIMENSION(*), INTENT(inout) :: action
-    REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
     REAL(c_double), DIMENSION(*), INTENT(inout) :: eigenvalue
+    REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
    END SUBROUTINE IterativeSolverLinearEigensystemAddVectorC
   END INTERFACE
-  CALL IterativeSolverLinearEigensystemAddVectorC(parameters,action,parametersP,eigenvalue)
+        double precision, dimension(0) :: pdummy
+  if (present(parametersP)) then
+   CALL IterativeSolverLinearEigensystemAddVectorC(parameters,action,parametersP,eigenvalue)
+   else
+   CALL IterativeSolverLinearEigensystemAddVectorC(parameters,action,pdummy,eigenvalue)
+   end if
  END SUBROUTINE IterativeSolverLinearEigensystemAddVector
 
 !>@brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to

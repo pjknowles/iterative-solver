@@ -3,7 +3,6 @@ PROGRAM LinearEigenSystemExample
  INTEGER, PARAMETER :: n=1000, nroot=3
  DOUBLE PRECISION, DIMENSION (n,n) :: m
  DOUBLE PRECISION, DIMENSION (n,nroot) :: c,g
- DOUBLE PRECISION, DIMENSION (0,nroot) :: p
  DOUBLE PRECISION, DIMENSION (nroot) :: e,error
  INTEGER :: i,j,root
  LOGICAL :: converged
@@ -13,7 +12,7 @@ PROGRAM LinearEigenSystemExample
  c=0; DO i=1,nroot; c(i,i)=1; ENDDO
  DO i=1,n
   g = MATMUL(m,c)
-  CALL IterativeSolverLinearEigensystemAddVector(c,g,p,e)
+  CALL IterativeSolverLinearEigensystemAddVector(c,g,e)
   DO root=1,nroot
    DO j=1,n
     c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(root)+1e-15)

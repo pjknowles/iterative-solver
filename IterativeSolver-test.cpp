@@ -96,6 +96,15 @@ namespace LinearAlgebra{
     std::vector<scalar> shift;
     for (size_t root=0; root<(size_t)d.m_roots; root++) shift.push_back(-d.eigenvalues()[root]+1e-14);
     update(x,g,shift);
+    auto newp=d.suggestP(x,g,3);
+    for (const auto& p : newp) {
+     std::cout << "new p space: " <<p.first<<" : "<<p.second << std::endl;
+    }
+//    std::cout << "x "<<x<<std::endl;
+    newp=d.suggestP(x,x,3);
+    for (const auto& p : newp) {
+     std::cout << "new p space: " <<p.first<<" : "<<p.second << std::endl;
+    }
     if (d.endIteration(x,g)) break;
    }
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic>> es(testmatrix);

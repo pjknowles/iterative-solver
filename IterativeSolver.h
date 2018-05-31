@@ -190,15 +190,16 @@ namespace LinearAlgebra {
    * indicate an energy improvement in the next iteration of this amount or more.
    * \return
    */
-  std::map<size_t, scalar> suggestP(const vectorSet<scalar> &solution,
+  std::unordered_map<size_t, scalar> suggestP(const vectorSet<scalar> &solution,
                                     const vectorSet<scalar> &residual,
                                     const size_t maximumNumber = 1000,
                                     const scalar threshold = 0) {
-   std::map<size_t, scalar> result;
+   std::unordered_map<size_t, scalar> result;
    std::multimap<scalar, size_t> inverseResult;
    for (size_t kkk = 0; kkk < solution.size(); kkk++) {
     if (solution.m_active[kkk]) {
      auto stateResult = solution[kkk]->select(*residual[kkk],maximumNumber,threshold);
+     for (const auto& kv : stateResult) std::cout << "from select "<<kv.first<<" : "<<kv.second<<std::endl;
 //      for (const auto& kv : stateResult) inverseResult.insert(std::pair<scalar,size_t>(kv.second,kv.first));
      for (const auto& kv : stateResult)
       if (result.count(kv.first))
@@ -209,9 +210,10 @@ namespace LinearAlgebra {
    }
    // sort and select
    for (const auto& kv : result) inverseResult.insert(std::pair<scalar,size_t>(kv.second,kv.first));
-   size_t k=0;for ( const auto p=inverseResult.cbegin(); p!=inverseResult.cend() && k<maximumNumber; k++) {
+   result.clear();
+   size_t k=0;for ( auto p=inverseResult.cbegin(); p!=inverseResult.cend() && k<maximumNumber; k++) {
     result[p->second] = p->first;
-    p++;
+    ++p;
    }
    return result;
   }

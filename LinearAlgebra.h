@@ -9,6 +9,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <memory>
+#include <unordered_map>
 
 namespace LinearAlgebra {
 
@@ -83,7 +84,7 @@ namespace LinearAlgebra {
      * @return A std::map giving index, value pairs. value is the product of the matrix element and the corresponding element of measure.
      *
      */
-    virtual std::map<size_t,scalar> select (const vector<scalar>& measure, const size_t maximumNumber = 1000, const scalar threshold = 0) const = 0;
+    virtual std::unordered_map<size_t,scalar> select (const vector<scalar>& measure, const size_t maximumNumber = 1000, const scalar threshold = 0) const = 0;
 
     /*!
      * \brief Set the contents of the object to zero.

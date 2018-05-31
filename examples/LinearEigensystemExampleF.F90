@@ -1,5 +1,5 @@
 PROGRAM LinearEigenSystemExample
- USE IterativeSolverF
+ USE Iterative_Solver
  INTEGER, PARAMETER :: n=1000, nroot=3
  DOUBLE PRECISION, DIMENSION (n,n) :: m
  DOUBLE PRECISION, DIMENSION (n,nroot) :: c,g
@@ -8,17 +8,17 @@ PROGRAM LinearEigenSystemExample
  LOGICAL :: converged
  PRINT *, 'Fortran binding of IterativeSolver'
  m=1; DO i=1,n; m(i,i)=3*i; END DO
- CALL IterativeSolverLinearEigensystemInitialize(n,nroot,thresh=1d-7,verbosity=1)
+ CALL Iterative_Solver_Linear_Eigensystem_Initialize(n,nroot,thresh=1d-7,verbosity=1)
  c=0; DO i=1,nroot; c(i,i)=1; ENDDO
  DO i=1,n
   g = MATMUL(m,c)
-  CALL IterativeSolverLinearEigensystemAddVector(c,g,e)
+  CALL Iterative_Solver_Linear_Eigensystem_Add_Vector(c,g,e)
   DO root=1,nroot
    DO j=1,n
     c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(root)+1e-15)
    END DO
   END DO
-  converged = IterativeSolverLinearEigensystemEndIteration(c,g,error)
+  converged = Iterative_Solver_Linear_Eigensystem_End_Iteration(c,g,error)
   IF (converged) EXIT
  END DO
   PRINT *, 'error =',error,' eigenvalue =',e

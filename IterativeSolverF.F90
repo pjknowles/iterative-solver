@@ -142,7 +142,7 @@ CONTAINS
   c=0; DO i=1,nroot; c(i,i)=1; ENDDO
   DO i=1,n
    g = MATMUL(m,c)
-   CALL IterativeSolverLinearEigensystemAddVector(c,g,p,e)
+   CALL IterativeSolverLinearEigensystemAddVector(c,g,e,p)
    WRITE (6,*) 'eigenvalue',e
    DO root=1,nroot
     DO j=1,n

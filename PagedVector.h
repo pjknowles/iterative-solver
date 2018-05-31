@@ -495,7 +495,7 @@ namespace LinearAlgebra {
    std::vector<scalar> values; values.reserve(sortlist.size());
    for (const auto& p : sortlist) {
     indices.push_back(p.second);
-    values.push_back(p.second);
+    values.push_back(p.first);
    }
    return std::make_tuple(indices,values);
 

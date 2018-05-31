@@ -190,18 +190,17 @@ namespace LinearAlgebra {
    * indicate an energy improvement in the next iteration of this amount or more.
    * \return
    */
-  std::tuple<std::vector<size_t>, std::vector<scalar> > suggestP(const vectorSet<scalar> &solution,
+  std::vector<size_t> suggestP(const vectorSet<scalar> &solution,
                                     const vectorSet<scalar> &residual,
                                     const size_t maximumNumber = 1000,
                                     const scalar threshold = 0) {
    std::map<size_t, scalar> result;
-   std::multimap<scalar, size_t> inverseResult;
    for (size_t kkk = 0; kkk < solution.size(); kkk++) {
     if (solution.m_active[kkk]) {
      std::vector<size_t> indices;
      std::vector<scalar> values;
      std::tie(indices,values) = solution[kkk]->select(*residual[kkk],maximumNumber,threshold);
-//      for (const auto& kv : stateResult) inverseResult.insert(std::pair<scalar,size_t>(kv.second,kv.first));
+//     for (auto k=0; k<indices.size(); k++) std::cout << "select "<< indices[k] <<" : "<<values[k]<<std::endl;
      for (size_t i=0; i<indices.size(); i++)
       if (result.count(indices[i]))
        result[indices[i]] = std::max(result[indices[i]],values[i]);
@@ -210,14 +209,18 @@ namespace LinearAlgebra {
     }
    }
    // sort and select
+//   for (const auto& kv : result) std::cout << "result: " << kv.first << " : " <<kv.second<<std::endl;
+   std::multimap<scalar, size_t, std::greater<scalar> > inverseResult;
    for (const auto& kv : result) inverseResult.insert(std::pair<scalar,size_t>(kv.second,kv.first));
+//   for (const auto& kv : inverseResult) std::cout << "inverseResult: " << kv.first << " : " <<kv.second<<std::endl;
    std::vector<size_t> indices;
-   std::vector<scalar> values;
+//   std::vector<scalar> values;
    size_t k=0;for ( auto p=inverseResult.cbegin(); p!=inverseResult.cend() && k<maximumNumber; k++) {
-    indices.push_back(p->second); values.push_back(p->first);
+    indices.push_back(p->second);// values.push_back(p->first);
     ++p;
    }
-   return std::tuple<std::vector<size_t>, std::vector<scalar> >(indices,values);
+//   for (auto k=0; k<indices.size(); k++) std::cout << "suggest P "<< indices[k] <<" : "<<values[k]<<std::endl;
+   return indices;
   }
 
 

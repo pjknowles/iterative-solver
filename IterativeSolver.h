@@ -94,7 +94,7 @@ namespace LinearAlgebra {
    */
   void addVector(vectorSet<scalar> &parameters,
                  vectorSet<scalar> &action,
-                 vectorSet<scalar> &parametersP,
+                 std::vector<std::vector<scalar> > &parametersP,
                  vectorSet<scalar> &other
   ) {
 //   xout << "addVector initial parameters: "<<parameters<<std::endl;
@@ -113,11 +113,12 @@ namespace LinearAlgebra {
   }
 
   void addVector(vectorSet<scalar> &parameters, vectorSet<scalar> &action) {
-   vectorSet<scalar> parametersP;
+   std::vector<std::vector<scalar> > parametersP;
    return addVector(parameters, action, parametersP);
   }
 
-  void addVector(vectorSet<scalar> &parameters, vectorSet<scalar> &action, vectorSet<scalar> &parametersP) {
+  void
+  addVector(vectorSet<scalar> &parameters, vectorSet<scalar> &action, std::vector<std::vector<scalar> > &parametersP) {
    vectorSet<scalar> other;
    return addVector(parameters, action, parametersP, other);
   }
@@ -165,10 +166,10 @@ namespace LinearAlgebra {
    for (size_t ll = 0; ll < m_solutions.size(); ll++) {
     for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
      if (m_solutions[ll].m_active[lll]) {
-        for (size_t n = 0; n < Pvectors.size(); n++) {
-         m_PQMatrix(old+n, l) = m_residuals[ll][lll]->dot(Pvectors[n]);
-         m_PQOverlap(old+n, l) = m_solutions[ll][lll]->dot(Pvectors[n]);
-        }
+      for (size_t n = 0; n < Pvectors.size(); n++) {
+       m_PQMatrix(old + n, l) = m_residuals[ll][lll]->dot(Pvectors[n]);
+       m_PQOverlap(old + n, l) = m_solutions[ll][lll]->dot(Pvectors[n]);
+      }
       l++;
      }
     }
@@ -396,14 +397,18 @@ namespace LinearAlgebra {
    * @param solutionP On exit, the solution projected to the P space
    * @param other On exit, interpolation of the other vectors
    */
-  void doInterpolation(vectorSet<scalar> &solution, vectorSet<scalar> &residual, vectorSet<scalar> &solutionP,
+  void doInterpolation(vectorSet<scalar> &solution, vectorSet<scalar> &residual,
+                       std::vector<std::vector<scalar> > &solutionP,
                        vectorSet<scalar> &other) {
    solution.zero();
    residual.zero();
-   solutionP.zero();
+   size_t nP = m_Pvectors.size();
+   solutionP.resize(residual.size());
+   for (size_t i = 0; i < residual.size(); i++)
+    solutionP[i].assign(nP,0);
    other.zero();
    for (size_t kkk = 0; kkk < residual.size(); kkk++) {
-    size_t l = 0;
+    size_t l = nP;
     for (size_t ll = 0; ll < this->m_solutions.size(); ll++) {
      for (size_t lll = 0; lll < this->m_solutions[ll].size(); lll++) {
       if (this->m_solutions[ll].m_active[lll]) {
@@ -418,6 +423,8 @@ namespace LinearAlgebra {
       }
      }
     }
+    for (size_t i=0; i < nP; i++)
+     solution[kkk]->axpy(this->m_interpolation(i,kkk), m_Pvectors[i]);
     if (m_residual_eigen) residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(), *solution[kkk]);
     if (m_residual_rhs) residual[kkk]->axpy(-1, *this->m_rhs[kkk]);
    }

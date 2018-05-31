@@ -22,7 +22,8 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
  std::cout << "roots: "<<instance->m_roots<<std::endl;
 }
 extern "C" void IterativeSolverLinearEigensystemAddVector(double* parameters, double* action, double* parametersP, double* eigenvalue) {
- vectorSet<double> cc,gg,ccp;
+ vectorSet<double> cc,gg;
+ std::vector<std::vector<double> > ccp;
  for (int root=0; root < instance->m_roots; root++) {
   cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
   cc.back()->put(&parameters[root*instance->m_dimension],instance->m_dimension,0);
@@ -33,6 +34,8 @@ extern "C" void IterativeSolverLinearEigensystemAddVector(double* parameters, do
  for (int root=0; root < instance->m_roots; root++) {
   cc[root]->get(&parameters[root*instance->m_dimension],instance->m_dimension,0);
   gg[root]->get(&action[root*instance->m_dimension],instance->m_dimension,0);
+  for (size_t i=0; i<ccp[0].size(); i++)
+   parametersP[root*ccp[0].size()+i] = ccp[root][i];
   eigenvalue[root] = instance->eigenvalues()[root];
  }
 }

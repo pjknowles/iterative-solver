@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <unistd.h>
 #include <fstream>
+#include <map>
 
 #ifdef USE_MPI
 #include <mpi.h>
@@ -476,7 +477,8 @@ namespace LinearAlgebra {
    } else {
     for (m_cache.ensure(0), measur.m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++measur.m_cache ) {
      for (size_t i=0; i<m_cache.length; i++) {
-      scalar test = std::abs(m_cache.buffer[i] * measur.m_cache.buffer[i]);
+      scalar test = m_cache.buffer[i] * measur.m_cache.buffer[i];
+      if (test<0) test=-test;
       if (test > threshold) {
        sortlist.insert(std::make_pair(test,i));
        if (sortlist.size()>maximumNumber) sortlist.erase(std::prev(sortlist.end()));

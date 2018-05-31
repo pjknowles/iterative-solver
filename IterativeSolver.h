@@ -143,21 +143,32 @@ namespace LinearAlgebra {
             vectorSet<scalar> &action,
             vectorSet<scalar> &parametersP,
             vectorSet<scalar> &other) {
-   size_t old = m_PPMatrix.rows();
-   m_PPMatrix.conservativeResize(old + Pvectors.size(), old + Pvectors.size());
+   size_t oldss = m_subspaceMatrix.rows();
+   m_subspaceMatrix.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
+   m_subspaceOverlap.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
+   size_t old = m_PQMatrix.rows();
    m_PQMatrix.conservativeResize(old + Pvectors.size(), m_QQMatrix.rows());
    size_t offset = 0;
-   for (size_t n = 0; n < Pvectors.size(); n++) {
+   for (size_t n = 0; n < Pvectors.size(); n++)
     m_Pvectors.push_back(Pvectors[n]);
-    for (int i = 0; i < m_PPMatrix.rows(); i++)
-     m_PPMatrix(old + n, i) = m_PPMatrix(i, old + n) = PP[offset++];
+   for (size_t n = 0; n < Pvectors.size(); n++) {
+    for (int i = 0; i < m_subspaceMatrix.rows(); i++) {
+     m_subspaceMatrix(old + n, i) = m_subspaceMatrix(i, old + n) = PP[offset++];
+     double overlap = 0;
+     for (const auto &p : Pvectors[n])
+      if (m_Pvectors[i].count(p.first))
+       overlap += p.second * m_Pvectors[i].second;
+     m_subspaceOverlap(old + n, i) = m_subspaceOverlap(i, old + n) = overlap;
+    }
    }
    size_t l = 0;
    for (size_t ll = 0; ll < m_solutions.size(); ll++) {
     for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
      if (m_solutions[ll].m_active[lll]) {
-      //      xout << "bra"<<std::endl<<(*bra)[ll][lll]<<std::endl;
-//      m_PQOverlap(k, l) = m_QQOverlap(l, k) = m_solutions[ll][lll]->dot(*solution1[kkk]);
+        for (size_t n = 0; n < Pvectors.size(); n++) {
+         m_PQMatrix(old+n, l) = m_residuals[ll][lll]->dot(Pvectors[n]);
+         m_PQOverlap(old+n, l) = m_solutions[ll][lll]->dot(Pvectors[n]);
+        }
       l++;
      }
     }
@@ -250,10 +261,9 @@ namespace LinearAlgebra {
 
   std::vector<double> errors() const { return m_errors; } //!< Error at last iteration
 
-  size_t dimensionP() const { return (size_t) m_PPMatrix.rows(); } //!< Size of P space
+  size_t dimensionP() const { return (size_t) m_PQMatrix.rows(); } //!< Size of P space
 
  private:
-  Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> m_PPMatrix, m_PPOverlap; //!< The PP block of the matrix
   Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> m_PQMatrix, m_PQOverlap; //!< The PQ block of the matrix
   std::vector<Pvector> m_Pvectors;
  public:

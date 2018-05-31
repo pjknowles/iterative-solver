@@ -426,20 +426,16 @@ namespace LinearAlgebra {
    */
   scalar dot(const std::map<size_t,scalar> &other) const override
   {
-//   std::cout << "enter dot"<<std::endl;
    scalar result=0;
    for (const auto& o: other)
     if (o.first >= m_segment_offset && o.first < m_segment_offset+m_segment_length)
      result += o.second * (*this)[o.first];
 #ifdef USE_MPI
-   //    std::cout <<m_mpi_rank<<" dot result before reduce="<<result<<std::endl;
    if (!m_replicated) {
     double resultLocal = result;
     MPI_Allreduce(&resultLocal,&result,1,MPI_DOUBLE,MPI_SUM,m_communicator); // FIXME needs attention for non-double
-//    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
    }
 #endif
-//   std::cout << "leave dot"<<std::endl;
    return result;
   }
 

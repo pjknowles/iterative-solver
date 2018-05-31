@@ -449,13 +449,15 @@ namespace LinearAlgebra {
     * product with *this are selected.
     * @param maximumNumber At most this number of elements are returned.
     * @param threshold Contributions to the scalar product smaller than this are not included.
-    * @return A std::map giving index, value pairs. value is the product of the matrix element and the corresponding element of measure.
+    * @return index, value pairs. value is the product of the matrix element and the corresponding element of measure.
     *
     */
-  std::unordered_map<size_t,scalar> select(const vector <scalar> &measure, const size_t maximumNumber = 1000,
-                                  const scalar threshold = 0) const override
+  std::tuple<std::vector<size_t>,std::vector<scalar> > select (
+    const vector <scalar> &measure,
+    const size_t maximumNumber = 1000,
+    const scalar threshold = 0
+  ) const override
   {
-   std::unordered_map<size_t,scalar> result;
    std::multimap<scalar,size_t,std::greater<scalar> > sortlist;
    const PagedVector& measur =dynamic_cast <const PagedVector&> (measure);
    if (this->variance() * measur.variance() < 0) throw std::logic_error("mismatching co/contravariance");
@@ -489,9 +491,13 @@ namespace LinearAlgebra {
 #endif
 //   std::cout << "leave dot"<<std::endl;
    while (sortlist.size()>maximumNumber) sortlist.erase(std::prev(sortlist.end()));
-   for (const auto& p : sortlist)
-    result[p.second]=p.first;
-   return result;
+   std::vector<size_t> indices; indices.reserve(sortlist.size());
+   std::vector<scalar> values; values.reserve(sortlist.size());
+   for (const auto& p : sortlist) {
+    indices.push_back(p.second);
+    values.push_back(p.second);
+   }
+   return std::make_tuple(indices,values);
 
   };
 

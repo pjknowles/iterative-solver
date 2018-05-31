@@ -190,32 +190,34 @@ namespace LinearAlgebra {
    * indicate an energy improvement in the next iteration of this amount or more.
    * \return
    */
-  std::unordered_map<size_t, scalar> suggestP(const vectorSet<scalar> &solution,
+  std::tuple<std::vector<size_t>, std::vector<scalar> > suggestP(const vectorSet<scalar> &solution,
                                     const vectorSet<scalar> &residual,
                                     const size_t maximumNumber = 1000,
                                     const scalar threshold = 0) {
-   std::unordered_map<size_t, scalar> result;
+   std::map<size_t, scalar> result;
    std::multimap<scalar, size_t> inverseResult;
    for (size_t kkk = 0; kkk < solution.size(); kkk++) {
     if (solution.m_active[kkk]) {
-     auto stateResult = solution[kkk]->select(*residual[kkk],maximumNumber,threshold);
-     for (const auto& kv : stateResult) std::cout << "from select "<<kv.first<<" : "<<kv.second<<std::endl;
+     std::vector<size_t> indices;
+     std::vector<scalar> values;
+     std::tie(indices,values) = solution[kkk]->select(*residual[kkk],maximumNumber,threshold);
 //      for (const auto& kv : stateResult) inverseResult.insert(std::pair<scalar,size_t>(kv.second,kv.first));
-     for (const auto& kv : stateResult)
-      if (result.count(kv.first))
-       result[kv.first] = std::max(result[kv.first],kv.second);
+     for (size_t i=0; i<indices.size(); i++)
+      if (result.count(indices[i]))
+       result[indices[i]] = std::max(result[indices[i]],values[i]);
       else
-       result[kv.first] = kv.second;
+       result[indices[i]] = values[i];
     }
    }
    // sort and select
    for (const auto& kv : result) inverseResult.insert(std::pair<scalar,size_t>(kv.second,kv.first));
-   result.clear();
+   std::vector<size_t> indices;
+   std::vector<scalar> values;
    size_t k=0;for ( auto p=inverseResult.cbegin(); p!=inverseResult.cend() && k<maximumNumber; k++) {
-    result[p->second] = p->first;
+    indices.push_back(p->second); values.push_back(p->first);
     ++p;
    }
-   return result;
+   return std::tuple<std::vector<size_t>, std::vector<scalar> >(indices,values);
   }
 
 

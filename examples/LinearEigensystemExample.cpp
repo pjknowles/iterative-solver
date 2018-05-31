@@ -24,6 +24,9 @@ public:
   for (size_t i=0; i<buffer.size(); i++) result += buffer[i] * (dynamic_cast <const pv&> (other)).buffer[i];
   return result;
  }
+ std::tuple<std::vector<size_t>,std::vector<scalar> > select (const vector<scalar>& measure, const size_t maximumNumber = 1000, const scalar threshold = 0) const override {
+  return std::make_tuple(std::vector<size_t>(0),std::vector<scalar>(0)); // null implementation
+ };
  pv* clone(int option=0) const override { return new pv(*this); }
  const scalar& operator[](const size_t i) const override {return buffer[i];}
  scalar& operator[](size_t i) override {return buffer[i];}

@@ -109,7 +109,7 @@ namespace LinearAlgebra {
                        1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
    buildSubspace();
    solveReducedProblem();
-   doInterpolation(parameters,action,parametersP,other);
+   doInterpolation(parameters, action, parametersP, other);
   }
 
   void addVector(vectorSet<scalar> &parameters, vectorSet<scalar> &action) {
@@ -127,10 +127,7 @@ namespace LinearAlgebra {
    * \brief Specify a P-space vector as a sparse combination of parameters. The container holds a number of segments,
    * each characterised by an offset in the full space, and a vector of coefficients starting at that offset.
    */
-  struct Pvector {
-   std::vector<size_t> offsets;
-   std::vector<std::vector<scalar> > coefficients;
-  };
+  using Pvector = std::map<size_t, scalar>;
 
   /*!
    * \brief Add P-space vectors to the expansion set for linear methods.
@@ -148,15 +145,26 @@ namespace LinearAlgebra {
             vectorSet<scalar> &other) {
    size_t old = m_PPMatrix.rows();
    m_PPMatrix.conservativeResize(old + Pvectors.size(), old + Pvectors.size());
+   m_PQMatrix.conservativeResize(old + Pvectors.size(), m_QQMatrix.rows());
    size_t offset = 0;
    for (size_t n = 0; n < Pvectors.size(); n++) {
     m_Pvectors.push_back(Pvectors[n]);
     for (int i = 0; i < m_PPMatrix.rows(); i++)
      m_PPMatrix(old + n, i) = m_PPMatrix(i, old + n) = PP[offset++];
    }
+   size_t l = 0;
+   for (size_t ll = 0; ll < m_solutions.size(); ll++) {
+    for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
+     if (m_solutions[ll].m_active[lll]) {
+      //      xout << "bra"<<std::endl<<(*bra)[ll][lll]<<std::endl;
+//      m_PQOverlap(k, l) = m_QQOverlap(l, k) = m_solutions[ll][lll]->dot(*solution1[kkk]);
+      l++;
+     }
+    }
+   }
    buildSubspace();
    solveReducedProblem();
-   doInterpolation(parameters,action,parametersP,other);
+   doInterpolation(parameters, action, parametersP, other);
   }
 
   void addP(std::vector<Pvector> Pvectors, const scalar *PP, vectorSet<scalar> &parameters, vectorSet<scalar> &action,
@@ -191,19 +199,19 @@ namespace LinearAlgebra {
    * \return
    */
   std::vector<size_t> suggestP(const vectorSet<scalar> &solution,
-                                    const vectorSet<scalar> &residual,
-                                    const size_t maximumNumber = 1000,
-                                    const scalar threshold = 0) {
+                               const vectorSet<scalar> &residual,
+                               const size_t maximumNumber = 1000,
+                               const scalar threshold = 0) {
    std::map<size_t, scalar> result;
    for (size_t kkk = 0; kkk < solution.size(); kkk++) {
     if (solution.m_active[kkk]) {
      std::vector<size_t> indices;
      std::vector<scalar> values;
-     std::tie(indices,values) = solution[kkk]->select(*residual[kkk],maximumNumber,threshold);
+     std::tie(indices, values) = solution[kkk]->select(*residual[kkk], maximumNumber, threshold);
 //     for (auto k=0; k<indices.size(); k++) std::cout << "select "<< indices[k] <<" : "<<values[k]<<std::endl;
-     for (size_t i=0; i<indices.size(); i++)
+     for (size_t i = 0; i < indices.size(); i++)
       if (result.count(indices[i]))
-       result[indices[i]] = std::max(result[indices[i]],values[i]);
+       result[indices[i]] = std::max(result[indices[i]], values[i]);
       else
        result[indices[i]] = values[i];
     }
@@ -211,11 +219,12 @@ namespace LinearAlgebra {
    // sort and select
 //   for (const auto& kv : result) std::cout << "result: " << kv.first << " : " <<kv.second<<std::endl;
    std::multimap<scalar, size_t, std::greater<scalar> > inverseResult;
-   for (const auto& kv : result) inverseResult.insert(std::pair<scalar,size_t>(kv.second,kv.first));
+   for (const auto &kv : result) inverseResult.insert(std::pair<scalar, size_t>(kv.second, kv.first));
 //   for (const auto& kv : inverseResult) std::cout << "inverseResult: " << kv.first << " : " <<kv.second<<std::endl;
    std::vector<size_t> indices;
 //   std::vector<scalar> values;
-   size_t k=0;for ( auto p=inverseResult.cbegin(); p!=inverseResult.cend() && k<maximumNumber; k++) {
+   size_t k = 0;
+   for (auto p = inverseResult.cbegin(); p != inverseResult.cend() && k < maximumNumber; k++) {
     indices.push_back(p->second);// values.push_back(p->first);
     ++p;
    }
@@ -576,12 +585,9 @@ namespace LinearAlgebra {
  scalar inline
  operator*(const typename IterativeSolver<scalar>::Pvector &a, const typename IterativeSolver<scalar>::Pvector &b) {
   scalar result = 0;
-  for (size_t sa = 0; sa < a.offsets.size(); sa++)
-   for (size_t sb = 0; sb < b.offsets.size(); sb++)
-    for (size_t ia = 0; ia < a.coefficients[sa].size; ia++)
-     if (a.offsets[sa] + ia >= b.offsets[sb] && a.offsets[sa] + ia < b.offsets[sb] + b.coefficients[sb].size())
-      result += a.coefficients[sa][ia] * b.coefficients[sb][a.offsets[sa] + ia - b.offsets[sb]];
-  return result;
+  for (const auto &aa: a)
+   if (b.find(aa.first))
+    result += aa.second * b[aa.first];
  }
 }
 

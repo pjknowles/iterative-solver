@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <memory>
 #include <tuple>
+#include <map>
 
 namespace LinearAlgebra {
 
@@ -67,6 +68,12 @@ namespace LinearAlgebra {
      * \return
      */
     virtual scalar dot(const vector<scalar>& other) const=0;
+    /*!
+     * \brief Scalar product with a sparse vector
+     * \param other The object to be contracted with this.
+     * \return
+     */
+    virtual scalar dot(const std::map<size_t,scalar> &other) const=0;
 
     /*!
      * \brief scal Scale the object by a factor.

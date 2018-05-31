@@ -375,6 +375,18 @@ namespace LinearAlgebra {
   }
 
   /*!
+    * \brief Add a constant times a sparse vector to this object
+    * \param a The factor to multiply.
+    * \param other The object to be added to this.
+    * \return
+    */
+  void axpy(scalar a, const std::map<size_t,scalar>& other) override {
+   for (const auto& o: other)
+    if (o.first >= m_segment_offset && o.first < m_segment_offset+m_segment_length)
+     (*this)[o.first] += a * o.second;
+  }
+
+  /*!
    * \brief Scalar product of two objects.
    * \param other The object to be contracted with this.
    * \return

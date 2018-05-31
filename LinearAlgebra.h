@@ -54,13 +54,21 @@ namespace LinearAlgebra {
      */
     vector<scalar>(const vector<scalar> &source, int option=0){ *this = source; }
     virtual ~vector<scalar>(){}
+   /*!
+    * \brief Add a constant times another object to this object
+    * \param a The factor to multiply.
+    * \param other The object to be added to this.
+    * \return
+    */
+   virtual void axpy(scalar a, const vector<scalar>& other)=0;
+
     /*!
-     * \brief Add a constant times another object to this object
+     * \brief Add a constant times a sparse vector to this object
      * \param a The factor to multiply.
      * \param other The object to be added to this.
      * \return
      */
-    virtual void axpy(scalar a, const vector<scalar>& other)=0;
+    virtual void axpy(scalar a, const std::map<size_t,scalar>& other)=0;
 
     /*!
      * \brief Scalar product of two objects.

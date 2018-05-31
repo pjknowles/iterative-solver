@@ -310,12 +310,12 @@ namespace LinearAlgebra {
    const auto n = nP + nQ;
    m_subspaceMatrix.conservativeResize(n, n);
    m_subspaceOverlap.conservativeResize(n, n);
-   for (size_t i = 0; i < nQ; i++) {
-    for (size_t j = 0; j < nQ; j++) {
+   for (auto i = 0; i < nQ; i++) {
+    for (auto j = 0; j < nQ; j++) {
      m_subspaceMatrix(nP + j, nP + i) = m_QQMatrix(j, i);
      m_subspaceOverlap(nP + j, nP + i) = m_QQOverlap(j, i);
     }
-    for (size_t j = 0; j < nP; j++) {
+    for (auto j = 0; j < nP; j++) {
      m_subspaceMatrix(j, nP + i) = m_subspaceMatrix(nP + i, j) = m_PQMatrix(j, i);
      m_subspaceOverlap(j, nP + i) = m_subspaceOverlap(nP + i, j) = m_PQOverlap(j, i);
     }

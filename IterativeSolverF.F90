@@ -93,7 +93,7 @@ CONTAINS
    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: error
  INTERFACE
-  LOGICAL FUNCTION IterativeSolverLinearEigensystemEndIterationC(solution,residual,error) &
+  INTEGER(c_int) FUNCTION IterativeSolverLinearEigensystemEndIterationC(solution,residual,error) &
        BIND(C,name='IterativeSolverLinearEigensystemEndIteration')
    USE iso_c_binding
    REAL(c_double), DIMENSION(*), INTENT(inout) :: solution
@@ -102,7 +102,7 @@ CONTAINS
   END FUNCTION IterativeSolverLinearEigensystemEndIterationC
  END INTERFACE
   IterativeSolverLinearEigensystemEndIteration = &
-  IterativeSolverLinearEigensystemEndIterationC(solution,residual,error)
+  IterativeSolverLinearEigensystemEndIterationC(solution,residual,error).ne.0
   END FUNCTION IterativeSolverLinearEigensystemEndIteration
 
 

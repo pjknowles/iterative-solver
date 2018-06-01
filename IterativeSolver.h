@@ -100,7 +100,6 @@ namespace LinearAlgebra {
 //   xout << "addVector initial parameters: "<<parameters<<std::endl;
    if (m_roots < 1) m_roots = parameters.size(); // number of roots defaults to size of parameters
    assert(parameters.size() == action.size());
-   assert(parametersP.size() == dimensionP());
    m_iterations++;
    for (size_t k = 0; k < action.size(); k++)
     action.m_active[k] = //action.m_active[k] &&
@@ -142,23 +141,29 @@ namespace LinearAlgebra {
   void addP(std::vector<Pvector> Pvectors, const scalar *PP,
             vectorSet<scalar> &parameters,
             vectorSet<scalar> &action,
-            vectorSet<scalar> &parametersP,
+            std::vector<std::vector<scalar> > &parametersP,
             vectorSet<scalar> &other) {
    size_t oldss = m_subspaceMatrix.rows();
    m_subspaceMatrix.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
    m_subspaceOverlap.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
    size_t old = m_PQMatrix.rows();
+   parametersP.resize(old + Pvectors.size());
+   std::cout << "parametersP resized to " << parametersP.size() << std::endl;
    m_PQMatrix.conservativeResize(old + Pvectors.size(), m_QQMatrix.rows());
    size_t offset = 0;
    for (size_t n = 0; n < Pvectors.size(); n++)
     m_Pvectors.push_back(Pvectors[n]);
+   std::cout << "m_Pvectors has been augmented to dimension " << m_Pvectors.size() << std::endl;
    for (size_t n = 0; n < Pvectors.size(); n++) {
+    std::cout << "Pvectors[" << n << "]:";
+    for (const auto &p : Pvectors[n]) std::cout << " " << p.first << ":" << p.second;
+    std::cout << std::endl;
     for (int i = 0; i < m_subspaceMatrix.rows(); i++) {
      m_subspaceMatrix(old + n, i) = m_subspaceMatrix(i, old + n) = PP[offset++];
      double overlap = 0;
      for (const auto &p : Pvectors[n])
       if (m_Pvectors[i].count(p.first))
-       overlap += p.second * m_Pvectors[i].second;
+       overlap += p.second * m_Pvectors[i][p.first];
      m_subspaceOverlap(old + n, i) = m_subspaceOverlap(i, old + n) = overlap;
     }
    }
@@ -176,13 +181,15 @@ namespace LinearAlgebra {
    }
    buildSubspace();
    solveReducedProblem();
+   std::cout << "parametersP size before doInterpolation " << parametersP.size() << std::endl;
    doInterpolation(parameters, action, parametersP, other);
+   std::cout << "parametersP size after doInterpolation " << parametersP.size() << std::endl;
   }
 
   void addP(std::vector<Pvector> Pvectors, const scalar *PP, vectorSet<scalar> &parameters, vectorSet<scalar> &action,
-            vectorSet<scalar> &parametersP) {
+            std::vector<std::vector<scalar> > &parametersP) {
    vectorSet<scalar> other;
-   return addVector(Pvectors, PP, parameters, action, parametersP, other);
+   return addP(Pvectors, PP, parameters, action, parametersP, other);
   }
 
   /*!
@@ -327,6 +334,8 @@ namespace LinearAlgebra {
   void buildSubspace() {
    const auto nP = m_Pvectors.size();
    const auto nQ = m_QQMatrix.rows();
+   std::cout << "nP=" << nP << std::endl;
+   std::cout << "nQ=" << nQ << std::endl;
    const auto n = nP + nQ;
    m_subspaceMatrix.conservativeResize(n, n);
    m_subspaceOverlap.conservativeResize(n, n);
@@ -340,8 +349,12 @@ namespace LinearAlgebra {
      m_subspaceOverlap(j, nP + i) = m_subspaceOverlap(nP + i, j) = m_PQOverlap(j, i);
     }
    }
-   if (m_verbosity > 2) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
-   if (m_verbosity > 2) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
+   if (m_verbosity > -1) xout << "PQ matrix" << std::endl << this->m_PQMatrix << std::endl;
+   if (m_verbosity > -1) xout << "PQ overlap" << std::endl << this->m_PQOverlap << std::endl;
+   if (m_verbosity > -1) xout << "QQ matrix" << std::endl << this->m_QQMatrix << std::endl;
+   if (m_verbosity > -1) xout << "QQ overlap" << std::endl << this->m_QQOverlap << std::endl;
+   if (m_verbosity > -1) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
+   if (m_verbosity > -1) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
   }
 
  protected:
@@ -404,10 +417,11 @@ namespace LinearAlgebra {
    residual.zero();
    size_t nP = m_Pvectors.size();
    solutionP.resize(residual.size());
-   for (size_t i = 0; i < residual.size(); i++)
-    solutionP[i].assign(nP,0);
    other.zero();
-   for (size_t kkk = 0; kkk < residual.size(); kkk++) {
+   for (size_t kkk = 0; kkk < residual.size() && kkk < m_interpolation.rows(); kkk++) {
+    solutionP[kkk].resize(nP);
+    for (size_t l = 0; l < nP; l++)
+     solution[kkk]->axpy((solutionP[kkk][l] = this->m_interpolation(l, kkk)), m_Pvectors[l]);
     size_t l = nP;
     for (size_t ll = 0; ll < this->m_solutions.size(); ll++) {
      for (size_t lll = 0; lll < this->m_solutions[ll].size(); lll++) {
@@ -423,8 +437,6 @@ namespace LinearAlgebra {
       }
      }
     }
-    for (size_t i=0; i < nP; i++)
-     solution[kkk]->axpy(this->m_interpolation(i,kkk), m_Pvectors[i]);
     if (m_residual_eigen) residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(), *solution[kkk]);
     if (m_residual_rhs) residual[kkk]->axpy(-1, *this->m_rhs[kkk]);
    }
@@ -444,7 +456,8 @@ namespace LinearAlgebra {
     xout << "IterativeSolverBase::calculateErrors residual " << residual << std::endl;
    }
    vectorSet<scalar> step = solution;
-   step.axpy(-1, m_solutions[m_lastVectorIndex]);
+   if (!m_solutions.empty())
+    step.axpy(-1, m_solutions[m_lastVectorIndex]);
    if (m_verbosity > 6)
     xout << "IterativeSolverBase::calculateErrors step " << step << std::endl;
    m_errors.clear();
@@ -488,16 +501,23 @@ namespace LinearAlgebra {
    //      xout << "appendQQMatrix"<<std::endl;
    //      xout << "residual"<<std::endl<<residual[0]<<std::endl;
    //      xout << "solution"<<std::endl<<solution[0]<<std::endl;
+   size_t nP = m_PQMatrix.rows();
    size_t old_size = m_QQMatrix.rows();
    size_t new_size = old_size + count(residual1.m_active.begin(), residual1.m_active.end(), true);
    //      xout << "old_size="<<old_size<<std::endl;
    //      xout << "new_size="<<new_size<<std::endl;
    m_QQMatrix.conservativeResize(new_size, new_size);
    m_QQOverlap.conservativeResize(new_size, new_size);
+   m_PQMatrix.conservativeResize(nP, new_size);
+   m_PQOverlap.conservativeResize(nP, new_size);
    std::vector<vectorSet<scalar>> *bra = m_subspaceMatrixResRes ? &m_residuals : &m_solutions;
    size_t k = old_size;
    for (size_t kkk = 0; kkk < residual1.size(); kkk++) {
     if (residual1.m_active[kkk]) {
+     for (auto l = 0; l < nP; l++) {
+      m_PQMatrix(l, k) = residual1[kkk]->dot(m_Pvectors[l]);
+      m_PQOverlap(l, k) = solution1[kkk]->dot(m_Pvectors[l]);
+     }
      size_t l = 0;
      for (size_t ll = 0; ll < m_solutions.size(); ll++) {
       for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
@@ -645,13 +665,15 @@ namespace LinearAlgebra {
    } else {
     this->diagonalizeSubspaceMatrix();
     this->m_interpolation = this->m_subspaceEigenvectors.block(0, 0, this->m_subspaceEigenvectors.rows(),
-                                                               this->m_roots).real();
+                                                               std::min(int(this->m_roots), int(
+                                                                 this->m_subspaceEigenvectors.rows()))).real();
    }
 
    this->m_updateShift.resize(this->m_roots);
    for (size_t root = 0; root < (size_t) this->m_roots; root++)
     this->m_updateShift[root] = -(1 + std::numeric_limits<scalar>::epsilon()) *
-                                this->m_subspaceEigenvalues[root].real();
+                                (root < this->m_subspaceEigenvectors.rows() ? this->m_subspaceEigenvalues[root].real()
+                                                                            : 0);
   }
 
   void report() override {

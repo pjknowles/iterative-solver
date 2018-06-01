@@ -297,6 +297,11 @@ namespace LinearAlgebra {
     for (auto rep = 0; rep < 2; rep++)
      for (size_t kkk = 0; kkk < solution.size(); kkk++) {
       if (solution.m_active[kkk]) {
+       for (auto i=0; i<m_Pvectors.size(); i++) {
+        const auto& p = m_Pvectors[i];
+        double s = -solution[kkk]->dot(p) / m_subspaceOverlap(i,i);
+        solution[kkk]->axpy(s,p);
+       }
        for (size_t ll = 0; ll < m_solutions.size(); ll++) {
         for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
          if (m_solutions[ll].m_active[lll]) {

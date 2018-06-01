@@ -4,6 +4,7 @@
 using scalar = double;
 constexpr size_t n = 100; // dimension of problem
 constexpr scalar alpha = 100; // separation of diagonal elements
+constexpr size_t nP=8; // number in intial P-space
 
 class pv : public LinearAlgebra::vector<scalar> {
 public:
@@ -105,23 +106,16 @@ int main(int argc, char *argv[]) {
 //  (*x.back())[root] = 1; // initial guess
  }
  size_t p=0;
- size_t nP=4;
  std::vector<scalar> PP;
  std::vector<std::map<size_t, scalar> > pspace(nP);
  for (auto& pc : pspace) {
   pc.clear();
   pc[p]=1;
-  std::cout << "assigning p space configuration " <<p<<", "<<pc[p]<<std::endl;
   for (size_t q=0; q<nP; q++) PP.push_back(matrix(p,q));
   ++p;
  }
- for (auto& pc : pspace) {
-  std::cout << "checking p space configuration " << std::endl;
-  for (const auto pp : pc)
-   std::cout <<" "<< pp.first<<":"<<pp.second<<std::endl;
- }
  std::vector<std::vector<scalar> > Pcoeff(solver.m_roots);
- for (auto i = 0; i < solver.m_roots; ++i) Pcoeff[p+i].assign(1, 0);
+ for (auto i = 0; i < solver.m_roots; ++i) Pcoeff[i].resize(nP);
  solver.addP(pspace, PP.data(), x, g, Pcoeff);
  for (auto iter = 0; iter < 1000; iter++) {
   actionP(pspace,Pcoeff,g);

@@ -148,16 +148,11 @@ namespace LinearAlgebra {
    m_subspaceOverlap.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
    size_t old = m_PQMatrix.rows();
    parametersP.resize(old + Pvectors.size());
-   std::cout << "parametersP resized to " << parametersP.size() << std::endl;
    m_PQMatrix.conservativeResize(old + Pvectors.size(), m_QQMatrix.rows());
    size_t offset = 0;
    for (size_t n = 0; n < Pvectors.size(); n++)
     m_Pvectors.push_back(Pvectors[n]);
-   std::cout << "m_Pvectors has been augmented to dimension " << m_Pvectors.size() << std::endl;
    for (size_t n = 0; n < Pvectors.size(); n++) {
-    std::cout << "Pvectors[" << n << "]:";
-    for (const auto &p : Pvectors[n]) std::cout << " " << p.first << ":" << p.second;
-    std::cout << std::endl;
     for (int i = 0; i < m_subspaceMatrix.rows(); i++) {
      m_subspaceMatrix(old + n, i) = m_subspaceMatrix(i, old + n) = PP[offset++];
      double overlap = 0;
@@ -181,9 +176,7 @@ namespace LinearAlgebra {
    }
    buildSubspace();
    solveReducedProblem();
-   std::cout << "parametersP size before doInterpolation " << parametersP.size() << std::endl;
    doInterpolation(parameters, action, parametersP, other);
-   std::cout << "parametersP size after doInterpolation " << parametersP.size() << std::endl;
   }
 
   void addP(std::vector<Pvector> Pvectors, const scalar *PP, vectorSet<scalar> &parameters, vectorSet<scalar> &action,
@@ -339,8 +332,6 @@ namespace LinearAlgebra {
   void buildSubspace() {
    const auto nP = m_Pvectors.size();
    const auto nQ = m_QQMatrix.rows();
-   std::cout << "nP=" << nP << std::endl;
-   std::cout << "nQ=" << nQ << std::endl;
    const auto n = nP + nQ;
    m_subspaceMatrix.conservativeResize(n, n);
    m_subspaceOverlap.conservativeResize(n, n);
@@ -354,12 +345,12 @@ namespace LinearAlgebra {
      m_subspaceOverlap(j, nP + i) = m_subspaceOverlap(nP + i, j) = m_PQOverlap(j, i);
     }
    }
-   if (m_verbosity > -1) xout << "PQ matrix" << std::endl << this->m_PQMatrix << std::endl;
-   if (m_verbosity > -1) xout << "PQ overlap" << std::endl << this->m_PQOverlap << std::endl;
-   if (m_verbosity > -1) xout << "QQ matrix" << std::endl << this->m_QQMatrix << std::endl;
-   if (m_verbosity > -1) xout << "QQ overlap" << std::endl << this->m_QQOverlap << std::endl;
-   if (m_verbosity > -1) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
-   if (m_verbosity > -1) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
+   if (m_verbosity > 2) xout << "PQ matrix" << std::endl << this->m_PQMatrix << std::endl;
+   if (m_verbosity > 2) xout << "PQ overlap" << std::endl << this->m_PQOverlap << std::endl;
+   if (m_verbosity > 2) xout << "QQ matrix" << std::endl << this->m_QQMatrix << std::endl;
+   if (m_verbosity > 2) xout << "QQ overlap" << std::endl << this->m_QQOverlap << std::endl;
+   if (m_verbosity > 2) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
+   if (m_verbosity > 2) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
   }
 
  protected:

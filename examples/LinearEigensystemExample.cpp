@@ -2,7 +2,7 @@
 // Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
 // Storage of vectors in-memory via class pv
 using scalar = double;
-constexpr size_t n = 200; // dimension of problem
+constexpr size_t n = 400; // dimension of problem
 constexpr scalar alpha = 100; // separation of diagonal elements
 
 class pv : public LinearAlgebra::vector<scalar> {
@@ -55,12 +55,16 @@ public:
  scalar &operator[](size_t i) override { return buffer[i]; }
 };
 
+scalar matrix(const size_t i, const size_t j) {
+ return (i == j ? alpha * (i + 1) : 0) + i + j;
+}
+
 void action(const LinearAlgebra::vectorSet<scalar> &psx, LinearAlgebra::vectorSet<scalar> &outputs) {
  for (size_t k = 0; k < psx.size(); k++) {
   for (size_t i = 0; i < n; i++) {
-   (*outputs[k])[i] = (alpha * (i + 1)) * (*psx[k])[i];
+   (*outputs[k])[i] = 0;
    for (size_t j = 0; j < n; j++)
-    (*outputs[k])[i] += (i + j) * (*psx[k])[j];
+    (*outputs[k])[i] += matrix(i,j) * (*psx[k])[j];
   }
  }
 }
@@ -82,7 +86,8 @@ int main(int argc, char *argv[]) {
  for (int root = 0; root < solver.m_roots; root++) {
   x.push_back(std::make_shared<pv>(n));
   g.push_back(std::make_shared<pv>(n));
-  x.back()->zero(); (*x.back())[root] = 1; // initial guess
+  x.back()->zero();
+  (*x.back())[root] = 1; // initial guess
  }
  std::vector<std::vector<scalar> > Pcoeff(solver.m_roots);
  for (auto iter = 0; iter < 1000; iter++) {
@@ -92,8 +97,7 @@ int main(int argc, char *argv[]) {
   if (solver.endIteration(x, g)) break;
  }
  std::cout << "Error={ ";
- for (int root = 0; root < solver.m_roots; root++)
-  std::cout << solver.errors()[root] << " ";
+ for (const auto &e : solver.errors()) std::cout << e << " ";
  std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
  for (int root = 0; root < solver.m_roots; root++) {
   std::cout << "Eigenvector:";

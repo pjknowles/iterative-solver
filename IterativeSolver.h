@@ -633,7 +633,7 @@ namespace LinearAlgebra {
  *
  * Example of simplest use with a simple in-memory container for eigenvectors: @include LinearEigensystemExample.cpp
  *
- * Example using offline distributed storage provided by the PagedVector class: @include LinearEigensystemExample-paged.cpp
+ * Example using a P-space and offline distributed storage provided by the PagedVector class: @include LinearEigensystemExample-paged.cpp
  *
  * \tparam scalar Type of matrix elements
  */

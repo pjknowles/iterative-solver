@@ -2,9 +2,8 @@
 // Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
 // Storage of vectors in-memory via class pv
 using scalar = double;
-constexpr size_t n = 100; // dimension of problem
+constexpr size_t n = 200; // dimension of problem
 constexpr scalar alpha = 100; // separation of diagonal elements
-constexpr size_t nP=8; // number in intial P-space
 
 class pv : public LinearAlgebra::vector<scalar> {
 public:
@@ -66,25 +65,6 @@ void action(const LinearAlgebra::vectorSet<scalar> &psx, LinearAlgebra::vectorSe
  }
 }
 
-double matrix(const size_t i, const size_t j) {
- return (i==j?alpha*(i+1):0) + i+j;
-}
-
-void actionP(
-  const std::vector<std::map<size_t, scalar> > pspace,
-  const std::vector<std::vector<scalar> > &psx,
-  LinearAlgebra::vectorSet<scalar> &outputs) {
- const size_t nP = pspace.size();
- for (size_t k = 0; k < psx.size(); k++) {
-  for (size_t p=0; p<nP; p++) {
-   for (const auto& pc : pspace[p]) {
-    for (size_t j = 0; j < n; j++)
-     (*outputs[k])[j] += matrix(pc.first,j)*pc.second*psx[k][p];
-   }
-  }
- }
-}
-
 void update(LinearAlgebra::vectorSet<scalar> &psc, const LinearAlgebra::vectorSet<scalar> &psg,
             std::vector<scalar> shift = std::vector<scalar>()) {
  for (size_t k = 0; k < psc.size(); k++)
@@ -102,27 +82,14 @@ int main(int argc, char *argv[]) {
  for (int root = 0; root < solver.m_roots; root++) {
   x.push_back(std::make_shared<pv>(n));
   g.push_back(std::make_shared<pv>(n));
-//  x.back()->zero();
-//  (*x.back())[root] = 1; // initial guess
- }
- size_t p=0;
- std::vector<scalar> PP;
- std::vector<std::map<size_t, scalar> > pspace(nP);
- for (auto& pc : pspace) {
-  pc.clear();
-  pc[p]=1;
-  for (size_t q=0; q<nP; q++) PP.push_back(matrix(p,q));
-  ++p;
+  x.back()->zero(); (*x.back())[root] = 1; // initial guess
  }
  std::vector<std::vector<scalar> > Pcoeff(solver.m_roots);
- for (auto i = 0; i < solver.m_roots; ++i) Pcoeff[i].resize(nP);
- solver.addP(pspace, PP.data(), x, g, Pcoeff);
  for (auto iter = 0; iter < 1000; iter++) {
-  actionP(pspace,Pcoeff,g);
-  update(x, g, solver.eigenvalues());
-  if (solver.endIteration(x, g)) break;
   action(x, g);
   solver.addVector(x, g, Pcoeff);
+  update(x, g, solver.eigenvalues());
+  if (solver.endIteration(x, g)) break;
  }
  std::cout << "Error={ ";
  for (int root = 0; root < solver.m_roots; root++)

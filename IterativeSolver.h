@@ -195,7 +195,7 @@ namespace LinearAlgebra {
      */
   bool endIteration(vectorSet<scalar> &solution, const vectorSet<scalar> &residual) {
    calculateErrors(solution, residual);
-   adjustUpdate(solution);
+   if (m_error >= m_thresh) adjustUpdate(solution);
    report();
    return m_error < m_thresh;
   }
@@ -290,10 +290,10 @@ namespace LinearAlgebra {
     for (auto rep = 0; rep < 2; rep++)
      for (size_t kkk = 0; kkk < solution.size(); kkk++) {
       if (solution.m_active[kkk]) {
-       for (auto i=0; i<m_Pvectors.size(); i++) {
-        const auto& p = m_Pvectors[i];
-        double s = -solution[kkk]->dot(p) / m_subspaceOverlap(i,i);
-        solution[kkk]->axpy(s,p);
+       for (auto i = 0; i < m_Pvectors.size(); i++) {
+        const auto &p = m_Pvectors[i];
+        double s = -solution[kkk]->dot(p) / m_subspaceOverlap(i, i);
+        solution[kkk]->axpy(s, p);
        }
        for (size_t ll = 0; ll < m_solutions.size(); ll++) {
         for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
@@ -451,21 +451,21 @@ namespace LinearAlgebra {
     xout << std::endl;
     xout << "IterativeSolverBase::calculateErrors residual " << residual << std::endl;
    }
-   vectorSet<scalar> step = solution;
-   if (!m_solutions.empty())
-    step.axpy(-1, m_solutions[m_lastVectorIndex]);
-   if (m_verbosity > 6)
-    xout << "IterativeSolverBase::calculateErrors step " << step << std::endl;
    m_errors.clear();
-   //  xout << "last active "<<m_lastVectorIndex<<" "<<m_residuals[m_lastVectorIndex].m_active[0]<<std::endl;
-   for (size_t k = 0; k < solution.size(); k++) {
-    if (m_linear) // we can use the extrapolated residual if the problem is linear
-     m_errors.push_back(residual.m_active[k] ? std::fabs(residual[k]->dot(*step[k])) : 0);
-    else
+   if (m_linear) { // we can use the extrapolated residual if the problem is linear
+    for (size_t k = 0; k < solution.size(); k++)
+     m_errors.push_back(residual.m_active[k] ? std::fabs(residual[k]->dot(*solution[k])) : 0);
+   } else {
+    vectorSet<scalar> step = solution;
+    step.axpy(-1, m_solutions[m_lastVectorIndex]);
+    if (m_verbosity > 6)
+     xout << "IterativeSolverBase::calculateErrors step " << step << std::endl;
+    for (size_t k = 0; k < solution.size(); k++)
      m_errors.push_back(
        m_residuals[m_lastVectorIndex].m_active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]->dot(*step[k])) : 1);
-    if (std::isnan(m_errors.back())) throw std::overflow_error("NaN detected in error measure");
    }
+   //  xout << "last active "<<m_lastVectorIndex<<" "<<m_residuals[m_lastVectorIndex].m_active[0]<<std::endl;
+   for (const auto &e : m_errors) if (std::isnan(e)) throw std::overflow_error("NaN detected in error measure");
    m_error = *max_element(m_errors.begin(), m_errors.end());
    m_worst = max_element(m_errors.begin(), m_errors.end()) - m_errors.begin();
    if (m_verbosity > 5) {

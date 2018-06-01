@@ -1,8 +1,9 @@
 #include "IterativeSolver.h"
+#include <cmath>
 // Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
 // Storage of vectors in-memory via class pv
 using scalar = double;
-constexpr size_t n = 400; // dimension of problem
+constexpr size_t n = 300; // dimension of problem
 constexpr scalar alpha = 100; // separation of diagonal elements
 
 class pv : public LinearAlgebra::vector<scalar> {
@@ -73,7 +74,7 @@ void update(LinearAlgebra::vectorSet<scalar> &psc, const LinearAlgebra::vectorSe
             std::vector<scalar> shift = std::vector<scalar>()) {
  for (size_t k = 0; k < psc.size(); k++)
   for (size_t i = 0; i < n; i++)
-   (*psc[k])[i] = -(*psg[k])[i] / (shift[k] + 2 * i + alpha * (i + 1));
+   (*psc[k])[i] -= (*psg[k])[i] / (shift[k] + 2 * i + alpha * (i + 1));
 }
 
 int main(int argc, char *argv[]) {
@@ -100,7 +101,7 @@ int main(int argc, char *argv[]) {
  for (const auto &e : solver.errors()) std::cout << e << " ";
  std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
  for (int root = 0; root < solver.m_roots; root++) {
-  std::cout << "Eigenvector:";
+  std::cout << "Eigenvector: (norm="<<std::sqrt(x[root]->dot(*x[root]))<<"): ";
   for (size_t k = 0; k < n; k++) std::cout << " " << (*x[root])[k];
   std::cout << std::endl;
  }

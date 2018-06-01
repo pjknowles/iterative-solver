@@ -4,7 +4,7 @@
 // Storage of vectors distributed and out of memory via PagedVector class
 using scalar = double;
 using pv = LinearAlgebra::PagedVector<scalar>;
-constexpr size_t n = 400; // dimension of problem
+constexpr size_t n = 300; // dimension of problem
 constexpr scalar alpha = 100; // separation of diagonal elements
 constexpr size_t nP = 10; // number in initial P-space
 
@@ -50,8 +50,9 @@ void update(LinearAlgebra::vectorSet<scalar> &psc, const LinearAlgebra::vectorSe
  std::vector<scalar> psgk(n);
  for (size_t k = 0; k < psc.size(); k++) {
   psg[k]->get(&psgk[0], n, 0);
+  psc[k]->get(&psck[0], n, 0);
   for (size_t i = 0; i < n; i++)
-   psck[i] = -psgk[i] / (shift[k] + 2 * i + alpha * (i + 1));
+   psck[i] -= psgk[i] / (shift[k] + 2 * i + alpha * (i + 1));
   psc[k]->put(&psck[0], n, 0);
  }
 }

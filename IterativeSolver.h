@@ -958,7 +958,10 @@ IterativeSolverLinearEigensystemAddVector(double *parameters, double *action, do
 
 extern "C" int IterativeSolverLinearEigensystemEndIteration(double *c, double *g, double *error);
 
-extern "C" void IterativeSolverAddP(size_t *indices, double *coefficients, double *pp);
+extern "C" void IterativeSolverLinearEigensystemAddP(const size_t nP, const size_t *offsets, const size_t *indices,
+                                                     const double *coefficients, const double *pp,
+                                                     double *parameters, double *action, double *parametersP,
+                                                     double *eigenvalue) ;
 
 
 #endif // ITERATIVESOLVER_H

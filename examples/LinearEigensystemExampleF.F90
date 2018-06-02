@@ -21,5 +21,6 @@ PROGRAM LinearEigenSystemExample
   converged = Iterative_Solver_Linear_Eigensystem_End_Iteration(c,g,error)
   IF (converged) EXIT
  END DO
-  PRINT *, 'error =',error,' eigenvalue =',e
+ PRINT *, 'error =',error,' eigenvalue =',e
+ CALL Iterative_Solver_Finalize
 END PROGRAM LinearEigenSystemExample

@@ -1,8 +1,9 @@
 !> @brief IterativeSolver Fortran binding
 MODULE Iterative_Solver
  USE iso_c_binding
- PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize
+ PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize, Iterative_Solver_Finalize
  PUBLIC :: Iterative_Solver_Linear_Eigensystem_Add_Vector, Iterative_Solver_Linear_Eigensystem_End_Iteration
+ PUBLIC :: Iterative_Solver_Linear_Eigensystem_Add_P
  PRIVATE
  INTEGER(c_size_t), PRIVATE :: m_nq, m_nroot
  
@@ -48,8 +49,18 @@ CONTAINS
   END IF
   CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq,m_nroot,threshC, maxIterationsC, verbosityC)
  END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize
+
+!> \brief Terminate the iterative solver
+ SUBROUTINE Iterative_Solver_Finalize
+  INTERFACE
+   SUBROUTINE IterativeSolverFinalize() BIND(C,name='IterativeSolverFinalize')
+    USE iso_c_binding
+   END SUBROUTINE IterativeSolverFinalize
+  END INTERFACE
+  CALL IterativeSolverFinalize
+ END SUBROUTINE Iterative_Solver_Finalize
  
-!> \brief Take, typically, a current solution and residual, and return new solution.
+!> \brief Take, typically, a current solution and residual, add it to the expansion set, and return new solution.
 !> In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
 !> acting on it with the matrix, and the output will be a new expansion vector.
 !> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
@@ -106,13 +117,22 @@ CONTAINS
  END FUNCTION Iterative_Solver_Linear_Eigensystem_End_Iteration
  
  
-!!> Add P-space vectors to the expansion set
+!> \brief add P-space vectors to the expansion set, and return new solution.
+!> \param nP the number of P-space vectors to add
+!> \param offsets specifies the start point in indices and coefficients that defines each vector.
+!> \param indices Index in the full space of a contribution to a new P vector
+!> \param coefficients Value of a contribution to a new P vector
+!> \param pp The P-P block of the matrix, dimensioned (number of existing P + nP, nP)
+!> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
+!> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
+!> \param parametersP On exit, the interpolated solution projected onto the P space.
+!> \param eigenvalue On output, the lowest eigenvalues of the reduced problem, for the number of roots sought.
  SUBROUTINE Iterative_Solver_Linear_Eigensystem_Add_P(nP,offsets,indices,coefficients,pp,parameters,action,parametersP,eigenvalue)
   INTEGER, INTENT(in) :: nP
-  INTEGER, INTENT(in), DIMENSION(0:) :: offsets
-  INTEGER, INTENT(in), DIMENSION(:) :: indices
-  DOUBLE PRECISION, DIMENSION(:), INTENT(in) :: coefficients
-  DOUBLE PRECISION, DIMENSION(:), INTENT(in) :: pp
+  INTEGER, INTENT(in), DIMENSION(0:nP) :: offsets
+  INTEGER, INTENT(in), DIMENSION(nP) :: indices
+  DOUBLE PRECISION, DIMENSION(nP), INTENT(in) :: coefficients
+  DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: pp
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parametersP
@@ -139,6 +159,18 @@ CONTAINS
   CALL IterativeSolverLinearEigensystemAddPC(INT(nP,c_size_t),offsetsC,indicesC,coefficients, &
    pp,parameters,action,parametersP,eigenvalue)
  END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Add_P
+
+ FUNCTION Iterative_Solver_Eigenvalues()
+  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: Iterative_Solver_Eigenvalues
+  INTERFACE
+   SUBROUTINE IterativeSolverEigenvalues(eigenvalues) BIND(C,name='IterativeSolverEigenvalues')
+    USE iso_c_binding
+    REAL(C_double), DIMENSION(*), INTENT(inout) :: eigenvalues
+   END SUBROUTINE IterativeSolverEigenvalues
+  END INTERFACE
+  ALLOCATE (Iterative_Solver_Eigenvalues(m_nroot))
+  CALL IterativeSolverEigenvalues(Iterative_Solver_Eigenvalues)
+ END FUNCTION Iterative_Solver_Eigenvalues
  
 !!> Unit testing of IterativeSolver Fortran binding
  SUBROUTINE Iterative_Solver_Test() BIND(C,name='IterativeSolverFTest')
@@ -167,5 +199,6 @@ CONTAINS
    IF ( Iterative_Solver_Linear_Eigensystem_End_Iteration(c,g,error)) EXIT
    WRITE (6,*) 'error ',error
   END DO
+  CALL Iterative_Solver_Finalize
  END SUBROUTINE Iterative_Solver_Test
 END MODULE Iterative_Solver

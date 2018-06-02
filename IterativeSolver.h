@@ -953,6 +953,8 @@ namespace LinearAlgebra {
 extern "C" void
 IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh, int maxIterations, int verbosity);
 
+extern "C" void IterativeSolverFinalize();
+
 extern "C" void
 IterativeSolverLinearEigensystemAddVector(double *parameters, double *action, double *eigenvalue, double *parametersP);
 
@@ -962,6 +964,7 @@ extern "C" void IterativeSolverLinearEigensystemAddP(const size_t nP, const size
                                                      const double *coefficients, const double *pp,
                                                      double *parameters, double *action, double *parametersP,
                                                      double *eigenvalue) ;
+extern "C" void IterativeSolverEigenvalues(double* eigenvalues);
 
 
 #endif // ITERATIVESOLVER_H

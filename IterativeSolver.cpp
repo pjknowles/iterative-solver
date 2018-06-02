@@ -5,7 +5,7 @@
 namespace LinearAlgebra {
  using v = PagedVector<double>;
 
- static std::unique_ptr<LinearEigensystem<double> > instance;
+ static std::unique_ptr<IterativeSolver<double> > instance;
 
  extern "C" void
  IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, double thresh, int maxIterations, int verbosity) {
@@ -21,6 +21,10 @@ namespace LinearAlgebra {
   instance->m_maxIterations = maxIterations;
   instance->m_verbosity = verbosity;
   std::cout << "roots: " << instance->m_roots << std::endl;
+ }
+
+ extern "C" void IterativeSolverFinalize() {
+  instance.release();
  }
 
  extern "C" void IterativeSolverLinearEigensystemAddVector(double *parameters, double *action, double *parametersP,
@@ -86,6 +90,10 @@ namespace LinearAlgebra {
    eigenvalue[root] = instance->eigenvalues()[root];
   }
  }
-}
 
+ extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
+  size_t k=0;
+  for (const auto& e : instance->eigenvalues()) eigenvalues[k++] = e;
+ }
+}
 

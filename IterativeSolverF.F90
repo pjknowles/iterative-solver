@@ -7,9 +7,9 @@ MODULE Iterative_Solver
  PUBLIC :: Iterative_Solver_Eigenvalues
  PRIVATE
  INTEGER(c_size_t), PRIVATE :: m_nq, m_nroot
- 
+
 CONTAINS
- 
+
 !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos
 !> Example of simplest use: @include LinearEigensystemExampleF.F90
  SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq,nroot,thresh,maxIterations,verbosity)
@@ -60,7 +60,7 @@ CONTAINS
   END INTERFACE
   CALL IterativeSolverFinalize
  END SUBROUTINE Iterative_Solver_Finalize
- 
+
 !> \brief Take, typically, a current solution and residual, add it to the expansion set, and return new solution.
 !> In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
 !> acting on it with the matrix, and the output will be a new expansion vector.
@@ -88,7 +88,7 @@ CONTAINS
    CALL Iterative_Solver_Add_Vector_C(parameters,action,pdummy)
   END IF
  END SUBROUTINE Iterative_Solver_Add_Vector
- 
+
 !>@brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
 !> be used in the next iteration; this is done only in the case of linear solvers where the orthogonalize option is set.
 !> Also calculate the degree of convergence, and write progress to standard output
@@ -113,8 +113,8 @@ CONTAINS
   Iterative_Solver_End_Iteration = &
        Iterative_Solver_End_Iteration_C(solution,residual,error).NE.0
  END FUNCTION Iterative_Solver_End_Iteration
- 
- 
+
+
 !> \brief add P-space vectors to the expansion set, and return new solution.
 !> \param nP the number of P-space vectors to add
 !> \param offsets specifies the start point in indices and coefficients that defines each vector.
@@ -150,9 +150,11 @@ CONTAINS
   INTEGER(c_size_t), DIMENSION(0:nP) :: offsetsC
   INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC
   offsetsC = INT(offsets,c_size_t)
-  indicesC = INT(indices,c_size_t)
+  do i=1,nP
+   indicesC(i) = INT(indices(i)-1,c_size_t) ! 1-base to 0-base
+  end do
   CALL IterativeSolverAddPC(INT(nP,c_size_t),offsetsC,indicesC,coefficients, &
-   pp,parameters,action,parametersP)
+       pp,parameters,action,parametersP)
  END SUBROUTINE Iterative_Solver_Add_P
 
 !> \brief the lowest eigenvalues of the reduced problem, for the number of roots sought.
@@ -167,35 +169,89 @@ CONTAINS
   ALLOCATE (Iterative_Solver_Eigenvalues(m_nroot))
   CALL IterativeSolverEigenvalues(Iterative_Solver_Eigenvalues)
  END FUNCTION Iterative_Solver_Eigenvalues
- 
+
 !!> Unit testing of IterativeSolver Fortran binding
  SUBROUTINE Iterative_Solver_Test() BIND(C,name='IterativeSolverFTest')
-  INTEGER, PARAMETER :: n=100, nroot=2
+  INTEGER, PARAMETER :: n=100, nroot=2, nPmax=20
   DOUBLE PRECISION, DIMENSION (n,n) :: m
   DOUBLE PRECISION, DIMENSION (n,nroot) :: c,g
-  DOUBLE PRECISION, DIMENSION (0,nroot) :: p
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: p
   DOUBLE PRECISION, DIMENSION (nroot) :: e,error
+  INTEGER, DIMENSION(0:nPmax) :: offsets
+  INTEGER, DIMENSION(nPmax) :: indices
+  DOUBLE PRECISION, DIMENSION(nPmax) :: coefficients
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: pp
   INTEGER :: i,j,root
   PRINT *, 'Test Fortran binding of IterativeSolver'
   m=1
   DO i=1,n
    m(i,i)=3*i
   END DO
-  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n,nroot,thresh=1d-8)
-  c=0; DO i=1,nroot; c(i,i)=1; ENDDO
-  DO i=1,n
-   g = MATMUL(m,c)
-   CALL Iterative_Solver_Add_Vector(c,g,p)
-   e = Iterative_Solver_Eigenvalues()
-   WRITE (6,*) 'eigenvalue',e
-   DO root=1,nroot
-    DO j=1,n
-     c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(i)+1e-15)
+
+  DO irep=1,1
+   WRITE (6,*) 'Without P-space, dimension=',n,', roots=',nroot
+   CALL Iterative_Solver_Linear_Eigensystem_Initialize(n,nroot,thresh=1d-8,verbosity=1)
+   c=0; DO i=1,nroot; c(i,i)=1; ENDDO
+   DO i=1,n
+    g = MATMUL(m,c)
+    CALL Iterative_Solver_Add_Vector(c,g,p)
+    e = Iterative_Solver_Eigenvalues()
+!WRITE (6,*) 'eigenvalue',e
+    DO root=1,nroot
+     DO j=1,n
+      c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(i)+1e-15)
+     END DO
     END DO
+    IF ( Iterative_Solver_End_Iteration(c,g,error)) EXIT
+!WRITE (6,*) 'error ',error
    END DO
-   IF ( Iterative_Solver_End_Iteration(c,g,error)) EXIT
-   WRITE (6,*) 'error ',error
-  END DO
-  CALL Iterative_Solver_Finalize
+   CALL Iterative_Solver_Finalize
+  ENDDO
+
+  DO np=nroot, nPmax, nroot
+   ALLOCATE(pp(np,np))
+   ALLOCATE(p(np,nroot))
+   WRITE (6,*) 'P-space=',nP,', dimension=',n,', roots=',nroot
+   CALL Iterative_Solver_Linear_Eigensystem_Initialize(n,nroot,thresh=1d-8,verbosity=1)
+   offsets(0)=0
+   do i=1,nP
+    offsets(i)=i
+    indices(i)=i
+    coefficients(i)=1
+    do j=1,nP
+     pp(i,j) =  m(i,j)
+    end do
+   end do
+   c=0
+   CALL Iterative_Solver_Add_P(nP,offsets,indices,coefficients,pp,c,g,p)
+   DO iter=1,10
+    e = Iterative_Solver_Eigenvalues()
+    DO root=1,nroot
+     DO i=1,nP
+      DO j=1,n
+       g(j,root) = g(j,root) + m(j,indices(i)) * p(i,root)
+      END DO
+     END DO
+    END DO
+!WRITE (6,*) 'eigenvalue',e
+!write (6,*) 'eigenvectors',c
+!write (6,*) 'residual',g
+!write (6,*) 'p parameters',p
+    DO root=1,nroot
+     DO j=1,n
+      c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(i)+1e-15)
+     END DO
+    END DO
+!write (6,*) 'c before end_iteration',c
+    IF ( Iterative_Solver_End_Iteration(c,g,error)) EXIT
+!write (6,*) 'c after end_iteration',c
+!WRITE (6,*) 'error ',error
+    g = MATMUL(m,c)
+    CALL Iterative_Solver_Add_Vector(c,g,p)
+   END DO
+   CALL Iterative_Solver_Finalize
+   DEALLOCATE(p)
+   DEALLOCATE(pp)
+  end do
  END SUBROUTINE Iterative_Solver_Test
 END MODULE Iterative_Solver

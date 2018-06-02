@@ -35,6 +35,7 @@ namespace LinearAlgebra {
    cc.back()->put(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
    gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
    gg.back()->put(&action[root * instance->m_dimension], instance->m_dimension, 0);
+   cc.m_active[root]=gg.m_active[root]=instance->errors().size()<=root ||  instance->errors()[root]>=instance->m_thresh;
   }
   instance->addVector(cc, gg, ccp);
   for (int root = 0; root < instance->m_roots; root++) {

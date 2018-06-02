@@ -284,7 +284,6 @@ namespace LinearAlgebra {
    //     xout << "m_errors[0] "<<m_errors[0]<<", m_thresh "<<m_thresh<<std::endl;
    for (size_t k = 0; k < solution.size(); k++)
     solution.m_active[k] = (m_errors[k] >= m_thresh || m_minIterations > m_iterations);
-   //      xout <<  "solution.m_active[0] "<<solution.m_active[0]<<std::endl;
    if (m_orthogonalize) {
     //      xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
     for (auto rep = 0; rep < 2; rep++)
@@ -530,8 +529,8 @@ namespace LinearAlgebra {
     }
    }
    if (m_verbosity > 3) {
-    xout << "m_subspaceMatrix: " << std::endl << m_QQMatrix << std::endl;
-    xout << "m_subspaceOverlap: " << std::endl << m_QQOverlap << std::endl;
+    xout << "m_QQMatrix: " << std::endl << m_QQMatrix << std::endl;
+    xout << "m_QQOverlap: " << std::endl << m_QQOverlap << std::endl;
    }
    return m_residuals.size();
   }
@@ -961,9 +960,10 @@ IterativeSolverAddVector(double *parameters, double *action, double *parametersP
 extern "C" int IterativeSolverEndIteration(double *c, double *g, double *error);
 
 extern "C" void IterativeSolverAddP(const size_t nP, const size_t *offsets, const size_t *indices,
-                                                     const double *coefficients, const double *pp,
-                                                     double *parameters, double *action, double *parametersP) ;
-extern "C" void IterativeSolverEigenvalues(double* eigenvalues);
+                                    const double *coefficients, const double *pp,
+                                    double *parameters, double *action, double *parametersP);
+
+extern "C" void IterativeSolverEigenvalues(double *eigenvalues);
 
 
 #endif // ITERATIVESOLVER_H

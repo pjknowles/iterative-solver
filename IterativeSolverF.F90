@@ -2,7 +2,7 @@
 MODULE Iterative_Solver
  USE iso_c_binding
  PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize, Iterative_Solver_Finalize
- PUBLIC :: Iterative_Solver_Add_Vector, Iterative_Solver_Linear_Eigensystem_End_Iteration
+ PUBLIC :: Iterative_Solver_Add_Vector, Iterative_Solver_End_Iteration
  PUBLIC :: Iterative_Solver_Add_P
  PUBLIC :: Iterative_Solver_Eigenvalues
  PRIVATE
@@ -96,23 +96,23 @@ CONTAINS
 !> \param residual The residual after interpolation.
 !> \param error Error indicator for each sought root.
 !> \return .TRUE. if convergence reached for all roots
- LOGICAL FUNCTION Iterative_Solver_Linear_Eigensystem_End_Iteration(solution,residual,error)
+ LOGICAL FUNCTION Iterative_Solver_End_Iteration(solution,residual,error)
   USE iso_c_binding
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: error
   INTERFACE
-   INTEGER(c_int) FUNCTION Iterative_Solver_Linear_Eigensystem_End_Iteration_C(solution,residual,error) &
-        BIND(C,name='IterativeSolverLinearEigensystemEndIteration')
+   INTEGER(c_int) FUNCTION Iterative_Solver_End_Iteration_C(solution,residual,error) &
+        BIND(C,name='IterativeSolverEndIteration')
     USE iso_c_binding
     REAL(c_double), DIMENSION(*), INTENT(inout) :: solution
     REAL(c_double), DIMENSION(*), INTENT(inout) :: residual
     REAL(c_double), DIMENSION(*), INTENT(inout) :: error
-   END FUNCTION Iterative_Solver_Linear_Eigensystem_End_Iteration_C
+   END FUNCTION Iterative_Solver_End_Iteration_C
   END INTERFACE
-  Iterative_Solver_Linear_Eigensystem_End_Iteration = &
-       Iterative_Solver_Linear_Eigensystem_End_Iteration_C(solution,residual,error).NE.0
- END FUNCTION Iterative_Solver_Linear_Eigensystem_End_Iteration
+  Iterative_Solver_End_Iteration = &
+       Iterative_Solver_End_Iteration_C(solution,residual,error).NE.0
+ END FUNCTION Iterative_Solver_End_Iteration
  
  
 !> \brief add P-space vectors to the expansion set, and return new solution.
@@ -193,7 +193,7 @@ CONTAINS
      c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(i)+1e-15)
     END DO
    END DO
-   IF ( Iterative_Solver_Linear_Eigensystem_End_Iteration(c,g,error)) EXIT
+   IF ( Iterative_Solver_End_Iteration(c,g,error)) EXIT
    WRITE (6,*) 'error ',error
   END DO
   CALL Iterative_Solver_Finalize

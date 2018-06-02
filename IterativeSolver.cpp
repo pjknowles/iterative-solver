@@ -45,7 +45,7 @@ namespace LinearAlgebra {
   }
  }
 
- extern "C" int IterativeSolverLinearEigensystemEndIteration(double *solution, double *residual, double *error) {
+ extern "C" int IterativeSolverEndIteration(double *solution, double *residual, double *error) {
   vectorSet<double> cc, gg;
   for (int root = 0; root < instance->m_roots; root++) {
    cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));

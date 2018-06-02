@@ -19,7 +19,7 @@ PROGRAM LinearEigenSystemExample
     c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(root)+1e-15)
    END DO
   END DO
-  converged = Iterative_Solver_Linear_Eigensystem_End_Iteration(c,g,error)
+  converged = Iterative_Solver_End_Iteration(c,g,error)
   IF (converged) EXIT
  END DO
  PRINT *, 'error =',error,' eigenvalue =',e

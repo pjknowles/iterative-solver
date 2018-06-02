@@ -27,8 +27,7 @@ namespace LinearAlgebra {
   instance.release();
  }
 
- extern "C" void IterativeSolverLinearEigensystemAddVector(double *parameters, double *action, double *parametersP,
-                                                           double *eigenvalue) {
+ extern "C" void IterativeSolverAddVector(double *parameters, double *action, double *parametersP) {
   vectorSet<double> cc, gg;
   std::vector<std::vector<double> > ccp;
   for (int root = 0; root < instance->m_roots; root++) {
@@ -43,7 +42,6 @@ namespace LinearAlgebra {
    gg[root]->get(&action[root * instance->m_dimension], instance->m_dimension, 0);
    for (size_t i = 0; i < ccp[0].size(); i++)
     parametersP[root * ccp[0].size() + i] = ccp[root][i];
-   eigenvalue[root] = instance->eigenvalues()[root];
   }
  }
 
@@ -63,10 +61,9 @@ namespace LinearAlgebra {
   return result;
  }
 
- extern "C" void IterativeSolverLinearEigensystemAddP(const size_t nP, const size_t *offsets, const size_t *indices,
+ extern "C" void IterativeSolverAddP(const size_t nP, const size_t *offsets, const size_t *indices,
                                                       const double *coefficients, const double *pp,
-                                                      double *parameters, double *action, double *parametersP,
-                                                      double *eigenvalue) {
+                                                      double *parameters, double *action, double *parametersP) {
   vectorSet<double> cc, gg;
   std::vector<std::vector<double> > ccp;
   for (int root = 0; root < instance->m_roots; root++) {
@@ -87,7 +84,6 @@ namespace LinearAlgebra {
    gg[root]->get(&action[root * instance->m_dimension], instance->m_dimension, 0);
    for (size_t i = 0; i < ccp[0].size(); i++)
     parametersP[root * ccp[0].size() + i] = ccp[root][i];
-   eigenvalue[root] = instance->eigenvalues()[root];
   }
  }
 

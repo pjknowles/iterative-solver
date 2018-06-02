@@ -2,8 +2,9 @@
 MODULE Iterative_Solver
  USE iso_c_binding
  PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize, Iterative_Solver_Finalize
- PUBLIC :: Iterative_Solver_Linear_Eigensystem_Add_Vector, Iterative_Solver_Linear_Eigensystem_End_Iteration
- PUBLIC :: Iterative_Solver_Linear_Eigensystem_Add_P
+ PUBLIC :: Iterative_Solver_Add_Vector, Iterative_Solver_Linear_Eigensystem_End_Iteration
+ PUBLIC :: Iterative_Solver_Add_P
+ PUBLIC :: Iterative_Solver_Eigenvalues
  PRIVATE
  INTEGER(c_size_t), PRIVATE :: m_nq, m_nroot
  
@@ -66,30 +67,27 @@ CONTAINS
 !> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
 !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
 !> \param parametersP On exit, the interpolated solution projected onto the P space.
-!> \param eigenvalue On output, the lowest eigenvalues of the reduced problem, for the number of roots sought.
- SUBROUTINE Iterative_Solver_Linear_Eigensystem_Add_Vector(parameters,action,eigenvalue,parametersP)
+ SUBROUTINE Iterative_Solver_Add_Vector(parameters,action,parametersP)
   USE iso_c_binding
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
-  DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: eigenvalue
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP
   INTERFACE
-   SUBROUTINE Iterative_Solver_Linear_Eigensystem_Add_Vector_C(parameters,action,parametersP,eigenvalue) &
-        BIND(C,name='IterativeSolverLinearEigensystemAddVector')
+   SUBROUTINE Iterative_Solver_Add_Vector_C(parameters,action,parametersP) &
+        BIND(C,name='IterativeSolverAddVector')
     USE iso_c_binding
     REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
     REAL(c_double), DIMENSION(*), INTENT(inout) :: action
-    REAL(c_double), DIMENSION(*), INTENT(inout) :: eigenvalue
     REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
-   END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Add_Vector_C
+   END SUBROUTINE Iterative_Solver_Add_Vector_C
   END INTERFACE
   DOUBLE PRECISION, DIMENSION(0) :: pdummy
   IF (PRESENT(parametersP)) THEN
-   CALL Iterative_Solver_Linear_Eigensystem_Add_Vector_C(parameters,action,parametersP,eigenvalue)
+   CALL Iterative_Solver_Add_Vector_C(parameters,action,parametersP)
   ELSE
-   CALL Iterative_Solver_Linear_Eigensystem_Add_Vector_C(parameters,action,pdummy,eigenvalue)
+   CALL Iterative_Solver_Add_Vector_C(parameters,action,pdummy)
   END IF
- END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Add_Vector
+ END SUBROUTINE Iterative_Solver_Add_Vector
  
 !>@brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
 !> be used in the next iteration; this is done only in the case of linear solvers where the orthogonalize option is set.
@@ -126,8 +124,7 @@ CONTAINS
 !> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
 !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
 !> \param parametersP On exit, the interpolated solution projected onto the P space.
-!> \param eigenvalue On output, the lowest eigenvalues of the reduced problem, for the number of roots sought.
- SUBROUTINE Iterative_Solver_Linear_Eigensystem_Add_P(nP,offsets,indices,coefficients,pp,parameters,action,parametersP,eigenvalue)
+ SUBROUTINE Iterative_Solver_Add_P(nP,offsets,indices,coefficients,pp,parameters,action,parametersP)
   INTEGER, INTENT(in) :: nP
   INTEGER, INTENT(in), DIMENSION(0:nP) :: offsets
   INTEGER, INTENT(in), DIMENSION(nP) :: indices
@@ -136,10 +133,9 @@ CONTAINS
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parametersP
-  DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: eigenvalue
   INTERFACE
-   SUBROUTINE IterativeSolverLinearEigensystemAddPC(nP,offsets,indices,coefficients,pp,parameters,action,parametersP,eigenvalue) &
-        BIND(C,name='IterativeSolverLinearEigensystemAddP')
+   SUBROUTINE IterativeSolverAddPC(nP,offsets,indices,coefficients,pp,parameters,action,parametersP) &
+        BIND(C,name='IterativeSolverAddP')
     USE iso_c_binding
     INTEGER(c_size_t), INTENT(in), VALUE :: nP
     INTEGER(c_size_t), INTENT(in), DIMENSION(0:nP) :: offsets
@@ -148,18 +144,18 @@ CONTAINS
     REAL(c_double), DIMENSION(*), INTENT(in) :: pp
     REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
     REAL(c_double), DIMENSION(*), INTENT(inout) :: action
-    REAL(c_double), DIMENSION(*), INTENT(inout) :: eigenvalue
     REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
-   END SUBROUTINE IterativeSolverLinearEigensystemAddPC
+   END SUBROUTINE IterativeSolverAddPC
   END INTERFACE
   INTEGER(c_size_t), DIMENSION(0:nP) :: offsetsC
   INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC
   offsetsC = INT(offsets,c_size_t)
   indicesC = INT(indices,c_size_t)
-  CALL IterativeSolverLinearEigensystemAddPC(INT(nP,c_size_t),offsetsC,indicesC,coefficients, &
-   pp,parameters,action,parametersP,eigenvalue)
- END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Add_P
+  CALL IterativeSolverAddPC(INT(nP,c_size_t),offsetsC,indicesC,coefficients, &
+   pp,parameters,action,parametersP)
+ END SUBROUTINE Iterative_Solver_Add_P
 
+!> \brief the lowest eigenvalues of the reduced problem, for the number of roots sought.
  FUNCTION Iterative_Solver_Eigenvalues()
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: Iterative_Solver_Eigenvalues
   INTERFACE
@@ -189,7 +185,8 @@ CONTAINS
   c=0; DO i=1,nroot; c(i,i)=1; ENDDO
   DO i=1,n
    g = MATMUL(m,c)
-   CALL Iterative_Solver_Linear_Eigensystem_Add_Vector(c,g,e,p)
+   CALL Iterative_Solver_Add_Vector(c,g,p)
+   e = Iterative_Solver_Eigenvalues()
    WRITE (6,*) 'eigenvalue',e
    DO root=1,nroot
     DO j=1,n

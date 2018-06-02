@@ -956,14 +956,13 @@ IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thres
 extern "C" void IterativeSolverFinalize();
 
 extern "C" void
-IterativeSolverLinearEigensystemAddVector(double *parameters, double *action, double *eigenvalue, double *parametersP);
+IterativeSolverAddVector(double *parameters, double *action, double *parametersP);
 
 extern "C" int IterativeSolverLinearEigensystemEndIteration(double *c, double *g, double *error);
 
-extern "C" void IterativeSolverLinearEigensystemAddP(const size_t nP, const size_t *offsets, const size_t *indices,
+extern "C" void IterativeSolverAddP(const size_t nP, const size_t *offsets, const size_t *indices,
                                                      const double *coefficients, const double *pp,
-                                                     double *parameters, double *action, double *parametersP,
-                                                     double *eigenvalue) ;
+                                                     double *parameters, double *action, double *parametersP) ;
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues);
 
 

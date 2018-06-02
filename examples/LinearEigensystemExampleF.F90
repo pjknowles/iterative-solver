@@ -12,7 +12,8 @@ PROGRAM LinearEigenSystemExample
  c=0; DO i=1,nroot; c(i,i)=1; ENDDO
  DO i=1,n
   g = MATMUL(m,c)
-  CALL Iterative_Solver_Linear_Eigensystem_Add_Vector(c,g,e)
+  CALL Iterative_Solver_Add_Vector(c,g,e)
+  e = Iterative_Solver_Eigenvalues()
   DO root=1,nroot
    DO j=1,n
     c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(root)+1e-15)

@@ -106,6 +106,7 @@ namespace LinearAlgebra {
       parameters.m_active[k];
    m_lastVectorIndex = addVectorSet(parameters, action, other) -
                        1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
+//   xout << "set lastVectorIndex=addVectorSet-1="<<m_lastVectorIndex<<std::endl;
    buildSubspace();
    solveReducedProblem();
    doInterpolation(parameters, action, parametersP, other);
@@ -345,10 +346,10 @@ namespace LinearAlgebra {
      m_subspaceOverlap(j, nP + i) = m_subspaceOverlap(nP + i, j) = m_PQOverlap(j, i);
     }
    }
-   if (m_verbosity > 2) xout << "PQ matrix" << std::endl << this->m_PQMatrix << std::endl;
-   if (m_verbosity > 2) xout << "PQ overlap" << std::endl << this->m_PQOverlap << std::endl;
-   if (m_verbosity > 2) xout << "QQ matrix" << std::endl << this->m_QQMatrix << std::endl;
-   if (m_verbosity > 2) xout << "QQ overlap" << std::endl << this->m_QQOverlap << std::endl;
+   if (m_verbosity > 3 && m_PQMatrix.rows()>0) xout << "PQ matrix" << std::endl << this->m_PQMatrix << std::endl;
+   if (m_verbosity > 3 && m_PQMatrix.rows()>0) xout << "PQ overlap" << std::endl << this->m_PQOverlap << std::endl;
+   if (m_verbosity > 3 && m_PQMatrix.rows()>0) xout << "QQ matrix" << std::endl << this->m_QQMatrix << std::endl;
+   if (m_verbosity > 3 && m_PQMatrix.rows()>0) xout << "QQ overlap" << std::endl << this->m_QQOverlap << std::endl;
    if (m_verbosity > 2) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
    if (m_verbosity > 2) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
   }
@@ -458,8 +459,12 @@ namespace LinearAlgebra {
    } else {
     vectorSet<scalar> step = solution;
     step.axpy(-1, m_solutions[m_lastVectorIndex]);
-    if (m_verbosity > 6)
+    if (m_verbosity > 6) {
+     xout << "IterativeSolverBase::calculateErrors last solution " << m_lastVectorIndex << std::endl;
+     xout << "IterativeSolverBase::calculateErrors last solution " << m_solutions[m_lastVectorIndex] << std::endl;
+     xout << "IterativeSolverBase::calculateErrors solution " << solution << std::endl;
      xout << "IterativeSolverBase::calculateErrors step " << step << std::endl;
+    }
     for (size_t k = 0; k < solution.size(); k++)
      m_errors.push_back(
        m_residuals[m_lastVectorIndex].m_active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]->dot(*step[k])) : 1);
@@ -518,7 +523,8 @@ namespace LinearAlgebra {
      for (size_t ll = 0; ll < m_solutions.size(); ll++) {
       for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
        if (m_solutions[ll].m_active[lll]) {
-        //      xout << "bra"<<std::endl<<(*bra)[ll][lll]<<std::endl;
+//              xout << "bra"<<std::endl<<(*bra)[ll][lll]<<std::endl;
+//              xout << "residual1"<<std::endl<<residual1[kkk]<<std::endl;
         m_QQMatrix(k, l) = m_QQMatrix(l, k) = (*bra)[ll][lll]->dot(*residual1[kkk]);
         m_QQOverlap(k, l) = m_QQOverlap(l, k) = m_solutions[ll][lll]->dot(*solution1[kkk]);
         l++;
@@ -530,8 +536,8 @@ namespace LinearAlgebra {
     }
    }
    if (m_verbosity > 3) {
-    xout << "m_QQMatrix: " << std::endl << m_QQMatrix << std::endl;
-    xout << "m_QQOverlap: " << std::endl << m_QQOverlap << std::endl;
+    xout << "QQ Matrix: " << std::endl << m_QQMatrix << std::endl;
+    xout << "QQ Overlap: " << std::endl << m_QQOverlap << std::endl;
    }
    return m_residuals.size();
   }
@@ -823,7 +829,6 @@ namespace LinearAlgebra {
    //      xout << "m_subspaceMatrix on entry to DIIS::solveReducedProblem"<<std::endl<<m_subspaceMatrix<<std::endl;
    //  }
    size_t nDim = this->m_subspaceMatrix.rows();
-   this->m_lastVectorIndex = nDim - 1;
    this->m_LastResidualNormSq = std::fabs(this->m_subspaceMatrix(nDim - 1, nDim - 1));
    //  xout << "this->m_LastResidualNormSq "<<this->m_LastResidualNormSq<<std::endl;
 

@@ -20,7 +20,6 @@ namespace LinearAlgebra {
   instance->m_thresh = thresh;
   instance->m_maxIterations = maxIterations;
   instance->m_verbosity = verbosity;
-  std::cout << "roots: " << instance->m_roots << std::endl;
  }
 
  extern "C" void IterativeSolverFinalize() {

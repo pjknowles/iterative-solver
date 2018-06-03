@@ -1,3 +1,6 @@
+!> @example LinearEigensystemExampleF.F90
+!> This is an example of simplest use of the LinearEigensystem framework for iterative
+!> finding of the lowest few eigensolutions of a large matrix.
 PROGRAM LinearEigenSystemExample
  USE Iterative_Solver
  INTEGER, PARAMETER :: n=1000, nroot=3

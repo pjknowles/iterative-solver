@@ -137,6 +137,7 @@ namespace LinearAlgebra {
    * \param parameters On exit, the interpolated solution vector.
    * \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
    * \param parametersP On exit, the interpolated solution projected onto the P space.
+   * \param other On exit, interpolation of the other vectors
    */
   void addP(std::vector<Pvector> Pvectors, const scalar *PP,
             vectorSet<scalar> &parameters,
@@ -268,7 +269,7 @@ namespace LinearAlgebra {
   Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> m_PQMatrix, m_PQOverlap; //!< The PQ block of the matrix
   std::vector<Pvector> m_Pvectors;
  public:
-  int m_verbosity; //!< How much to print.
+  int m_verbosity; //!< How much to print. Zero means nothing; One results in a single progress-report line printed each iteration.
   double m_thresh; //!< If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
   unsigned int m_maxIterations; //!< Maximum number of iterations in solve()
   unsigned int m_minIterations; //!< Minimum number of iterations in solve()
@@ -804,18 +805,6 @@ namespace LinearAlgebra {
    this->m_others.clear();
    this->m_Weights.clear();
   }
-  /*!
- * \brief Introduce a new iteration vector, and perform extrapolation
- *
- * m_options can contain "weight=xxx" where xxx is the weight to be given to this vector.
- * \param residual
- * The vector that
- * will be the one that is analysed to construct the extrapolation.
- * \param solution
- * The current solution that gave rise to residual, and which will be extrapolated to a new predicted solution.
- * \param other (optional)
- * Corresponding other vectors whose sequence will be extrapolated.
- */
  protected:
   void solveReducedProblem() override {
    //	  xout << "Enter DIIS::solveReducedProblem"<<std::endl;

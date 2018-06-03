@@ -48,7 +48,7 @@ namespace LinearAlgebra{
     }
    } update;
 
-   xout << "Test IterativeSolver::Davidson dimension="<<dimension<<", roots="<<roots<<", problem="<<problem<<", orthogonalize="<<orthogonalize<<std::endl;
+   xout << "Test IterativeSolver::LinearEigensystem dimension="<<dimension<<", roots="<<roots<<", problem="<<problem<<", orthogonalize="<<orthogonalize<<std::endl;
    testmatrix.resize(dimension,dimension);
    for (size_t k=0; k<dimension; k++)
     for (size_t l=0; l<dimension; l++)
@@ -61,7 +61,7 @@ namespace LinearAlgebra{
      else if (problem==3)
       testmatrix(l,k)=( k==l ? 1 : 1);
      else
-      throw std::logic_error("invalid problem in Davidson::test");
+      throw std::logic_error("invalid problem in DavidsonTest");
    if (problem==3) testmatrix(0,1)=testmatrix(1,0)=1;
 
    LinearEigensystem<scalar> d;
@@ -120,7 +120,7 @@ namespace LinearAlgebra{
 //   xout << "Square residual norms: "; for (typename std::vector<scalar>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
    xout << "Square residual norms: "; for (const auto& e: errors) xout<<" "<<e;xout<<std::endl;
    // be noisy about obvious problems
-   if (*std::max_element(errors.begin(),errors.end())>1e-7) throw std::runtime_error("IterativeSolver::Davidson has failed tests");
+   if (*std::max_element(errors.begin(),errors.end())>1e-7) throw std::runtime_error("IterativeSolver::LinearEigensystem has failed tests");
 
   }
 

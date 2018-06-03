@@ -10,14 +10,15 @@ MODULE Iterative_Solver
 
 CONTAINS
 
-!> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos
+!> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
 !> Example of simplest use: @include LinearEigensystemExampleF.F90
+!> Example including use of P space: @include LinearEigensystemExampleF-Pspace.F90
  SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq,nroot,thresh,maxIterations,verbosity)
   INTEGER, INTENT(in) :: nq !< dimension of matrix
   INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
   DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
   INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
-  INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors
+  INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors. One gives a single progress-report line each iteration.
   INTERFACE
    SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq,nroot,thresh,maxIterations,verbosity) &
         BIND(C,name='IterativeSolverLinearEigensystemInitialize')

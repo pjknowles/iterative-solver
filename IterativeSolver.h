@@ -947,7 +947,7 @@ extern "C" void
 IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh, int maxIterations, int verbosity);
 
 extern "C" void
-IterativeSolverDIISInitialize(size_t n, size_t nroot, double thresh, int maxIterations, int verbosity);
+IterativeSolverDIISInitialize(size_t n, double thresh, int maxIterations, int verbosity);
 
 extern "C" void IterativeSolverFinalize();
 

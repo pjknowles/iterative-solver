@@ -23,7 +23,7 @@ namespace LinearAlgebra {
  }
 
  extern "C" void
- IterativeSolverDIISInitialize(size_t n, size_t nroot, double thresh, int maxIterations, int verbosity) {
+ IterativeSolverDIISInitialize(size_t n, double thresh, int maxIterations, int verbosity) {
 #ifdef USE_MPI
   int flag;
   MPI_Initialized(&flag);

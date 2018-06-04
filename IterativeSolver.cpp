@@ -106,4 +106,3 @@ namespace LinearAlgebra {
   for (const auto& e : instance->eigenvalues()) eigenvalues[k++] = e;
  }
 }
-

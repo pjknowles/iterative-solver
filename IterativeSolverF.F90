@@ -90,7 +90,7 @@ CONTAINS
   END IF
   CALL Iterative_Solver_DIIS_InitializeC(m_nq,threshC, maxIterationsC, verbosityC)
  END SUBROUTINE Iterative_Solver_DIIS_Initialize
- 
+
 !> \brief Terminate the iterative solver
  SUBROUTINE Iterative_Solver_Finalize
   INTERFACE
@@ -287,7 +287,7 @@ CONTAINS
    DEALLOCATE(p)
    DEALLOCATE(pp)
   END DO
-  
+
   alpha=1
   anharmonicity=.5
   WRITE (6,*) 'DIIS, dimension=',n

@@ -326,8 +326,14 @@ namespace LinearAlgebra {
   virtual void solveReducedProblem()=0;
 
   virtual void report() {
-   if (m_verbosity > 0)
-    xout << "iteration " << iterations() << ", error[" << m_worst << "] = " << m_error << std::endl;
+   if (m_verbosity > 0) {
+    xout << "iteration " << iterations();
+    if (this->m_roots > 1)
+     xout << ", error[" << m_worst << "] = ";
+    else
+     xout << ", error = ";
+    xout << m_error << std::endl;
+   }
   }
 
   void buildSubspace() {
@@ -346,10 +352,10 @@ namespace LinearAlgebra {
      m_subspaceOverlap(j, nP + i) = m_subspaceOverlap(nP + i, j) = m_PQOverlap(j, i);
     }
    }
-   if (m_verbosity > 3 && m_PQMatrix.rows()>0) xout << "PQ matrix" << std::endl << this->m_PQMatrix << std::endl;
-   if (m_verbosity > 3 && m_PQMatrix.rows()>0) xout << "PQ overlap" << std::endl << this->m_PQOverlap << std::endl;
-   if (m_verbosity > 3 && m_PQMatrix.rows()>0) xout << "QQ matrix" << std::endl << this->m_QQMatrix << std::endl;
-   if (m_verbosity > 3 && m_PQMatrix.rows()>0) xout << "QQ overlap" << std::endl << this->m_QQOverlap << std::endl;
+   if (m_verbosity > 3 && m_PQMatrix.rows() > 0) xout << "PQ matrix" << std::endl << this->m_PQMatrix << std::endl;
+   if (m_verbosity > 3 && m_PQMatrix.rows() > 0) xout << "PQ overlap" << std::endl << this->m_PQOverlap << std::endl;
+   if (m_verbosity > 3 && m_PQMatrix.rows() > 0) xout << "QQ matrix" << std::endl << this->m_QQMatrix << std::endl;
+   if (m_verbosity > 3 && m_PQMatrix.rows() > 0) xout << "QQ overlap" << std::endl << this->m_QQOverlap << std::endl;
    if (m_verbosity > 2) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
    if (m_verbosity > 2) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
   }
@@ -811,6 +817,7 @@ namespace LinearAlgebra {
    this->m_others.clear();
    this->m_Weights.clear();
   }
+
  protected:
   void solveReducedProblem() override {
    //	  xout << "Enter DIIS::solveReducedProblem"<<std::endl;
@@ -944,7 +951,8 @@ namespace LinearAlgebra {
 
 // C interface
 extern "C" void
-IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh, unsigned int maxIterations, int verbosity);
+IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh, unsigned int maxIterations,
+                                           int verbosity);
 
 extern "C" void
 IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity);

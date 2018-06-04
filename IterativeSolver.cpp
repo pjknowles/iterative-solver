@@ -22,6 +22,20 @@ namespace LinearAlgebra {
   instance->m_verbosity = verbosity;
  }
 
+ extern "C" void
+ IterativeSolverDIISInitialize(size_t n, size_t nroot, double thresh, int maxIterations, int verbosity) {
+#ifdef USE_MPI
+  int flag;
+  MPI_Initialized(&flag);
+  if (!flag) MPI_Init(0,nullptr);
+#endif
+  instance.reset(new DIIS<double>());
+  instance->m_dimension = n;
+  instance->m_thresh = thresh;
+  instance->m_maxIterations = maxIterations;
+  instance->m_verbosity = verbosity;
+ }
+
  extern "C" void IterativeSolverFinalize() {
   instance.release();
  }

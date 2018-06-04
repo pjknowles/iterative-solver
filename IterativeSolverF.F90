@@ -52,6 +52,45 @@ CONTAINS
   CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq,m_nroot,threshC, maxIterationsC, verbosityC)
  END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize
 
+!> \brief Accelerated convergence of non-linear equations
+!> through the DIIS or related methods.
+!> Example of simplest use: @include DIISExampleF.F90
+ SUBROUTINE Iterative_Solver_DIIS_Initialize(nq,thresh,maxIterations,verbosity)
+  INTEGER, INTENT(in) :: nq !< dimension of parameter space
+  DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
+  INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
+  INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors. One gives a single progress-report line each iteration.
+  INTERFACE
+   SUBROUTINE Iterative_Solver_DIIS_InitializeC(nq,thresh,maxIterations,verbosity) &
+        BIND(C,name='IterativeSolverDIISInitialize')
+    USE iso_c_binding
+    INTEGER(C_size_t), INTENT(in), VALUE :: nq
+    REAL(c_double), INTENT(in), VALUE :: thresh
+    INTEGER(C_int), INTENT(in), VALUE :: maxIterations
+    INTEGER(C_int), INTENT(in), VALUE :: verbosity
+   END SUBROUTINE Iterative_Solver_DIIS_InitializeC
+  END INTERFACE
+  INTEGER(c_int) :: verbosityC, maxIterationsC
+  REAL(c_double) :: threshC
+  m_nq=INT(nq,kind=c_size_t)
+  IF (PRESENT(thresh)) THEN
+   threshC=thresh
+  ELSE
+   threshC=0
+  END IF
+  IF (PRESENT(maxIterations)) THEN
+   maxIterationsC=INT(maxIterations,kind=c_int)
+  ELSE
+   maxIterationsC=0
+  END IF
+  IF (PRESENT(verbosity)) THEN
+   verbosityC=INT(verbosity,kind=c_int)
+  ELSE
+   verbosityC=0
+  END IF
+  CALL Iterative_Solver_DIIS_InitializeC(m_nq,threshC, maxIterationsC, verbosityC)
+ END SUBROUTINE Iterative_Solver_DIIS_Initialize
+ 
 !> \brief Terminate the iterative solver
  SUBROUTINE Iterative_Solver_Finalize
   INTERFACE
@@ -183,6 +222,7 @@ CONTAINS
   DOUBLE PRECISION, DIMENSION(nPmax) :: coefficients
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: pp
   INTEGER :: i,j,root
+  DOUBLE PRECISION :: alpha, anharmonicity
   PRINT *, 'Test Fortran binding of IterativeSolver'
   m=1
   DO i=1,n
@@ -215,14 +255,14 @@ CONTAINS
    WRITE (6,*) 'P-space=',nP,', dimension=',n,', roots=',nroot
    CALL Iterative_Solver_Linear_Eigensystem_Initialize(n,nroot,thresh=1d-8,verbosity=1)
    offsets(0)=0
-   do i=1,nP
+   DO i=1,nP
     offsets(i)=i
     indices(i)=i
     coefficients(i)=1
-    do j=1,nP
+    DO j=1,nP
      pp(i,j) =  m(i,j)
-    end do
-   end do
+    END DO
+   END DO
    c=0
    CALL Iterative_Solver_Add_P(nP,offsets,indices,coefficients,pp,c,g,p)
    DO iter=1,10
@@ -234,25 +274,41 @@ CONTAINS
       END DO
      END DO
     END DO
-!WRITE (6,*) 'eigenvalue',e
-!write (6,*) 'eigenvectors',c
-!write (6,*) 'residual',g
-!write (6,*) 'p parameters',p
     DO root=1,nroot
      DO j=1,n
       c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(i)+1e-15)
      END DO
     END DO
-!write (6,*) 'c before end_iteration',c
     IF ( Iterative_Solver_End_Iteration(c,g,error)) EXIT
-!write (6,*) 'c after end_iteration',c
-!WRITE (6,*) 'error ',error
     g = MATMUL(m,c)
     CALL Iterative_Solver_Add_Vector(c,g,p)
    END DO
    CALL Iterative_Solver_Finalize
    DEALLOCATE(p)
    DEALLOCATE(pp)
-  end do
+  END DO
+  
+  alpha=1
+  anharmonicity=.5
+  WRITE (6,*) 'DIIS, dimension=',n
+  CALL Iterative_Solver_DIIS_Initialize(n,thresh=1d-10,verbosity=1)
+  c=0;  c(1,1)=1
+  DO iter=1,1000
+   DO i=1,n
+    g(i,1) = (alpha*(i)+anharmonicity*c(i,1))*c(i,1);
+    DO j=1,n
+     g(i,1) = g(i,1) + (i+j-2)*c(j,1);
+    END DO
+   END DO
+!WRITE (6,*) 'c ',c(:,1)
+!WRITE (6,*) 'g ',g(:,1)
+   CALL Iterative_Solver_Add_Vector(c,g,p)
+   DO j=1,n
+    c(j,1) = c(j,1) - g(j,1)/(alpha*(j))
+   END DO
+   IF ( Iterative_Solver_End_Iteration(c,g,error)) EXIT
+  END DO
+  WRITE (6,*) 'error ',error(1),SQRT(dot_PRODUCT(c(:,1),c(:,1)))
+  CALL Iterative_Solver_Finalize
  END SUBROUTINE Iterative_Solver_Test
 END MODULE Iterative_Solver

@@ -8,7 +8,7 @@ namespace LinearAlgebra {
  static std::unique_ptr<IterativeSolver<double> > instance;
 
  extern "C" void
- IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, double thresh, int maxIterations, int verbosity) {
+ IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, double thresh, unsigned int maxIterations, int verbosity) {
 #ifdef USE_MPI
   int flag;
   MPI_Initialized(&flag);
@@ -23,7 +23,7 @@ namespace LinearAlgebra {
  }
 
  extern "C" void
- IterativeSolverDIISInitialize(size_t n, double thresh, int maxIterations, int verbosity) {
+ IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity) {
 #ifdef USE_MPI
   int flag;
   MPI_Initialized(&flag);
@@ -43,7 +43,7 @@ namespace LinearAlgebra {
  extern "C" void IterativeSolverAddVector(double *parameters, double *action, double *parametersP) {
   vectorSet<double> cc, gg;
   std::vector<std::vector<double> > ccp;
-  for (int root = 0; root < instance->m_roots; root++) {
+  for (size_t root = 0; root < instance->m_roots; root++) {
    cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
    cc.back()->put(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
    gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
@@ -51,7 +51,7 @@ namespace LinearAlgebra {
    cc.m_active[root]=gg.m_active[root]=instance->errors().size()<=root ||  instance->errors()[root]>=instance->m_thresh;
   }
   instance->addVector(cc, gg, ccp);
-  for (int root = 0; root < instance->m_roots; root++) {
+  for (size_t root = 0; root < instance->m_roots; root++) {
    cc[root]->get(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
    gg[root]->get(&action[root * instance->m_dimension], instance->m_dimension, 0);
    for (size_t i = 0; i < ccp[0].size(); i++)
@@ -61,14 +61,14 @@ namespace LinearAlgebra {
 
  extern "C" int IterativeSolverEndIteration(double *solution, double *residual, double *error) {
   vectorSet<double> cc, gg;
-  for (int root = 0; root < instance->m_roots; root++) {
+  for (size_t root = 0; root < instance->m_roots; root++) {
    cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
    cc.back()->put(&solution[root * instance->m_dimension], instance->m_dimension, 0);
    gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
    gg.back()->put(&residual[root * instance->m_dimension], instance->m_dimension, 0);
   }
   bool result = instance->endIteration(cc, gg);
-  for (int root = 0; root < instance->m_roots; root++) {
+  for (size_t root = 0; root < instance->m_roots; root++) {
    cc[root]->get(&solution[root * instance->m_dimension], instance->m_dimension, 0);
    error[root] = instance->errors()[root];
   }
@@ -80,20 +80,20 @@ namespace LinearAlgebra {
                                                       double *parameters, double *action, double *parametersP) {
   vectorSet<double> cc, gg;
   std::vector<std::vector<double> > ccp;
-  for (int root = 0; root < instance->m_roots; root++) {
+  for (size_t root = 0; root < instance->m_roots; root++) {
    cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
    gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension)));
   }
   std::vector<std::map<size_t, double> > Pvectors;
   for (size_t p = 0; p < nP; p++) {
-   std::map<size_t, double> pp;
+   std::map<size_t, double> ppp;
    for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
-    pp.insert(std::pair<size_t, double>(indices[k], coefficients[k]));
-   Pvectors.emplace_back(pp);
+    ppp.insert(std::pair<size_t, double>(indices[k], coefficients[k]));
+   Pvectors.emplace_back(ppp);
   }
 
   instance->addP(Pvectors, pp, cc, gg, ccp);
-  for (int root = 0; root < instance->m_roots; root++) {
+  for (size_t root = 0; root < instance->m_roots; root++) {
    cc[root]->get(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
    gg[root]->get(&action[root * instance->m_dimension], instance->m_dimension, 0);
    for (size_t i = 0; i < ccp[0].size(); i++)

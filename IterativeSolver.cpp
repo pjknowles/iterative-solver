@@ -41,12 +41,14 @@ namespace LinearAlgebra {
  }
 
  extern "C" void IterativeSolverAddVector(double *parameters, double *action, double *parametersP) {
+//  constexpr int vFlags = LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE; // has to wait till implementation below catches up
+  constexpr int vFlags =  LINEARALGEBRA_CLONE_ADVISE_OFFLINE;
   vectorSet<double> cc, gg;
   std::vector<std::vector<double> > ccp;
   for (size_t root = 0; root < instance->m_roots; root++) {
-   cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE)));
+   cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension,vFlags)));
    cc.back()->put(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
-   gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE)));
+   gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension,vFlags)));
    gg.back()->put(&action[root * instance->m_dimension], instance->m_dimension, 0);
    cc.m_active[root]=gg.m_active[root]=instance->errors().size()<=root ||  instance->errors()[root]>=instance->m_thresh;
   }
@@ -55,7 +57,7 @@ namespace LinearAlgebra {
    cc[root]->get(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
    gg[root]->get(&action[root * instance->m_dimension], instance->m_dimension, 0);
 #ifdef USE_MPI
-   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");
+//   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");
 #endif USE_MPI
    for (size_t i = 0; i < ccp[0].size(); i++)
     parametersP[root * ccp[0].size() + i] = ccp[root][i];
@@ -75,6 +77,9 @@ namespace LinearAlgebra {
    cc[root]->get(&solution[root * instance->m_dimension], instance->m_dimension, 0);
    error[root] = instance->errors()[root];
   }
+#ifdef USE_MPI
+  //   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");
+#endif USE_MPI
   return result;
  }
 

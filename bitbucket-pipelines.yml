@@ -16,7 +16,7 @@ pipelines:
           - git submodule update --init --recursive
           - mkdir -p build && cd build
           - cmake ..
-          - make -j
+          - make -j1
           - ctest -V
 definitions:
   caches:

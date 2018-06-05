@@ -6,7 +6,7 @@ MODULE Iterative_Solver
  PUBLIC :: Iterative_Solver_Add_P
  PUBLIC :: Iterative_Solver_Eigenvalues
  PRIVATE
- INTEGER(c_size_t), PRIVATE :: m_nq, m_nroot
+ INTEGER(c_size_t) :: m_nq, m_nroot
 
 CONTAINS
 

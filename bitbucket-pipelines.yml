@@ -15,8 +15,9 @@ pipelines:
           - ln -s /usr /usr/usr
           - git submodule update --init --recursive
           - mkdir -p build && cd build
+          - cmake --version
           - cmake ..
-          - make -j1
+          - make -kj1
           - ctest -V
 definitions:
   caches:

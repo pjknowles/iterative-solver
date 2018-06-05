@@ -59,6 +59,9 @@ namespace LinearAlgebra {
 #ifdef HAVE_MPI_H
    if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");// FIXME not sure
 #endif
+#ifdef USE_MPI
+//   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");
+#endif
    for (size_t i = 0; i < ccp[0].size(); i++)
     parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }
@@ -79,7 +82,7 @@ namespace LinearAlgebra {
   }
 #ifdef USE_MPI
   //   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");
-#endif USE_MPI
+#endif
   return result;
  }
 

@@ -17,6 +17,7 @@ pipelines:
           - mkdir -p build && cd build
           - find . -name '*.o'
           - find . -name '*.mod'
+          - rm -f iterativesolverf.mod
           - cmake ..
           - make -kj
           - ctest -V

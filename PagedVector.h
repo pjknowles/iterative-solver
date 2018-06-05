@@ -55,6 +55,12 @@ namespace LinearAlgebra {
 //    std::cout <<"cache preferred length "<<m_cache.preferred_length<<std::endl;
 //   std::cout << m_mpi_rank << " in constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
   }
+  /*!
+   * @brief Copy constructor
+   * @param source
+   * @param option
+   * @param mpi_communicator
+   */
   PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_COMM_WORLD)
    : vector<scalar>(), m_size(source.m_size),
      m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
@@ -71,6 +77,20 @@ namespace LinearAlgebra {
 //    std::cout <<"cache preferred length "<<m_cache.preferred_length<<std::endl;
    *this = source;
 //   std::cout << "in copy constructor, after copy, source: "<<source.str()<<std::endl;
+  }
+
+  /*!
+  * @brief Construct an object mapped on to an external data buffer
+   *
+   * @param buffer
+   * @param length
+   * @param option
+   * @param mpi_communicator
+   */
+
+  PagedVector(double* buffer, size_t length, int option=0, MPI_Comm mpi_communicator=MPI_COMM_WORLD)
+  {
+
   }
 
   virtual ~PagedVector()

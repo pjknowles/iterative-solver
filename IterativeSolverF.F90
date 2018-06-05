@@ -18,7 +18,7 @@ CONTAINS
   INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
   DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
   INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
-  INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors. One gives a single progress-report line each iteration.
+  INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors. One gives a single progress-report line each iteration.G
   INTERFACE
    SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq,nroot,thresh,maxIterations,verbosity) &
         BIND(C,name='IterativeSolverLinearEigensystemInitialize')

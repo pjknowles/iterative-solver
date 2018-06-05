@@ -245,7 +245,6 @@ CONTAINS
     IF ( Iterative_Solver_End_Iteration(c,g,error)) EXIT
    END DO
    WRITE (6,*) 'final error ',error
-   junk
    CALL Iterative_Solver_Finalize
   ENDDO
 

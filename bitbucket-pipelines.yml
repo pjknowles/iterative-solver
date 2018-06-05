@@ -14,7 +14,7 @@ pipelines:
           - # zypper -n install eigen3-devel cmake gcc-fortran gcc-c++ openmpi-devel openmpi-libs blas-devel libblas3 git doxygen texlive-epstopdf ghostscript
           - ln -s /usr /usr/usr
           - git submodule update --init --recursive
-          - mkdir -p build && cd build
+          - mkdir -p builddir && cd builddir
           - find . -name '*.o'
           - find . -name '*.mod'
           - cmake ..
@@ -22,4 +22,4 @@ pipelines:
           - ctest -V
 definitions:
   caches:
-    cmake: build
+    cmake: builddir

@@ -15,7 +15,6 @@ pipelines:
           - ln -s /usr /usr/usr
           - git submodule update --init --recursive
           - mkdir -p builddir && cd builddir
-          - find . -name '*.o'
           - find . -name '*.mod'
           - cmake ..
           - make -kj

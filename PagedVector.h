@@ -80,7 +80,7 @@ namespace LinearAlgebra {
   }
 
   /*!
-  * @brief Construct an object mapped on to an external data buffer
+  * @brief Construct an object copied from external data
    *
    * @param buffer
    * @param length

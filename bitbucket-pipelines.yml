@@ -9,7 +9,7 @@ pipelines:
   default:
     - step:
         caches:
-          - cmake
+          - iterative-solver-cmake
         script: # Modify the commands below to build your repository.
           - # zypper -n install eigen3-devel cmake gcc-fortran gcc-c++ openmpi-devel openmpi-libs blas-devel libblas3 git doxygen texlive-epstopdf ghostscript
           - ln -s /usr /usr/usr
@@ -22,4 +22,4 @@ pipelines:
           - ctest -V
 definitions:
   caches:
-    cmake: builddir
+    iterative-solver-cmake: builddir

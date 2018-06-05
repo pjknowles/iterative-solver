@@ -237,15 +237,14 @@ CONTAINS
     g = MATMUL(m,c)
     CALL Iterative_Solver_Add_Vector(c,g,p)
     e = Iterative_Solver_Eigenvalues()
-!WRITE (6,*) 'eigenvalue',e
     DO root=1,nroot
      DO j=1,n
       c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(i)+1e-15)
      END DO
     END DO
     IF ( Iterative_Solver_End_Iteration(c,g,error)) EXIT
-!WRITE (6,*) 'error ',error
    END DO
+   WRITE (6,*) 'final error ',error
    CALL Iterative_Solver_Finalize
   ENDDO
 

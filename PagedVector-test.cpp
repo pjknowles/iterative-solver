@@ -2,13 +2,13 @@
 #define CATCH_CONFIG_RUNNER
 #include "catch.hpp"
    using namespace LinearAlgebra;
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
 
 int main(int argc, char *argv[])
 {
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
   MPI_Init(&argc,&argv);
   {
     int rank;
@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
   }
 #endif
   Catch::Session().run(argc,argv);
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
   MPI_Finalize();
 #endif
   return 0;
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
       TEST_CASE("PagedVector copy constructor") {
     int rank;
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 #else
      rank=0;

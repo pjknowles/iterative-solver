@@ -80,7 +80,7 @@ namespace LinearAlgebra {
    cc[root]->get(&solution[root * instance->m_dimension], instance->m_dimension, 0);
    error[root] = instance->errors()[root];
   }
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
   //   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");
 #endif
   return result;

@@ -431,10 +431,29 @@ namespace LinearAlgebra {
     }
    } else {
     if (this->m_replicated == othe.m_replicated) {
+     if (this->m_cache.io && othe.m_cache.io) {
+      size_t l = std::min(m_cache.length, othe.m_cache.length);
+      for (m_cache.move(0, l), othe.m_cache.move(0, l); m_cache.length; ++m_cache, ++othe.m_cache)
+       for (size_t i = 0; i < m_cache.length; i++)
+        result += m_cache.buffer[i] * othe.m_cache.buffer[i];
+     }
+     else if (othe.m_cache.io) {
+      size_t offset=0;
+      for ( othe.m_cache.ensure(0); othe.m_cache.length; offset+=othe.m_cache.length, ++othe.m_cache)
+       for (size_t i = 0; i < othe.m_cache.length; i++)
+        result += m_cache.buffer[offset+i] * othe.m_cache.buffer[i];
+     }
+     else if (this->m_cache.io) {
+      size_t offset=0;
+      for (m_cache.ensure(0); m_cache.length; offset+=m_cache.length, ++othe.m_cache)
+       for (size_t i = 0; i < m_cache.length; i++)
+        result += m_cache.buffer[i] * othe.m_cache.buffer[offset+i];
+     }
+     else {
      size_t l = std::min(m_cache.length, othe.m_cache.length);
-     for (m_cache.move(0, l), othe.m_cache.move(0, l); m_cache.length; ++m_cache, ++othe.m_cache)
-      for (size_t i = 0; i < m_cache.length; i++)
+      for (size_t i = 0; i < this->m_segment_length; i++)
        result += m_cache.buffer[i] * othe.m_cache.buffer[i];
+     }
     } else if (this->m_replicated) {
      for (m_cache.ensure(0); m_cache.length; ++m_cache)
       for (size_t i = 0; i < m_cache.length; i++)
@@ -449,7 +468,9 @@ namespace LinearAlgebra {
 //    std::cout <<m_mpi_rank<<" dot result before reduce="<<result<<std::endl;
    if (!m_replicated || !othe.m_replicated) {
     double resultLocal = result;
-    MPI_Allreduce(&resultLocal,&result,1,MPI_DOUBLE,MPI_SUM,m_communicator); // FIXME needs attention for non-double
+    double resultGlobal = result;
+    MPI_Allreduce(&resultLocal,&resultGlobal,1,MPI_DOUBLE,MPI_SUM,m_communicator);
+    result=resultGlobal;
 //    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
    }
 #endif

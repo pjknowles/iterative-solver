@@ -1,5 +1,5 @@
 #include <ctime>
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
 #include "IterativeSolver.h"
@@ -435,7 +435,7 @@ for (int iteration=1; (iteration < d.m_maxIterations && not converged) || iterat
 extern "C" { void IterativeSolverFTest();}
 int main(int argc, char *argv[])
 {
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
   MPI_Init(&argc,&argv);
   {
     int rank;
@@ -470,7 +470,7 @@ int main(int argc, char *argv[])
 //  RSPTTest<PagedVector<double> ,double>(100,2e0);
   IterativeSolverFTest();
     }
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
   MPI_Finalize();
 #endif
   return 0;

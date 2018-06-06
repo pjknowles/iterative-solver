@@ -11,11 +11,17 @@
 #include <fstream>
 #include <map>
 
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
 #include <mpi.h>
+#ifdef MOLPRO
+#include "ppidd.h"
+#define MPI_COMM_COMPUTE MPI_Comm_f2c(PPIDD_Worker_comm())
 #else
+#define MPI_COMM_COMPUTE MPI_COMM_WORLD
+#endif
+#else
+#define MPI_COMM_COMPUTE 0
 using MPI_Comm = int;
-constexpr MPI_Comm MPI_COMM_WORLD=0;
 #endif
 
 namespace LinearAlgebra {
@@ -41,7 +47,7 @@ namespace LinearAlgebra {
   /*!
    * \brief Construct an object without any data.
    */
-  PagedVector(size_t length=0, int option=0, MPI_Comm mpi_communicator=MPI_COMM_WORLD)
+  PagedVector(size_t length=0, int option=0, MPI_Comm mpi_communicator=MPI_COMM_COMPUTE)
    : vector<scalar>(), m_size(length),
      m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
      m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
@@ -61,7 +67,7 @@ namespace LinearAlgebra {
    * @param option
    * @param mpi_communicator
    */
-  PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_COMM_WORLD)
+  PagedVector(const PagedVector& source, int option=0, MPI_Comm mpi_communicator=MPI_COMM_COMPUTE)
    : vector<scalar>(), m_size(source.m_size),
      m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
      m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
@@ -88,7 +94,7 @@ namespace LinearAlgebra {
    * @param mpi_communicator
    */
 
-  PagedVector(double* buffer, size_t length, int option=0, MPI_Comm mpi_communicator=MPI_COMM_WORLD)
+  PagedVector(double* buffer, size_t length, int option=0, MPI_Comm mpi_communicator=MPI_COMM_COMPUTE)
   {
 
   }
@@ -116,7 +122,7 @@ namespace LinearAlgebra {
 
  private:
   int mpi_size() {
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
    int result;
    MPI_Comm_size(m_communicator, &result);
 #else
@@ -125,7 +131,7 @@ namespace LinearAlgebra {
     return result;
   }
   int mpi_rank() {
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
    int result;
    MPI_Comm_rank(m_communicator, &result);
 #else
@@ -413,35 +419,35 @@ namespace LinearAlgebra {
    */
   scalar dot(const vector<scalar> &other) const override
   {
-//   std::cout << "enter dot"<<std::endl;
    const PagedVector& othe=dynamic_cast <const PagedVector&> (other);
    if (this->variance() * othe.variance() < 0) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
-   if (this->m_replicated != othe.m_replicated) throw std::logic_error("mismatching replication status");
    scalar result=0;
    if (this == &other) {
-//    std::cout <<m_mpi_rank<<" dot self="<<std::endl;
     for (m_cache.ensure(0); m_cache.length; ++m_cache) {
-//    std::cout <<m_mpi_rank<<" dot self cache length ="<<m_cache.length<<", offset="<<m_cache.offset<<std::endl;
      for (size_t i=0; i<m_cache.length; i++) {
-//      std::cout <<m_mpi_rank<< " take i="<<i<<", buffer[i]="<<m_cache.buffer[i]<<std::endl;
       result += m_cache.buffer[i] * m_cache.buffer[i];
      }
     }
    } else {
-//    std::cout <<m_mpi_rank<< " dot replication="<<m_replicated<<othe.m_replicated<<std::endl;
-//    std::cout <<m_mpi_rank<< " dot m_segment_offset="<<m_segment_offset<<othe.m_segment_offset<<std::endl;
-//    std::cout <<m_mpi_rank<< " dot m_segment_length="<<m_segment_length<<othe.m_segment_length<<std::endl;
-    for (m_cache.ensure(0), othe.m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe.m_cache ) {
-     for (size_t i=0; i<m_cache.length; i++) {
-//      std::cout <<m_mpi_rank<< " take i="<<i<<", buffer[i]="<<m_cache.buffer[i]<<", other="<<othe.m_cache.buffer[i]<<std::endl;
-      result += m_cache.buffer[i] * othe.m_cache.buffer[i];
-     }
+    if (this->m_replicated == othe.m_replicated) {
+     size_t l = std::min(m_cache.length, othe.m_cache.length);
+     for (m_cache.move(0, l), othe.m_cache.move(0, l); m_cache.length; ++m_cache, ++othe.m_cache)
+      for (size_t i = 0; i < m_cache.length; i++)
+       result += m_cache.buffer[i] * othe.m_cache.buffer[i];
+    } else if (this->m_replicated) {
+     for (m_cache.ensure(0); m_cache.length; ++m_cache)
+      for (size_t i = 0; i < m_cache.length; i++)
+       result += m_cache.buffer[i] * othe.m_cache.buffer[m_cache.offset + i];
+    } else {
+     for (othe.m_cache.ensure(0); othe.m_cache.length; ++othe.m_cache)
+      for (size_t i = 0; i < othe.m_cache.length; i++)
+       result += m_cache.buffer[othe.m_cache.offset + i] * othe.m_cache.buffer[i];
     }
    }
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
 //    std::cout <<m_mpi_rank<<" dot result before reduce="<<result<<std::endl;
-   if (!m_replicated) {
+   if (!m_replicated || !othe.m_replicated) {
     double resultLocal = result;
     MPI_Allreduce(&resultLocal,&result,1,MPI_DOUBLE,MPI_SUM,m_communicator); // FIXME needs attention for non-double
 //    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
@@ -462,7 +468,7 @@ namespace LinearAlgebra {
    for (const auto& o: other)
     if (o.first >= m_segment_offset && o.first < m_segment_offset+m_segment_length)
      result += o.second * (*this)[o.first];
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
    if (!m_replicated) {
     double resultLocal = result;
     MPI_Allreduce(&resultLocal,&result,1,MPI_DOUBLE,MPI_SUM,m_communicator); // FIXME needs attention for non-double
@@ -538,7 +544,7 @@ namespace LinearAlgebra {
      }
     }
    }
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
    if (!m_replicated) {
     throw std::logic_error("incomplete MPI implementation");
    }
@@ -642,7 +648,7 @@ namespace LinearAlgebra {
    m_cache.dirty = true;
 //   if (pr) std::cout << "operator= after copy loop, other="<<other<<std::endl;
 //   if (pr) std::cout << "operator= after copy loop, this="<<*this<<std::endl;
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
    if (m_replicated && ! other.m_replicated) { // replicated <- distributed
     size_t lenseg = ((m_size-1) / m_mpi_size + 1);
     for (int rank=0; rank < m_mpi_size; rank++) {
@@ -733,7 +739,7 @@ namespace LinearAlgebra {
    }
 //   if (pr) std::cout << "operator= after copy loop, other="<<other<<std::endl;
 //   if (pr) std::cout << "operator= after copy loop, this="<<*this<<std::endl;
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
    if (!m_replicated && ! other.m_replicated) {
     for (int rank=0; rank < m_mpi_size; rank++) {
       MPI_Allreduce(&diff,&diff,1,MPI_INT,MPI_SUM,m_communicator);

@@ -9,7 +9,7 @@ namespace LinearAlgebra {
 
  extern "C" void
  IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, double thresh, unsigned int maxIterations, int verbosity) {
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
   int flag;
   MPI_Initialized(&flag);
   if (!flag) MPI_Init(0,nullptr);
@@ -24,7 +24,7 @@ namespace LinearAlgebra {
 
  extern "C" void
  IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity) {
-#ifdef USE_MPI
+#ifdef HAVE_MPI_H
   int flag;
   MPI_Initialized(&flag);
   if (!flag) MPI_Init(0,nullptr);
@@ -56,9 +56,9 @@ namespace LinearAlgebra {
   for (size_t root = 0; root < instance->m_roots; root++) {
    cc[root]->get(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
    gg[root]->get(&action[root * instance->m_dimension], instance->m_dimension, 0);
-#ifdef USE_MPI
-//   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");
-#endif USE_MPI
+#ifdef HAVE_MPI_H
+   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");// FIXME not sure
+#endif
    for (size_t i = 0; i < ccp[0].size(); i++)
     parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }

@@ -18,6 +18,8 @@ int main(int argc, char *argv[])
     if (rank==0) std::cout << size<<" MPI process"<<(size>1?"es ":"")<<std::endl;
 //    std::cout << "MPI process number "<<rank<<std::endl;
   }
+#else
+ std::cout << "serial"<<std::endl;
 #endif
   Catch::Session().run(argc,argv);
 #ifdef HAVE_MPI_H

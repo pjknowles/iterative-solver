@@ -57,7 +57,7 @@ namespace LinearAlgebra {
    cc[root]->get(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
    gg[root]->get(&action[root * instance->m_dimension], instance->m_dimension, 0);
 #ifdef HAVE_MPI_H
-   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");// FIXME not sure
+//   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");// FIXME not sure
 #endif
    for (size_t i = 0; i < ccp[0].size(); i++)
     parametersP[root * ccp[0].size() + i] = ccp[root][i];

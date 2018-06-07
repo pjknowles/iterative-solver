@@ -82,7 +82,7 @@ namespace LinearAlgebra {
 //    std::cout <<"LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option "<<(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)<<std::endl;
 //    std::cout <<"cache preferred length "<<m_cache.preferred_length<<std::endl;
    *this = source;
-//   std::cout << "in copy constructor, after copy, source: "<<source.str()<<std::endl;
+//   std::cout Knowles<< "in copy constructor, after copy, source: "<<source.str()<<std::endl;
   }
 
   /*!
@@ -295,7 +295,7 @@ namespace LinearAlgebra {
    // finally, process the data appearing after the initial cache window
 //std::cout << "initial_cache_offset="<<initial_cache_offset<<std::endl;
    for (m_cache.move(initial_cache_offset+initial_cache_length); m_cache.length && m_cache.offset<offset+length; ++m_cache) {
-    for (size_t k=m_cache.offset; k<m_cache.length&&k<offset+length; k++)
+    for (size_t k = m_cache.offset; k < m_cache.offset + m_cache.length && k < offset + length; k++)
      m_cache.buffer[k-m_cache.offset] = buffer[k+buffer_offset-offset];
 //    std::cout <<"processed following window"<<std::endl;
     m_cache.dirty=true;
@@ -341,7 +341,7 @@ namespace LinearAlgebra {
 
    // finally, process the data appearing after the initial cache window
    for (m_cache.move(initial_cache_offset+initial_cache_length); m_cache.length && m_cache.offset<offset+length; ++m_cache) {
-    for (size_t k=m_cache.offset; k<m_cache.length&&k<offset+length; k++)
+    for (size_t k = m_cache.offset; k < m_cache.offset + m_cache.length && k < offset + length; k++)
      buffer[k+buffer_offset-offset]= m_cache.buffer[k-m_cache.offset];
 //    std::cout <<"processed following window"<<std::endl;
    }
@@ -392,11 +392,44 @@ namespace LinearAlgebra {
 //   std::cout << "PagedVector::axpy othe="<<*othe<<std::endl;
    if (this->variance() != othe.variance()) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
-   if (this->m_replicated != othe.m_replicated) throw std::logic_error("mismatching replication status");
-   for (m_cache.ensure(0), othe.m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++othe.m_cache ) {
-     for (size_t i=0; i<m_cache.length; i++)
+   if (this->m_replicated == othe.m_replicated) {
+    if (this->m_cache.io && othe.m_cache.io) {
+     size_t l = std::min(m_cache.length, othe.m_cache.length);
+     for (m_cache.move(0, l), othe.m_cache.move(0, l); m_cache.length; ++m_cache, ++othe.m_cache)
+      for (size_t i = 0; i < m_cache.length; i++) {
+       m_cache.buffer[i] += a * othe.m_cache.buffer[i];
+       m_cache.dirty = true;
+      }
+    } else if (othe.m_cache.io) {
+     size_t offset = 0;
+     for (othe.m_cache.ensure(0); othe.m_cache.length; offset += othe.m_cache.length, ++othe.m_cache) {
+      for (size_t i = 0; i < othe.m_cache.length; i++) {
+       m_cache.buffer[offset + i] += a * othe.m_cache.buffer[i];
+      }
+     }
+    } else if (this->m_cache.io) {
+     size_t offset = 0;
+     for (m_cache.ensure(0); m_cache.length; offset += m_cache.length, ++m_cache) {
+//      std::cout << "cache window "<<m_cache.offset<<", "<<m_cache.length<<", offset="<<offset<<std::endl;
+      for (size_t i = 0; i < m_cache.length; i++)
+       m_cache.buffer[i] += a * othe.m_cache.buffer[offset + i];
+      m_cache.dirty = true;
+     }
+    } else {
+     size_t l = std::min(m_cache.length, othe.m_cache.length);
+     for (size_t i = 0; i < this->m_segment_length; i++)
       m_cache.buffer[i] += a * othe.m_cache.buffer[i];
+    }
+   } else if (this->m_replicated) {
+    for (m_cache.ensure(0); m_cache.length; ++m_cache) {
+     for (size_t i = 0; i < m_cache.length; i++)
+      m_cache.buffer[i] += a * othe.m_cache.buffer[m_cache.offset + i];
      m_cache.dirty = true;
+    }
+   } else {
+    for (othe.m_cache.ensure(0); othe.m_cache.length; ++othe.m_cache)
+     for (size_t i = 0; i < othe.m_cache.length; i++)
+      m_cache.buffer[othe.m_cache.offset + i] += a * othe.m_cache.buffer[i];
    }
   }
 
@@ -420,6 +453,8 @@ namespace LinearAlgebra {
   scalar dot(const vector<scalar> &other) const override
   {
    const PagedVector& othe=dynamic_cast <const PagedVector&> (other);
+//   std::cout << "dot this m_replicated="<<m_replicated<<", io="<<m_cache.io<<std::endl;
+//   std::cout << "dot othe m_replicated="<<othe.m_replicated<<", io="<<othe.m_cache.io<<std::endl;
    if (this->variance() * othe.variance() < 0) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
    scalar result=0;
@@ -438,14 +473,21 @@ namespace LinearAlgebra {
         result += m_cache.buffer[i] * othe.m_cache.buffer[i];
      }
      else if (othe.m_cache.io) {
+//      std::cout << "dodgy"<<std::endl;
+//      std::cout << "this "<<*this<<std::endl;
+//      std::cout << "othe "<<othe<<std::endl;
       size_t offset=0;
-      for ( othe.m_cache.ensure(0); othe.m_cache.length; offset+=othe.m_cache.length, ++othe.m_cache)
-       for (size_t i = 0; i < othe.m_cache.length; i++)
+      for (othe.m_cache.ensure(0); othe.m_cache.length; offset += othe.m_cache.length, ++othe.m_cache) {
+//       std::cout << "cache segment between "<<othe.m_cache.offset<<"="<<offset<<" and "<<othe.m_cache.offset+othe.m_cache.length<<std::endl;
+       for (size_t i = 0; i < othe.m_cache.length; i++) {
+//        std::cout << m_cache.buffer[offset+i] <<" * " <<othe.m_cache.buffer[i]<<std::endl;
         result += m_cache.buffer[offset+i] * othe.m_cache.buffer[i];
+       }
+      }
      }
      else if (this->m_cache.io) {
       size_t offset=0;
-      for (m_cache.ensure(0); m_cache.length; offset+=m_cache.length, ++othe.m_cache)
+      for (m_cache.ensure(0); m_cache.length; offset+=m_cache.length, ++m_cache)
        for (size_t i = 0; i < m_cache.length; i++)
         result += m_cache.buffer[i] * othe.m_cache.buffer[offset+i];
      }
@@ -593,7 +635,7 @@ namespace LinearAlgebra {
    m_size=other.m_size;
    constexpr bool pr=false;//bool pr=m_size<3;
 //   bool pr=m_mpi_rank>0;
-//   if (pr) std::cout << "operator= entry, other="<<other<<std::endl;
+   if (pr) std::cout << "operator= entry, other=" << other << std::endl;
    if (pr) std::cout << "operator= entry, other.m_cache.preferred_length="<<other.m_cache.preferred_length<<", this->m_cache.preferred_length="<<this->m_cache.preferred_length<<std::endl;
    if (pr) std::cout << "operator= entry, other.m_replicated="<<other.m_replicated<<", this->m_replicated="<<this->m_replicated<<std::endl;
    this->setVariance(other.variance());
@@ -619,7 +661,10 @@ namespace LinearAlgebra {
     other.m_cache.move((m_replicated || !other.m_replicated) ? 0: m_segment_offset, cachelength);
     while(m_cache.length && other.m_cache.length && off < m_segment_length && otheroff < other.m_segment_length ) {
      if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
-     if (pr) for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
+     if (pr) {
+      for (size_t i = 0; i < m_cache.length; i++) std::cout << " " << other.m_cache.buffer[otheroff + i];
+      std::cout << std::endl;
+     }
      for (size_t i=0; i<m_cache.length; i++) {
       m_cache.buffer[off+i] = other.m_cache.buffer[otheroff+i];
            if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
@@ -648,7 +693,7 @@ namespace LinearAlgebra {
      otheroff+=cachelength;
      if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
     }
-   } else if (other.m_cache.io) {  // std::cout << "source cached, result in memory"<<std::endl;
+   } else if (other.m_cache.io) { // std::cout << "source cached, result in memory"<<std::endl;
     size_t cachelength = other.m_cache.preferred_length;
     size_t otheroff=0;
     size_t off=(m_replicated == other.m_replicated) ? 0: other.m_segment_offset;
@@ -667,7 +712,7 @@ namespace LinearAlgebra {
     }
    }
    m_cache.dirty = true;
-//   if (pr) std::cout << "operator= after copy loop, other="<<other<<std::endl;
+   if (pr) std::cout << "operator= after copy loop, other=" << other << std::endl;
 //   if (pr) std::cout << "operator= after copy loop, this="<<*this<<std::endl;
 #ifdef HAVE_MPI_H
    if (m_replicated && ! other.m_replicated) { // replicated <- distributed

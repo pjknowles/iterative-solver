@@ -3,7 +3,7 @@
 !> finding of the lowest few eigensolutions of a large matrix.
 PROGRAM LinearEigenSystemExample
  USE Iterative_Solver
- INTEGER, PARAMETER :: n=1000, nroot=3
+ INTEGER, PARAMETER :: n=6, nroot=3
  DOUBLE PRECISION, DIMENSION (n,n) :: m
  DOUBLE PRECISION, DIMENSION (n,nroot) :: c,g
  DOUBLE PRECISION, DIMENSION (nroot) :: e,error
@@ -11,7 +11,7 @@ PROGRAM LinearEigenSystemExample
  LOGICAL :: converged
  PRINT *, 'Fortran binding of IterativeSolver'
  m=1; DO i=1,n; m(i,i)=3*i; END DO
- CALL Iterative_Solver_Linear_Eigensystem_Initialize(n,nroot,thresh=1d-7,verbosity=1)
+ CALL Iterative_Solver_Linear_Eigensystem_Initialize(n,nroot,thresh=1d-7,verbosity=7)
  c=0; DO i=1,nroot; c(i,i)=1; ENDDO
  DO i=1,n
   g = MATMUL(m,c)

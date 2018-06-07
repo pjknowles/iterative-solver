@@ -45,13 +45,18 @@ PROGRAM LinearEigenSystemExample
     END DO
    END DO
   END DO
+  !write (6,*) 'residual after adding p-space contribution ',g(:,1)
   DO root=1,nroot
    DO j=1,n
     c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(i)+1e-15)
    END DO
   END DO
+  !write (6,*) 'solution after update ',c(:,1)
   IF ( Iterative_Solver_End_Iteration(c,g,error)) EXIT
+  !write (6,*) 'error=',error
+  !write (6,*) 'solution after end_iteration ',c(:,1)
   g = MATMUL(m,c)
+  !write (6,*) 'action before add_vector',g(:,1)
   CALL Iterative_Solver_Add_Vector(c,g,p)
  END DO
  CALL Iterative_Solver_Finalize

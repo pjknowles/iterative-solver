@@ -78,21 +78,24 @@ int main(int argc, char *argv[])
       }
 
       TEST_CASE("PagedVector axpy()") {
-       PagedVector<double> v0(10000);
-       for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;
-       bool result = true;
-       for (auto i=0; i<4; i++) {
-        auto v1 = PagedVector<double>(v0,i);
-        auto v2 = PagedVector<double>(v0,i);
-        v2.axpy(2,v1);
-        v2.axpy(-3,v1);
+ PagedVector<double> v0(10000);
+ for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
+ bool result = true;
+ for (auto i = 0; i < 4; i++) {
+  for (auto j = 0; j < 4; j++) {
+   auto v1 = PagedVector<double>(v0, i);
+   auto v2 = PagedVector<double>(v0, j);
+   v2.axpy(2, v1);
+   v2.axpy(-3, v1);
+   std::cout <<"axpy: "<<i<<","<<j<<": "<< v2.dot(v2) <<"==0"<<std::endl;;
 //         std::cout << v2.dot(v2) <<std::endl;
-         result &= v2.dot(v2) <1e-20;
+   result &= v2.dot(v2) < 1e-20;
 //         std::cout << "result "<<result<<v2.dot(v2)<<std::endl;
 //       std::cout << "reads="<<v2.m_cache.reads << " writes="<<v2.m_cache.writes<<std::endl;
-        }
-       REQUIRE(result);
-      }
+  }
+ }
+ REQUIRE(result);
+}
 
       TEST_CASE("PagedVector scal()") {
        PagedVector<double> v0(10000);

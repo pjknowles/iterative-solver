@@ -45,9 +45,11 @@ namespace LinearAlgebra {
   constexpr int vFlags =  LINEARALGEBRA_CLONE_ADVISE_OFFLINE;
   vectorSet<double> cc, gg;
   std::vector<std::vector<double> > ccp;
+//  for (size_t k=0; k<instance->m_dimension; k++) std::cout << "C AddVector parameter "<<parameters[k]<<std::endl;
   for (size_t root = 0; root < instance->m_roots; root++) {
    cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension,vFlags)));
    cc.back()->put(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
+//   std::cout << "cc.back() "<<cc.back()<<std::endl;
    gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension,vFlags)));
    gg.back()->put(&action[root * instance->m_dimension], instance->m_dimension, 0);
    cc.m_active[root]=gg.m_active[root]=instance->errors().size()<=root ||  instance->errors()[root]>=instance->m_thresh;

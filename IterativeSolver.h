@@ -97,7 +97,6 @@ namespace LinearAlgebra {
                  std::vector<std::vector<scalar> > &parametersP,
                  vectorSet<scalar> &other
   ) {
-//   xout << "addVector initial parameters: "<<parameters<<std::endl;
    if (m_roots < 1) m_roots = parameters.size(); // number of roots defaults to size of parameters
    assert(parameters.size() == action.size());
    m_iterations++;
@@ -287,7 +286,7 @@ namespace LinearAlgebra {
    for (size_t k = 0; k < solution.size(); k++)
     solution.m_active[k] = (m_errors[k] >= m_thresh || m_minIterations > m_iterations);
    if (m_orthogonalize) {
-    //      xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
+//          xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
     for (auto rep = 0; rep < 2; rep++)
      for (size_t kkk = 0; kkk < solution.size(); kkk++) {
       if (solution.m_active[kkk]) {
@@ -317,7 +316,7 @@ namespace LinearAlgebra {
         solution[kkk]->scal(1 / std::sqrt(s));
       }
      }
-    //      xout << "IterativeSolverBase::adjustUpdate solution after orthogonalization: "<<solution<<std::endl;
+//          xout << "IterativeSolverBase::adjustUpdate solution after orthogonalization: "<<solution<<std::endl;
    }
   }
 
@@ -337,6 +336,7 @@ namespace LinearAlgebra {
   }
 
   void buildSubspace() {
+//   std::cout << "buildSubspace"<<std::endl;
    const auto nP = m_Pvectors.size();
    const auto nQ = m_QQMatrix.rows();
    const auto n = nP + nQ;
@@ -488,18 +488,21 @@ namespace LinearAlgebra {
 
   size_t
   addVectorSet(const vectorSet<scalar> &solution, const vectorSet<scalar> &residual, const vectorSet<scalar> &other) {
+//   std::cout << "addVectorSet entry"<<std::endl;
    //      if (residual.m_active.front()==0) xout <<"warning: inactive residual"<<std::endl;
    //      if (solution.m_active.front()==0) xout <<"warning: inactive solution"<<std::endl;
-   //      for (size_t kkk=0; kkk<solution.size(); kkk++)
-   //          xout << "addVectorSet solution: "<<solution[kkk]<<std::endl;
+//         for (size_t kkk=0; kkk<solution.size(); kkk++)
+//             xout << "addVectorSet solution: "<<solution[kkk]<<std::endl;
    //      for (size_t kkk=0; kkk<residual.size(); kkk++)
    //          xout << "addVectorSet residual: "<<residual[kkk]<<std::endl;
+//   std::cout << "addVectorSet before emplace_back()"<<std::endl;
    m_residuals.emplace_back(
      vectorSet<scalar>(residual, LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
    m_solutions.emplace_back(
      vectorSet<scalar>(solution, LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
    m_others.emplace_back(
      vectorSet<scalar>(other, LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
+//   std::cout << "addVectorSet after emplace_back()"<<std::endl;
    const vectorSet<scalar> &residual1 = residual;
    const vectorSet<scalar> &solution1 = solution;//      for (size_t kkk=0; kkk<solution.size(); kkk++)
    //          xout << "solution: "<<solution[kkk]<<std::endl;
@@ -531,6 +534,7 @@ namespace LinearAlgebra {
        if (m_solutions[ll].m_active[lll]) {
 //              xout << "bra"<<std::endl<<(*bra)[ll][lll]<<std::endl;
 //              xout << "residual1"<<std::endl<<residual1[kkk]<<std::endl;
+//              xout << "m_solutions[ll]"<<std::endl<<m_solutions[ll][lll]<<std::endl;
         m_QQMatrix(k, l) = m_QQMatrix(l, k) = (*bra)[ll][lll]->dot(*residual1[kkk]);
         m_QQOverlap(k, l) = m_QQOverlap(l, k) = m_solutions[ll][lll]->dot(*solution1[kkk]);
         l++;
@@ -545,6 +549,7 @@ namespace LinearAlgebra {
     xout << "QQ Matrix: " << std::endl << m_QQMatrix << std::endl;
     xout << "QQ Overlap: " << std::endl << m_QQOverlap << std::endl;
    }
+//   std::cout << "addVectorSet exit"<<std::endl;
    return m_residuals.size();
   }
 

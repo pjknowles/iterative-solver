@@ -29,12 +29,6 @@ int main(int argc, char *argv[])
 }
 
       TEST_CASE("PagedVector copy constructor") {
-    int rank;
-#ifdef HAVE_MPI_H
-    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-#else
-     rank=0;
-#endif
        PagedVector<double> v0(10001);
        for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;
        bool result = true;
@@ -54,22 +48,25 @@ int main(int argc, char *argv[])
        REQUIRE(result);
       }
 
-#ifndef none
       TEST_CASE("PagedVector dot product") {
-       PagedVector<double> v0(10000);
+       PagedVector<double> v0(10001);
        for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;
 //       std::cout << "v0="<<v0<<std::endl;
        bool result = true;
-       for (size_t i=0; i<4; i++) {
+ for (size_t i=0; i<4; i++) {
+//       for (size_t i=2; i<3; i++) {
 //       std::cout << "before copy to v1 v0="<<v0<<std::endl;
          auto v1 = PagedVector<double>(v0,i);
 //       std::cout << "after copy to v1 v0="<<v0<<std::endl;
 //       std::cout << "after copy to v1 v1="<<v0<<std::endl;
-        for (auto j=i-i%2; j<=i; j++) {
+//        for (auto j=i-i%2; j<=i; j++) {
+        for (auto j = 0; j < 4; j++) {
+//         for (auto j = 1; j < 2; j++) {
          auto v2 = PagedVector<double>(v0,j);
 //         std::cout << "v0="<<v0<<std::endl;
 //         std::cout << "v2="<<v2<<std::endl;
 //         std::cout <<i<<","<<j<<": "<< v2.dot(v1) <<"=="<< v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3<<std::endl;;
+//          std::cout <<i<<","<<j<<": "<< v2.dot(v2) <<"=="<< v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3<<std::endl;;
          result &= v2.dot(v1) == v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3;
          result &= v2.dot(v2) == v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3;
         }
@@ -77,17 +74,29 @@ int main(int argc, char *argv[])
        REQUIRE(result);
       }
 
+#ifndef none
       TEST_CASE("PagedVector axpy()") {
- PagedVector<double> v0(10000);
+// int rank;
+//#ifdef HAVE_MPI_H
+// MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+//#else
+// rank=0;
+//#endif
+ PagedVector<double> v0(10001);
  for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
  bool result = true;
  for (auto i = 0; i < 4; i++) {
   for (auto j = 0; j < 4; j++) {
+// for (auto i = 1; i < 2; i++) {
+//  for (auto j = 2; j < 3 ; j++) {
    auto v1 = PagedVector<double>(v0, i);
    auto v2 = PagedVector<double>(v0, j);
+//         std::cout <<rank<< "v0="<<v0<<std::endl;
    v2.axpy(2, v1);
+//   std::cout <<rank<< "after first axpy v2="<<v2<<std::endl;
    v2.axpy(-3, v1);
-   std::cout <<"axpy: "<<i<<","<<j<<": "<< v2.dot(v2) <<"==0"<<std::endl;;
+//   std::cout <<rank<< "after second axpy v2="<<v2<<std::endl;
+//   std::cout <<rank<<"axpy: "<<i<<","<<j<<": "<< v2.dot(v2) <<"==0"<<std::endl;;
 //         std::cout << v2.dot(v2) <<std::endl;
    result &= v2.dot(v2) < 1e-20;
 //         std::cout << "result "<<result<<v2.dot(v2)<<std::endl;
@@ -97,6 +106,8 @@ int main(int argc, char *argv[])
  REQUIRE(result);
 }
 
+#endif
+#ifndef none
       TEST_CASE("PagedVector scal()") {
        PagedVector<double> v0(10000);
        for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;

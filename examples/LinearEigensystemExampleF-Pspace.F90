@@ -24,6 +24,7 @@ PROGRAM LinearEigenSystemExample
 
  WRITE (6,*) 'P-space=',nP,', dimension=',n,', roots=',nroot
  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n,nroot,thresh=1d-8,verbosity=1)
+ CALL Iterative_Solver_Option('convergence','residual') ! convergence threshold applies to norm of residual
  offsets(0)=0
  DO i=1,nP
   offsets(i)=i

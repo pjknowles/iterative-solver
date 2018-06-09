@@ -58,6 +58,7 @@ namespace LinearAlgebra {
   for (size_t root = 0; root < instance->m_roots; root++) {
    cc[root]->get(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
    gg[root]->get(&action[root * instance->m_dimension], instance->m_dimension, 0);
+   assert(instance->m_dimension==gg[root]->size());
 #ifdef HAVE_MPI_H
 //   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");// FIXME not sure
 #endif

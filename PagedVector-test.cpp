@@ -138,7 +138,10 @@ int main(int argc, char *argv[])
       }
 
       TEST_CASE("PagedVector::put()") {
-       PagedVector<double> v0(10000);
+ for (auto i=0;i<4;i++) {
+//  std::cout << "option "<<i<<std::endl;
+
+       PagedVector<double> v0(10000,i);
        v0.zero();
        double val=99;
        size_t offset=v0.size()/2;
@@ -149,11 +152,23 @@ int main(int argc, char *argv[])
 //       std::cout << "before get "<<std::endl;
        v0.get(&val2,1,offset);
 //       std::cout << "after get, v0: "<<v0<<std::endl;
-//       std::cout <<"val2"<<val2<<std::endl;
+//       std::cout <<"val2: "<<val2<<"=="<<val<<std::endl;
        REQUIRE(val==val2);
        auto test = v0.dot(v0);
-//       std::cout <<"test"<<test<<std::endl;
+//       std::cout <<"test"<<test<<"=="<<val*val<<std::endl;
        REQUIRE(test==val*val);
+
+       std::vector<double> w; for (auto i=0; i<w.size(); i++) w.push_back(i);
+       v0.put(w.data(),w.size(),0);
+//       std::cout << "v0 "<<v0<<std::endl;
+       std::vector<double> w1; w1.assign(w.size(),0);
+// v0.get(w1.data(),w1.size()/2,w1.size()/2); // move the cache window
+ v0.get(w1.data(),w1.size(),0);
+//   for (auto i=0; i<w1.size(); i++) std::cout << "w1: "<<w1[i]<<std::endl;
+  test=0; for (auto i=0; i<w1.size(); i++) test+= std::fabs(w[i]-w1[i]);
+  REQUIRE(test<1e-15);
+ }
+
       }
 #endif
 

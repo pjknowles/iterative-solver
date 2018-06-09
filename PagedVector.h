@@ -42,7 +42,7 @@ namespace LinearAlgebra {
  class PagedVector : public vector<scalar>
  {
 //  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
-#define default_offline_buffer_size 80
+#define default_offline_buffer_size 100
  public:
   /*!
    * \brief Construct an object without any data.
@@ -285,7 +285,7 @@ namespace LinearAlgebra {
    // next, process the data appearing before the initial cache window
    size_t initial_cache_offset=m_cache.offset; size_t initial_cache_length=m_cache.length;
    for (m_cache.move(offset); m_cache.length && m_cache.offset<initial_cache_offset; ++m_cache) {
-    for (size_t k=std::max(offset,m_cache.offset); k<m_cache.length&&k<initial_cache_offset&&k<offset+length; k++) { // k is offset in segment
+    for (size_t k=std::max(offset,m_cache.offset); k<m_cache.offset+m_cache.length&&k<initial_cache_offset&&k<offset+length; k++) { // k is offset in segment
      m_cache.buffer[k-m_cache.offset] = buffer[k+buffer_offset-offset];
     }
 //    std::cout <<"processed preceding window"<<std::endl;
@@ -306,7 +306,7 @@ namespace LinearAlgebra {
 
   void get(scalar* buffer, size_t length, size_t offset) const override
   {
-//   std::cout << "PagedVector::get() length="<<length<<", offset="<<offset<<std::endl;
+//   std::cout << "PagedVector::get() length="<<length<<", offset="<<offset<<", m_replicated="<<m_replicated<<", io="<<m_cache.io<<", pagesize="<<m_cache.preferred_length<<std::endl;
 //   std::cout << "cache from "<<m_cache.offset<<" for "<<m_cache.length<<std::endl;
 //   for (size_t k=0; k<m_cache.length; k++) std::cout << " "<<m_cache.buffer[k]; std::cout << std::endl;
 
@@ -331,7 +331,7 @@ namespace LinearAlgebra {
    size_t initial_cache_offset=m_cache.offset; size_t initial_cache_length=m_cache.length;
    for (m_cache.move(offset); m_cache.length && m_cache.offset<initial_cache_offset; ++m_cache) {
 //    std::cout <<"new cache window offset="<<m_cache.offset<<", length="<<m_cache.length<<std::endl;
-    for (size_t k=std::max(offset,m_cache.offset); k<m_cache.length&&k<initial_cache_offset&&k<offset+length; k++) { // k is offset in segment
+    for (size_t k=std::max(offset,m_cache.offset); k<m_cache.offset+m_cache.length&&k<initial_cache_offset&&k<offset+length; k++) { // k is offset in segment
 //     std::cout << "in loop k="<<k<<", buffer_offset="<<buffer_offset<<", offset="<<offset<<" index="<<k+buffer_offset-offset<<std::endl;
      buffer[k+buffer_offset-offset]= m_cache.buffer[k-m_cache.offset];
 //    std::cout <<"in preceding window, k="<<k<<", m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k+buffer_offset-offset<<"]="<<buffer[k+buffer_offset-offset]<<std::endl;
@@ -391,7 +391,7 @@ namespace LinearAlgebra {
 //   std::cout << "PagedVector this m_replicated " << m_replicated << ", io=" << m_cache.io << std::endl;
 //   std::cout << "PagedVector othe m_replicated " << othe.m_replicated << ", io=" << othe.m_cache.io << std::endl;
 //   std::cout << "PagedVector::axpy this="<<*this<<std::endl;
-//   std::cout << "PagedVector::axpy othe="<<*othe<<std::endl;
+//   std::cout << "PagedVector::axpy othe="<<othe<<std::endl;
    if (this->variance() != othe.variance()) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
    if (this->m_replicated == othe.m_replicated) {
@@ -500,6 +500,7 @@ namespace LinearAlgebra {
 // std::cout <<m_mpi_rank<<"after broadcast this="<<*this<<std::endl;
    }
 #endif
+//   std::cout << "PagedVector::axpy result="<<*this<<std::endl;
   }
 
   /*!

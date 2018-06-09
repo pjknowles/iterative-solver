@@ -5,6 +5,7 @@ MODULE Iterative_Solver
  PUBLIC :: Iterative_Solver_Add_Vector, Iterative_Solver_End_Iteration
  PUBLIC :: Iterative_Solver_Add_P
  PUBLIC :: Iterative_Solver_Eigenvalues
+ PUBLIC :: Iterative_Solver_Option
  PRIVATE
  INTEGER(c_size_t) :: m_nq, m_nroot
 
@@ -197,6 +198,24 @@ CONTAINS
        pp,parameters,action,parametersP)
  END SUBROUTINE Iterative_Solver_Add_P
 
+!> \brief give options to the iterative solver
+ SUBROUTINE Iterative_Solver_Option(key,val)
+  CHARACTER(len=*), INTENT(in) :: key !< Option name
+  CHARACTER(len=*), INTENT(in) :: val !< Option value
+  INTERFACE
+   SUBROUTINE IterativeSolverOption(key,val) BIND(C,name='IterativeSolverOption')
+    USE iso_c_binding
+    CHARACTER(kind=c_char), DIMENSION(*), INTENT(in) :: key,val
+   END SUBROUTINE IterativeSolverOption
+  END INTERFACE
+  CHARACTER(kind=c_char), DIMENSION(:), ALLOCATABLE :: keyc, valc
+  ALLOCATE(keyc(LEN(key):LEN(key)))
+  ALLOCATE(valc(LEN(val):LEN(val)))
+  CALL c_string_from_f(key,keyc)
+  CALL c_string_from_f(val,valc)
+  CALL IterativeSolverOption(keyc,valc)
+ END SUBROUTINE Iterative_Solver_Option
+
 !> \brief the lowest eigenvalues of the reduced problem, for the number of roots sought.
  FUNCTION Iterative_Solver_Eigenvalues()
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: Iterative_Solver_Eigenvalues
@@ -209,6 +228,16 @@ CONTAINS
   ALLOCATE (Iterative_Solver_Eigenvalues(m_nroot))
   CALL IterativeSolverEigenvalues(Iterative_Solver_Eigenvalues)
  END FUNCTION Iterative_Solver_Eigenvalues
+
+ !> @brief Convert from Fortran string to C string
+ SUBROUTINE c_string_from_f(fstring,cstring)
+  CHARACTER(kind=c_char),DIMENSION(*) :: cstring !< A C char[] big enough to hold the result. No checks are made for overflow.
+  CHARACTER(*),INTENT(in) :: fstring !< The fortran string to be converted
+  DO i=1,len_TRIM(fstring)
+   cstring(i)=fstring(i:i)
+  END DO
+  cstring(len_TRIM(fstring)+1)=C_NULL_CHAR
+ END SUBROUTINE c_string_from_f
 
 !!> Unit testing of IterativeSolver Fortran binding
  SUBROUTINE Iterative_Solver_Test() BIND(C,name='IterativeSolverFTest')
@@ -232,6 +261,7 @@ CONTAINS
   DO irep=1,1
    WRITE (6,*) 'Without P-space, dimension=',n,', roots=',nroot
    CALL Iterative_Solver_Linear_Eigensystem_Initialize(n,nroot,thresh=1d-8,verbosity=1)
+   CALL Iterative_Solver_Option("convergence","residual")
    c=0; DO i=1,nroot; c(i,i)=1; ENDDO
    DO i=1,n
     g = MATMUL(m,c)

@@ -22,7 +22,7 @@ extern std::ostream &xout;
 #endif
 
 namespace LinearAlgebra {
- typedef std::map<std::string, double> optionMap;
+ typedef std::map<std::string, std::string> optionMap;
 
  /*!
  * \brief A base class for iterative solvers for linear and non-linear equations, and linear eigensystems.
@@ -279,6 +279,10 @@ namespace LinearAlgebra {
   size_t m_roots; ///< How many roots to calculate / equations to solve (defaults to size of solution and residual vectors)
  public:
   optionMap m_options; ///< A string of options to be interpreted by solveReducedProblem().
+  ///< Possibilities include
+  ///< - m_options["convergence"]=="energy" (the default), meaning that m_errors() returns the predicted eigenvalue change in the next iteration, ie the scalar product of the step and the residual
+  ///< - m_options["convergence"]=="step": m_errors() returns the norm of the step in the solution
+  ///< - m_options["convergence"]=="residual": m_errors() returns the norm of the residual vector
 
  private:
   void adjustUpdate(vectorSet<scalar> &solution) {
@@ -447,6 +451,9 @@ namespace LinearAlgebra {
   }
 
   void calculateErrors(const vectorSet<scalar> &solution, const vectorSet<scalar> &residual) {
+   auto errortype=0; // step . residual
+   if (this->m_options.count("convergence") && this->m_options.find("convergence")->second == "step") errortype=1;
+   if (this->m_options.count("convergence") && this->m_options.find("convergence")->second == "residual") errortype=2;
    if (m_verbosity > 5) {
     xout << "IterativeSolverBase::calculateErrors m_linear" << m_linear << std::endl;
     xout << "IterativeSolverBase::calculateErrors solution.m_active";
@@ -459,9 +466,10 @@ namespace LinearAlgebra {
     xout << "IterativeSolverBase::calculateErrors residual " << residual << std::endl;
    }
    m_errors.clear();
-   if (m_linear) { // we can use the extrapolated residual if the problem is linear
+   if (m_linear && errortype!=1) { // we can use the extrapolated residual if the problem is linear
     for (size_t k = 0; k < solution.size(); k++)
-     m_errors.push_back(residual.m_active[k] ? std::fabs(residual[k]->dot(*solution[k])) : 0);
+     m_errors.push_back(residual.m_active[k] ? std::fabs(residual[k]->dot(
+       errortype==2? *residual[k] : *solution[k])) : 0);
    } else {
     vectorSet<scalar> step = solution;
     step.axpy(-1, m_solutions[m_lastVectorIndex]);
@@ -473,10 +481,15 @@ namespace LinearAlgebra {
     }
     for (size_t k = 0; k < solution.size(); k++)
      m_errors.push_back(
-       m_residuals[m_lastVectorIndex].m_active[k] ? std::fabs(m_residuals[m_lastVectorIndex][k]->dot(*step[k])) : 1);
+       m_residuals[m_lastVectorIndex].m_active[k] ? std::fabs(
+         (errortype==1 ? step : m_residuals[m_lastVectorIndex])[k]->dot(
+           (errortype==2 ? *m_residuals[m_lastVectorIndex][k] : *step[k])))
+                                                  : 1);
    }
    //  xout << "last active "<<m_lastVectorIndex<<" "<<m_residuals[m_lastVectorIndex].m_active[0]<<std::endl;
    for (const auto &e : m_errors) if (std::isnan(e)) throw std::overflow_error("NaN detected in error measure");
+   if (errortype!=0)
+    for (auto &e : m_errors) e = std::sqrt(e);
    m_error = *max_element(m_errors.begin(), m_errors.end());
    m_worst = max_element(m_errors.begin(), m_errors.end()) - m_errors.begin();
    if (m_verbosity > 5) {
@@ -832,7 +845,7 @@ namespace LinearAlgebra {
    this->m_updateShift.push_back(-(1 + std::numeric_limits<double>::epsilon()) * this->m_subspaceMatrix(0, 0));
    double weight =
      this->m_options.count("weight") ? (
-       this->m_options.find("weight")->second) : 1.0;
+       std::strtod(this->m_options.find("weight")->second.c_str(),NULL)) : 1.0;
    if (this->m_maxDim <= 1 || this->m_DIISmode == disabled) return;
 
    if (this->m_roots > 1) throw std::logic_error("DIIS does not handle multiple solutions");
@@ -974,6 +987,8 @@ extern "C" void IterativeSolverAddP(const size_t nP, const size_t *offsets, cons
                                     double *parameters, double *action, double *parametersP);
 
 extern "C" void IterativeSolverEigenvalues(double *eigenvalues);
+
+extern "C" void IterativeSolverOption(const char* key, const char* val);
 
 
 #endif // ITERATIVESOLVER_H

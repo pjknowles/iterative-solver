@@ -112,6 +112,10 @@ namespace LinearAlgebra {
   }
  }
 
+ extern "C" void IterativeSolverOption(const char* key, const char* val) {
+  instance->m_options.insert(std::make_pair(std::string(key),std::string(val)));
+ }
+
  extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
   size_t k=0;
   for (const auto& e : instance->eigenvalues()) eigenvalues[k++] = e;

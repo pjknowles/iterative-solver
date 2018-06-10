@@ -5,18 +5,19 @@
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
+static int mpi_rank=0;
+static int mpi_size=1;
+
 
 int main(int argc, char *argv[])
 {
 #ifdef HAVE_MPI_H
   MPI_Init(&argc,&argv);
   {
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-    int size;
-    MPI_Comm_size(MPI_COMM_WORLD,&size);
-    if (rank==0) std::cout << size<<" MPI process"<<(size>1?"es ":"")<<std::endl;
-//    std::cout << "MPI process number "<<rank<<std::endl;
+    MPI_Comm_rank(MPI_COMM_WORLD,&mpi_rank);
+    MPI_Comm_size(MPI_COMM_WORLD,&mpi_size);
+    if (mpi_rank==0) std::cout << mpi_size<<" MPI process"<<(mpi_size>1?"es ":"")<<std::endl;
+//    std::cout << "MPI process number "<<mpi_rank<<std::endl;
   }
 #else
  std::cout << "serial"<<std::endl;
@@ -38,9 +39,9 @@ int main(int argc, char *argv[])
 //        std::cout <<"option "<<i<< ", copy-construct, reads="<<v2.m_cache.reads << " writes="<<v2.m_cache.writes<<std::endl;
         result &= v2==v0;
 //        std::cout <<"option "<<i<< ", compare, reads="<<v2.m_cache.reads << " writes="<<v2.m_cache.writes<<std::endl;
-//        std::cout <<rank<<"source: "<<v0<<std::endl;
-//        std::cout <<rank<<"copy: "<<v2<<std::endl;
-//        std::cout <<rank<<"result: "<<result<<std::endl;
+//        std::cout <<mpi_rank<<"source: "<<v0<<std::endl;
+//        std::cout <<mpi_rank<<"copy: "<<v2<<std::endl;
+//        std::cout <<mpi_rank<<"result: "<<result<<std::endl;
        }
 //       std::cout <<"After Copy Constructor "<<PagedVector<double>(v0,1)<<std::endl;
 //       auto test = PagedVector<double>(v0,1);
@@ -65,8 +66,8 @@ int main(int argc, char *argv[])
          auto v2 = PagedVector<double>(v0,j);
 //         std::cout << "v0="<<v0<<std::endl;
 //         std::cout << "v2="<<v2<<std::endl;
-//         std::cout <<i<<","<<j<<": "<< v2.dot(v1) <<"=="<< v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3<<std::endl;;
-//          std::cout <<i<<","<<j<<": "<< v2.dot(v2) <<"=="<< v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3<<std::endl;;
+//         std::cout <<i<<","<<j<<": "<< v2.dot(v1) <<"=="<< v0.mpi_size()*(2*v0.mpi_size()-1)*(2*v0.mpi_size()+1)/3<<std::endl;;
+//          std::cout <<i<<","<<j<<": "<< v2.dot(v2) <<"=="<< v0.mpi_size()*(2*v0.mpi_size()-1)*(2*v0.mpi_size()+1)/3<<std::endl;;
          result &= v2.dot(v1) == v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3;
          result &= v2.dot(v2) == v0.size()*(2*v0.size()-1)*(2*v0.size()+1)/3;
         }
@@ -76,12 +77,6 @@ int main(int argc, char *argv[])
 
 #ifndef none
       TEST_CASE("PagedVector axpy()") {
-// int rank;
-//#ifdef HAVE_MPI_H
-// MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-//#else
-// rank=0;
-//#endif
  PagedVector<double> v0(10001);
  for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
  bool result = true;
@@ -91,12 +86,12 @@ int main(int argc, char *argv[])
 //  for (auto j = 2; j < 3 ; j++) {
    auto v1 = PagedVector<double>(v0, i);
    auto v2 = PagedVector<double>(v0, j);
-//         std::cout <<rank<< "v0="<<v0<<std::endl;
+//         std::cout <<mpi_rank<< "v0="<<v0<<std::endl;
    v2.axpy(2, v1);
-//   std::cout <<rank<< "after first axpy v2="<<v2<<std::endl;
+//   std::cout <<mpi_rank<< "after first axpy v2="<<v2<<std::endl;
    v2.axpy(-3, v1);
-//   std::cout <<rank<< "after second axpy v2="<<v2<<std::endl;
-//   std::cout <<rank<<"axpy: "<<i<<","<<j<<": "<< v2.dot(v2) <<"==0"<<std::endl;;
+//   std::cout <<mpi_rank<< "after second axpy v2="<<v2<<std::endl;
+//   std::cout <<mpi_rank<<"axpy: "<<i<<","<<j<<": "<< v2.dot(v2) <<"==0"<<std::endl;;
 //         std::cout << v2.dot(v2) <<std::endl;
    result &= v2.dot(v2) < 1e-20;
 //         std::cout << "result "<<result<<v2.dot(v2)<<std::endl;
@@ -124,7 +119,7 @@ int main(int argc, char *argv[])
       }
 
       TEST_CASE("PagedVector zero()") {
-       PagedVector<double> v0(10000);
+       PagedVector<double> v0(10001);
        for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;
        bool result = true;
        for (auto i=0; i<4; i++) {
@@ -139,34 +134,54 @@ int main(int argc, char *argv[])
 
       TEST_CASE("PagedVector::put()") {
  for (auto i=0;i<4;i++) {
+//  MPI_Barrier(MPI_COMM_WORLD);
+//  usleep(100);
 //  std::cout << "option "<<i<<std::endl;
 
-       PagedVector<double> v0(10000,i);
+       PagedVector<double> v0(10001,i);
+       size_t segment_length=(v0.size()-1)/mpi_size+1;
        v0.zero();
+#ifndef none
        double val=99;
        size_t offset=v0.size()/2;
 //       std::cout << "after zero, v0: "<<v0<<std::endl;
-       v0.put(&val,1,offset);
-//       std::cout << "after put, v0: "<<v0<<std::endl;
-       double val2=77;
-//       std::cout << "before get "<<std::endl;
-       v0.get(&val2,1,offset);
-//       std::cout << "after get, v0: "<<v0<<std::endl;
-//       std::cout <<"val2: "<<val2<<"=="<<val<<std::endl;
-       REQUIRE(val==val2);
-       auto test = v0.dot(v0);
-//       std::cout <<"test"<<test<<"=="<<val*val<<std::endl;
-       REQUIRE(test==val*val);
 
-       std::vector<double> w; for (auto i=0; i<w.size(); i++) w.push_back(i);
+//    std::cout <<mpi_rank<< "before put, v0: "<<v0<<std::endl;
+//  if (offset>=segment_length*mpi_rank && offset < segment_length*(mpi_rank+1))
+//  if (mpi_rank==3)
+       v0.put(&val,1,offset);
+//       std::cout <<mpi_rank<< "after put, v0: "<<v0<<std::endl;
+#ifndef none
+  double val2=77;
+//       std::cout <<mpi_rank<< "before get "<<std::endl;
+       v0.get(&val2,1,offset);
+  if (offset>=segment_length*mpi_rank && offset < segment_length*(mpi_rank+1)) {
+//       std::cout <<mpi_rank<< "after get, v0: "<<v0<<std::endl;
+//       std::cout <<mpi_rank<<"val2: "<<val2<<"=="<<val<<std::endl;
+       REQUIRE(val==val2);
+  }
+#endif
+#ifndef none
+       auto test = v0.dot(v0);
+//       std::cout <<mpi_rank<<"test"<<test<<"=="<<val*val<<std::endl;
+   if (offset>=segment_length*mpi_rank && offset < segment_length*(mpi_rank+1)) {
+       REQUIRE(test==val*val);
+   }
+#endif
+//   MPI_Barrier(MPI_COMM_WORLD); std::cout << mpi_rank<<"first test done"<<std::endl;
+#endif
+
+#ifndef none
+       std::vector<double> w; for (auto k=0; k<w.size(); k++) w.push_back(k);
        v0.put(w.data(),w.size(),0);
 //       std::cout << "v0 "<<v0<<std::endl;
        std::vector<double> w1; w1.assign(w.size(),0);
-// v0.get(w1.data(),w1.size()/2,w1.size()/2); // move the cache window
+// v0.get(w1.data(),w1.mpi_size()/2,w1.mpi_size()/2); // move the cache window
  v0.get(w1.data(),w1.size(),0);
-//   for (auto i=0; i<w1.size(); i++) std::cout << "w1: "<<w1[i]<<std::endl;
-  test=0; for (auto i=0; i<w1.size(); i++) test+= std::fabs(w[i]-w1[i]);
-  REQUIRE(test<1e-15);
+//   for (auto i=0; i<w1.mpi_size(); i++) std::cout << "w1: "<<w1[i]<<std::endl;
+  auto test2=0; for (auto k=(i>1?segment_length*mpi_rank:0); k<(w1.size() && (i>1?(k<segment_length*(mpi_rank+1)):true)); k++) test2+= std::fabs(w[k]-w1[k]);
+  REQUIRE(test2<1e-15);
+#endif
  }
 
       }

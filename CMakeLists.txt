@@ -15,7 +15,20 @@ find_package(MPI )
 if(MPI_CXX_FOUND)
 include_directories(${MPI_CXX_INCLUDE_PATH})
 add_definitions(-DHAVE_MPI_H)
+    message(MPI: MPIEXEC=${MPIEXEC})
 endif(MPI_CXX_FOUND)
+
+include(ProcessorCount)
+ProcessorCount(NPROC)
+if(NPROC EQUAL 0)
+    set(NPROC 1)
+endif()
+if(NPROC EQUAL 8)
+    #    hack to avoid overload on workstation / CI
+    set(NPROC 4)
+endif()
+message("Number of processors ${NPROC}")
+set(CTEST_BUILD_FLAGS -j${NPROC})
 
 enable_language(Fortran)
 enable_language(CXX)
@@ -41,7 +54,11 @@ add_test(${PROJECT_NAME}-test ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-test $
 
 add_executable(PagedVector-test PagedVector-test.cpp)
 target_link_libraries(PagedVector-test ${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
-add_test(PagedVector-test ${CMAKE_CURRENT_BINARY_DIR}/PagedVector-test)
+if(MPIEXEC)
+    add_test(PagedVector-test ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${NPROC} --allow-run-as-root ${CMAKE_CURRENT_BINARY_DIR}/PagedVector-test)
+else(MPIEXEC)
+    add_test(PagedVector-test ${CMAKE_CURRENT_BINARY_DIR}/PagedVector-test)
+endif(MPIEXEC)
 
 file(GLOB EXAMPLES examples/*.cpp examples/*.F90)
 foreach (fil ${EXAMPLES})

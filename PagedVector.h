@@ -264,6 +264,7 @@ namespace LinearAlgebra {
 //   for (size_t k=0; k<length; k++) std::cout << " "<<buffer[k]; std::cout << std::endl;
 //   std::cout << "cache from "<<m_cache.offset<<" for "<<m_cache.length<<std::endl;
 //   for (size_t k=0; k<m_cache.length; k++) std::cout << " "<<m_cache.buffer[k]; std::cout << std::endl;
+//     std::cout << "m_segment_offset "<<m_segment_offset<<std::endl;
    // first of all, focus attention only on that part of buffer which appears in [m_segment_offset,m_segment_offset+m_segment_length)
    size_t buffer_offset=0;
    if (offset < m_segment_offset) { buffer_offset = m_segment_offset-offset; offset = m_segment_offset; length -= m_segment_offset-offset;}
@@ -271,7 +272,7 @@ namespace LinearAlgebra {
 
    // now make addresses relative to this mpi-rank's segment
    offset-=this->m_segment_offset; // the offset in the segment of the first usable element of buffer
-   buffer_offset += this->m_segment_offset; // the offset in buffer of its first usable element
+//   buffer_offset += 0*this->m_segment_offset; // the offset in buffer of its first usable element
 
 //   std::cout << "adjusted offset="<<offset<<", buffer_offset="<<buffer_offset<<std::endl;
 
@@ -282,10 +283,14 @@ namespace LinearAlgebra {
 //    std::cout <<"in initial window, k="<<k<<", m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k+buffer_offset-offset<<"]="<<buffer[k+buffer_offset-offset]<<std::endl;
    }
 
+//   std::cout <<"after initial window"<<std::endl;
    // next, process the data appearing before the initial cache window
    size_t initial_cache_offset=m_cache.offset; size_t initial_cache_length=m_cache.length;
    for (m_cache.move(offset); m_cache.length && m_cache.offset<initial_cache_offset; ++m_cache) {
-    for (size_t k=std::max(offset,m_cache.offset); k<m_cache.offset+m_cache.length&&k<initial_cache_offset&&k<offset+length; k++) { // k is offset in segment
+//    std::cout << "cache segment buffer range "<<std::max(offset,m_cache.offset)+buffer_offset-offset<<" : "<<m_cache.offset+m_cache.length+buffer_offset-offset<<std::endl;
+    for (size_t k=std::max(offset,m_cache.offset); k<m_cache.offset+m_cache.length&&k<initial_cache_offset&&k+buffer_offset<offset+length; k++) { // k is offset in segment
+//     if (k+buffer_offset<offset) std::cout <<"accessing data before buffer"<<std::endl;
+//     if (k+buffer_offset-offset>length) std::cout <<"accessing data after buffer"<<std::endl;
      m_cache.buffer[k-m_cache.offset] = buffer[k+buffer_offset-offset];
     }
 //    std::cout <<"processed preceding window"<<std::endl;
@@ -317,7 +322,7 @@ namespace LinearAlgebra {
 
    // now make addresses relative to this mpi-rank's segment
    offset-=this->m_segment_offset; // the offset in the segment of the first usable element of buffer
-   buffer_offset += this->m_segment_offset; // the offset in buffer of its first usable element
+   buffer_offset += 0*this->m_segment_offset; // the offset in buffer of its first usable element
 
 //   std::cout << "adjusted offset="<<offset<<", buffer_offset="<<buffer_offset<<std::endl;
 
@@ -331,7 +336,7 @@ namespace LinearAlgebra {
    size_t initial_cache_offset=m_cache.offset; size_t initial_cache_length=m_cache.length;
    for (m_cache.move(offset); m_cache.length && m_cache.offset<initial_cache_offset; ++m_cache) {
 //    std::cout <<"new cache window offset="<<m_cache.offset<<", length="<<m_cache.length<<std::endl;
-    for (size_t k=std::max(offset,m_cache.offset); k<m_cache.offset+m_cache.length&&k<initial_cache_offset&&k<offset+length; k++) { // k is offset in segment
+    for (size_t k=std::max(offset,m_cache.offset); k<m_cache.offset+m_cache.length&&k<initial_cache_offset&&k+buffer_offset<offset+length; k++) { // k is offset in segment
 //     std::cout << "in loop k="<<k<<", buffer_offset="<<buffer_offset<<", offset="<<offset<<" index="<<k+buffer_offset-offset<<std::endl;
      buffer[k+buffer_offset-offset]= m_cache.buffer[k-m_cache.offset];
 //    std::cout <<"in preceding window, k="<<k<<", m_cache_buffer["<<k-m_cache.offset<<"]=buffer["<<k+buffer_offset-offset<<"]="<<buffer[k+buffer_offset-offset]<<std::endl;

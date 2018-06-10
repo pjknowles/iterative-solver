@@ -53,6 +53,7 @@ namespace LinearAlgebra {
      m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
      m_segment_offset(m_replicated ? 0 : ((m_size-1) / m_mpi_size + 1) * m_mpi_rank),
      m_segment_length(m_replicated ? m_size : std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset)),
+//     m_segment_length(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option) ? m_size : std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset)),
      m_cache(m_segment_length, (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length)
   {
 //   init(option);
@@ -76,13 +77,16 @@ namespace LinearAlgebra {
      m_cache(m_segment_length, (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length)
   {
 //   init(option);
-//   std::cout << "in copy constructor, before copy, source: "<<source.str()<<std::endl;
+//   std::cout << "in copy constructor, before copy, source: "<<source.size()<<":"<<source.str()<<std::endl;
+//   std::cout << "source.m_replicated"<<source.m_replicated<<std::endl;
+//   std::cout << "this->m_replicated"<<this->m_replicated<<std::endl;
 //   std::cout << m_mpi_rank << " in copy constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
 //    std::cout <<" option "<<( option)<<std::endl;
 //    std::cout <<"LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option "<<(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)<<std::endl;
 //    std::cout <<"cache preferred length "<<m_cache.preferred_length<<std::endl;
    *this = source;
-//   std::cout Knowles<< "in copy constructor, after copy, source: "<<source.str()<<std::endl;
+//   std::cout <<m_mpi_rank<< "in copy constructor, after copy, source: "<<source.str()<<std::endl;
+//   std::cout <<m_mpi_rank<< "in copy constructor, after copy, this: "<<this->str()<<std::endl;
   }
 
   /*!
@@ -822,7 +826,7 @@ namespace LinearAlgebra {
     m_cache.move(0, m_segment_length);
     other.m_cache.move((m_replicated == other.m_replicated) ? 0: m_segment_offset, cachelength );
     while(other.m_cache.length && off < m_segment_length && otheroff < other.m_segment_length ) {
-     if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
+//     if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
      //    for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
      for (size_t i=0; i<other.m_cache.length; i++) {
       m_cache.buffer[off+i] = other.m_cache.buffer[otheroff+i];
@@ -830,22 +834,26 @@ namespace LinearAlgebra {
      }
      off+=cachelength;
      ++other.m_cache;
-     if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
+//     if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
     }
    }
    m_cache.dirty = true;
-   if (pr) std::cout << "operator= after copy loop, other=" << other << std::endl;
+//   if (pr) std::cout << "operator= after copy loop, other=" << other << std::endl;
 //   if (pr) std::cout << "operator= after copy loop, this="<<*this<<std::endl;
 #ifdef HAVE_MPI_H
    if (m_replicated && ! other.m_replicated) { // replicated <- distributed
     size_t lenseg = ((m_size-1) / m_mpi_size + 1);
     for (int rank=0; rank < m_mpi_size; rank++) {
      size_t off = lenseg * rank;
-     for (m_cache.ensure(off); m_cache.length && off < lenseg*(rank+1); off+= m_cache.length, ++m_cache)
-      MPI_Bcast(m_cache.buffer.data(),m_cache.length,MPI_DOUBLE,rank,m_communicator); // needs attention for non-double
+     if (m_cache.io) {
+      for (m_cache.ensure(off); m_cache.length && off < lenseg*(rank+1); off+= m_cache.length, ++m_cache)
+       MPI_Bcast(m_cache.buffer.data(),m_cache.length,MPI_DOUBLE,rank,m_communicator); // FIXME needs attention for non-double
+     } else {
+      MPI_Bcast(&m_cache.buffer[off],std::min(lenseg,m_size-off),MPI_DOUBLE,rank,m_communicator); // FIXME needs attention for non-double
+     }
     }
    }
-   //   if (pr) std::cout << "operator= after bcast, other="<<other<<std::endl;
+//      if (pr) std::cout << "operator= after bcast, this="<<*this<<std::endl;
 #endif
    return *this;
   }

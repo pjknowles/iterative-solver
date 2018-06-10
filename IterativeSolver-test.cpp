@@ -433,6 +433,7 @@ for (int iteration=1; (iteration < d.m_maxIterations && not converged) || iterat
 
 
 extern "C" { void IterativeSolverFTest();}
+static std::unique_ptr<std::ofstream> out;
 int main(int argc, char *argv[])
 {
 #ifdef HAVE_MPI_H
@@ -442,8 +443,14 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
     int size;
     MPI_Comm_size(MPI_COMM_WORLD,&size);
-    if (rank==0) std::cout << size<<" MPI process"<<(size>1?"es ":"")<<std::endl;
-//    std::cout << "MPI process number "<<rank<<std::endl;
+    if (rank==0)
+     std::cout << size<<" MPI process"<<(size>1?"es ":"")<<std::endl;
+    else {
+     out.reset(new std::ofstream("IterativeSolver-test.log"+std::to_string(rank)));
+     std::streambuf *coutbuf = std::cout.rdbuf();
+     std::cout.rdbuf(out->rdbuf());
+     std::cout << "MPI rank "<<rank<<std::endl;
+  }
   }
 #endif
 

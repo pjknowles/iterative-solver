@@ -72,12 +72,14 @@ namespace LinearAlgebra {
    : vector<scalar>(), m_size(source.m_size),
      m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
      m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
-     m_segment_offset(m_replicated ? 0 : ((m_size-1) / m_mpi_size + 1) * m_mpi_rank),
+     m_segment_offset(m_replicated ? 0 : std::min(((m_size-1) / m_mpi_size + 1) * m_mpi_rank,m_size)),
      m_segment_length(m_replicated ? m_size : std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset)),
      m_cache(m_segment_length, (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length)
   {
 //   init(option);
 //   std::cout << "in copy constructor, before copy, source: "<<source.size()<<":"<<source.str()<<std::endl;
+//   std::cout << "m_segment_offset "<<m_segment_offset <<std::endl;
+//   std::cout << "m_segment_length "<<m_segment_length <<std::endl;
 //   std::cout << "source.m_replicated"<<source.m_replicated<<std::endl;
 //   std::cout << "this->m_replicated"<<this->m_replicated<<std::endl;
 //   std::cout << m_mpi_rank << " in copy constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
@@ -496,6 +498,7 @@ namespace LinearAlgebra {
       size_t l=std::min(m_cache.length,(rank+1)*lenseg-m_cache.offset);
 //      std::cout << m_mpi_rank<<"broadcast from "<<rank<<" offset="<<m_cache.offset<<", length="<<l<<std::endl;
 //      std::cout <<m_mpi_rank<<"before Bcast"; for (auto i=0; i<l; i++) std::cout <<" "<<m_cache.buffer[i]; std::cout <<std::endl;
+  if (l>0)
       MPI_Bcast(m_cache.buffer.data(),l,MPI_DOUBLE,rank,m_communicator); // needs attention for non-double
 //      std::cout <<m_mpi_rank<<"after Bcast m_cache.length="<<m_cache.length<<", lenseg="<<lenseg<<", m_cache.offset="<<m_cache.offset<<std::endl;
 //      std::cout <<m_mpi_rank<<"after Bcast"; for (auto i=0; i<l; i++) std::cout <<" "<<m_cache.buffer[i]; std::cout <<std::endl;
@@ -503,7 +506,9 @@ namespace LinearAlgebra {
 //       usleep(100);
      }
      } else {
-      MPI_Bcast(&m_cache.buffer[lenseg*rank],std::min(m_size-lenseg*rank,lenseg),MPI_DOUBLE,rank,m_communicator); // needs attention for non-double
+      size_t l=std::min(m_size-lenseg*rank,lenseg);
+      if (l>0)
+      MPI_Bcast(&m_cache.buffer[lenseg*rank],l,MPI_DOUBLE,rank,m_communicator); // needs attention for non-double
      }
     }
 // std::cout <<m_mpi_rank<<"after broadcast this="<<*this<<std::endl;
@@ -758,7 +763,7 @@ namespace LinearAlgebra {
    */
   PagedVector& operator=(const PagedVector& other)
   {
-   m_size=other.m_size;
+   assert(m_size==other.m_size);
    constexpr bool pr=false;//bool pr=m_size<3;
 //   bool pr=m_mpi_rank>0;
    if (pr) std::cout << "operator= entry, other=" << other << std::endl;
@@ -770,6 +775,7 @@ namespace LinearAlgebra {
    if (!m_cache.io && !other.m_cache.io) { // std::cout << "both in memory"<<std::endl;
     size_t off = (m_replicated && !other.m_replicated) ? other.m_segment_offset : 0;
     size_t otheroff = (!m_replicated && other.m_replicated) ? m_segment_offset : 0;
+//    std::cout << "seg length test "<<m_segment_length<<","<<other.m_segment_length<<std::min(m_segment_length,other.m_segment_length)<<std::endl;
      for (size_t i=0; i<std::min(m_segment_length,other.m_segment_length); i++) {
       m_cache.buffer[off+i] = other.m_cache.buffer[otheroff+i];
            if (pr) std::cout <<m_mpi_rank<<" other.buffer["<<otheroff+i<<"]="<<other.m_cache.buffer[otheroff+i]<<std::endl;
@@ -849,6 +855,7 @@ namespace LinearAlgebra {
       for (m_cache.ensure(off); m_cache.length && off < lenseg*(rank+1); off+= m_cache.length, ++m_cache)
        MPI_Bcast(m_cache.buffer.data(),m_cache.length,MPI_DOUBLE,rank,m_communicator); // FIXME needs attention for non-double
      } else {
+      if (lenseg>0 && m_size > off)
       MPI_Bcast(&m_cache.buffer[off],std::min(lenseg,m_size-off),MPI_DOUBLE,rank,m_communicator); // FIXME needs attention for non-double
      }
     }

@@ -188,12 +188,12 @@ static struct {
   std::vector<scalar> xxx(2);
   xxx[0]=xxx[1]=1-difficulty; // initial guess
   x.front()->put(&xxx[0],2,0);
-  xout << "initial guess"<<x[0]<<std::endl;
-  xout << "initial guess"<<x<<std::endl;
+  xout << "initial guess "<<x<<std::endl;
   bool converged=false;
   for (int iteration=1; iteration < 1000 && not converged; iteration++) {
 //   xout <<"start of iteration "<<iteration<<std::endl;
       _Rosenbrock_residual(x,g);
+   xout << "residual"<<g<<std::endl;
       d.addVector(x,g);
       std::vector<scalar> shift; shift.push_back(1e-10);
       _Rosenbrock_updater(x,g,shift);
@@ -462,6 +462,7 @@ int main(int argc, char *argv[])
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
 //  LinearAlgebra::DIIS<double>::randomTest(100,100,0.1,3.0);
   DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
+//  MPI_Abort(MPI_COMM_WORLD,1);
 //  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
 //  DIISTest<PagedVector<double> >(1,6,1e-3,LinearAlgebra::DIIS<double>::disabled,0.0002);
   DavidsonTest<PagedVector<double> >(2,1,1,2,true);

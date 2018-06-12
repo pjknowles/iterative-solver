@@ -8,6 +8,7 @@
 #include <string.h>
 #include <cstddef>
 #include <unistd.h>
+#include <cassert>
 #include <fstream>
 #include <map>
 

@@ -481,5 +481,6 @@ int main(int argc, char *argv[])
 #ifdef HAVE_MPI_H
   MPI_Finalize();
 #endif
+ exit(0);
   return 0;
 }

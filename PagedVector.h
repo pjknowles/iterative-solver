@@ -577,7 +577,7 @@ namespace LinearAlgebra {
         result += m_cache.buffer[i] * othe.m_cache.buffer[offset+i];
      }
      else {
-     size_t l = std::min(m_cache.length, othe.m_cache.length);
+     size_t l = std::min(m_cache.length, othe.m_cache.length); // FIXME puzzle as to what this is
       for (size_t i = 0; i < this->m_segment_length; i++)
        result += m_cache.buffer[i] * othe.m_cache.buffer[i];
      }

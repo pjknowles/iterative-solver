@@ -165,7 +165,7 @@ namespace LinearAlgebra {
    const size_t datasize; ///< the size of the vector being mapped
    const size_t preferred_length; ///< the default for the size of the cache window
    mutable std::vector<scalar> buffer;
-   bool io; ///< whether backing store is needed
+   const bool io; ///< whether backing store is needed
    const scalar* begin() const { return buffer.data();}
    const scalar* end() const { return buffer.data()+length;}
    scalar* begin() {return buffer.data();}
@@ -176,9 +176,9 @@ namespace LinearAlgebra {
    mutable size_t writes; ///< how many scalars written
    mutable size_t reads; ///< how many scalars read
    window(size_t datasize, size_t length=default_offline_buffer_size)
-    :   offset(datasize+1), length(0), datasize(datasize), preferred_length(length), dirty(false), filesize(0), writes(0), reads(0) {
+    :   offset(datasize+1), length(0), datasize(datasize), preferred_length(length), dirty(false), filesize(0), writes(0), reads(0), io(this->datasize > preferred_length)
+   {
 //    std::cout << "window constructor datasize="<<datasize<<", length="<<length<<std::endl;
-    io = this->datasize > preferred_length;
     if (io) {
      char *tmpname=strdup("tmpfileXXXXXX");
      mkstemp(tmpname);

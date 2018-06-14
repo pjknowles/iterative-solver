@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <string.h>
 #include <cstddef>
+#include <stdlib.h>
 #include <unistd.h>
 #include <cassert>
 #include <fstream>

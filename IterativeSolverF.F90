@@ -168,8 +168,8 @@ CONTAINS
  SUBROUTINE Iterative_Solver_Add_P(nP,offsets,indices,coefficients,pp,parameters,action,parametersP)
   INTEGER, INTENT(in) :: nP
   INTEGER, INTENT(in), DIMENSION(0:nP) :: offsets
-  INTEGER, INTENT(in), DIMENSION(nP) :: indices
-  DOUBLE PRECISION, DIMENSION(nP), INTENT(in) :: coefficients
+  INTEGER, INTENT(in), DIMENSION(offsets(nP)) :: indices
+  DOUBLE PRECISION, DIMENSION(offsets(nP)), INTENT(in) :: coefficients
   DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: pp
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
   DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
@@ -180,8 +180,8 @@ CONTAINS
     USE iso_c_binding
     INTEGER(c_size_t), INTENT(in), VALUE :: nP
     INTEGER(c_size_t), INTENT(in), DIMENSION(0:nP) :: offsets
-    INTEGER(c_size_t), INTENT(in), DIMENSION(*) :: indices
-    REAL(c_double), DIMENSION(*), INTENT(in) :: coefficients
+    INTEGER(c_size_t), INTENT(in), DIMENSION(offsets(nP)) :: indices
+    REAL(c_double), DIMENSION(offsets(nP)), INTENT(in) :: coefficients
     REAL(c_double), DIMENSION(*), INTENT(in) :: pp
     REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
     REAL(c_double), DIMENSION(*), INTENT(inout) :: action
@@ -191,7 +191,7 @@ CONTAINS
   INTEGER(c_size_t), DIMENSION(0:nP) :: offsetsC
   INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC
   offsetsC = INT(offsets,c_size_t)
-  do i=1,nP
+  do i=1,offsets(nP)
    indicesC(i) = INT(indices(i)-1,c_size_t) ! 1-base to 0-base
   end do
   CALL IterativeSolverAddPC(INT(nP,c_size_t),offsetsC,indicesC,coefficients, &

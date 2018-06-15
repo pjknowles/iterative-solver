@@ -93,15 +93,19 @@ namespace LinearAlgebra {
   }
 
   /*!
-  * @brief Construct an object copied from external data
+  * @brief Construct an object mapping an external data buffer
    *
    * @param buffer
    * @param length
-   * @param option
-   * @param mpi_communicator
    */
 
-  PagedVector(double* buffer, size_t length, int option=0, MPI_Comm mpi_communicator=MPI_COMM_COMPUTE)
+  PagedVector(double* buffer, size_t length)
+    : vector<scalar>(), m_size(length),
+      m_communicator(MPI_COMM_COMPUTE), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
+      m_replicated(true),
+      m_segment_offset(0),
+      m_segment_length(m_size),
+      m_cache(m_segment_length, m_segment_length, buffer)
   {
 
   }
@@ -155,27 +159,42 @@ namespace LinearAlgebra {
   size_t m_segment_offset; //!< offset in the overall data object of this process' data
   size_t m_segment_length; //!< length of this process' data
 
+  /*!
+   * Get a pointer to the entire data structure if possible
+   * @return the pointer, or nullptr if caching/distribution means that the whole vector is not available
+   */
+  scalar* data() {
+   if (not m_replicated) return nullptr;
+   if (m_cache.io and not m_cache.bufferContainer.empty()) return nullptr;
+   return m_cache.buffer;
+  }
+
   struct window {
    mutable size_t offset; ///< the offset in mapped data of the first element of the cache window
    mutable size_t length;///< the size of the cache window
    const size_t datasize; ///< the size of the vector being mapped
    const size_t preferred_length; ///< the default for the size of the cache window
-   mutable std::vector<scalar> buffer;
+   mutable std::vector<scalar> bufferContainer;
+   scalar* buffer;
    bool io; ///< whether backing store is needed
-   const scalar* begin() const { return buffer.data();}
-   const scalar* end() const { return buffer.data()+length;}
-   scalar* begin() {return buffer.data();}
-   scalar* end() {return buffer.data()+length;}
+   const scalar* begin() const { return buffer;}
+   const scalar* end() const { return buffer+length;}
+   scalar* begin() {return buffer;}
+   scalar* end() {return buffer+length;}
    mutable bool dirty;
    mutable std::fstream m_file;
    mutable size_t filesize;
    mutable size_t writes; ///< how many scalars written
    mutable size_t reads; ///< how many scalars read
-   window(size_t datasize, size_t length=default_offline_buffer_size)
+   window(size_t datasize, size_t length=default_offline_buffer_size, scalar* externalBuffer=nullptr)
     :   offset(datasize+1), length(0), datasize(datasize), preferred_length(length), dirty(false), filesize(0), writes(0), reads(0) {
 //    std::cout << "window constructor datasize="<<datasize<<", length="<<length<<std::endl;
     io = this->datasize > preferred_length;
-    if (io) {
+    if (externalBuffer != nullptr) {
+     buffer=externalBuffer;
+    } else if (io) {
+//     buffer=nullptr;
+     buffer = bufferContainer.data();
      char *tmpname=strdup("tmpfileXXXXXX");
      mkstemp(tmpname);
      m_file.open (tmpname, std::ios::out | std::ios::in | std::ios::binary);
@@ -183,8 +202,10 @@ namespace LinearAlgebra {
      unlink(tmpname);
      free(tmpname);
     }
-    else
-     buffer.resize(length);
+    else {
+     bufferContainer.resize(length);
+     buffer = bufferContainer.data();
+    }
     move(0,length);
 //    std::cout << "window constructor ends, filesize="<<filesize<<", length="<<length<<std::endl;
    }
@@ -211,17 +232,17 @@ namespace LinearAlgebra {
      m_file.seekp(this->offset*sizeof(scalar));
 //          std::cout << "write to "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
 //     std::cout << "write to "<<this->offset<<std::endl;
-     m_file.write( (const char*)buffer.data(), this->length*sizeof(scalar));
+     m_file.write( (const char*)buffer, this->length*sizeof(scalar));
      writes += this->length;
      if (filesize < this->offset+this->length) filesize = this->offset+this->length;
     }
     this->offset = offset;
     this->length = std::min(length,static_cast<size_t>(datasize-offset));
-    buffer.resize(this->length);
+    bufferContainer.resize(this->length);
     //    std::cout << "buffer resized to length="<<this->length<<"; offset="<<offset<<", filesize="<<filesize<<std::endl;
     if (std::min(this->length,static_cast<size_t>(filesize-offset))) {
      m_file.seekg(offset*sizeof(scalar));
-     m_file.read((char*)buffer.data(),std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar));
+     m_file.read((char*)buffer,std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar));
 //     std::cout << "read from "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
 //     std::cout << "read from "<<this->offset<<std::endl;
      reads += std::min(this->length,static_cast<size_t>(filesize-offset));
@@ -500,7 +521,7 @@ namespace LinearAlgebra {
 //      std::cout << m_mpi_rank<<"broadcast from "<<rank<<" offset="<<m_cache.offset<<", length="<<l<<std::endl;
 //      std::cout <<m_mpi_rank<<"before Bcast"; for (auto i=0; i<l; i++) std::cout <<" "<<m_cache.buffer[i]; std::cout <<std::endl;
   if (l>0)
-      MPI_Bcast(m_cache.buffer.data(),l,MPI_DOUBLE,rank,m_communicator); // needs attention for non-double
+      MPI_Bcast(m_cache.buffer,l,MPI_DOUBLE,rank,m_communicator); // needs attention for non-double
 //      std::cout <<m_mpi_rank<<"after Bcast m_cache.length="<<m_cache.length<<", lenseg="<<lenseg<<", m_cache.offset="<<m_cache.offset<<std::endl;
 //      std::cout <<m_mpi_rank<<"after Bcast"; for (auto i=0; i<l; i++) std::cout <<" "<<m_cache.buffer[i]; std::cout <<std::endl;
        if (rank != m_mpi_rank) m_cache.dirty = true;
@@ -854,7 +875,7 @@ namespace LinearAlgebra {
      size_t off = lenseg * rank;
      if (m_cache.io) {
       for (m_cache.ensure(off); m_cache.length && off < lenseg*(rank+1); off+= m_cache.length, ++m_cache)
-       MPI_Bcast(m_cache.buffer.data(),m_cache.length,MPI_DOUBLE,rank,m_communicator); // FIXME needs attention for non-double
+       MPI_Bcast(m_cache.buffer,m_cache.length,MPI_DOUBLE,rank,m_communicator); // FIXME needs attention for non-double
      } else {
       if (lenseg>0 && m_size > off)
       MPI_Bcast(&m_cache.buffer[off],std::min(lenseg,m_size-off),MPI_DOUBLE,rank,m_communicator); // FIXME needs attention for non-double

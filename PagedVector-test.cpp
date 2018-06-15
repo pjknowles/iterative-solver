@@ -49,6 +49,23 @@ int main(int argc, char *argv[])
        REQUIRE(result);
       }
 
+      TEST_CASE("PagedVector pass-through") {
+ std::vector<double> v(10000);
+ for (int i = 0; i < v.size(); ++i) {
+  v[i]=2*i+1;
+ }
+ auto v1 = PagedVector<double>(v.data(),v.size());
+ auto& w = v1.m_cache.rawbuffer;
+ double r=0;
+ bool ad=true;
+ for (int i = 0; i < v.size(); ++i) {
+  ad = ad && (&(w[i]) == &(v[i]));
+  r += std::fabs(v[i]-w[i]);
+ }
+ REQUIRE(ad);
+ REQUIRE(std::fabs(r)<1e-15);
+}
+
       TEST_CASE("PagedVector dot product") {
        PagedVector<double> v0(10001);
        for (size_t i=0; i<v0.size(); i++) v0[i]=2*i+1;

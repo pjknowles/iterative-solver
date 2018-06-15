@@ -175,7 +175,7 @@ namespace LinearAlgebra {
    const size_t datasize; ///< the size of the vector being mapped
    const size_t preferred_length; ///< the default for the size of the cache window
    mutable std::vector<scalar> bufferContainer;
-   scalar* buffer;
+   mutable scalar* buffer;
    bool io; ///< whether backing store is needed
    const scalar* begin() const { return buffer;}
    const scalar* end() const { return buffer+length;}
@@ -239,6 +239,7 @@ namespace LinearAlgebra {
     this->offset = offset;
     this->length = std::min(length,static_cast<size_t>(datasize-offset));
     bufferContainer.resize(this->length);
+    buffer = bufferContainer.data();
     //    std::cout << "buffer resized to length="<<this->length<<"; offset="<<offset<<", filesize="<<filesize<<std::endl;
     if (std::min(this->length,static_cast<size_t>(filesize-offset))) {
      m_file.seekg(offset*sizeof(scalar));

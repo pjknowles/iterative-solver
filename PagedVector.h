@@ -916,7 +916,8 @@ namespace LinearAlgebra {
     other.m_cache.move((m_replicated || !other.m_replicated) ? 0: m_segment_offset, cachelength);
     while(m_cache.length && other.m_cache.length && off < m_segment_length && otheroff < other.m_segment_length ) {
      if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
-     if (pr) for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
+     if (pr)
+      for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
      for (size_t i=0; i<m_cache.length; i++) {
       diff = diff || m_cache.buffer[off+i] != other.m_cache.buffer[otheroff+i];
            if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;

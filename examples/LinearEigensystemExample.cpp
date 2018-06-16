@@ -10,9 +10,9 @@ class pv : public LinearAlgebra::vector<scalar> {
 public:
  std::vector<scalar> buffer;
 
- pv(size_t length = 0, int option = 0) : vector<scalar>(), buffer(length) {}
+ explicit pv(size_t length = 0, int option = 0) : vector<scalar>(), buffer(length) {}
 
- pv(const pv *source, int option = 0) : vector<scalar>() { *this = *source; }
+ explicit pv(const pv *source, int option = 0) : vector<scalar>() { *this = *source; }
 
  void axpy(scalar a, const LinearAlgebra::vector<scalar> &other) override {
   for (size_t i = 0; i < buffer.size(); i++) buffer[i] += a * (dynamic_cast <const pv &> (other)).buffer[i];
@@ -24,11 +24,11 @@ public:
  }
 
  void scal(scalar a) override {
-  for (size_t i = 0; i < buffer.size(); i++) buffer[i] *= a;
+  for (auto& b: buffer) b *= a;
  }
 
  void zero() override {
-  for (size_t i = 0; i < buffer.size(); i++) buffer[i] = 0;
+  for (auto& b: buffer) b = 0;
  }
 
  scalar dot(const LinearAlgebra::vector<scalar> &other) const override {
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
  solver.m_thresh = 1e-6;
  LinearAlgebra::vectorSet<scalar> g;
  LinearAlgebra::vectorSet<scalar> x;
- for (int root = 0; root < solver.m_roots; root++) {
+ for (size_t root = 0; root < solver.m_roots; root++) {
   x.push_back(std::make_shared<pv>(n));
   g.push_back(std::make_shared<pv>(n));
   x.back()->zero();
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
  std::cout << "Error={ ";
  for (const auto &e : solver.errors()) std::cout << e << " ";
  std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
- for (int root = 0; root < solver.m_roots; root++) {
+ for (size_t root = 0; root < solver.m_roots; root++) {
   std::cout << "Eigenvector: (norm="<<std::sqrt(x[root]->dot(*x[root]))<<"): ";
   for (size_t k = 0; k < n; k++) std::cout << " " << (*x[root])[k];
   std::cout << std::endl;

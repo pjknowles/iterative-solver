@@ -65,18 +65,27 @@ namespace LinearAlgebra {
     m_orthogonalize(false),
     m_linear(false),
     m_hermitian(false),
-    m_roots(-1),
+    m_roots(0),
+    m_rspt(false),
+    m_options(optionMap()),
+    m_error(0),
+    m_worst(0),
     m_date(0),
     m_subspaceMatrixResRes(false),
     m_residual_eigen(false),
     m_residual_rhs(false),
-    m_rspt(false),
-    m_iterations(0),
-    m_singularity_threshold(1e-20),
-    m_error(0),
+    m_residuals(),
+    m_solutions(),
+    m_others(),
+    m_rhs(),
+    m_dateOfBirth(),
     m_lastVectorIndex(0),
+    m_updateShift(0),
+    m_interpolation(),
     m_dimension(0),
-    m_options(optionMap()) {}
+    m_iterations(0),
+    m_singularity_threshold(1e-20)
+    {}
 
   virtual ~IterativeSolver() = default;
 
@@ -144,10 +153,10 @@ namespace LinearAlgebra {
             vectorSet<scalar> &action,
             std::vector<std::vector<scalar> > &parametersP,
             vectorSet<scalar> &other) {
-   size_t oldss = m_subspaceMatrix.rows();
+   auto oldss = m_subspaceMatrix.rows();
    m_subspaceMatrix.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
    m_subspaceOverlap.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
-   size_t old = m_PQMatrix.rows();
+   auto old = m_PQMatrix.rows();
    parametersP.resize(old + Pvectors.size());
    m_PQMatrix.conservativeResize(old + Pvectors.size(), m_QQMatrix.rows());
    size_t offset = 0;
@@ -366,7 +375,7 @@ namespace LinearAlgebra {
 
  protected:
   void diagonalizeSubspaceMatrix() {
-   size_t kept = m_subspaceMatrix.rows();
+   auto kept = m_subspaceMatrix.rows();
    {
     Eigen::EigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceOverlap);
     Eigen::VectorXcd sse = ss.eigenvalues();
@@ -387,7 +396,7 @@ namespace LinearAlgebra {
    // sort
    std::vector<size_t> map;
    for (Eigen::Index k = 0; k < H.rows(); k++) {
-    size_t ll;
+    Eigen::Index ll;
     for (ll = 0; std::count(map.begin(), map.end(), ll) != 0; ll++);
     for (Eigen::Index l = 0; l < H.rows(); l++) {
      if (std::count(map.begin(), map.end(), l) == 0) {
@@ -524,9 +533,9 @@ namespace LinearAlgebra {
    //      xout << "appendQQMatrix"<<std::endl;
    //      xout << "residual"<<std::endl<<residual[0]<<std::endl;
    //      xout << "solution"<<std::endl<<solution[0]<<std::endl;
-   size_t nP = m_PQMatrix.rows();
-   size_t old_size = m_QQMatrix.rows();
-   size_t new_size = old_size + count(residual1.m_active.begin(), residual1.m_active.end(), true);
+   auto nP = m_PQMatrix.rows();
+   auto old_size = m_QQMatrix.rows();
+   auto new_size = old_size + count(residual1.m_active.begin(), residual1.m_active.end(), true);
    //      xout << "old_size="<<old_size<<std::endl;
    //      xout << "new_size="<<new_size<<std::endl;
    m_QQMatrix.conservativeResize(new_size, new_size);
@@ -534,7 +543,7 @@ namespace LinearAlgebra {
    m_PQMatrix.conservativeResize(nP, new_size);
    m_PQOverlap.conservativeResize(nP, new_size);
    std::vector<vectorSet<scalar>> *bra = m_subspaceMatrixResRes ? &m_residuals : &m_solutions;
-   size_t k = old_size;
+   auto k = old_size;
    for (size_t kkk = 0; kkk < residual1.size(); kkk++) {
     if (residual1.m_active[kkk]) {
      for (auto l = 0; l < nP; l++) {
@@ -571,8 +580,8 @@ namespace LinearAlgebra {
    //    xout << "deleteVector "<<index<<std::endl;
    //    xout << "old m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
    //    xout << "old m_subspaceOverlap"<<std::endl<<m_subspaceOverlap<<std::endl;
-   size_t old_size = m_QQMatrix.rows();
-   size_t new_size = old_size;
+   auto old_size = m_QQMatrix.rows();
+   auto new_size = old_size;
    size_t l = 0;
    for (size_t ll = 0; ll < m_solutions.size(); ll++) {
     for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
@@ -582,17 +591,17 @@ namespace LinearAlgebra {
        m_solutions[ll].m_active[lll] = false;
        m_residuals[ll].m_active[lll] = false;
        //                    m_others[ll].m_active[lll] = false;
-       for (int l2 = l + 1; l2 < m_QQMatrix.cols(); l2++) {
-        for (int k = 0; k < m_QQMatrix.rows(); k++) {
+       for (auto l2 = l + 1; l2 < m_QQMatrix.cols(); l2++) {
+        for (auto k = 0; k < m_QQMatrix.rows(); k++) {
          m_QQMatrix(k, l2 - 1) = m_QQMatrix(k, l2);
          m_QQOverlap(k, l2 - 1) = m_QQOverlap(k, l2);
         }
-        for (int k = 0; k < m_PQMatrix.rows(); k++) {
+        for (auto k = 0; k < m_PQMatrix.rows(); k++) {
          m_PQMatrix(k, l2 - 1) = m_PQMatrix(k, l2);
          m_PQOverlap(k, l2 - 1) = m_PQOverlap(k, l2);
         }
        }
-       for (int l2 = l + 1; l2 < m_QQMatrix.rows(); l2++) {
+       for (auto l2 = l + 1; l2 < m_QQMatrix.rows(); l2++) {
         for (int k = 0; k < m_QQMatrix.rows(); k++) {
          m_QQMatrix(l2 - 1, k) = m_QQMatrix(l2, k);
          m_QQOverlap(l2 - 1, k) = m_QQOverlap(l2, k);
@@ -651,6 +660,7 @@ namespace LinearAlgebra {
   for (const auto &aa: a)
    if (b.find(aa.first))
     result += aa.second * b[aa.first];
+  return result;
  }
 }
 
@@ -732,7 +742,7 @@ namespace LinearAlgebra {
    * \brief Constructor
    * \param rhs right-hand-side vectors. More can be added subsequently using addEquations(), provided iterations have not yet started.
    */
-  LinearEquations(const vectorSet<scalar> &rhs)
+  explicit LinearEquations(const vectorSet<scalar> &rhs)
     : IterativeSolver<scalar>::m_linear(true), IterativeSolver<scalar>::m_orthogonalize(true) {
    this->m_residual_rhs = true;
    this->m_residual_eigen = false;
@@ -797,7 +807,7 @@ namespace LinearAlgebra {
  * \brief DIIS
  */
   DIIS()
-    : m_svdThreshold(1e-10), m_maxDim(6) {
+    : m_svdThreshold(1e-10), m_maxDim(6), m_LastResidualNormSq(0), m_LastAmplitudeCoeff(1) {
    this->m_residual_rhs = false;
    this->m_residual_eigen = false;
    this->m_orthogonalize = false;
@@ -806,7 +816,7 @@ namespace LinearAlgebra {
    Reset();
   }
 
-  ~DIIS() {}
+  ~DIIS() = default;
 
 
   /*!

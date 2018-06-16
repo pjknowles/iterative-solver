@@ -1,5 +1,8 @@
 #ifndef ITERATIVESOLVER_H
 #define ITERATIVESOLVER_H
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 
 #include <string>
 #include <iostream>

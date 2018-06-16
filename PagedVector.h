@@ -1,5 +1,8 @@
 #ifndef PAGEDVECTOR_H
 #define PAGEDVECTOR_H
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 
 #include "LinearAlgebra.h"
 #include <algorithm>
@@ -7,6 +10,7 @@
 #include <stdexcept>
 #include <string.h>
 #include <cstddef>
+#include <stdlib.h>
 #include <unistd.h>
 #include <cassert>
 #include <fstream>
@@ -93,19 +97,15 @@ namespace LinearAlgebra {
   }
 
   /*!
-  * @brief Construct an object mapping an external data buffer
+  * @brief Construct an object copied from external data
    *
    * @param buffer
    * @param length
+   * @param option
+   * @param mpi_communicator
    */
 
-  PagedVector(double* buffer, size_t length)
-    : vector<scalar>(), m_size(length),
-      m_communicator(MPI_COMM_COMPUTE), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
-      m_replicated(true),
-      m_segment_offset(0),
-      m_segment_length(m_size),
-      m_cache(m_segment_length, m_segment_length, buffer)
+  PagedVector(double* buffer, size_t length, int option=0, MPI_Comm mpi_communicator=MPI_COMM_COMPUTE)
   {
 
   }
@@ -159,16 +159,6 @@ namespace LinearAlgebra {
   size_t m_segment_offset; //!< offset in the overall data object of this process' data
   size_t m_segment_length; //!< length of this process' data
 
-  /*!
-   * Get a pointer to the entire data structure if possible
-   * @return the pointer, or nullptr if caching/distribution means that the whole vector is not available
-   */
-  scalar* data() {
-   if (not m_replicated) return nullptr;
-   if (m_cache.io and not m_cache.bufferContainer.empty()) return nullptr;
-   return m_cache.buffer;
-  }
-
   struct window {
    mutable size_t offset; ///< the offset in mapped data of the first element of the cache window
    mutable size_t length;///< the size of the cache window
@@ -186,8 +176,9 @@ namespace LinearAlgebra {
    mutable size_t filesize;
    mutable size_t writes; ///< how many scalars written
    mutable size_t reads; ///< how many scalars read
-   window(size_t datasize, size_t length=default_offline_buffer_size, scalar* externalBuffer=nullptr)
-    :   offset(datasize+1), length(0), datasize(datasize), preferred_length(length), dirty(false), filesize(0), writes(0), reads(0) {
+   window(size_t datasize, size_t length=default_offline_buffer_size)
+    :   offset(datasize+1), length(0), datasize(datasize), preferred_length(length), dirty(false), filesize(0), writes(0), reads(0), io(this->datasize > preferred_length)
+   {
 //    std::cout << "window constructor datasize="<<datasize<<", length="<<length<<std::endl;
     io = this->datasize > preferred_length;
     if (externalBuffer != nullptr) {
@@ -202,10 +193,8 @@ namespace LinearAlgebra {
      unlink(tmpname);
      free(tmpname);
     }
-    else {
-     bufferContainer.resize(length);
-     buffer = bufferContainer.data();
-    }
+    else
+     buffer.resize(length);
     move(0,length);
 //    std::cout << "window constructor ends, filesize="<<filesize<<", length="<<length<<std::endl;
    }
@@ -232,18 +221,17 @@ namespace LinearAlgebra {
      m_file.seekp(this->offset*sizeof(scalar));
 //          std::cout << "write to "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
 //     std::cout << "write to "<<this->offset<<std::endl;
-     m_file.write( (const char*)buffer, this->length*sizeof(scalar));
+     m_file.write( (const char*)buffer.data(), this->length*sizeof(scalar));
      writes += this->length;
      if (filesize < this->offset+this->length) filesize = this->offset+this->length;
     }
     this->offset = offset;
     this->length = std::min(length,static_cast<size_t>(datasize-offset));
-    bufferContainer.resize(this->length);
-    buffer = bufferContainer.data();
+    buffer.resize(this->length);
     //    std::cout << "buffer resized to length="<<this->length<<"; offset="<<offset<<", filesize="<<filesize<<std::endl;
     if (std::min(this->length,static_cast<size_t>(filesize-offset))) {
      m_file.seekg(offset*sizeof(scalar));
-     m_file.read((char*)buffer,std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar));
+     m_file.read((char*)buffer.data(),std::min(this->length,static_cast<size_t>(filesize-offset))*sizeof(scalar));
 //     std::cout << "read from "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
 //     std::cout << "read from "<<this->offset<<std::endl;
      reads += std::min(this->length,static_cast<size_t>(filesize-offset));
@@ -522,7 +510,7 @@ namespace LinearAlgebra {
 //      std::cout << m_mpi_rank<<"broadcast from "<<rank<<" offset="<<m_cache.offset<<", length="<<l<<std::endl;
 //      std::cout <<m_mpi_rank<<"before Bcast"; for (auto i=0; i<l; i++) std::cout <<" "<<m_cache.buffer[i]; std::cout <<std::endl;
   if (l>0)
-      MPI_Bcast(m_cache.buffer,l,MPI_DOUBLE,rank,m_communicator); // needs attention for non-double
+      MPI_Bcast(m_cache.buffer.data(),l,MPI_DOUBLE,rank,m_communicator); // needs attention for non-double
 //      std::cout <<m_mpi_rank<<"after Bcast m_cache.length="<<m_cache.length<<", lenseg="<<lenseg<<", m_cache.offset="<<m_cache.offset<<std::endl;
 //      std::cout <<m_mpi_rank<<"after Bcast"; for (auto i=0; i<l; i++) std::cout <<" "<<m_cache.buffer[i]; std::cout <<std::endl;
        if (rank != m_mpi_rank) m_cache.dirty = true;
@@ -787,13 +775,13 @@ namespace LinearAlgebra {
   PagedVector& operator=(const PagedVector& other)
   {
    assert(m_size==other.m_size);
-//   constexpr bool pr=false;//bool pr=m_size<3;
+   constexpr bool pr=false;//bool pr=m_size<3;
 //   bool pr=m_mpi_rank>0;
-//   if (pr) std::cout << "operator= entry, other=" << other << std::endl;
-//   if (pr) std::cout << "operator= entry, other.m_cache.preferred_length="<<other.m_cache.preferred_length<<", this->m_cache.preferred_length="<<this->m_cache.preferred_length<<std::endl;
-//   if (pr) std::cout << "operator= entry, other.m_replicated="<<other.m_replicated<<", this->m_replicated="<<this->m_replicated<<std::endl;
+   if (pr) std::cout << "operator= entry, other=" << other << std::endl;
+   if (pr) std::cout << "operator= entry, other.m_cache.preferred_length="<<other.m_cache.preferred_length<<", this->m_cache.preferred_length="<<this->m_cache.preferred_length<<std::endl;
+   if (pr) std::cout << "operator= entry, other.m_replicated="<<other.m_replicated<<", this->m_replicated="<<this->m_replicated<<std::endl;
    this->setVariance(other.variance());
-//   if (pr) std::cout <<m_mpi_rank<< " operator=() m_segment_offset="<<m_segment_offset<<"="<<other.m_segment_offset<<" for "<<m_segment_length<<"="<<other.m_segment_length<<std::endl;
+   if (pr) std::cout <<m_mpi_rank<< " operator=() m_segment_offset="<<m_segment_offset<<"="<<other.m_segment_offset<<" for "<<m_segment_length<<"="<<other.m_segment_length<<std::endl;
 //   if (pr) std::cout <<m_mpi_rank<< " other="<<other<<std::endl;
    if (!m_cache.io && !other.m_cache.io) { // std::cout << "both in memory"<<std::endl;
     size_t off = (m_replicated && !other.m_replicated) ? other.m_segment_offset : 0;
@@ -801,8 +789,8 @@ namespace LinearAlgebra {
 //    std::cout << "seg length test "<<m_segment_length<<","<<other.m_segment_length<<std::min(m_segment_length,other.m_segment_length)<<std::endl;
      for (size_t i=0; i<std::min(m_segment_length,other.m_segment_length); i++) {
       m_cache.buffer[off+i] = other.m_cache.buffer[otheroff+i];
-//           if (pr) std::cout <<m_mpi_rank<<" other.buffer["<<otheroff+i<<"]="<<other.m_cache.buffer[otheroff+i]<<std::endl;
-//           if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
+           if (pr) std::cout <<m_mpi_rank<<" other.buffer["<<otheroff+i<<"]="<<other.m_cache.buffer[otheroff+i]<<std::endl;
+           if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
      }
    } else if (m_cache.io && other.m_cache.io) { // std::cout << "both cached"<<std::endl;
     size_t cachelength = std::min(m_cache.preferred_length,other.m_cache.preferred_length);
@@ -810,24 +798,24 @@ namespace LinearAlgebra {
     size_t off=0, otheroff=0;
     //     m_cache.ensure( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset); std::cout << "m_cache.length="<<m_cache.length<<std::endl;
     //     other.m_cache.ensure( (m_replicated == other.m_replicated) ? 0: m_segment_offset); std::cout << "other.m_cache.length="<<other.m_cache.length<<std::endl;
-//    if (pr) std::cout << "move cache to "<< ((!m_replicated ||  other.m_replicated) ? 0: other.m_segment_offset)<<std::endl;
-//    if (pr) std::cout << "move other cache to "<<((m_replicated || !other.m_replicated) ? 0: m_segment_offset)<<std::endl;
+    if (pr) std::cout << "move cache to "<< ((!m_replicated ||  other.m_replicated) ? 0: other.m_segment_offset)<<std::endl;
+    if (pr) std::cout << "move other cache to "<<((m_replicated || !other.m_replicated) ? 0: m_segment_offset)<<std::endl;
     m_cache.move( (!m_replicated ||  other.m_replicated) ? 0: other.m_segment_offset, cachelength);
     other.m_cache.move((m_replicated || !other.m_replicated) ? 0: m_segment_offset, cachelength);
     while(m_cache.length && other.m_cache.length && off < m_segment_length && otheroff < other.m_segment_length ) {
-//     if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
-//     if (pr) {
-//      for (size_t i = 0; i < m_cache.length; i++) std::cout << " " << other.m_cache.buffer[otheroff + i];
-//      std::cout << std::endl;
-//     }
+     if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
+     if (pr) {
+      for (size_t i = 0; i < m_cache.length; i++) std::cout << " " << other.m_cache.buffer[otheroff + i];
+      std::cout << std::endl;
+     }
      for (size_t i=0; i<m_cache.length; i++) {
       m_cache.buffer[off+i] = other.m_cache.buffer[otheroff+i];
-//           if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
+           if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
      }
      m_cache.dirty=true;
      if (m_cache.io) ++m_cache; else off+=cachelength;
      if (other.m_cache.io) ++other.m_cache; else otheroff+=cachelength;
-//     if (pr) std::cout <<m_mpi_rank<< "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
+     if (pr) std::cout <<m_mpi_rank<< "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
     }
    } else if (m_cache.io) { // std::cout<< "source in memory, result cached"<<std::endl;
     size_t cachelength = m_cache.preferred_length;
@@ -846,7 +834,7 @@ namespace LinearAlgebra {
       m_cache.dirty=true;
      ++m_cache;
      otheroff+=cachelength;
-//     if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
+     if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
     }
    } else if (other.m_cache.io) { // std::cout << "source cached, result in memory"<<std::endl;
     size_t cachelength = other.m_cache.preferred_length;
@@ -876,7 +864,7 @@ namespace LinearAlgebra {
      size_t off = lenseg * rank;
      if (m_cache.io) {
       for (m_cache.ensure(off); m_cache.length && off < lenseg*(rank+1); off+= m_cache.length, ++m_cache)
-       MPI_Bcast(m_cache.buffer,m_cache.length,MPI_DOUBLE,rank,m_communicator); // FIXME needs attention for non-double
+       MPI_Bcast(m_cache.buffer.data(),m_cache.length,MPI_DOUBLE,rank,m_communicator); // FIXME needs attention for non-double
      } else {
       if (lenseg>0 && m_size > off)
       MPI_Bcast(&m_cache.buffer[off],std::min(lenseg,m_size-off),MPI_DOUBLE,rank,m_communicator); // FIXME needs attention for non-double
@@ -893,7 +881,7 @@ namespace LinearAlgebra {
 //std::cout  << "operator== start"<<std::endl;
    if (this->variance() != other.variance()) throw std::logic_error("mismatching co/contravariance");
    if (this->m_size != other.m_size) throw std::logic_error("mismatching lengths");
-//   constexpr bool pr=false;//bool pr=m_size<3;
+   constexpr bool pr=false;//bool pr=m_size<3;
 //   bool pr=m_mpi_rank>0;
    int diff=0;
    if (!m_cache.io && !other.m_cache.io) { // std::cout << "both in memory"<<std::endl;
@@ -901,8 +889,8 @@ namespace LinearAlgebra {
     size_t otheroff = (!m_replicated && other.m_replicated) ? m_segment_offset : 0;
      for (size_t i=0; i<std::min(m_segment_length,other.m_segment_length); i++) {
       diff = diff || m_cache.buffer[off+i] != other.m_cache.buffer[otheroff+i];
-//           if (pr) std::cout <<m_mpi_rank<<" other.buffer["<<otheroff+i<<"]="<<other.m_cache.buffer[otheroff+i]<<std::endl;
-//           if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
+           if (pr) std::cout <<m_mpi_rank<<" other.buffer["<<otheroff+i<<"]="<<other.m_cache.buffer[otheroff+i]<<std::endl;
+           if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
      }
    } else if (m_cache.io && other.m_cache.io) { // std::cout << "both cached"<<std::endl;
     size_t cachelength = std::min(m_cache.preferred_length,other.m_cache.preferred_length);
@@ -910,22 +898,21 @@ namespace LinearAlgebra {
     size_t off=0, otheroff=0;
     //     m_cache.ensure( (m_replicated == other.m_replicated) ? 0: other.m_segment_offset); std::cout << "m_cache.length="<<m_cache.length<<std::endl;
     //     other.m_cache.ensure( (m_replicated == other.m_replicated) ? 0: m_segment_offset); std::cout << "other.m_cache.length="<<other.m_cache.length<<std::endl;
-//    if (pr) std::cout << "move cache to "<< ((!m_replicated ||  other.m_replicated) ? 0: other.m_segment_offset)<<std::endl;
-//    if (pr) std::cout << "move other cache to "<<((m_replicated || !other.m_replicated) ? 0: m_segment_offset)<<std::endl;
+    if (pr) std::cout << "move cache to "<< ((!m_replicated ||  other.m_replicated) ? 0: other.m_segment_offset)<<std::endl;
+    if (pr) std::cout << "move other cache to "<<((m_replicated || !other.m_replicated) ? 0: m_segment_offset)<<std::endl;
     m_cache.move( (!m_replicated ||  other.m_replicated) ? 0: other.m_segment_offset, cachelength);
     other.m_cache.move((m_replicated || !other.m_replicated) ? 0: m_segment_offset, cachelength);
     while(m_cache.length && other.m_cache.length && off < m_segment_length && otheroff < other.m_segment_length ) {
-//     if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
-//     if (pr)
-//      for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
+     if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
+     if (pr) for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
      for (size_t i=0; i<m_cache.length; i++) {
       diff = diff || m_cache.buffer[off+i] != other.m_cache.buffer[otheroff+i];
-//           if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
+           if (pr) std::cout <<m_mpi_rank<<" buffer["<<off+i<<"]="<<m_cache.buffer[off+i]<<std::endl;
      }
      m_cache.dirty=true;
      if (m_cache.io) ++m_cache; else off+=cachelength;
      if (other.m_cache.io) ++other.m_cache; else otheroff+=cachelength;
-//     if (pr) std::cout <<m_mpi_rank<< "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
+     if (pr) std::cout <<m_mpi_rank<< "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
     }
    } else if (m_cache.io) { // std::cout<< "source in memory, result cached"<<std::endl;
     size_t cachelength = m_cache.preferred_length;
@@ -944,7 +931,7 @@ namespace LinearAlgebra {
       m_cache.dirty=true;
      ++m_cache;
      otheroff+=cachelength;
-//     if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
+     if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
     }
    } else if (other.m_cache.io) {  // std::cout << "source cached, result in memory"<<std::endl;
     size_t cachelength = other.m_cache.preferred_length;
@@ -953,7 +940,7 @@ namespace LinearAlgebra {
     m_cache.move(0, m_segment_length);
     other.m_cache.move((m_replicated == other.m_replicated) ? 0: m_segment_offset, cachelength );
     while(other.m_cache.length && off < m_segment_length && otheroff < other.m_segment_length ) {
-//     if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
+     if (pr) std::cout <<m_mpi_rank<< " buffer to copy in range "<<m_cache.offset<<"="<<other.m_cache.offset<<" for "<<m_cache.length<<"="<<other.m_cache.length<<std::endl;
      //    for (size_t i=0; i<m_cache.length; i++) std::cout <<" "<<other.m_cache.buffer[otheroff+i]; std::cout <<std::endl;
      for (size_t i=0; i<other.m_cache.length; i++) {
       diff = diff || m_cache.buffer[off+i] != other.m_cache.buffer[otheroff+i];
@@ -961,7 +948,7 @@ namespace LinearAlgebra {
      }
      off+=cachelength;
      ++other.m_cache;
-//     if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
+     if (pr) std::cout << "end of cache loop, off="<<off<<", otheroff="<<otheroff<<std::endl;
     }
    }
 //   if (pr) std::cout << "operator= after copy loop, other="<<other<<std::endl;

@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
   v[i]=2*i+1;
  }
  auto v1 = PagedVector<double>(v.data(),v.size());
- auto& w = v1.m_cache.rawbuffer;
+ auto& w = v1.m_cache.buffer;
  double r=0;
  bool ad=true;
  for (int i = 0; i < v.size(); ++i) {

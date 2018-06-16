@@ -46,19 +46,29 @@ namespace LinearAlgebra {
   vectorSet<double> cc, gg;
   std::vector<std::vector<double> > ccp;
 //  for (size_t k=0; k<instance->m_dimension; k++) std::cout << "C AddVector parameter "<<parameters[k]<<std::endl;
+  const bool passthrough=true;
   for (size_t root = 0; root < instance->m_roots; root++) {
-   cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension,vFlags)));
-   cc.back()->put(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
-//   std::cout << "cc.back() "<<cc.back()<<std::endl;
-   gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension,vFlags)));
-   gg.back()->put(&action[root * instance->m_dimension], instance->m_dimension, 0);
+   if (passthrough) {
+    cc.push_back(std::shared_ptr<v>(new v(&parameters[root * instance->m_dimension], instance->m_dimension)));
+    gg.push_back(std::shared_ptr<v>(new v(&action[root * instance->m_dimension], instance->m_dimension)));
+   }
+   else {
+    cc.push_back(std::shared_ptr<v>(new v(instance->m_dimension,vFlags)));
+    cc.back()->put(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
+    gg.push_back(std::shared_ptr<v>(new v(instance->m_dimension,vFlags)));
+    gg.back()->put(&action[root * instance->m_dimension], instance->m_dimension, 0);
+   }
    cc.m_active[root]=gg.m_active[root]=instance->errors().size()<=root ||  instance->errors()[root]>=instance->m_thresh;
+//   std::cout << "cc.back() "<<cc.back()<<std::endl;
   }
   instance->addVector(cc, gg, ccp);
+   
   for (size_t root = 0; root < instance->m_roots; root++) {
+   if (not passthrough) {
    cc[root]->get(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
    gg[root]->get(&action[root * instance->m_dimension], instance->m_dimension, 0);
    assert(instance->m_dimension==gg[root]->size());
+  }
 #ifdef HAVE_MPI_H
 //   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");// FIXME not sure
 #endif

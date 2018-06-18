@@ -269,7 +269,7 @@ CONTAINS
     e = Iterative_Solver_Eigenvalues()
     DO root=1,nroot
      DO j=1,n
-      c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(i)+1e-15)
+      c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(i)+1d-15)
      END DO
     END DO
     IF ( Iterative_Solver_End_Iteration(c,g,error)) EXIT
@@ -304,7 +304,7 @@ CONTAINS
     END DO
     DO root=1,nroot
      DO j=1,n
-      c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(i)+1e-15)
+      c(j,root) = c(j,root) - g(j,root)/(m(j,j)-e(i)+1d-15)
      END DO
     END DO
     IF ( Iterative_Solver_End_Iteration(c,g,error)) EXIT

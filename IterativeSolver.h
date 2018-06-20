@@ -169,9 +169,11 @@ namespace LinearAlgebra {
     for (int i = 0; i < m_subspaceMatrix.rows(); i++) {
      m_subspaceMatrix(old + n, i) = m_subspaceMatrix(i, old + n) = PP[offset++];
      double overlap = 0;
-     for (const auto &p : Pvectors[n])
+     for (const auto &p : Pvectors[n]) {
+//      std::cout << "addP Pvector="<<p.first<<" : "<<p.second<<std::endl;
       if (m_Pvectors[i].count(p.first))
        overlap += p.second * m_Pvectors[i][p.first];
+     }
      m_subspaceOverlap(old + n, i) = m_subspaceOverlap(i, old + n) = overlap;
     }
    }
@@ -229,10 +231,12 @@ namespace LinearAlgebra {
                                const scalar threshold = 0) {
    std::map<size_t, scalar> result;
    for (size_t kkk = 0; kkk < solution.size(); kkk++) {
+//    std::cout << "suggestP kkk "<<kkk<<" active "<<solution.m_active[kkk]<<maximumNumber<<std::endl;
     if (solution.m_active[kkk]) {
      std::vector<size_t> indices;
      std::vector<scalar> values;
      std::tie(indices, values) = solution[kkk]->select(*residual[kkk], maximumNumber, threshold);
+//     std::cout <<"indices.size()="<<indices.size()<<std::endl;
 //     for (auto k=0; k<indices.size(); k++) std::cout << "select "<< indices[k] <<" : "<<values[k]<<std::endl;
      for (size_t i = 0; i < indices.size(); i++)
       if (result.count(indices[i]))
@@ -372,8 +376,8 @@ namespace LinearAlgebra {
    if (m_verbosity > 3 && m_PQMatrix.rows() > 0) xout << "PQ overlap" << std::endl << this->m_PQOverlap << std::endl;
    if (m_verbosity > 3 && m_PQMatrix.rows() > 0) xout << "QQ matrix" << std::endl << this->m_QQMatrix << std::endl;
    if (m_verbosity > 3 && m_PQMatrix.rows() > 0) xout << "QQ overlap" << std::endl << this->m_QQOverlap << std::endl;
-   if (m_verbosity > 2) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
-   if (m_verbosity > 2) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
+   if (m_verbosity > 1) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
+   if (m_verbosity > 1) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
   }
 
  protected:
@@ -1003,5 +1007,10 @@ extern "C" void IterativeSolverEigenvalues(double *eigenvalues);
 
 extern "C" void IterativeSolverOption(const char* key, const char* val);
 
+extern "C" size_t IterativeSolverSuggestP(const double* solution,
+                                          const double* residual,
+                                          const size_t maximumNumber,
+                                          const double threshold,
+                                          size_t* indices );
 
 #endif // ITERATIVESOLVER_H

@@ -756,9 +756,11 @@ namespace LinearAlgebra {
      }
     }
    } else {
+//    std::cout << "select, different vectors"<<std::endl;
     for (m_cache.ensure(0), measur.m_cache.move(0,m_cache.length); m_cache.length; ++m_cache, ++measur.m_cache ) {
      for (size_t i=0; i<m_cache.length; i++) {
       scalar test = m_cache.buffer[i] * measur.m_cache.buffer[i];
+//      std::cout << "test "<<test<<", threshold="<<threshold<<std::endl;
       if (test<0) test=-test;
       if (test > threshold) {
        sortlist.insert(std::make_pair(test,i));

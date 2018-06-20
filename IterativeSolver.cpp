@@ -90,6 +90,8 @@ namespace LinearAlgebra {
   for (size_t p = 0; p < nP; p++) {
    std::map<size_t, double> ppp;
    for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
+//    std::cout << "indices["<<k<<"]="<<indices[k]<<": "<<coefficients[k]<<std::endl;
+   for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
     ppp.insert(std::pair<size_t, double>(indices[k], coefficients[k]));
    Pvectors.emplace_back(ppp);
   }
@@ -110,5 +112,23 @@ namespace LinearAlgebra {
  extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
   size_t k=0;
   for (const auto& e : instance->eigenvalues()) eigenvalues[k++] = e;
+ }
+
+ extern "C" size_t IterativeSolverSuggestP(const double* solution,
+                                           const double* residual,
+                                           const size_t maximumNumber,
+                                           const double threshold,
+                                           size_t* indices ) {
+  vectorSet<double> cc, gg;
+  for (size_t root = 0; root < instance->m_roots; root++) {
+   cc.push_back(std::shared_ptr<v>(new v(&const_cast<double*>(solution)[root * instance->m_dimension], instance->m_dimension)));
+   gg.push_back(std::shared_ptr<v>(new v(&const_cast<double*>(residual)[root * instance->m_dimension], instance->m_dimension)));
+   cc.m_active[root]=gg.m_active[root]=instance->errors().size()<=root ||  instance->errors()[root]>=instance->m_thresh;
+  }
+
+  auto result = instance->suggestP(cc,gg,maximumNumber,threshold);
+  for (size_t i=0; i<result.size(); i++)
+   indices[i]=result[i];
+  return result.size();
  }
 }

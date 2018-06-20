@@ -3,7 +3,7 @@ MODULE Iterative_Solver
  USE iso_c_binding
  PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize, Iterative_Solver_Finalize
  PUBLIC :: Iterative_Solver_Add_Vector, Iterative_Solver_End_Iteration
- PUBLIC :: Iterative_Solver_Add_P
+ PUBLIC :: Iterative_Solver_Add_P, Iterative_Solver_Suggest_P
  PUBLIC :: Iterative_Solver_Eigenvalues
  PUBLIC :: Iterative_Solver_Option
  PRIVATE
@@ -191,12 +191,57 @@ CONTAINS
   INTEGER(c_size_t), DIMENSION(0:nP) :: offsetsC
   INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC
   offsetsC = INT(offsets,c_size_t)
+  !write (6,*) 'fortrann addp nP ',nP
+  !write (6,*) 'fortrann addp offsets ',offsets
+  !write (6,*) 'fortrann addp offsetsC ',offsetsC
+  !write (6,*) 'indices ',indices
   do i=1,offsets(nP)
    indicesC(i) = INT(indices(i)-1,c_size_t) ! 1-base to 0-base
+   !write (6,*) 'fortran addp',indicesC(i)
   end do
+  !write (6,*) 'indicesC ',indicesC
   CALL IterativeSolverAddPC(INT(nP,c_size_t),offsetsC,indicesC,coefficients, &
        pp,parameters,action,parametersP)
  END SUBROUTINE Iterative_Solver_Add_P
+
+!> \brief Take an existing solution and its residual, and suggest P vectors
+!> \param solution On input, the current solution.
+!> \param residual On input, the residual for solution.
+!> \param indices On exit, the most important base vectors
+!> \param threshold Base vectors whose predicted contribution is less than
+!> than this are not considered
+!> \return The number of vectors suggested.
+ FUNCTION Iterative_Solver_Suggest_P(solution,residual,indices,threshold)
+  INTEGER :: Iterative_Solver_Suggest_P
+  DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: solution
+  DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: residual
+  INTEGER, INTENT(inout), DIMENSION(:) :: indices
+  DOUBLE PRECISION, INTENT(in), OPTIONAL :: threshold
+  INTERFACE
+   FUNCTION IterativeSolverSuggestP(solution, residual, maximumNumber, threshold, indices) &
+        BIND(C,name='IterativeSolverSuggestP')
+    USE iso_c_binding
+    INTEGER(c_size_t) :: IterativeSolverSuggestP
+    INTEGER(c_size_t), VALUE :: maximumNumber
+    INTEGER(c_size_t), INTENT(inout), DIMENSION(maximumNumber) :: indices
+    REAL(c_double), DIMENSION(*), INTENT(in) :: solution
+    REAL(c_double), DIMENSION(*), INTENT(in) :: residual
+    REAL(c_double), INTENT(in), VALUE :: threshold
+   END FUNCTION IterativeSolverSuggestP
+  END INTERFACE
+  REAL(C_double) :: thresholdC=0
+  INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC
+  INTEGER(c_size_t) :: maximumNumber
+  maximumNumber=INT(size(indices),c_size_t)
+  !write (6,*) 'fortran suggestP, maximumNumber=',size(indices)
+  IF (PRESENT(threshold)) thresholdC = threshold
+   Iterative_Solver_Suggest_P = INT( &
+    IterativeSolverSuggestP(solution, residual, maximumNumber, thresholdC, indicesC) &
+    )
+    do i=1,Iterative_Solver_Suggest_P
+   indices(i) = int(indicesC(i))+1
+    end do
+ END FUNCTION Iterative_Solver_Suggest_P
 
 !> \brief give options to the iterative solver
  SUBROUTINE Iterative_Solver_Option(key,val)

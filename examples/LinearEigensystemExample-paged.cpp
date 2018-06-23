@@ -5,7 +5,7 @@
 using scalar = double;
 using pv = LinearAlgebra::PagedVector<scalar>;
 constexpr size_t n = 300; // dimension of problem
-constexpr scalar alpha = 100; // separation of diagonal elements
+constexpr scalar alpha = 1000; // separation of diagonal elements
 constexpr size_t nP = 10; // number in initial P-space
 
 scalar matrix(const size_t i, const size_t j) {

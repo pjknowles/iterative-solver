@@ -425,9 +425,14 @@ namespace LinearAlgebra {
     for (Eigen::Index l = 0; l < H.rows(); l++) m_subspaceEigenvectors(l, k) = s.eigenvectors()(l, ll);
    }
    Eigen::MatrixXcd overlap = m_subspaceEigenvectors.transpose() * S * m_subspaceEigenvectors;
-   for (Eigen::Index k = 0; k < overlap.rows(); k++)
-    for (Eigen::Index l = 0; l < overlap.rows(); l++)
-     m_subspaceEigenvectors(l, k) /= std::sqrt(overlap(k, k).real()); // FIXME this should be full Gram-Schmidt, not just normalisation
+   for (Eigen::Index k = 0; k < overlap.rows(); k++) {
+    for (Eigen::Index l = 0; l < k; l++) {
+     auto ovl = (m_subspaceEigenvectors.col(k).transpose() * m_subspaceEigenvectors.col(l).conjugate())(0,0);
+     m_subspaceEigenvectors.col(k) -= m_subspaceEigenvectors.col(l) * ovl;
+    }
+    auto ovl = (m_subspaceEigenvectors.col(k).transpose() * m_subspaceEigenvectors.col(k).conjugate())(0,0);
+    m_subspaceEigenvectors.col(k) /= std::sqrt(ovl.real());
+   }
    //  xout << "eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
    //  xout << "eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
   }

@@ -473,7 +473,7 @@ namespace LinearAlgebra {
       }
      }
     }
-    if (m_residual_eigen) residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(), *solution[kkk]);
+    if (m_residual_eigen|| (m_residual_rhs && m_augmented_hessian>0)) residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(), *solution[kkk]);
     if (m_residual_rhs) residual[kkk]->axpy(-1, *this->m_rhs[kkk]);
    }
 
@@ -830,6 +830,8 @@ namespace LinearAlgebra {
      Eigen::Index imax=0;
      for (Eigen::Index i=0; i<n+1; i++)
       if (eval(i).real() < eval(imax).real()) imax=i;
+     this->m_subspaceEigenvalues.conservativeResize(root+1);
+     this->m_subspaceEigenvalues(root)=eval(imax);
 //     std::cout << "eigenvectors\n"<<evec.real()<<std::endl;
 //     std::cout << "eigenvalues\n"<<eval.real()<<std::endl;
 //     std::cout << "imax="<<imax<<std::endl;

@@ -22,7 +22,7 @@ PROGRAM LinearEigenSystemExample
  do iaug=1,size(augmented_hessian_factors)
  aughes = augmented_hessian_factors(iaug)
  print *, 'solve linear system with augmented hessian factor ',aughes
- CALL Iterative_Solver_Linear_Equations_Initialize(n,nroot,rhs,aughes,thresh=1d-6,verbosity=1)
+ CALL Iterative_Solver_Linear_Equations_Initialize(n,nroot,rhs,aughes,thresh=1d-11,verbosity=1)
  c=0; DO i=1,nroot; c(i,i)=1; ENDDO
  DO i=1,n
   g = MATMUL(m,c)
@@ -37,7 +37,7 @@ PROGRAM LinearEigenSystemExample
  END DO
  PRINT *, 'error =',error
  do i=1,nroot
- print *, 'solution ',c(1:10,i)
+ print *, 'solution ',c(1:min(n,10),i)
  end do
  CALL Iterative_Solver_Finalize
  enddo

@@ -23,6 +23,26 @@ namespace LinearAlgebra {
  }
 
  extern "C" void
+ IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes, double thresh, unsigned int maxIterations, int verbosity) {
+#ifdef HAVE_MPI_H
+  int flag;
+  MPI_Initialized(&flag);
+  if (!flag) MPI_Init(0,nullptr);
+#endif
+  vectorSet<double> rr;
+  for (size_t root = 0; root < nroot; root++) {
+   rr.push_back(std::shared_ptr<v>(new v(const_cast<double *>(&rhs[root * n]),
+                                         n))); // in principle the const_cast is dangerous, but we trust LinearEquations to behanve
+  }
+  instance.reset(new LinearEquations<double>(rr,aughes));
+  instance->m_dimension = n;
+  instance->m_roots = nroot;
+  instance->m_thresh = thresh;
+  instance->m_maxIterations = maxIterations;
+  instance->m_verbosity = verbosity;
+ }
+
+ extern "C" void
  IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity) {
 #ifdef HAVE_MPI_H
   int flag;

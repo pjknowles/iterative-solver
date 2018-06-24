@@ -424,8 +424,7 @@ namespace LinearAlgebra {
     m_subspaceEigenvalues[k] = s.eigenvalues()(ll);
     for (Eigen::Index l = 0; l < H.rows(); l++) m_subspaceEigenvectors(l, k) = s.eigenvectors()(l, ll);
    }
-   Eigen::MatrixXcd overlap = m_subspaceEigenvectors.transpose() * S * m_subspaceEigenvectors;
-   for (Eigen::Index k = 0; k < overlap.rows(); k++) {
+   for (Eigen::Index k = 0; k < m_subspaceEigenvectors.rows(); k++) {
     for (Eigen::Index l = 0; l < k; l++) {
      auto ovl = (m_subspaceEigenvectors.col(k).transpose() * m_subspaceEigenvectors.col(l).conjugate())(0,0);
      m_subspaceEigenvectors.col(k) -= m_subspaceEigenvectors.col(l) * ovl;
@@ -1051,6 +1050,10 @@ namespace LinearAlgebra {
 extern "C" void
 IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh, unsigned int maxIterations,
                                            int verbosity);
+
+extern "C" void
+IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes, double thresh, unsigned int maxIterations,
+                                         int verbosity);
 
 extern "C" void
 IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity);

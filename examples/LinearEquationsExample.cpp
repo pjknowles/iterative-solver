@@ -70,7 +70,6 @@ int main(int argc, char *argv[]) {
   b.back()->put(bb.data(), bb.size(), 0);
   x.push_back(std::make_shared<pv>(n));
   g.push_back(std::make_shared<pv>(n));
-//     x.back()->zero(); scalar one=1; x.back()->put(&one,1,root); // initial guess
  }
  std::vector<double> augmented_hessian_factors = {0, .001, .01, .1, 1};
  for (const auto &augmented_hessian_factor : augmented_hessian_factors) {
@@ -91,20 +90,11 @@ int main(int argc, char *argv[]) {
   std::vector<std::vector<scalar> > Pcoeff(solver.m_roots);
   for (auto i = 0; i < solver.m_roots; ++i) Pcoeff[i].resize(nP);
   solver.addP(pspace, PP.data(), x, g, Pcoeff);
-// for (auto i=0; i<solver.m_roots; ++i)
-//  for (auto j=0; j<nP; j++)
-//   std::cout << "after addP, Pcoeff="<<i<<j<<Pcoeff[i][j]<<std::endl;
-// std::cout << "x "<<x<<std::endl;
-// std::cout << "g "<<g<<std::endl;
   for (auto iter = 0; iter < 100; iter++) {
    actionP(pspace, Pcoeff, g);
-//  std::cout << "g after actionP "<<g<<std::endl;
    update(x, g);
-//  std::cout << "x after update "<<x<<std::endl;
    if (solver.endIteration(x, g)) break;
-//  std::cout << "x before action "<<x<<std::endl;
    action(x, g);
-//  std::cout << "g after action "<<g<<std::endl;
    solver.addVector(x, g, Pcoeff);
   }
 

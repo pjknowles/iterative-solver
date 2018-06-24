@@ -101,8 +101,6 @@ namespace LinearAlgebra {
    *
    * @param buffer
    * @param length
-   * @param option
-   * @param mpi_communicator
    */
 
   PagedVector(double* buffer, size_t length)

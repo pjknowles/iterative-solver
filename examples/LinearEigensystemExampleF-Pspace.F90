@@ -2,7 +2,7 @@
 !> This is an example of use of the LinearEigensystem framework for iterative
 !> finding of the lowest few eigensolutions of a large matrix.
 !> A P-space is explicitly declared.
-PROGRAM LinearEigenSystemExample
+PROGRAM Linear_Eigensystem_Example
  USE Iterative_Solver
 
  INTEGER, PARAMETER :: n=1000, nroot=3, nP=10
@@ -61,4 +61,4 @@ PROGRAM LinearEigenSystemExample
   CALL Iterative_Solver_Add_Vector(c,g,p)
  END DO
  CALL Iterative_Solver_Finalize
-END PROGRAM LinearEigenSystemExample
+END PROGRAM Linear_Eigensystem_Example

@@ -54,39 +54,40 @@ CONTAINS
   CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq,m_nroot,threshC, maxIterationsC, verbosityC)
  END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize
 
-!> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
 !> \brief Finds the solutions of linear equation systems using a generalisation of Davidson's method, i.e. preconditioned Lanczos
 !> Example of simplest use: @include LinearEquationsExampleF.F90
-!> Example including use of P space: @include LinearEquationsExampleF-Pspace.F90
- SUBROUTINE Iterative_Solver_Linear_Equations_Initialize(nq,nroot,rhs,aughes,thresh,maxIterations,verbosity)
+!> <!-- Example including use of P space: @include LinearEquationsExampleF-Pspace.F90 -->
+ SUBROUTINE Iterative_Solver_Linear_Equations_Initialize(nq,nroot,rhs,augmented_hessian,thresh,maxIterations,verbosity)
   INTEGER, INTENT(in) :: nq !< dimension of matrix
   INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
-    double precision, INTENT(in), DIMENSION(nq,nroot) :: rhs
-    double precision, INTENT(in), OPTIONAL :: aughes
+    double precision, INTENT(in), DIMENSION(nq,nroot) :: rhs !< the constant right-hand-side of each equation system
+    double precision, INTENT(in), OPTIONAL :: augmented_hessian
+    !< If zero, solve the inhomogeneous equations unmodified. If 1, solve instead
+    !< the augmented hessian problem. Other values scale the augmented hessian damping.
   DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
   INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
-  INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors. One gives a single progress-report line each iteration.G
+  INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors. One gives a single progress-report line each iteration.
   INTERFACE
-   SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC(nq,nroot,rhs,aughes,thresh,maxIterations,verbosity) &
+   SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC(nq,nroot,rhs,augmented_hessian,thresh,maxIterations,verbosity) &
         BIND(C,name='IterativeSolverLinearEquationsInitialize')
     USE iso_c_binding
     INTEGER(C_size_t), INTENT(in), VALUE :: nq
     INTEGER(C_size_t), INTENT(in), VALUE :: nroot
     REAL(c_double), INTENT(in), DIMENSION(*) :: rhs
-    REAL(c_double), INTENT(in), VALUE :: aughes
+    REAL(c_double), INTENT(in), VALUE :: augmented_hessian
     REAL(c_double), INTENT(in), VALUE :: thresh
     INTEGER(C_int), INTENT(in), VALUE :: maxIterations
     INTEGER(C_int), INTENT(in), VALUE :: verbosity
    END SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC
   END INTERFACE
   INTEGER(c_int) :: verbosityC, maxIterationsC
-  REAL(c_double) :: threshC, aughesC
+  REAL(c_double) :: threshC, augmented_hessianC
   m_nq=INT(nq,kind=c_size_t)
   m_nroot=INT(nroot,kind=c_size_t)
-  IF (PRESENT(aughes)) THEN
-   aughesC=aughes
+  IF (PRESENT(augmented_hessian)) THEN
+   augmented_hessianC=augmented_hessian
   ELSE
-   aughesC=0
+   augmented_hessianC=0
   END IF
   IF (PRESENT(thresh)) THEN
    threshC=thresh
@@ -103,7 +104,7 @@ CONTAINS
   ELSE
    verbosityC=0
   END IF
-  CALL Iterative_Solver_Linear_Equations_InitializeC(m_nq,m_nroot,rhs, aughesC, threshC, maxIterationsC, verbosityC)
+  CALL Iterative_Solver_Linear_Equations_InitializeC(m_nq,m_nroot,rhs, augmented_hessianC, threshC, maxIterationsC, verbosityC)
  END SUBROUTINE Iterative_Solver_Linear_Equations_Initialize
 
 !> \brief Accelerated convergence of non-linear equations

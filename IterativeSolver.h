@@ -24,6 +24,9 @@ extern std::ostream &xout;
 #define xout std::cout
 #endif
 
+/*!
+ * @brief Contains IterativeSolver and supporting classes, including an abstract opaque vector
+ */
 namespace LinearAlgebra {
  typedef std::map<std::string, std::string> optionMap;
 
@@ -775,7 +778,7 @@ namespace LinearAlgebra {
   /*!
    * \brief Constructor
    * \param rhs right-hand-side vectors. More can be added subsequently using addEquations(), provided iterations have not yet started.
-   * \param augmented_hessian. If zero, solve the inhomogeneous equations unmodified. If 1, solve instead
+   * \param augmented_hessian If zero, solve the inhomogeneous equations unmodified. If 1, solve instead
    * the augmented hessian problem. Other values scale the augmented hessian damping.
    */
   explicit LinearEquations(const vectorSet<scalar> &rhs, double augmented_hessian=0)

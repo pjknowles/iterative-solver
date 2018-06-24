@@ -67,7 +67,6 @@ int main(int argc, char *argv[]) {
  for (int root = 0; root < solver.m_roots; root++) {
   x.push_back(std::make_shared<pv>(n));
   g.push_back(std::make_shared<pv>(n));
-//     x.back()->zero(); scalar one=1; x.back()->put(&one,1,root); // initial guess
  }
  size_t p = 0;
  std::vector<scalar> PP;

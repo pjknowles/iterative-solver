@@ -86,4 +86,7 @@ PROGRAM Linear_Eigensystem_Example
   CALL Iterative_Solver_Add_Vector(c,g,p)
  END DO
  CALL Iterative_Solver_Finalize
+ DO i=1,nroot
+  PRINT *, 'solution ',c(1:MIN(n,10),i)
+ END DO
 END PROGRAM Linear_Eigensystem_Example

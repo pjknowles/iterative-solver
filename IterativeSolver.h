@@ -500,8 +500,12 @@ namespace LinearAlgebra {
    m_errors.clear();
    if (m_linear && errortype!=1) { // we can use the extrapolated residual if the problem is linear
     for (size_t k = 0; k < solution.size(); k++)
-     m_errors.push_back(residual.m_active[k] ? std::fabs(residual[k]->dot(
-       errortype==2? *residual[k] : *solution[k])) : 0);
+     m_errors.push_back(residual.m_active[k] ?
+                        std::fabs(
+                          residual[k]->dot(errortype==2? *residual[k] : *solution[k])
+                          / solution[k]->dot(*solution[k])
+                        )
+                                             : 0);
    } else {
     vectorSet<scalar> step = solution;
     step.axpy(-1, m_solutions[m_lastVectorIndex]);

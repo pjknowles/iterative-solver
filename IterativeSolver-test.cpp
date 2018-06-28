@@ -465,7 +465,7 @@ int main(int argc, char *argv[])
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
 //  LinearAlgebra::DIIS<double>::randomTest(100,100,0.1,3.0);
-//  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
+  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
 //  MPI_Abort(MPI_COMM_WORLD,1);
 //  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
 //  DIISTest<PagedVector<double> >(1,6,1e-3,LinearAlgebra::DIIS<double>::disabled,0.0002);

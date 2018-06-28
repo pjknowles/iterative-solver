@@ -359,7 +359,7 @@ CONTAINS
 
   DO irep=1,1
    WRITE (6,*) 'Without P-space, dimension=',n,', roots=',nroot
-   CALL Iterative_Solver_Linear_Eigensystem_Initialize(n,nroot,thresh=1d-8,verbosity=1)
+   CALL Iterative_Solver_Linear_Eigensystem_Initialize(n,nroot,thresh=1d-8,verbosity=3)
    CALL Iterative_Solver_Option("convergence","residual")
    c=0; DO i=1,nroot; c(i,i)=1; ENDDO
    DO i=1,n

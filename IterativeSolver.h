@@ -90,7 +90,7 @@ namespace LinearAlgebra {
     m_interpolation(),
     m_dimension(0),
     m_iterations(0),
-    m_singularity_threshold(1e-12),
+    m_singularity_threshold(1e-13),
     m_augmented_hessian(0),
     m_maxQ(std::max(m_roots,size_t(6)))
     {}
@@ -403,7 +403,7 @@ namespace LinearAlgebra {
     const auto& k = m_subspaceMatrix.rows()-1;
     if (svd.singularValues()(k) < m_singularity_threshold * svd.singularValues()(0) || (!m_orthogonalize && nQ > m_maxQ)) { // condition number assuming singular values are strictlydescending
      Eigen::Index imax=0;
-     for (Eigen::Index i=0; i<nQ-1; i++) { // never consider the very last Q vector
+     for (Eigen::Index i=0; i<nQ-m_roots; i++) { // never consider the very last Q vector
 //      std::cout << "consider " <<i<<": "<<svd.matrixV()(nP+i,k)<<std::endl;
 //      if (std::fabs(svd.matrixV()(nP + i, k)) > std::fabs(svd.matrixV()(nP + imax, k))) imax = i;
       if (
@@ -412,7 +412,7 @@ namespace LinearAlgebra {
         std::fabs(svd.matrixV()(nP + imax, k)*m_subspaceMatrix(nP+imax,nP+imax))
         ) imax = i;
      }
-     if (m_verbosity>0) std::cout << "removing singular value "<<svd.singularValues()(k)/svd.singularValues()(0) << " by removing redundant expansion vector "<<imax<<std::endl;
+     if (m_verbosity>0) std::cout << "removing singular value "<<svd.singularValues()(k)/svd.singularValues()(0) << " by deleting redundant expansion vector "<<imax<<", "<<nQ-1<<" remaining"<<std::endl;
      if (m_verbosity>1) std::cout << "SVD right matrix column: "<<svd.matrixV().col(k).transpose()<<std::endl;
      deleteVector(imax);
      return; // deleteVector calls this function to rebuild the subspace

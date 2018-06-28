@@ -90,7 +90,7 @@ namespace LinearAlgebra {
     m_interpolation(),
     m_dimension(0),
     m_iterations(0),
-    m_singularity_threshold(1e-13),
+    m_singularity_threshold(1e-14),
     m_augmented_hessian(0),
     m_maxQ(std::max(m_roots,size_t(6)))
     {}
@@ -123,6 +123,7 @@ namespace LinearAlgebra {
    for (size_t k = 0; k < action.size(); k++)
     action.m_active[k] = //action.m_active[k] &&
       parameters.m_active[k];
+   m_added_vectors = 0; for (size_t k=0; k<action.size(); k++) if (action.m_active[k]) m_added_vectors++;
    m_lastVectorIndex = addVectorSet(parameters, action, other) -
                        1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
 //   xout << "set lastVectorIndex=addVectorSet-1="<<m_lastVectorIndex<<std::endl;
@@ -403,7 +404,7 @@ namespace LinearAlgebra {
     const auto& k = m_subspaceMatrix.rows()-1;
     if (svd.singularValues()(k) < m_singularity_threshold * svd.singularValues()(0) || (!m_orthogonalize && nQ > m_maxQ)) { // condition number assuming singular values are strictlydescending
      Eigen::Index imax=0;
-     for (Eigen::Index i=0; i<nQ-m_roots; i++) { // never consider the very last Q vector
+     for (Eigen::Index i=0; i<nQ-m_added_vectors; i++) { // never consider the very last Q vector
 //      std::cout << "consider " <<i<<": "<<svd.matrixV()(nP+i,k)<<std::endl;
 //      if (std::fabs(svd.matrixV()(nP + i, k)) > std::fabs(svd.matrixV()(nP + imax, k))) imax = i;
       if (
@@ -412,8 +413,8 @@ namespace LinearAlgebra {
         std::fabs(svd.matrixV()(nP + imax, k)*m_subspaceMatrix(nP+imax,nP+imax))
         ) imax = i;
      }
-     if (m_verbosity>0) std::cout << "removing singular value "<<svd.singularValues()(k)/svd.singularValues()(0) << " by deleting redundant expansion vector "<<imax<<", "<<nQ-1<<" remaining"<<std::endl;
-     if (m_verbosity>1) std::cout << "SVD right matrix column: "<<svd.matrixV().col(k).transpose()<<std::endl;
+     if (m_verbosity>0) std::cout << " removing singular value "<<svd.singularValues()(k)/svd.singularValues()(0) << " by deleting redundant expansion vector "<<imax<<", "<<nQ-1<<" remaining"<<std::endl;
+     if (m_verbosity>1) std::cout << "  SVD right matrix column: "<<svd.matrixV().col(k).transpose()<<std::endl;
      deleteVector(imax);
      return; // deleteVector calls this function to rebuild the subspace
     }
@@ -500,10 +501,10 @@ namespace LinearAlgebra {
     for (size_t ll = 0; ll < this->m_solutions.size(); ll++) {
      for (size_t lll = 0; lll < this->m_solutions[ll].size(); lll++) {
       if (this->m_solutions[ll].m_active[lll]) {
-       if (m_verbosity > 2)
+       if (m_verbosity > 3)
         xout << "LinearEigensystem::doInterpolation kkk=" << kkk << ", ll=" << ll << ", lll=" << lll << ", l=" << l
              << std::endl;
-       if (m_verbosity > 2) xout << "Interpolation:\n" << this->m_interpolation(l, kkk) << std::endl;
+       if (m_verbosity > 3) xout << "Interpolation:\n" << this->m_interpolation(l, kkk) << std::endl;
        solution[kkk]->axpy(this->m_interpolation(l, kkk), *this->m_solutions[ll][lll]);
        residual[kkk]->axpy(this->m_interpolation(l, kkk), *this->m_residuals[ll][lll]);
        if (other.size() > kkk) other[kkk]->axpy(this->m_interpolation(l, kkk), *this->m_others[ll][lll]);
@@ -729,6 +730,7 @@ namespace LinearAlgebra {
  private:
   unsigned int m_iterations;
   double m_singularity_threshold;
+  size_t m_added_vectors; //!< number of vectors recently added to subspace
  protected:
   double m_augmented_hessian; //!< The scale factor for augmented hessian solution of linear inhomogeneous systems. Special values:
   //!< - 0: unmodified linear equations
@@ -994,23 +996,23 @@ namespace LinearAlgebra {
    }
    double fBaseScale = std::sqrt(d(worst) * d(best));
 
-   while (nDim > this->m_maxDim) { // prune away the worst/oldest vector. Algorithm to be done properly yet
-    size_t prune = worst;
-    if (true || prune == nDim - 1) { // the current vector is the worst, so delete the oldest
-     //          xout << "this->m_dateOfBirth: "; for (auto b=this->m_dateOfBirth.begin(); b!=this->m_dateOfBirth.end(); b++) xout <<(*b); xout<<std::endl;
-     prune = std::min_element(this->m_dateOfBirth.begin(), this->m_dateOfBirth.end()) - this->m_dateOfBirth.begin();
-    }
-    //      xout << "prune="<<prune<<std::endl;
-    //  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
-    this->deleteVector(prune);
-    nDim--;
-    //  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
-   }
-   if (nDim != (size_t) this->m_subspaceMatrix.rows()) throw std::logic_error("problem in pruning");
-   if (m_Weights.size() != (size_t) this->m_subspaceMatrix.rows()) {
-    xout << "nDim=" << nDim << ", m_Weights.size()=" << m_Weights.size() << std::endl;
-    throw std::logic_error("problem after pruning weights");
-   }
+//   while (nDim > this->m_maxDim) { // prune away the worst/oldest vector. Algorithm to be done properly yet
+//    size_t prune = worst;
+//    if (true || prune == nDim - 1) { // the current vector is the worst, so delete the oldest
+//     //          xout << "this->m_dateOfBirth: "; for (auto b=this->m_dateOfBirth.begin(); b!=this->m_dateOfBirth.end(); b++) xout <<(*b); xout<<std::endl;
+//     prune = std::min_element(this->m_dateOfBirth.begin(), this->m_dateOfBirth.end()) - this->m_dateOfBirth.begin();
+//    }
+//    //      xout << "prune="<<prune<<std::endl;
+//    //  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
+//    this->deleteVector(prune);
+//    nDim--;
+//    //  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
+//   }
+//   if (nDim != (size_t) this->m_subspaceMatrix.rows()) throw std::logic_error("problem in pruning");
+//   if (m_Weights.size() != (size_t) this->m_subspaceMatrix.rows()) {
+//    xout << "nDim=" << nDim << ", m_Weights.size()=" << m_Weights.size() << std::endl;
+//    throw std::logic_error("problem after pruning weights");
+//   }
 
 
 

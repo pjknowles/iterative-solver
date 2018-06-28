@@ -16,7 +16,7 @@ namespace LinearAlgebra{
    * \tparam scalar Type of matrix elements
    */
  template <class ptype, class scalar=double>
-  static void DavidsonTest(size_t dimension, size_t roots=1, int verbosity=0, int problem=0, bool orthogonalize=true)
+  static void DavidsonTest(size_t dimension, size_t roots=1, int verbosity=0, int problem=0, bool orthogonalize=false)
   {
 
    static Eigen::Matrix<scalar,Eigen::Dynamic,Eigen::Dynamic> testmatrix;
@@ -55,7 +55,7 @@ namespace LinearAlgebra{
      if (problem==0)
       testmatrix(l,k)=-1;
      else if (problem==1)
-      testmatrix(l,k)=l+k+2;
+      testmatrix(l,k)=l==k?1+k*5:l+k+2;
      else if (problem==2)
       testmatrix(l,k)=( k==l ? k+1 : 1);
      else if (problem==3)
@@ -82,7 +82,7 @@ namespace LinearAlgebra{
     g.push_back_clone(gg);
    }
 
-   for (size_t iteration=0; iteration<dimension; iteration++) {
+   for (size_t iteration=0; iteration<dimension+1; iteration++) {
 //      for (size_t kkk=0; kkk<x.size(); kkk++)
 //          xout << "before action x: "<<x[kkk]<<std::endl;
 //      for (size_t kkk=0; kkk<g.size(); kkk++)
@@ -93,6 +93,10 @@ namespace LinearAlgebra{
 //      for (size_t kkk=0; kkk<g.size(); kkk++)
 //          xout << "after action g: "<<g[kkk]<<std::endl;
     d.addVector(x,g);
+//      for (size_t kkk=0; kkk<x.size(); kkk++)
+//          xout << "after addVector x: "<<x[kkk]<<std::endl;
+//      for (size_t kkk=0; kkk<g.size(); kkk++)
+//          xout << "after addVector g: "<<g[kkk]<<std::endl;
     std::vector<scalar> shift;
     for (size_t root=0; root<(size_t)d.m_roots; root++) shift.push_back(-d.eigenvalues()[root]+1e-14);
     update(x,g,shift);
@@ -461,14 +465,18 @@ int main(int argc, char *argv[])
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
 //  LinearAlgebra::DIIS<double>::randomTest(100,100,0.1,3.0);
-  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
+//  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.0002);
 //  MPI_Abort(MPI_COMM_WORLD,1);
 //  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
 //  DIISTest<PagedVector<double> >(1,6,1e-3,LinearAlgebra::DIIS<double>::disabled,0.0002);
-  DavidsonTest<PagedVector<double> >(2,1,1,2,true);
+//   DavidsonTest<PagedVector<double> >(2,2,2,2,false);
+  DavidsonTest<PagedVector<double> >(3,3,1,2,false);
+  DavidsonTest<PagedVector<double> >(3,2,1,2,false);
   DavidsonTest<PagedVector<double> >(9,1,1,2,true);
   DavidsonTest<PagedVector<double> >(9,1,1,2,false);
-  DavidsonTest<PagedVector<double> >(9,1,1,1);
+   DavidsonTest<PagedVector<double> >(9,9,1,1,false);
+   DavidsonTest<PagedVector<double> >(9,1,1,1,false);
+  DavidsonTest<PagedVector<double> >(9,1,1,1,true);
   DavidsonTest<PagedVector<double> >(9,1,1,2);
   DavidsonTest<PagedVector<double> >(9,2,1,2);
   DavidsonTest<PagedVector<double> >(100,1,1,2);

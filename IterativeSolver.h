@@ -90,8 +90,9 @@ namespace LinearAlgebra {
     m_interpolation(),
     m_dimension(0),
     m_iterations(0),
-    m_singularity_threshold(1e-20),
-    m_augmented_hessian(0)
+    m_singularity_threshold(1e-12),
+    m_augmented_hessian(0),
+    m_maxQ(std::max(m_roots,size_t(6)))
     {}
 
   virtual ~IterativeSolver() = default;
@@ -116,6 +117,7 @@ namespace LinearAlgebra {
 //   if (m_rhs.size())
 //    std::cout << "addVector entry m_rhs.back()="<<this->m_rhs.back()<<std::endl;
    if (m_roots < 1) m_roots = parameters.size(); // number of roots defaults to size of parameters
+   if (!m_orthogonalize && m_roots > m_maxQ) m_maxQ = m_roots;
    assert(parameters.size() == action.size());
    m_iterations++;
    for (size_t k = 0; k < action.size(); k++)
@@ -124,6 +126,10 @@ namespace LinearAlgebra {
    m_lastVectorIndex = addVectorSet(parameters, action, other) -
                        1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
 //   xout << "set lastVectorIndex=addVectorSet-1="<<m_lastVectorIndex<<std::endl;
+   double weight =
+     this->m_options.count("weight") ? (
+       std::strtod(this->m_options.find("weight")->second.c_str(),NULL)) : 1.0;
+   this->m_Weights.push_back(weight); // TODO not conformant - add style
    buildSubspace();
    solveReducedProblem();
    doInterpolation(parameters, action, parametersP, other);
@@ -384,6 +390,34 @@ namespace LinearAlgebra {
      m_subspaceOverlap(j, nP + i) = m_subspaceOverlap(nP + i, j) = m_PQOverlap(j, i);
     }
    }
+   {// look for linear dependency
+    if (m_verbosity > 1) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
+    if (m_verbosity > 1) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
+//    Eigen::EigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
+//    xout << "eigenvalues "<<ss.eigenvalues()<<std::endl;
+    Eigen::JacobiSVD<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> > svd(m_subspaceMatrix, Eigen::ComputeThinU | Eigen::ComputeThinV);
+//    std::cout << "singular values: "<<svd.singularValues().transpose()<<std::endl;
+//    std::cout << "U: "<<svd.matrixU()<<std::endl;
+//    std::cout << "V: "<<svd.matrixV()<<std::endl;
+//    auto tester = [](Eigen::Index i) { return std::fabs(svd.matrixV(nP+i,k))};
+    const auto& k = m_subspaceMatrix.rows()-1;
+    if (svd.singularValues()(k) < m_singularity_threshold * svd.singularValues()(0) || (!m_orthogonalize && nQ > m_maxQ)) { // condition number assuming singular values are strictlydescending
+     Eigen::Index imax=0;
+     for (Eigen::Index i=0; i<nQ-1; i++) { // never consider the very last Q vector
+//      std::cout << "consider " <<i<<": "<<svd.matrixV()(nP+i,k)<<std::endl;
+//      if (std::fabs(svd.matrixV()(nP + i, k)) > std::fabs(svd.matrixV()(nP + imax, k))) imax = i;
+      if (
+        std::fabs(svd.matrixV()(nP + i, k)*m_subspaceMatrix(nP+i,nP+i))
+        >
+        std::fabs(svd.matrixV()(nP + imax, k)*m_subspaceMatrix(nP+imax,nP+imax))
+        ) imax = i;
+     }
+     if (m_verbosity>0) std::cout << "removing singular value "<<svd.singularValues()(k)/svd.singularValues()(0) << " by removing redundant expansion vector "<<imax<<std::endl;
+     if (m_verbosity>1) std::cout << "SVD right matrix column: "<<svd.matrixV().col(k).transpose()<<std::endl;
+     deleteVector(imax);
+     return; // deleteVector calls this function to rebuild the subspace
+    }
+   }
    if (m_verbosity > 3 && m_PQMatrix.rows() > 0) xout << "PQ matrix" << std::endl << this->m_PQMatrix << std::endl;
    if (m_verbosity > 3 && m_PQMatrix.rows() > 0) xout << "PQ overlap" << std::endl << this->m_PQOverlap << std::endl;
    if (m_verbosity > 3 && m_PQMatrix.rows() > 0) xout << "QQ matrix" << std::endl << this->m_QQMatrix << std::endl;
@@ -395,7 +429,7 @@ namespace LinearAlgebra {
  protected:
   void diagonalizeSubspaceMatrix() {
    auto kept = m_subspaceMatrix.rows();
-   {
+   if (false){
     Eigen::EigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceOverlap);
     Eigen::VectorXcd sse = ss.eigenvalues();
     for (int k = 0; k < sse.rows(); k++) {
@@ -429,14 +463,15 @@ namespace LinearAlgebra {
    }
    for (Eigen::Index k = 0; k < m_subspaceEigenvectors.rows(); k++) {
     for (Eigen::Index l = 0; l < k; l++) {
-     auto ovl = (m_subspaceEigenvectors.col(k).transpose() * m_subspaceEigenvectors.col(l).conjugate())(0,0);
-     m_subspaceEigenvectors.col(k) -= m_subspaceEigenvectors.col(l) * ovl;
+     auto ovl = (m_subspaceEigenvectors.col(k).transpose() * m_subspaceOverlap * m_subspaceEigenvectors.col(l).conjugate())(0,0);
+     auto norm = (m_subspaceEigenvectors.col(l).transpose() * m_subspaceOverlap* m_subspaceEigenvectors.col(l).conjugate())(0,0);
+     m_subspaceEigenvectors.col(k) -= m_subspaceEigenvectors.col(l) * ovl/norm;
     }
-    auto ovl = (m_subspaceEigenvectors.col(k).transpose() * m_subspaceEigenvectors.col(k).conjugate())(0,0);
+    auto ovl = (m_subspaceEigenvectors.col(k).transpose() * m_subspaceOverlap * m_subspaceEigenvectors.col(k).conjugate())(0,0);
     m_subspaceEigenvectors.col(k) /= std::sqrt(ovl.real());
    }
-   //  xout << "eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
-   //  xout << "eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
+//     xout << "eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
+//     xout << "eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
   }
 
   /*!
@@ -476,8 +511,10 @@ namespace LinearAlgebra {
       }
      }
     }
+//    std::cout << "residual before axpy "<<residual[kkk]->str()<<std::endl;
     if (m_residual_eigen|| (m_residual_rhs && m_augmented_hessian>0)) residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(), *solution[kkk]);
     if (m_residual_rhs) residual[kkk]->axpy(-1, *this->m_rhs[kkk]);
+//    std::cout << "residual after axpy "<<residual[kkk]->str()<<std::endl;
    }
 
   }
@@ -611,17 +648,18 @@ namespace LinearAlgebra {
   }
 
   void deleteVector(size_t index) {
-   if (index >= m_residuals.size()) throw std::logic_error("invalid index");
    //    xout << "deleteVector "<<index<<std::endl;
    //    xout << "old m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
    //    xout << "old m_subspaceOverlap"<<std::endl<<m_subspaceOverlap<<std::endl;
    auto old_size = m_QQMatrix.rows();
+   if (index >= old_size) throw std::logic_error("invalid index");
    auto new_size = old_size;
    size_t l = 0;
    for (size_t ll = 0; ll < m_solutions.size(); ll++) {
     for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
      if (m_solutions[ll].m_active[lll]) {
       if (l == index) { // this is the one to delete
+       if (m_Weights.size() > l) m_Weights.erase(m_Weights.begin() + l);
        m_dateOfBirth.erase(m_dateOfBirth.begin() + l);
        m_solutions[ll].m_active[lll] = false;
        m_residuals[ll].m_active[lll] = false;
@@ -634,6 +672,9 @@ namespace LinearAlgebra {
         for (auto k = 0; k < m_PQMatrix.rows(); k++) {
          m_PQMatrix(k, l2 - 1) = m_PQMatrix(k, l2);
          m_PQOverlap(k, l2 - 1) = m_PQOverlap(k, l2);
+        }
+        for (size_t k=0; k< m_rhs.size(); k++) {
+         m_subspaceRHS(m_PQMatrix.rows()+l2-1,k) = m_subspaceRHS(m_PQMatrix.rows()+l2,k) ;
         }
        }
        for (auto l2 = l + 1; l2 < m_QQMatrix.rows(); l2++) {
@@ -648,6 +689,7 @@ namespace LinearAlgebra {
      }
      if (std::count(m_solutions[ll].m_active.begin(), m_solutions[ll].m_active.end(), true) ==
          0) { // can delete the whole thing
+      //TODO implement
      }
     }
    }
@@ -691,6 +733,8 @@ namespace LinearAlgebra {
   double m_augmented_hessian; //!< The scale factor for augmented hessian solution of linear inhomogeneous systems. Special values:
   //!< - 0: unmodified linear equations
   //!< - 1: standard augmented hessian
+  std::vector<double> m_Weights; //!< weighting of error vectors in DIIS
+  size_t m_maxQ; //!< maximum size of Q space when !m_orthogonalize
 
  };
 
@@ -730,7 +774,6 @@ namespace LinearAlgebra {
    this->m_residual_rhs = false;
    this->m_residual_eigen = true;
    this->m_linear = true;
-   this->m_orthogonalize = true;
   }
 
 
@@ -793,7 +836,6 @@ namespace LinearAlgebra {
 //    , IterativeSolver<scalar>::m_augmented_hessian(augmented_hessian)
   {
    this->m_linear = true;
-   this->m_orthogonalize = true;
    this->m_residual_rhs = true;
    this->m_augmented_hessian = augmented_hessian;
    addEquations(rhs);
@@ -875,6 +917,7 @@ namespace LinearAlgebra {
   using IterativeSolver<scalar>::m_others;
  public:
   using IterativeSolver<scalar>::m_verbosity;
+  using IterativeSolver<scalar>::m_Weights;
   enum DIISmode_type {
    disabled ///< No extrapolation is performed
    , DIISmode ///< Direct Inversion in the Iterative Subspace
@@ -931,9 +974,6 @@ namespace LinearAlgebra {
    //	  xout << "solution : "<<solution<<std::endl;
    this->m_updateShift.clear();
    this->m_updateShift.push_back(-(1 + std::numeric_limits<double>::epsilon()) * this->m_subspaceMatrix(0, 0));
-   double weight =
-     this->m_options.count("weight") ? (
-       std::strtod(this->m_options.find("weight")->second.c_str(),NULL)) : 1.0;
    if (this->m_maxDim <= 1 || this->m_DIISmode == disabled) return;
 
    if (this->m_roots > 1) throw std::logic_error("DIIS does not handle multiple solutions");
@@ -945,7 +985,6 @@ namespace LinearAlgebra {
    this->m_LastResidualNormSq = std::fabs(this->m_subspaceMatrix(nDim - 1, nDim - 1));
    //  xout << "this->m_LastResidualNormSq "<<this->m_LastResidualNormSq<<std::endl;
 
-   this->m_Weights.push_back(weight); // TODO not conformant - add style
 
    Eigen::Array<scalar, Eigen::Dynamic, Eigen::Dynamic> d = this->m_subspaceMatrix.diagonal().array().abs();
    int worst = 0, best = 0;
@@ -964,7 +1003,6 @@ namespace LinearAlgebra {
     //      xout << "prune="<<prune<<std::endl;
     //  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
     this->deleteVector(prune);
-    m_Weights.erase(m_Weights.begin() + prune);
     nDim--;
     //  xout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
    }
@@ -1043,7 +1081,6 @@ namespace LinearAlgebra {
   typedef unsigned int uint;
   enum DIISmode_type m_DIISmode;
 
-  std::vector<double> m_Weights;
 
   // the following variables are kept for informative/displaying purposes
   double

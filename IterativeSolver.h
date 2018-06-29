@@ -115,7 +115,7 @@ namespace LinearAlgebra {
                  vectorSet<scalar> &other
   ) {
 //   if (m_rhs.size())
-//    std::cout << "addVector entry m_rhs.back()="<<this->m_rhs.back()<<std::endl;
+//    xout << "addVector entry m_rhs.back()="<<this->m_rhs.back()<<std::endl;
    if (m_roots < 1) m_roots = parameters.size(); // number of roots defaults to size of parameters
    if (!m_orthogonalize && m_roots > m_maxQ) m_maxQ = m_roots;
    assert(parameters.size() == action.size());
@@ -184,7 +184,7 @@ namespace LinearAlgebra {
      m_subspaceMatrix(old + n, i) = m_subspaceMatrix(i, old + n) = PP[offset++];
      double overlap = 0;
      for (const auto &p : Pvectors[n]) {
-//      std::cout << "addP Pvector="<<p.first<<" : "<<p.second<<std::endl;
+//      xout << "addP Pvector="<<p.first<<" : "<<p.second<<std::endl;
       if (m_Pvectors[i].count(p.first))
        overlap += p.second * m_Pvectors[i][p.first];
      }
@@ -222,7 +222,7 @@ namespace LinearAlgebra {
   /*!
      * \brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
      * be used in the next iteration; this is done only in the case of linear solvers where the orthogonalize option is set.
-     * Also calculate the degree of convergence, and write progress to std::cout.
+     * Also calculate the degree of convergence, and write progress to xout.
      * \param solution The current solution, after interpolation and updating with the preconditioned residual.
      * \param residual The residual after interpolation.
      * \return true if convergence reached for all roots
@@ -250,13 +250,13 @@ namespace LinearAlgebra {
                                const scalar threshold = 0) {
    std::map<size_t, scalar> result;
    for (size_t kkk = 0; kkk < solution.size(); kkk++) {
-//    std::cout << "suggestP kkk "<<kkk<<" active "<<solution.m_active[kkk]<<maximumNumber<<std::endl;
+//    xout << "suggestP kkk "<<kkk<<" active "<<solution.m_active[kkk]<<maximumNumber<<std::endl;
     if (solution.m_active[kkk]) {
      std::vector<size_t> indices;
      std::vector<scalar> values;
      std::tie(indices, values) = solution[kkk]->select(*residual[kkk], maximumNumber, threshold);
-//     std::cout <<"indices.size()="<<indices.size()<<std::endl;
-//     for (auto k=0; k<indices.size(); k++) std::cout << "select "<< indices[k] <<" : "<<values[k]<<std::endl;
+//     xout <<"indices.size()="<<indices.size()<<std::endl;
+//     for (auto k=0; k<indices.size(); k++) xout << "select "<< indices[k] <<" : "<<values[k]<<std::endl;
      for (size_t i = 0; i < indices.size(); i++)
       if (result.count(indices[i]))
        result[indices[i]] = std::max(result[indices[i]], values[i]);
@@ -265,10 +265,10 @@ namespace LinearAlgebra {
     }
    }
    // sort and select
-//   for (const auto& kv : result) std::cout << "result: " << kv.first << " : " <<kv.second<<std::endl;
+//   for (const auto& kv : result) xout << "result: " << kv.first << " : " <<kv.second<<std::endl;
    std::multimap<scalar, size_t, std::greater<scalar> > inverseResult;
    for (const auto &kv : result) inverseResult.insert(std::pair<scalar, size_t>(kv.second, kv.first));
-//   for (const auto& kv : inverseResult) std::cout << "inverseResult: " << kv.first << " : " <<kv.second<<std::endl;
+//   for (const auto& kv : inverseResult) xout << "inverseResult: " << kv.first << " : " <<kv.second<<std::endl;
    std::vector<size_t> indices;
 //   std::vector<scalar> values;
    size_t k = 0;
@@ -276,7 +276,7 @@ namespace LinearAlgebra {
     indices.push_back(p->second);// values.push_back(p->first);
     ++p;
    }
-//   for (auto k=0; k<indices.size(); k++) std::cout << "suggest P "<< indices[k] <<" : "<<values[k]<<std::endl;
+//   for (auto k=0; k<indices.size(); k++) xout << "suggest P "<< indices[k] <<" : "<<values[k]<<std::endl;
    return indices;
   }
 
@@ -375,7 +375,7 @@ namespace LinearAlgebra {
   }
 
   void buildSubspace() {
-//   std::cout << "buildSubspace"<<std::endl;
+//   xout << "buildSubspace"<<std::endl;
    const auto nP = m_Pvectors.size();
    const auto nQ = m_QQMatrix.rows();
    const auto n = nP + nQ;
@@ -397,15 +397,15 @@ namespace LinearAlgebra {
 //    Eigen::EigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
 //    xout << "eigenvalues "<<ss.eigenvalues()<<std::endl;
     Eigen::JacobiSVD<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> > svd(m_subspaceMatrix, Eigen::ComputeThinU | Eigen::ComputeThinV);
-//    std::cout << "singular values: "<<svd.singularValues().transpose()<<std::endl;
-//    std::cout << "U: "<<svd.matrixU()<<std::endl;
-//    std::cout << "V: "<<svd.matrixV()<<std::endl;
+//    xout << "singular values: "<<svd.singularValues().transpose()<<std::endl;
+//    xout << "U: "<<svd.matrixU()<<std::endl;
+//    xout << "V: "<<svd.matrixV()<<std::endl;
 //    auto tester = [](Eigen::Index i) { return std::fabs(svd.matrixV(nP+i,k))};
     const auto& k = m_subspaceMatrix.rows()-1;
     if (svd.singularValues()(k) < m_singularity_threshold * svd.singularValues()(0) || (!m_orthogonalize && nQ > m_maxQ)) { // condition number assuming singular values are strictlydescending
      Eigen::Index imax=0;
      for (Eigen::Index i=0; i<nQ-m_added_vectors; i++) { // never consider the very last Q vector
-//      std::cout << "consider " <<i<<": "<<svd.matrixV()(nP+i,k)<<std::endl;
+//      xout << "consider " <<i<<": "<<svd.matrixV()(nP+i,k)<<std::endl;
 //      if (std::fabs(svd.matrixV()(nP + i, k)) > std::fabs(svd.matrixV()(nP + imax, k))) imax = i;
       if (
         std::fabs(svd.matrixV()(nP + i, k)*m_subspaceMatrix(nP+i,nP+i))
@@ -413,8 +413,10 @@ namespace LinearAlgebra {
         std::fabs(svd.matrixV()(nP + imax, k)*m_subspaceMatrix(nP+imax,nP+imax))
         ) imax = i;
      }
-     if (m_verbosity>0) std::cout << " removing singular value "<<svd.singularValues()(k)/svd.singularValues()(0) << " by deleting redundant expansion vector "<<imax<<", "<<nQ-1<<" remaining"<<std::endl;
-     if (m_verbosity>1) std::cout << "  SVD right matrix column: "<<svd.matrixV().col(k).transpose()<<std::endl;
+     if (m_verbosity>0) xout << " removing singular value "<<svd.singularValues()(k)/svd.singularValues()(0) << " by deleting redundant expansion vector "<<imax<<";  new subspace size "<<nQ-1;
+     if (nP>0) xout<<"Q + "<<nP<<"P";
+     xout<<std::endl;
+     if (m_verbosity>1) xout << "  SVD right matrix column: "<<svd.matrixV().col(k).transpose()<<std::endl;
      deleteVector(imax);
      return; // deleteVector calls this function to rebuild the subspace
     }
@@ -512,10 +514,10 @@ namespace LinearAlgebra {
       }
      }
     }
-//    std::cout << "residual before axpy "<<residual[kkk]->str()<<std::endl;
+//    xout << "residual before axpy "<<residual[kkk]->str()<<std::endl;
     if (m_residual_eigen|| (m_residual_rhs && m_augmented_hessian>0)) residual[kkk]->axpy(-this->m_subspaceEigenvalues(kkk).real(), *solution[kkk]);
     if (m_residual_rhs) residual[kkk]->axpy(-1, *this->m_rhs[kkk]);
-//    std::cout << "residual after axpy "<<residual[kkk]->str()<<std::endl;
+//    xout << "residual after axpy "<<residual[kkk]->str()<<std::endl;
    }
 
   }
@@ -575,21 +577,21 @@ namespace LinearAlgebra {
 
   size_t
   addVectorSet(const vectorSet<scalar> &solution, const vectorSet<scalar> &residual, const vectorSet<scalar> &other) {
-//   std::cout << "addVectorSet entry"<<std::endl;
+//   xout << "addVectorSet entry"<<std::endl;
    //      if (residual.m_active.front()==0) xout <<"warning: inactive residual"<<std::endl;
    //      if (solution.m_active.front()==0) xout <<"warning: inactive solution"<<std::endl;
 //         for (size_t kkk=0; kkk<solution.size(); kkk++)
 //             xout << "addVectorSet solution: "<<solution[kkk]<<std::endl;
    //      for (size_t kkk=0; kkk<residual.size(); kkk++)
    //          xout << "addVectorSet residual: "<<residual[kkk]<<std::endl;
-//   std::cout << "addVectorSet before emplace_back()"<<std::endl;
+//   xout << "addVectorSet before emplace_back()"<<std::endl;
    m_residuals.emplace_back(
      vectorSet<scalar>(residual, LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
    m_solutions.emplace_back(
      vectorSet<scalar>(solution, LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
    m_others.emplace_back(
      vectorSet<scalar>(other, LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE));
-//   std::cout << "addVectorSet after emplace_back()"<<std::endl;
+//   xout << "addVectorSet after emplace_back()"<<std::endl;
    const vectorSet<scalar> &residual1 = residual;
    const vectorSet<scalar> &solution1 = solution;//      for (size_t kkk=0; kkk<solution.size(); kkk++)
 //   for (size_t kkk=0; kkk<solution.size(); kkk++)
@@ -644,7 +646,7 @@ namespace LinearAlgebra {
     xout << "QQ Matrix: " << std::endl << m_QQMatrix << std::endl;
     xout << "QQ Overlap: " << std::endl << m_QQOverlap << std::endl;
    }
-//   std::cout << "addVectorSet exit"<<std::endl;
+//   xout << "addVectorSet exit"<<std::endl;
    return m_residuals.size();
   }
 
@@ -851,7 +853,7 @@ namespace LinearAlgebra {
 //   for (const auto &v : rhs) this->m_rhs.push_back(v);
    this->m_rhs =
      vectorSet<scalar>(rhs, LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE);
-//   std::cout << "addEquations makes m_rhs.back()="<<this->m_rhs.back()<<std::endl;
+//   xout << "addEquations makes m_rhs.back()="<<this->m_rhs.back()<<std::endl;
   }
 
 
@@ -860,8 +862,8 @@ namespace LinearAlgebra {
    const auto nP = this->m_Pvectors.size();
    const auto nQ = this->m_QQMatrix.rows();
    const auto n = nP + nQ;
-//   std::cout << "solveReducedProblem initial subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
-//   std::cout << "solveReducedProblem subspaceRHS\n"<<this->m_subspaceRHS<<std::endl;
+//   xout << "solveReducedProblem initial subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
+//   xout << "solveReducedProblem subspaceRHS\n"<<this->m_subspaceRHS<<std::endl;
    this->m_interpolation.conservativeResize(n,this->m_rhs.size());
    for (size_t root=0; root < this->m_rhs.size(); root++) {
     if (this->m_augmented_hessian > 0) { // Augmented hessian
@@ -873,8 +875,8 @@ namespace LinearAlgebra {
      }
      this->m_subspaceMatrix(n,n) = 0;
      this->m_subspaceOverlap(n,n) = 1;
-//     std::cout << "solveReducedProblem augmented subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
-//     std::cout << "solveReducedProblem augmented subspace metric\n"<<this->m_subspaceOverlap<<std::endl;
+//     xout << "solveReducedProblem augmented subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
+//     xout << "solveReducedProblem augmented subspace metric\n"<<this->m_subspaceOverlap<<std::endl;
      Eigen::GeneralizedEigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>> s(this->m_subspaceMatrix,this->m_subspaceOverlap);
      auto eval = s.eigenvalues();
      auto evec = s.eigenvectors();
@@ -883,23 +885,23 @@ namespace LinearAlgebra {
       if (eval(i).real() < eval(imax).real()) imax=i;
      this->m_subspaceEigenvalues.conservativeResize(root+1);
      this->m_subspaceEigenvalues(root)=eval(imax);
-//     std::cout << "eigenvectors\n"<<evec.real()<<std::endl;
-//     std::cout << "eigenvalues\n"<<eval.real()<<std::endl;
-//     std::cout << "imax="<<imax<<std::endl;
-//     std::cout <<evec.col(imax)<<std::endl;
-//     std::cout <<evec.col(imax).real()<<std::endl;
-//     std::cout <<evec.col(imax).real().head(n)<<std::endl;
-//     std::cout <<this->m_interpolation.col(root)<<std::endl;
+//     xout << "eigenvectors\n"<<evec.real()<<std::endl;
+//     xout << "eigenvalues\n"<<eval.real()<<std::endl;
+//     xout << "imax="<<imax<<std::endl;
+//     xout <<evec.col(imax)<<std::endl;
+//     xout <<evec.col(imax).real()<<std::endl;
+//     xout <<evec.col(imax).real().head(n)<<std::endl;
+//     xout <<this->m_interpolation.col(root)<<std::endl;
      this->m_interpolation.col(root) = evec.col(imax).real().head(n) / (this->m_augmented_hessian * evec.real()(n,imax));
     } else { // straight solution of linear equations
      this->m_interpolation = this->m_subspaceMatrix.ldlt().solve(this->m_subspaceRHS);
     }
    }
-//   std::cout << "m_interpolation\n"<<this->m_interpolation<<std::endl;
+//   xout << "m_interpolation\n"<<this->m_interpolation<<std::endl;
    this->m_subspaceMatrix.conservativeResize(n, n);
    this->m_subspaceOverlap.conservativeResize(n, n);
-//   std::cout << "solveReducedProblem final subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
-//   std::cout << "solveReducedProblem subspaceRHS\n"<<this->m_subspaceRHS<<std::endl;
+//   xout << "solveReducedProblem final subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
+//   xout << "solveReducedProblem subspaceRHS\n"<<this->m_subspaceRHS<<std::endl;
   }
 
  };

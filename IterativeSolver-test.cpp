@@ -197,7 +197,7 @@ static struct {
   for (int iteration=1; iteration < 1000 && not converged; iteration++) {
 //   xout <<"start of iteration "<<iteration<<std::endl;
       _Rosenbrock_residual(x,g);
-   xout << "residual"<<g<<std::endl;
+   xout << "residual: "<<g;
       d.addVector(x,g);
       std::vector<scalar> shift; shift.push_back(1e-10);
       _Rosenbrock_updater(x,g,shift);

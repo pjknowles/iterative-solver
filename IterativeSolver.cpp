@@ -1,6 +1,17 @@
 #include "IterativeSolver.h"
 #include "PagedVector.h"
 
+namespace LinearAlgebra {
+ template
+ class LinearEigensystem<double>;
+
+ template
+ class LinearEquations<double>;
+
+ template
+ class DIIS<double>;
+}
+
 // C interface to IterativeSolver
 namespace LinearAlgebra {
  using v = PagedVector<double>;

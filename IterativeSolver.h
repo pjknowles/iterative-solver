@@ -1053,6 +1053,11 @@ namespace LinearAlgebra {
     m_LastAmplitudeCoeff;
 
  };
+
+ extern template class LinearEigensystem<double>;
+ extern template class LinearEquations<double>;
+ extern template class DIIS<double>;
+
 }
 
 // C interface

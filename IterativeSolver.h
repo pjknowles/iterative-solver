@@ -962,6 +962,7 @@ namespace LinearAlgebra {
    this->m_residual_eigen = false;
    this->m_orthogonalize = false;
    this->m_roots = 1;
+   this->m_maxQ=m_maxDim;
    setMode(DIISmode);
    Reset();
   }

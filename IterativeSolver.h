@@ -15,6 +15,7 @@
 #include "LinearAlgebra.h"
 #include <Eigen/Dense>
 #include <cmath>
+#include <complex>
 
 #undef isnan
 #undef isinf
@@ -65,7 +66,7 @@ namespace LinearAlgebra {
   ) :
     m_Pvectors(0),
     m_verbosity(0),
-    m_thresh(1e-12),
+    m_thresh(1e-10),
     m_maxIterations(1000),
     m_minIterations(0),
     m_orthogonalize(false),
@@ -90,9 +91,10 @@ namespace LinearAlgebra {
     m_interpolation(),
     m_dimension(0),
     m_iterations(0),
-    m_singularity_threshold(1e-14),
+    m_singularity_threshold(1e-30),
+    m_svdThreshold(1e-12),
     m_augmented_hessian(0),
-    m_maxQ(std::max(m_roots,size_t(6)))
+    m_maxQ(std::max(m_roots,size_t(66)))
     {}
 
   virtual ~IterativeSolver() = default;
@@ -432,47 +434,67 @@ namespace LinearAlgebra {
  protected:
   void diagonalizeSubspaceMatrix() {
    auto kept = m_subspaceMatrix.rows();
-   if (false){
-    Eigen::EigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceOverlap);
-    Eigen::VectorXcd sse = ss.eigenvalues();
-    for (int k = 0; k < sse.rows(); k++) {
-     if (std::fabs(sse(k).real()) < m_singularity_threshold)
-      kept--;
-    }
-   }
-   if (m_verbosity >= 0 && kept < m_subspaceMatrix.rows())
-    xout << "IterativeSolver WARNING, subspace singular, pruned from " << m_subspaceMatrix.rows() << " to " << kept
-         << std::endl;
 
    Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> H = m_subspaceMatrix.block(0, 0, kept, kept);
    Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> S = m_subspaceOverlap.block(0, 0, kept, kept);
-   Eigen::GeneralizedEigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
+//   Eigen::GeneralizedEigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
+   Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV);
+   svd.setThreshold(m_svdThreshold);
+//   xout << "singular values of overlap "<<svd.singularValues().transpose()<<std::endl;
+//   auto Hbar = svd.solve(H);
+   Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>
+     Hbar = Eigen::DiagonalMatrix<scalar, Eigen::Dynamic>(svd.singularValues().head(svd.rank())).inverse()
+     * svd.matrixU().leftCols(svd.rank()).adjoint()
+     * H
+     * svd.matrixV().leftCols(svd.rank());
+//   xout << "S\n"<<S<<std::endl;
+//   xout << "S singular values"<<(Eigen::DiagonalMatrix<scalar, Eigen::Dynamic, Eigen::Dynamic>(svd.singularValues().head(svd.rank())))<<std::endl;
+//   xout << "S inverse singular values"<<Eigen::DiagonalMatrix<scalar, Eigen::Dynamic>(svd.singularValues().head(svd.rank())).inverse()<<std::endl;
+//   xout << "U\n"<<svd.matrixU().leftCols(svd.rank())<<std::endl;
+//   xout << "V\n"<<svd.matrixV().leftCols(svd.rank())<<std::endl;
+//   xout << "H\n"<<H<<std::endl;
+//   xout << "Hbar\n"<<Hbar<<std::endl;
+   Eigen::EigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> > s(Hbar);
    m_subspaceEigenvalues = s.eigenvalues();
-   m_subspaceEigenvectors = s.eigenvectors();
-   // sort
+   m_subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * s.eigenvectors();
+//   xout << "unsorted eigenvalues\n"<<m_subspaceEigenvalues<<std::endl;
+//   xout << "unsorted eigenvectors\n"<<m_subspaceEigenvectors<<std::endl;
+   {
+    // sort
+    auto eigval=m_subspaceEigenvalues;
+    auto eigvec=m_subspaceEigenvectors;
    std::vector<size_t> map;
-   for (Eigen::Index k = 0; k < H.rows(); k++) {
+   for (Eigen::Index k = 0; k < Hbar.cols(); k++) {
     Eigen::Index ll;
     for (ll = 0; std::count(map.begin(), map.end(), ll) != 0; ll++);
-    for (Eigen::Index l = 0; l < H.rows(); l++) {
+    for (Eigen::Index l = 0; l < Hbar.cols(); l++) {
      if (std::count(map.begin(), map.end(), l) == 0) {
-      if (s.eigenvalues()(l).real() < s.eigenvalues()(ll).real())
+      if (eigval(l).real() < eigval(ll).real())
        ll = l;
      }
     }
     map.push_back(ll);
-    m_subspaceEigenvalues[k] = s.eigenvalues()(ll);
-    for (Eigen::Index l = 0; l < H.rows(); l++) m_subspaceEigenvectors(l, k) = s.eigenvectors()(l, ll);
+    m_subspaceEigenvalues[k] = eigval(ll);
+//    xout << "new sorted eigenvalue "<<k<<", "<<ll<<", "<<eigval(ll)<<std::endl;
+//    xout << eigvec.col(ll)<<std::endl;
+    m_subspaceEigenvectors.col(k) = eigvec.col(ll);
    }
-   for (Eigen::Index k = 0; k < m_subspaceEigenvectors.rows(); k++) {
-    for (Eigen::Index l = 0; l < k; l++) {
-     auto ovl = (m_subspaceEigenvectors.col(k).transpose() * m_subspaceOverlap * m_subspaceEigenvectors.col(l).conjugate())(0,0);
-     auto norm = (m_subspaceEigenvectors.col(l).transpose() * m_subspaceOverlap* m_subspaceEigenvectors.col(l).conjugate())(0,0);
-     m_subspaceEigenvectors.col(k) -= m_subspaceEigenvectors.col(l) * ovl/norm;
+   }
+//   xout << "sorted eigenvalues\n"<<m_subspaceEigenvalues<<std::endl;
+//   xout << "sorted eigenvectors\n"<<m_subspaceEigenvectors<<std::endl;
+//   xout << m_subspaceOverlap<<std::endl;
+   for (Eigen::Index k = 0; k < m_subspaceEigenvectors.cols(); k++) {
+     for (Eigen::Index l = 0; l < k; l++) {
+      auto ovl = (m_subspaceEigenvectors.col(k).transpose() * m_subspaceOverlap * m_subspaceEigenvectors.col(l).conjugate())(0,0);
+      auto norm = (m_subspaceEigenvectors.col(l).transpose() * m_subspaceOverlap* m_subspaceEigenvectors.col(l).conjugate())(0,0);
+//      xout << "k="<<k<<", l="<<l<<", ovl="<<ovl<<" norm="<<norm<<std::endl;
+//      xout << m_subspaceEigenvectors.col(k).transpose()<<std::endl;
+//      xout << m_subspaceEigenvectors.col(l).transpose()<<std::endl;
+       m_subspaceEigenvectors.col(k) -= m_subspaceEigenvectors.col(l) * ovl/norm;
+     }
+     auto ovl = (m_subspaceEigenvectors.col(k).transpose() * m_subspaceOverlap * m_subspaceEigenvectors.col(k).conjugate())(0,0);
+     m_subspaceEigenvectors.col(k) /= std::sqrt(ovl.real());
     }
-    auto ovl = (m_subspaceEigenvectors.col(k).transpose() * m_subspaceOverlap * m_subspaceEigenvectors.col(k).conjugate())(0,0);
-    m_subspaceEigenvectors.col(k) /= std::sqrt(ovl.real());
-   }
 //     xout << "eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
 //     xout << "eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
   }
@@ -737,6 +759,9 @@ namespace LinearAlgebra {
   double m_augmented_hessian; //!< The scale factor for augmented hessian solution of linear inhomogeneous systems. Special values:
   //!< - 0: unmodified linear equations
   //!< - 1: standard augmented hessian
+ public:
+  double m_svdThreshold; ///< Threshold for singular-value truncation in linear equation solver.
+ protected:
   std::vector<double> m_Weights; //!< weighting of error vectors in DIIS
   size_t m_maxQ; //!< maximum size of Q space when !m_orthogonalize
 
@@ -932,7 +957,7 @@ namespace LinearAlgebra {
  * \brief DIIS
  */
   DIIS()
-    : m_svdThreshold(1e-10), m_maxDim(6), m_LastResidualNormSq(0), m_LastAmplitudeCoeff(1) {
+    : m_maxDim(6), m_LastResidualNormSq(0), m_LastAmplitudeCoeff(1) {
    this->m_residual_rhs = false;
    this->m_residual_eigen = false;
    this->m_orthogonalize = false;
@@ -1045,7 +1070,7 @@ namespace LinearAlgebra {
 
    // invert the system, determine extrapolation coefficients.
    Eigen::JacobiSVD<Eigen::MatrixXd> svd(B, Eigen::ComputeThinU | Eigen::ComputeThinV);
-   svd.setThreshold(m_svdThreshold);
+   svd.setThreshold(this->m_svdThreshold);
    Coeffs = svd.solve(Rhs).head(nDim);
    m_LastAmplitudeCoeff = Coeffs[nDim - 1];
    if (m_verbosity > 1) xout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
@@ -1076,7 +1101,6 @@ namespace LinearAlgebra {
 
   unsigned int nMaxDim() const { return m_maxDim; }
 
-  double m_svdThreshold; ///< Threshold for singular-value truncation in linear equation solver.
   size_t m_maxDim; ///< Maximum DIIS dimension allowed.
   static void
   randomTest(size_t sample, size_t n = 100, double alpha = 0.1, double gamma = 0.0, DIISmode_type mode = DIISmode);

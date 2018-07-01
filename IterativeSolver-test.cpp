@@ -471,7 +471,7 @@ int main(int argc, char *argv[])
 //  DIISTest<PagedVector<double> >(1,6,1e-3,LinearAlgebra::DIIS<double>::disabled,0.0002);
 //   DavidsonTest<PagedVector<double> >(2,2,2,2,false);
   DavidsonTest<PagedVector<double> >(3,3,1,2,false);
-  DavidsonTest<PagedVector<double> >(3,2,3,2,false);
+  DavidsonTest<PagedVector<double> >(3,2,1,2,false);
   DavidsonTest<PagedVector<double> >(9,1,1,2,true);
   DavidsonTest<PagedVector<double> >(9,1,1,2,false);
    DavidsonTest<PagedVector<double> >(9,9,1,1,false);

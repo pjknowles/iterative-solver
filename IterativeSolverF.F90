@@ -15,14 +15,15 @@ CONTAINS
 !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
 !> Example of simplest use: @include LinearEigensystemExampleF.F90
 !> Example including use of P space: @include LinearEigensystemExampleF-Pspace.F90
- SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq,nroot,thresh,maxIterations,verbosity)
+ SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq,nroot,thresh,maxIterations,verbosity,orthogonalize)
   INTEGER, INTENT(in) :: nq !< dimension of matrix
   INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
   DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
   INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
   INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors. One gives a single progress-report line each iteration.G
+  LOGICAL, INTENT(in), OPTIONAL :: orthogonalize !< whether to orthogonalize expansion vectors (default false)
   INTERFACE
-   SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq,nroot,thresh,maxIterations,verbosity) &
+   SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq,nroot,thresh,maxIterations,verbosity,orthogonalize) &
         BIND(C,name='IterativeSolverLinearEigensystemInitialize')
     USE iso_c_binding
     INTEGER(C_size_t), INTENT(in), VALUE :: nq
@@ -30,34 +31,33 @@ CONTAINS
     REAL(c_double), INTENT(in), VALUE :: thresh
     INTEGER(C_int), INTENT(in), VALUE :: maxIterations
     INTEGER(C_int), INTENT(in), VALUE :: verbosity
+    INTEGER(C_int), INTENT(in), VALUE :: orthogonalize
    END SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC
   END INTERFACE
-  INTEGER(c_int) :: verbosityC, maxIterationsC
-  REAL(c_double) :: threshC
+  INTEGER(c_int) :: verbosityC=0, maxIterationsC=0, orthogonalizeC=0
+  REAL(c_double) :: threshC=0d0
   m_nq=INT(nq,kind=c_size_t)
   m_nroot=INT(nroot,kind=c_size_t)
   IF (PRESENT(thresh)) THEN
    threshC=thresh
-  ELSE
-   threshC=0
   END IF
   IF (PRESENT(maxIterations)) THEN
    maxIterationsC=INT(maxIterations,kind=c_int)
-  ELSE
-   maxIterationsC=0
   END IF
   IF (PRESENT(verbosity)) THEN
    verbosityC=INT(verbosity,kind=c_int)
-  ELSE
-   verbosityC=0
   END IF
-  CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq,m_nroot,threshC, maxIterationsC, verbosityC)
+  IF (PRESENT(orthogonalize)) THEN
+   IF (orthogonalize) orthogonalizeC=1
+  END IF
+  CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq,m_nroot,threshC, maxIterationsC, verbosityC, orthogonalizeC)
  END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize
 
 !> \brief Finds the solutions of linear equation systems using a generalisation of Davidson's method, i.e. preconditioned Lanczos
 !> Example of simplest use: @include LinearEquationsExampleF.F90
 !> <!-- Example including use of P space: @include LinearEquationsExampleF-Pspace.F90 -->
- SUBROUTINE Iterative_Solver_Linear_Equations_Initialize(nq,nroot,rhs,augmented_hessian,thresh,maxIterations,verbosity)
+ SUBROUTINE Iterative_Solver_Linear_Equations_Initialize(nq,nroot,rhs,augmented_hessian,thresh,maxIterations, &
+         verbosity,orthogonalize)
   INTEGER, INTENT(in) :: nq !< dimension of matrix
   INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
     double precision, INTENT(in), DIMENSION(nq,nroot) :: rhs !< the constant right-hand-side of each equation system
@@ -67,8 +67,10 @@ CONTAINS
   DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
   INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
   INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors. One gives a single progress-report line each iteration.
+  LOGICAL, INTENT(in), OPTIONAL :: orthogonalize !< whether to orthogonalize expansion vectors (default false)
   INTERFACE
-   SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC(nq,nroot,rhs,augmented_hessian,thresh,maxIterations,verbosity) &
+   SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC(nq,nroot,rhs,augmented_hessian,thresh,maxIterations, &
+           verbosity,orthogonalize) &
         BIND(C,name='IterativeSolverLinearEquationsInitialize')
     USE iso_c_binding
     INTEGER(C_size_t), INTENT(in), VALUE :: nq
@@ -78,33 +80,30 @@ CONTAINS
     REAL(c_double), INTENT(in), VALUE :: thresh
     INTEGER(C_int), INTENT(in), VALUE :: maxIterations
     INTEGER(C_int), INTENT(in), VALUE :: verbosity
+    INTEGER(C_int), INTENT(in), VALUE :: orthogonalize
    END SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC
   END INTERFACE
-  INTEGER(c_int) :: verbosityC, maxIterationsC
-  REAL(c_double) :: threshC, augmented_hessianC
+  INTEGER(c_int) :: verbosityC=0, maxIterationsC=0, orthogonalizeC=0
+  REAL(c_double) :: threshC=0d0, augmented_hessianC=0d0
   m_nq=INT(nq,kind=c_size_t)
   m_nroot=INT(nroot,kind=c_size_t)
   IF (PRESENT(augmented_hessian)) THEN
    augmented_hessianC=augmented_hessian
-  ELSE
-   augmented_hessianC=0
   END IF
   IF (PRESENT(thresh)) THEN
    threshC=thresh
-  ELSE
-   threshC=0
   END IF
   IF (PRESENT(maxIterations)) THEN
    maxIterationsC=INT(maxIterations,kind=c_int)
-  ELSE
-   maxIterationsC=0
   END IF
   IF (PRESENT(verbosity)) THEN
    verbosityC=INT(verbosity,kind=c_int)
-  ELSE
-   verbosityC=0
   END IF
-  CALL Iterative_Solver_Linear_Equations_InitializeC(m_nq,m_nroot,rhs, augmented_hessianC, threshC, maxIterationsC, verbosityC)
+  IF (PRESENT(orthogonalize)) THEN
+   IF (orthogonalize) orthogonalizeC=1
+  END IF
+  CALL Iterative_Solver_Linear_Equations_InitializeC(m_nq,m_nroot,rhs, augmented_hessianC, threshC, maxIterationsC, &
+          verbosityC, orthogonalizeC)
  END SUBROUTINE Iterative_Solver_Linear_Equations_Initialize
 
 !> \brief Accelerated convergence of non-linear equations
@@ -351,15 +350,17 @@ CONTAINS
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: pp
   INTEGER :: i,j,root
   DOUBLE PRECISION :: alpha, anharmonicity
+  LOGICAL :: orthogonalize
   PRINT *, 'Test Fortran binding of IterativeSolver'
   m=1
   DO i=1,n
    m(i,i)=3*i
   END DO
 
-  DO irep=1,1
-   WRITE (6,*) 'Without P-space, dimension=',n,', roots=',nroot
-   CALL Iterative_Solver_Linear_Eigensystem_Initialize(n,nroot,thresh=1d-8,verbosity=1)
+  DO irep=1,2
+   orthogonalize = irep.eq.2
+   WRITE (6,*) 'Without P-space, dimension=',n,', roots=',nroot,' orthogonalize=',orthogonalize
+   CALL Iterative_Solver_Linear_Eigensystem_Initialize(n,nroot,thresh=1d-8,verbosity=1,orthogonalize=orthogonalize)
    CALL Iterative_Solver_Option("convergence","residual")
    c=0; DO i=1,nroot; c(i,i)=1; ENDDO
    DO i=1,n

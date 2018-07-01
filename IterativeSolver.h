@@ -66,10 +66,10 @@ namespace LinearAlgebra {
   ) :
     m_Pvectors(0),
     m_verbosity(0),
-    m_thresh(1e-10),
+    m_thresh(1e-8),
     m_maxIterations(1000),
     m_minIterations(0),
-    m_orthogonalize(false),
+    m_orthogonalize(true),
     m_linear(false),
     m_hermitian(false),
     m_roots(0),
@@ -92,9 +92,9 @@ namespace LinearAlgebra {
     m_dimension(0),
     m_iterations(0),
     m_singularity_threshold(1e-30),
-    m_svdThreshold(1e-12),
+    m_svdThreshold(1e-15),
     m_augmented_hessian(0),
-    m_maxQ(std::max(m_roots,size_t(66)))
+    m_maxQ(std::max(m_roots,size_t(16)))
     {}
 
   virtual ~IterativeSolver() = default;
@@ -415,6 +415,7 @@ namespace LinearAlgebra {
         std::fabs(svd.matrixV()(nP + imax, k)*m_subspaceMatrix(nP+imax,nP+imax))
         ) imax = i;
      }
+//     imax=0;
      if (m_verbosity>0) xout << " removing singular value "<<svd.singularValues()(k)/svd.singularValues()(0) << " by deleting redundant expansion vector "<<imax<<";  new subspace size "<<nQ-1;
      if (nP>0) xout<<"Q + "<<nP<<"P";
      xout<<std::endl;
@@ -442,6 +443,8 @@ namespace LinearAlgebra {
    svd.setThreshold(m_svdThreshold);
 //   xout << "singular values of overlap "<<svd.singularValues().transpose()<<std::endl;
 //   auto Hbar = svd.solve(H);
+   if (m_verbosity>1 && svd.rank() < S.cols()) xout << "SVD rank "<<svd.rank()<<" in subspace of dimension "<<S.cols()<<std::endl;
+   if (m_verbosity>2 && svd.rank() < S.cols()) xout << "singular values "<<svd.singularValues().transpose()<<std::endl;
    Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>
      Hbar = Eigen::DiagonalMatrix<scalar, Eigen::Dynamic>(svd.singularValues().head(svd.rank())).inverse()
      * svd.matrixU().leftCols(svd.rank()).adjoint()
@@ -526,7 +529,7 @@ namespace LinearAlgebra {
      for (size_t lll = 0; lll < this->m_solutions[ll].size(); lll++) {
       if (this->m_solutions[ll].m_active[lll]) {
        if (m_verbosity > 3)
-        xout << "LinearEigensystem::doInterpolation kkk=" << kkk << ", ll=" << ll << ", lll=" << lll << ", l=" << l
+        xout << "IterativeSolver::doInterpolation kkk=" << kkk << ", ll=" << ll << ", lll=" << lll << ", l=" << l
              << std::endl;
        if (m_verbosity > 3) xout << "Interpolation:\n" << this->m_interpolation(l, kkk) << std::endl;
        solution[kkk]->axpy(this->m_interpolation(l, kkk), *this->m_solutions[ll][lll]);
@@ -1129,11 +1132,11 @@ namespace LinearAlgebra {
 // C interface
 extern "C" void
 IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh, unsigned int maxIterations,
-                                           int verbosity);
+                                           int verbosity, int orthogonalize);
 
 extern "C" void
 IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes, double thresh, unsigned int maxIterations,
-                                         int verbosity);
+                                         int verbosity, int orthogonalize);
 
 extern "C" void
 IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity);

@@ -19,7 +19,7 @@ namespace LinearAlgebra {
  static std::unique_ptr<IterativeSolver<double> > instance;
 
  extern "C" void
- IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, double thresh, unsigned int maxIterations, int verbosity) {
+ IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, double thresh, unsigned int maxIterations, int verbosity, int orthogonalize) {
 #ifdef HAVE_MPI_H
   int flag;
   MPI_Initialized(&flag);
@@ -31,10 +31,12 @@ namespace LinearAlgebra {
   instance->m_thresh = thresh;
   instance->m_maxIterations = maxIterations;
   instance->m_verbosity = verbosity;
+  instance->m_orthogonalize=orthogonalize;
+  std::cout << "orthogonalize: "<<orthogonalize<<std::endl;
  }
 
  extern "C" void
- IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes, double thresh, unsigned int maxIterations, int verbosity) {
+ IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes, double thresh, unsigned int maxIterations, int verbosity, int orthogonalize) {
 #ifdef HAVE_MPI_H
   int flag;
   MPI_Initialized(&flag);
@@ -51,6 +53,7 @@ namespace LinearAlgebra {
   instance->m_thresh = thresh;
   instance->m_maxIterations = maxIterations;
   instance->m_verbosity = verbosity;
+  instance->m_orthogonalize=orthogonalize;
  }
 
  extern "C" void

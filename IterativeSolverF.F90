@@ -21,7 +21,7 @@ CONTAINS
   DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
   INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
   INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors. One gives a single progress-report line each iteration.G
-  LOGICAL, INTENT(in), OPTIONAL :: orthogonalize !< whether to orthogonalize expansion vectors (default false)
+  LOGICAL, INTENT(in), OPTIONAL :: orthogonalize !< whether to orthogonalize expansion vectors (default true)
   INTERFACE
    SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq,nroot,thresh,maxIterations,verbosity,orthogonalize) &
         BIND(C,name='IterativeSolverLinearEigensystemInitialize')
@@ -34,7 +34,7 @@ CONTAINS
     INTEGER(C_int), INTENT(in), VALUE :: orthogonalize
    END SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC
   END INTERFACE
-  INTEGER(c_int) :: verbosityC=0, maxIterationsC=0, orthogonalizeC=0
+  INTEGER(c_int) :: verbosityC=0, maxIterationsC=0, orthogonalizeC=1
   REAL(c_double) :: threshC=0d0
   m_nq=INT(nq,kind=c_size_t)
   m_nroot=INT(nroot,kind=c_size_t)
@@ -49,6 +49,7 @@ CONTAINS
   END IF
   IF (PRESENT(orthogonalize)) THEN
    IF (orthogonalize) orthogonalizeC=1
+   IF (.NOT.orthogonalize) orthogonalizeC=0
   END IF
   CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq,m_nroot,threshC, maxIterationsC, verbosityC, orthogonalizeC)
  END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize
@@ -67,7 +68,7 @@ CONTAINS
   DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
   INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
   INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors. One gives a single progress-report line each iteration.
-  LOGICAL, INTENT(in), OPTIONAL :: orthogonalize !< whether to orthogonalize expansion vectors (default false)
+  LOGICAL, INTENT(in), OPTIONAL :: orthogonalize !< whether to orthogonalize expansion vectors (default true)
   INTERFACE
    SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC(nq,nroot,rhs,augmented_hessian,thresh,maxIterations, &
            verbosity,orthogonalize) &
@@ -83,7 +84,7 @@ CONTAINS
     INTEGER(C_int), INTENT(in), VALUE :: orthogonalize
    END SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC
   END INTERFACE
-  INTEGER(c_int) :: verbosityC=0, maxIterationsC=0, orthogonalizeC=0
+  INTEGER(c_int) :: verbosityC=0, maxIterationsC=0, orthogonalizeC=1
   REAL(c_double) :: threshC=0d0, augmented_hessianC=0d0
   m_nq=INT(nq,kind=c_size_t)
   m_nroot=INT(nroot,kind=c_size_t)
@@ -101,6 +102,7 @@ CONTAINS
   END IF
   IF (PRESENT(orthogonalize)) THEN
    IF (orthogonalize) orthogonalizeC=1
+   IF (.NOT.orthogonalize) orthogonalizeC=0
   END IF
   CALL Iterative_Solver_Linear_Equations_InitializeC(m_nq,m_nroot,rhs, augmented_hessianC, threshC, maxIterationsC, &
           verbosityC, orthogonalizeC)

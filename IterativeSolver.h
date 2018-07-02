@@ -970,8 +970,6 @@ namespace LinearAlgebra {
    Reset();
   }
 
-  ~DIIS() = default;
-
 
   /*!
  * \brief Set options for DIIS.

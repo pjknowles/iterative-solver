@@ -57,8 +57,7 @@
 //}
 //} _matrix_preconditioner;
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 //  alpha=100;
 //  n=10;
 //  RSPT solver(_matrix_residual,_matrix_preconditioner);

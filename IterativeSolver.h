@@ -162,7 +162,8 @@ class IterativeSolver {
    * \param PP Matrix projected onto the existing+new, new P space. It should be provided as a
    * 1-dimensional array, with the existing+new index running fastest.
    * \param parameters On exit, the interpolated solution vector.
-   * \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
+   * \param action  On exit, the  residual of the interpolated Q parameters.
+   * The contribution from the new, and any existing, P parameters is missing, and should be added in subsequently.
    * \param parametersP On exit, the interpolated solution projected onto the P space.
    * \param other On exit, interpolation of the other vectors
    */

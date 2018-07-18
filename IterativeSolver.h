@@ -444,7 +444,7 @@ class IterativeSolver {
       if (svd.singularValues()(k) < m_singularity_threshold * svd.singularValues()(0)
           || (!m_orthogonalize && nQ > m_maxQ)) { // condition number assuming singular values are strictlydescending
         Eigen::Index imax = 0;
-        for (Eigen::Index i = 0; i < nQ - m_added_vectors; i++) { // never consider the very last Q vector
+        for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(nQ - m_added_vectors); i++) { // never consider the very last Q vector
 //      xout << "consider " <<i<<": "<<svd.matrixV()(nP+i,k)<<std::endl;
 //      if (std::fabs(svd.matrixV()(nP + i, k)) > std::fabs(svd.matrixV()(nP + imax, k))) imax = i;
           if (
@@ -577,7 +577,7 @@ class IterativeSolver {
     size_t nP = m_Pvectors.size();
     solutionP.resize(residual.size());
     other.zero();
-    for (size_t kkk = 0; kkk < residual.size() && kkk < m_interpolation.rows(); kkk++) {
+    for (size_t kkk = 0; kkk < residual.size() && kkk < static_cast<size_t>(m_interpolation.rows()); kkk++) {
       solutionP[kkk].resize(nP);
       for (size_t l = 0; l < nP; l++)
         solution[kkk]->axpy((solutionP[kkk][l] = this->m_interpolation(l, kkk)), m_Pvectors[l]);

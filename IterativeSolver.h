@@ -193,7 +193,7 @@ class IterativeSolver {
     for (size_t n = 0; n < Pvectors.size(); n++)
       m_Pvectors.push_back(Pvectors[n]);
     for (size_t n = 0; n < Pvectors.size(); n++) {
-      for (int i = 0; i < newNP; i++) {
+      for (size_t i = 0; i < newNP; i++) {
 //        xout << "offset " << offset << std::endl;
 //        xout << "PP " << PP[offset] << std::endl;
         m_subspaceMatrix(oldNP + n, i) = m_subspaceMatrix(i, oldNP + n) = PP[offset++];
@@ -366,7 +366,7 @@ class IterativeSolver {
       for (auto rep = 0; rep < 2; rep++)
         for (size_t kkk = 0; kkk < solution.size(); kkk++) {
           if (solution.m_active[kkk]) {
-            for (auto i = 0; i < m_Pvectors.size(); i++) {
+            for (size_t i = 0; i < m_Pvectors.size(); i++) {
               const auto &p = m_Pvectors[i];
               double s = -solution[kkk]->dot(p) / m_subspaceOverlap(i, i);
               solution[kkk]->axpy(s, p);
@@ -414,17 +414,17 @@ class IterativeSolver {
 
   void buildSubspace() {
 //   xout << "buildSubspace"<<std::endl;
-    const auto nP = m_Pvectors.size();
-    const auto nQ = m_QQMatrix.rows();
-    const auto n = nP + nQ;
+    const size_t nP = m_Pvectors.size();
+    const size_t nQ = m_QQMatrix.rows();
+    const size_t n = nP + nQ;
     m_subspaceMatrix.conservativeResize(n, n);
     m_subspaceOverlap.conservativeResize(n, n);
-    for (auto i = 0; i < nQ; i++) {
-      for (auto j = 0; j < nQ; j++) {
+    for (size_t i = 0; i < nQ; i++) {
+      for (size_t j = 0; j < nQ; j++) {
         m_subspaceMatrix(nP + j, nP + i) = m_QQMatrix(j, i);
         m_subspaceOverlap(nP + j, nP + i) = m_QQOverlap(j, i);
       }
-      for (auto j = 0; j < nP; j++) {
+      for (size_t j = 0; j < nP; j++) {
         m_subspaceMatrix(j, nP + i) = m_subspaceMatrix(nP + i, j) = m_PQMatrix(j, i);
         m_subspaceOverlap(j, nP + i) = m_subspaceOverlap(nP + i, j) = m_PQOverlap(j, i);
       }
@@ -750,7 +750,7 @@ class IterativeSolver {
     //    xout << "deleteVector "<<index<<std::endl;
     //    xout << "old m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
     //    xout << "old m_subspaceOverlap"<<std::endl<<m_subspaceOverlap<<std::endl;
-    auto old_size = m_QQMatrix.rows();
+    size_t old_size = m_QQMatrix.rows();
     if (index >= old_size) throw std::logic_error("invalid index");
     auto new_size = old_size;
     size_t l = 0;
@@ -763,12 +763,12 @@ class IterativeSolver {
             m_solutions[ll].m_active[lll] = false;
             m_residuals[ll].m_active[lll] = false;
             //                    m_others[ll].m_active[lll] = false;
-            for (auto l2 = l + 1; l2 < m_QQMatrix.cols(); l2++) {
-              for (auto k = 0; k < m_QQMatrix.rows(); k++) {
+            for (Eigen::Index l2 = l + 1; l2 < m_QQMatrix.cols(); l2++) {
+              for (Eigen::Index k = 0; k < m_QQMatrix.rows(); k++) {
                 m_QQMatrix(k, l2 - 1) = m_QQMatrix(k, l2);
                 m_QQOverlap(k, l2 - 1) = m_QQOverlap(k, l2);
               }
-              for (auto k = 0; k < m_PQMatrix.rows(); k++) {
+              for (Eigen::Index k = 0; k < m_PQMatrix.rows(); k++) {
                 m_PQMatrix(k, l2 - 1) = m_PQMatrix(k, l2);
                 m_PQOverlap(k, l2 - 1) = m_PQOverlap(k, l2);
               }
@@ -776,8 +776,8 @@ class IterativeSolver {
                 m_subspaceRHS(m_PQMatrix.rows() + l2 - 1, k) = m_subspaceRHS(m_PQMatrix.rows() + l2, k);
               }
             }
-            for (auto l2 = l + 1; l2 < m_QQMatrix.rows(); l2++) {
-              for (int k = 0; k < m_QQMatrix.rows(); k++) {
+            for (Eigen::Index l2 = l + 1; l2 < m_QQMatrix.rows(); l2++) {
+              for (Eigen::Index k = 0; k < m_QQMatrix.rows(); k++) {
                 m_QQMatrix(l2 - 1, k) = m_QQMatrix(l2, k);
                 m_QQOverlap(l2 - 1, k) = m_QQOverlap(l2, k);
               }
@@ -897,7 +897,7 @@ class LinearEigensystem : public IterativeSolver<scalar> {
     this->m_updateShift.resize(this->m_roots);
     for (size_t root = 0; root < (size_t) this->m_roots; root++)
       this->m_updateShift[root] = -(1 + std::numeric_limits<scalar>::epsilon()) *
-          (root < this->m_subspaceEigenvectors.rows() ? this->m_subspaceEigenvalues[root].real()
+          (static_cast<Eigen::Index>(root) < this->m_subspaceEigenvectors.rows() ? this->m_subspaceEigenvalues[root].real()
                                                       : 0);
   }
 
@@ -960,7 +960,7 @@ class LinearEquations : public IterativeSolver<scalar> {
   void solveReducedProblem() override {
     const auto nP = this->m_Pvectors.size();
     const auto nQ = this->m_QQMatrix.rows();
-    const auto n = nP + nQ;
+    const Eigen::Index n = nP + nQ;
 //   xout << "solveReducedProblem initial subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
 //   xout << "solveReducedProblem subspaceRHS\n"<<this->m_subspaceRHS<<std::endl;
     this->m_interpolation.conservativeResize(n, this->m_rhs.size());

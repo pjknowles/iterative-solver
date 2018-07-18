@@ -478,7 +478,6 @@ class PagedVector : public vector<scalar> {
           m_cache.dirty = true;
         }
       } else {
-        size_t l = std::min(m_cache.length, othe.m_cache.length);
         for (size_t i = 0; i < this->m_segment_length; i++)
           m_cache.buffer[i] += a * othe.m_cache.buffer[i];
       }
@@ -627,7 +626,7 @@ class PagedVector : public vector<scalar> {
             for (size_t i = 0; i < m_cache.length; i++)
               result += m_cache.buffer[i] * othe.m_cache.buffer[offset + i];
         } else {
-          size_t l = std::min(m_cache.length, othe.m_cache.length); // FIXME puzzle as to what this is
+//          size_t l = std::min(m_cache.length, othe.m_cache.length); // FIXME puzzle as to what this is
           for (size_t i = 0; i < this->m_segment_length; i++)
             result += m_cache.buffer[i] * othe.m_cache.buffer[i];
         }

@@ -250,6 +250,7 @@ class IterativeSolver {
     m_PQMatrix.conservativeResize(0, m_QQMatrix.rows());
     m_PQOverlap.conservativeResize(0, m_QQMatrix.rows());
     m_subspaceRHS.conservativeResize(0, m_rhs.size());
+    m_Pvectors.clear();
   }
 
   /*!

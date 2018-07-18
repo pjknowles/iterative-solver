@@ -20,7 +20,8 @@ CONTAINS
     INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
     INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
-    INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors. One gives a single progress-report line each iteration.G
+    INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
+    !< One gives a single progress-report line each iteration.
     LOGICAL, INTENT(in), OPTIONAL :: orthogonalize !< whether to orthogonalize expansion vectors (default true)
     INTERFACE
       SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, thresh, maxIterations, verbosity, orthogonalize) &
@@ -67,7 +68,8 @@ CONTAINS
     !< the augmented hessian problem. Other values scale the augmented hessian damping.
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
     INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
-    INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors. One gives a single progress-report line each iteration.
+    INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
+    !< One gives a single progress-report line each iteration.
     LOGICAL, INTENT(in), OPTIONAL :: orthogonalize !< whether to orthogonalize expansion vectors (default true)
     INTERFACE
       SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC(nq, nroot, rhs, augmented_hessian, thresh, maxIterations, &
@@ -115,7 +117,8 @@ CONTAINS
     INTEGER, INTENT(in) :: nq !< dimension of parameter space
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
     INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
-    INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors. One gives a single progress-report line each iteration.
+    INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
+    !< One gives a single progress-report line each iteration.
     INTERFACE
       SUBROUTINE Iterative_Solver_DIIS_InitializeC(nq, thresh, maxIterations, verbosity) &
           BIND(C, name = 'IterativeSolverDIISInitialize')
@@ -161,7 +164,8 @@ CONTAINS
   !> In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
   !> acting on it with the matrix, and the output will be a new expansion vector.
   !> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
-  !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
+  !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear).
+  !> On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
   !> \param parametersP On exit, the interpolated solution projected onto the P space.
   SUBROUTINE Iterative_Solver_Add_Vector(parameters, action, parametersP)
     USE iso_c_binding
@@ -218,7 +222,8 @@ CONTAINS
   !> \param coefficients Value of a contribution to a new P vector
   !> \param pp The P-P block of the matrix, dimensioned (number of existing P + nP, nP)
   !> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
-  !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
+  !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear).
+  !> On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
   !> \param parametersP On exit, the interpolated solution projected onto the P space.
   SUBROUTINE Iterative_Solver_Add_P(nP, offsets, indices, coefficients, pp, parameters, action, parametersP)
     INTEGER, INTENT(in) :: nP

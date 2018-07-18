@@ -174,25 +174,41 @@ class IterativeSolver {
             std::vector<std::vector<scalar> > &parametersP,
             vectorSet<scalar> &other) {
     auto oldss = m_subspaceMatrix.rows();
+//    xout << "oldss " << oldss << ", Pvectors,size() " << Pvectors.size() << std::endl;
     m_subspaceMatrix.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
     m_subspaceOverlap.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
-    auto old = m_PQMatrix.rows();
-    parametersP.resize(old + Pvectors.size());
-    m_PQMatrix.conservativeResize(old + Pvectors.size(), m_QQMatrix.rows());
-    m_subspaceRHS.conservativeResize(old + Pvectors.size(), m_rhs.size());
+    auto oldNP = m_PQMatrix.rows();
+    auto newNP = oldNP + Pvectors.size();
+    assert(newNP + m_QQMatrix.rows() == m_subspaceOverlap.rows());
+    parametersP.resize(newNP);
+    m_PQMatrix.conservativeResize(newNP, m_QQMatrix.rows());
+    m_PQOverlap.conservativeResize(newNP, m_QQMatrix.rows());
+    m_subspaceRHS.conservativeResize(newNP, m_rhs.size());
     size_t offset = 0;
+//    xout << "addP PP\n";
+//    for (auto i = 0; i < Pvectors.size(); i++)
+//      for (auto j = 0; j < newNP; j++)
+//        xout << i << " " << j << " " << PP[offset++]<<std::endl;
+//    offset = 0;
     for (size_t n = 0; n < Pvectors.size(); n++)
       m_Pvectors.push_back(Pvectors[n]);
     for (size_t n = 0; n < Pvectors.size(); n++) {
-      for (int i = 0; i < m_subspaceMatrix.rows(); i++) {
-        m_subspaceMatrix(old + n, i) = m_subspaceMatrix(i, old + n) = PP[offset++];
+      for (int i = 0; i < newNP; i++) {
+//        xout << "offset " << offset << std::endl;
+//        xout << "PP " << PP[offset] << std::endl;
+        m_subspaceMatrix(oldNP + n, i) = m_subspaceMatrix(i, oldNP + n) = PP[offset++];
         double overlap = 0;
+//        xout << "n=" << n << ", i=" << i << std::endl;
         for (const auto &p : Pvectors[n]) {
-//          xout << "addP Pvector=" << p.first << " : " << p.second << std::endl;
+//          xout << "addP Pvector=" << p.first << " : " << p.second << " " << m_Pvectors[i].count(p.first) << std::endl;
           if (m_Pvectors[i].count(p.first))
             overlap += p.second * m_Pvectors[i][p.first];
         }
-        m_subspaceOverlap(old + n, i) = m_subspaceOverlap(i, old + n) = overlap;
+//        xout << "overlap: " << overlap << std::endl;
+//        xout << "oldNP+n=" << oldNP + n << ", i=" << i << ", dimensions: " << m_subspaceOverlap.rows() << ", "
+//             << m_subspaceOverlap.cols() << std::endl;
+        m_subspaceOverlap(oldNP + n, i) = m_subspaceOverlap(i, oldNP + n) = overlap;
+//        xout << "stored " << m_subspaceOverlap(oldNP + n, i) << std::endl;
       }
     }
     size_t l = 0;
@@ -200,8 +216,8 @@ class IterativeSolver {
       for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
         if (m_solutions[ll].m_active[lll]) {
           for (size_t n = 0; n < Pvectors.size(); n++) {
-            m_PQMatrix(old + n, l) = m_residuals[ll][lll]->dot(Pvectors[n]);
-            m_PQOverlap(old + n, l) = m_solutions[ll][lll]->dot(Pvectors[n]);
+            m_PQMatrix(oldNP + n, l) = m_residuals[ll][lll]->dot(Pvectors[n]);
+            m_PQOverlap(oldNP + n, l) = m_solutions[ll][lll]->dot(Pvectors[n]);
           }
           l++;
         }
@@ -209,7 +225,7 @@ class IterativeSolver {
     }
     for (size_t n = 0; n < Pvectors.size(); n++) {
       for (size_t l = 0; l < m_rhs.size(); l++) {
-        m_subspaceRHS(old + n, l) = m_rhs[l]->dot(Pvectors[n]);
+        m_subspaceRHS(oldNP + n, l) = m_rhs[l]->dot(Pvectors[n]);
       }
     }
     buildSubspace();
@@ -523,9 +539,9 @@ class IterativeSolver {
       // phase
       Eigen::Index lmax = 0;
       for (Eigen::Index l = 0; l < m_subspaceEigenvectors.rows(); l++) {
-        if (std::abs(m_subspaceEigenvectors(l,k))>std::abs(m_subspaceEigenvectors(lmax,k))) lmax=l;
+        if (std::abs(m_subspaceEigenvectors(l, k)) > std::abs(m_subspaceEigenvectors(lmax, k))) lmax = l;
       }
-      if (m_subspaceEigenvectors(lmax,k).real() < 0) m_subspaceEigenvectors.col(k) = - m_subspaceEigenvectors.col(k);
+      if (m_subspaceEigenvectors(lmax, k).real() < 0) m_subspaceEigenvectors.col(k) = -m_subspaceEigenvectors.col(k);
     }
 //     xout << "eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
 //     xout << "eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;

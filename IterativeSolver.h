@@ -242,6 +242,17 @@ class IterativeSolver {
   }
 
   /*!
+   * \brief Remove completely the whole P space
+   */
+  void clearP() {
+    m_subspaceMatrix.conservativeResize(m_QQMatrix.rows(), m_QQMatrix.rows());
+    m_subspaceOverlap.conservativeResize(m_QQMatrix.rows(), m_QQMatrix.rows());
+    m_PQMatrix.conservativeResize(0, m_QQMatrix.rows());
+    m_PQOverlap.conservativeResize(0, m_QQMatrix.rows());
+    m_subspaceRHS.conservativeResize(0, m_rhs.size());
+  }
+
+  /*!
      * \brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
      * be used in the next iteration; this is done only in the case of linear solvers where the orthogonalize option is set.
      * Also calculate the degree of convergence, and write progress to xout.

@@ -68,6 +68,7 @@ class IterativeSolver {
       m_Pvectors(0),
       m_verbosity(0),
       m_thresh(1e-8),
+      m_actions(0),
       m_maxIterations(1000),
       m_minIterations(0),
       m_orthogonalize(true),
@@ -93,6 +94,7 @@ class IterativeSolver {
       m_dimension(0),
       m_iterations(0),
       m_singularity_threshold(1e-30),
+      m_added_vectors(0),
       m_svdThreshold(1e-15),
       m_augmented_hessian(0),
       m_maxQ(std::max(m_roots, size_t(16))) {}
@@ -127,6 +129,7 @@ class IterativeSolver {
           parameters.m_active[k];
     m_added_vectors = 0;
     for (size_t k = 0; k < action.size(); k++) if (action.m_active[k]) m_added_vectors++;
+    m_actions += m_added_vectors;
     m_lastVectorIndex = addVectorSet(parameters, action, other) -
         1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
 //   xout << "set lastVectorIndex=addVectorSet-1="<<m_lastVectorIndex<<std::endl;
@@ -341,6 +344,7 @@ class IterativeSolver {
       m_verbosity; //!< How much to print. Zero means nothing; One results in a single progress-report line printed each iteration.
   double
       m_thresh; //!< If predicted residual . solution is less than this, converged, irrespective of cthresh and gthresh.
+  unsigned int m_actions; //!< number of action vectors provided
   unsigned int m_maxIterations; //!< Maximum number of iterations in solve()
   unsigned int m_minIterations; //!< Minimum number of iterations in solve()
   bool
@@ -829,8 +833,8 @@ class IterativeSolver {
  private:
   unsigned int m_iterations;
   double m_singularity_threshold;
-  size_t m_added_vectors; //!< number of vectors recently added to subspace
  protected:
+  size_t m_added_vectors; //!< number of vectors recently added to subspace
   double
       m_augmented_hessian; //!< The scale factor for augmented hessian solution of linear inhomogeneous systems. Special values:
   //!< - 0: unmodified linear equations
@@ -904,7 +908,7 @@ class LinearEigensystem : public IterativeSolver<scalar> {
   void report() override {
     std::vector<scalar> ev = this->eigenvalues();
     if (m_verbosity > 0) {
-      xout << "iteration " << this->iterations() ;
+      xout << "iteration " << this->iterations() <<"["<<this->m_added_vectors<<"]";
       if (!this->m_Pvectors.empty())
         xout << ", P="<<this->m_Pvectors.size();
       xout <<", error[" << this->m_worst << "] = " << this->m_error

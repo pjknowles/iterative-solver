@@ -904,7 +904,10 @@ class LinearEigensystem : public IterativeSolver<scalar> {
   void report() override {
     std::vector<scalar> ev = this->eigenvalues();
     if (m_verbosity > 0) {
-      xout << "iteration " << this->iterations() << ", error[" << this->m_worst << "] = " << this->m_error
+      xout << "iteration " << this->iterations() ;
+      if (!this->m_Pvectors.empty())
+        xout << ", P="<<this->m_Pvectors.size();
+      xout <<", error[" << this->m_worst << "] = " << this->m_error
            << ", eigenvalues: ";
       for (const auto e : ev) xout << " " << e;
       xout << std::endl;

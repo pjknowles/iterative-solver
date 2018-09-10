@@ -93,7 +93,7 @@ class IterativeSolver {
       m_interpolation(),
       m_dimension(0),
       m_iterations(0),
-      m_singularity_threshold(1e-30),
+      m_singularity_threshold(1e-16),
       m_added_vectors(0),
       m_svdThreshold(1e-15),
       m_augmented_hessian(0),
@@ -445,8 +445,11 @@ class IterativeSolver {
 //    xout << "V: "<<svd.matrixV()<<std::endl;
 //    auto tester = [](Eigen::Index i) { return std::fabs(svd.matrixV(nP+i,k))};
       const auto &k = m_subspaceMatrix.rows() - 1;
+//      xout << "m_singularity_threshold "<<m_singularity_threshold<<std::endl;
+//      xout << "svd.singularValues()(0) "<<svd.singularValues()(0)<<std::endl;
+//      xout << "svd.singularValues()(k) "<<svd.singularValues()(k)<<std::endl;
       if (svd.singularValues()(k) < m_singularity_threshold * svd.singularValues()(0)
-          || (!m_orthogonalize && nQ > m_maxQ)) { // condition number assuming singular values are strictlydescending
+          || (m_linear && !m_orthogonalize && nQ > m_maxQ)) { // condition number assuming singular values are strictlydescending
         Eigen::Index imax = 0;
         for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(nQ - m_added_vectors); i++) { // never consider the very last Q vector
 //      xout << "consider " <<i<<": "<<svd.matrixV()(nP+i,k)<<std::endl;

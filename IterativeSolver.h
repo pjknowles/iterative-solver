@@ -495,23 +495,32 @@ class IterativeSolver {
       xout << "SVD rank " << svd.rank() << " in subspace of dimension " << S.cols() << std::endl;
     if (m_verbosity > 2 && svd.rank() < S.cols())
       xout << "singular values " << svd.singularValues().transpose() << std::endl;
-    Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>
-        Hbar = Eigen::DiagonalMatrix<scalar, Eigen::Dynamic>(svd.singularValues().head(svd.rank())).inverse()
-        * svd.matrixU().leftCols(svd.rank()).adjoint()
-        * H
-        * svd.matrixV().leftCols(svd.rank());
+    auto svmh = svd.singularValues().head(svd.rank()).eval();
+    for (auto k = 0; k < svd.rank(); k++) svmh(k) = 1 / std::sqrt(svmh(k));
+    auto Hbar = (svmh.asDiagonal()) * (svd.matrixU().leftCols(svd.rank()).adjoint()) * H * svd.matrixV().leftCols(svd.rank()) * (svmh.asDiagonal());
 //   xout << "S\n"<<S<<std::endl;
 //   xout << "S singular values"<<(Eigen::DiagonalMatrix<scalar, Eigen::Dynamic, Eigen::Dynamic>(svd.singularValues().head(svd.rank())))<<std::endl;
 //   xout << "S inverse singular values"<<Eigen::DiagonalMatrix<scalar, Eigen::Dynamic>(svd.singularValues().head(svd.rank())).inverse()<<std::endl;
-//   xout << "U\n"<<svd.matrixU().leftCols(svd.rank())<<std::endl;
-//   xout << "V\n"<<svd.matrixV().leftCols(svd.rank())<<std::endl;
+//   xout << "S singular values"<<sv<<std::endl;
 //   xout << "H\n"<<H<<std::endl;
 //   xout << "Hbar\n"<<Hbar<<std::endl;
+//   xout << "symmetric Hbar? " << (Hbar-Hbar.adjoint()).norm() << std::endl;
     Eigen::EigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> > s(Hbar);
+//    xout << "s.eigenvectors()\n"<<s.eigenvectors()<<std::endl;
     m_subspaceEigenvalues = s.eigenvalues();
-    m_subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * s.eigenvectors();
+    if (s.eigenvalues().imag().norm() < 1e-10 and s.eigenvectors().imag().norm() < 1e-10) { // real eigenvectors
+      m_subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors().real();
+
+    }
+    else { // complex eigenvectors
+#ifdef __INTEL_COMPILER
+      throw std::runtime_error("Intel compiler does not support working with complex eigen3 entities properly");
+#endif
+      m_subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors();
+    }
 //   xout << "unsorted eigenvalues\n"<<m_subspaceEigenvalues<<std::endl;
 //   xout << "unsorted eigenvectors\n"<<m_subspaceEigenvectors<<std::endl;
+
     {
       // sort
       auto eigval = m_subspaceEigenvalues;
@@ -1150,12 +1159,16 @@ class DIIS : public IterativeSolver<scalar> {
       B(i, nDim) = B(nDim, i) = -m_Weights[i];
     B(nDim, nDim) = 0.0;
     Rhs[nDim] = -1;
-    //  xout << "B:"<<std::endl<<B<<std::endl;
-    //  xout << "Rhs:"<<std::endl<<Rhs<<std::endl;
+//      xout << "B:"<<std::endl<<B<<std::endl;
+//      xout << "Rhs:"<<std::endl<<Rhs<<std::endl;
 
     // invert the system, determine extrapolation coefficients.
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(B, Eigen::ComputeThinU | Eigen::ComputeThinV);
     svd.setThreshold(this->m_svdThreshold);
+//    xout << "svdThreshold "<<this->m_svdThreshold<<std::endl;
+//    xout << "U\n"<<svd.matrixU()<<std::endl;
+//    xout << "V\n"<<svd.matrixV()<<std::endl;
+//    xout << "singularValues\n"<<svd.singularValues()<<std::endl;
     Coeffs = svd.solve(Rhs).head(nDim);
     m_LastAmplitudeCoeff = Coeffs[nDim - 1];
     if (m_verbosity > 1) xout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;

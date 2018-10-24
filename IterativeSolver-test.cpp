@@ -208,6 +208,7 @@ void DIISTest(int verbosity = 0,
   d.Reset();
   d.m_verbosity = verbosity - 1;
 //  d.m_options["weight"]=2;
+  return;
   std::vector<scalar> xxx(2);
   xxx[0] = xxx[1] = 1 - difficulty; // initial guess
   x.front()->put(&xxx[0], 2, 0);
@@ -496,6 +497,8 @@ int main(int argc, char *argv[]) {
 //  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
 //  DIISTest<PagedVector<double> >(1,6,1e-3,LinearAlgebra::DIIS<double>::disabled,0.0002);
 //   DavidsonTest<PagedVector<double> >(2,2,2,2,false);
+if (false) {
+
     DavidsonTest<PagedVector<double> >(3, 3, 1, 2, false);
     DavidsonTest<PagedVector<double> >(3, 2, 1, 2, false);
     DavidsonTest<PagedVector<double> >(9, 1, 1, 2, true);
@@ -508,9 +511,10 @@ int main(int argc, char *argv[]) {
     DavidsonTest<PagedVector<double> >(100, 1, 1, 2);
     DavidsonTest<PagedVector<double> >(100, 3, 1, 2, false);
     DavidsonTest<PagedVector<double> >(100, 3, 1, 2, true);
+}
 //  DavidsonTest<PagedVector<double> >(600,3,1,2,true);
 //  RSPTTest<PagedVector<double> ,double>(100,2e0);
-    IterativeSolverFTest();
+//    IterativeSolverFTest();
   }
   std::cout << "before MPI_Finalize()"<<std::endl;
 #ifdef HAVE_MPI_H

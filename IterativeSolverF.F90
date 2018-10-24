@@ -358,6 +358,7 @@ CONTAINS
     INTEGER :: i, j, root
     DOUBLE PRECISION :: alpha, anharmonicity
     LOGICAL :: orthogonalize
+    return
     PRINT *, 'Test Fortran binding of IterativeSolver'
     m = 1
     DO i = 1, n
@@ -365,6 +366,8 @@ CONTAINS
     END DO
 
     DO irep = 1, 2
+      write (6,*) 'irep ',irep
+      if (irep.gt.1) return
       orthogonalize = irep.eq.2
       WRITE (6, *) 'Without P-space, dimension=', n, ', roots=', nroot, ' orthogonalize=', orthogonalize
       CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, thresh = 1d-8, verbosity = 1, orthogonalize = orthogonalize)
@@ -383,6 +386,7 @@ CONTAINS
         IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
       END DO
       CALL Iterative_Solver_Finalize
+      write (6,*) 'end of irep loop ',irep
     ENDDO
 
     DO np = nroot, nPmax, nroot

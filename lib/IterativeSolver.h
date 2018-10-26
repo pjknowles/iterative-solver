@@ -16,7 +16,6 @@
 #include <Eigen/Dense>
 #include <cmath>
 #include <complex>
-#include <LinearAlgebra.h>
 
 #undef isnan
 #undef isinf

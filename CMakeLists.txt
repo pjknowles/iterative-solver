@@ -43,15 +43,16 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
 endif ()
 
 aux_source_directory(IterativeSolver SRC_LIST)
-set(SRC_LIST ${SRC_LIST} LinearAlgebra.h LAvector.h IterativeSolverF.F90 IterativeSolver.cpp)
+set(SRC_LIST ${SRC_LIST} lib/LinearAlgebra.h lib/LAvector.h lib/PagedVector.h lib/IterativeSolverF.F90 lib/IterativeSolver.cpp lib/IterativeSolver.h)
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(Eigen3 3.3 REQUIRED)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${EIGEN3_INCLUDE_DIR})
 
 add_library(${PROJECT_NAME} ${SRC_LIST})
+target_include_directories(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 
 enable_testing()
-add_executable(${PROJECT_NAME}-test ${PROJECT_NAME}-test.cpp IterativeSolverF.F90)
+add_executable(${PROJECT_NAME}-test ${PROJECT_NAME}-test.cpp lib/IterativeSolverF.F90)
 target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
 if(MPIEXEC)
     add_test(${PROJECT_NAME}-test ${MPIEXEC} ${MPIOPTIONS} ${MPIEXEC_NUMPROC_FLAG} ${NPROC} ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-test)

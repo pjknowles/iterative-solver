@@ -14,12 +14,7 @@ foreach (fil ${EXAMPLES})
             COMPILE_FLAGS -UHAVE_MPI_H
             RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
             )
-    get_filename_component(ext ${fil} EXT)
-    if (${ext} STREQUAL ".F90")
-        target_link_libraries(${test_name} PUBLIC ${PROJECT_NAME}F ${MPI_CXX_LIBRARIES})
-    else ()
-        target_link_libraries(${test_name} PUBLIC ${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
-    endif ()
+    target_link_libraries(${test_name} PUBLIC ${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
     add_test(${nam} ${PROJECT_BINARY_DIR}/${test_name})
 endforeach ()
 

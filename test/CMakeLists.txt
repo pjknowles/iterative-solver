@@ -1,5 +1,3 @@
-
-#add_executable(IterativeSolver-test IterativeSolver-test.cpp lib/IterativeSolverF.F90)
 add_executable(IterativeSolver-test IterativeSolver-test.cpp)
 target_link_libraries(IterativeSolver-test ${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
 set_target_properties(IterativeSolver-test PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")

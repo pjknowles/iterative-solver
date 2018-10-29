@@ -47,7 +47,27 @@ set(CTEST_BUILD_FLAGS -j${NPROC})
 
 ########## Dependencies ##########
 
-find_package(Eigen3 3.3 REQUIRED)
+if (NOT TARGET Eigen3::Eigen)
+    find_package(Eigen3 3.3)
+    if (NOT TARGET Eigen3::Eigen)
+        include(FetchContent)
+        FetchContent_Declare(
+                eigen3_dep
+                SOURCE_DIR "${CMAKE_SOURCE_DIR}/dependencies/Eigen3"
+                GIT_REPOSITORY https://github.com/eigenteam/eigen-git-mirror.git
+                GIT_TAG "3.3.0"
+                GIT_SHALLOW TRUE
+        )
+        FetchContent_GetProperties(eigen3_dep)
+        if (NOT eigen3_dep_POPULATED)
+            FetchContent_Populate(eigen3_dep)
+            add_library(ExternalEigen3 INTERFACE)
+            target_include_directories(ExternalEigen3 INTERFACE ${CMAKE_SOURCE_DIR}/dependencies/Eigen3)
+            add_library(Eigen3::Eigen ALIAS ExternalEigen3)
+            message("Using external Eigen3 library")
+        endif ()
+    endif ()
+endif ()
 
 
 ########## Targets ##########

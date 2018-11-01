@@ -55,7 +55,7 @@ if (NOT TARGET Eigen3::Eigen)
                 eigen3_dep
                 SOURCE_DIR "${CMAKE_SOURCE_DIR}/dependencies/Eigen3"
                 GIT_REPOSITORY https://github.com/eigenteam/eigen-git-mirror.git
-                GIT_TAG "3.3.0"
+                GIT_TAG "3.3.5"
                 GIT_SHALLOW TRUE
         )
         FetchContent_GetProperties(eigen3_dep)

@@ -13,7 +13,9 @@
 #include <unistd.h>
 #include <cassert>
 #include <fstream>
+#include <sstream>
 #include <map>
+#include <vector>
 
 #ifndef LINEARALGEBRA_CLONE_ADVISE_OFFLINE
 #define LINEARALGEBRA_CLONE_ADVISE_OFFLINE 0x01
@@ -314,7 +316,7 @@ class PagedVector {
    * @brief report the activity status of the object
    * @return The status
    */
-  bool active() { return m_active; }
+  bool active() const { return m_active; }
   /*!
    * @brief report and set the activity status of the object
    * @param value The new value of the status
@@ -989,6 +991,29 @@ class PagedVector {
 #endif
     return diff == 0;
   }
+
+ private:
+  int m_variance;
+ public:
+
+  /*!
+  * \brief Record the co/contra-variance status of the object
+  * \param variance
+  * - -1: covariant vector
+  * - +1: contravariant vector
+  * - 0: self-dual vector
+  * The class is expected to check that appropriate combinations of vectors are provided in methods that perform linear algebra functions.
+  */
+  void setVariance(int variance = 0) { m_variance = variance; }
+
+  /*!
+   * \brief Report the co/contra-variance status of the object
+   * \return
+   * - -1: covariant vector
+   * - +1: contravariant vector
+   * - 0: self-dual vector
+   */
+  int variance() const { return m_variance; }
 
 };
 template<class scalar>

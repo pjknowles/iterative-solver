@@ -127,10 +127,9 @@ class IterativeSolver {
     assert(parameters.size() == action.size());
     m_iterations++;
     for (size_t k = 0; k < action.size(); k++)
-      action.m_active[k] = //action.m_active[k] &&
-          parameters.m_active[k];
+      action[k].active(parameters[k].active());
     m_added_vectors = 0;
-    for (size_t k = 0; k < action.size(); k++) if (action.m_active[k]) m_added_vectors++;
+    for (size_t k = 0; k < action.size(); k++) if (action[k].active()) m_added_vectors++;
     m_actions += m_added_vectors;
     m_lastVectorIndex = addVectorSet(parameters, action, other) -
         1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
@@ -219,10 +218,10 @@ class IterativeSolver {
     size_t l = 0;
     for (size_t ll = 0; ll < m_solutions.size(); ll++) {
       for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
-        if (m_solutions[ll].m_active[lll]) {
+        if (m_solutions[ll][lll].active()) {
           for (size_t n = 0; n < Pvectors.size(); n++) {
-            m_PQMatrix(oldNP + n, l) = m_residuals[ll][lll]->dot(Pvectors[n]);
-            m_PQOverlap(oldNP + n, l) = m_solutions[ll][lll]->dot(Pvectors[n]);
+            m_PQMatrix(oldNP + n, l) = m_residuals[ll][lll].dot(Pvectors[n]);
+            m_PQOverlap(oldNP + n, l) = m_solutions[ll][lll].dot(Pvectors[n]);
           }
           l++;
         }
@@ -230,7 +229,7 @@ class IterativeSolver {
     }
     for (size_t n = 0; n < Pvectors.size(); n++) {
       for (size_t l = 0; l < m_rhs.size(); l++) {
-        m_subspaceRHS(oldNP + n, l) = m_rhs[l]->dot(Pvectors[n]);
+        m_subspaceRHS(oldNP + n, l) = m_rhs[l].dot(Pvectors[n]);
       }
     }
     buildSubspace();
@@ -290,10 +289,10 @@ class IterativeSolver {
     std::map<size_t, scalar_type> result;
     for (size_t kkk = 0; kkk < solution.size(); kkk++) {
 //    xout << "suggestP kkk "<<kkk<<" active "<<solution.m_active[kkk]<<maximumNumber<<std::endl;
-      if (solution.m_active[kkk]) {
+      if (solution[kkk].active()) {
         std::vector<size_t> indices;
         std::vector<scalar_type> values;
-        std::tie(indices, values) = solution[kkk]->select(*residual[kkk], maximumNumber, threshold);
+        std::tie(indices, values) = solution[kkk].select(residual[kkk], maximumNumber, threshold);
 //     xout <<"indices.size()="<<indices.size()<<std::endl;
 //     for (auto k=0; k<indices.size(); k++) xout << "select "<< indices[k] <<" : "<<values[k]<<std::endl;
         for (size_t i = 0; i < indices.size(); i++)
@@ -640,11 +639,11 @@ class IterativeSolver {
       xout << "IterativeSolverBase::calculateErrors solution.m_active";
       for (size_t root = 0; root < solution.size(); root++) xout << " " << solution[root].active();
       xout << std::endl;
-      xout << "IterativeSolverBase::calculateErrors solution " << solution << std::endl;
+//      xout << "IterativeSolverBase::calculateErrors solution " << solution << std::endl;
       xout << "IterativeSolverBase::calculateErrors residual.m_active";
       for (size_t root = 0; root < solution.size(); root++) xout << " " << residual[root].active();
       xout << std::endl;
-      xout << "IterativeSolverBase::calculateErrors residual " << residual << std::endl;
+//      xout << "IterativeSolverBase::calculateErrors residual " << residual << std::endl;
     }
     m_errors.clear();
     if (m_linear && errortype != 1) { // we can use the extrapolated residual if the problem is linear
@@ -654,7 +653,7 @@ class IterativeSolver {
         m_errors.push_back(residual[k].active() ?
                            std::fabs(
                                residual[k].dot(errortype == 2 ? residual[k] : solution[k])
-                                   / solution[k]->dot(solution[k])
+                                   / solution[k].dot(solution[k])
                            )
                                                 : 0);
 //        xout << "solution . solution " << solution[k]->dot(*solution[k]) << std::endl;
@@ -663,19 +662,14 @@ class IterativeSolver {
       }
     } else {
       vectorSet step = solution;
-      step.axpy(-1, m_solutions[m_lastVectorIndex]);
-      if (m_verbosity > 6) {
-        xout << "IterativeSolverBase::calculateErrors last solution " << m_lastVectorIndex << std::endl;
-        xout << "IterativeSolverBase::calculateErrors last solution " << m_solutions[m_lastVectorIndex] << std::endl;
-        xout << "IterativeSolverBase::calculateErrors solution " << solution << std::endl;
-        xout << "IterativeSolverBase::calculateErrors step " << step << std::endl;
-      }
-      for (size_t k = 0; k < solution.size(); k++)
+      for (size_t k = 0; k < solution.size(); k++) {
+        step[k].axpy(-1, m_solutions[m_lastVectorIndex][k]);
         m_errors.push_back(
             m_residuals[m_lastVectorIndex][k].active() ? std::fabs(
                 (errortype == 1 ? step : m_residuals[m_lastVectorIndex])[k].dot(
                     (errortype == 2 ? m_residuals[m_lastVectorIndex][k] : step[k])))
                                                        : 1);
+      }
     }
     //  xout << "last active "<<m_lastVectorIndex<<" "<<m_residuals[m_lastVectorIndex].m_active[0]<<std::endl;
     for (const auto &e : m_errors) if (std::isnan(e)) throw std::overflow_error("NaN detected in error measure");
@@ -694,7 +688,7 @@ class IterativeSolver {
   static void copyvec(std::vector<vectorSet>& history, const vectorSet& newvec) {
     vectorSet newcopy;
     for (auto& v : newvec)
-      newcopy.push_back(v,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE); // TODO template-ise these options
+      newcopy.emplace_back(v,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE); // TODO template-ise these options
     history.emplace_back(newcopy);
   }
  public:
@@ -984,8 +978,8 @@ class LinearEquations : public IterativeSolver<T> {
   void addEquations(const vectorSet& rhs) {
 //   for (const auto &v : rhs) this->m_rhs.push_back(v);
     this->m_rhs.clear();
-    for (auto& v : rhs)
-      this->m_rhs.push_back(v,
+    for (const auto& v : rhs)
+      this->m_rhs.emplace_back(v,
                             LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED
                                 | LINEARALGEBRA_CLONE_ADVISE_OFFLINE); // TODO template-ise these options
 //   xout << "addEquations makes m_rhs.back()="<<this->m_rhs.back()<<std::endl;

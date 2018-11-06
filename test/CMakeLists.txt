@@ -1,3 +1,7 @@
+# OpenMPI root guard: https://github.com/open-mpi/ompi/issues/4451
+if ("$ENV{USER}" STREQUAL "root" OR "$ENV{HOME}" STREQUAL "/root")
+    set(MPIOPTIONS "${MPIOPTIONS} --allow-run-as-root") # used in tests
+endif ()
 add_executable(IterativeSolver-test IterativeSolver-test.cpp)
 target_link_libraries(IterativeSolver-test ${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
 set_target_properties(IterativeSolver-test PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")

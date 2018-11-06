@@ -17,7 +17,8 @@ pipelines:
           - mkdir -p builddir && cd builddir
           - cmake ..
           - make -kj
-          - ctest -V
+  # OpenMPI root guard: https://github.com/open-mpi/ompi/issues/4451
+          - MPIOPTIONS="--allow-run-as-root" ctest -V
 definitions:
   caches:
     iterative-solver-cmake: builddir

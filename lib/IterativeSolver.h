@@ -94,13 +94,12 @@ class IterativeSolver {
       m_iterations(0),
       m_singularity_threshold(1e-16),
       m_added_vectors(0),
-      m_svdThreshold(1e-15),
       m_augmented_hessian(0),
+      m_svdThreshold(1e-15),
       m_maxQ(std::max(m_roots, size_t(16))) {}
 
   virtual ~IterativeSolver() = default;
 
-  bool m_rspt;
  public:
   /*!
    * \brief Take, typically, a current solution and residual, and return new solution.
@@ -352,6 +351,7 @@ class IterativeSolver {
   bool m_hermitian; ///< Whether residuals can be assumed to be the action of an underlying self-adjoint operator.
   size_t
       m_roots; ///< How many roots to calculate / equations to solve (defaults to size of solution and residual vectors)
+  bool m_rspt;
  public:
   optionMap m_options; ///< A string of options to be interpreted by solveReducedProblem().
   ///< Possibilities include
@@ -1249,7 +1249,7 @@ IterativeSolverAddVector(double *parameters, double *action, double *parametersP
 
 extern "C" int IterativeSolverEndIteration(double *c, double *g, double *error);
 
-extern "C" void IterativeSolverAddP(const size_t nP, const size_t *offsets, const size_t *indices,
+extern "C" void IterativeSolverAddP(size_t nP, const size_t *offsets, const size_t *indices,
                                     const double *coefficients, const double *pp,
                                     double *parameters, double *action, double *parametersP);
 
@@ -1259,8 +1259,8 @@ extern "C" void IterativeSolverOption(const char *key, const char *val);
 
 extern "C" size_t IterativeSolverSuggestP(const double *solution,
                                           const double *residual,
-                                          const size_t maximumNumber,
-                                          const double threshold,
+                                          size_t maximumNumber,
+                                          double threshold,
                                           size_t *indices);
 
 #endif // ITERATIVESOLVER_H

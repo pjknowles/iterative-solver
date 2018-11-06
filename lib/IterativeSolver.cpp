@@ -124,7 +124,7 @@ extern "C" int IterativeSolverEndIteration(double *solution, double *residual, d
   return result;
 }
 
-extern "C" void IterativeSolverAddP(const size_t nP, const size_t *offsets, const size_t *indices,
+extern "C" void IterativeSolverAddP(size_t nP, const size_t *offsets, const size_t *indices,
                                     const double *coefficients, const double *pp,
                                     double *parameters, double *action, double *parametersP) {
   vectorSet<double> cc, gg;
@@ -163,8 +163,8 @@ extern "C" void IterativeSolverEigenvalues(double *eigenvalues) {
 
 extern "C" size_t IterativeSolverSuggestP(const double *solution,
                                           const double *residual,
-                                          const size_t maximumNumber,
-                                          const double threshold,
+                                          size_t maximumNumber,
+                                          double threshold,
                                           size_t *indices) {
   vectorSet<double> cc, gg;
   for (size_t root = 0; root < instance->m_roots; root++) {

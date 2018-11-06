@@ -8,9 +8,9 @@
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
-#include <string.h>
+#include <cstring>
 #include <cstddef>
-#include <stdlib.h>
+#include <cstdlib>
 #include <unistd.h>
 #include <cassert>
 #include <fstream>
@@ -51,7 +51,7 @@ class PagedVector : public vector<scalar> {
   /*!
    * \brief Construct an object without any data.
    */
-  PagedVector(size_t length = 0, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
+  explicit PagedVector(size_t length = 0, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
       : vector<scalar>(), m_size(length),
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
@@ -112,7 +112,7 @@ class PagedVector : public vector<scalar> {
 
   }
 
-  virtual ~PagedVector() {}
+  virtual ~PagedVector() = default;
 
   // Every child of LinearAlgebra::vector<scalar> needs exactly this
   PagedVector *clone(int option = 0) const override {// std::cout << "in PagedVector clone, option="<<option<<std::endl;
@@ -177,7 +177,6 @@ class PagedVector : public vector<scalar> {
     const size_t preferred_length; ///< the default for the size of the cache window
     mutable std::vector<scalar> bufferContainer;
     mutable scalar *buffer;
-    const bool io; ///< whether backing store is needed
     const scalar *begin() const { return buffer; }
     const scalar *end() const { return buffer + length; }
     scalar *begin() { return buffer; }
@@ -187,7 +186,8 @@ class PagedVector : public vector<scalar> {
     mutable size_t filesize;
     mutable size_t writes; ///< how many scalars written
     mutable size_t reads; ///< how many scalars read
-    window(size_t datasize, size_t length = default_offline_buffer_size, scalar *externalBuffer = nullptr)
+    const bool io; ///< whether backing store is needed
+    explicit window(size_t datasize, size_t length = default_offline_buffer_size, scalar *externalBuffer = nullptr)
         : offset(datasize + 1),
           length(0),
           datasize(datasize),
@@ -276,8 +276,8 @@ class PagedVector : public vector<scalar> {
 //    std::cout << "operator++ exit  offset="<<offset<<", length="<<length<<std::endl;
       return *this;
     }
-   private:
-    window operator++(int) { return this; }
+//   private:
+//    window& operator++(int) { return *this; }
   };
  public:
   window m_cache;
@@ -447,7 +447,7 @@ class PagedVector : public vector<scalar> {
    * \return
    */
   void axpy(scalar a, const vector<scalar> &other) override {
-    const PagedVector &othe = dynamic_cast <const PagedVector &> (other);
+    const auto &othe = dynamic_cast <const PagedVector &> (other);
 //   std::cout << "PagedVector this m_replicated " << m_replicated << ", io=" << m_cache.io << std::endl;
 //   std::cout << "PagedVector othe m_replicated " << othe.m_replicated << ", io=" << othe.m_cache.io << std::endl;
 //   std::cout << "PagedVector::axpy this="<<*this<<std::endl;
@@ -578,7 +578,7 @@ class PagedVector : public vector<scalar> {
     * \return
     */
   void axpy(scalar a, const std::map<size_t, scalar> &other) override {
-    for (const auto &o: other)
+    for (const auto& o: other)
       if (o.first >= m_segment_offset && o.first < m_segment_offset + m_segment_length)
         (*this)[o.first] += a * o.second;
   }
@@ -589,7 +589,7 @@ class PagedVector : public vector<scalar> {
    * \return
    */
   scalar dot(const vector<scalar> &other) const override {
-    const PagedVector &othe = dynamic_cast <const PagedVector &> (other);
+    const auto& othe = dynamic_cast <const PagedVector&> (other);
 //   std::cout << "dot this m_replicated="<<m_replicated<<", io="<<m_cache.io<<std::endl;
 //   std::cout << "dot othe m_replicated="<<othe.m_replicated<<", io="<<othe.m_cache.io<<std::endl;
     if (this->variance() * othe.variance() < 0) throw std::logic_error("mismatching co/contravariance");
@@ -765,7 +765,7 @@ class PagedVector : public vector<scalar> {
       const scalar threshold = 0
   ) const override {
     std::multimap<scalar, size_t, std::greater<scalar> > sortlist;
-    const PagedVector &measur = dynamic_cast <const PagedVector &> (measure);
+    const auto&measur = dynamic_cast <const PagedVector &> (measure);
     if (this->variance() * measur.variance() < 0) throw std::logic_error("mismatching co/contravariance");
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
     if (this->m_replicated != measur.m_replicated) throw std::logic_error("mismatching replication status");

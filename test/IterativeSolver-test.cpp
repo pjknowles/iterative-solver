@@ -15,41 +15,44 @@ namespace LinearAlgebra {
  * \tparam ptype Concrete class template that implements LinearAlgebra::vectorSet
  * \tparam scalar Type of matrix elements
  */
-template<class ptype, class scalar=double>
+template<class ptype>
 static void DavidsonTest(size_t dimension,
                          size_t roots = 1,
                          int verbosity = 0,
                          int problem = 0,
                          bool orthogonalize = false) {
 
-  static Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic> testmatrix;
+  using scalar = typename ptype::scalar_type;
+  using element = typename ptype::element_type;
+  using vectorSet = std::vector<ptype>;
+  static Eigen::Matrix<element, Eigen::Dynamic, Eigen::Dynamic> testmatrix;
 
   static struct {
-    void operator()(const vectorSet<scalar> &psx, vectorSet<scalar> &outputs) const {
+    void operator()(const vectorSet &psx, vectorSet &outputs) const {
       for (size_t k = 0; k < psx.size(); k++) {
-        Eigen::VectorXd x(testmatrix.rows());
-        if (psx[k]->size() != (size_t) testmatrix.rows()) throw std::logic_error("psx wrong size");
-        psx[k]->get(&x[0], testmatrix.rows(), 0);
+        Eigen::Matrix<element, Eigen::Dynamic, 1> x(testmatrix.rows());
+        if (psx[k].size() != (size_t) testmatrix.rows()) throw std::logic_error("psx wrong size");
+        psx[k].get(&x[0], testmatrix.rows(), 0);
         Eigen::VectorXd res = testmatrix * x;
-        outputs[k]->put(&res[0], testmatrix.rows(), 0);
+        outputs[k].put(&res[0], testmatrix.rows(), 0);
       }
     }
   } action;
 
   static struct {
-    void operator()(vectorSet<scalar> &psc,
-                    const vectorSet<scalar> &psg,
+    void operator()(vectorSet &psc,
+                    const vectorSet &psg,
                     std::vector<scalar> shift,
                     bool append = true) const {
       size_t n = testmatrix.rows();
-      std::vector<scalar> psck(n);
-      std::vector<scalar> psgk(n);
+      std::vector<element> psck(n);
+      std::vector<element> psgk(n);
       for (size_t k = 0; k < psc.size(); k++) {
-        psg[k]->get(&psgk[0], n, 0);
-        if (not append) psc.zero();
-        psc[k]->get(&psck[0], n, 0);
+        psg[k].get(&psgk[0], n, 0);
+        if (not append) psc[k].zero();
+        psc[k].get(&psck[0], n, 0);
         for (size_t l = 0; l < n; l++) psck[l] -= psgk[l] / (testmatrix(l, l) + shift[k]);
-        psc[k]->put(&psck[0], n, 0);
+        psc[k].put(&psck[0], n, 0);
       }
     }
   } update;
@@ -71,23 +74,19 @@ static void DavidsonTest(size_t dimension,
         throw std::logic_error("invalid problem in DavidsonTest");
   if (problem == 3) testmatrix(0, 1) = testmatrix(1, 0) = 1;
 
-  LinearEigensystem<scalar> d;
+  LinearEigensystem<ptype> d;
   d.m_roots = roots;
   d.m_verbosity = verbosity;
   d.m_maxIterations = dimension;
   d.m_orthogonalize = orthogonalize;
-  vectorSet<scalar> x;
-  vectorSet<scalar> g;
+  vectorSet x;
+  vectorSet g;
   for (size_t root = 0; root < (size_t) d.m_roots; root++) {
-    auto xx = std::make_shared<ptype>(dimension);
-    xx->zero();
-//    xout << "zeroed xx="<<xx<<std::endl;
-    scalar one = 1;
-    xx->put(&one, 1, root);
-//    xout << "constructed xx="<<xx<<std::endl;
-    x.push_back_clone(xx);
-    auto gg = std::make_shared<ptype>(dimension);
-    g.push_back_clone(gg);
+    x.emplace_back(dimension);
+    g.emplace_back(dimension);
+    x.back().zero();
+    element one = 1;
+    x.back().put(&one, 1, root);
   }
 
   for (size_t iteration = 0; iteration < dimension + 1; iteration++) {
@@ -119,7 +118,7 @@ static void DavidsonTest(size_t dimension,
 //    xout << "true eigenvectors:\n"<<es.eigenvectors().leftCols(d.m_roots).transpose()<<std::endl;
 
 
-  std::vector<scalar> ev = d.eigenvalues();
+  auto ev = d.eigenvalues();
   xout << "Eigenvalues: ";
   size_t root = 0;
   for (const auto &e : ev) xout << " " << e << "(error=" << e - es.eigenvalues()(root++) << ")";
@@ -131,8 +130,8 @@ static void DavidsonTest(size_t dimension,
   action(x, g);
   std::vector<scalar> errors;
   for (size_t root = 0; root < (size_t) d.m_roots; root++) {
-    g[root]->axpy(-ev[root], *x[root]);
-    errors.push_back(g[root]->dot(*g[root]));
+    g[root].axpy(-ev[root], x[root]);
+    errors.push_back(g[root].dot(g[root]));
   }
 //   xout << "Square residual norms: "; for (typename std::vector<element_t>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
   xout << "Square residual norms: ";
@@ -155,51 +154,53 @@ static void DavidsonTest(size_t dimension,
 * \param mode Whether to perform DIIS, KAIN, or nothing.
 * \param difficulty Level of numerical challenge, ranging from 0 to 1.
 */
-template<class ptype, class scalar=double>
+template<class ptype>
 void DIISTest(int verbosity = 0,
               size_t maxDim = 6,
               double svdThreshold = 1e-10,
-              enum DIIS<scalar>::DIISmode_type mode = DIIS<scalar>::DIISmode,
+              enum DIIS<ptype>::DIISmode_type mode = DIIS<ptype>::DIISmode,
               double difficulty = 0.1) {
+  using vectorSet = std::vector<ptype>;
+  using scalar = typename ptype::scalar_type;
   static struct {
-    void operator()(const vectorSet<scalar> &psx, vectorSet<scalar> &outputs) const {
+    void operator()(const vectorSet &psx, vectorSet &outputs) const {
       size_t n = 2;
-      std::vector<scalar> psxk(n);
-      std::vector<scalar> output(n);
+      std::vector<typename ptype::scalar_type> psxk(n);
+      std::vector<typename ptype::scalar_type> output(n);
 
-      psx.front()->get(&(psxk[0]), n, 0);
+      psx.front().get(&(psxk[0]), n, 0);
       output[0] = (2 * psxk[0] - 2 + 400 * psxk[0] * (psxk[0] * psxk[0] - psxk[1]));
       output[1] = (200 * (psxk[1] - psxk[0] * psxk[0])); // Rosenbrock
-      outputs.front()->put(&(output[0]), n, 0);
+      outputs.front().put(&(output[0]), n, 0);
     }
   } _Rosenbrock_residual;
 
   static struct {
-    void operator()(vectorSet<scalar> &psc,
-                    const vectorSet<scalar> &psg,
+    void operator()(vectorSet &psc,
+                    const vectorSet &psg,
                     std::vector<scalar> shift,
                     bool append = true) const {
       size_t n = 2;
-      std::vector<scalar> psck(n);
-      std::vector<scalar> psgk(n);
-      psg.front()->get(&psgk[0], n, 0);
+      std::vector<typename ptype::scalar_type> psck(n);
+      std::vector<typename ptype::scalar_type> psgk(n);
+      psg.front().get(&psgk[0], n, 0);
       if (append) {
-        psc.front()->get(&psck[0], n, 0);
+        psc.front().get(&psck[0], n, 0);
         psck[0] -= psgk[0] / 700;
         psck[1] -= psgk[1] / 200;
       } else {
         psck[0] = -psgk[0] / 700;
         psck[1] = -psgk[1] / 200;
       }
-      psc.front()->put(&psck[0], n, 0);
+      psc.front().put(&psck[0], n, 0);
 //    xout << "Rosenbrock updater, new psc="<<psc<<std::endl;
     }
   } _Rosenbrock_updater;
-  vectorSet<scalar> x;
-  x.push_back(std::shared_ptr<ptype>(new ptype(2)));
-  vectorSet<scalar> g;
-  g.push_back(std::shared_ptr<ptype>(new ptype(2)));
-  DIIS<scalar> d;
+  vectorSet x;
+  x.emplace_back(2);
+  vectorSet g;
+  g.emplace_back(2);
+  DIIS<ptype> d;
   d.m_maxDim = maxDim;
   d.m_svdThreshold = svdThreshold;
   d.setMode(mode);
@@ -209,23 +210,23 @@ void DIISTest(int verbosity = 0,
   d.m_verbosity = verbosity - 1;
 //  d.m_options["weight"]=2;
   return;
-  std::vector<scalar> xxx(2);
+  std::vector<typename ptype::scalar_type> xxx(2);
   xxx[0] = xxx[1] = 1 - difficulty; // initial guess
-  x.front()->put(&xxx[0], 2, 0);
-  xout << "initial guess " << x << std::endl;
+  x.front().put(&xxx[0], 2, 0);
+//  xout << "initial guess " << x << std::endl;
   bool converged = false;
   for (int iteration = 1; iteration < 1000 && not converged; iteration++) {
 //   xout <<"start of iteration "<<iteration<<std::endl;
     _Rosenbrock_residual(x, g);
-    xout << "residual: " << g;
+//    xout << "residual: " << g;
     d.addVector(x, g);
-    std::vector<scalar> shift;
+    std::vector<typename ptype::scalar_type> shift;
     shift.push_back(1e-10);
     _Rosenbrock_updater(x, g, shift);
     converged = d.endIteration(x, g);
-    x.front()->get(&xxx[0], 2, 0);
-    if (verbosity > 2)
-      xout << "new x after iterate " << x.front() << std::endl;
+    x.front().get(&xxx[0], 2, 0);
+//    if (verbosity > 2)
+//      xout << "new x after iterate " << x.front() << std::endl;
     if (verbosity >= 0)
       xout << "iteration " << iteration << ", Residual norm = " << std::sqrt(d.fLastResidual())
            << ", Distance from solution = " << std::sqrt((xxx[0] - 1) * (xxx[0] - 1) + (xxx[1] - 1) * (xxx[1] - 1))
@@ -235,7 +236,7 @@ void DIISTest(int verbosity = 0,
 //   xout <<"end of iteration "<<iteration<<std::endl;
   }
 
-  x.front()->get(&xxx[0], 2, 0);
+  x.front().get(&xxx[0], 2, 0);
   xout << "Distance from solution = " << std::sqrt((xxx[0] - 1) * (xxx[0] - 1) + (xxx[1] - 1) * (xxx[1] - 1))
        << std::endl;
 
@@ -353,7 +354,7 @@ void RSPTTest(size_t n, double alpha) {
 //      xout << "m_F:"<<std::endl<<m_F<<std::endl;
     }
     ptype guess() {
-      std::vector<scalar> r(m_n);
+      std::vector<typename ptype::scalar_type> r(m_n);
       ptype result(m_n);
       for (size_t k = 0; k < m_n; k++)
         r[k] = 0;
@@ -367,12 +368,12 @@ void RSPTTest(size_t n, double alpha) {
   static struct {
     void operator()(const vectorSet<scalar> &psx,
                     vectorSet<scalar> &outputs,
-                    std::vector<scalar> shift = std::vector<scalar>(),
+                    std::vector<typename ptype::scalar_type> shift = std::vector<scalar>(),
                     bool append = false) const {
 //        xout << "rsptpot_residual"<<std::endl;
 //        xout << "input "<<psx<<std::endl;
-      std::vector<scalar> psxk(instance.m_n);
-      std::vector<scalar> output(instance.m_n);
+      std::vector<typename ptype::scalar_type> psxk(instance.m_n);
+      std::vector<typename ptype::scalar_type> output(instance.m_n);
       psx.front()->get(&(psxk[0]), instance.m_n, 0);
       if (append)
         outputs.front()->get(&(output[0]), instance.m_n, 0);
@@ -396,8 +397,8 @@ void RSPTTest(size_t n, double alpha) {
 //        xout << "preconditioner input="<<psg<<std::endl;
 //      if (shift.front()==0)
 //          xout << "H0 not resolvent"<<std::endl;
-      std::vector<scalar> psck(instance.m_n);
-      std::vector<scalar> psgk(instance.m_n);
+      std::vector<typename ptype::scalar_type> psck(instance.m_n);
+      std::vector<typename ptype::scalar_type> psgk(instance.m_n);
       psg.front()->get(&psgk[0], instance.m_n, 0);
       if (shift.front() == 0)
         for (size_t i = 0; i < instance.m_n; i++)
@@ -425,7 +426,7 @@ void RSPTTest(size_t n, double alpha) {
   size_t sample = 1;
   for (size_t repeat = 0; repeat < sample; repeat++) {
     instance.set(n, alpha);
-    LinearEigensystem<scalar> d;
+    LinearEigensystem<ptype> d;
     d.m_verbosity = -1;
     d.m_rspt = true;
     d.m_minIterations = 50;
@@ -492,10 +493,10 @@ int main(int argc, char *argv[]) {
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
 //  LinearAlgebra::DIIS<double>::randomTest(100,100,0.1,3.0);
-    DIISTest<PagedVector<double> >(2, 6, 1e-10, LinearAlgebra::DIIS<double>::DIISmode, 0.0002);
+    DIISTest<PagedVector<double> >(2, 6, 1e-10, LinearAlgebra::DIIS<PagedVector<double> >::DIISmode, 0.0002);
 //  MPI_Abort(MPI_COMM_WORLD,1);
-//  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<double>::DIISmode,0.2);
-//  DIISTest<PagedVector<double> >(1,6,1e-3,LinearAlgebra::DIIS<double>::disabled,0.0002);
+//  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<PagedVector<double> >::DIISmode,0.2);
+//  DIISTest<PagedVector<double> >(1,6,1e-3,LinearAlgebra::DIIS<PagedVector<double> >::disabled,0.0002);
 //   DavidsonTest<PagedVector<double> >(2,2,2,2,false);
 if (false) {
 
@@ -516,11 +517,11 @@ if (false) {
 //  RSPTTest<PagedVector<double> ,double>(100,2e0);
 //    IterativeSolverFTest();
   }
-  std::cout << "before MPI_Finalize()"<<std::endl;
+//  std::cout << "before MPI_Finalize()"<<std::endl;
 #ifdef HAVE_MPI_H
   MPI_Finalize();
 #endif
-  std::cout << "after MPI_Finalize()"<<std::endl;
+//  std::cout << "after MPI_Finalize()"<<std::endl;
   exit(0);
   return 0;
 }

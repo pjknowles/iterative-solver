@@ -194,7 +194,7 @@ class IterativeSolver {
     for (size_t n = 0; n < Pvectors.size(); n++)
       m_Pvectors.push_back(Pvectors[n]);
     for (size_t n = 0; n < Pvectors.size(); n++) {
-      for (size_t i = 0; i < newNP; i++) {
+      for (Eigen::Index i = 0; i < newNP; i++) {
 //        xout << "offset " << offset << std::endl;
 //        xout << "PP " << PP[offset] << std::endl;
         m_subspaceMatrix(oldNP + n, i) = m_subspaceMatrix(i, oldNP + n) = PP[offset++];

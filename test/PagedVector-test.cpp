@@ -188,7 +188,7 @@ TEST_CASE("PagedVector::put()") {
 
 #ifndef none
     std::vector<double> w;
-    for (auto k = 0; k < w.size(); k++) w.push_back(k);
+    for (size_t k = 0; k < w.size(); k++) w.push_back(k);
     v0.put(w.data(), w.size(), 0);
 //       std::cout << "v0 "<<v0<<std::endl;
     std::vector<double> w1;

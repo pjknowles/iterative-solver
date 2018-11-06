@@ -28,12 +28,13 @@ int main(int argc, char *argv[]) {
 }
 
 TEST_CASE("PagedVector copy constructor") {
-  PagedVector<double,100> v0(10001);
+  using pv = PagedVector<double,100>;
+  pv v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
   for (size_t i = 0; i < 4; i++) {
 //        std::cout <<"option "<<i<< ", copy-construct"<<std::endl;
-    auto v2 = PagedVector<double>(v0, i);
+    auto v2 = pv(v0, i);
 //        std::cout <<"option "<<i<< ", copy-construct, reads="<<v2.m_cache.reads << " writes="<<v2.m_cache.writes<<std::endl;
     result &= v2 == v0;
 //        std::cout <<"option "<<i<< ", compare, reads="<<v2.m_cache.reads << " writes="<<v2.m_cache.writes<<std::endl;

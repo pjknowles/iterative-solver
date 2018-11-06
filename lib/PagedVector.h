@@ -75,7 +75,7 @@ class PagedVector : public vector<scalar> {
    * @param mpi_communicator
    */
 //   template <size_t other_size, class other_allocator>
-//  PagedVector(const PagedVector<scalar,other_size,other_allocator> &source, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
+//  PagedVector(const PagedVector<scalar, other_size, other_allocator> &source, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
   PagedVector(const PagedVector &source, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
       : vector<scalar>(), m_size(source.m_size),
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),

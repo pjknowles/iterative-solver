@@ -178,8 +178,8 @@ class IterativeSolver {
 //    xout << "oldss " << oldss << ", Pvectors,size() " << Pvectors.size() << std::endl;
     m_subspaceMatrix.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
     m_subspaceOverlap.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
-    auto oldNP = m_PQMatrix.rows();
-    auto newNP = oldNP + Pvectors.size();
+    Eigen::Index oldNP = m_PQMatrix.rows();
+    Eigen::Index newNP = oldNP + Pvectors.size();
     assert(newNP + m_QQMatrix.rows() == m_subspaceOverlap.rows());
     parametersP.resize(newNP);
     m_PQMatrix.conservativeResize(newNP, m_QQMatrix.rows());

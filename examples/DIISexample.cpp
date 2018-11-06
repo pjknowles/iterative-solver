@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
   x.back()->zero();
   double one = 1;
   x.back()->put(&one, 1, 0);  // initial guess
-  for (auto iter = 0; iter < solver.m_maxIterations; ++iter) {
+  for (size_t iter = 0; iter < solver.m_maxIterations; ++iter) {
     anharmonic_residual(x, g);
 //     std::cout << "x: "<<x.front()<<std::endl;
 //     std::cout << "g: "<<g.front()<<std::endl;

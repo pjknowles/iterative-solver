@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
   solver.m_thresh = 1e-6;
   LinearAlgebra::vectorSet<scalar> g;
   LinearAlgebra::vectorSet<scalar> x;
-  for (int root = 0; root < solver.m_roots; root++) {
+  for (size_t root = 0; root < solver.m_roots; root++) {
     x.push_back(std::make_shared<pv>(n));
     g.push_back(std::make_shared<pv>(n));
   }
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     ++p;
   }
   std::vector<std::vector<scalar> > Pcoeff(solver.m_roots);
-  for (auto i = 0; i < solver.m_roots; ++i) Pcoeff[i].resize(nP);
+  for (size_t i = 0; i < solver.m_roots; ++i) Pcoeff[i].resize(nP);
   solver.addP(pspace, PP.data(), x, g, Pcoeff);
   for (auto iter = 0; iter < 100; iter++) {
     actionP(pspace, Pcoeff, g);
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
   std::cout << "Error={ ";
   for (const auto &e : solver.errors()) std::cout << e << " ";
   std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
-  for (int root = 0; root < solver.m_roots; root++) {
+  for (size_t root = 0; root < solver.m_roots; root++) {
     std::vector<scalar> buf(n);
     x[root]->get(&buf[0], n, 0);
     std::cout << "Eigenvector:";

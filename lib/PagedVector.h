@@ -4,7 +4,6 @@
 #define _GNU_SOURCE 1
 #endif
 
-#include "LinearAlgebra.h"
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -15,6 +14,13 @@
 #include <cassert>
 #include <fstream>
 #include <map>
+
+#ifndef LINEARALGEBRA_CLONE_ADVISE_OFFLINE
+#define LINEARALGEBRA_CLONE_ADVISE_OFFLINE 0x01
+#endif
+#ifndef LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED
+#define LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED 0x02
+#endif
 
 #ifdef HAVE_MPI_H
 #include <mpi.h>
@@ -29,39 +35,52 @@
 using MPI_Comm = int;
 #endif
 
-namespace LinearAlgebra {
+//namespace LinearAlgebra
+//{
 
 /*!
-  * \brief A class that implements LinearAlgebra::vector with data optionally held on backing store, and optionally distributed
-  * over MPI ranks
+  * \brief A class that implements a vector container that has the following features:
+  * - data optionally held on backing store instead of in memory
+  * - data optionally distributed over MPI ranks
+  * - mapping of an externally-owned buffer, or internally-owned storage
+  * - opaque implementation of BLAS including dot(), axpy(), scal(), zero()
+  * - efficient import and export of data ranges
+  * - potentially inefficient read and read-write access to individual elements
   * \tparam scalar the type of elements of the vector
   * \tparam default_offline_buffer_size the default buffer size if in offline mode
   * \tparam Allocator allocates memory
   */
 template<class scalar=double,
- size_t
-default_offline_buffer_size=102400,
-class Allocator =
+    size_t
+    default_offline_buffer_size = 102400,
+    class Allocator =
 #ifdef MEMORY_MEMORY_H
-memory::allocator<scalar>
+    memory::allocator<scalar>
 #else
-std::allocator<scalar>
+    std::allocator<scalar>
 #endif
 >
-class PagedVector : public vector<scalar> {
+class PagedVector {
  public:
   /*!
    * \brief Construct an object without any data.
    */
   explicit PagedVector(size_t length = 0, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
-      : vector<scalar>(), m_size(length),
+      : m_size(length),
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
-        m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
-        m_segment_offset(m_replicated ? 0 : ((m_size - 1) / m_mpi_size + 1) * m_mpi_rank),
-        m_segment_length(m_replicated ? m_size : std::min((m_size - 1) / m_mpi_size + 1, m_size - m_segment_offset)),
+        m_replicated(
+            !(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
+        m_segment_offset(m_replicated
+                         ? 0 : ((m_size - 1) / m_mpi_size + 1) * m_mpi_rank),
+        m_segment_length(m_replicated
+                         ?
+                         m_size : std::min((m_size - 1) / m_mpi_size + 1, m_size - m_segment_offset)
+        ),
 //     m_segment_length(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option) ? m_size : std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset)),
         m_cache(m_segment_length,
-                (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length) {
+                (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ?
+                default_offline_buffer_size : m_segment_length
+        ) {
 //   init(option);
 //    std::cout <<" option "<<( option)<<std::endl;
 //    std::cout <<"LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option "<<(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)<<std::endl;
@@ -76,8 +95,8 @@ class PagedVector : public vector<scalar> {
    */
 //   template <size_t other_size, class other_allocator>
 //  PagedVector(const PagedVector<scalar, other_size, other_allocator> &source, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
-  PagedVector(const PagedVector &source, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
-      : vector<scalar>(), m_size(source.m_size),
+  PagedVector(const PagedVector& source, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
+      : m_size(source.m_size),
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
         m_segment_offset(m_replicated ? 0 : std::min(((m_size - 1) / m_mpi_size + 1) * m_mpi_rank, m_size)),
@@ -106,8 +125,8 @@ class PagedVector : public vector<scalar> {
    * @param length
    */
 
-  PagedVector(double *buffer, size_t length)
-      : vector<scalar>(), m_size(length),
+  PagedVector(double* buffer, size_t length)
+      : m_size(length),
         m_communicator(MPI_COMM_COMPUTE), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(true),
         m_segment_offset(0),
@@ -116,12 +135,7 @@ class PagedVector : public vector<scalar> {
 
   }
 
-  virtual ~PagedVector() = default;
-
-  // Every child of LinearAlgebra::vector<scalar> needs exactly this
-  PagedVector *clone(int option = 0) const override {// std::cout << "in PagedVector clone, option="<<option<<std::endl;
-    return new PagedVector(*this, option);
-  }
+  ~PagedVector() = default;
 
   /*!
      * \brief Specify a cache size for manipulating the data
@@ -168,7 +182,7 @@ class PagedVector : public vector<scalar> {
  * Get a pointer to the entire data structure if possible
  * @return the pointer, or nullptr if caching/distribution means that the whole vector is not available
  */
-  scalar *data() {
+  scalar* data() {
     if (not m_replicated) return nullptr;
     if (m_cache.io and not m_cache.bufferContainer.empty()) return nullptr;
     return m_cache.buffer;
@@ -180,18 +194,18 @@ class PagedVector : public vector<scalar> {
     const size_t datasize; ///< the size of the vector being mapped
     const size_t preferred_length; ///< the default for the size of the cache window
     mutable std::vector<scalar> bufferContainer;
-    mutable scalar *buffer;
-    const scalar *begin() const { return buffer; }
-    const scalar *end() const { return buffer + length; }
-    scalar *begin() { return buffer; }
-    scalar *end() { return buffer + length; }
+    mutable scalar* buffer;
+    const scalar* begin() const { return buffer; }
+    const scalar* end() const { return buffer + length; }
+    scalar* begin() { return buffer; }
+    scalar* end() { return buffer + length; }
     mutable bool dirty;
     mutable std::fstream m_file;
     mutable size_t filesize;
     mutable size_t writes; ///< how many scalars written
     mutable size_t reads; ///< how many scalars read
     const bool io; ///< whether backing store is needed
-    explicit window(size_t datasize, size_t length = default_offline_buffer_size, scalar *externalBuffer = nullptr)
+    explicit window(size_t datasize, size_t length = default_offline_buffer_size, scalar* externalBuffer = nullptr)
         : offset(datasize + 1),
           length(0),
           datasize(datasize),
@@ -207,7 +221,7 @@ class PagedVector : public vector<scalar> {
       } else if (io) {
 //     buffer=nullptr;
         buffer = bufferContainer.data();
-        char *tmpname = strdup("tmpfileXXXXXX");
+        char* tmpname = strdup("tmpfileXXXXXX");
         mkstemp(tmpname);
         m_file.open(tmpname, std::ios::out | std::ios::in | std::ios::binary);
         if (!m_file.is_open()) throw std::runtime_error(std::string("Cannot open cache file ") + tmpname);
@@ -242,7 +256,7 @@ class PagedVector : public vector<scalar> {
         m_file.seekp(this->offset * sizeof(scalar));
 //          std::cout << "write to "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
 //     std::cout << "write to "<<this->offset<<std::endl;
-        m_file.write((const char *) buffer, this->length * sizeof(scalar));
+        m_file.write((const char*) buffer, this->length * sizeof(scalar));
         writes += this->length;
         if (filesize < this->offset + this->length) filesize = this->offset + this->length;
       }
@@ -253,7 +267,7 @@ class PagedVector : public vector<scalar> {
       //    std::cout << "buffer resized to length="<<this->length<<"; offset="<<offset<<", filesize="<<filesize<<std::endl;
       if (std::min(this->length, static_cast<size_t>(filesize - offset))) {
         m_file.seekg(offset * sizeof(scalar));
-        m_file.read((char *) buffer, std::min(this->length, static_cast<size_t>(filesize - offset)) * sizeof(scalar));
+        m_file.read((char*) buffer, std::min(this->length, static_cast<size_t>(filesize - offset)) * sizeof(scalar));
 //     std::cout << "read from "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
 //     std::cout << "read from "<<this->offset<<std::endl;
         reads += std::min(this->length, static_cast<size_t>(filesize - offset));
@@ -274,7 +288,7 @@ class PagedVector : public vector<scalar> {
       if (io) m_file.close();
     }
 
-    const window &operator++() const {
+    const window& operator++() const {
 //    std::cout << "operator++ entry offset="<<offset<<", length="<<length<<std::endl;
       move(offset + length, length);
 //    std::cout << "operator++ exit  offset="<<offset<<", length="<<length<<std::endl;
@@ -297,7 +311,7 @@ class PagedVector : public vector<scalar> {
    * \param length
    * \param offset
    */
-  void put(const scalar *buffer, size_t length, size_t offset) override {
+  void put(const scalar* buffer, size_t length, size_t offset) {
 //   std::cout << "PagedVector::put() length="<<length<<", offset="<<offset<<std::endl;
 //   for (size_t k=0; k<length; k++) std::cout << " "<<buffer[k]; std::cout << std::endl;
 //   std::cout << "cache from "<<m_cache.offset<<" for "<<m_cache.length<<std::endl;
@@ -358,7 +372,7 @@ class PagedVector : public vector<scalar> {
 //   std::cout << "PagedVector::put() ends length="<<length<<", offset="<<offset<<std::endl;
   }
 
-  void get(scalar *buffer, size_t length, size_t offset) const override {
+  void get(scalar* buffer, size_t length, size_t offset) const {
 //   std::cout << "PagedVector::get() length="<<length<<", offset="<<offset<<", m_replicated="<<m_replicated<<", io="<<m_cache.io<<", pagesize="<<m_cache.preferred_length<<std::endl;
 //   std::cout << "cache from "<<m_cache.offset<<" for "<<m_cache.length<<std::endl;
 //   for (size_t k=0; k<m_cache.length; k++) std::cout << " "<<m_cache.buffer[k]; std::cout << std::endl;
@@ -414,7 +428,7 @@ class PagedVector : public vector<scalar> {
 //   std::cout << "PagedVector::get() ends, length="<<length<<", offset="<<offset<<std::endl;
   }
 
-  const scalar &operator[](size_t pos) const override {
+  const scalar& operator[](size_t pos) const {
     if (pos >= m_cache.offset + m_segment_offset + m_cache.length
         || pos < m_cache.offset + m_segment_offset) { // cache not mapping right sector
 //    std::cout << "cache miss"<<std::endl;
@@ -426,16 +440,16 @@ class PagedVector : public vector<scalar> {
     return m_cache.buffer[pos - m_cache.offset - m_segment_offset];
   }
 
-  scalar &operator[](size_t pos) override {
-    scalar *result;
-    result = &const_cast<scalar &>(static_cast<const PagedVector *>(this)->operator[](pos));
+  scalar& operator[](size_t pos) {
+    scalar* result;
+    result = &const_cast<scalar&>(static_cast<const PagedVector*>(this)->operator[](pos));
     m_cache.dirty = true;
     return *result;
   }
 
-  size_t size() const override { return m_size; }
+  size_t size() const { return m_size; }
 
-  std::string str(int verbosity = 0, unsigned int columns = UINT_MAX) const override {
+  std::string str(int verbosity = 0, unsigned int columns = UINT_MAX) const {
     std::ostringstream os;
     os << "PagedVector object:";
     for (size_t k = 0; k < m_segment_length; k++)
@@ -450,8 +464,8 @@ class PagedVector : public vector<scalar> {
    * \param other The object to be added to this.
    * \return
    */
-  void axpy(scalar a, const vector<scalar> &other) override {
-    const auto &othe = dynamic_cast <const PagedVector &> (other);
+  void axpy(scalar a, const PagedVector<scalar>& other) {
+    const auto& othe = dynamic_cast <const PagedVector&> (other);
 //   std::cout << "PagedVector this m_replicated " << m_replicated << ", io=" << m_cache.io << std::endl;
 //   std::cout << "PagedVector othe m_replicated " << othe.m_replicated << ", io=" << othe.m_cache.io << std::endl;
 //   std::cout << "PagedVector::axpy this="<<*this<<std::endl;
@@ -581,7 +595,7 @@ class PagedVector : public vector<scalar> {
     * \param other The object to be added to this.
     * \return
     */
-  void axpy(scalar a, const std::map<size_t, scalar> &other) override {
+  void axpy(scalar a, const std::map<size_t, scalar>& other) {
     for (const auto& o: other)
       if (o.first >= m_segment_offset && o.first < m_segment_offset + m_segment_length)
         (*this)[o.first] += a * o.second;
@@ -592,7 +606,7 @@ class PagedVector : public vector<scalar> {
    * \param other The object to be contracted with this.
    * \return
    */
-  scalar dot(const vector<scalar> &other) const override {
+  scalar dot(const PagedVector<scalar>& other) const {
     const auto& othe = dynamic_cast <const PagedVector&> (other);
 //   std::cout << "dot this m_replicated="<<m_replicated<<", io="<<m_cache.io<<std::endl;
 //   std::cout << "dot othe m_replicated="<<othe.m_replicated<<", io="<<othe.m_cache.io<<std::endl;
@@ -712,9 +726,9 @@ class PagedVector : public vector<scalar> {
    * \param other The object to be contracted with this.
    * \return
    */
-  scalar dot(const std::map<size_t, scalar> &other) const override {
+  scalar dot(const std::map<size_t, scalar>& other) const {
     scalar result = 0;
-    for (const auto &o: other)
+    for (const auto& o: other)
       if (o.first >= m_segment_offset && o.first < m_segment_offset + m_segment_length)
         result += o.second * (*this)[o.first];
 #ifdef HAVE_MPI_H
@@ -735,7 +749,7 @@ class PagedVector : public vector<scalar> {
      * \brief scal Scale the object by a factor.
      * \param a The factor to scale by.
      */
-  void scal(scalar a) override {
+  void scal(scalar a) {
     for (m_cache.ensure(0); m_cache.length; ++m_cache) {
       for (size_t i = 0; i < m_cache.length; i++)
         m_cache.buffer[i] *= a;
@@ -746,7 +760,7 @@ class PagedVector : public vector<scalar> {
   /*!
    * \brief Set the contents of the object to zero.
    */
-  void zero() override {
+  void zero() {
     for (m_cache.ensure(0); m_cache.length; ++m_cache) {
       for (size_t i = 0; i < m_cache.length; i++)
         m_cache.buffer[i] = 0;
@@ -764,12 +778,12 @@ class PagedVector : public vector<scalar> {
     *
     */
   std::tuple<std::vector<size_t>, std::vector<scalar> > select(
-      const vector<scalar> &measure,
+      const PagedVector<scalar>& measure,
       const size_t maximumNumber = 1000,
       const scalar threshold = 0
-  ) const override {
+  ) const {
     std::multimap<scalar, size_t, std::greater<scalar> > sortlist;
-    const auto&measur = dynamic_cast <const PagedVector &> (measure);
+    const auto& measur = dynamic_cast <const PagedVector&> (measure);
     if (this->variance() * measur.variance() < 0) throw std::logic_error("mismatching co/contravariance");
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
     if (this->m_replicated != measur.m_replicated) throw std::logic_error("mismatching replication status");
@@ -808,7 +822,7 @@ class PagedVector : public vector<scalar> {
     indices.reserve(sortlist.size());
     std::vector<scalar> values;
     values.reserve(sortlist.size());
-    for (const auto &p : sortlist) {
+    for (const auto& p : sortlist) {
       indices.push_back(p.second);
       values.push_back(p.first);
     }
@@ -821,7 +835,7 @@ class PagedVector : public vector<scalar> {
    * \param other The source of data.
    * \return
    */
-  PagedVector &operator=(const PagedVector &other) {
+  PagedVector& operator=(const PagedVector& other) {
     assert(m_size == other.m_size);
     this->setVariance(other.variance());
     if (!m_cache.io && !other.m_cache.io) { // std::cout << "both in memory"<<std::endl;
@@ -897,7 +911,7 @@ class PagedVector : public vector<scalar> {
     return *this;
   }
 
-  bool operator==(const PagedVector &other) {
+  bool operator==(const PagedVector& other) {
 //std::cout  << "operator== start"<<std::endl;
     if (this->variance() != other.variance()) throw std::logic_error("mismatching co/contravariance");
     if (this->m_size != other.m_size) throw std::logic_error("mismatching lengths");
@@ -957,7 +971,7 @@ class PagedVector : public vector<scalar> {
 
 };
 template<class scalar>
-inline std::ostream &operator<<(std::ostream &os, PagedVector<scalar> const &obj) { return os << obj.str(); }
+inline std::ostream& operator<<(std::ostream& os, PagedVector<scalar> const& obj) { return os << obj.str(); }
 
-}
+//}
 #endif // PAGEDVECTOR_H

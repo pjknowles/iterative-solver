@@ -1,7 +1,7 @@
 #include "PagedVector.h"
 #define CATCH_CONFIG_RUNNER
 #include "catch.hpp"
-using namespace LinearAlgebra;
+//using namespace LinearAlgebra;
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif

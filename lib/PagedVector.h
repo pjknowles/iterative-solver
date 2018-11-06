@@ -35,33 +35,35 @@
 using MPI_Comm = int;
 #endif
 
-//namespace LinearAlgebra
-//{
+namespace LinearAlgebra {
 
 /*!
   * \brief A class that implements a vector container that has the following features:
-  * - data optionally held on backing store instead of in memory
-  * - data optionally distributed over MPI ranks
+  * - data optionally held on backing store instead of in memory, specified via additional non-compulsory option argument in copy constructor
+  * - data optionally distributed over MPI ranks, specified via additional non-compulsory option argument in copy constructor
   * - mapping of an externally-owned buffer, or internally-owned storage
   * - opaque implementation of BLAS including dot(), axpy(), scal(), zero()
   * - efficient import and export of data ranges
   * - potentially inefficient read and read-write access to individual elements
-  * \tparam scalar the type of elements of the vector
+  * - an internal advisory status of active/inactive
+  * \tparam element_t the type of elements of the vector
   * \tparam default_offline_buffer_size the default buffer size if in offline mode
-  * \tparam Allocator allocates memory
+  * \tparam Allocator alternative to std::allocator
   */
-template<class scalar=double,
+template<class element_t=double,
     size_t
     default_offline_buffer_size = 102400,
     class Allocator =
 #ifdef MEMORY_MEMORY_H
-    memory::allocator<scalar>
+    memory::allocator<element_t>
 #else
-    std::allocator<scalar>
+    std::allocator<element_t>
 #endif
 >
 class PagedVector {
  public:
+  typedef double scalar_type; //TODO implement this properly from element_t
+  typedef element_t element_type;
   /*!
    * \brief Construct an object without any data.
    */
@@ -80,7 +82,8 @@ class PagedVector {
         m_cache(m_segment_length,
                 (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ?
                 default_offline_buffer_size : m_segment_length
-        ) {
+        ),
+        m_active(true) {
 //   init(option);
 //    std::cout <<" option "<<( option)<<std::endl;
 //    std::cout <<"LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option "<<(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)<<std::endl;
@@ -93,8 +96,6 @@ class PagedVector {
    * @param option
    * @param mpi_communicator
    */
-//   template <size_t other_size, class other_allocator>
-//  PagedVector(const PagedVector<scalar, other_size, other_allocator> &source, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
   PagedVector(const PagedVector& source, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
       : m_size(source.m_size),
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
@@ -102,7 +103,8 @@ class PagedVector {
         m_segment_offset(m_replicated ? 0 : std::min(((m_size - 1) / m_mpi_size + 1) * m_mpi_rank, m_size)),
         m_segment_length(m_replicated ? m_size : std::min((m_size - 1) / m_mpi_size + 1, m_size - m_segment_offset)),
         m_cache(m_segment_length,
-                (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length) {
+                (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length),
+        m_active(true) {
 //   init(option);
 //   std::cout << "in copy constructor, before copy, source: "<<source.size()<<":"<<source.str()<<std::endl;
 //   std::cout << "m_segment_offset "<<m_segment_offset <<std::endl;
@@ -131,7 +133,8 @@ class PagedVector {
         m_replicated(true),
         m_segment_offset(0),
         m_segment_length(m_size),
-        m_cache(m_segment_length, m_segment_length, buffer) {
+        m_cache(m_segment_length, m_segment_length, buffer),
+        m_active(true) {
 
   }
 
@@ -156,7 +159,7 @@ class PagedVector {
     int result;
     MPI_Comm_size(m_communicator, &result);
 #else
-    int result=1;
+    int result = 1;
 #endif
     return result;
   }
@@ -165,7 +168,7 @@ class PagedVector {
     int result;
     MPI_Comm_rank(m_communicator, &result);
 #else
-    int result=0;
+    int result = 0;
 #endif
     return result;
   }
@@ -182,7 +185,7 @@ class PagedVector {
  * Get a pointer to the entire data structure if possible
  * @return the pointer, or nullptr if caching/distribution means that the whole vector is not available
  */
-  scalar* data() {
+  element_t* data() {
     if (not m_replicated) return nullptr;
     if (m_cache.io and not m_cache.bufferContainer.empty()) return nullptr;
     return m_cache.buffer;
@@ -193,19 +196,19 @@ class PagedVector {
     mutable size_t length;///< the size of the cache window
     const size_t datasize; ///< the size of the vector being mapped
     const size_t preferred_length; ///< the default for the size of the cache window
-    mutable std::vector<scalar> bufferContainer;
-    mutable scalar* buffer;
-    const scalar* begin() const { return buffer; }
-    const scalar* end() const { return buffer + length; }
-    scalar* begin() { return buffer; }
-    scalar* end() { return buffer + length; }
+    mutable std::vector<element_t> bufferContainer;
+    mutable element_t* buffer;
+    const element_t* begin() const { return buffer; }
+    const element_t* end() const { return buffer + length; }
+    element_t* begin() { return buffer; }
+    element_t* end() { return buffer + length; }
     mutable bool dirty;
     mutable std::fstream m_file;
     mutable size_t filesize;
     mutable size_t writes; ///< how many scalars written
     mutable size_t reads; ///< how many scalars read
     const bool io; ///< whether backing store is needed
-    explicit window(size_t datasize, size_t length = default_offline_buffer_size, scalar* externalBuffer = nullptr)
+    explicit window(size_t datasize, size_t length = default_offline_buffer_size, element_t* externalBuffer = nullptr)
         : offset(datasize + 1),
           length(0),
           datasize(datasize),
@@ -253,10 +256,10 @@ class PagedVector {
       if (!length) length = preferred_length;
 //    std::cout << "move offset="<<offset<<", length="<<length<<", this->length="<<this->length<<", this->offset="<<this->offset<<" this->io="<<this->io<<std::endl;
       if (dirty && this->length) {
-        m_file.seekp(this->offset * sizeof(scalar));
+        m_file.seekp(this->offset * sizeof(element_t));
 //          std::cout << "write to "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
 //     std::cout << "write to "<<this->offset<<std::endl;
-        m_file.write((const char*) buffer, this->length * sizeof(scalar));
+        m_file.write((const char*) buffer, this->length * sizeof(element_t));
         writes += this->length;
         if (filesize < this->offset + this->length) filesize = this->offset + this->length;
       }
@@ -266,8 +269,8 @@ class PagedVector {
       buffer = bufferContainer.data();
       //    std::cout << "buffer resized to length="<<this->length<<"; offset="<<offset<<", filesize="<<filesize<<std::endl;
       if (std::min(this->length, static_cast<size_t>(filesize - offset))) {
-        m_file.seekg(offset * sizeof(scalar));
-        m_file.read((char*) buffer, std::min(this->length, static_cast<size_t>(filesize - offset)) * sizeof(scalar));
+        m_file.seekg(offset * sizeof(element_t));
+        m_file.read((char*) buffer, std::min(this->length, static_cast<size_t>(filesize - offset)) * sizeof(element_t));
 //     std::cout << "read from "<<this->offset<<":";for (size_t i=0; i<this->length; i++) std::cout <<" "<<buffer[i]; std::cout <<std::endl;
 //     std::cout << "read from "<<this->offset<<std::endl;
         reads += std::min(this->length, static_cast<size_t>(filesize - offset));
@@ -301,9 +304,27 @@ class PagedVector {
   window m_cache;
 
  private:
+  bool m_active;
+
+ private:
   void flushCache() { m_cache.ensure(0); }
 
  public:
+  /*!
+   * @brief report the activity status of the object
+   * @return The status
+   */
+  bool active() { return m_active; }
+  /*!
+   * @brief report and set the activity status of the object
+   * @param value The new value of the status
+   * @return The status before the call
+   */
+  bool active(bool value) {
+    auto result = m_active;
+    m_active = value;
+    return result;
+  }
 
   /*!
    * \brief Place the contents
@@ -311,7 +332,7 @@ class PagedVector {
    * \param length
    * \param offset
    */
-  void put(const scalar* buffer, size_t length, size_t offset) {
+  void put(const element_t* buffer, size_t length, size_t offset) {
 //   std::cout << "PagedVector::put() length="<<length<<", offset="<<offset<<std::endl;
 //   for (size_t k=0; k<length; k++) std::cout << " "<<buffer[k]; std::cout << std::endl;
 //   std::cout << "cache from "<<m_cache.offset<<" for "<<m_cache.length<<std::endl;
@@ -372,7 +393,7 @@ class PagedVector {
 //   std::cout << "PagedVector::put() ends length="<<length<<", offset="<<offset<<std::endl;
   }
 
-  void get(scalar* buffer, size_t length, size_t offset) const {
+  void get(element_t* buffer, size_t length, size_t offset) const {
 //   std::cout << "PagedVector::get() length="<<length<<", offset="<<offset<<", m_replicated="<<m_replicated<<", io="<<m_cache.io<<", pagesize="<<m_cache.preferred_length<<std::endl;
 //   std::cout << "cache from "<<m_cache.offset<<" for "<<m_cache.length<<std::endl;
 //   for (size_t k=0; k<m_cache.length; k++) std::cout << " "<<m_cache.buffer[k]; std::cout << std::endl;
@@ -428,7 +449,7 @@ class PagedVector {
 //   std::cout << "PagedVector::get() ends, length="<<length<<", offset="<<offset<<std::endl;
   }
 
-  const scalar& operator[](size_t pos) const {
+  const element_t& operator[](size_t pos) const {
     if (pos >= m_cache.offset + m_segment_offset + m_cache.length
         || pos < m_cache.offset + m_segment_offset) { // cache not mapping right sector
 //    std::cout << "cache miss"<<std::endl;
@@ -440,9 +461,9 @@ class PagedVector {
     return m_cache.buffer[pos - m_cache.offset - m_segment_offset];
   }
 
-  scalar& operator[](size_t pos) {
-    scalar* result;
-    result = &const_cast<scalar&>(static_cast<const PagedVector*>(this)->operator[](pos));
+  element_t& operator[](size_t pos) {
+    element_t* result;
+    result = &const_cast<element_t&>(static_cast<const PagedVector*>(this)->operator[](pos));
     m_cache.dirty = true;
     return *result;
   }
@@ -464,7 +485,7 @@ class PagedVector {
    * \param other The object to be added to this.
    * \return
    */
-  void axpy(scalar a, const PagedVector<scalar>& other) {
+  void axpy(scalar_type a, const PagedVector<element_t>& other) {
     const auto& othe = dynamic_cast <const PagedVector&> (other);
 //   std::cout << "PagedVector this m_replicated " << m_replicated << ", io=" << m_cache.io << std::endl;
 //   std::cout << "PagedVector othe m_replicated " << othe.m_replicated << ", io=" << othe.m_cache.io << std::endl;
@@ -595,7 +616,7 @@ class PagedVector {
     * \param other The object to be added to this.
     * \return
     */
-  void axpy(scalar a, const std::map<size_t, scalar>& other) {
+  void axpy(scalar_type a, const std::map<size_t, element_t>& other) {
     for (const auto& o: other)
       if (o.first >= m_segment_offset && o.first < m_segment_offset + m_segment_length)
         (*this)[o.first] += a * o.second;
@@ -606,13 +627,13 @@ class PagedVector {
    * \param other The object to be contracted with this.
    * \return
    */
-  scalar dot(const PagedVector<scalar>& other) const {
+  scalar_type dot(const PagedVector<element_t>& other) const {
     const auto& othe = dynamic_cast <const PagedVector&> (other);
 //   std::cout << "dot this m_replicated="<<m_replicated<<", io="<<m_cache.io<<std::endl;
 //   std::cout << "dot othe m_replicated="<<othe.m_replicated<<", io="<<othe.m_cache.io<<std::endl;
     if (this->variance() * othe.variance() < 0) throw std::logic_error("mismatching co/contravariance");
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
-    scalar result = 0;
+    scalar_type result = 0;
     if (this == &other) {
       for (m_cache.ensure(0); m_cache.length; ++m_cache) {
         for (size_t i = 0; i < m_cache.length; i++) {
@@ -708,14 +729,14 @@ class PagedVector {
       }
     }
 #ifdef HAVE_MPI_H
-//    std::cout <<m_mpi_rank<<" dot result before reduce="<<result<<std::endl;
-    if (!m_replicated || !othe.m_replicated) {
-      double resultLocal = result;
-      double resultGlobal = result;
-      MPI_Allreduce(&resultLocal, &resultGlobal, 1, MPI_DOUBLE, MPI_SUM, m_communicator);
-      result = resultGlobal;
-//    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
-    }
+    //    std::cout <<m_mpi_rank<<" dot result before reduce="<<result<<std::endl;
+        if (!m_replicated || !othe.m_replicated) {
+          double resultLocal = result;
+          double resultGlobal = result;
+          MPI_Allreduce(&resultLocal, &resultGlobal, 1, MPI_DOUBLE, MPI_SUM, m_communicator);
+          result = resultGlobal;
+    //    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
+        }
 #endif
 //   std::cout << "leave dot"<<std::endl;
     return result;
@@ -726,8 +747,8 @@ class PagedVector {
    * \param other The object to be contracted with this.
    * \return
    */
-  scalar dot(const std::map<size_t, scalar>& other) const {
-    scalar result = 0;
+  scalar_type dot(const std::map<size_t, element_t>& other) const {
+    scalar_type result = 0;
     for (const auto& o: other)
       if (o.first >= m_segment_offset && o.first < m_segment_offset + m_segment_length)
         result += o.second * (*this)[o.first];
@@ -749,7 +770,7 @@ class PagedVector {
      * \brief scal Scale the object by a factor.
      * \param a The factor to scale by.
      */
-  void scal(scalar a) {
+  void scal(scalar_type a) {
     for (m_cache.ensure(0); m_cache.length; ++m_cache) {
       for (size_t i = 0; i < m_cache.length; i++)
         m_cache.buffer[i] *= a;
@@ -777,12 +798,12 @@ class PagedVector {
     * @return index, value pairs. value is the product of the matrix element and the corresponding element of measure.
     *
     */
-  std::tuple<std::vector<size_t>, std::vector<scalar> > select(
-      const PagedVector<scalar>& measure,
+  std::tuple<std::vector<size_t>, std::vector<element_t> > select(
+      const PagedVector<element_t>& measure,
       const size_t maximumNumber = 1000,
-      const scalar threshold = 0
+      const scalar_type threshold = 0
   ) const {
-    std::multimap<scalar, size_t, std::greater<scalar> > sortlist;
+    std::multimap<element_t, size_t, std::greater<element_t> > sortlist;
     const auto& measur = dynamic_cast <const PagedVector&> (measure);
     if (this->variance() * measur.variance() < 0) throw std::logic_error("mismatching co/contravariance");
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
@@ -801,7 +822,7 @@ class PagedVector {
 //    std::cout << "select, different vectors"<<std::endl;
       for (m_cache.ensure(0), measur.m_cache.move(0, m_cache.length); m_cache.length; ++m_cache, ++measur.m_cache) {
         for (size_t i = 0; i < m_cache.length; i++) {
-          scalar test = m_cache.buffer[i] * measur.m_cache.buffer[i];
+          scalar_type test = m_cache.buffer[i] * measur.m_cache.buffer[i];
 //      std::cout << "test "<<test<<", threshold="<<threshold<<std::endl;
           if (test < 0) test = -test;
           if (test > threshold) {
@@ -820,7 +841,7 @@ class PagedVector {
     while (sortlist.size() > maximumNumber) sortlist.erase(std::prev(sortlist.end()));
     std::vector<size_t> indices;
     indices.reserve(sortlist.size());
-    std::vector<scalar> values;
+    std::vector<element_t> values;
     values.reserve(sortlist.size());
     for (const auto& p : sortlist) {
       indices.push_back(p.second);
@@ -973,5 +994,5 @@ class PagedVector {
 template<class scalar>
 inline std::ostream& operator<<(std::ostream& os, PagedVector<scalar> const& obj) { return os << obj.str(); }
 
-//}
+}
 #endif // PAGEDVECTOR_H

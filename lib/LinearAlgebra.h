@@ -214,7 +214,7 @@ class vectorSet {
  public:
   vectorSet<scalar>() {}
   vectorSet<scalar>(const vectorSet<scalar> &source, int option = 0) {
-//     std::cout << "vectorSet<scalar> about to push_back_clone option="<<option<<std::endl;
+//     std::cout << "vectorSet<element_t> about to push_back_clone option="<<option<<std::endl;
     for (size_t k = 0; k < source.size(); k++) {
       push_back_clone(source.m_pvs[k], option);
       m_active[k] = source.m_active[k];
@@ -222,7 +222,7 @@ class vectorSet {
   }
 
   typedef std::shared_ptr<vector<scalar> > pv_t;
-//    typedef vector<scalar> * pv_t;
+//    typedef vector<element_t> * pv_t;
   ~vectorSet<scalar>() { while (m_pvs.size() > 0) m_pvs.pop_back(); }
   size_t size() const { return this->m_pvs.size(); }
   pv_t operator[](size_t pos) { return m_pvs[pos]; }

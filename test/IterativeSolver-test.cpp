@@ -134,7 +134,7 @@ static void DavidsonTest(size_t dimension,
     g[root]->axpy(-ev[root], *x[root]);
     errors.push_back(g[root]->dot(*g[root]));
   }
-//   xout << "Square residual norms: "; for (typename std::vector<scalar>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
+//   xout << "Square residual norms: "; for (typename std::vector<element_t>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
   xout << "Square residual norms: ";
   for (const auto &e: errors) xout << " " << e;
   xout << std::endl;
@@ -261,7 +261,7 @@ void DIISTest(int verbosity = 0,
 //  }
 //  ptype guess()
 //  {
-//    std::vector<scalar> r(m_n);
+//    std::vector<element_t> r(m_n);
 //    ptype result(m_n);
 //    double value=0.3;
 //    for (size_t k=0; k<m_n; k++) {
@@ -276,9 +276,9 @@ void DIISTest(int verbosity = 0,
 //static anharmonic instance;
 
 //static struct : IterativeSolverBase::ParameterSetTransformation {
-//  void operator()(const vectorSet<scalar> & psx, vectorSet<scalar> & outputs, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) const override {
-//    std::vector<scalar> psxk(instance.m_n);
-//    std::vector<scalar> output(instance.m_n);
+//  void operator()(const vectorSet<element_t> & psx, vectorSet<element_t> & outputs, std::vector<element_t> shift=std::vector<element_t>(), bool append=false) const override {
+//    std::vector<element_t> psxk(instance.m_n);
+//    std::vector<element_t> output(instance.m_n);
 //    psx.front()->get(&(psxk[0]),instance.m_n,0);
 //    if (append)
 //      outputs.front()->get(&(output[0]),instance.m_n,0);
@@ -294,9 +294,9 @@ void DIISTest(int verbosity = 0,
 //  }
 //} _anharmonic_residual;
 //static struct : IterativeSolverBase::ParameterSetTransformation {
-//  void operator()(const vectorSet<scalar> & psg, vectorSet<scalar> & psc, std::vector<scalar> shift=std::vector<scalar>(), bool append=false) const override {
-//    std::vector<scalar> psck(instance.m_n);
-//    std::vector<scalar> psgk(instance.m_n);
+//  void operator()(const vectorSet<element_t> & psg, vectorSet<element_t> & psc, std::vector<element_t> shift=std::vector<element_t>(), bool append=false) const override {
+//    std::vector<element_t> psck(instance.m_n);
+//    std::vector<element_t> psgk(instance.m_n);
 //    psg.front()->get(&psgk[0],instance.m_n,0);
 //    if (append) {
 //        psc.front()->get(&psck[0],instance.m_n,0);
@@ -320,8 +320,8 @@ void DIISTest(int verbosity = 0,
 //      d.setMode(mode);
 //      d.m_verbosity=-1;
 //      d.m_maxIterations=100000;
-//      ptype gg(n); vectorSet<scalar> g; g.push_back(std::shared_ptr<ptype>(&gg));
-//      ptype xx=instance.guess(); vectorSet<scalar> x; x.push_back(std::shared_ptr<ptype>(&xx));
+//      ptype gg(n); vectorSet<element_t> g; g.push_back(std::shared_ptr<ptype>(&gg));
+//      ptype xx=instance.guess(); vectorSet<element_t> x; x.push_back(std::shared_ptr<ptype>(&xx));
 //      if (not d.solve(g,x)) nfail++;
 //      iterations+=d.iterations();
 //      if (maxIterations<d.iterations())

@@ -12,6 +12,10 @@ else ()
     find_package(MPI)
     if (MPI_CXX_FOUND)
         add_definitions(-DHAVE_MPI_H)
+        # OpenMPI root guard: https://github.com/open-mpi/ompi/issues/4451
+        if ("$ENV{USER}" STREQUAL "root" OR "$ENV{HOME}" STREQUAL "/root")
+            set(MPIOPTIONS "--allow-run-as-root") # used in tests
+        endif ()
     endif ()
 endif ()
 

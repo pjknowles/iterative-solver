@@ -211,7 +211,7 @@ CONTAINS
       END FUNCTION Iterative_Solver_End_Iteration_C
     END INTERFACE
     Iterative_Solver_End_Iteration = &
-        Iterative_Solver_End_Iteration_C(solution, residual, error).NE.0
+        Iterative_Solver_End_Iteration_C(solution, residual, error)/=0
   END FUNCTION Iterative_Solver_End_Iteration
 
 

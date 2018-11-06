@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
 }
 
 TEST_CASE("PagedVector copy constructor") {
-  PagedVector<double> v0(10001);
+  PagedVector<double,100> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
   for (size_t i = 0; i < 4; i++) {

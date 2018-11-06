@@ -35,9 +35,13 @@ namespace LinearAlgebra {
   * \brief A class that implements LinearAlgebra::vector with data optionally held on backing store, and optionally distributed
   * over MPI ranks
   * \tparam scalar the type of elements of the vector
+  * \tparam default_offline_buffer_size the default buffer size if in offline mode
   * \tparam Allocator allocates memory
   */
-template<class scalar=double, class Allocator =
+template<class scalar=double,
+ size_t
+default_offline_buffer_size=102400,
+class Allocator =
 #ifdef MEMORY_MEMORY_H
 memory::allocator<scalar>
 #else
@@ -45,8 +49,6 @@ std::allocator<scalar>
 #endif
 >
 class PagedVector : public vector<scalar> {
-//  static constexpr size_t default_offline_buffer_size=102400; ///< default buffer size if in offline mode
-#define default_offline_buffer_size 100
  public:
   /*!
    * \brief Construct an object without any data.
@@ -72,6 +74,8 @@ class PagedVector : public vector<scalar> {
    * @param option
    * @param mpi_communicator
    */
+//   template <size_t other_size, class other_allocator>
+//  PagedVector(const PagedVector<scalar,other_size,other_allocator> &source, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
   PagedVector(const PagedVector &source, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
       : vector<scalar>(), m_size(source.m_size),
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),

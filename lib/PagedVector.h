@@ -493,7 +493,6 @@ class PagedVector {
 //   std::cout << "PagedVector othe m_replicated " << othe.m_replicated << ", io=" << othe.m_cache.io << std::endl;
 //   std::cout << "PagedVector::axpy this="<<*this<<std::endl;
 //   std::cout << "PagedVector::axpy othe="<<othe<<std::endl;
-    if (this->variance() != othe.variance()) throw std::logic_error("mismatching co/contravariance");
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
     if (this->m_replicated == othe.m_replicated) {
       if (this->m_cache.io && othe.m_cache.io) {
@@ -633,7 +632,6 @@ class PagedVector {
     const auto& othe = dynamic_cast <const PagedVector&> (other);
 //   std::cout << "dot this m_replicated="<<m_replicated<<", io="<<m_cache.io<<std::endl;
 //   std::cout << "dot othe m_replicated="<<othe.m_replicated<<", io="<<othe.m_cache.io<<std::endl;
-    if (this->variance() * othe.variance() < 0) throw std::logic_error("mismatching co/contravariance");
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
     scalar_type result = 0;
     if (this == &other) {
@@ -807,7 +805,6 @@ class PagedVector {
   ) const {
     std::multimap<element_t, size_t, std::greater<element_t> > sortlist;
     const auto& measur = dynamic_cast <const PagedVector&> (measure);
-    if (this->variance() * measur.variance() < 0) throw std::logic_error("mismatching co/contravariance");
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
     if (this->m_replicated != measur.m_replicated) throw std::logic_error("mismatching replication status");
     if (this == &measur) {
@@ -860,7 +857,6 @@ class PagedVector {
    */
   PagedVector& operator=(const PagedVector& other) {
     assert(m_size == other.m_size);
-    this->setVariance(other.variance());
     if (!m_cache.io && !other.m_cache.io) { // std::cout << "both in memory"<<std::endl;
       size_t off = (m_replicated && !other.m_replicated) ? other.m_segment_offset : 0;
       size_t otheroff = (!m_replicated && other.m_replicated) ? m_segment_offset : 0;
@@ -936,7 +932,6 @@ class PagedVector {
 
   bool operator==(const PagedVector& other) {
 //std::cout  << "operator== start"<<std::endl;
-    if (this->variance() != other.variance()) throw std::logic_error("mismatching co/contravariance");
     if (this->m_size != other.m_size) throw std::logic_error("mismatching lengths");
     int diff = 0;
     if (!m_cache.io && !other.m_cache.io) { // std::cout << "both in memory"<<std::endl;
@@ -991,29 +986,6 @@ class PagedVector {
 #endif
     return diff == 0;
   }
-
- private:
-  int m_variance;
- public:
-
-  /*!
-  * \brief Record the co/contra-variance status of the object
-  * \param variance
-  * - -1: covariant vector
-  * - +1: contravariant vector
-  * - 0: self-dual vector
-  * The class is expected to check that appropriate combinations of vectors are provided in methods that perform linear algebra functions.
-  */
-  void setVariance(int variance = 0) { m_variance = variance; }
-
-  /*!
-   * \brief Report the co/contra-variance status of the object
-   * \return
-   * - -1: covariant vector
-   * - +1: contravariant vector
-   * - 0: self-dual vector
-   */
-  int variance() const { return m_variance; }
 
 };
 template<class scalar>

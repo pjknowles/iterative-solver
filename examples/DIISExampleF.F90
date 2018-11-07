@@ -16,7 +16,7 @@ PROGRAM DIIS_Example
   PRINT *, 'Fortran binding of IterativeSolver::DIIS'
   m = 1; DO i = 1, n; m(i, i) = 3 * i;
   END DO
-  CALL Iterative_Solver_DIIS_Initialize(n, thresh = 1d-11, verbosity = 9)
+  CALL Iterative_Solver_DIIS_Initialize(n, thresh = 1d-11, verbosity = 1)
   c = 0; c(1) = 1
   DO i = 1, n
     c = c / sqrt(dot_product(c, c))

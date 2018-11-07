@@ -288,12 +288,13 @@ class IterativeSolver {
    */
   std::vector<size_t> suggestP(const vectorSet &solution,
                                const vectorSet &residual,
+                               std::vector<bool> active,
                                const size_t maximumNumber = 1000,
                                const scalar_type threshold = 0) {
     std::map<size_t, scalar_type> result;
     for (size_t kkk = 0; kkk < solution.size(); kkk++) {
 //    xout << "suggestP kkk "<<kkk<<" active "<<solution.m_vector_active[kkk]<<maximumNumber<<std::endl;
-      if (solution[kkk].active()) {
+      if (active[kkk]) {
         std::vector<size_t> indices;
         std::vector<scalar_type> values;
         std::tie(indices, values) = solution[kkk].select(residual[kkk], maximumNumber, threshold);
@@ -1275,6 +1276,7 @@ extern "C" void IterativeSolverOption(const char *key, const char *val);
 
 extern "C" size_t IterativeSolverSuggestP(const double *solution,
                                           const double *residual,
+                                          const int* activec,
                                           size_t maximumNumber,
                                           double threshold,
                                           size_t *indices);

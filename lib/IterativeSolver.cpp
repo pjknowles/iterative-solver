@@ -170,20 +170,24 @@ extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
 
 extern "C" size_t IterativeSolverSuggestP(const double* solution,
                                           const double* residual,
+                                          const int* activec,
                                           size_t maximumNumber,
                                           double threshold,
                                           size_t* indices) {
   std::vector<v> cc, gg;
+  cc.reserve(instance->m_roots);
+  gg.reserve(instance->m_roots);
+  std::vector<bool> active;
   for (size_t root = 0; root < instance->m_roots; root++) {
+    active.push_back(activec[root]!=0);
     cc.push_back(v(&const_cast<double*>(solution)[root * instance->m_dimension],
                    instance->m_dimension));
     gg.push_back(v(&const_cast<double*>(residual)[root * instance->m_dimension],
                    instance->m_dimension));
-    cc[root].active(instance->errors().size() <= root || instance->errors()[root] >= instance->m_thresh);
-    gg[root].active(cc[root].active());
+    active[root] = (instance->errors().size() <= root || instance->errors()[root] >= instance->m_thresh);
   }
 
-  auto result = instance->suggestP(cc, gg, maximumNumber, threshold);
+  auto result = instance->suggestP(cc, gg, active, maximumNumber, threshold);
   for (size_t i = 0; i < result.size(); i++)
     indices[i] = result[i];
   return result.size();

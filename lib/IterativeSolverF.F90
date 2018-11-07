@@ -294,14 +294,15 @@ CONTAINS
   !> \param threshold Base vectors whose predicted contribution is less than
   !> than this are not considered
   !> \return The number of vectors suggested.
-  FUNCTION Iterative_Solver_Suggest_P(solution, residual, indices, threshold)
+  FUNCTION Iterative_Solver_Suggest_P(solution, residual, active, indices, threshold)
     INTEGER :: Iterative_Solver_Suggest_P
     DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: solution
     DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: residual
+    LOGICAL, DIMENSION(*), INTENT(in) :: active
     INTEGER, INTENT(inout), DIMENSION(:) :: indices
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: threshold
     INTERFACE
-      FUNCTION IterativeSolverSuggestP(solution, residual, maximumNumber, threshold, indices) &
+      FUNCTION IterativeSolverSuggestP(solution, residual, active, maximumNumber, threshold, indices) &
           BIND(C, name = 'IterativeSolverSuggestP')
         USE iso_c_binding
         INTEGER(c_size_t) :: IterativeSolverSuggestP
@@ -309,17 +310,23 @@ CONTAINS
         INTEGER(c_size_t), INTENT(inout), DIMENSION(maximumNumber) :: indices
         REAL(c_double), DIMENSION(*), INTENT(in) :: solution
         REAL(c_double), DIMENSION(*), INTENT(in) :: residual
+        INTEGER(c_int), INTENT(in), DIMENSION(*) :: active
         REAL(c_double), INTENT(in), VALUE :: threshold
       END FUNCTION IterativeSolverSuggestP
     END INTERFACE
     REAL(C_double) :: thresholdC = 0
     INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC
     INTEGER(c_size_t) :: maximumNumber
+    INTEGER(c_int), DIMENSION(m_nroot) :: activec
     maximumNumber = INT(size(indices), c_size_t)
     !write (6,*) 'fortran suggestP, maximumNumber=',size(indices)
     IF (PRESENT(threshold)) thresholdC = threshold
+    activec = 1
+    do i=1,m_nroot
+      if (.not. active(i)) activec(i) = 0
+    end do
     Iterative_Solver_Suggest_P = INT(&
-        IterativeSolverSuggestP(solution, residual, maximumNumber, thresholdC, indicesC) &
+        IterativeSolverSuggestP(solution, residual, activec, maximumNumber, thresholdC, indicesC) &
         )
     do i = 1, Iterative_Solver_Suggest_P
       indices(i) = int(indicesC(i)) + 1

@@ -53,7 +53,7 @@ PROGRAM Linear_Eigensystem_Example
       c(j, root) = - g(j, root) / (m(j, j) - e(root) + 1d-10)
     END DO
   END DO
-  newp = Iterative_Solver_Suggest_P(c, g, indices(nroot + 1 : nP), 1d-8)
+  newp = Iterative_Solver_Suggest_P(c, g, active, indices(nroot + 1 : nP), 1d-8)
   print *, 'suggest_P returns ', indices(nroot + 1 : nroot + newp)
   DO i = 1, newp
     offsets(nroot + i) = offsets(nroot + i - 1) + 1

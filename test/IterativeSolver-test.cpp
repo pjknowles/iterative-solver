@@ -109,7 +109,7 @@ static void DavidsonTest(size_t dimension,
     std::vector<scalar> shift;
     for (size_t root = 0; root < (size_t) d.m_roots; root++) shift.push_back(-d.eigenvalues()[root] + 1e-14);
     update(x, g, shift);
-    auto newp = d.suggestP(x, g, 3);
+    auto newp = d.suggestP(x, g, active, 3);
 //    for (const auto& p : d.suggestP(x,g,3)) std::cout << "new p space (from residual): " <<p<< std::endl;
 //    for (const auto& p : d.suggestP(x,x,3)) std::cout << "new p space (from solution): " <<p<< std::endl;
 //    std::cout << "x "<<x<<std::endl;

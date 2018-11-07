@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
+#include <climits>
 #include <cstring>
 #include <cstddef>
 #include <cstdlib>
@@ -48,7 +49,6 @@ namespace LinearAlgebra {
   * - opaque implementation of BLAS including dot(), axpy(), scal(), zero()
   * - efficient import and export of data ranges
   * - potentially inefficient read and read-write access to individual elements
-  * - an internal advisory status of active/inactive
   * \tparam element_t the type of elements of the vector
   * \tparam default_offline_buffer_size the default buffer size if in offline mode
   * \tparam Allocator alternative to std::allocator
@@ -85,8 +85,8 @@ class PagedVector {
         m_cache(m_segment_length,
                 (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ?
                 default_offline_buffer_size : m_segment_length
-        ),
-        m_active(true) {
+        )
+        {
 //   init(option);
 //    std::cout <<" option "<<( option)<<std::endl;
 //    std::cout <<"LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option "<<(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)<<std::endl;
@@ -106,8 +106,8 @@ class PagedVector {
         m_segment_offset(m_replicated ? 0 : std::min(((m_size - 1) / m_mpi_size + 1) * m_mpi_rank, m_size)),
         m_segment_length(m_replicated ? m_size : std::min((m_size - 1) / m_mpi_size + 1, m_size - m_segment_offset)),
         m_cache(m_segment_length,
-                (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length),
-        m_active(true) {
+                (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length)
+        {
 //    std::cout << "PagedVector copy constructor from "<<&source[0]<<" to "<<&(*this)[0]<<std::endl;
 //   init(option);
 //   std::cout << "in copy constructor, before copy, source: "<<source.size()<<":"<<source.str()<<std::endl;
@@ -137,8 +137,8 @@ class PagedVector {
         m_replicated(true),
         m_segment_offset(0),
         m_segment_length(m_size),
-        m_cache(m_segment_length, m_segment_length, buffer),
-        m_active(true) {
+        m_cache(m_segment_length, m_segment_length, buffer)
+        {
 //    std::cout << "PagedVector map constructor "<<buffer<<" : "<<&(*this)[0]<<std::endl;
   }
 
@@ -308,28 +308,9 @@ class PagedVector {
   window m_cache;
 
  private:
-  bool m_active;
-
- private:
   void flushCache() { m_cache.ensure(0); }
 
  public:
-  /*!
-   * @brief report the activity status of the object
-   * @return The status
-   */
-  bool active() const { return m_active; }
-  /*!
-   * @brief report and set the activity status of the object
-   * @param value The new value of the status
-   * @return The status before the call
-   */
-  bool active(bool value) {
-    auto result = m_active;
-    m_active = value;
-    return result;
-  }
-
   /*!
    * \brief Place the contents
    * \param buffer

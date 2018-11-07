@@ -10,6 +10,7 @@ PROGRAM Linear_Eigensystem_Example
   DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g
   DOUBLE PRECISION, DIMENSION(nP, nroot) :: p
   DOUBLE PRECISION, DIMENSION (nroot) :: e, error
+  LOGICAL, DIMENSION(nroot) :: active
   INTEGER, DIMENSION(0 : nP) :: offsets
   INTEGER, DIMENSION(nP) :: indices
   DOUBLE PRECISION, DIMENSION(nP) :: coefficients
@@ -23,6 +24,7 @@ PROGRAM Linear_Eigensystem_Example
 
   WRITE (6, *) 'P-space=', nP, ', dimension=', n, ', roots=', nroot
   CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, thresh = 1d-8, verbosity = 1)
+  active = .TRUE.
   CALL Iterative_Solver_Option('convergence', 'residual') ! convergence threshold applies to norm of residual
   offsets(0) = 0
   DO i = 1, nroot
@@ -80,9 +82,9 @@ PROGRAM Linear_Eigensystem_Example
         c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(i) + 1e-15)
       END DO
     END DO
-    IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
+    IF (Iterative_Solver_End_Iteration(c, g, error, active)) EXIT
     g = MATMUL(m, c)
-    CALL Iterative_Solver_Add_Vector(c, g, p)
+    CALL Iterative_Solver_Add_Vector(c, g, active, p)
   END DO
   CALL Iterative_Solver_Finalize
   DO i = 1, nroot

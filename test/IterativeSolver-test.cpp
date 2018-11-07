@@ -49,7 +49,7 @@ static void DavidsonTest(size_t dimension,
       std::vector<element> psgk(n);
       for (size_t k = 0; k < psc.size(); k++) {
         psg[k].get(&psgk[0], n, 0);
-        if (not append) psc[k].zero();
+        if (not append) psc[k].scal(0);
         psc[k].get(&psck[0], n, 0);
         for (size_t l = 0; l < n; l++) psck[l] -= psgk[l] / (testmatrix(l, l) + shift[k]);
         psc[k].put(&psck[0], n, 0);
@@ -85,7 +85,7 @@ static void DavidsonTest(size_t dimension,
   for (size_t root = 0; root < (size_t) d.m_roots; root++) {
     x.emplace_back(dimension);
     g.emplace_back(dimension);
-    x.back().zero();
+    x.back().scal(0);
     element one = 1;
     x.back().put(&one, 1, root);
     active.push_back(true);
@@ -288,7 +288,7 @@ void DIISTest(int verbosity = 0,
 //    if (append)
 //      outputs.front()->get(&(output[0]),instance.m_n,0);
 //    else
-//      outputs.front()->zero();
+//      outputs.front()->scal(0);
 
 //    for (size_t i=0; i<instance.m_n; i++) {
 //        output[i] = instance.m_gamma*psxk[i];
@@ -382,7 +382,7 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
       if (append)
         outputs.front()->get(&(output[0]), instance.m_n, 0);
       else
-        outputs.front()->zero();
+        outputs.front()->scal(0);
       for (size_t i = 0; i < instance.m_n; i++) {
         output[i] = 0;
         for (size_t j = 0; j < instance.m_n; j++) {

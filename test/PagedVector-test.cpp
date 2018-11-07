@@ -134,14 +134,14 @@ TEST_CASE("PagedVector scal()") {
   REQUIRE(result);
 }
 
-TEST_CASE("PagedVector zero()") {
+TEST_CASE("PagedVector scal(0)") {
   LinearAlgebra::PagedVector<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
   for (auto i = 0; i < 4; i++) {
     auto v1 = LinearAlgebra::PagedVector<double>(v0, i);
     auto v2 = LinearAlgebra::PagedVector<double>(v0, i);
-    v2.zero();
+    v2.scal(0);
 //         std::cout << v2.dot(&v2) <<std::endl;
     result &= v2.dot(v2) < 1e-20;
   }
@@ -156,7 +156,7 @@ TEST_CASE("PagedVector::put()") {
 
     LinearAlgebra::PagedVector<double> v0(10001, i);
     size_t segment_length = (v0.size() - 1) / mpi_size + 1;
-    v0.zero();
+    v0.scal(0);
 #ifndef none
     double val = 99;
     size_t offset = v0.size() / 2;
@@ -211,7 +211,7 @@ TEST_CASE("PagedVector::put()") {
 #ifdef none
 TEST_CASE("PagedVector::operator[]()") {
  LinearAlgebra::PagedVector<double> v0(10);
- v0.zero();
+ v0.scal(0);
  double val=99;
  size_t offset=1;
 //       std::cout << "v0: "<<v0<<std::endl;

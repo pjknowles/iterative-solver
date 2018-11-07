@@ -187,11 +187,11 @@ CONTAINS
     END INTERFACE
     DOUBLE PRECISION, DIMENSION(0) :: pdummy
     INTEGER(c_int), DIMENSION(m_nroot) :: activec
-    do i=1,m_nroot
+    do i=1,int(m_nroot)
       activec(i) = 1
     end do
     if (present(active)) then
-      do i=1,m_nroot
+      do i=1,int(m_nroot)
         if (.not. active(i)) activec(i) = 0
       end do
     end if
@@ -227,12 +227,12 @@ CONTAINS
     END INTERFACE
     INTEGER(c_int), DIMENSION(m_nroot) :: activec
     activec = 1
-    do i=1,m_nroot
+    do i=1,int(m_nroot)
       if (.not. active(i)) activec(i) = 0
     end do
     Iterative_Solver_End_Iteration = &
         Iterative_Solver_End_Iteration_C(solution, residual, error, activec) /= 0
-    do i=1,m_nroot
+    do i=1,int(m_nroot)
       active(i) = activec(i) /= 0
     end do
   END FUNCTION Iterative_Solver_End_Iteration
@@ -322,7 +322,7 @@ CONTAINS
     !write (6,*) 'fortran suggestP, maximumNumber=',size(indices)
     IF (PRESENT(threshold)) thresholdC = threshold
     activec = 1
-    do i=1,m_nroot
+    do i=1,int(m_nroot)
       if (.not. active(i)) activec(i) = 0
     end do
     Iterative_Solver_Suggest_P = INT(&

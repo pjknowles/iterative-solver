@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
   std::vector<bool> active;
   g.emplace_back(n);
   x.emplace_back(n);
-  x.back().zero();
+  x.back().scal(0);
   scalar one = 1;
   x.back().put(&one, 1, 0);  // initial guess
   active.push_back(true);

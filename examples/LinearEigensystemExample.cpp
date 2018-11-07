@@ -84,7 +84,9 @@ int main(int argc, char* argv[]) {
   solver.m_thresh = 1e-6;
   std::vector<pv> g;
   std::vector<pv> x;
+  std::vector<bool> active;
   for (size_t root = 0; root < solver.m_roots; root++) {
+    active.push_back(true);
     x.emplace_back(n);
     g.emplace_back(n);
     x.back().zero();
@@ -93,9 +95,9 @@ int main(int argc, char* argv[]) {
   std::vector<std::vector<scalar> > Pcoeff(solver.m_roots);
   for (auto iter = 0; iter < 1000; iter++) {
     action(x, g);
-    solver.addVector(x, g, Pcoeff);
+    solver.addVector(x, g, active, Pcoeff);
     update(x, g, solver.eigenvalues());
-    if (solver.endIteration(x, g)) break;
+    if (solver.endIteration(x, g, active)) break;
   }
   std::cout << "Error={ ";
   for (const auto& e : solver.errors()) std::cout << e << " ";

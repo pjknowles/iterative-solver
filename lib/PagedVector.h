@@ -108,6 +108,7 @@ class PagedVector {
         m_cache(m_segment_length,
                 (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length),
         m_active(true) {
+//    std::cout << "PagedVector copy constructor from "<<&source[0]<<" to "<<&(*this)[0]<<std::endl;
 //   init(option);
 //   std::cout << "in copy constructor, before copy, source: "<<source.size()<<":"<<source.str()<<std::endl;
 //   std::cout << "m_segment_offset "<<m_segment_offset <<std::endl;
@@ -138,6 +139,7 @@ class PagedVector {
         m_segment_length(m_size),
         m_cache(m_segment_length, m_segment_length, buffer),
         m_active(true) {
+//    std::cout << "PagedVector map constructor "<<buffer<<" : "<<&(*this)[0]<<std::endl;
   }
 
   ~PagedVector() = default;

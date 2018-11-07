@@ -226,6 +226,10 @@ CONTAINS
       END FUNCTION Iterative_Solver_End_Iteration_C
     END INTERFACE
     INTEGER(c_int), DIMENSION(m_nroot) :: activec
+    activec = 1
+    do i=1,m_nroot
+      if (.not. active(i)) activec(i) = 0
+    end do
     Iterative_Solver_End_Iteration = &
         Iterative_Solver_End_Iteration_C(solution, residual, error, activec) /= 0
     do i=1,m_nroot

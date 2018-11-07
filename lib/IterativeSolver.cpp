@@ -90,6 +90,8 @@ extern "C" void IterativeSolverAddVector(double* parameters, double* action, con
 //  constexpr int vFlags = LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE; // has to wait till implementation below catches up
 //  constexpr int vFlags = LINEARALGEBRA_CLONE_ADVISE_OFFLINE; // FIXME is this needed?
   std::vector<v> cc, gg;
+  cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
+  gg.reserve(instance->m_roots);
   std::vector<std::vector<typename v::element_type> > ccp;
   std::vector<bool> activev;
   for (size_t root = 0; root < instance->m_roots; root++) {
@@ -108,17 +110,17 @@ extern "C" void IterativeSolverAddVector(double* parameters, double* action, con
 
 extern "C" int IterativeSolverEndIteration(double* solution, double* residual, double* error, int* active) {
   std::vector<v> cc, gg;
+  cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
+  gg.reserve(instance->m_roots);
   std::vector<bool> activev;
   for (size_t root = 0; root < instance->m_roots; root++) {
-    activev.push_back(active[root]);
-    cc.push_back(v(instance->m_dimension));
-    cc.back().put(&solution[root * instance->m_dimension], instance->m_dimension, 0);
-    gg.push_back(v(instance->m_dimension));
-    gg.back().put(&residual[root * instance->m_dimension], instance->m_dimension, 0);
+    activev.push_back(1);
+    cc.emplace_back(&solution[root * instance->m_dimension], instance->m_dimension);
+    gg.emplace_back(&residual[root * instance->m_dimension], instance->m_dimension);
   }
   bool result = instance->endIteration(cc, gg, activev);
   for (size_t root = 0; root < instance->m_roots; root++) {
-    cc[root].get(&solution[root * instance->m_dimension], instance->m_dimension, 0);
+//    cc[root].get(&solution[root * instance->m_dimension], instance->m_dimension, 0);
     error[root] = instance->errors()[root];
     active[root] = activev[root] ? 1 : 0;
   }
@@ -138,6 +140,7 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
     gg.push_back(v(instance->m_dimension));
   }
   std::vector<std::map<size_t, v::element_type> > Pvectors;
+  Pvectors.reserve(nP);
   for (size_t p = 0; p < nP; p++) {
     std::map<size_t, v::element_type> ppp;
     for (size_t k = offsets[p]; k < offsets[p + 1]; k++)

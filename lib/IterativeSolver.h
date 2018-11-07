@@ -690,6 +690,7 @@ class IterativeSolver {
  protected:
   static void copyvec(std::vector<vectorSet>& history, const vectorSet& newvec) {
     vectorSet newcopy;
+    newcopy.reserve(newvec.size());
     for (auto& v : newvec)
       newcopy.emplace_back(v,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE); // TODO template-ise these options
     history.emplace_back(newcopy);
@@ -725,8 +726,7 @@ class IterativeSolver {
     auto old_size = m_QQMatrix.rows();
 //    auto new_size = old_size + count(residual1.m_vector_active.begin(), residual1.m_vector_active.end(), true);
     auto new_size = old_size;
-    for (const auto& r : residual1)
-      if (r.active()) ++new_size;
+      for (size_t i=0; i<residual1.size(); i++) if (active[i]) ++new_size;
     //      xout << "old_size="<<old_size<<std::endl;
     //      xout << "new_size="<<new_size<<std::endl;
     m_QQMatrix.conservativeResize(new_size, new_size);
@@ -919,7 +919,6 @@ class LinearEigensystem : public IterativeSolver<T> {
                                                                  std::min(int(this->m_roots), int(
                                                                      this->m_subspaceEigenvectors.rows()))).real();
     }
-//    xout << "solveReducedProblem m_interpolation:\n" << this->m_interpolation << std::endl;
 
     this->m_updateShift.resize(this->m_roots);
     for (size_t root = 0; root < (size_t) this->m_roots; root++)
@@ -983,6 +982,7 @@ class LinearEquations : public IterativeSolver<T> {
   void addEquations(const vectorSet& rhs) {
 //   for (const auto &v : rhs) this->m_rhs.push_back(v);
     this->m_rhs.clear();
+    this->m_rhs.reserve(rhs.size());
     for (const auto& v : rhs)
       this->m_rhs.emplace_back(v,
                             LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED

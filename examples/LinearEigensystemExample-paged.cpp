@@ -4,6 +4,7 @@
 // Storage of vectors distributed and out of memory via PagedVector class
 using scalar = double;
 using pv = LinearAlgebra::PagedVector<scalar>;
+using vectorSet = std::vector<pv>;
 constexpr size_t n = 300; // dimension of problem
 constexpr scalar alpha = 1000; // separation of diagonal elements
 constexpr size_t nP = 10; // number in initial P-space
@@ -12,61 +13,63 @@ scalar matrix(const size_t i, const size_t j) {
   return (i == j ? alpha * (i + 1) : 0) + i + j;
 }
 
-void action(const LinearAlgebra::vectorSet<scalar> &psx, LinearAlgebra::vectorSet<scalar> &outputs) {
+void action(const vectorSet &psx, vectorSet &outputs) {
   std::vector<scalar> psxk(n);
   std::vector<scalar> output(n);
   for (size_t k = 0; k < psx.size(); k++) {
-    psx[k]->get(&(psxk[0]), n, 0);
+    psx[k].get(&(psxk[0]), n, 0);
     for (size_t i = 0; i < n; i++) {
       output[i] = 0;
       for (size_t j = 0; j < n; j++)
         output[i] += matrix(i, j) * psxk[j];
     }
-    outputs[k]->put(&output[0], n, 0);
+    outputs[k].put(&output[0], n, 0);
   }
 }
 
 void actionP(
     const std::vector<std::map<size_t, scalar> > pspace,
     const std::vector<std::vector<scalar> > &psx,
-    LinearAlgebra::vectorSet<scalar> &outputs) {
+    vectorSet &outputs) {
   const size_t nP = pspace.size();
   for (size_t k = 0; k < psx.size(); k++) {
     std::vector<scalar> output(n);
-    outputs[k]->get(&output[0], n, 0);
+    outputs[k].get(&output[0], n, 0);
     for (size_t p = 0; p < nP; p++) {
       for (const auto &pc : pspace[p]) {
         for (size_t j = 0; j < n; j++)
           output[j] += matrix(pc.first, j) * pc.second * psx[k][p];
       }
     }
-    outputs[k]->put(&output[0], n, 0);
+    outputs[k].put(&output[0], n, 0);
   }
 }
 
-void update(LinearAlgebra::vectorSet<scalar> &psc, const LinearAlgebra::vectorSet<scalar> &psg,
+void update(vectorSet &psc, const vectorSet &psg,
             std::vector<scalar> shift = std::vector<scalar>()) {
   std::vector<scalar> psck(n);
   std::vector<scalar> psgk(n);
   for (size_t k = 0; k < psc.size(); k++) {
-    psg[k]->get(&psgk[0], n, 0);
-    psc[k]->get(&psck[0], n, 0);
+    psg[k].get(&psgk[0], n, 0);
+    psc[k].get(&psck[0], n, 0);
     for (size_t i = 0; i < n; i++)
       psck[i] -= psgk[i] / (shift[k] + 2 * i + alpha * (i + 1));
-    psc[k]->put(&psck[0], n, 0);
+    psc[k].put(&psck[0], n, 0);
   }
 }
 
 int main(int argc, char *argv[]) {
-  LinearAlgebra::LinearEigensystem<scalar> solver;
+  LinearAlgebra::LinearEigensystem<pv> solver;
   solver.m_verbosity = 1;
   solver.m_roots = 4;
   solver.m_thresh = 1e-6;
-  LinearAlgebra::vectorSet<scalar> g;
-  LinearAlgebra::vectorSet<scalar> x;
+  vectorSet g;
+  vectorSet x;
+  std::vector<bool> active;
   for (size_t root = 0; root < solver.m_roots; root++) {
-    x.push_back(std::make_shared<pv>(n));
-    g.push_back(std::make_shared<pv>(n));
+    x.emplace_back(n);
+    g.emplace_back(n);
+    active.push_back(true);
   }
   size_t p = 0;
   std::vector<scalar> PP;
@@ -83,9 +86,9 @@ int main(int argc, char *argv[]) {
   for (auto iter = 0; iter < 100; iter++) {
     actionP(pspace, Pcoeff, g);
     update(x, g, solver.eigenvalues());
-    if (solver.endIteration(x, g)) break;
+    if (solver.endIteration(x, g, active)) break;
     action(x, g);
-    solver.addVector(x, g, Pcoeff);
+    solver.addVector(x, g, active, Pcoeff);
   }
 
   std::cout << "Error={ ";
@@ -93,7 +96,7 @@ int main(int argc, char *argv[]) {
   std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
   for (size_t root = 0; root < solver.m_roots; root++) {
     std::vector<scalar> buf(n);
-    x[root]->get(&buf[0], n, 0);
+    x[root].get(&buf[0], n, 0);
     std::cout << "Eigenvector:";
     for (size_t k = 0; k < n; k++) std::cout << " " << buf[k];
     std::cout << std::endl;

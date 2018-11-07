@@ -10,7 +10,7 @@ PROGRAM Linear_Equations_Example
   DOUBLE PRECISION, DIMENSION (n, n) :: m
   DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g, rhs
   LOGICAL, DIMENSION(nroot) :: active
-  DOUBLE PRECISION, DIMENSION (nroot) :: e, error
+  DOUBLE PRECISION, DIMENSION (nroot) :: error
   DOUBLE PRECISION :: augmented_hessian
   INTEGER :: i, j, root, iaug
   LOGICAL :: converged

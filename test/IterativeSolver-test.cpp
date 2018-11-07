@@ -81,12 +81,14 @@ static void DavidsonTest(size_t dimension,
   d.m_orthogonalize = orthogonalize;
   vectorSet x;
   vectorSet g;
+  std::vector<bool> active;
   for (size_t root = 0; root < (size_t) d.m_roots; root++) {
     x.emplace_back(dimension);
     g.emplace_back(dimension);
     x.back().zero();
     element one = 1;
     x.back().put(&one, 1, root);
+    active.push_back(true);
   }
 
   for (size_t iteration = 0; iteration < dimension + 1; iteration++) {
@@ -99,7 +101,7 @@ static void DavidsonTest(size_t dimension,
 //          xout << "after action x: "<<x[kkk]<<std::endl;
 //      for (size_t kkk=0; kkk<g.size(); kkk++)
 //          xout << "after action g: "<<g[kkk]<<std::endl;
-    d.addVector(x, g, <#initializer#>, std::vector<bool>());
+    d.addVector(x, g, active);
 //      for (size_t kkk=0; kkk<x.size(); kkk++)
 //          xout << "after addVector x: "<<x[kkk]<<std::endl;
 //      for (size_t kkk=0; kkk<g.size(); kkk++)
@@ -111,7 +113,7 @@ static void DavidsonTest(size_t dimension,
 //    for (const auto& p : d.suggestP(x,g,3)) std::cout << "new p space (from residual): " <<p<< std::endl;
 //    for (const auto& p : d.suggestP(x,x,3)) std::cout << "new p space (from solution): " <<p<< std::endl;
 //    std::cout << "x "<<x<<std::endl;
-    if (d.endIteration(x, g)) break;
+    if (d.endIteration(x, g, active)) break;
   }
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>> es(testmatrix);
 //    xout << "true eigenvalues: "<<es.eigenvalues().head(d.m_roots).transpose()<<std::endl;
@@ -200,6 +202,8 @@ void DIISTest(int verbosity = 0,
   x.emplace_back(2);
   vectorSet g;
   g.emplace_back(2);
+  std::vector<bool> active;
+  active.push_back(true);
   DIIS<ptype> d;
   d.m_maxDim = maxDim;
   d.m_svdThreshold = svdThreshold;
@@ -219,11 +223,11 @@ void DIISTest(int verbosity = 0,
 //   xout <<"start of iteration "<<iteration<<std::endl;
     _Rosenbrock_residual(x, g);
 //    xout << "residual: " << g;
-    d.addVector(x, g, <#initializer#>, std::vector<bool>());
+    d.addVector(x, g, active);
     std::vector<typename ptype::scalar_type> shift;
     shift.push_back(1e-10);
     _Rosenbrock_updater(x, g, shift);
-    converged = d.endIteration(x, g);
+    converged = d.endIteration(x, g, active);
     x.front().get(&xxx[0], 2, 0);
 //    if (verbosity > 2)
 //      xout << "new x after iterate " << x.front() << std::endl;
@@ -334,7 +338,7 @@ void DIISTest(int verbosity = 0,
 
 #include <cstdlib>
 template<class ptype, class scalar=double>
-void RSPTTest(size_t n, double alpha) {
+void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
   static struct rsptpot {
     Eigen::MatrixXd m_F;
     size_t m_n;
@@ -423,6 +427,8 @@ void RSPTTest(size_t n, double alpha) {
 
   int nfail = 0;
   unsigned int iterations = 0, maxIterations = 0;
+  std::vector<bool> active;
+  active.push_back(true);
   size_t sample = 1;
   for (size_t repeat = 0; repeat < sample; repeat++) {
     instance.set(n, alpha);
@@ -443,11 +449,11 @@ void RSPTTest(size_t n, double alpha) {
          iteration++) {
       xout << "start of iteration " << iteration << std::endl;
       _rsptpot_residual(x, g);
-      d.addVector(x, g, <#initializer#>, std::vector<bool>());
+      d.addVector(x, g, active);
       std::vector<scalar> shift;
       shift.push_back(1e-10);
       _rsptpot_updater(x, g, shift);
-      converged = d.endIteration(x, g);
+      converged = d.endIteration(x, g, active);
       xout << "end of iteration " << iteration << std::endl;
     }
     if (std::fabs(d.energy(d.m_minIterations) - d.eigenvalues().front()) > 1e-10) nfail++;

@@ -1256,7 +1256,7 @@ IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIteration
 extern "C" void IterativeSolverFinalize();
 
 extern "C" void
-IterativeSolverAddVector(double *parameters, double *action, double *parametersP);
+IterativeSolverAddVector(double *parameters, double *action, double *parametersP, const int* active);
 
 extern "C" int IterativeSolverEndIteration(double *c, double *g, double *error);
 

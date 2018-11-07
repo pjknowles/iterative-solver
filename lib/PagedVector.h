@@ -43,12 +43,14 @@ namespace LinearAlgebra {
 
 /*!
   * \brief A class that implements a vector container that has the following features:
-  * - data optionally held on backing store instead of in memory, specified via additional non-compulsory option argument in copy constructor
+  * - data optionally held on backing store instead of in memory, specified via additional non-compulsory option argument in copy constructor, with a cache window held in local memory
   * - data optionally distributed over MPI ranks, specified via additional non-compulsory option argument in copy constructor
   * - mapping of an externally-owned buffer, or internally-owned storage
   * - opaque implementation of BLAS including dot(), axpy(), scal()
+  * - additional BLAS overloads to combine with a simple sparse vector represented in std::map
   * - efficient import and export of data ranges
   * - potentially inefficient read and read-write access to individual elements
+  * - additional functions to find the largest elements, and to print the vector
   * \tparam element_t the type of elements of the vector
   * \tparam default_offline_buffer_size the default buffer size if in offline mode
   * \tparam Allocator alternative to std::allocator
@@ -70,7 +72,7 @@ class PagedVector {
   /*!
    * \brief Construct an object without any data.
    */
-  explicit PagedVector(size_t length = 0, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
+  explicit PagedVector(size_t length = 0, unsigned int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
       : m_size(length),
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(
@@ -98,7 +100,7 @@ class PagedVector {
    * @param option
    * @param mpi_communicator
    */
-  PagedVector(const PagedVector& source, int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
+  PagedVector(const PagedVector& source, unsigned int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
       : m_size(source.m_size),
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
@@ -106,20 +108,7 @@ class PagedVector {
         m_segment_length(m_replicated ? m_size : std::min((m_size - 1) / m_mpi_size + 1, m_size - m_segment_offset)),
         m_cache(m_segment_length,
                 (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length) {
-//    std::cout << "PagedVector copy constructor from "<<&source[0]<<" to "<<&(*this)[0]<<std::endl;
-//   init(option);
-//   std::cout << "in copy constructor, before copy, source: "<<source.size()<<":"<<source.str()<<std::endl;
-//   std::cout << "m_segment_offset "<<m_segment_offset <<std::endl;
-//   std::cout << "m_segment_length "<<m_segment_length <<std::endl;
-//   std::cout << "source.m_replicated"<<source.m_replicated<<std::endl;
-//   std::cout << "this->m_replicated"<<this->m_replicated<<std::endl;
-//   std::cout << m_mpi_rank << " in copy constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
-//    std::cout <<" option "<<( option)<<std::endl;
-//    std::cout <<"LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option "<<(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)<<std::endl;
-//    std::cout <<"cache preferred length "<<m_cache.preferred_length<<std::endl;
     *this = source;
-//   std::cout <<m_mpi_rank<< "in copy constructor, after copy, source: "<<source.str()<<std::endl;
-//   std::cout <<m_mpi_rank<< "in copy constructor, after copy, this: "<<this->str()<<std::endl;
   }
 
   /*!
@@ -197,7 +186,7 @@ class PagedVector {
     mutable size_t length;///< the size of the cache window
     const size_t datasize; ///< the size of the vector being mapped
     const size_t preferred_length; ///< the default for the size of the cache window
-    mutable std::vector<element_t> bufferContainer;
+    mutable std::vector<element_t, Allocator> bufferContainer;
     mutable element_t* buffer;
     const element_t* begin() const { return buffer; }
     const element_t* end() const { return buffer + length; }
@@ -301,15 +290,12 @@ class PagedVector {
 //   private:
 //    window& operator++(int) { return *this; }
   };
- public:
-  window m_cache;
-
  private:
-  void flushCache() { m_cache.ensure(0); }
+  window m_cache;
 
  public:
   /*!
-   * \brief Place the contents
+   * \brief Update a range of the object data with the contents of a provided buffer
    * \param buffer
    * \param length
    * \param offset
@@ -375,10 +361,13 @@ class PagedVector {
 //   std::cout << "PagedVector::put() ends length="<<length<<", offset="<<offset<<std::endl;
   }
 
+  /*!
+   * \brief Read a range of the object data into a provided buffer
+   * @param buffer
+   * @param length
+   * @param offset
+   */
   void get(element_t* buffer, size_t length, size_t offset) const {
-//   std::cout << "PagedVector::get() length="<<length<<", offset="<<offset<<", m_replicated="<<m_replicated<<", io="<<m_cache.io<<", pagesize="<<m_cache.preferred_length<<std::endl;
-//   std::cout << "cache from "<<m_cache.offset<<" for "<<m_cache.length<<std::endl;
-//   for (size_t k=0; k<m_cache.length; k++) std::cout << " "<<m_cache.buffer[k]; std::cout << std::endl;
 
     // first of all, focus attention only on that part of buffer which appears in [m_segment_offset,m_segment_offset+m_segment_length)
     size_t buffer_offset = 0;
@@ -431,6 +420,11 @@ class PagedVector {
 //   std::cout << "PagedVector::get() ends, length="<<length<<", offset="<<offset<<std::endl;
   }
 
+  /*!
+   * @brief Return a reference to an element of the data
+   * @param pos Offset of the data
+   * @return
+   */
   const element_t& operator[](size_t pos) const {
     if (pos >= m_cache.offset + m_segment_offset + m_cache.length
         || pos < m_cache.offset + m_segment_offset) { // cache not mapping right sector
@@ -443,6 +437,11 @@ class PagedVector {
     return m_cache.buffer[pos - m_cache.offset - m_segment_offset];
   }
 
+  /*!
+   * @brief Return a reference to an element of the data
+   * @param pos Offset of the data
+   * @return
+   */
   element_t& operator[](size_t pos) {
     element_t* result;
     result = &const_cast<element_t&>(static_cast<const PagedVector*>(this)->operator[](pos));
@@ -450,8 +449,18 @@ class PagedVector {
     return *result;
   }
 
+  /*!
+   * @brief Return the number of elements of data
+   * @return
+   */
   size_t size() const { return m_size; }
 
+  /*!
+   * @brief Produce a printable representation of the object
+   * @param verbosity How much to print
+   * @param columns Width in characters
+   * @return
+   */
   std::string str(int verbosity = 0, unsigned int columns = UINT_MAX) const {
     std::ostringstream os;
     os << "PagedVector object:";
@@ -468,96 +477,85 @@ class PagedVector {
    * \return
    */
   void axpy(scalar_type a, const PagedVector<element_t>& other) {
-    const auto& othe = dynamic_cast <const PagedVector&> (other);
-//   std::cout << "PagedVector this m_replicated " << m_replicated << ", io=" << m_cache.io << std::endl;
-//   std::cout << "PagedVector othe m_replicated " << othe.m_replicated << ", io=" << othe.m_cache.io << std::endl;
-//   std::cout << "PagedVector::axpy this="<<*this<<std::endl;
-//   std::cout << "PagedVector::axpy othe="<<othe<<std::endl;
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
-    if (this->m_replicated == othe.m_replicated) {
-      if (this->m_cache.io && othe.m_cache.io) {
-        size_t l = std::min(m_cache.length, othe.m_cache.length);
-        for (m_cache.move(0, l), othe.m_cache.move(0, l); m_cache.length; ++m_cache, ++othe.m_cache)
+    if (this->m_replicated == other.m_replicated) {
+      if (this->m_cache.io && other.m_cache.io) {
+        size_t l = std::min(m_cache.length, other.m_cache.length);
+        for (m_cache.move(0, l), other.m_cache.move(0, l); m_cache.length; ++m_cache, ++other.m_cache)
           for (size_t i = 0; i < m_cache.length; i++) {
-            m_cache.buffer[i] += a * othe.m_cache.buffer[i];
+            m_cache.buffer[i] += a * other.m_cache.buffer[i];
             m_cache.dirty = true;
           }
-      } else if (othe.m_cache.io) {
+      } else if (other.m_cache.io) {
         size_t offset = 0;
-        for (othe.m_cache.ensure(0); othe.m_cache.length; offset += othe.m_cache.length, ++othe.m_cache) {
-          for (size_t i = 0; i < othe.m_cache.length; i++) {
-            m_cache.buffer[offset + i] += a * othe.m_cache.buffer[i];
+        for (other.m_cache.ensure(0); other.m_cache.length; offset += other.m_cache.length, ++other.m_cache) {
+          for (size_t i = 0; i < other.m_cache.length; i++) {
+            m_cache.buffer[offset + i] += a * other.m_cache.buffer[i];
           }
         }
       } else if (this->m_cache.io) {
         size_t offset = 0;
         for (m_cache.ensure(0); m_cache.length; offset += m_cache.length, ++m_cache) {
-//      std::cout << "cache window "<<m_cache.offset<<", "<<m_cache.length<<", offset="<<offset<<std::endl;
           for (size_t i = 0; i < m_cache.length; i++)
-            m_cache.buffer[i] += a * othe.m_cache.buffer[offset + i];
+            m_cache.buffer[i] += a * other.m_cache.buffer[offset + i];
           m_cache.dirty = true;
         }
       } else {
         for (size_t i = 0; i < this->m_segment_length; i++)
-          m_cache.buffer[i] += a * othe.m_cache.buffer[i];
+          m_cache.buffer[i] += a * other.m_cache.buffer[i];
       }
-    } else if (this->m_replicated) { // this is replicated, othe is not replicated
-//    for (m_cache.ensure(0); m_cache.length; ++m_cache) {
-//     for (size_t i = 0; i < m_cache.length; i++)
-//      m_cache.buffer[i] += a * othe.m_cache.buffer[m_cache.offset + i];
-//     m_cache.dirty = true;
-//    }
-      if (m_cache.io && othe.m_cache.io) {
-        auto l = std::min(m_cache.preferred_length, othe.m_cache.preferred_length);
-        for (othe.m_cache.move(0, l), m_cache.move(othe.m_segment_offset,
-                                                   l); othe.m_cache.length; ++m_cache, ++othe.m_cache) {
-          for (size_t i = 0; i < othe.m_cache.length; i++)
-            m_cache.buffer[i] += a * othe.m_cache.buffer[i];
+    } else if (this->m_replicated) { // this is replicated, other is not replicated
+      if (m_cache.io && other.m_cache.io) {
+        auto l = std::min(m_cache.preferred_length, other.m_cache.preferred_length);
+        for (other.m_cache.move(0, l), m_cache.move(other.m_segment_offset,
+                                                   l); other.m_cache.length; ++m_cache, ++other.m_cache) {
+          for (size_t i = 0; i < other.m_cache.length; i++)
+            m_cache.buffer[i] += a * other.m_cache.buffer[i];
           m_cache.dirty = true;
         }
       } else if (m_cache.io) {
-        for (m_cache.ensure(othe.m_segment_offset);
-             m_cache.offset < othe.m_segment_offset + othe.m_segment_length && m_cache.length; ++m_cache) {
+        for (m_cache.ensure(other.m_segment_offset);
+             m_cache.offset < other.m_segment_offset + other.m_segment_length && m_cache.length; ++m_cache) {
           for (size_t i = 0; i < m_cache.length; i++)
-            m_cache.buffer[i] += a * othe.m_cache.buffer[m_cache.offset - othe.m_segment_offset + i];
+            m_cache.buffer[i] += a * other.m_cache.buffer[m_cache.offset - other.m_segment_offset + i];
           m_cache.dirty = true;
         }
-      } else if (othe.m_cache.io) {
-        for (othe.m_cache.ensure(0); othe.m_cache.length; ++othe.m_cache)
-          for (size_t i = 0; i < othe.m_cache.length; i++)
-            m_cache.buffer[othe.m_cache.offset + othe.m_segment_offset + i] += a * othe.m_cache.buffer[i];
+      } else if (other.m_cache.io) {
+        for (other.m_cache.ensure(0); other.m_cache.length; ++other.m_cache)
+          for (size_t i = 0; i < other.m_cache.length; i++)
+            m_cache.buffer[other.m_cache.offset + other.m_segment_offset + i] += a * other.m_cache.buffer[i];
       } else {
-        for (size_t i = 0; i < othe.m_segment_length; i++)
-          m_cache.buffer[othe.m_segment_offset + i] += a * othe.m_cache.buffer[i];
+        for (size_t i = 0; i < other.m_segment_length; i++)
+          m_cache.buffer[other.m_segment_offset + i] += a * other.m_cache.buffer[i];
       }
 
-    } else { // this is not replicated, othe is replicated
-      if (m_cache.io && othe.m_cache.io) {
-        auto l = std::min(m_cache.preferred_length, othe.m_cache.preferred_length);
-        for (othe.m_cache.move(m_segment_offset, l), m_cache.move(0, l); m_cache.length; ++m_cache, ++othe.m_cache) {
+    } else { // this is not replicated, other is replicated
+      if (m_cache.io && other.m_cache.io) {
+        auto l = std::min(m_cache.preferred_length, other.m_cache.preferred_length);
+        for (other.m_cache.move(m_segment_offset, l), m_cache.move(0, l); m_cache.length; ++m_cache, ++other.m_cache) {
           for (size_t i = 0; i < m_cache.length; i++)
-            m_cache.buffer[i] += a * othe.m_cache.buffer[i];
+            m_cache.buffer[i] += a * other.m_cache.buffer[i];
           m_cache.dirty = true;
         }
       } else if (m_cache.io) {
         for (m_cache.ensure(0); m_cache.length; ++m_cache) {
           for (size_t i = 0; i < m_cache.length; i++)
-            m_cache.buffer[i] += a * othe.m_cache.buffer[m_cache.offset + m_segment_offset + i];
+            m_cache.buffer[i] += a * other.m_cache.buffer[m_cache.offset + m_segment_offset + i];
           m_cache.dirty = true;
         }
-      } else if (othe.m_cache.io) {
-        for (othe.m_cache.ensure(m_segment_offset);
-             othe.m_cache.offset < m_segment_offset + m_segment_length && othe.m_cache.length; ++othe.m_cache)
+      } else if (other.m_cache.io) {
+        for (other.m_cache.ensure(m_segment_offset);
+             other.m_cache.offset < m_segment_offset + m_segment_length && other.m_cache.length; ++other.m_cache)
           for (size_t i = 0;
-               i < std::min(othe.m_cache.length, m_segment_offset + m_segment_length - othe.m_cache.offset); i++)
-            m_cache.buffer[othe.m_cache.offset - m_segment_offset + i] += a * othe.m_cache.buffer[i];
+               i < std::min(other.m_cache.length, m_segment_offset + m_segment_length - other.m_cache.offset); i++)
+            m_cache.buffer[other.m_cache.offset - m_segment_offset + i] += a * other.m_cache.buffer[i];
       } else {
         for (size_t i = 0; i < m_segment_length; i++)
-          m_cache.buffer[i] += a * othe.m_cache.buffer[m_segment_offset + i];
+          m_cache.buffer[i] += a * other.m_cache.buffer[m_segment_offset + i];
       }
     }
 #ifdef HAVE_MPI_H
-    if (m_replicated && !othe.m_replicated) { // replicated <- distributed
+    if (m_replicated && !other.m_replicated) { // replicated <- distributed
 // std::cout <<m_mpi_rank<<"before broadcast this="<<*this<<std::endl;
       size_t lenseg = ((m_size - 1) / m_mpi_size + 1);
 //    std::cout <<m_mpi_rank<<"lenseg="<<lenseg<<std::endl;
@@ -585,10 +583,8 @@ class PagedVector {
                       m_communicator); // needs attention for non-double
         }
       }
-// std::cout <<m_mpi_rank<<"after broadcast this="<<*this<<std::endl;
     }
 #endif
-//   std::cout << "PagedVector::axpy result="<<*this<<std::endl;
   }
 
   /*!
@@ -609,9 +605,6 @@ class PagedVector {
    * \return
    */
   scalar_type dot(const PagedVector<element_t>& other) const {
-    const auto& othe = dynamic_cast <const PagedVector&> (other);
-//   std::cout << "dot this m_replicated="<<m_replicated<<", io="<<m_cache.io<<std::endl;
-//   std::cout << "dot othe m_replicated="<<othe.m_replicated<<", io="<<othe.m_cache.io<<std::endl;
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
     scalar_type result = 0;
     if (this == &other) {
@@ -621,96 +614,81 @@ class PagedVector {
         }
       }
     } else {
-      if (this->m_replicated == othe.m_replicated) {
-        if (this->m_cache.io && othe.m_cache.io) {
-          size_t l = std::min(m_cache.length, othe.m_cache.length);
-          for (m_cache.move(0, l), othe.m_cache.move(0, l); m_cache.length; ++m_cache, ++othe.m_cache)
+      if (this->m_replicated == other.m_replicated) {
+        if (this->m_cache.io && other.m_cache.io) {
+          size_t l = std::min(m_cache.length, other.m_cache.length);
+          for (m_cache.move(0, l), other.m_cache.move(0, l); m_cache.length; ++m_cache, ++other.m_cache)
             for (size_t i = 0; i < m_cache.length; i++)
-              result += m_cache.buffer[i] * othe.m_cache.buffer[i];
-        } else if (othe.m_cache.io) {
-//      std::cout << "dodgy"<<std::endl;
-//      std::cout << "this "<<*this<<std::endl;
-//      std::cout << "othe "<<othe<<std::endl;
+              result += m_cache.buffer[i] * other.m_cache.buffer[i];
+        } else if (other.m_cache.io) {
           size_t offset = 0;
-          for (othe.m_cache.ensure(0); othe.m_cache.length; offset += othe.m_cache.length, ++othe.m_cache) {
-//       std::cout << "cache segment between "<<othe.m_cache.offset<<"="<<offset<<" and "<<othe.m_cache.offset+othe.m_cache.length<<std::endl;
-            for (size_t i = 0; i < othe.m_cache.length; i++) {
-//        std::cout << m_cache.buffer[offset+i] <<" * " <<othe.m_cache.buffer[i]<<std::endl;
-              result += m_cache.buffer[offset + i] * othe.m_cache.buffer[i];
+          for (other.m_cache.ensure(0); other.m_cache.length; offset += other.m_cache.length, ++other.m_cache) {
+            for (size_t i = 0; i < other.m_cache.length; i++) {
+              result += m_cache.buffer[offset + i] * other.m_cache.buffer[i];
             }
           }
         } else if (this->m_cache.io) {
           size_t offset = 0;
           for (m_cache.ensure(0); m_cache.length; offset += m_cache.length, ++m_cache)
             for (size_t i = 0; i < m_cache.length; i++)
-              result += m_cache.buffer[i] * othe.m_cache.buffer[offset + i];
+              result += m_cache.buffer[i] * other.m_cache.buffer[offset + i];
         } else {
-//          size_t l = std::min(m_cache.length, othe.m_cache.length); // FIXME puzzle as to what this is
+//          size_t l = std::min(m_cache.length, other.m_cache.length); // FIXME puzzle as to what this is
           for (size_t i = 0; i < this->m_segment_length; i++)
-            result += m_cache.buffer[i] * othe.m_cache.buffer[i];
+            result += m_cache.buffer[i] * other.m_cache.buffer[i];
         }
-//    } else if (this->m_replicated) {
-//     for (m_cache.ensure(0); m_cache.length; ++m_cache)
-//      for (size_t i = 0; i < m_cache.length; i++)
-//       result += m_cache.buffer[i] * othe.m_cache.buffer[m_cache.offset + i];
-//    } else {
-//     for (othe.m_cache.ensure(0); othe.m_cache.length; ++othe.m_cache)
-//      for (size_t i = 0; i < othe.m_cache.length; i++)
-//       result += m_cache.buffer[othe.m_cache.offset + i] * othe.m_cache.buffer[i];
-//    }
-      } else if (this->m_replicated) { // this is replicated, othe is not replicated
-        if (m_cache.io && othe.m_cache.io) {
-          auto l = std::min(m_cache.preferred_length, othe.m_cache.preferred_length);
-          for (othe.m_cache.move(0, l), m_cache.move(othe.m_segment_offset,
-                                                     l); othe.m_cache.length; ++m_cache, ++othe.m_cache) {
-            for (size_t i = 0; i < othe.m_cache.length; i++)
-              result += m_cache.buffer[i] * othe.m_cache.buffer[i];
+      } else if (this->m_replicated) { // this is replicated, other is not replicated
+        if (m_cache.io && other.m_cache.io) {
+          auto l = std::min(m_cache.preferred_length, other.m_cache.preferred_length);
+          for (other.m_cache.move(0, l), m_cache.move(other.m_segment_offset,
+                                                     l); other.m_cache.length; ++m_cache, ++other.m_cache) {
+            for (size_t i = 0; i < other.m_cache.length; i++)
+              result += m_cache.buffer[i] * other.m_cache.buffer[i];
           }
         } else if (m_cache.io) {
-//      std::cout << "hello21"<<std::endl;
-          for (m_cache.ensure(othe.m_segment_offset);
-               m_cache.offset < othe.m_segment_offset + othe.m_segment_length && m_cache.length; ++m_cache) {
+          for (m_cache.ensure(other.m_segment_offset);
+               m_cache.offset < other.m_segment_offset + other.m_segment_length && m_cache.length; ++m_cache) {
             for (size_t i = 0;
-                 i < std::min(m_cache.length, othe.m_segment_offset + othe.m_segment_length - m_cache.offset); i++)
-              result += m_cache.buffer[i] * othe.m_cache.buffer[m_cache.offset - othe.m_segment_offset + i];
+                 i < std::min(m_cache.length, other.m_segment_offset + other.m_segment_length - m_cache.offset); i++)
+              result += m_cache.buffer[i] * other.m_cache.buffer[m_cache.offset - other.m_segment_offset + i];
           }
-        } else if (othe.m_cache.io) {
-          for (othe.m_cache.ensure(0); othe.m_cache.length; ++othe.m_cache)
-            for (size_t i = 0; i < othe.m_cache.length; i++)
-              result += m_cache.buffer[othe.m_cache.offset + othe.m_segment_offset + i] * othe.m_cache.buffer[i];
+        } else if (other.m_cache.io) {
+          for (other.m_cache.ensure(0); other.m_cache.length; ++other.m_cache)
+            for (size_t i = 0; i < other.m_cache.length; i++)
+              result += m_cache.buffer[other.m_cache.offset + other.m_segment_offset + i] * other.m_cache.buffer[i];
         } else {
-          for (size_t i = 0; i < othe.m_segment_length; i++)
-            result += m_cache.buffer[othe.m_segment_offset + i] * othe.m_cache.buffer[i];
+          for (size_t i = 0; i < other.m_segment_length; i++)
+            result += m_cache.buffer[other.m_segment_offset + i] * other.m_cache.buffer[i];
         }
 
-      } else { // this is not replicated, othe is replicated
-        if (m_cache.io && othe.m_cache.io) {
-          auto l = std::min(m_cache.preferred_length, othe.m_cache.preferred_length);
-          for (othe.m_cache.move(m_segment_offset, l), m_cache.move(0, l); m_cache.length; ++m_cache, ++othe.m_cache) {
+      } else { // this is not replicated, other is replicated
+        if (m_cache.io && other.m_cache.io) {
+          auto l = std::min(m_cache.preferred_length, other.m_cache.preferred_length);
+          for (other.m_cache.move(m_segment_offset, l), m_cache.move(0, l); m_cache.length; ++m_cache, ++other.m_cache) {
             for (size_t i = 0; i < m_cache.length; i++)
-              result += m_cache.buffer[i] * othe.m_cache.buffer[i];
+              result += m_cache.buffer[i] * other.m_cache.buffer[i];
           }
         } else if (m_cache.io) {
           for (m_cache.ensure(0); m_cache.length; ++m_cache) {
             for (size_t i = 0; i < m_cache.length; i++)
-              result += m_cache.buffer[i] * othe.m_cache.buffer[m_cache.offset + m_segment_offset + i];
+              result += m_cache.buffer[i] * other.m_cache.buffer[m_cache.offset + m_segment_offset + i];
           }
-        } else if (othe.m_cache.io) {
+        } else if (other.m_cache.io) {
 //      std::cout << "hello12"<<std::endl;
-          for (othe.m_cache.ensure(m_segment_offset);
-               othe.m_cache.offset < m_segment_offset + m_segment_length && othe.m_cache.length; ++othe.m_cache)
+          for (other.m_cache.ensure(m_segment_offset);
+               other.m_cache.offset < m_segment_offset + m_segment_length && other.m_cache.length; ++other.m_cache)
             for (size_t i = 0;
-                 i < std::min(othe.m_cache.length, m_segment_offset + m_segment_length - othe.m_cache.offset); i++)
-              result += m_cache.buffer[othe.m_cache.offset - m_segment_offset + i] * othe.m_cache.buffer[i];
+                 i < std::min(other.m_cache.length, m_segment_offset + m_segment_length - other.m_cache.offset); i++)
+              result += m_cache.buffer[other.m_cache.offset - m_segment_offset + i] * other.m_cache.buffer[i];
         } else {
           for (size_t i = 0; i < m_segment_length; i++)
-            result += m_cache.buffer[i] * othe.m_cache.buffer[m_segment_offset + i];
+            result += m_cache.buffer[i] * other.m_cache.buffer[m_segment_offset + i];
         }
       }
     }
 #ifdef HAVE_MPI_H
     //    std::cout <<m_mpi_rank<<" dot result before reduce="<<result<<std::endl;
-        if (!m_replicated || !othe.m_replicated) {
+        if (!m_replicated || !other.m_replicated) {
           double resultLocal = result;
           double resultGlobal = result;
           MPI_Allreduce(&resultLocal, &resultGlobal, 1, MPI_DOUBLE, MPI_SUM, m_communicator);
@@ -718,7 +696,6 @@ class PagedVector {
     //    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
         }
 #endif
-//   std::cout << "leave dot"<<std::endl;
     return result;
   }
 
@@ -777,7 +754,7 @@ class PagedVector {
       const scalar_type threshold = 0
   ) const {
     std::multimap<element_t, size_t, std::greater<element_t> > sortlist;
-    const auto& measur = dynamic_cast <const PagedVector&> (measure);
+    const auto& measur = dynamic_cast <const PagedVector<element_t>&> (measure);
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
     if (this->m_replicated != measur.m_replicated) throw std::logic_error("mismatching replication status");
     if (this == &measur) {
@@ -791,11 +768,9 @@ class PagedVector {
         }
       }
     } else {
-//    std::cout << "select, different vectors"<<std::endl;
       for (m_cache.ensure(0), measur.m_cache.move(0, m_cache.length); m_cache.length; ++m_cache, ++measur.m_cache) {
         for (size_t i = 0; i < m_cache.length; i++) {
           scalar_type test = m_cache.buffer[i] * measur.m_cache.buffer[i];
-//      std::cout << "test "<<test<<", threshold="<<threshold<<std::endl;
           if (test < 0) test = -test;
           if (test > threshold) {
             sortlist.insert(std::make_pair(test, i));
@@ -809,7 +784,6 @@ class PagedVector {
       throw std::logic_error("incomplete MPI implementation");
     }
 #endif
-//   std::cout << "leave dot"<<std::endl;
     while (sortlist.size() > maximumNumber) sortlist.erase(std::prev(sortlist.end()));
     std::vector<size_t> indices;
     indices.reserve(sortlist.size());
@@ -903,8 +877,12 @@ class PagedVector {
     return *this;
   }
 
+  /*!
+   * @brief Test for equality of two objects
+   * @param other
+   * @return
+   */
   bool operator==(const PagedVector& other) {
-//std::cout  << "operator== start"<<std::endl;
     if (this->m_size != other.m_size) throw std::logic_error("mismatching lengths");
     int diff = 0;
     if (!m_cache.io && !other.m_cache.io) { // std::cout << "both in memory"<<std::endl;

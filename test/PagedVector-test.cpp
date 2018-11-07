@@ -54,7 +54,7 @@ TEST_CASE("PagedVector pass-through") {
     v[i] = 2 * i + 1;
   }
   auto v1 = LinearAlgebra::PagedVector<double>(v.data(), v.size());
-  auto &w = v1.m_cache.buffer;
+  auto &w = v1;
   double r = 0;
   bool ad = true;
   for (size_t i = 0; i < v.size(); ++i) {

@@ -597,11 +597,11 @@ class IterativeSolver {
   void doInterpolation(vectorSet &solution, vectorSet &residual,
                        vectorSetP &solutionP,
                        vectorSet &other) {
-    for (auto& s : solution) s.zero();
-    for (auto& s : residual) s.zero();
+    for (auto& s : solution) s.scal(0);
+    for (auto& s : residual) s.scal(0);
     size_t nP = m_Pvectors.size();
     solutionP.resize(residual.size());
-    for (auto& s : other) s.zero();
+    for (auto& s : other) s.scal(0);
     for (size_t kkk = 0; kkk < residual.size() && kkk < static_cast<size_t>(m_interpolation.rows()); kkk++) {
       solutionP[kkk].resize(nP);
       for (size_t l = 0; l < nP; l++)

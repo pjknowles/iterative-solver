@@ -46,7 +46,7 @@ namespace LinearAlgebra {
   * - data optionally held on backing store instead of in memory, specified via additional non-compulsory option argument in copy constructor
   * - data optionally distributed over MPI ranks, specified via additional non-compulsory option argument in copy constructor
   * - mapping of an externally-owned buffer, or internally-owned storage
-  * - opaque implementation of BLAS including dot(), axpy(), scal(), zero()
+  * - opaque implementation of BLAS including dot(), axpy(), scal()
   * - efficient import and export of data ranges
   * - potentially inefficient read and read-write access to individual elements
   * \tparam element_t the type of elements of the vector
@@ -751,23 +751,16 @@ class PagedVector {
 
   /*!
      * \brief scal Scale the object by a factor.
-     * \param a The factor to scale by.
+     * \param a The factor to scale by. If a is zero, then the current contents of the object are ignored.
      */
   void scal(scalar_type a) {
     for (m_cache.ensure(0); m_cache.length; ++m_cache) {
+      if (a != 0)
       for (size_t i = 0; i < m_cache.length; i++)
         m_cache.buffer[i] *= a;
-      m_cache.dirty = true;
-    }
-  }
-
-  /*!
-   * \brief Set the contents of the object to zero.
-   */
-  void zero() {
-    for (m_cache.ensure(0); m_cache.length; ++m_cache) {
-      for (size_t i = 0; i < m_cache.length; i++)
-        m_cache.buffer[i] = 0;
+      else
+        for (size_t i = 0; i < m_cache.length; i++)
+          m_cache.buffer[i] = 0;
       m_cache.dirty = true;
     }
   }

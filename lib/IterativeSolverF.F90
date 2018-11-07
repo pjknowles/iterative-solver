@@ -132,6 +132,7 @@ CONTAINS
     INTEGER(c_int) :: verbosityC, maxIterationsC
     REAL(c_double) :: threshC
     m_nq = INT(nq, kind = c_size_t)
+    m_nroot = 1
     IF (PRESENT(thresh)) THEN
       threshC = thresh
     ELSE

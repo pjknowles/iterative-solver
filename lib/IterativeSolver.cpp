@@ -96,7 +96,7 @@ extern "C" void IterativeSolverAddVector(double* parameters, double* action, con
     cc.push_back(v(&parameters[root * instance->m_dimension], instance->m_dimension));
     gg.push_back(v(&action[root * instance->m_dimension], instance->m_dimension));
 //    activev.push_back( instance->errors().size() <= root || instance->errors()[root] >= instance->m_thresh);
-    activev.push_back(active[root]);
+    activev.push_back(active[root]!=0);
   }
   instance->addVector(cc, gg, ccp, activev);
 

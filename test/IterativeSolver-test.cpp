@@ -99,7 +99,7 @@ static void DavidsonTest(size_t dimension,
 //          xout << "after action x: "<<x[kkk]<<std::endl;
 //      for (size_t kkk=0; kkk<g.size(); kkk++)
 //          xout << "after action g: "<<g[kkk]<<std::endl;
-    d.addVector(x, g);
+    d.addVector(x, g, <#initializer#>, std::vector<bool>());
 //      for (size_t kkk=0; kkk<x.size(); kkk++)
 //          xout << "after addVector x: "<<x[kkk]<<std::endl;
 //      for (size_t kkk=0; kkk<g.size(); kkk++)
@@ -219,7 +219,7 @@ void DIISTest(int verbosity = 0,
 //   xout <<"start of iteration "<<iteration<<std::endl;
     _Rosenbrock_residual(x, g);
 //    xout << "residual: " << g;
-    d.addVector(x, g);
+    d.addVector(x, g, <#initializer#>, std::vector<bool>());
     std::vector<typename ptype::scalar_type> shift;
     shift.push_back(1e-10);
     _Rosenbrock_updater(x, g, shift);
@@ -443,7 +443,7 @@ void RSPTTest(size_t n, double alpha) {
          iteration++) {
       xout << "start of iteration " << iteration << std::endl;
       _rsptpot_residual(x, g);
-      d.addVector(x, g);
+      d.addVector(x, g, <#initializer#>, std::vector<bool>());
       std::vector<scalar> shift;
       shift.push_back(1e-10);
       _rsptpot_updater(x, g, shift);

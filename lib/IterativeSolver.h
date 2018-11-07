@@ -112,17 +112,16 @@ class IterativeSolver {
    * For non-linear equations, the input will be the current solution and residual, and the output the interpolated solution and residual.
    * \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
    * \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
+   * \param active On entry, for each element of parameters, whether it is active, ie whether the
    * \param parametersP On exit, the interpolated solution projected onto the P space.
    * \param other Optional additional vectors that should be interpolated like the residual.
-   * \param active On entry, for each element of parameters, whether it is active, ie whether the
    * corresponding element of other contains data to be used.
    */
-  void addVector(vectorSet &parameters,
-                 vectorSet &action,
-                 vectorSetP &parametersP,
-                 vectorSet &other,
-                 std::vector<bool> active
-  ) {
+  void addVector(vectorSet& parameters,
+                   vectorSet& action,
+                   std::vector<bool> active,
+                   vectorSetP& parametersP,
+                   vectorSet& other) {
 //   if (m_rhs.size())
 //    xout << "addVector entry m_rhs.back()="<<this->m_rhs.back()<<std::endl;
     if (m_roots < 1) m_roots = parameters.size(); // number of roots defaults to size of parameters
@@ -145,14 +144,14 @@ class IterativeSolver {
 
   void addVector(vectorSet &parameters, vectorSet &action, std::vector<bool> active) {
     vectorSetP parametersP;
-    addVector(parameters, action, parametersP, active);
+    addVector(parameters, action, active, parametersP);
     return;
   }
 
   void
-  addVector(vectorSet &parameters, vectorSet &action, vectorSetP &parametersP, std::vector<bool> active) {
+  addVector(vectorSet& parameters, vectorSet& action, std::vector<bool> active, vectorSetP& parametersP) {
     vectorSet other;
-    addVector(parameters, action, parametersP, other, active);
+    addVector(parameters, action, active, parametersP, other);
     return;
   }
 

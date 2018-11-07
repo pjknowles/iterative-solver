@@ -106,18 +106,21 @@ extern "C" void IterativeSolverAddVector(double* parameters, double* action, dou
   }
 }
 
-extern "C" int IterativeSolverEndIteration(double* solution, double* residual, double* error) {
+extern "C" int IterativeSolverEndIteration(double* solution, double* residual, double* error, int* active) {
   std::vector<v> cc, gg;
+  std::vector<bool> activev;
   for (size_t root = 0; root < instance->m_roots; root++) {
+    activev.push_back(active[root]);
     cc.push_back(v(instance->m_dimension));
     cc.back().put(&solution[root * instance->m_dimension], instance->m_dimension, 0);
     gg.push_back(v(instance->m_dimension));
     gg.back().put(&residual[root * instance->m_dimension], instance->m_dimension, 0);
   }
-  bool result = instance->endIteration(cc, gg);
+  bool result = instance->endIteration(cc, gg, activev);
   for (size_t root = 0; root < instance->m_roots; root++) {
     cc[root].get(&solution[root * instance->m_dimension], instance->m_dimension, 0);
     error[root] = instance->errors()[root];
+    active[root] = activev[root] ? 1 : 0;
   }
 #ifdef HAVE_MPI_H
   //   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");

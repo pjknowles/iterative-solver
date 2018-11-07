@@ -704,6 +704,8 @@ class IterativeSolver {
     copyvec(m_residuals, residual);
     copyvec(m_solutions, solution);
     copyvec(m_others, other);
+    m_active.emplace_back();
+    for (auto k=0; k<solution.size(); k++) m_active.back().push_back(active[k]);
 //   xout << "addVectorSet after emplace_back()"<<std::endl;
     const vectorSet &residual1 = residual;
     const vectorSet &solution1 = solution;//      for (size_t kkk=0; kkk<solution.size(); kkk++)

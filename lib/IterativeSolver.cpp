@@ -86,7 +86,7 @@ extern "C" void IterativeSolverFinalize() {
   instance.release();
 }
 
-extern "C" void IterativeSolverAddVector(double* parameters, double* action, double* parametersP, const int* active) {
+extern "C" void IterativeSolverAddVector(double* parameters, double* action, const int* active, double* parametersP) {
 //  constexpr int vFlags = LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE; // has to wait till implementation below catches up
 //  constexpr int vFlags = LINEARALGEBRA_CLONE_ADVISE_OFFLINE; // FIXME is this needed?
   std::vector<v> cc, gg;

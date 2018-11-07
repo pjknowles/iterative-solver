@@ -218,7 +218,7 @@ class IterativeSolver {
     size_t l = 0;
     for (size_t ll = 0; ll < m_solutions.size(); ll++) {
       for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
-        if (m_active[ll][lll]) {
+        if (m_vector_active[ll][lll]) {
           for (size_t n = 0; n < Pvectors.size(); n++) {
             m_PQMatrix(oldNP + n, l) = m_residuals[ll][lll].dot(Pvectors[n]);
             m_PQOverlap(oldNP + n, l) = m_solutions[ll][lll].dot(Pvectors[n]);
@@ -290,7 +290,7 @@ class IterativeSolver {
                                const scalar_type threshold = 0) {
     std::map<size_t, scalar_type> result;
     for (size_t kkk = 0; kkk < solution.size(); kkk++) {
-//    xout << "suggestP kkk "<<kkk<<" active "<<solution.m_active[kkk]<<maximumNumber<<std::endl;
+//    xout << "suggestP kkk "<<kkk<<" active "<<solution.m_vector_active[kkk]<<maximumNumber<<std::endl;
       if (solution[kkk].active()) {
         std::vector<size_t> indices;
         std::vector<scalar_type> values;
@@ -381,7 +381,7 @@ class IterativeSolver {
             }
             for (size_t ll = 0; ll < m_solutions.size(); ll++) {
               for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
-                if (m_active[ll][lll]) {
+                if (m_vector_active[ll][lll]) {
                   scalar_type s =
                       -(m_solutions[ll][lll].dot(solution[kkk])) / (m_solutions[ll][lll].dot(m_solutions[ll][lll]));
                   solution[kkk].axpy(s, m_solutions[ll][lll]);
@@ -605,7 +605,7 @@ class IterativeSolver {
       size_t l = nP;
       for (size_t ll = 0; ll < this->m_solutions.size(); ll++) {
         for (size_t lll = 0; lll < this->m_solutions[ll].size(); lll++) {
-          if (this->m_active[ll][lll]) {
+          if (this->m_vector_active[ll][lll]) {
             if (m_verbosity > 3)
               xout << "IterativeSolver::doInterpolation kkk=" << kkk << ", ll=" << ll << ", lll=" << lll << ", l=" << l
                    << std::endl;
@@ -664,7 +664,7 @@ class IterativeSolver {
       for (size_t k = 0; k < solution.size(); k++) {
         step[k].axpy(-1, m_solutions[m_lastVectorIndex][k]);
         m_errors.push_back(
-            m_active[m_lastVectorIndex][k] ? std::fabs(
+            m_vector_active[m_lastVectorIndex][k] ? std::fabs(
                 (errortype == 1 ? step : m_residuals[m_lastVectorIndex])[k].dot(
                     (errortype == 2 ? m_residuals[m_lastVectorIndex][k] : step[k])))
                                                        : 1);
@@ -694,8 +694,8 @@ class IterativeSolver {
   size_t
   addVectorSet(const vectorSet &solution, const vectorSet &residual, const vectorSet &other, std::vector<bool> active) {
 //   xout << "addVectorSet entry"<<std::endl;
-    //      if (residual.m_active.front()==0) xout <<"warning: inactive residual"<<std::endl;
-    //      if (solution.m_active.front()==0) xout <<"warning: inactive solution"<<std::endl;
+    //      if (residual.m_vector_active.front()==0) xout <<"warning: inactive residual"<<std::endl;
+    //      if (solution.m_vector_active.front()==0) xout <<"warning: inactive solution"<<std::endl;
 //         for (size_t kkk=0; kkk<solution.size(); kkk++)
 //             xout << "addVectorSet solution: "<<solution[kkk]<<std::endl;
     //      for (size_t kkk=0; kkk<residual.size(); kkk++)
@@ -704,8 +704,8 @@ class IterativeSolver {
     copyvec(m_residuals, residual);
     copyvec(m_solutions, solution);
     copyvec(m_others, other);
-    m_active.emplace_back();
-    for (auto k=0; k<solution.size(); k++) m_active.back().push_back(active[k]);
+    m_vector_active.emplace_back();
+    for (auto k=0; k<solution.size(); k++) m_vector_active.back().push_back(active[k]);
 //   xout << "addVectorSet after emplace_back()"<<std::endl;
     const vectorSet &residual1 = residual;
     const vectorSet &solution1 = solution;//      for (size_t kkk=0; kkk<solution.size(); kkk++)
@@ -718,7 +718,7 @@ class IterativeSolver {
     //      xout << "solution"<<std::endl<<solution[0]<<std::endl;
     auto nP = m_PQMatrix.rows();
     auto old_size = m_QQMatrix.rows();
-//    auto new_size = old_size + count(residual1.m_active.begin(), residual1.m_active.end(), true);
+//    auto new_size = old_size + count(residual1.m_vector_active.begin(), residual1.m_vector_active.end(), true);
     auto new_size = old_size;
     for (const auto& r : residual1)
       if (r.active()) ++new_size;
@@ -740,7 +740,7 @@ class IterativeSolver {
         size_t l = 0;
         for (size_t ll = 0; ll < m_solutions.size(); ll++) {
           for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
-            if (m_active[ll][lll]) {
+            if (m_vector_active[ll][lll]) {
 //              xout << "bra"<<std::endl<<(*bra)[ll][lll]<<std::endl;
 //              xout << "residual1"<<std::endl<<residual1[kkk]<<std::endl;
 //              xout << "m_solutions[ll]"<<std::endl<<m_solutions[ll][lll]<<std::endl;
@@ -778,12 +778,12 @@ class IterativeSolver {
     size_t l = 0;
     for (size_t ll = 0; ll < m_solutions.size(); ll++) {
       for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
-        if (m_active[ll][lll]) {
+        if (m_vector_active[ll][lll]) {
           if (l == index) { // this is the one to delete
             if (m_Weights.size() > l) m_Weights.erase(m_Weights.begin() + l);
             m_dateOfBirth.erase(m_dateOfBirth.begin() + l);
-            m_active[ll][lll] = false;
-            //                    m_others[ll].m_active[lll] = false;
+            m_vector_active[ll][lll] = false;
+            //                    m_others[ll].m_vector_active[lll] = false;
             for (Eigen::Index l2 = l + 1; l2 < m_QQMatrix.cols(); l2++) {
               for (Eigen::Index k = 0; k < m_QQMatrix.rows(); k++) {
                 m_QQMatrix(k, l2 - 1) = m_QQMatrix(k, l2);
@@ -807,9 +807,9 @@ class IterativeSolver {
           }
           l++;
         }
-        size_t siz=0; for (const auto& s : m_active[ll]) if (s) ++siz;
+        size_t siz=0; for (const auto& s : m_vector_active[ll]) if (s) ++siz;
         if (siz== 0) { // can delete the whole thing
-          //TODO implement, and also individual element deletions to get rid of m_active
+          //TODO implement, and also individual element deletions to get rid of m_vector_active
         }
       }
     }
@@ -831,7 +831,7 @@ class IterativeSolver {
   std::vector<vectorSet> m_residuals;
   std::vector<vectorSet> m_solutions;
   std::vector<vectorSet> m_others;
-  std::vector<std::vector<bool> > m_active;
+  std::vector<std::vector<bool> > m_vector_active;
   vectorSet m_rhs;
   std::vector<int> m_dateOfBirth;
   size_t m_lastVectorIndex;
@@ -1256,7 +1256,7 @@ IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIteration
 extern "C" void IterativeSolverFinalize();
 
 extern "C" void
-IterativeSolverAddVector(double *parameters, double *action, double *parametersP, const int* active);
+IterativeSolverAddVector(double *parameters, double *action, const int* active, double *parametersP);
 
 extern "C" int IterativeSolverEndIteration(double *c, double *g, double *error, int* active);
 

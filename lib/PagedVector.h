@@ -14,6 +14,7 @@
 #include <cassert>
 #include <fstream>
 #include <sstream>
+#include <ostream>
 #include <map>
 #include <vector>
 
@@ -129,7 +130,7 @@ class PagedVector {
    * @param length
    */
 
-  PagedVector(double* buffer, size_t length)
+  PagedVector(element_t* buffer, size_t length)
       : m_size(length),
         m_communicator(MPI_COMM_COMPUTE), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(true),
@@ -137,7 +138,6 @@ class PagedVector {
         m_segment_length(m_size),
         m_cache(m_segment_length, m_segment_length, buffer),
         m_active(true) {
-
   }
 
   ~PagedVector() = default;

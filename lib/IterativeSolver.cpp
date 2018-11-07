@@ -93,8 +93,8 @@ extern "C" void IterativeSolverAddVector(double* parameters, double* action, con
   std::vector<std::vector<typename v::element_type> > ccp;
   std::vector<bool> activev;
   for (size_t root = 0; root < instance->m_roots; root++) {
-    cc.push_back(v(&parameters[root * instance->m_dimension], instance->m_dimension));
-    gg.push_back(v(&action[root * instance->m_dimension], instance->m_dimension));
+    cc.emplace_back(&parameters[root * instance->m_dimension], instance->m_dimension);
+    gg.emplace_back(&action[root * instance->m_dimension], instance->m_dimension);
 //    activev.push_back( instance->errors().size() <= root || instance->errors()[root] >= instance->m_thresh);
     activev.push_back(active[root]!=0);
   }

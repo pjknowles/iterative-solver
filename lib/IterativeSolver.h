@@ -145,13 +145,15 @@ class IterativeSolver {
 
   void addVector(vectorSet &parameters, vectorSet &action, std::vector<bool> active) {
     vectorSetP parametersP;
-    return addVector(parameters, action, parametersP, active);
+    addVector(parameters, action, parametersP, active);
+    return;
   }
 
   void
   addVector(vectorSet &parameters, vectorSet &action, vectorSetP &parametersP, std::vector<bool> active) {
     vectorSet other;
-    return addVector(parameters, action, parametersP, other, active);
+    addVector(parameters, action, parametersP, other, active);
+    return;
   }
 
  public:
@@ -236,6 +238,7 @@ class IterativeSolver {
     solveReducedProblem();
     doInterpolation(parameters, action, parametersP, other);
 //    for (auto ll = 0; ll < parameters.size(); ll++)
+//      xout << " after doInterpolation, parameters=" << parameters[ll]<< std::endl;
 //      xout << " after doInterpolation, g.w=" << parameters[ll]->dot(*action[ll]) << std::endl;
   }
 
@@ -366,9 +369,11 @@ class IterativeSolver {
 
  private:
   void adjustUpdate(vectorSet &solution, std::vector<bool>& active) {
-    //     xout << "m_errors[0] "<<m_errors[0]<<", m_thresh "<<m_thresh<<std::endl;
+//         xout << "m_errors[0] "<<m_errors[0]<<", m_thresh "<<m_thresh<<std::endl;
     for (size_t k = 0; k < solution.size(); k++)
       active[k] = (m_errors[k] >= m_thresh || m_minIterations > m_iterations);
+//    xout << "active "<<active[0]<<std::endl;
+//          xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution[0]<<std::endl;
     if (m_orthogonalize) {
 //          xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
       for (auto rep = 0; rep < 2; rep++)
@@ -624,7 +629,8 @@ class IterativeSolver {
       if (m_residual_eigen || (m_residual_rhs && m_augmented_hessian > 0))
         residual[kkk].axpy(-this->m_subspaceEigenvalues(kkk).real(), solution[kkk]);
       if (m_residual_rhs) residual[kkk].axpy(-1, this->m_rhs[kkk]);
-//    xout << "residual after axpy "<<residual[kkk]->str()<<std::endl;
+//    xout << "residual after axpy "<<residual[kkk]<<std::endl;
+//      xout << "solution after axpy "<<solution[kkk]<<std::endl;
 //      xout << "square norm of solution after axpy contribution " << solution[kkk]->dot(*solution[kkk]) << std::endl;
 //      xout << "g.w after axpy contribution " << solution[kkk]->dot(*residual[kkk]) << std::endl;
     }

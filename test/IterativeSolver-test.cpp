@@ -22,8 +22,8 @@ static void DavidsonTest(size_t dimension,
                          int problem = 0,
                          bool orthogonalize = false) {
 
-  using scalar = typename ptype::scalar_type;
-  using element = typename ptype::element_type;
+  using scalar = typename LinearAlgebra::LinearEigensystem<ptype>::scalar_type;
+  using element = typename LinearAlgebra::LinearEigensystem<ptype>::element_type;
   using vectorSet = std::vector<ptype>;
   static Eigen::Matrix<element, Eigen::Dynamic, Eigen::Dynamic> testmatrix;
 
@@ -163,12 +163,12 @@ void DIISTest(int verbosity = 0,
               enum DIIS<ptype>::DIISmode_type mode = DIIS<ptype>::DIISmode,
               double difficulty = 0.1) {
   using vectorSet = std::vector<ptype>;
-  using scalar = typename ptype::scalar_type;
+  using scalar = typename DIIS<ptype>::scalar_type;
   static struct {
     void operator()(const vectorSet &psx, vectorSet &outputs) const {
       size_t n = 2;
-      std::vector<typename ptype::scalar_type> psxk(n);
-      std::vector<typename ptype::scalar_type> output(n);
+      std::vector<scalar> psxk(n);
+      std::vector<scalar> output(n);
 
       psx.front().get(&(psxk[0]), n, 0);
       output[0] = (2 * psxk[0] - 2 + 400 * psxk[0] * (psxk[0] * psxk[0] - psxk[1]));
@@ -183,8 +183,8 @@ void DIISTest(int verbosity = 0,
                     std::vector<scalar> shift,
                     bool append = true) const {
       size_t n = 2;
-      std::vector<typename ptype::scalar_type> psck(n);
-      std::vector<typename ptype::scalar_type> psgk(n);
+      std::vector<scalar> psck(n);
+      std::vector<scalar> psgk(n);
       psg.front().get(&psgk[0], n, 0);
       if (append) {
         psc.front().get(&psck[0], n, 0);
@@ -214,7 +214,7 @@ void DIISTest(int verbosity = 0,
   d.m_verbosity = verbosity - 1;
 //  d.m_options["weight"]=2;
   return;
-  std::vector<typename ptype::scalar_type> xxx(2);
+  std::vector<scalar> xxx(2);
   xxx[0] = xxx[1] = 1 - difficulty; // initial guess
   x.front().put(&xxx[0], 2, 0);
 //  xout << "initial guess " << x << std::endl;
@@ -224,7 +224,7 @@ void DIISTest(int verbosity = 0,
     _Rosenbrock_residual(x, g);
 //    xout << "residual: " << g;
     d.addVector(x, g, active);
-    std::vector<typename ptype::scalar_type> shift;
+    std::vector<scalar> shift;
     shift.push_back(1e-10);
     _Rosenbrock_updater(x, g, shift);
     converged = d.endIteration(x, g, active);
@@ -358,7 +358,7 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
 //      xout << "m_F:"<<std::endl<<m_F<<std::endl;
     }
     ptype guess() {
-      std::vector<typename ptype::scalar_type> r(m_n);
+      std::vector<scalar> r(m_n);
       ptype result(m_n);
       for (size_t k = 0; k < m_n; k++)
         r[k] = 0;
@@ -372,12 +372,12 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
   static struct {
     void operator()(const vectorSet<scalar> &psx,
                     vectorSet<scalar> &outputs,
-                    std::vector<typename ptype::scalar_type> shift = std::vector<scalar>(),
+                    std::vector<scalar> shift = std::vector<scalar>(),
                     bool append = false) const {
 //        xout << "rsptpot_residual"<<std::endl;
 //        xout << "input "<<psx<<std::endl;
-      std::vector<typename ptype::scalar_type> psxk(instance.m_n);
-      std::vector<typename ptype::scalar_type> output(instance.m_n);
+      std::vector<scalar> psxk(instance.m_n);
+      std::vector<scalar> output(instance.m_n);
       psx.front()->get(&(psxk[0]), instance.m_n, 0);
       if (append)
         outputs.front()->get(&(output[0]), instance.m_n, 0);
@@ -401,8 +401,8 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
 //        xout << "preconditioner input="<<psg<<std::endl;
 //      if (shift.front()==0)
 //          xout << "H0 not resolvent"<<std::endl;
-      std::vector<typename ptype::scalar_type> psck(instance.m_n);
-      std::vector<typename ptype::scalar_type> psgk(instance.m_n);
+      std::vector<scalar> psck(instance.m_n);
+      std::vector<scalar> psgk(instance.m_n);
       psg.front()->get(&psgk[0], instance.m_n, 0);
       if (shift.front() == 0)
         for (size_t i = 0; i < instance.m_n; i++)

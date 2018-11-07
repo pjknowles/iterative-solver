@@ -64,8 +64,8 @@ template<class element_t=double,
 #endif
 >
 class PagedVector {
- public:
   typedef double scalar_type; //TODO implement this properly from element_t
+ public:
   typedef element_t element_type;
   /*!
    * \brief Construct an object without any data.
@@ -85,8 +85,7 @@ class PagedVector {
         m_cache(m_segment_length,
                 (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ?
                 default_offline_buffer_size : m_segment_length
-        )
-        {
+        ) {
 //   init(option);
 //    std::cout <<" option "<<( option)<<std::endl;
 //    std::cout <<"LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option "<<(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)<<std::endl;
@@ -106,8 +105,7 @@ class PagedVector {
         m_segment_offset(m_replicated ? 0 : std::min(((m_size - 1) / m_mpi_size + 1) * m_mpi_rank, m_size)),
         m_segment_length(m_replicated ? m_size : std::min((m_size - 1) / m_mpi_size + 1, m_size - m_segment_offset)),
         m_cache(m_segment_length,
-                (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length)
-        {
+                (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length) {
 //    std::cout << "PagedVector copy constructor from "<<&source[0]<<" to "<<&(*this)[0]<<std::endl;
 //   init(option);
 //   std::cout << "in copy constructor, before copy, source: "<<source.size()<<":"<<source.str()<<std::endl;
@@ -137,8 +135,7 @@ class PagedVector {
         m_replicated(true),
         m_segment_offset(0),
         m_segment_length(m_size),
-        m_cache(m_segment_length, m_segment_length, buffer)
-        {
+        m_cache(m_segment_length, m_segment_length, buffer) {
 //    std::cout << "PagedVector map constructor "<<buffer<<" : "<<&(*this)[0]<<std::endl;
   }
 
@@ -756,8 +753,8 @@ class PagedVector {
   void scal(scalar_type a) {
     for (m_cache.ensure(0); m_cache.length; ++m_cache) {
       if (a != 0)
-      for (size_t i = 0; i < m_cache.length; i++)
-        m_cache.buffer[i] *= a;
+        for (size_t i = 0; i < m_cache.length; i++)
+          m_cache.buffer[i] *= a;
       else
         for (size_t i = 0; i < m_cache.length; i++)
           m_cache.buffer[i] = 0;

@@ -101,10 +101,12 @@ class IterativeSolver {
   virtual ~IterativeSolver() = default;
 
   using element_type = typename T::element_type; ///< The underlying type of elements of vectors
-  using scalar_type = typename T::scalar_type; ///< The type of scalar products of vectors
+//  using scalar_type = typename T::scalar_type; ///< The type of scalar products of vectors
+//  scalar_type dot(const PagedVector<element_t>& other) const {
   using vectorSet = typename std::vector<T>; ///< Container of vectors
-  using vectorSetP = typename std::vector<std::vector<element_type> >; ///<Container of P-space parameters
+  using vectorSetP = typename std::vector<std::vector < element_type> >; ///<Container of P-space parameters
  public:
+  using scalar_type = decltype(std::declval<T>().dot(std::declval<const T&>()));
   /*!
    * \brief Take, typically, a current solution and residual, and return new solution.
    * In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
@@ -118,10 +120,10 @@ class IterativeSolver {
    * corresponding element of other contains data to be used.
    */
   void addVector(vectorSet& parameters,
-                   vectorSet& action,
-                   std::vector<bool> active,
-                   vectorSetP& parametersP,
-                   vectorSet& other) {
+                 vectorSet& action,
+                 std::vector<bool> active,
+                 vectorSetP& parametersP,
+                 vectorSet& other) {
 //   if (m_rhs.size())
 //    xout << "addVector entry m_rhs.back()="<<this->m_rhs.back()<<std::endl;
     if (m_roots < 1) m_roots = parameters.size(); // number of roots defaults to size of parameters
@@ -131,7 +133,8 @@ class IterativeSolver {
     m_added_vectors = 0;
     for (size_t k = 0; k < action.size(); k++) if (active[k]) m_added_vectors++;
     m_actions += m_added_vectors;
-    m_lastVectorIndex = addVectorSet(parameters, action, other, active) - 1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
+    m_lastVectorIndex = addVectorSet(parameters, action, other, active)
+        - 1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
 //   xout << "set lastVectorIndex=addVectorSet-1="<<m_lastVectorIndex<<std::endl;
     scalar_type weight =
         this->m_options.count("weight") ? (
@@ -142,7 +145,7 @@ class IterativeSolver {
     doInterpolation(parameters, action, parametersP, other);
   }
 
-  void addVector(vectorSet &parameters, vectorSet &action, std::vector<bool> active) {
+  void addVector(vectorSet& parameters, vectorSet& action, std::vector<bool> active) {
     vectorSetP parametersP;
     addVector(parameters, action, active, parametersP);
     return;
@@ -173,11 +176,11 @@ class IterativeSolver {
    * \param parametersP On exit, the interpolated solution projected onto the P space.
    * \param other On exit, interpolation of the other vectors
    */
-  void addP(std::vector<Pvector> Pvectors, const scalar_type *PP,
-            vectorSet &parameters,
-            vectorSet &action,
-            vectorSetP &parametersP,
-            vectorSet &other) {
+  void addP(std::vector<Pvector> Pvectors, const scalar_type* PP,
+            vectorSet& parameters,
+            vectorSet& action,
+            vectorSetP& parametersP,
+            vectorSet& other) {
     auto oldss = m_subspaceMatrix.rows();
 //    xout << "oldss " << oldss << ", Pvectors,size() " << Pvectors.size() << std::endl;
     m_subspaceMatrix.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
@@ -204,7 +207,7 @@ class IterativeSolver {
         m_subspaceMatrix(oldNP + n, i) = m_subspaceMatrix(i, oldNP + n) = PP[offset++];
         double overlap = 0;
 //        xout << "n=" << n << ", i=" << i << std::endl;
-        for (const auto &p : Pvectors[n]) {
+        for (const auto& p : Pvectors[n]) {
 //          xout << "addP Pvector=" << p.first << " : " << p.second << " " << m_Pvectors[i].count(p.first) << std::endl;
           if (m_Pvectors[i].count(p.first))
             overlap += p.second * m_Pvectors[i][p.first];
@@ -241,8 +244,8 @@ class IterativeSolver {
 //      xout << " after doInterpolation, g.w=" << parameters[ll]->dot(*action[ll]) << std::endl;
   }
 
-  void addP(std::vector<Pvector> Pvectors, const scalar_type *PP, vectorSet &parameters, vectorSet &action,
-            vectorSetP &parametersP) {
+  void addP(std::vector<Pvector> Pvectors, const scalar_type* PP, vectorSet& parameters, vectorSet& action,
+            vectorSetP& parametersP) {
     vectorSet other;
     return addP(Pvectors, PP, parameters, action, parametersP, other);
   }
@@ -269,7 +272,7 @@ class IterativeSolver {
      * next iteration, the action should be calculated.
      * \return true if convergence reached for all roots
      */
-  bool endIteration(vectorSet &solution, const vectorSet &residual, std::vector<bool>& active) {
+  bool endIteration(vectorSet& solution, const vectorSet& residual, std::vector<bool>& active) {
     calculateErrors(solution, residual, active);
     if (m_error >= m_thresh) adjustUpdate(solution, active);
     report();
@@ -286,8 +289,8 @@ class IterativeSolver {
    * indicate an energy improvement in the next iteration of this amount or more.
    * \return
    */
-  std::vector<size_t> suggestP(const vectorSet &solution,
-                               const vectorSet &residual,
+  std::vector<size_t> suggestP(const vectorSet& solution,
+                               const vectorSet& residual,
                                std::vector<bool> active,
                                const size_t maximumNumber = 1000,
                                const scalar_type threshold = 0) {
@@ -309,8 +312,8 @@ class IterativeSolver {
     }
     // sort and select
 //   for (const auto& kv : result) xout << "result: " << kv.first << " : " <<kv.second<<std::endl;
-    std::multimap<scalar_type, size_t, std::greater<scalar_type> > inverseResult;
-    for (const auto &kv : result) inverseResult.insert(std::pair<scalar_type, size_t>(kv.second, kv.first));
+    std::multimap<scalar_type, size_t, std::greater<scalar_type>> inverseResult;
+    for (const auto& kv : result) inverseResult.insert(std::pair<scalar_type, size_t>(kv.second, kv.first));
 //   for (const auto& kv : inverseResult) xout << "inverseResult: " << kv.first << " : " <<kv.second<<std::endl;
     std::vector<size_t> indices;
 //   std::vector<element_t> values;
@@ -368,7 +371,7 @@ class IterativeSolver {
   ///< - m_options["convergence"]=="residual": m_errors() returns the norm of the residual vector
 
  private:
-  void adjustUpdate(vectorSet &solution, std::vector<bool>& active) {
+  void adjustUpdate(vectorSet& solution, std::vector<bool>& active) {
 //         xout << "m_errors[0] "<<m_errors[0]<<", m_thresh "<<m_thresh<<std::endl;
     for (size_t k = 0; k < solution.size(); k++)
       active[k] = (m_errors[k] >= m_thresh || m_minIterations > m_iterations);
@@ -380,7 +383,7 @@ class IterativeSolver {
         for (size_t kkk = 0; kkk < solution.size(); kkk++) {
           if (active[kkk]) {
             for (size_t i = 0; i < m_Pvectors.size(); i++) {
-              const auto &p = m_Pvectors[i];
+              const auto& p = m_Pvectors[i];
               scalar_type s = -solution[kkk].dot(p) / m_subspaceOverlap(i, i);
               solution[kkk].axpy(s, p);
             }
@@ -412,7 +415,7 @@ class IterativeSolver {
 
  protected:
 
-  virtual void solveReducedProblem()=0;
+  virtual void solveReducedProblem() = 0;
 
   virtual void report() {
     if (m_verbosity > 0) {
@@ -447,20 +450,22 @@ class IterativeSolver {
       if (m_verbosity > 1) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
 //    Eigen::EigenSolver<Eigen::Matrix<element_t, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
 //    xout << "eigenvalues "<<ss.eigenvalues()<<std::endl;
-      Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> >
+      Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>
           svd(m_subspaceMatrix, Eigen::ComputeThinU | Eigen::ComputeThinV);
 //    xout << "singular values: "<<svd.singularValues().transpose()<<std::endl;
 //    xout << "U: "<<svd.matrixU()<<std::endl;
 //    xout << "V: "<<svd.matrixV()<<std::endl;
 //    auto tester = [](Eigen::Index i) { return std::fabs(svd.matrixV(nP+i,k))};
-      const auto &k = m_subspaceMatrix.rows() - 1;
+      const auto& k = m_subspaceMatrix.rows() - 1;
 //      xout << "m_singularity_threshold "<<m_singularity_threshold<<std::endl;
 //      xout << "svd.singularValues()(0) "<<svd.singularValues()(0)<<std::endl;
 //      xout << "svd.singularValues()(k) "<<svd.singularValues()(k)<<std::endl;
       if (svd.singularValues()(k) < m_singularity_threshold * svd.singularValues()(0)
-          || (m_linear && !m_orthogonalize && nQ > m_maxQ)) { // condition number assuming singular values are strictlydescending
+          || (m_linear && !m_orthogonalize
+              && nQ > m_maxQ)) { // condition number assuming singular values are strictlydescending
         Eigen::Index imax = 0;
-        for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(nQ - m_added_vectors); i++) { // never consider the very last Q vector
+        for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(nQ - m_added_vectors);
+             i++) { // never consider the very last Q vector
 //      xout << "consider " <<i<<": "<<svd.matrixV()(nP+i,k)<<std::endl;
 //      if (std::fabs(svd.matrixV()(nP + i, k)) > std::fabs(svd.matrixV()(nP + imax, k))) imax = i;
           if (
@@ -506,7 +511,9 @@ class IterativeSolver {
       xout << "singular values " << svd.singularValues().transpose() << std::endl;
     auto svmh = svd.singularValues().head(svd.rank()).eval();
     for (auto k = 0; k < svd.rank(); k++) svmh(k) = 1 / std::sqrt(svmh(k));
-    auto Hbar = (svmh.asDiagonal()) * (svd.matrixU().leftCols(svd.rank()).adjoint()) * H * svd.matrixV().leftCols(svd.rank()) * (svmh.asDiagonal());
+    auto Hbar =
+        (svmh.asDiagonal()) * (svd.matrixU().leftCols(svd.rank()).adjoint()) * H * svd.matrixV().leftCols(svd.rank())
+            * (svmh.asDiagonal());
 //   xout << "S\n"<<S<<std::endl;
 //   xout << "S singular values"<<(Eigen::DiagonalMatrix<element_t, Eigen::Dynamic, Eigen::Dynamic>(svd.singularValues().head(svd.rank())))<<std::endl;
 //   xout << "S inverse singular values"<<Eigen::DiagonalMatrix<element_t, Eigen::Dynamic>(svd.singularValues().head(svd.rank())).inverse()<<std::endl;
@@ -514,14 +521,13 @@ class IterativeSolver {
 //   xout << "H\n"<<H<<std::endl;
 //   xout << "Hbar\n"<<Hbar<<std::endl;
 //   xout << "symmetric Hbar? " << (Hbar-Hbar.adjoint()).norm() << std::endl;
-    Eigen::EigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> > s(Hbar);
+    Eigen::EigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> s(Hbar);
 //    xout << "s.eigenvectors()\n"<<s.eigenvectors()<<std::endl;
     m_subspaceEigenvalues = s.eigenvalues();
     if (s.eigenvalues().imag().norm() < 1e-10 and s.eigenvectors().imag().norm() < 1e-10) { // real eigenvectors
       m_subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors().real();
 
-    }
-    else { // complex eigenvectors
+    } else { // complex eigenvectors
 #ifdef __INTEL_COMPILER
       throw std::runtime_error("Intel compiler does not support working with complex eigen3 entities properly");
 #endif
@@ -594,9 +600,9 @@ class IterativeSolver {
    * @param solutionP On exit, the solution projected to the P space
    * @param other On exit, interpolation of the other vectors
    */
-  void doInterpolation(vectorSet &solution, vectorSet &residual,
-                       vectorSetP &solutionP,
-                       vectorSet &other) {
+  void doInterpolation(vectorSet& solution, vectorSet& residual,
+                       vectorSetP& solutionP,
+                       vectorSet& other) {
     for (auto& s : solution) s.scal(0);
     for (auto& s : residual) s.scal(0);
     size_t nP = m_Pvectors.size();
@@ -637,7 +643,7 @@ class IterativeSolver {
 
   }
 
-  void calculateErrors(const vectorSet &solution, const vectorSet &residual, std::vector<bool> active) {
+  void calculateErrors(const vectorSet& solution, const vectorSet& residual, std::vector<bool> active) {
     auto errortype = 0; // step . residual
     if (this->m_options.count("convergence") && this->m_options.find("convergence")->second == "step") errortype = 1;
     if (this->m_options.count("convergence") && this->m_options.find("convergence")->second == "residual")
@@ -660,7 +666,7 @@ class IterativeSolver {
                                residual[k].dot(errortype == 2 ? residual[k] : solution[k])
                                    / solution[k].dot(solution[k])
                            )
-                                                : 0);
+                                     : 0);
 //        xout << "solution . solution " << solution[k]->dot(*solution[k]) << std::endl;
 //        xout << "residual . solution " << residual[k]->dot(*solution[k]) << std::endl;
 //        xout << "residual . residual " << residual[k]->dot(*residual[k]) << std::endl;
@@ -673,12 +679,12 @@ class IterativeSolver {
             m_vector_active[m_lastVectorIndex][k] ? std::fabs(
                 (errortype == 1 ? step : m_residuals[m_lastVectorIndex])[k].dot(
                     (errortype == 2 ? m_residuals[m_lastVectorIndex][k] : step[k])))
-                                                       : 1);
+                                                  : 1);
       }
     }
-    for (const auto &e : m_errors) if (std::isnan(e)) throw std::overflow_error("NaN detected in error measure");
+    for (const auto& e : m_errors) if (std::isnan(e)) throw std::overflow_error("NaN detected in error measure");
     if (errortype != 0)
-      for (auto &e : m_errors) e = std::sqrt(e);
+      for (auto& e : m_errors) e = std::sqrt(e);
     m_error = *max_element(m_errors.begin(), m_errors.end());
     m_worst = max_element(m_errors.begin(), m_errors.end()) - m_errors.begin();
     if (m_verbosity > 5) {
@@ -693,13 +699,15 @@ class IterativeSolver {
     vectorSet newcopy;
     newcopy.reserve(newvec.size());
     for (auto& v : newvec)
-      newcopy.emplace_back(v,LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE); // TODO template-ise these options
+      newcopy.emplace_back(v,
+                           LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED
+                               | LINEARALGEBRA_CLONE_ADVISE_OFFLINE); // TODO template-ise these options
     history.emplace_back(newcopy);
   }
  public:
 
   size_t
-  addVectorSet(const vectorSet &solution, const vectorSet &residual, const vectorSet &other, std::vector<bool> active) {
+  addVectorSet(const vectorSet& solution, const vectorSet& residual, const vectorSet& other, std::vector<bool> active) {
 //   xout << "addVectorSet entry"<<std::endl;
     //      if (residual.m_vector_active.front()==0) xout <<"warning: inactive residual"<<std::endl;
     //      if (solution.m_vector_active.front()==0) xout <<"warning: inactive solution"<<std::endl;
@@ -712,10 +720,10 @@ class IterativeSolver {
     copyvec(m_solutions, solution);
     copyvec(m_others, other);
     m_vector_active.emplace_back();
-    for (size_t k=0; k<solution.size(); k++) m_vector_active.back().push_back(active[k]);
+    for (size_t k = 0; k < solution.size(); k++) m_vector_active.back().push_back(active[k]);
 //   xout << "addVectorSet after emplace_back()"<<std::endl;
-    const vectorSet &residual1 = residual;
-    const vectorSet &solution1 = solution;//      for (size_t kkk=0; kkk<solution.size(); kkk++)
+    const vectorSet& residual1 = residual;
+    const vectorSet& solution1 = solution;//      for (size_t kkk=0; kkk<solution.size(); kkk++)
 //   for (size_t kkk=0; kkk<solution.size(); kkk++)
 //             xout << "solution: "<<solution[kkk]<<std::endl;
 //         for (size_t kkk=0; kkk<residual.size(); kkk++)
@@ -727,7 +735,7 @@ class IterativeSolver {
     auto old_size = m_QQMatrix.rows();
 //    auto new_size = old_size + count(residual1.m_vector_active.begin(), residual1.m_vector_active.end(), true);
     auto new_size = old_size;
-      for (size_t i=0; i<residual1.size(); i++) if (active[i]) ++new_size;
+    for (size_t i = 0; i < residual1.size(); i++) if (active[i]) ++new_size;
     //      xout << "old_size="<<old_size<<std::endl;
     //      xout << "new_size="<<new_size<<std::endl;
     m_QQMatrix.conservativeResize(new_size, new_size);
@@ -735,7 +743,7 @@ class IterativeSolver {
     m_PQMatrix.conservativeResize(nP, new_size);
     m_PQOverlap.conservativeResize(nP, new_size);
     m_subspaceRHS.conservativeResize(new_size + nP, m_rhs.size());
-    std::vector<vectorSet> *bra = m_subspaceMatrixResRes ? &m_residuals : &m_solutions;
+    std::vector<vectorSet>* bra = m_subspaceMatrixResRes ? &m_residuals : &m_solutions;
     auto k = old_size;
     for (size_t kkk = 0; kkk < residual1.size(); kkk++) {
       if (active[kkk]) {
@@ -813,8 +821,9 @@ class IterativeSolver {
           }
           l++;
         }
-        size_t siz=0; for (const auto& s : m_vector_active[ll]) if (s) ++siz;
-        if (siz== 0) { // can delete the whole thing
+        size_t siz = 0;
+        for (const auto& s : m_vector_active[ll]) if (s) ++siz;
+        if (siz == 0) { // can delete the whole thing
           //TODO implement, and also individual element deletions to get rid of m_vector_active
         }
       }
@@ -837,7 +846,7 @@ class IterativeSolver {
   std::vector<vectorSet> m_residuals;
   std::vector<vectorSet> m_solutions;
   std::vector<vectorSet> m_others;
-  std::vector<std::vector<bool> > m_vector_active;
+  std::vector<std::vector<bool>> m_vector_active;
   vectorSet m_rhs;
   std::vector<int> m_dateOfBirth;
   size_t m_lastVectorIndex;
@@ -873,9 +882,9 @@ class IterativeSolver {
 
 template<class T>
 typename T::scalar_type inline
-operator*(const typename IterativeSolver<T>::Pvector &a, const typename IterativeSolver<T>::Pvector &b) {
+operator*(const typename IterativeSolver<T>::Pvector& a, const typename IterativeSolver<T>::Pvector& b) {
   typename T::scalar_type result = 0;
-  for (const auto &aa: a)
+  for (const auto& aa: a)
     if (b.find(aa.first))
       result += aa.second * b[aa.first];
   return result;
@@ -898,6 +907,8 @@ namespace LinearAlgebra {
 template<class T>
 class LinearEigensystem : public IterativeSolver<T> {
  public:
+  using scalar_type = typename IterativeSolver<T>::scalar_type;
+  using element_type = typename IterativeSolver<T>::element_type;
   using IterativeSolver<T>::m_verbosity;
 
   /*!
@@ -922,19 +933,21 @@ class LinearEigensystem : public IterativeSolver<T> {
     }
 
     this->m_updateShift.resize(this->m_roots);
-    for (size_t root = 0; root < (size_t) this->m_roots; root++)
-      this->m_updateShift[root] = -(1 + std::numeric_limits<typename T::scalar_type>::epsilon()) *
-          (static_cast<Eigen::Index>(root) < this->m_subspaceEigenvectors.rows() ? this->m_subspaceEigenvalues[root].real()
-                                                      : 0);
+    for (size_t root = 0; root < (size_t) this->m_roots;
+    root++)
+    this->m_updateShift[root] = -(1 + std::numeric_limits<scalar_type>::epsilon()) *
+        (static_cast<Eigen::Index>(root) < this->m_subspaceEigenvectors.rows()
+         ? this->m_subspaceEigenvalues[root].real()
+         : 0);
   }
 
   void report() override {
-    std::vector<typename T::scalar_type> ev = this->eigenvalues();
+    std::vector<scalar_type> ev = this->eigenvalues();
     if (m_verbosity > 0) {
-      xout << "iteration " << this->iterations() <<"["<<this->m_added_vectors<<"]";
+      xout << "iteration " << this->iterations() << "[" << this->m_added_vectors << "]";
       if (!this->m_Pvectors.empty())
-        xout << ", P="<<this->m_Pvectors.size();
-      xout <<", error[" << this->m_worst << "] = " << this->m_error
+        xout << ", P=" << this->m_Pvectors.size();
+      xout << ", error[" << this->m_worst << "] = " << this->m_error
            << ", eigenvalues: ";
       for (const auto e : ev) xout << " " << e;
       xout << std::endl;
@@ -953,6 +966,8 @@ class LinearEigensystem : public IterativeSolver<T> {
 */
 template<class T>
 class LinearEquations : public IterativeSolver<T> {
+  using scalar_type = typename IterativeSolver<T>::scalar_type;
+  using element_type = typename IterativeSolver<T>::element_type;
  public:
   using vectorSet = typename std::vector<T>; ///< Container of vectors
   using IterativeSolver<T>::m_verbosity;
@@ -963,7 +978,7 @@ class LinearEquations : public IterativeSolver<T> {
    * \param augmented_hessian If zero, solve the inhomogeneous equations unmodified. If 1, solve instead
    * the augmented hessian problem. Other values scale the augmented hessian damping.
    */
-  explicit LinearEquations(const vectorSet &rhs, typename T::scalar_type augmented_hessian = 0)
+  explicit LinearEquations(const vectorSet& rhs, scalar_type augmented_hessian = 0)
 //    : m_linear(true)
 //    , IterativeSolver<element_t>::m_orthogonalize(true)
 //    , IterativeSolver<element_t>::m_residual_eigen(false)
@@ -986,8 +1001,8 @@ class LinearEquations : public IterativeSolver<T> {
     this->m_rhs.reserve(rhs.size());
     for (const auto& v : rhs)
       this->m_rhs.emplace_back(v,
-                            LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED
-                                | LINEARALGEBRA_CLONE_ADVISE_OFFLINE); // TODO template-ise these options
+                               LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED
+                                   | LINEARALGEBRA_CLONE_ADVISE_OFFLINE); // TODO template-ise these options
 //   xout << "addEquations makes m_rhs.back()="<<this->m_rhs.back()<<std::endl;
   }
 
@@ -1012,7 +1027,7 @@ class LinearEquations : public IterativeSolver<T> {
         this->m_subspaceOverlap(n, n) = 1;
 //     xout << "solveReducedProblem augmented subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
 //     xout << "solveReducedProblem augmented subspace metric\n"<<this->m_subspaceOverlap<<std::endl;
-        Eigen::GeneralizedEigenSolver<Eigen::Matrix<typename T::scalar_type, Eigen::Dynamic, Eigen::Dynamic>>
+        Eigen::GeneralizedEigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>
             s(this->m_subspaceMatrix, this->m_subspaceOverlap);
         auto eval = s.eigenvalues();
         auto evec = s.eigenvectors();
@@ -1057,6 +1072,8 @@ class DIIS : public IterativeSolver<T> {
   using IterativeSolver<T>::m_solutions;
   using IterativeSolver<T>::m_others;
  public:
+  using scalar_type = typename IterativeSolver<T>::scalar_type;
+  using element_type = typename IterativeSolver<T>::element_type;
   using IterativeSolver<T>::m_verbosity;
   using IterativeSolver<T>::m_Weights;
   enum DIISmode_type {
@@ -1125,13 +1142,14 @@ class DIIS : public IterativeSolver<T> {
     //  xout << "this->m_LastResidualNormSq "<<this->m_LastResidualNormSq<<std::endl;
 
 
-    Eigen::Array<typename T::scalar_type, Eigen::Dynamic, Eigen::Dynamic> d = this->m_subspaceMatrix.diagonal().array().abs();
+    Eigen::Array<scalar_type, Eigen::Dynamic, Eigen::Dynamic>
+        d = this->m_subspaceMatrix.diagonal().array().abs();
     int worst = 0, best = 0;
     for (size_t i = 0; i < nDim; i++) {
       if (d(i) > d(worst)) worst = i;
       if (d(i) < d(best)) best = i;
     }
-    typename T::scalar_type fBaseScale = std::sqrt(d(worst) * d(best));
+    scalar_type fBaseScale = std::sqrt(d(worst) * d(best));
 
 //   while (nDim > this->m_maxDim) { // prune away the worst/oldest vector. Algorithm to be done properly yet
 //    size_t prune = worst;
@@ -1203,13 +1221,13 @@ class DIIS : public IterativeSolver<T> {
  * \return
  */
  public:
-  typename T::scalar_type fLastResidual() const { return m_LastResidualNormSq; }
+  scalar_type fLastResidual() const { return m_LastResidualNormSq; }
 
   /*!
  * \brief Return the coefficient of the last residual vector in the extrapolated residual from the last call to solveReducedProblem() or iterate().
  * \return
  */
-  typename T::scalar_type fLastCoeff() const { return m_LastAmplitudeCoeff; }
+  scalar_type fLastCoeff() const { return m_LastAmplitudeCoeff; }
 
   unsigned int nLastDim() const { return m_residuals.size(); }
 
@@ -1224,7 +1242,7 @@ class DIIS : public IterativeSolver<T> {
   enum DIISmode_type m_DIISmode;
 
   // the following variables are kept for informative/displaying purposes
-  typename T::scalar_type
+  scalar_type
   // dot(R,R) of last residual vector fed into this state.
       m_LastResidualNormSq,
   // coefficient the actual new vector got in the last DIIS step
@@ -1249,7 +1267,7 @@ IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thres
 extern "C" void
 IterativeSolverLinearEquationsInitialize(size_t n,
                                          size_t nroot,
-                                         const double *rhs,
+                                         const double* rhs,
                                          double aughes,
                                          double thresh,
                                          unsigned int maxIterations,
@@ -1262,23 +1280,23 @@ IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIteration
 extern "C" void IterativeSolverFinalize();
 
 extern "C" void
-IterativeSolverAddVector(double *parameters, double *action, const int* active, double *parametersP);
+IterativeSolverAddVector(double* parameters, double* action, const int* active, double* parametersP);
 
-extern "C" int IterativeSolverEndIteration(double *c, double *g, double *error, int* active);
+extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error, int* active);
 
-extern "C" void IterativeSolverAddP(size_t nP, const size_t *offsets, const size_t *indices,
-                                    const double *coefficients, const double *pp,
-                                    double *parameters, double *action, double *parametersP);
+extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
+                                    const double* coefficients, const double* pp,
+                                    double* parameters, double* action, double* parametersP);
 
-extern "C" void IterativeSolverEigenvalues(double *eigenvalues);
+extern "C" void IterativeSolverEigenvalues(double* eigenvalues);
 
-extern "C" void IterativeSolverOption(const char *key, const char *val);
+extern "C" void IterativeSolverOption(const char* key, const char* val);
 
-extern "C" size_t IterativeSolverSuggestP(const double *solution,
-                                          const double *residual,
+extern "C" size_t IterativeSolverSuggestP(const double* solution,
+                                          const double* residual,
                                           const int* activec,
                                           size_t maximumNumber,
                                           double threshold,
-                                          size_t *indices);
+                                          size_t* indices);
 
 #endif // ITERATIVESOLVER_H

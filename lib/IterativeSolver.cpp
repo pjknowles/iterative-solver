@@ -1,5 +1,6 @@
 #include "IterativeSolver.h"
 #include "PagedVector.h"
+#include <memory>
 
 //namespace LinearAlgebra {
 //template

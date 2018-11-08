@@ -1,9 +1,11 @@
 #include <ctime>
+#include <memory>
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
 #include "IterativeSolver.h"
 #include "PagedVector.h"
+#include "SimpleVector.h"
 namespace LinearAlgebra {
 /*!
  * \brief Test iterative solution of linear eigenvalue problem
@@ -28,7 +30,7 @@ static void DavidsonTest(size_t dimension,
   static Eigen::Matrix<element, Eigen::Dynamic, Eigen::Dynamic> testmatrix;
 
   static struct {
-    void operator()(const vectorSet &psx, vectorSet &outputs) const {
+    void operator()(const vectorSet& psx, vectorSet& outputs) const {
       for (size_t k = 0; k < psx.size(); k++) {
         Eigen::Matrix<element, Eigen::Dynamic, 1> x(testmatrix.rows());
         if (psx[k].size() != (size_t) testmatrix.rows()) throw std::logic_error("psx wrong size");
@@ -40,8 +42,8 @@ static void DavidsonTest(size_t dimension,
   } action;
 
   static struct {
-    void operator()(vectorSet &psc,
-                    const vectorSet &psg,
+    void operator()(vectorSet& psc,
+                    const vectorSet& psg,
                     std::vector<scalar> shift,
                     bool append = true) const {
       size_t n = testmatrix.rows();
@@ -123,10 +125,10 @@ static void DavidsonTest(size_t dimension,
   auto ev = d.eigenvalues();
   xout << "Eigenvalues: ";
   size_t root = 0;
-  for (const auto &e : ev) xout << " " << e << "(error=" << e - es.eigenvalues()(root++) << ")";
+  for (const auto& e : ev) xout << " " << e << "(error=" << e - es.eigenvalues()(root++) << ")";
   xout << std::endl;
   xout << "Reported errors: ";
-  for (const auto &e: d.errors()) xout << " " << e;
+  for (const auto& e: d.errors()) xout << " " << e;
   xout << std::endl;
 
   action(x, g);
@@ -137,7 +139,7 @@ static void DavidsonTest(size_t dimension,
   }
 //   xout << "Square residual norms: "; for (typename std::vector<T>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
   xout << "Square residual norms: ";
-  for (const auto &e: errors) xout << " " << e;
+  for (const auto& e: errors) xout << " " << e;
   xout << std::endl;
   // be noisy about obvious problems
   if (*std::max_element(errors.begin(), errors.end()) > 1e-7)
@@ -165,7 +167,7 @@ void DIISTest(int verbosity = 0,
   using vectorSet = std::vector<ptype>;
   using scalar = typename DIIS<ptype>::scalar_type;
   static struct {
-    void operator()(const vectorSet &psx, vectorSet &outputs) const {
+    void operator()(const vectorSet& psx, vectorSet& outputs) const {
       size_t n = 2;
       std::vector<scalar> psxk(n);
       std::vector<scalar> output(n);
@@ -178,8 +180,8 @@ void DIISTest(int verbosity = 0,
   } _Rosenbrock_residual;
 
   static struct {
-    void operator()(vectorSet &psc,
-                    const vectorSet &psg,
+    void operator()(vectorSet& psc,
+                    const vectorSet& psg,
                     std::vector<scalar> shift,
                     bool append = true) const {
       size_t n = 2;
@@ -371,8 +373,8 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
   } instance;
 
   static struct {
-    void operator()(const vectorSet &psx,
-                    vectorSet &outputs,
+    void operator()(const vectorSet& psx,
+                    vectorSet& outputs,
                     std::vector<scalar> shift = std::vector<scalar>(),
                     bool append = false) const {
 //        xout << "rsptpot_residual"<<std::endl;
@@ -395,8 +397,8 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
     }
   } _rsptpot_residual;
   static struct {
-    void operator()(vectorSet &psc,
-                    const vectorSet &psg,
+    void operator()(vectorSet& psc,
+                    const vectorSet& psg,
                     std::vector<scalar> shift = std::vector<scalar>(),
                     bool append = false) const {
 //        xout << "preconditioner input="<<psg<<std::endl;
@@ -474,7 +476,7 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
 
 extern "C" { void IterativeSolverFTest(); }
 static std::unique_ptr<std::ofstream> out;
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 #ifdef HAVE_MPI_H
   MPI_Init(&argc, &argv);
   {
@@ -505,21 +507,23 @@ int main(int argc, char *argv[]) {
 //  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<PagedVector<double> >::DIISmode,0.2);
 //  DIISTest<PagedVector<double> >(1,6,1e-3,LinearAlgebra::DIIS<PagedVector<double> >::disabled,0.0002);
 //   DavidsonTest<PagedVector<double> >(2,2,2,2,false);
-if (false) {
+    if (true) {
 
-    DavidsonTest<PagedVector<double> >(3, 3, 1, 2, false);
-    DavidsonTest<PagedVector<double> >(3, 2, 1, 2, false);
-    DavidsonTest<PagedVector<double> >(9, 1, 1, 2, true);
-    DavidsonTest<PagedVector<double> >(9, 1, 1, 2, false);
-    DavidsonTest<PagedVector<double> >(9, 9, 1, 1, false);
-    DavidsonTest<PagedVector<double> >(9, 1, 1, 1, false);
-    DavidsonTest<PagedVector<double> >(9, 1, 1, 1, true);
-    DavidsonTest<PagedVector<double> >(9, 1, 1, 2);
-    DavidsonTest<PagedVector<double> >(9, 2, 1, 2);
-    DavidsonTest<PagedVector<double> >(100, 1, 1, 2);
-    DavidsonTest<PagedVector<double> >(100, 3, 1, 2, false);
-    DavidsonTest<PagedVector<double> >(100, 3, 1, 2, true);
-}
+      DavidsonTest<SimpleVector<double> >(3, 3, 1, 2, false);
+      DavidsonTest<PagedVector<double> >(3, 3, 1, 2, false);
+      DavidsonTest<PagedVector<double> >(3, 2, 1, 2, false);
+      DavidsonTest<PagedVector<double> >(9, 1, 1, 2, true);
+      DavidsonTest<PagedVector<double> >(9, 1, 1, 2, false);
+      DavidsonTest<PagedVector<double> >(9, 9, 1, 1, false);
+      DavidsonTest<PagedVector<double> >(9, 1, 1, 1, false);
+      DavidsonTest<PagedVector<double> >(9, 1, 1, 1, true);
+      DavidsonTest<PagedVector<double> >(9, 1, 1, 2);
+      DavidsonTest<PagedVector<double> >(9, 2, 1, 2);
+      DavidsonTest<PagedVector<double> >(100, 1, 1, 2);
+      DavidsonTest<PagedVector<double> >(100, 3, 1, 2, false);
+      DavidsonTest<PagedVector<double> >(100, 3, 1, 2, true);
+      DavidsonTest<SimpleVector<double> >(100, 3, 1, 2, true);
+    }
 //  DavidsonTest<PagedVector<double> >(600,3,1,2,true);
 //  RSPTTest<PagedVector<double> ,double>(100,2e0);
 //    IterativeSolverFTest();

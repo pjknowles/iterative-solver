@@ -188,7 +188,6 @@ class SimpleVector {
       const scalar_type threshold = 0
   ) const {
     std::multimap<T, size_t, std::greater<T> > sortlist;
-    if (this->m_replicated != measure.m_replicated) throw std::logic_error("mismatching replication status");
     if (this == &measure) {
       for (size_t i = 0; i < m_buffer.size(); i++) {
         auto test = m_buffer[i] * m_buffer[i];

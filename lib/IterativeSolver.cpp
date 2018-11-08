@@ -92,7 +92,7 @@ extern "C" void IterativeSolverAddVector(double* parameters, double* action, con
   std::vector<v> cc, gg;
   cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
   gg.reserve(instance->m_roots);
-  std::vector<std::vector<typename v::element_type> > ccp;
+  std::vector<std::vector<typename v::value_type> > ccp;
   std::vector<bool> activev;
   for (size_t root = 0; root < instance->m_roots; root++) {
     cc.emplace_back(&parameters[root * instance->m_dimension], instance->m_dimension);
@@ -134,19 +134,19 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
                                     const double* coefficients, const double* pp,
                                     double* parameters, double* action, double* parametersP) {
   std::vector<v> cc, gg;
-  std::vector<std::vector<v::element_type> > ccp;
+  std::vector<std::vector<v::value_type> > ccp;
   for (size_t root = 0; root < instance->m_roots; root++) {
     cc.push_back(v(instance->m_dimension));
     gg.push_back(v(instance->m_dimension));
   }
-  std::vector<std::map<size_t, v::element_type> > Pvectors;
+  std::vector<std::map<size_t, v::value_type> > Pvectors;
   Pvectors.reserve(nP);
   for (size_t p = 0; p < nP; p++) {
-    std::map<size_t, v::element_type> ppp;
+    std::map<size_t, v::value_type> ppp;
     for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
 //    std::cout << "indices["<<k<<"]="<<indices[k]<<": "<<coefficients[k]<<std::endl;
       for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
-        ppp.insert(std::pair<size_t, v::element_type>(indices[k], coefficients[k]));
+        ppp.insert(std::pair<size_t, v::value_type>(indices[k], coefficients[k]));
     Pvectors.emplace_back(ppp);
   }
 

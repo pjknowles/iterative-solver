@@ -208,6 +208,7 @@ CONTAINS
   !> \param solution The current solution, after interpolation and updating with the preconditioned residual.
   !> \param residual The residual after interpolation.
   !> \param error Error indicator for each sought root.
+  !> \param active On exit, which of the solutions needs further iteration
   !> \return .TRUE. if convergence reached for all roots
   LOGICAL FUNCTION Iterative_Solver_End_Iteration(solution, residual, error, active)
     USE iso_c_binding
@@ -290,6 +291,7 @@ CONTAINS
   !> \brief Take an existing solution and its residual, and suggest P vectors
   !> \param solution On input, the current solution.
   !> \param residual On input, the residual for solution.
+  !> \param active On input, which of the solutions has a corresponding entry in residual
   !> \param indices On exit, the most important base vectors
   !> \param threshold Base vectors whose predicted contribution is less than
   !> than this are not considered

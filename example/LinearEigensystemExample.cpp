@@ -10,7 +10,7 @@ class pv {
  public:
   std::vector<scalar> buffer;
   using scalar_type = scalar;
-  using element_type = scalar;
+  using value_type = scalar;
 
   explicit pv(size_t length = 0, int option = 0) : buffer(length) {}
 

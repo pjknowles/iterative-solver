@@ -12,10 +12,16 @@
 #include <algorithm>
 #include <stdexcept>
 #include <numeric>
-#include "LinearAlgebra.h"
 #include <Eigen/Dense>
 #include <cmath>
 #include <complex>
+
+#ifndef LINEARALGEBRA_CLONE_ADVISE_OFFLINE
+#define LINEARALGEBRA_CLONE_ADVISE_OFFLINE 0x01
+#endif
+#ifndef LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED
+#define LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED 0x02
+#endif
 
 #undef isnan
 #undef isinf
@@ -100,13 +106,12 @@ class IterativeSolver {
 
   virtual ~IterativeSolver() = default;
 
-  using element_type = typename T::element_type; ///< The underlying type of elements of vectors
-//  using scalar_type = typename T::scalar_type; ///< The type of scalar products of vectors
-//  scalar_type dot(const PagedVector<element_t>& other) const {
+ protected:
+  using value_type = typename T::value_type; ///< The underlying type of elements of vectors
   using vectorSet = typename std::vector<T>; ///< Container of vectors
-  using vectorSetP = typename std::vector<std::vector < element_type> >; ///<Container of P-space parameters
+  using vectorSetP = typename std::vector<std::vector < value_type> >; ///<Container of P-space parameters
  public:
-  using scalar_type = decltype(std::declval<T>().dot(std::declval<const T&>()));
+  using scalar_type = decltype(std::declval<T>().dot(std::declval<const T&>())); ///< The type of scalar products of vectors
   /*!
    * \brief Take, typically, a current solution and residual, and return new solution.
    * In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
@@ -282,8 +287,9 @@ class IterativeSolver {
   /*!
    * \brief Get the solver's suggestion of which degrees of freedom would be best
    * to add to the P-space.
-   * \param solution
-   * \param residual
+   * \param solution Current solution
+   * \param residual Current residual
+   * \param active which roots are active, ie have a valid entry in residual
    * \param maximumNumber Suggest no more than this number
    * \param threshold Suggest only axes for which the current residual and update
    * indicate an energy improvement in the next iteration of this amount or more.
@@ -316,7 +322,7 @@ class IterativeSolver {
     for (const auto& kv : result) inverseResult.insert(std::pair<scalar_type, size_t>(kv.second, kv.first));
 //   for (const auto& kv : inverseResult) xout << "inverseResult: " << kv.first << " : " <<kv.second<<std::endl;
     std::vector<size_t> indices;
-//   std::vector<element_t> values;
+//   std::vector<T> values;
     size_t k = 0;
     for (auto p = inverseResult.cbegin(); p != inverseResult.cend() && k < maximumNumber; k++) {
       indices.push_back(p->second);// values.push_back(p->first);
@@ -448,7 +454,7 @@ class IterativeSolver {
     {// look for linear dependency
       if (m_verbosity > 1) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
       if (m_verbosity > 1) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
-//    Eigen::EigenSolver<Eigen::Matrix<element_t, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
+//    Eigen::EigenSolver<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
 //    xout << "eigenvalues "<<ss.eigenvalues()<<std::endl;
       Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>
           svd(m_subspaceMatrix, Eigen::ComputeThinU | Eigen::ComputeThinV);
@@ -500,7 +506,7 @@ class IterativeSolver {
 
     Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> H = m_subspaceMatrix.block(0, 0, kept, kept);
     Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> S = m_subspaceOverlap.block(0, 0, kept, kept);
-//   Eigen::GeneralizedEigenSolver<Eigen::Matrix<element_t, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
+//   Eigen::GeneralizedEigenSolver<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV);
     svd.setThreshold(m_svdThreshold);
 //   xout << "singular values of overlap "<<svd.singularValues().transpose()<<std::endl;
@@ -515,8 +521,8 @@ class IterativeSolver {
         (svmh.asDiagonal()) * (svd.matrixU().leftCols(svd.rank()).adjoint()) * H * svd.matrixV().leftCols(svd.rank())
             * (svmh.asDiagonal());
 //   xout << "S\n"<<S<<std::endl;
-//   xout << "S singular values"<<(Eigen::DiagonalMatrix<element_t, Eigen::Dynamic, Eigen::Dynamic>(svd.singularValues().head(svd.rank())))<<std::endl;
-//   xout << "S inverse singular values"<<Eigen::DiagonalMatrix<element_t, Eigen::Dynamic>(svd.singularValues().head(svd.rank())).inverse()<<std::endl;
+//   xout << "S singular values"<<(Eigen::DiagonalMatrix<T, Eigen::Dynamic, Eigen::Dynamic>(svd.singularValues().head(svd.rank())))<<std::endl;
+//   xout << "S inverse singular values"<<Eigen::DiagonalMatrix<T, Eigen::Dynamic>(svd.singularValues().head(svd.rank())).inverse()<<std::endl;
 //   xout << "S singular values"<<sv<<std::endl;
 //   xout << "H\n"<<H<<std::endl;
 //   xout << "Hbar\n"<<Hbar<<std::endl;
@@ -768,7 +774,7 @@ class IterativeSolver {
 //      xout << "m_rhs: "<<m_rhs[l]<<std::endl;
 //      xout << "solution1: "<<solution1[kkk]<<std::endl;
           m_subspaceRHS(nP + k, l) = m_rhs[l].dot(solution1[kkk]);
-//      xout << "element_t product: "<<m_subspaceRHS(nP+k,l)<<std::endl;
+//      xout << "T product: "<<m_subspaceRHS(nP+k,l)<<std::endl;
         }
         m_dateOfBirth.push_back(++m_date);
         k++;
@@ -908,7 +914,7 @@ template<class T>
 class LinearEigensystem : public IterativeSolver<T> {
  public:
   using scalar_type = typename IterativeSolver<T>::scalar_type;
-  using element_type = typename IterativeSolver<T>::element_type;
+  using element_type = typename IterativeSolver<T>::value_type;
   using IterativeSolver<T>::m_verbosity;
 
   /*!
@@ -967,7 +973,7 @@ class LinearEigensystem : public IterativeSolver<T> {
 template<class T>
 class LinearEquations : public IterativeSolver<T> {
   using scalar_type = typename IterativeSolver<T>::scalar_type;
-  using element_type = typename IterativeSolver<T>::element_type;
+  using element_type = typename IterativeSolver<T>::value_type;
  public:
   using vectorSet = typename std::vector<T>; ///< Container of vectors
   using IterativeSolver<T>::m_verbosity;
@@ -980,10 +986,10 @@ class LinearEquations : public IterativeSolver<T> {
    */
   explicit LinearEquations(const vectorSet& rhs, scalar_type augmented_hessian = 0)
 //    : m_linear(true)
-//    , IterativeSolver<element_t>::m_orthogonalize(true)
-//    , IterativeSolver<element_t>::m_residual_eigen(false)
-//    , IterativeSolver<element_t>::m_residual_rhs(true)
-//    , IterativeSolver<element_t>::m_augmented_hessian(augmented_hessian)
+//    , IterativeSolver<T>::m_orthogonalize(true)
+//    , IterativeSolver<T>::m_residual_eigen(false)
+//    , IterativeSolver<T>::m_residual_rhs(true)
+//    , IterativeSolver<T>::m_augmented_hessian(augmented_hessian)
   {
     this->m_linear = true;
     this->m_residual_rhs = true;
@@ -1073,7 +1079,7 @@ class DIIS : public IterativeSolver<T> {
   using IterativeSolver<T>::m_others;
  public:
   using scalar_type = typename IterativeSolver<T>::scalar_type;
-  using element_type = typename IterativeSolver<T>::element_type;
+  using element_type = typename IterativeSolver<T>::value_type;
   using IterativeSolver<T>::m_verbosity;
   using IterativeSolver<T>::m_Weights;
   enum DIISmode_type {

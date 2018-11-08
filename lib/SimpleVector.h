@@ -49,26 +49,26 @@ namespace LinearAlgebra {
   * - efficient import and export of data ranges
   * - read and read-write access to individual elements
   * - additional functions to find the largest elements, and to print the vector
-  * \tparam element_t the type of elements of the vector
+  * \tparam T the type of elements of the vector
   * \tparam Allocator alternative to std::allocator
   */
-template<class element_t=double,
+template<class T=double,
     class Allocator =
-    std::__1::allocator<element_t>
+    std::__1::allocator<T>
 >
 class SimpleVector {
-  typedef double scalar_type; //TODO implement this properly from element_t
-  std::vector<element_t, Allocator> m_buffer;
+  typedef double scalar_type; //TODO implement this properly from T
+  std::vector<T, Allocator> m_buffer;
  public:
-  typedef element_t element_type;
-  explicit SimpleVector(size_t length = 0, const element_t& value = element_t())
+  typedef T value_type;
+  explicit SimpleVector(size_t length = 0, const T& value = T())
       : m_buffer(length, value) {}
   /*!
    * @brief Copy constructor
    * @param source
    * @param option
    */
-  SimpleVector<element_t, Allocator>(const SimpleVector& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
+  SimpleVector<T, Allocator>(const SimpleVector& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
 
   /*!
    * \brief Update a range of the object data with the contents of a provided buffer
@@ -76,7 +76,7 @@ class SimpleVector {
    * \param length
    * \param offset
    */
-  void put(const element_t* buffer, size_t length, size_t offset) {
+  void put(const T* buffer, size_t length, size_t offset) {
     std::copy(buffer, buffer + length, &m_buffer[offset]);
   }
 
@@ -86,7 +86,7 @@ class SimpleVector {
    * @param length
    * @param offset
    */
-  void get(element_t* buffer, size_t length, size_t offset) const {
+  void get(T* buffer, size_t length, size_t offset) const {
     std::copy(&m_buffer[offset], &m_buffer[offset + length], buffer);
   }
 
@@ -95,7 +95,7 @@ class SimpleVector {
    * @param pos Offset of the data
    * @return
    */
-  const element_t& operator[](size_t pos) const {
+  const T& operator[](size_t pos) const {
     return m_buffer[pos];
   }
 
@@ -104,7 +104,7 @@ class SimpleVector {
    * @param pos Offset of the data
    * @return
    */
-  element_t& operator[](size_t pos) {
+  T& operator[](size_t pos) {
     return m_buffer[pos];
   }
 
@@ -120,13 +120,13 @@ class SimpleVector {
    * \param other The object to be added to this.
    * \return
    */
-  void axpy(scalar_type a, const SimpleVector<element_t>& other) {
+  void axpy(scalar_type a, const SimpleVector<T>& other) {
     assert(this->m_buffer.size() == other.m_buffer.size());
     std::transform(other.m_buffer.begin(),
                    other.m_buffer.end(),
                    m_buffer.begin(),
                    m_buffer.begin(),
-                   [a](element_t x, element_t y) -> element_t { return y + a * x; });
+                   [a](T x, T y) -> T { return y + a * x; });
   }
 
   /*!
@@ -135,7 +135,7 @@ class SimpleVector {
     * \param other The object to be added to this.
     * \return
     */
-  void axpy(scalar_type a, const std::map<size_t, element_t>& other) {
+  void axpy(scalar_type a, const std::map<size_t, T>& other) {
     for (const auto& o: other)
       (*this)[o.first] += a * o.second;
   }
@@ -145,7 +145,7 @@ class SimpleVector {
    * \param other The object to be contracted with this.
    * \return
    */
-  scalar_type dot(const SimpleVector<element_t>& other) const {
+  scalar_type dot(const SimpleVector<T>& other) const {
     assert(this->m_buffer.size() == other.m_buffer.size());
     return std::inner_product(m_buffer.begin(), m_buffer.end(), other.m_buffer.begin(), (scalar_type)0);
   }
@@ -155,7 +155,7 @@ class SimpleVector {
    * \param other The object to be contracted with this.
    * \return
    */
-  scalar_type dot(const std::map<size_t, element_t>& other) const {
+  scalar_type dot(const std::map<size_t, T>& other) const {
     scalar_type result = 0;
     for (const auto& o: other)
       result += o.second * (*this)[o.first];
@@ -168,7 +168,7 @@ class SimpleVector {
      */
   void scal(scalar_type a) {
     if (a != 0)
-      std::transform(m_buffer.begin(), m_buffer.end(), m_buffer.begin(), [a](element_t& x) { return a * x; });
+      std::transform(m_buffer.begin(), m_buffer.end(), m_buffer.begin(), [a](T& x) { return a * x; });
     else
       m_buffer.assign(m_buffer.size(), 0);
   }
@@ -182,12 +182,12 @@ class SimpleVector {
     * @return index, value pairs. value is the product of the matrix element and the corresponding element of measure.
     *
     */
-  std::tuple<std::vector<size_t>, std::vector<element_t> > select(
-      const SimpleVector<element_t>& measure,
+  std::tuple<std::vector<size_t>, std::vector<T> > select(
+      const SimpleVector<T>& measure,
       const size_t maximumNumber = 1000,
       const scalar_type threshold = 0
   ) const {
-    std::multimap<element_t, size_t, std::greater<element_t> > sortlist;
+    std::multimap<T, size_t, std::greater<T> > sortlist;
     if (this->m_replicated != measure.m_replicated) throw std::logic_error("mismatching replication status");
     if (this == &measure) {
       for (size_t i = 0; i < m_buffer.size(); i++) {
@@ -210,7 +210,7 @@ class SimpleVector {
     while (sortlist.size() > maximumNumber) sortlist.erase(std::prev(sortlist.end()));
     std::vector<size_t> indices;
     indices.reserve(sortlist.size());
-    std::vector<element_t> values;
+    std::vector<T> values;
     values.reserve(sortlist.size());
     for (const auto& p : sortlist) {
       indices.push_back(p.second);

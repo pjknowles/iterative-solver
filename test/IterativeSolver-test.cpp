@@ -135,7 +135,7 @@ static void DavidsonTest(size_t dimension,
     g[root].axpy(-ev[root], x[root]);
     errors.push_back(g[root].dot(g[root]));
   }
-//   xout << "Square residual norms: "; for (typename std::vector<element_t>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
+//   xout << "Square residual norms: "; for (typename std::vector<T>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
   xout << "Square residual norms: ";
   for (const auto &e: errors) xout << " " << e;
   xout << std::endl;
@@ -266,7 +266,7 @@ void DIISTest(int verbosity = 0,
 //  }
 //  ptype guess()
 //  {
-//    std::vector<element_t> r(m_n);
+//    std::vector<T> r(m_n);
 //    ptype result(m_n);
 //    double value=0.3;
 //    for (size_t k=0; k<m_n; k++) {
@@ -281,9 +281,9 @@ void DIISTest(int verbosity = 0,
 //static anharmonic instance;
 
 //static struct : IterativeSolverBase::ParameterSetTransformation {
-//  void operator()(const vectorSet<element_t> & psx, vectorSet<element_t> & outputs, std::vector<element_t> shift=std::vector<element_t>(), bool append=false) const override {
-//    std::vector<element_t> psxk(instance.m_n);
-//    std::vector<element_t> output(instance.m_n);
+//  void operator()(const vectorSet<T> & psx, vectorSet<T> & outputs, std::vector<T> shift=std::vector<T>(), bool append=false) const override {
+//    std::vector<T> psxk(instance.m_n);
+//    std::vector<T> output(instance.m_n);
 //    psx.front()->get(&(psxk[0]),instance.m_n,0);
 //    if (append)
 //      outputs.front()->get(&(output[0]),instance.m_n,0);
@@ -299,9 +299,9 @@ void DIISTest(int verbosity = 0,
 //  }
 //} _anharmonic_residual;
 //static struct : IterativeSolverBase::ParameterSetTransformation {
-//  void operator()(const vectorSet<element_t> & psg, vectorSet<element_t> & psc, std::vector<element_t> shift=std::vector<element_t>(), bool append=false) const override {
-//    std::vector<element_t> psck(instance.m_n);
-//    std::vector<element_t> psgk(instance.m_n);
+//  void operator()(const vectorSet<T> & psg, vectorSet<T> & psc, std::vector<T> shift=std::vector<T>(), bool append=false) const override {
+//    std::vector<T> psck(instance.m_n);
+//    std::vector<T> psgk(instance.m_n);
 //    psg.front()->get(&psgk[0],instance.m_n,0);
 //    if (append) {
 //        psc.front()->get(&psck[0],instance.m_n,0);
@@ -325,8 +325,8 @@ void DIISTest(int verbosity = 0,
 //      d.setMode(mode);
 //      d.m_verbosity=-1;
 //      d.m_maxIterations=100000;
-//      ptype gg(n); vectorSet<element_t> g; g.push_back(std::shared_ptr<ptype>(&gg));
-//      ptype xx=instance.guess(); vectorSet<element_t> x; x.push_back(std::shared_ptr<ptype>(&xx));
+//      ptype gg(n); vectorSet<T> g; g.push_back(std::shared_ptr<ptype>(&gg));
+//      ptype xx=instance.guess(); vectorSet<T> x; x.push_back(std::shared_ptr<ptype>(&xx));
 //      if (not d.solve(g,x)) nfail++;
 //      iterations+=d.iterations();
 //      if (maxIterations<d.iterations())
@@ -339,6 +339,7 @@ void DIISTest(int verbosity = 0,
 #include <cstdlib>
 template<class ptype, class scalar=double>
 void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
+  using vectorSet = std::vector<ptype>;
   static struct rsptpot {
     Eigen::MatrixXd m_F;
     size_t m_n;
@@ -370,8 +371,8 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
   } instance;
 
   static struct {
-    void operator()(const vectorSet<scalar> &psx,
-                    vectorSet<scalar> &outputs,
+    void operator()(const vectorSet &psx,
+                    vectorSet &outputs,
                     std::vector<scalar> shift = std::vector<scalar>(),
                     bool append = false) const {
 //        xout << "rsptpot_residual"<<std::endl;
@@ -394,8 +395,8 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
     }
   } _rsptpot_residual;
   static struct {
-    void operator()(vectorSet<scalar> &psc,
-                    const vectorSet<scalar> &psg,
+    void operator()(vectorSet &psc,
+                    const vectorSet &psg,
                     std::vector<scalar> shift = std::vector<scalar>(),
                     bool append = false) const {
 //        xout << "preconditioner input="<<psg<<std::endl;
@@ -439,10 +440,10 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
     d.m_thresh = 1e-5;
     d.m_maxIterations = 1000;
 //      ptype gg(n);
-    vectorSet<scalar> g;
+    vectorSet g;
     g.push_back(std::make_shared<ptype>(n));
 //      ptype xx=instance.guess();
-    vectorSet<scalar> x;
+    vectorSet x;
     x.push_back(std::make_shared<ptype>(instance.guess()));
     bool converged = false;
     for (int iteration = 1; (iteration < d.m_maxIterations && not converged) || iteration < d.m_minIterations;

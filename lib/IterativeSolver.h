@@ -913,8 +913,8 @@ namespace LinearAlgebra {
 template<class T>
 class LinearEigensystem : public IterativeSolver<T> {
  public:
-  using scalar_type = typename IterativeSolver<T>::scalar_type;
-  using element_type = typename IterativeSolver<T>::value_type;
+  using typename IterativeSolver<T>::scalar_type;
+  using typename IterativeSolver<T>::value_type;
   using IterativeSolver<T>::m_verbosity;
 
   /*!
@@ -972,8 +972,8 @@ class LinearEigensystem : public IterativeSolver<T> {
 */
 template<class T>
 class LinearEquations : public IterativeSolver<T> {
-  using scalar_type = typename IterativeSolver<T>::scalar_type;
-  using element_type = typename IterativeSolver<T>::value_type;
+  using typename IterativeSolver<T>::scalar_type;
+  using typename IterativeSolver<T>::value_type;
  public:
   using vectorSet = typename std::vector<T>; ///< Container of vectors
   using IterativeSolver<T>::m_verbosity;
@@ -1078,8 +1078,8 @@ class DIIS : public IterativeSolver<T> {
   using IterativeSolver<T>::m_solutions;
   using IterativeSolver<T>::m_others;
  public:
-  using scalar_type = typename IterativeSolver<T>::scalar_type;
-  using element_type = typename IterativeSolver<T>::value_type;
+  using typename IterativeSolver<T>::scalar_type;
+  using typename IterativeSolver<T>::value_type;
   using IterativeSolver<T>::m_verbosity;
   using IterativeSolver<T>::m_Weights;
   enum DIISmode_type {

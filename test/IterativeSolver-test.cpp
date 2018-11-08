@@ -23,7 +23,7 @@ static void DavidsonTest(size_t dimension,
                          bool orthogonalize = false) {
 
   using scalar = typename LinearAlgebra::LinearEigensystem<ptype>::scalar_type;
-  using element = typename LinearAlgebra::LinearEigensystem<ptype>::element_type;
+  using element = typename LinearAlgebra::LinearEigensystem<ptype>::value_type;
   using vectorSet = std::vector<ptype>;
   static Eigen::Matrix<element, Eigen::Dynamic, Eigen::Dynamic> testmatrix;
 

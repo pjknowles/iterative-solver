@@ -1,6 +1,7 @@
 add_library(${PROJECT_NAME} STATIC
         SimpleVector.h
         PagedVector.h
+        OpaqueVector.h
         IterativeSolver.cpp IterativeSolver.h
         IterativeSolverF.F90
         )

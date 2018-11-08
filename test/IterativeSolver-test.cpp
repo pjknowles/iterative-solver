@@ -6,6 +6,7 @@
 #include "IterativeSolver.h"
 #include "PagedVector.h"
 #include "SimpleVector.h"
+#include "OpaqueVector.h"
 namespace LinearAlgebra {
 /*!
  * \brief Test iterative solution of linear eigenvalue problem
@@ -33,7 +34,6 @@ static void DavidsonTest(size_t dimension,
     void operator()(const vectorSet& psx, vectorSet& outputs) const {
       for (size_t k = 0; k < psx.size(); k++) {
         Eigen::Matrix<element, Eigen::Dynamic, 1> x(testmatrix.rows());
-        if (psx[k].size() != (size_t) testmatrix.rows()) throw std::logic_error("psx wrong size");
         psx[k].get(&x[0], testmatrix.rows(), 0);
         Eigen::VectorXd res = testmatrix * x;
         outputs[k].put(&res[0], testmatrix.rows(), 0);
@@ -94,27 +94,12 @@ static void DavidsonTest(size_t dimension,
   }
 
   for (size_t iteration = 0; iteration < dimension + 1; iteration++) {
-//      for (size_t kkk=0; kkk<x.size(); kkk++)
-//          xout << "before action x: "<<x[kkk]<<std::endl;
-//      for (size_t kkk=0; kkk<g.size(); kkk++)
-//          xout << "before action g: "<<g[kkk]<<std::endl;
     action(x, g);
-//      for (size_t kkk=0; kkk<x.size(); kkk++)
-//          xout << "after action x: "<<x[kkk]<<std::endl;
-//      for (size_t kkk=0; kkk<g.size(); kkk++)
-//          xout << "after action g: "<<g[kkk]<<std::endl;
     d.addVector(x, g, active);
-//      for (size_t kkk=0; kkk<x.size(); kkk++)
-//          xout << "after addVector x: "<<x[kkk]<<std::endl;
-//      for (size_t kkk=0; kkk<g.size(); kkk++)
-//          xout << "after addVector g: "<<g[kkk]<<std::endl;
     std::vector<scalar> shift;
     for (size_t root = 0; root < (size_t) d.m_roots; root++) shift.push_back(-d.eigenvalues()[root] + 1e-14);
     update(x, g, shift);
-    auto newp = d.suggestP(x, g, active, 3);
-//    for (const auto& p : d.suggestP(x,g,3)) std::cout << "new p space (from residual): " <<p<< std::endl;
-//    for (const auto& p : d.suggestP(x,x,3)) std::cout << "new p space (from solution): " <<p<< std::endl;
-//    std::cout << "x "<<x<<std::endl;
+//    auto newp = d.suggestP(x, g, active, 3);
     if (d.endIteration(x, g, active)) break;
   }
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>> es(testmatrix);
@@ -523,6 +508,7 @@ int main(int argc, char* argv[]) {
       DavidsonTest<PagedVector<double> >(100, 3, 1, 2, false);
       DavidsonTest<PagedVector<double> >(100, 3, 1, 2, true);
       DavidsonTest<SimpleVector<double> >(100, 3, 1, 2, true);
+      DavidsonTest<OpaqueVector<double> >(100, 3, 1, 2, true);
     }
 //  DavidsonTest<PagedVector<double> >(600,3,1,2,true);
 //  RSPTTest<PagedVector<double> ,double>(100,2e0);

@@ -1,5 +1,5 @@
-#ifndef SIMPLEVECTOR_H
-#define SIMPLEVECTOR_H
+#ifndef OPAQUEVECTOR_H
+#define OPAQUEVECTOR_H
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
@@ -34,8 +34,7 @@ namespace LinearAlgebra {
   * - opaque implementation of BLAS including dot(), axpy(), scal()
   * - additional BLAS overloads to combine with a simple sparse vector represented in std::map
   * - efficient import and export of data ranges
-  * - read and read-write access to individual elements
-  * - additional functions to find the largest elements, and to print the vector
+  * - additional functions to find the largest elements
   * \tparam T the type of elements of the vector
   * \tparam Allocator alternative to std::allocator
   */
@@ -43,19 +42,19 @@ template<class T=double,
     class Allocator =
     std::allocator<T>
 >
-class SimpleVector {
+class OpaqueVector {
   typedef double scalar_type; //TODO implement this properly from T
   std::vector<T, Allocator> m_buffer;
  public:
   typedef T value_type;
-  explicit SimpleVector(size_t length = 0, const T& value = T())
+  explicit OpaqueVector(size_t length = 0, const T& value = T())
       : m_buffer(length, value) {}
   /*!
    * @brief Copy constructor
    * @param source
    * @param option
    */
-  SimpleVector<T, Allocator>(const SimpleVector& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
+  OpaqueVector<T, Allocator>(const OpaqueVector& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
 
   /*!
    * \brief Update a range of the object data with the contents of a provided buffer
@@ -78,36 +77,12 @@ class SimpleVector {
   }
 
   /*!
-   * @brief Return a reference to an element of the data
-   * @param pos Offset of the data
-   * @return
-   */
-  const T& operator[](size_t pos) const {
-    return m_buffer[pos];
-  }
-
-  /*!
-   * @brief Return a reference to an element of the data
-   * @param pos Offset of the data
-   * @return
-   */
-  T& operator[](size_t pos) {
-    return m_buffer[pos];
-  }
-
-  /*!
-   * @brief Return the number of elements of data
-   * @return
-   */
-  size_t size() const { return m_buffer.size(); }
-
-  /*!
    * \brief Add a constant times another object to this object
    * \param a The factor to multiply.
    * \param other The object to be added to this.
    * \return
    */
-  void axpy(scalar_type a, const SimpleVector<T>& other) {
+  void axpy(scalar_type a, const OpaqueVector<T>& other) {
     assert(this->m_buffer.size() == other.m_buffer.size());
     std::transform(other.m_buffer.begin(),
                    other.m_buffer.end(),
@@ -124,7 +99,7 @@ class SimpleVector {
     */
   void axpy(scalar_type a, const std::map<size_t, T>& other) {
     for (const auto& o: other)
-      (*this)[o.first] += a * o.second;
+      m_buffer[o.first] += a * o.second;
   }
 
   /*!
@@ -132,9 +107,9 @@ class SimpleVector {
    * \param other The object to be contracted with this.
    * \return
    */
-  scalar_type dot(const SimpleVector<T>& other) const {
+  scalar_type dot(const OpaqueVector<T>& other) const {
     assert(this->m_buffer.size() == other.m_buffer.size());
-    return std::inner_product(m_buffer.begin(), m_buffer.end(), other.m_buffer.begin(), (scalar_type)0);
+    return std::inner_product(m_buffer.begin(), m_buffer.end(), other.m_buffer.begin(), (scalar_type) 0);
   }
 
   /*!
@@ -145,7 +120,7 @@ class SimpleVector {
   scalar_type dot(const std::map<size_t, T>& other) const {
     scalar_type result = 0;
     for (const auto& o: other)
-      result += o.second * (*this)[o.first];
+      result += o.second * m_buffer[o.first];
     return result;
   }
 
@@ -160,58 +135,7 @@ class SimpleVector {
       m_buffer.assign(m_buffer.size(), 0);
   }
 
-  /*!
-    * Find the largest values of the object.
-    * @param measure A vector of the same size and matching covariancy, with which the largest contributions to the scalar
-    * product with *this are selected.
-    * @param maximumNumber At most this number of elements are returned.
-    * @param threshold Contributions to the scalar product smaller than this are not included.
-    * @return index, value pairs. value is the product of the matrix element and the corresponding element of measure.
-    *
-    */
-  std::tuple<std::vector<size_t>, std::vector<T> > select(
-      const SimpleVector<T>& measure,
-      const size_t maximumNumber = 1000,
-      const scalar_type threshold = 0
-  ) const {
-    std::multimap<T, size_t, std::greater<T> > sortlist;
-    if (this == &measure) {
-      for (size_t i = 0; i < m_buffer.size(); i++) {
-        auto test = m_buffer[i] * m_buffer[i];
-        if (test > threshold) {
-          sortlist.insert(std::make_pair(test, i));
-          if (sortlist.size() > maximumNumber) sortlist.erase(std::prev(sortlist.end()));
-        }
-      }
-    } else {
-      for (size_t i = 0; i < m_buffer.size(); i++) {
-        scalar_type test = m_buffer[i] * measure.m_buffer[i];
-        if (test < 0) test = -test;
-        if (test > threshold) {
-          sortlist.insert(std::make_pair(test, i));
-          if (sortlist.size() > maximumNumber) sortlist.erase(std::prev(sortlist.end()));
-        }
-      }
-    }
-    while (sortlist.size() > maximumNumber) sortlist.erase(std::prev(sortlist.end()));
-    std::vector<size_t> indices;
-    indices.reserve(sortlist.size());
-    std::vector<T> values;
-    values.reserve(sortlist.size());
-    for (const auto& p : sortlist) {
-      indices.push_back(p.second);
-      values.push_back(p.first);
-    }
-    return std::make_tuple(indices, values);
-
-  }
-
-  bool operator==(const SimpleVector& other) {
-    return m_buffer == other.m_buffer;
-  }
-
-
 };
 
 }
-#endif // SIMPLEVECTOR_H
+#endif // OPAQUEVECTOR_H

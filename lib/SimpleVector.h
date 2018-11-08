@@ -54,7 +54,7 @@ namespace LinearAlgebra {
   */
 template<class T=double,
     class Allocator =
-    std::__1::allocator<T>
+    std::allocator<T>
 >
 class SimpleVector {
   typedef double scalar_type; //TODO implement this properly from T

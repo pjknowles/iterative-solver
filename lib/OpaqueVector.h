@@ -31,10 +31,8 @@ namespace LinearAlgebra {
 
 /*!
   * \brief A class that implements a vector container that has the following features:
-  * - opaque implementation of BLAS including dot(), axpy(), scal()
-  * - additional BLAS overloads to combine with a simple sparse vector represented in std::map
-  * - efficient import and export of data ranges
-  * - additional functions to find the largest elements
+  * - opaque implementation of BLAS including dot(), axpy(), scal() as required by IterativeSolver without P-space
+  * - import and export of data ranges
   * \tparam T the type of elements of the vector
   * \tparam Allocator alternative to std::allocator
   */
@@ -57,41 +55,6 @@ class OpaqueVector {
   OpaqueVector<T, Allocator>(const OpaqueVector& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
 
   /*!
-   * \brief Update a range of the object data with the contents of a provided buffer
-   * \param buffer
-   * \param length
-   * \param offset
-   */
-  void put(const T* buffer, size_t length, size_t offset) {
-    std::copy(buffer, buffer + length, &m_buffer[offset]);
-  }
-
-  /*!
-   * \brief Read a range of the object data into a provided buffer
-   * @param buffer
-   * @param length
-   * @param offset
-   */
-  void get(T* buffer, size_t length, size_t offset) const {
-    std::copy(&m_buffer[offset], &m_buffer[offset + length], buffer);
-  }
-
-  /*!
-   * \brief Add a constant times another object to this object
-   * \param a The factor to multiply.
-   * \param other The object to be added to this.
-   * \return
-   */
-  void axpy(scalar_type a, const OpaqueVector<T>& other) {
-    assert(this->m_buffer.size() == other.m_buffer.size());
-    std::transform(other.m_buffer.begin(),
-                   other.m_buffer.end(),
-                   m_buffer.begin(),
-                   m_buffer.begin(),
-                   [a](T x, T y) -> T { return y + a * x; });
-  }
-
-  /*!
     * \brief Add a constant times a sparse vector to this object
     * \param a The factor to multiply.
     * \param other The object to be added to this.
@@ -112,6 +75,7 @@ class OpaqueVector {
     return std::inner_product(m_buffer.begin(), m_buffer.end(), other.m_buffer.begin(), (scalar_type) 0);
   }
 
+  //TODO this function should be removed once IterativeSolver doesn't need it to compile correctly
   /*!
    * \brief Scalar product with a sparse vector
    * \param other The object to be contracted with this.
@@ -133,6 +97,48 @@ class OpaqueVector {
       std::transform(m_buffer.begin(), m_buffer.end(), m_buffer.begin(), [a](T& x) { return a * x; });
     else
       m_buffer.assign(m_buffer.size(), 0);
+  }
+
+  /*!
+   * \brief Add a constant times another object to this object
+   * \param a The factor to multiply.
+   * \param other The object to be added to this.
+   * \return
+   */
+  void axpy(scalar_type a, const OpaqueVector<T>& other) {
+    assert(this->m_buffer.size() == other.m_buffer.size());
+    std::transform(other.m_buffer.begin(),
+                   other.m_buffer.end(),
+                   m_buffer.begin(),
+                   m_buffer.begin(),
+                   [a](T x, T y) -> T { return y + a * x; });
+  }
+
+  // below here is the optional interface. Above here is what is needed for IterativeSolver
+  /*!
+   * @brief Return the number of elements of data
+   * @return
+   */
+  size_t size() const { return m_buffer.size(); }
+
+  /*!
+   * \brief Update a range of the object data with the contents of a provided buffer
+   * \param buffer
+   * \param length
+   * \param offset
+   */
+  void put(const T* buffer, size_t length, size_t offset) {
+    std::copy(buffer, buffer + length, &m_buffer[offset]);
+  }
+
+  /*!
+   * \brief Read a range of the object data into a provided buffer
+   * @param buffer
+   * @param length
+   * @param offset
+   */
+  void get(T* buffer, size_t length, size_t offset) const {
+    std::copy(&m_buffer[offset], &m_buffer[offset + length], buffer);
   }
 
 };

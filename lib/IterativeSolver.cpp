@@ -2,17 +2,6 @@
 #include "PagedVector.h"
 #include <memory>
 
-//namespace LinearAlgebra {
-//template
-//class LinearEigensystem<double>;
-//
-//template
-//class LinearEquations<double>;
-//
-//template
-//class DIIS<double>;
-//}
-
 // C interface to IterativeSolver
 namespace LinearAlgebra {
 using v = PagedVector<double>;
@@ -88,8 +77,6 @@ extern "C" void IterativeSolverFinalize() {
 }
 
 extern "C" void IterativeSolverAddVector(double* parameters, double* action, const int* active, double* parametersP) {
-//  constexpr int vFlags = LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED | LINEARALGEBRA_CLONE_ADVISE_OFFLINE; // has to wait till implementation below catches up
-//  constexpr int vFlags = LINEARALGEBRA_CLONE_ADVISE_OFFLINE; // FIXME is this needed?
   std::vector<v> cc, gg;
   cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
   gg.reserve(instance->m_roots);
@@ -121,13 +108,9 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
   }
   bool result = instance->endIteration(cc, gg, activev);
   for (size_t root = 0; root < instance->m_roots; root++) {
-//    cc[root].get(&solution[root * instance->m_dimension], instance->m_dimension, 0);
     error[root] = instance->errors()[root];
     active[root] = activev[root] ? 1 : 0;
   }
-#ifdef HAVE_MPI_H
-  //   if (cc[root]->m_mpi_rank) throw std::logic_error("incomplete implementation");
-#endif
   return result;
 }
 

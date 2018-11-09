@@ -20,13 +20,6 @@
 #include <vector>
 #include <numeric>
 
-#ifndef LINEARALGEBRA_CLONE_ADVISE_OFFLINE
-#define LINEARALGEBRA_CLONE_ADVISE_OFFLINE 0x01
-#endif
-#ifndef LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED
-#define LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED 0x02
-#endif
-
 namespace LinearAlgebra {
 
 /*!

@@ -19,11 +19,11 @@
 #include <map>
 #include <vector>
 
-#ifndef LINEARALGEBRA_CLONE_ADVISE_OFFLINE
-#define LINEARALGEBRA_CLONE_ADVISE_OFFLINE 0x01
+#ifndef LINEARALGEBRA_OFFLINE
+#define LINEARALGEBRA_OFFLINE 0x01
 #endif
-#ifndef LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED
-#define LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED 0x02
+#ifndef LINEARALGEBRA_DISTRIBUTED
+#define LINEARALGEBRA_DISTRIBUTED 0x02
 #endif
 
 #ifdef HAVE_MPI_H
@@ -77,21 +77,21 @@ class PagedVector {
       : m_size(length),
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(
-            !(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
+            !(LINEARALGEBRA_DISTRIBUTED & option)),
         m_segment_offset(m_replicated
                          ? 0 : ((m_size - 1) / m_mpi_size + 1) * m_mpi_rank),
         m_segment_length(m_replicated
                          ?
                          m_size : std::min((m_size - 1) / m_mpi_size + 1, m_size - m_segment_offset)
         ),
-//     m_segment_length(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option) ? m_size : std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset)),
+//     m_segment_length(!(LINEARALGEBRA_DISTRIBUTED & option) ? m_size : std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset)),
         m_cache(m_segment_length,
-                (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ?
+                (LINEARALGEBRA_OFFLINE & option) ?
                 default_offline_buffer_size : m_segment_length
         ) {
 //   init(option);
 //    std::cout <<" option "<<( option)<<std::endl;
-//    std::cout <<"LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option "<<(LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option)<<std::endl;
+//    std::cout <<"LINEARALGEBRA_OFFLINE & option "<<(LINEARALGEBRA_OFFLINE & option)<<std::endl;
 //    std::cout <<"cache preferred length "<<m_cache.preferred_length<<std::endl;
 //   std::cout << m_mpi_rank << " in constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
   }
@@ -104,11 +104,11 @@ class PagedVector {
   PagedVector(const PagedVector& source, unsigned int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
       : m_size(source.m_size),
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
-        m_replicated(!(LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED & option)),
+        m_replicated(!(LINEARALGEBRA_DISTRIBUTED & option)),
         m_segment_offset(m_replicated ? 0 : std::min(((m_size - 1) / m_mpi_size + 1) * m_mpi_rank, m_size)),
         m_segment_length(m_replicated ? m_size : std::min((m_size - 1) / m_mpi_size + 1, m_size - m_segment_offset)),
         m_cache(m_segment_length,
-                (LINEARALGEBRA_CLONE_ADVISE_OFFLINE & option) ? default_offline_buffer_size : m_segment_length) {
+                (LINEARALGEBRA_OFFLINE & option) ? default_offline_buffer_size : m_segment_length) {
     *this = source;
   }
 

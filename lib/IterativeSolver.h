@@ -16,11 +16,11 @@
 #include <cmath>
 #include <complex>
 
-#ifndef LINEARALGEBRA_CLONE_ADVISE_OFFLINE
-#define LINEARALGEBRA_CLONE_ADVISE_OFFLINE 0x01
+#ifndef LINEARALGEBRA_OFFLINE
+#define LINEARALGEBRA_OFFLINE 0x01
 #endif
-#ifndef LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED
-#define LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED 0x02
+#ifndef LINEARALGEBRA_DISTRIBUTED
+#define LINEARALGEBRA_DISTRIBUTED 0x02
 #endif
 
 #undef isnan
@@ -706,8 +706,8 @@ class IterativeSolver {
     newcopy.reserve(newvec.size());
     for (auto& v : newvec)
       newcopy.emplace_back(v,
-                           LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED
-                               | LINEARALGEBRA_CLONE_ADVISE_OFFLINE); // TODO template-ise these options
+                           LINEARALGEBRA_DISTRIBUTED
+                               | LINEARALGEBRA_OFFLINE); // TODO template-ise these options
     history.emplace_back(newcopy);
   }
  public:
@@ -1007,8 +1007,8 @@ class LinearEquations : public IterativeSolver<T> {
     this->m_rhs.reserve(rhs.size());
     for (const auto& v : rhs)
       this->m_rhs.emplace_back(v,
-                               LINEARALGEBRA_CLONE_ADVISE_DISTRIBUTED
-                                   | LINEARALGEBRA_CLONE_ADVISE_OFFLINE); // TODO template-ise these options
+                               LINEARALGEBRA_DISTRIBUTED
+                                   | LINEARALGEBRA_OFFLINE); // TODO template-ise these options
 //   xout << "addEquations makes m_rhs.back()="<<this->m_rhs.back()<<std::endl;
   }
 

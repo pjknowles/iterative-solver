@@ -389,9 +389,8 @@ CONTAINS
     DOUBLE PRECISION, DIMENSION(nPmax) :: coefficients
     DOUBLE PRECISION, DIMENSION(:, :), ALLOCATABLE :: pp
     INTEGER :: i, j, root
-    DOUBLE PRECISION :: alpha, anharmonicity
+    DOUBLE PRECISION :: alpha, anharmonicity, threshold
     LOGICAL :: orthogonalize
-    return
     PRINT *, 'Test Fortran binding of IterativeSolver'
     m = 1
     DO i = 1, n
@@ -399,12 +398,12 @@ CONTAINS
     END DO
 
     DO irep = 1, 2
-      write (6,*) 'irep ',irep
       active = .true.
-      if (irep>1) return
-      orthogonalize = irep==2
+      orthogonalize = irep==1
       WRITE (6, *) 'Without P-space, dimension=', n, ', roots=', nroot, ' orthogonalize=', orthogonalize
-      CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, thresh = 1d-8, verbosity = 1, orthogonalize = orthogonalize)
+      threshold = 1d-6; if (orthogonalize) threshold=1d-9
+      CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, &
+          thresh = threshold, verbosity = 1, orthogonalize = orthogonalize)
       CALL Iterative_Solver_Option("convergence", "residual")
       c = 0; DO i = 1, nroot; c(i, i) = 1;
       ENDDO

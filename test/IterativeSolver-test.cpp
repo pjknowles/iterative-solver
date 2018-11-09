@@ -512,7 +512,7 @@ int main(int argc, char* argv[]) {
     }
 //  DavidsonTest<PagedVector<double> >(600,3,1,2,true);
 //  RSPTTest<PagedVector<double> ,double>(100,2e0);
-//    IterativeSolverFTest();
+    IterativeSolverFTest();
   }
 //  std::cout << "before MPI_Finalize()"<<std::endl;
 #ifdef HAVE_MPI_H

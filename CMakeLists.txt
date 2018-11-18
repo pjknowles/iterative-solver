@@ -14,7 +14,7 @@ endif (NOT MPI_FOUND)
 
 if (MPI_CXX_FOUND)
     include_directories(${MPI_CXX_INCLUDE_PATH})
-    add_definitions(HAVE_MPI_H)
+    add_definitions(-DHAVE_MPI_H)
     message("MPI build of ${PROJECT_NAME}")
 else ()
     message("Serial build of ${PROJECT_NAME}")

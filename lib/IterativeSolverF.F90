@@ -397,7 +397,7 @@ CONTAINS
       m(i, i) = 3 * i
     END DO
 
-    DO irep = 1, 2
+    DO irep = 1, 1
       active = .true.
       orthogonalize = irep==1
       WRITE (6, *) 'Without P-space, dimension=', n, ', roots=', nroot, ' orthogonalize=', orthogonalize

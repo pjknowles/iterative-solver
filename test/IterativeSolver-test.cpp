@@ -23,7 +23,7 @@ static void DavidsonTest(size_t dimension,
                          size_t roots = 1,
                          int verbosity = 0,
                          int problem = 0,
-                         bool orthogonalize = false) {
+                         bool orthogonalize = true) {
 
   using scalar = typename LinearAlgebra::LinearEigensystem<ptype>::scalar_type;
   using element = typename LinearAlgebra::LinearEigensystem<ptype>::value_type;
@@ -494,18 +494,18 @@ int main(int argc, char* argv[]) {
 //   DavidsonTest<PagedVector<double> >(2,2,2,2,false);
     if (true) {
 
-      DavidsonTest<SimpleVector<double> >(3, 3, 1, 2, false);
-      DavidsonTest<PagedVector<double> >(3, 3, 1, 2, false);
-      DavidsonTest<PagedVector<double> >(3, 2, 1, 2, false);
+      DavidsonTest<SimpleVector<double> >(3, 3, 1, 2, true);
+      DavidsonTest<PagedVector<double> >(3, 3, 1, 2, true);
+      DavidsonTest<PagedVector<double> >(3, 2, 1, 2, true);
       DavidsonTest<PagedVector<double> >(9, 1, 1, 2, true);
-      DavidsonTest<PagedVector<double> >(9, 1, 1, 2, false);
-      DavidsonTest<PagedVector<double> >(9, 9, 1, 1, false);
-      DavidsonTest<PagedVector<double> >(9, 1, 1, 1, false);
+//      DavidsonTest<PagedVector<double> >(9, 1, 1, 2, false);
+      DavidsonTest<PagedVector<double> >(9, 9, 1, 1, true);
+//      DavidsonTest<PagedVector<double> >(9, 1, 1, 1, false);
       DavidsonTest<PagedVector<double> >(9, 1, 1, 1, true);
       DavidsonTest<PagedVector<double> >(9, 1, 1, 2);
       DavidsonTest<PagedVector<double> >(9, 2, 1, 2);
       DavidsonTest<PagedVector<double> >(100, 1, 1, 2);
-      DavidsonTest<PagedVector<double> >(100, 3, 1, 2, false);
+//      DavidsonTest<PagedVector<double> >(100, 3, 1, 2, false);
       DavidsonTest<PagedVector<double> >(100, 3, 1, 2, true);
       DavidsonTest<SimpleVector<double> >(100, 3, 1, 2, true);
       DavidsonTest<OpaqueVector<double> >(100, 3, 1, 2, true);

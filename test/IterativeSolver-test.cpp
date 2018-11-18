@@ -512,9 +512,7 @@ int main(int argc, char* argv[]) {
     }
 //  DavidsonTest<PagedVector<double> >(600,3,1,2,true);
 //  RSPTTest<PagedVector<double> ,double>(100,2e0);
-#ifndef HAVE_MPI_H
-    IterativeSolverFTest(); //FIXME for some reason, crashes after MPI_Finalize() if in parallel
-#endif
+    IterativeSolverFTest();
   }
 #ifdef HAVE_MPI_H
   MPI_Finalize();

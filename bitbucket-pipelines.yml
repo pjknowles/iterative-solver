@@ -12,11 +12,8 @@ pipelines:
           - iterative-solver-cmake
         script: # Modify the commands below to build your repository.
           - # zypper -n install eigen3-devel cmake gcc-fortran gcc-c++ openmpi-devel openmpi-libs blas-devel libblas3 git doxygen texlive-epstopdf ghostscript lapack
-          - ln -s /usr /usr/usr
-          - git submodule update --init --recursive
-          - mkdir -p builddir && cd builddir
-          - cmake ..
-          - make -kj
+          - TOP=$PWD; BUILD=build/$(git rev-parse --abbrev-ref HEAD) ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DMPIOPTIONS="--allow-run-as-root" $TOP
+          - cmake --build . -- -j 16
           - ctest -V
 definitions:
   caches:

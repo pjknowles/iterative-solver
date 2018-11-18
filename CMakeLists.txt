@@ -1,28 +1,23 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.11)
 
 project(IterativeSolver LANGUAGES CXX Fortran)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 
 ########## Compiler and Build Flags ##########
-
-if ("${MPI_CXX_COMPILER}" STREQUAL "")
-else ()
-    set(CMAKE_CXX_COMPILER ${MPI_CXX_COMPILER})
+if (NOT MPI_FOUND)
+    # is the provided compiler an MPI wrapper?
+    set(MPI_SKIP_COMPILER_WRAPPER TRUE)
+    set(MPI_SKIP_GUESSING TRUE)
     find_package(MPI)
-    if (MPI_CXX_FOUND)
-        add_definitions(-DHAVE_MPI_H)
-        # OpenMPI root guard: https://github.com/open-mpi/ompi/issues/4451
-        if ("$ENV{USER}" STREQUAL "root" OR "$ENV{HOME}" STREQUAL "/root")
-            set(MPIOPTIONS "--allow-run-as-root") # used in tests
-        endif ()
-    endif ()
-endif ()
+endif (NOT MPI_FOUND)
 
-find_package(MPI)
 if (MPI_CXX_FOUND)
     include_directories(${MPI_CXX_INCLUDE_PATH})
     add_definitions(-DHAVE_MPI_H)
+    message("MPI build of ${PROJECT_NAME}")
+else ()
+    message("Serial build of ${PROJECT_NAME}")
 endif (MPI_CXX_FOUND)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
@@ -31,18 +26,6 @@ endif ()
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
     add_definitions(-DEIGEN_DONT_VECTORIZE)
 endif ()
-
-include(ProcessorCount)
-ProcessorCount(NPROC)
-if (NPROC EQUAL 0)
-    set(NPROC 1)
-endif ()
-if (NPROC EQUAL 8)
-    #    hack to avoid overload on workstation / CI
-    set(NPROC 4)
-endif ()
-message("Number of processors ${NPROC}")
-set(CTEST_BUILD_FLAGS -j${NPROC})
 
 
 ########## Dependencies ##########

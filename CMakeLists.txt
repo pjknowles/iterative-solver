@@ -14,7 +14,7 @@ endif (NOT MPI_FOUND)
 
 if (MPI_CXX_FOUND)
     include_directories(${MPI_CXX_INCLUDE_PATH})
-    add_definitions(-DHAVE_MPI_H)
+    add_definitions(HAVE_MPI_H)
     message("MPI build of ${PROJECT_NAME}")
 else ()
     message("Serial build of ${PROJECT_NAME}")
@@ -31,7 +31,7 @@ endif ()
 ########## Dependencies ##########
 
 if (NOT TARGET Eigen3::Eigen)
-    find_package(Eigen3 3.3)
+    find_package(Eigen3 3.3.5)
     if (NOT TARGET Eigen3::Eigen)
         include(FetchContent)
         FetchContent_Declare(
@@ -49,6 +49,8 @@ if (NOT TARGET Eigen3::Eigen)
             add_library(Eigen3::Eigen ALIAS ExternalEigen3)
             message("Using external Eigen3 library")
         endif ()
+        else()
+        message("Using existing Eigen3 library")
     endif ()
 endif ()
 

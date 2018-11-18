@@ -6,9 +6,11 @@ set(CMAKE_CXX_STANDARD 14)
 
 ########## Compiler and Build Flags ##########
 if (NOT MPI_FOUND)
-    # is the provided compiler an MPI wrapper?
-    set(MPI_SKIP_COMPILER_WRAPPER TRUE)
-    set(MPI_SKIP_GUESSING TRUE)
+    # is the provided compiler an MPI wrapper, or is MPI specified?
+    if (NOT MPI)
+        set(MPI_SKIP_COMPILER_WRAPPER TRUE)
+        set(MPI_SKIP_GUESSING TRUE)
+    endif ()
     find_package(MPI)
 endif (NOT MPI_FOUND)
 
@@ -49,7 +51,7 @@ if (NOT TARGET Eigen3::Eigen)
             add_library(Eigen3::Eigen ALIAS ExternalEigen3)
             message("Using external Eigen3 library")
         endif ()
-        else()
+    else ()
         message("Using existing Eigen3 library")
     endif ()
 endif ()

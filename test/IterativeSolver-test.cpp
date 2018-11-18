@@ -516,7 +516,7 @@ int main(int argc, char* argv[]) {
   }
 //  std::cout << "before MPI_Finalize()"<<std::endl;
 #ifdef HAVE_MPI_H
-//  MPI_Finalize();
+  MPI_Finalize();
 #endif
 //  std::cout << "after MPI_Finalize()"<<std::endl;
   exit(0);

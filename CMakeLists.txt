@@ -60,24 +60,28 @@ endif ()
 ########## Targets ##########
 add_subdirectory(lib)
 
-enable_testing()
-add_subdirectory(test)
-add_subdirectory(example)
+if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    enable_testing()
+    add_subdirectory(test)
+    add_subdirectory(example)
+endif ()
 
 
 ########## Documentation ##########
 
-find_package(Doxygen)
-if (DOXYGEN_FOUND)
-    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
-    add_custom_target(${PROJECT_NAME}-doc ALL
-            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
-            )
-    file(GLOB doxysrc *.h *.F90 example/*)
-    add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
-            COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
-            DEPENDS ${SRC_LIST} ${doxysrc} ${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
-            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            COMMENT "Generating API documentation with Doxygen" VERBATIM
-            )
-endif (DOXYGEN_FOUND)
+if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    find_package(Doxygen)
+    if (DOXYGEN_FOUND)
+        configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
+        add_custom_target(${PROJECT_NAME}-doc ALL
+                DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
+                )
+        file(GLOB doxysrc *.h *.F90 example/*)
+        add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
+                COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+                DEPENDS ${SRC_LIST} ${doxysrc} ${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                COMMENT "Generating API documentation with Doxygen" VERBATIM
+                )
+    endif (DOXYGEN_FOUND)
+endif ()

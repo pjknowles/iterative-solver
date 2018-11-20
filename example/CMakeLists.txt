@@ -1,8 +1,16 @@
-
-set(EXAMPLES DIISexample.cpp DIISExampleF.F90
-        LinearEigensystemExample.cpp LinearEigensystemExample-paged.cpp LinearEigensystemExampleF.F90
-        LinearEigensystemExampleF-Pspace.F90 LinearEigensystemExampleF-Pspace-adaptive.F90
-        LinearEquationsExample.cpp LinearEquationsExampleF.F90
+if (CMAKE_Fortran_COMPILER_ID)
+    set(ITERATIVESOLVER_FORTRAN_EXAMPLES
+            DIISExampleF.F90
+            LinearEigensystemExampleF.F90
+            LinearEigensystemExampleF-Pspace.F90
+            LinearEigensystemExampleF-Pspace-adaptive.F90
+            LinearEquationsExampleF.F90
+            )
+endif ()
+set(EXAMPLES DIISexample.cpp
+        LinearEigensystemExample.cpp LinearEigensystemExample-paged.cpp
+        LinearEquationsExample.cpp
+        ${ITERATIVESOLVER_FORTRAN_EXAMPLES}
         )
 
 foreach (fil ${EXAMPLES})

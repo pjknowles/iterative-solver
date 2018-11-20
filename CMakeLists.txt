@@ -1,10 +1,16 @@
 cmake_minimum_required(VERSION 3.11)
 
-project(IterativeSolver LANGUAGES CXX Fortran)
+project(IterativeSolver LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 
+option(ITERATIVESOLVER_FORTRAN "Whether to build symmetry_matrix fortran binding" ON)
+
+if (ITERATIVESOLVER_FORTRAN)
+    enable_language(Fortran)
+endif ()
 
 ########## Compiler and Build Flags ##########
+
 if (NOT MPI_FOUND)
     # is the provided compiler an MPI wrapper, or is MPI specified?
     if (NOT MPI)
@@ -29,6 +35,22 @@ if (_Wall)
 endif ()
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
     add_definitions(-DEIGEN_DONT_VECTORIZE)
+endif ()
+
+if (CMAKE_Fortran_COMPILER_ID)
+    message("Configuring Fortran support for ${CMAKE_CURRENT_SOURCE_DIR}")
+    include(CheckFortranCompilerFlag)
+    foreach (f "-fdefault-integer-8" "-i8")
+        CHECK_Fortran_COMPILER_FLAG(${f} _fortran_flags)
+        if (_fortran_flags)
+            set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${f}")
+        endif ()
+        unset(_fortran_flags CACHE)
+    endforeach ()
+    CHECK_Fortran_COMPILER_FLAG("-Wall" _Wallf)
+    if (_Wallf)
+        set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} -Wall")
+    endif ()
 endif ()
 
 
@@ -62,28 +84,24 @@ endif ()
 ########## Targets ##########
 add_subdirectory(lib)
 
-if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    enable_testing()
-    add_subdirectory(test)
-    add_subdirectory(example)
-endif ()
+enable_testing()
+add_subdirectory(test)
+add_subdirectory(example)
 
 
 ########## Documentation ##########
 
-if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    find_package(Doxygen)
-    if (DOXYGEN_FOUND)
-        configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
-        add_custom_target(${PROJECT_NAME}-doc ALL
-                DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
-                )
-        file(GLOB doxysrc *.h *.F90 example/*)
-        add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
-                COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
-                DEPENDS ${SRC_LIST} ${doxysrc} ${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
-                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-                COMMENT "Generating API documentation with Doxygen" VERBATIM
-                )
-    endif (DOXYGEN_FOUND)
-endif ()
+find_package(Doxygen)
+if (DOXYGEN_FOUND)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
+    add_custom_target(${PROJECT_NAME}-doc ALL
+            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
+            )
+    file(GLOB doxysrc lib/*.h lib/*.F90 example/*.cpp example/*.F90)
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
+            COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+            DEPENDS ${SRC_LIST} ${doxysrc} ${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            COMMENT "Generating API documentation with Doxygen" VERBATIM
+            )
+endif (DOXYGEN_FOUND)

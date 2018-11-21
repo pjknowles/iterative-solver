@@ -109,7 +109,7 @@ class IterativeSolver {
  protected:
   using value_type = typename T::value_type; ///< The underlying type of elements of vectors
   using vectorSet = typename std::vector<T>; ///< Container of vectors
-  using vectorSetP = typename std::vector<std::vector < value_type> >; ///<Container of P-space parameters
+  using vectorSetP = typename std::vector<std::vector<value_type> >; ///<Container of P-space parameters
  public:
   using scalar_type = decltype(std::declval<T>().dot(std::declval<const T&>())); ///< The type of scalar products of vectors
   /*!
@@ -688,7 +688,9 @@ class IterativeSolver {
                                                   : 1);
       }
     }
-    for (const auto& e : m_errors) if (std::isnan(e)) throw std::overflow_error("NaN detected in error measure");
+    for (const auto& e : m_errors)
+      if (std::isnan(e))
+        throw std::overflow_error("NaN detected in error measure");
     if (errortype != 0)
       for (auto& e : m_errors) e = std::sqrt(e);
     m_error = *max_element(m_errors.begin(), m_errors.end());
@@ -940,11 +942,11 @@ class LinearEigensystem : public IterativeSolver<T> {
 
     this->m_updateShift.resize(this->m_roots);
     for (size_t root = 0; root < (size_t) this->m_roots;
-    root++)
-    this->m_updateShift[root] = -(1 + std::numeric_limits<scalar_type>::epsilon()) *
-        (static_cast<Eigen::Index>(root) < this->m_subspaceEigenvectors.rows()
-         ? this->m_subspaceEigenvalues[root].real()
-         : 0);
+         root++)
+      this->m_updateShift[root] = -(1 + std::numeric_limits<scalar_type>::epsilon()) *
+          (static_cast<Eigen::Index>(root) < this->m_subspaceEigenvectors.rows()
+           ? this->m_subspaceEigenvalues[root].real()
+           : 0);
   }
 
   void report() override {

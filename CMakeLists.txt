@@ -3,8 +3,9 @@ cmake_minimum_required(VERSION 3.11)
 project(IterativeSolver LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 
-option(ITERATIVESOLVER_FORTRAN "Whether to build symmetry_matrix fortran binding" ON)
-
+include(CMakeDependentOption)
+cmake_dependent_option(ITERATIVESOLVER_FORTRAN "Whether to build fortran binding" ON
+        NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR OFF)
 if (ITERATIVESOLVER_FORTRAN)
     enable_language(Fortran)
 endif ()

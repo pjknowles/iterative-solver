@@ -16,7 +16,7 @@ pipelines:
           - cmake --build . -- -j 16
           - ctest -V
           - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/parallel ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DMPI=1 -DMPIOPTIONS="--allow-run-as-root" $TOP
-          - cmake --build . -- -j 16
+          - cmake --build . -- -j 4
           - ctest -V
 definitions:
   caches:

@@ -109,7 +109,7 @@ class IterativeSolver {
  protected:
   using value_type = typename T::value_type; ///< The underlying type of elements of vectors
   using vectorSet = typename std::vector<T>; ///< Container of vectors
-  using vectorSetP = typename std::vector<std::vector < value_type> >; ///<Container of P-space parameters
+  using vectorSetP = typename std::vector<std::vector<value_type> >; ///<Container of P-space parameters
  public:
   using scalar_type = decltype(std::declval<T>().dot(std::declval<const T&>())); ///< The type of scalar products of vectors
   /*!
@@ -454,10 +454,11 @@ class IterativeSolver {
     {// look for linear dependency
       if (m_verbosity > 1) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
       if (m_verbosity > 1) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
-//    Eigen::EigenSolver<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
+//    Eigen::EigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
 //    xout << "eigenvalues "<<ss.eigenvalues()<<std::endl;
+      const auto& singularTester = m_residual_eigen ? m_subspaceOverlap : m_subspaceMatrix;
       Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>
-          svd(m_subspaceMatrix, Eigen::ComputeThinU | Eigen::ComputeThinV);
+          svd(singularTester, Eigen::ComputeThinU | Eigen::ComputeThinV);
 //    xout << "singular values: "<<svd.singularValues().transpose()<<std::endl;
 //    xout << "U: "<<svd.matrixU()<<std::endl;
 //    xout << "V: "<<svd.matrixV()<<std::endl;
@@ -468,16 +469,16 @@ class IterativeSolver {
 //      xout << "svd.singularValues()(k) "<<svd.singularValues()(k)<<std::endl;
       if (svd.singularValues()(k) < m_singularity_threshold * svd.singularValues()(0)
           || (m_linear && !m_orthogonalize
-              && nQ > m_maxQ)) { // condition number assuming singular values are strictlydescending
+              && nQ > m_maxQ)) { // condition number assuming singular values are strictly descending
         Eigen::Index imax = 0;
-        for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(nQ - m_added_vectors);
+        for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(nQ - 1);
              i++) { // never consider the very last Q vector
 //      xout << "consider " <<i<<": "<<svd.matrixV()(nP+i,k)<<std::endl;
 //      if (std::fabs(svd.matrixV()(nP + i, k)) > std::fabs(svd.matrixV()(nP + imax, k))) imax = i;
           if (
-              std::fabs(svd.matrixV()(nP + i, k) * m_subspaceMatrix(nP + i, nP + i))
+              std::fabs(svd.matrixV()(nP + i, k) * singularTester(nP + i, nP + i))
                   >
-                      std::fabs(svd.matrixV()(nP + imax, k) * m_subspaceMatrix(nP + imax, nP + imax))
+                      std::fabs(svd.matrixV()(nP + imax, k) * singularTester(nP + imax, nP + imax))
               )
             imax = i;
         }
@@ -566,31 +567,42 @@ class IterativeSolver {
 //   xout << "sorted eigenvalues\n"<<m_subspaceEigenvalues<<std::endl;
 //   xout << "sorted eigenvectors\n"<<m_subspaceEigenvectors<<std::endl;
 //   xout << m_subspaceOverlap<<std::endl;
+for (auto repeat=0; repeat<1; ++repeat)
     for (Eigen::Index k = 0; k < m_subspaceEigenvectors.cols(); k++) {
+      if (std::abs(m_subspaceEigenvalues(k)) < 1e-12) { // special case of zero eigenvalue -- make some real non-zero vector definitely in the null space
+        m_subspaceEigenvectors.col(k).real() += double(0.3256897) * m_subspaceEigenvectors.col(k).imag();
+        m_subspaceEigenvectors.col(k).imag().setZero();
+      }
       for (Eigen::Index l = 0; l < k; l++) {
         auto ovl =
-            (m_subspaceEigenvectors.col(k).transpose() * m_subspaceOverlap * m_subspaceEigenvectors.col(l).conjugate())(
-                0,
-                0);
+            (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0);
         auto norm =
-            (m_subspaceEigenvectors.col(l).transpose() * m_subspaceOverlap * m_subspaceEigenvectors.col(l).conjugate())(
+            (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(l))(
                 0,
                 0);
 //      xout << "k="<<k<<", l="<<l<<", ovl="<<ovl<<" norm="<<norm<<std::endl;
 //      xout << m_subspaceEigenvectors.col(k).transpose()<<std::endl;
 //      xout << m_subspaceEigenvectors.col(l).transpose()<<std::endl;
         m_subspaceEigenvectors.col(k) -= m_subspaceEigenvectors.col(l) * ovl / norm;
+//        xout<<"immediately after projection " << k<<l<<" "<< (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
       }
+//      for (Eigen::Index l = 0; l < k; l++) xout<<"after projection loop " << k<<l<<" "<< (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
+//      xout << "eigenvector"<<std::endl<<m_subspaceEigenvectors.col(k).adjoint()<<std::endl;
       auto ovl =
-          (m_subspaceEigenvectors.col(k).transpose() * m_subspaceOverlap * m_subspaceEigenvectors.col(k).conjugate())(0,
-                                                                                                                      0);
+          (m_subspaceEigenvectors.col(k).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))(0,0);
       m_subspaceEigenvectors.col(k) /= std::sqrt(ovl.real());
+//      for (Eigen::Index l = 0; l < k; l++)
+//      xout<<"after normalisation " << k<<l<<" "<< (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
+//      xout << "eigenvector"<<std::endl<<m_subspaceEigenvectors.col(k).adjoint()<<std::endl;
       // phase
       Eigen::Index lmax = 0;
       for (Eigen::Index l = 0; l < m_subspaceEigenvectors.rows(); l++) {
         if (std::abs(m_subspaceEigenvectors(l, k)) > std::abs(m_subspaceEigenvectors(lmax, k))) lmax = l;
       }
       if (m_subspaceEigenvectors(lmax, k).real() < 0) m_subspaceEigenvectors.col(k) = -m_subspaceEigenvectors.col(k);
+//      for (Eigen::Index l = 0; l < k; l++)
+//      xout << k<<l<<" "<<
+//                       (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
     }
 //     xout << "eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
 //     xout << "eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
@@ -688,7 +700,9 @@ class IterativeSolver {
                                                   : 1);
       }
     }
-    for (const auto& e : m_errors) if (std::isnan(e)) throw std::overflow_error("NaN detected in error measure");
+    for (const auto& e : m_errors)
+      if (std::isnan(e))
+        throw std::overflow_error("NaN detected in error measure");
     if (errortype != 0)
       for (auto& e : m_errors) e = std::sqrt(e);
     m_error = *max_element(m_errors.begin(), m_errors.end());
@@ -940,11 +954,11 @@ class LinearEigensystem : public IterativeSolver<T> {
 
     this->m_updateShift.resize(this->m_roots);
     for (size_t root = 0; root < (size_t) this->m_roots;
-    root++)
-    this->m_updateShift[root] = -(1 + std::numeric_limits<scalar_type>::epsilon()) *
-        (static_cast<Eigen::Index>(root) < this->m_subspaceEigenvectors.rows()
-         ? this->m_subspaceEigenvalues[root].real()
-         : 0);
+         root++)
+      this->m_updateShift[root] = -(1 + std::numeric_limits<scalar_type>::epsilon()) *
+          (static_cast<Eigen::Index>(root) < this->m_subspaceEigenvectors.rows()
+           ? this->m_subspaceEigenvalues[root].real()
+           : 0);
   }
 
   void report() override {

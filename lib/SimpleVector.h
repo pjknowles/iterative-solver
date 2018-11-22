@@ -37,9 +37,10 @@ template<class T=double,
     std::allocator<T>
 >
 class SimpleVector {
-  typedef double scalar_type; //TODO implement this properly from T
-  std::vector<T, Allocator> m_buffer;
+  using container = std::vector<T, Allocator>;
+  container m_buffer;
  public:
+  typedef double scalar_type; //TODO implement this properly from T
   typedef T value_type;
   explicit SimpleVector(size_t length = 0, const T& value = T())
       : m_buffer(length, value) {}

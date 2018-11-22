@@ -454,10 +454,11 @@ class IterativeSolver {
     {// look for linear dependency
       if (m_verbosity > 1) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
       if (m_verbosity > 1) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
-//    Eigen::EigenSolver<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
+//    Eigen::EigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
 //    xout << "eigenvalues "<<ss.eigenvalues()<<std::endl;
+      const auto& singularTester = m_residual_eigen ? m_subspaceOverlap : m_subspaceMatrix;
       Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>
-          svd(m_subspaceMatrix, Eigen::ComputeThinU | Eigen::ComputeThinV);
+          svd(singularTester, Eigen::ComputeThinU | Eigen::ComputeThinV);
 //    xout << "singular values: "<<svd.singularValues().transpose()<<std::endl;
 //    xout << "U: "<<svd.matrixU()<<std::endl;
 //    xout << "V: "<<svd.matrixV()<<std::endl;
@@ -468,16 +469,16 @@ class IterativeSolver {
 //      xout << "svd.singularValues()(k) "<<svd.singularValues()(k)<<std::endl;
       if (svd.singularValues()(k) < m_singularity_threshold * svd.singularValues()(0)
           || (m_linear && !m_orthogonalize
-              && nQ > m_maxQ)) { // condition number assuming singular values are strictlydescending
+              && nQ > m_maxQ)) { // condition number assuming singular values are strictly descending
         Eigen::Index imax = 0;
-        for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(nQ - m_added_vectors);
+        for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(nQ - 1);
              i++) { // never consider the very last Q vector
 //      xout << "consider " <<i<<": "<<svd.matrixV()(nP+i,k)<<std::endl;
 //      if (std::fabs(svd.matrixV()(nP + i, k)) > std::fabs(svd.matrixV()(nP + imax, k))) imax = i;
           if (
-              std::fabs(svd.matrixV()(nP + i, k) * m_subspaceMatrix(nP + i, nP + i))
+              std::fabs(svd.matrixV()(nP + i, k) * singularTester(nP + i, nP + i))
                   >
-                      std::fabs(svd.matrixV()(nP + imax, k) * m_subspaceMatrix(nP + imax, nP + imax))
+                      std::fabs(svd.matrixV()(nP + imax, k) * singularTester(nP + imax, nP + imax))
               )
             imax = i;
         }

@@ -1,14 +1,3 @@
-foreach (t IterativeSolver-test)
-    add_executable(${t} ${t}.cpp)
-    target_link_libraries(${t} ${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
-    set_target_properties(${t} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
-    if (MPI_FOUND)
-        add_test(${t} ${MPIEXEC} ${MPIOPTIONS} ${PROJECT_BINARY_DIR}/${t})
-    else (MPI_FOUND)
-        add_test(${t} ${PROJECT_BINARY_DIR}/${t})
-    endif (MPI_FOUND)
-endforeach ()
-
 include(FetchContent)
 FetchContent_Declare(
         googletest_dep
@@ -23,7 +12,7 @@ endif ()
 
 
 include(GoogleTest)
-foreach (t TestIterativeSolver PagedVector-test SimpleVector-test)
+foreach (t IterativeSolver-test TestIterativeSolver PagedVector-test SimpleVector-test)
     add_executable(${t}.exe ${t}.cpp test.h)
     target_link_libraries(${t}.exe PUBLIC ${PROJECT_NAME} gmock_main ${MPI_CXX_LIBRARIES})
     gtest_discover_tests(${t}.exe)

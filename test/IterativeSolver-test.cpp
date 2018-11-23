@@ -1,8 +1,6 @@
 #include <ctime>
 #include <memory>
-#ifdef HAVE_MPI_H
-#include <mpi.h>
-#endif
+#include "test.h"
 #include "IterativeSolver.h"
 #include "PagedVector.h"
 #include "SimpleVector.h"
@@ -461,25 +459,8 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
 
 extern "C" { void IterativeSolverFTest(); }
 static std::unique_ptr<std::ofstream> out;
-int main(int argc, char* argv[]) {
-#ifdef HAVE_MPI_H
-  MPI_Init(&argc, &argv);
-  {
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    int size;
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    if (rank == 0)
-      std::cout << size << " MPI process" << (size > 1 ? "es " : "") << std::endl;
-    else {
-      out.reset(new std::ofstream("IterativeSolver-test.log" + std::to_string(rank)));
-      std::streambuf *coutbuf = std::cout.rdbuf();
-      std::cout.rdbuf(out->rdbuf());
-      std::cout << "MPI rank " << rank << std::endl;
-    }
-  }
-#endif
-
+TEST(IterativeSolver_test,old)
+ {
   if (true) {
     using namespace LinearAlgebra;
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);
@@ -514,9 +495,4 @@ int main(int argc, char* argv[]) {
 //  RSPTTest<PagedVector<double> ,double>(100,2e0);
     IterativeSolverFTest();
   }
-#ifdef HAVE_MPI_H
-  MPI_Finalize();
-#endif
-  exit(0);
-  return 0;
 }

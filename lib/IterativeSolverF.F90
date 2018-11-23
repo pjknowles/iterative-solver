@@ -346,8 +346,8 @@ CONTAINS
       END SUBROUTINE IterativeSolverOption
     END INTERFACE
     CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: keyc, valc
-    ALLOCATE(keyc(LEN(key) : LEN(key)))
-    ALLOCATE(valc(LEN(val) : LEN(val)))
+    ALLOCATE(keyc(LEN(key)+1))
+    ALLOCATE(valc(LEN(val)+1))
     CALL c_string_from_f(key, keyc)
     CALL c_string_from_f(val, valc)
     CALL IterativeSolverOption(keyc, valc)
@@ -407,19 +407,17 @@ CONTAINS
       CALL Iterative_Solver_Option("convergence", "residual")
       c = 0; DO i = 1, nroot; c(i, i) = 1;
       ENDDO
-      DO i = 1, n
         g = MATMUL(m, c)
         CALL Iterative_Solver_Add_Vector(c, g, active, p)
         e = Iterative_Solver_Eigenvalues()
         DO root = 1, nroot
           DO j = 1, n
-            c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(i) + 1d-15)
+            c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(root) + 1d-15)
           END DO
         END DO
         IF (Iterative_Solver_End_Iteration(c, g, error, active)) EXIT
-      END DO
       CALL Iterative_Solver_Finalize
-      write (6,*) 'end of irep loop ',irep
+      !write (6,*) 'end of irep loop ',irep
     ENDDO
 
     DO np = nroot, nPmax, nroot

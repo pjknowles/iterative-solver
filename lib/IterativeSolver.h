@@ -483,11 +483,12 @@ class IterativeSolver {
             imax = i;
         }
 //     imax=0;
-        if (m_verbosity > 0)
+        if (m_verbosity > 0) {
           xout << " removing singular value " << svd.singularValues()(k) / svd.singularValues()(0)
                << " by deleting redundant expansion vector " << imax << ";  new subspace size " << nQ - 1;
-        if (nP > 0) xout << "Q + " << nP << "P";
-        xout << std::endl;
+          if (nP > 0) xout << "Q + " << nP << "P";
+          xout << std::endl;
+        }
         if (m_verbosity > 1) xout << "  SVD right matrix column: " << svd.matrixV().col(k).transpose() << std::endl;
         deleteVector(imax);
         return; // deleteVector calls this function to rebuild the subspace

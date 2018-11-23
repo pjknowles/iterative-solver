@@ -1,34 +1,9 @@
 #include "PagedVector.h"
-#define CATCH_CONFIG_RUNNER
-#include "catch.hpp"
-//using namespace LinearAlgebra;
-#ifdef HAVE_MPI_H
-#include <mpi.h>
-#endif
-static int mpi_rank = 0;
-static int mpi_size = 1;
+#include "test.h"
+#include <cmath>
 
-int main(int argc, char *argv[]) {
-#ifdef HAVE_MPI_H
-  MPI_Init(&argc, &argv);
-  {
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    if (mpi_rank == 0) std::cout << mpi_size << " MPI process" << (mpi_size > 1 ? "es " : "") << std::endl;
-//    std::cout << "MPI process number "<<mpi_rank<<std::endl;
-  }
-#else
-  std::cout << "serial"<<std::endl;
-#endif
-  Catch::Session().run(argc, argv);
-#ifdef HAVE_MPI_H
-  MPI_Finalize();
-#endif
-  return 0;
-}
-
-TEST_CASE("PagedVector copy constructor") {
-  using pv = LinearAlgebra::PagedVector<double,100>;
+TEST(PagedVector_test, copy_constructor) {
+  using pv = LinearAlgebra::PagedVector<double, 100>;
   pv v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
@@ -45,27 +20,27 @@ TEST_CASE("PagedVector copy constructor") {
 //       std::cout <<"After Copy Constructor "<<PagedVector<double>(v0,1)<<std::endl;
 //       auto test = PagedVector<double>(v0,1);
 //       std::cout <<"After Copy Constructor "<<test<<std::endl;
-  REQUIRE(result);
+  ASSERT_TRUE(result);
 }
 
-TEST_CASE("PagedVector pass-through") {
+TEST(PagedVector, pass_through) {
   std::vector<double> v(10000);
   for (size_t i = 0; i < v.size(); ++i) {
     v[i] = 2 * i + 1;
   }
   auto v1 = LinearAlgebra::PagedVector<double>(v.data(), v.size());
-  auto &w = v1;
+  auto& w = v1;
   double r = 0;
   bool ad = true;
   for (size_t i = 0; i < v.size(); ++i) {
     ad = ad && (&(w[i]) == &(v[i]));
     r += std::fabs(v[i] - w[i]);
   }
-  REQUIRE(ad);
-  REQUIRE(std::fabs(r) < 1e-15);
+  ASSERT_TRUE(ad);
+  ASSERT_TRUE(std::fabs(r) < 1e-15);
 }
 
-TEST_CASE("PagedVector dot product") {
+TEST(PagedVector, dot) {
   LinearAlgebra::PagedVector<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
 //       std::cout << "v0="<<v0<<std::endl;
@@ -88,11 +63,11 @@ TEST_CASE("PagedVector dot product") {
       result &= v2.dot(v2) == v0.size() * (2 * v0.size() - 1) * (2 * v0.size() + 1) / 3;
     }
   }
-  REQUIRE(result);
+  ASSERT_TRUE(result);
 }
 
 #ifndef none
-TEST_CASE("PagedVector axpy()") {
+TEST(PagedVector, axpy) {
   LinearAlgebra::PagedVector<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
@@ -114,12 +89,12 @@ TEST_CASE("PagedVector axpy()") {
 //       std::cout << "reads="<<v2.m_cache.reads << " writes="<<v2.m_cache.writes<<std::endl;
     }
   }
-  REQUIRE(result);
+  ASSERT_TRUE(result);
 }
 
 #endif
 #ifndef none
-TEST_CASE("PagedVector scal()") {
+TEST(PagedVector, scal) {
   LinearAlgebra::PagedVector<double> v0(10000);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
@@ -131,10 +106,10 @@ TEST_CASE("PagedVector scal()") {
 //         std::cout << v2.dot(v2) <<std::endl;
     result &= v2.dot(v2) < 1e-20;
   }
-  REQUIRE(result);
+  ASSERT_TRUE(result);
 }
 
-TEST_CASE("PagedVector scal(0)") {
+TEST(PagedVector, zero) {
   LinearAlgebra::PagedVector<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
@@ -145,10 +120,10 @@ TEST_CASE("PagedVector scal(0)") {
 //         std::cout << v2.dot(&v2) <<std::endl;
     result &= v2.dot(v2) < 1e-20;
   }
-  REQUIRE(result);
+  ASSERT_TRUE(result);
 }
 
-TEST_CASE("PagedVector::put()") {
+TEST(PagedVector, put) {
   for (auto i = 0; i < 4; i++) {
 //  MPI_Barrier(MPI_COMM_WORLD);
 //  usleep(100);
@@ -174,14 +149,14 @@ TEST_CASE("PagedVector::put()") {
     if (offset >= segment_length * mpi_rank && offset < segment_length * (mpi_rank + 1)) {
 //       std::cout <<mpi_rank<< "after get, v0: "<<v0<<std::endl;
 //       std::cout <<mpi_rank<<"val2: "<<val2<<"=="<<val<<std::endl;
-      REQUIRE(val == val2);
+      ASSERT_TRUE(val == val2);
     }
 #endif
 #ifndef none
     auto test = v0.dot(v0);
 //       std::cout <<mpi_rank<<"test"<<test<<"=="<<val*val<<std::endl;
     if (offset >= segment_length * mpi_rank && offset < segment_length * (mpi_rank + 1)) {
-      REQUIRE(test == val * val);
+      ASSERT_TRUE(test == val * val);
     }
 #endif
 //   MPI_Barrier(MPI_COMM_WORLD); std::cout << mpi_rank<<"first test done"<<std::endl;
@@ -201,7 +176,7 @@ TEST_CASE("PagedVector::put()") {
     for (auto k = (i > 1 ? segment_length * mpi_rank : 0);
          k < (w1.size() && (i > 1 ? (k < segment_length * (mpi_rank + 1)) : true)); k++)
       test2 += std::fabs(w[k] - w1[k]);
-    REQUIRE(test2 < 1e-15);
+    ASSERT_TRUE(test2 < 1e-15);
 #endif
   }
 
@@ -209,7 +184,7 @@ TEST_CASE("PagedVector::put()") {
 #endif
 
 #ifdef none
-TEST_CASE("PagedVector::operator[]()") {
+TEST(PagedVector,element_operator) {
  LinearAlgebra::PagedVector<double> v0(10);
  v0.scal(0);
  double val=99;
@@ -222,6 +197,6 @@ TEST_CASE("PagedVector::operator[]()") {
  auto test = v0[offset];
 //       std::cout << "v0: "<<v0<<std::endl;
 //       std::cout << test<<std::endl;
- REQUIRE(test==val);
+ ASSERT_TRUE(test==val);
 }
 #endif

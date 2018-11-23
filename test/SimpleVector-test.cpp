@@ -1,33 +1,8 @@
 #include "SimpleVector.h"
-#define CATCH_CONFIG_RUNNER
-#include "catch.hpp"
-//using namespace LinearAlgebra;
-#ifdef HAVE_MPI_H
-#include <mpi.h>
-#endif
-static int mpi_rank = 0;
-static int mpi_size = 1;
+#include "test.h"
+#include <cmath>
 
-int main(int argc, char* argv[]) {
-#ifdef HAVE_MPI_H
-  MPI_Init(&argc, &argv);
-  {
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    if (mpi_rank == 0) std::cout << mpi_size << " MPI process" << (mpi_size > 1 ? "es " : "") << std::endl;
-//    std::cout << "MPI process number "<<mpi_rank<<std::endl;
-  }
-#else
-  std::cout << "serial" << std::endl;
-#endif
-  Catch::Session().run(argc, argv);
-#ifdef HAVE_MPI_H
-  MPI_Finalize();
-#endif
-  return 0;
-}
-
-TEST_CASE("SimpleVector copy constructor") {
+TEST(SimpleVector, copy_constructor) {
   using pv = LinearAlgebra::SimpleVector<double>;
   pv v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
@@ -45,10 +20,10 @@ TEST_CASE("SimpleVector copy constructor") {
 //       std::cout <<"After Copy Constructor "<<SimpleVector<double>(v0,1)<<std::endl;
 //       auto test = SimpleVector<double>(v0,1);
 //       std::cout <<"After Copy Constructor "<<test<<std::endl;
-  REQUIRE(result);
+  ASSERT_TRUE(result);
 }
 
-TEST_CASE("SimpleVector dot product") {
+TEST(SimpleVector, dot_product) {
   LinearAlgebra::SimpleVector<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
 //       std::cout << "v0=k<<v0<<std::endl;
@@ -81,11 +56,11 @@ TEST_CASE("SimpleVector dot product") {
       result &= v2.dot(v1) == v0.size() * (2 * v0.size() - 1) * (2 * v0.size() + 1) / 3;
     }
   }
-  REQUIRE(result);
+  ASSERT_TRUE(result);
 }
 
 #ifndef none
-TEST_CASE("SimpleVector axpy()") {
+TEST(SimpleVector, axpy) {
   LinearAlgebra::SimpleVector<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
@@ -107,12 +82,12 @@ TEST_CASE("SimpleVector axpy()") {
 //       std::cout << "reads="<<v2.m_cache.reads << " writes="<<v2.m_cache.writes<<std::endl;
     }
   }
-  REQUIRE(result);
+  ASSERT_TRUE(result);
 }
 
 #endif
 #ifndef none
-TEST_CASE("SimpleVector scal()") {
+TEST(SimpleVector, scal) {
   LinearAlgebra::SimpleVector<double> v0(10000);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
@@ -124,10 +99,10 @@ TEST_CASE("SimpleVector scal()") {
 //         std::cout << v2.dot(v2) <<std::endl;
     result &= v2.dot(v2) < 1e-20;
   }
-  REQUIRE(result);
+  ASSERT_TRUE(result);
 }
 
-TEST_CASE("SimpleVector scal(0)") {
+TEST(SimpleVector, zero) {
   LinearAlgebra::SimpleVector<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
@@ -138,10 +113,10 @@ TEST_CASE("SimpleVector scal(0)") {
 //         std::cout << v2.dot(&v2) <<std::endl;
     result &= v2.dot(v2) < 1e-20;
   }
-  REQUIRE(result);
+  ASSERT_TRUE(result);
 }
 
-TEST_CASE("SimpleVector::put()") {
+TEST(SimpleVector,put) {
   for (auto i = 0; i < 4; i++) {
 //  MPI_Barrier(MPI_COMM_WORLD);
 //  usleep(100);
@@ -167,14 +142,14 @@ TEST_CASE("SimpleVector::put()") {
     if (offset >= segment_length * mpi_rank && offset < segment_length * (mpi_rank + 1)) {
 //       std::cout <<mpi_rank<< "after get, v0: "<<v0<<std::endl;
 //       std::cout <<mpi_rank<<"val2: "<<val2<<"=="<<val<<std::endl;
-      REQUIRE(val == val2);
+      ASSERT_TRUE(val == val2);
     }
 #endif
 #ifndef none
     auto test = v0.dot(v0);
 //       std::cout <<mpi_rank<<"test"<<test<<"=="<<val*val<<std::endl;
     if (offset >= segment_length * mpi_rank && offset < segment_length * (mpi_rank + 1)) {
-      REQUIRE(test == val * val);
+      ASSERT_TRUE(test == val * val);
     }
 #endif
 //   MPI_Barrier(MPI_COMM_WORLD); std::cout << mpi_rank<<"first test done"<<std::endl;
@@ -194,27 +169,9 @@ TEST_CASE("SimpleVector::put()") {
     for (auto k = (i > 1 ? segment_length * mpi_rank : 0);
          k < (w1.size() && (i > 1 ? (k < segment_length * (mpi_rank + 1)) : true)); k++)
       test2 += std::fabs(w[k] - w1[k]);
-    REQUIRE(test2 < 1e-15);
+    ASSERT_TRUE(test2 < 1e-15);
 #endif
   }
 
-}
-#endif
-
-#ifdef none
-TEST_CASE("SimpleVector::operator[]()") {
- LinearAlgebra::SimpleVector<double> v0(10);
- v0.scal(0);
- double val=99;
- size_t offset=1;
-//       std::cout << "v0: "<<v0<<std::endl;
- v0.put(&val,1,offset);
-//       std::cout << "v0: "<<v0<<std::endl;
-//       std::cout <<v0[offset]<<std::endl;
-//       auto spoiler=v0.dot(v0);
- auto test = v0[offset];
-//       std::cout << "v0: "<<v0<<std::endl;
-//       std::cout << test<<std::endl;
- REQUIRE(test==val);
 }
 #endif

@@ -27,7 +27,7 @@ IterativeSolverLinearEigensystemInitialize(size_t n,
   instance->m_maxIterations = maxIterations;
   instance->m_verbosity = verbosity;
   instance->m_orthogonalize = orthogonalize;
-  std::cout << "orthogonalize: " << orthogonalize << std::endl;
+  //std::cout << "orthogonalize: " << orthogonalize << std::endl;
 }
 
 extern "C" void

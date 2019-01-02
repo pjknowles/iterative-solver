@@ -291,7 +291,7 @@ class IterativeSolver {
    * @param root
    * @return
    */
-  bool active(int root) { return m_active(root); }
+  bool active(int root) { return m_active[root]; }
   std::vector<bool> active() { return m_active; }
 
   /*!

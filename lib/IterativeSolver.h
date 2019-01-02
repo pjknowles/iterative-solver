@@ -131,14 +131,15 @@ class IterativeSolver {
                  vectorSet& other) {
 //   if (m_rhs.size())
 //    xout << "addVector entry m_rhs.back()="<<this->m_rhs.back()<<std::endl;
+    m_active.resize(parameters.size(), true);
     if (m_roots < 1) m_roots = parameters.size(); // number of roots defaults to size of parameters
     if (!m_orthogonalize && m_roots > m_maxQ) m_maxQ = m_roots;
     assert(parameters.size() == action.size());
     m_iterations++;
     m_added_vectors = 0;
-    for (size_t k = 0; k < action.size(); k++) if (active[k]) m_added_vectors++;
+    for (size_t k = 0; k < action.size(); k++) if (m_active[k]) m_added_vectors++;
     m_actions += m_added_vectors;
-    m_lastVectorIndex = addVectorSet(parameters, action, other, active)
+    m_lastVectorIndex = addVectorSet(parameters, action, other, m_active)
         - 1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
 //   xout << "set lastVectorIndex=addVectorSet-1="<<m_lastVectorIndex<<std::endl;
     scalar_type weight =
@@ -187,6 +188,7 @@ class IterativeSolver {
             vectorSetP& parametersP,
             vectorSet& other) {
     auto oldss = m_subspaceMatrix.rows();
+    m_active.resize(parameters.size(), true);
 //    xout << "oldss " << oldss << ", Pvectors,size() " << Pvectors.size() << std::endl;
     m_subspaceMatrix.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
     m_subspaceOverlap.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
@@ -278,11 +280,19 @@ class IterativeSolver {
      * \return true if convergence reached for all roots
      */
   bool endIteration(vectorSet& solution, const vectorSet& residual, std::vector<bool>& active) {
-    calculateErrors(solution, residual, active);
-    if (m_error >= m_thresh) adjustUpdate(solution, active);
+    calculateErrors(solution, residual, m_active);
+    if (m_error >= m_thresh) adjustUpdate(solution, m_active);
     report();
     return m_error < m_thresh;
   }
+
+  /*!
+   * @brief Whether the expansion vector for a particular root is still active, ie not yet converged, and residual has meaning
+   * @param root
+   * @return
+   */
+  bool active(int root) { return m_active(root); }
+  std::vector<bool> active() { return m_active; }
 
   /*!
    * \brief Get the solver's suggestion of which degrees of freedom would be best
@@ -303,7 +313,7 @@ class IterativeSolver {
     std::map<size_t, scalar_type> result;
     for (size_t kkk = 0; kkk < solution.size(); kkk++) {
 //    xout << "suggestP kkk "<<kkk<<" active "<<solution.m_vector_active[kkk]<<maximumNumber<<std::endl;
-      if (active[kkk]) {
+      if (m_active[kkk]) {
         std::vector<size_t> indices;
         std::vector<scalar_type> values;
         std::tie(indices, values) = solution[kkk].select(residual[kkk], maximumNumber, threshold);
@@ -354,6 +364,7 @@ class IterativeSolver {
  protected:
   Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_PQMatrix, m_PQOverlap; //!< The PQ block of the matrix
   std::vector<Pvector> m_Pvectors;
+  std::vector<bool> m_active; ///< whether each expansion vector is currently active
  public:
   int
       m_verbosity; //!< How much to print. Zero means nothing; One results in a single progress-report line printed each iteration.
@@ -380,14 +391,14 @@ class IterativeSolver {
   void adjustUpdate(vectorSet& solution, std::vector<bool>& active) {
 //         xout << "m_errors[0] "<<m_errors[0]<<", m_thresh "<<m_thresh<<std::endl;
     for (size_t k = 0; k < solution.size(); k++)
-      active[k] = (m_errors[k] >= m_thresh || m_minIterations > m_iterations);
+      m_active[k] = (m_errors[k] >= m_thresh || m_minIterations > m_iterations);
 //    xout << "active "<<active[0]<<std::endl;
 //          xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution[0]<<std::endl;
     if (m_orthogonalize) {
 //          xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution[0]<<std::endl;
       for (auto rep = 0; rep < 2; rep++)
         for (size_t kkk = 0; kkk < solution.size(); kkk++) {
-          if (active[kkk]) {
+          if (m_active[kkk]) {
             for (size_t i = 0; i < m_Pvectors.size(); i++) {
               const auto& p = m_Pvectors[i];
               scalar_type s = -solution[kkk].dot(p) / m_subspaceOverlap(i, i);
@@ -403,14 +414,14 @@ class IterativeSolver {
               }
             }
             for (size_t lll = 0; lll < kkk; lll++) {
-              if (active[lll]) {
+              if (m_active[lll]) {
                 scalar_type s = solution[lll].dot(solution[kkk]);
                 solution[kkk].axpy(-s, solution[lll]);
               }
             }
             scalar_type s = solution[kkk].dot(solution[kkk]);
             if (s <= 0)
-              active[kkk] = false;
+              m_active[kkk] = false;
             else
               solution[kkk].scal(1 / std::sqrt(s));
           }
@@ -670,7 +681,7 @@ for (auto repeat=0; repeat<1; ++repeat)
     if (m_verbosity > 5) {
       xout << "IterativeSolverBase::calculateErrors m_linear" << m_linear << std::endl;
       xout << "IterativeSolverBase::calculateErrors active";
-      for (size_t root = 0; root < solution.size(); root++) xout << " " << active[root];
+      for (size_t root = 0; root < solution.size(); root++) xout << " " << m_active[root];
       xout << std::endl;
 //      xout << "IterativeSolverBase::calculateErrors solution " << solution << std::endl;
       xout << std::endl;
@@ -680,12 +691,12 @@ for (auto repeat=0; repeat<1; ++repeat)
     if (m_linear && errortype != 1) { // we can use the extrapolated residual if the problem is linear
 //      xout << "calculateErrors solution.size=" << solution.size() << std::endl;
       for (size_t k = 0; k < solution.size(); k++) {
-        m_errors.push_back(active[k] ?
+        m_errors.push_back(m_active[k] ?
                            std::fabs(
                                residual[k].dot(errortype == 2 ? residual[k] : solution[k])
                                    / solution[k].dot(solution[k])
                            )
-                                     : 0);
+                                       : 0);
 //        xout << "solution . solution " << solution[k]->dot(*solution[k]) << std::endl;
 //        xout << "residual . solution " << residual[k]->dot(*solution[k]) << std::endl;
 //        xout << "residual . residual " << residual[k]->dot(*residual[k]) << std::endl;

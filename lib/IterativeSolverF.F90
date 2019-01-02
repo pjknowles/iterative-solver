@@ -167,38 +167,26 @@ CONTAINS
   !> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
   !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear).
   !> On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
-  !> \param active For each element of parameters, whether active, ie whether action is to be used.
   !> \param parametersP On exit, the interpolated solution projected onto the P space.
-  SUBROUTINE Iterative_Solver_Add_Vector(parameters, action, active, parametersP)
+  SUBROUTINE Iterative_Solver_Add_Vector(parameters, action, parametersP)
     USE iso_c_binding
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
-    LOGICAL, DIMENSION(*), INTENT(in), OPTIONAL :: active
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP
     INTERFACE
-      SUBROUTINE Iterative_Solver_Add_Vector_C(parameters, action, active, parametersP) &
+      SUBROUTINE Iterative_Solver_Add_Vector_C(parameters, action, parametersP) &
           BIND(C, name = 'IterativeSolverAddVector')
         USE iso_c_binding
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
-        INTEGER(c_int), DIMENSION(*), INTENT(IN) :: active
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
       END SUBROUTINE Iterative_Solver_Add_Vector_C
     END INTERFACE
     DOUBLE PRECISION, DIMENSION(0) :: pdummy
-    INTEGER(c_int), DIMENSION(m_nroot) :: activec
-    do i=1,int(m_nroot)
-      activec(i) = 1
-    end do
-    if (present(active)) then
-      do i=1,int(m_nroot)
-        if (.not. active(i)) activec(i) = 0
-      end do
-    end if
     IF (PRESENT(parametersP)) THEN
-      CALL Iterative_Solver_Add_Vector_C(parameters, action, activec, parametersP)
+      CALL Iterative_Solver_Add_Vector_C(parameters, action, parametersP)
     ELSE
-      CALL Iterative_Solver_Add_Vector_C(parameters, action, activec, pdummy)
+      CALL Iterative_Solver_Add_Vector_C(parameters, action, pdummy)
     END IF
   END SUBROUTINE Iterative_Solver_Add_Vector
 
@@ -208,34 +196,23 @@ CONTAINS
   !> \param solution The current solution, after interpolation and updating with the preconditioned residual.
   !> \param residual The residual after interpolation.
   !> \param error Error indicator for each sought root.
-  !> \param active On exit, which of the solutions needs further iteration
   !> \return .TRUE. if convergence reached for all roots
-  LOGICAL FUNCTION Iterative_Solver_End_Iteration(solution, residual, error, active)
+  LOGICAL FUNCTION Iterative_Solver_End_Iteration(solution, residual, error)
     USE iso_c_binding
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: error
-    LOGICAL, DIMENSION(*), INTENT(inout) :: active
     INTERFACE
-      INTEGER(c_int) FUNCTION Iterative_Solver_End_Iteration_C(solution, residual, error, active) &
+      INTEGER(c_int) FUNCTION Iterative_Solver_End_Iteration_C(solution, residual, error) &
           BIND(C, name = 'IterativeSolverEndIteration')
         USE iso_c_binding
         REAL(c_double), DIMENSION(*), INTENT(inout) :: solution
         REAL(c_double), DIMENSION(*), INTENT(inout) :: residual
         REAL(c_double), DIMENSION(*), INTENT(inout) :: error
-        INTEGER(c_int), DIMENSION(*), INTENT(inout) :: active
       END FUNCTION Iterative_Solver_End_Iteration_C
     END INTERFACE
-    INTEGER(c_int), DIMENSION(m_nroot) :: activec
-    activec = 1
-    do i=1,int(m_nroot)
-      if (.not. active(i)) activec(i) = 0
-    end do
     Iterative_Solver_End_Iteration = &
-        Iterative_Solver_End_Iteration_C(solution, residual, error, activec) /= 0
-    do i=1,int(m_nroot)
-      active(i) = activec(i) /= 0
-    end do
+        Iterative_Solver_End_Iteration_C(solution, residual, error) /= 0
   END FUNCTION Iterative_Solver_End_Iteration
 
 
@@ -291,20 +268,18 @@ CONTAINS
   !> \brief Take an existing solution and its residual, and suggest P vectors
   !> \param solution On input, the current solution.
   !> \param residual On input, the residual for solution.
-  !> \param active On input, which of the solutions has a corresponding entry in residual
   !> \param indices On exit, the most important base vectors
   !> \param threshold Base vectors whose predicted contribution is less than
   !> than this are not considered
   !> \return The number of vectors suggested.
-  FUNCTION Iterative_Solver_Suggest_P(solution, residual, active, indices, threshold)
+  FUNCTION Iterative_Solver_Suggest_P(solution, residual, indices, threshold)
     INTEGER :: Iterative_Solver_Suggest_P
     DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: solution
     DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: residual
-    LOGICAL, DIMENSION(*), INTENT(in) :: active
     INTEGER, INTENT(inout), DIMENSION(:) :: indices
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: threshold
     INTERFACE
-      FUNCTION IterativeSolverSuggestP(solution, residual, active, maximumNumber, threshold, indices) &
+      FUNCTION IterativeSolverSuggestP(solution, residual, maximumNumber, threshold, indices) &
           BIND(C, name = 'IterativeSolverSuggestP')
         USE iso_c_binding
         INTEGER(c_size_t) :: IterativeSolverSuggestP
@@ -312,23 +287,17 @@ CONTAINS
         INTEGER(c_size_t), INTENT(inout), DIMENSION(maximumNumber) :: indices
         REAL(c_double), DIMENSION(*), INTENT(in) :: solution
         REAL(c_double), DIMENSION(*), INTENT(in) :: residual
-        INTEGER(c_int), INTENT(in), DIMENSION(*) :: active
         REAL(c_double), INTENT(in), VALUE :: threshold
       END FUNCTION IterativeSolverSuggestP
     END INTERFACE
     REAL(C_double) :: thresholdC = 0
     INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC
     INTEGER(c_size_t) :: maximumNumber
-    INTEGER(c_int), DIMENSION(m_nroot) :: activec
     maximumNumber = INT(size(indices), c_size_t)
     !write (6,*) 'fortran suggestP, maximumNumber=',size(indices)
     IF (PRESENT(threshold)) thresholdC = threshold
-    activec = 1
-    do i=1,int(m_nroot)
-      if (.not. active(i)) activec(i) = 0
-    end do
     Iterative_Solver_Suggest_P = INT(&
-        IterativeSolverSuggestP(solution, residual, activec, maximumNumber, thresholdC, indicesC) &
+        IterativeSolverSuggestP(solution, residual, maximumNumber, thresholdC, indicesC) &
         )
     do i = 1, Iterative_Solver_Suggest_P
       indices(i) = int(indicesC(i)) + 1
@@ -383,7 +352,6 @@ CONTAINS
     DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g
     DOUBLE PRECISION, DIMENSION(:, :), ALLOCATABLE :: p
     DOUBLE PRECISION, DIMENSION (nroot) :: e, error
-    LOGICAL, DIMENSION(nroot) :: active
     INTEGER, DIMENSION(0 : nPmax) :: offsets
     INTEGER, DIMENSION(nPmax) :: indices
     DOUBLE PRECISION, DIMENSION(nPmax) :: coefficients
@@ -398,7 +366,6 @@ CONTAINS
     END DO
 
     DO irep = 1, 1
-      active = .true.
       orthogonalize = irep==1
       WRITE (6, *) 'Without P-space, dimension=', n, ', roots=', nroot, ' orthogonalize=', orthogonalize
       threshold = 1d-6; if (orthogonalize) threshold=1d-9
@@ -408,14 +375,14 @@ CONTAINS
       c = 0; DO i = 1, nroot; c(i, i) = 1;
       ENDDO
         g = MATMUL(m, c)
-        CALL Iterative_Solver_Add_Vector(c, g, active, p)
+        CALL Iterative_Solver_Add_Vector(c, g, p)
         e = Iterative_Solver_Eigenvalues()
         DO root = 1, nroot
           DO j = 1, n
             c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(root) + 1d-15)
           END DO
         END DO
-        IF (Iterative_Solver_End_Iteration(c, g, error, active)) EXIT
+        IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
       CALL Iterative_Solver_Finalize
       !write (6,*) 'end of irep loop ',irep
     ENDDO
@@ -425,7 +392,6 @@ CONTAINS
       ALLOCATE(p(np, nroot))
       WRITE (6, *) 'P-space=', nP, ', dimension=', n, ', roots=', nroot
       CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, thresh = 1d-8, verbosity = 1)
-      active = .true.
       offsets(0) = 0
       DO i = 1, nP
         offsets(i) = i
@@ -451,9 +417,9 @@ CONTAINS
             c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(i) + 1d-15)
           END DO
         END DO
-        IF (Iterative_Solver_End_Iteration(c, g, error, active)) EXIT
+        IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
         g = MATMUL(m, c)
-        CALL Iterative_Solver_Add_Vector(c, g, active, p)
+        CALL Iterative_Solver_Add_Vector(c, g, p)
       END DO
       CALL Iterative_Solver_Finalize
       DEALLOCATE(p)
@@ -464,7 +430,6 @@ CONTAINS
     anharmonicity = .5
     WRITE (6, *) 'DIIS, dimension=', n
     CALL Iterative_Solver_DIIS_Initialize(n, thresh = 1d-10, verbosity = 1)
-    active = .true.
     c = 0;  c(1, 1) = 1
     DO iter = 1, 1000
       DO i = 1, n
@@ -475,11 +440,11 @@ CONTAINS
       END DO
       !WRITE (6,*) 'c ',c(:,1)
       !WRITE (6,*) 'g ',g(:,1)
-      CALL Iterative_Solver_Add_Vector(c, g, active, p)
+      CALL Iterative_Solver_Add_Vector(c, g, p)
       DO j = 1, n
         c(j, 1) = c(j, 1) - g(j, 1) / (alpha * (j))
       END DO
-      IF (Iterative_Solver_End_Iteration(c, g, error, active)) EXIT
+      IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
     END DO
     WRITE (6, *) 'error ', error(1), SQRT(dot_PRODUCT(c(:, 1), c(:, 1)))
     CALL Iterative_Solver_Finalize

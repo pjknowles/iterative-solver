@@ -119,14 +119,12 @@ class IterativeSolver {
    * For non-linear equations, the input will be the current solution and residual, and the output the interpolated solution and residual.
    * \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
    * \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
-   * \param active On entry, for each element of parameters, whether it is active, ie whether the
    * \param parametersP On exit, the interpolated solution projected onto the P space.
    * \param other Optional additional vectors that should be interpolated like the residual.
    * corresponding element of other contains data to be used.
    */
   void addVector(vectorSet& parameters,
                  vectorSet& action,
-                 std::vector<bool> active,
                  vectorSetP& parametersP,
                  vectorSet& other) {
 //   if (m_rhs.size())
@@ -139,7 +137,7 @@ class IterativeSolver {
     m_added_vectors = 0;
     for (size_t k = 0; k < action.size(); k++) if (m_active[k]) m_added_vectors++;
     m_actions += m_added_vectors;
-    m_lastVectorIndex = addVectorSet(parameters, action, other, m_active)
+    m_lastVectorIndex = addVectorSet(parameters, action, other)
         - 1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
 //   xout << "set lastVectorIndex=addVectorSet-1="<<m_lastVectorIndex<<std::endl;
     scalar_type weight =
@@ -151,16 +149,16 @@ class IterativeSolver {
     doInterpolation(parameters, action, parametersP, other);
   }
 
-  void addVector(vectorSet& parameters, vectorSet& action, std::vector<bool> active) {
+  void addVector(vectorSet& parameters, vectorSet& action) {
     vectorSetP parametersP;
-    addVector(parameters, action, active, parametersP);
+    addVector(parameters, action, parametersP);
     return;
   }
 
   void
-  addVector(vectorSet& parameters, vectorSet& action, std::vector<bool> active, vectorSetP& parametersP) {
+  addVector(vectorSet& parameters, vectorSet& action, vectorSetP& parametersP) {
     vectorSet other;
-    addVector(parameters, action, active, parametersP, other);
+    addVector(parameters, action, parametersP, other);
     return;
   }
 
@@ -275,13 +273,11 @@ class IterativeSolver {
      * Also calculate the degree of convergence, and write progress to xout.
      * \param solution The current solution, after interpolation and updating with the preconditioned residual.
      * \param residual The residual after interpolation.
-     * \param active For each element of solution and residual, whether it is still active, i.e. in the
-     * next iteration, the action should be calculated.
      * \return true if convergence reached for all roots
      */
-  bool endIteration(vectorSet& solution, const vectorSet& residual, std::vector<bool>& active) {
-    calculateErrors(solution, residual, m_active);
-    if (m_error >= m_thresh) adjustUpdate(solution, m_active);
+  bool endIteration(vectorSet& solution, const vectorSet& residual) {
+    calculateErrors(solution, residual);
+    if (m_error >= m_thresh) adjustUpdate(solution);
     report();
     return m_error < m_thresh;
   }
@@ -292,14 +288,13 @@ class IterativeSolver {
    * @return
    */
   bool active(int root) { return m_active[root]; }
-  std::vector<bool> active() { return m_active; }
+  std::vector<bool> active() { return m_active.empty() ? std::vector<bool>(1000,true) : m_active; }
 
   /*!
    * \brief Get the solver's suggestion of which degrees of freedom would be best
    * to add to the P-space.
    * \param solution Current solution
    * \param residual Current residual
-   * \param active which roots are active, ie have a valid entry in residual
    * \param maximumNumber Suggest no more than this number
    * \param threshold Suggest only axes for which the current residual and update
    * indicate an energy improvement in the next iteration of this amount or more.
@@ -307,7 +302,6 @@ class IterativeSolver {
    */
   std::vector<size_t> suggestP(const vectorSet& solution,
                                const vectorSet& residual,
-                               std::vector<bool> active,
                                const size_t maximumNumber = 1000,
                                const scalar_type threshold = 0) {
     std::map<size_t, scalar_type> result;
@@ -388,7 +382,7 @@ class IterativeSolver {
   ///< - m_options["convergence"]=="residual": m_errors() returns the norm of the residual vector
 
  private:
-  void adjustUpdate(vectorSet& solution, std::vector<bool>& active) {
+  void adjustUpdate(vectorSet& solution) {
 //         xout << "m_errors[0] "<<m_errors[0]<<", m_thresh "<<m_thresh<<std::endl;
     for (size_t k = 0; k < solution.size(); k++)
       m_active[k] = (m_errors[k] >= m_thresh || m_minIterations > m_iterations);
@@ -673,7 +667,7 @@ for (auto repeat=0; repeat<1; ++repeat)
 
   }
 
-  void calculateErrors(const vectorSet& solution, const vectorSet& residual, std::vector<bool> active) {
+  void calculateErrors(const vectorSet& solution, const vectorSet& residual) {
     auto errortype = 0; // step . residual
     if (this->m_options.count("convergence") && this->m_options.find("convergence")->second == "step") errortype = 1;
     if (this->m_options.count("convergence") && this->m_options.find("convergence")->second == "residual")
@@ -739,7 +733,7 @@ for (auto repeat=0; repeat<1; ++repeat)
  public:
 
   size_t
-  addVectorSet(const vectorSet& solution, const vectorSet& residual, const vectorSet& other, std::vector<bool> active) {
+  addVectorSet(const vectorSet& solution, const vectorSet& residual, const vectorSet& other) {
 //   xout << "addVectorSet entry"<<std::endl;
     //      if (residual.m_vector_active.front()==0) xout <<"warning: inactive residual"<<std::endl;
     //      if (solution.m_vector_active.front()==0) xout <<"warning: inactive solution"<<std::endl;
@@ -752,7 +746,7 @@ for (auto repeat=0; repeat<1; ++repeat)
     copyvec(m_solutions, solution);
     copyvec(m_others, other);
     m_vector_active.emplace_back();
-    for (size_t k = 0; k < solution.size(); k++) m_vector_active.back().push_back(active[k]);
+    for (size_t k = 0; k < solution.size(); k++) m_vector_active.back().push_back(m_active[k]);
 //   xout << "addVectorSet after emplace_back()"<<std::endl;
     const vectorSet& residual1 = residual;
     const vectorSet& solution1 = solution;//      for (size_t kkk=0; kkk<solution.size(); kkk++)
@@ -767,7 +761,7 @@ for (auto repeat=0; repeat<1; ++repeat)
     auto old_size = m_QQMatrix.rows();
 //    auto new_size = old_size + count(residual1.m_vector_active.begin(), residual1.m_vector_active.end(), true);
     auto new_size = old_size;
-    for (size_t i = 0; i < residual1.size(); i++) if (active[i]) ++new_size;
+    for (size_t i = 0; i < residual1.size(); i++) if (m_active[i]) ++new_size;
     //      xout << "old_size="<<old_size<<std::endl;
     //      xout << "new_size="<<new_size<<std::endl;
     m_QQMatrix.conservativeResize(new_size, new_size);
@@ -778,7 +772,7 @@ for (auto repeat=0; repeat<1; ++repeat)
     std::vector<vectorSet>* bra = m_subspaceMatrixResRes ? &m_residuals : &m_solutions;
     auto k = old_size;
     for (size_t kkk = 0; kkk < residual1.size(); kkk++) {
-      if (active[kkk]) {
+      if (m_active[kkk]) {
         for (auto l = 0; l < nP; l++) {
           m_PQMatrix(l, k) = residual1[kkk].dot(m_Pvectors[l]);
           m_PQOverlap(l, k) = solution1[kkk].dot(m_Pvectors[l]);
@@ -1312,9 +1306,9 @@ IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIteration
 extern "C" void IterativeSolverFinalize();
 
 extern "C" void
-IterativeSolverAddVector(double* parameters, double* action, const int* active, double* parametersP);
+IterativeSolverAddVector(double* parameters, double* action, double* parametersP);
 
-extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error, int* active);
+extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error);
 
 extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                     const double* coefficients, const double* pp,
@@ -1326,7 +1320,6 @@ extern "C" void IterativeSolverOption(const char* key, const char* val);
 
 extern "C" size_t IterativeSolverSuggestP(const double* solution,
                                           const double* residual,
-                                          const int* activec,
                                           size_t maximumNumber,
                                           double threshold,
                                           size_t* indices);

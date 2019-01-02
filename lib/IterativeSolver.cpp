@@ -76,19 +76,16 @@ extern "C" void IterativeSolverFinalize() {
   instance.release();
 }
 
-extern "C" void IterativeSolverAddVector(double* parameters, double* action, const int* active, double* parametersP) {
+extern "C" void IterativeSolverAddVector(double* parameters, double* action, double* parametersP) {
   std::vector<v> cc, gg;
   cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
   gg.reserve(instance->m_roots);
   std::vector<std::vector<typename v::value_type> > ccp;
-  std::vector<bool> activev;
   for (size_t root = 0; root < instance->m_roots; root++) {
     cc.emplace_back(&parameters[root * instance->m_dimension], instance->m_dimension);
     gg.emplace_back(&action[root * instance->m_dimension], instance->m_dimension);
-//    activev.push_back( instance->errors().size() <= root || instance->errors()[root] >= instance->m_thresh);
-    activev.push_back(active[root]!=0);
   }
-  instance->addVector(cc, gg, activev, ccp);
+  instance->addVector(cc, gg, ccp);
 
   for (size_t root = 0; root < instance->m_roots; root++) {
     for (size_t i = 0; i < ccp[0].size(); i++)
@@ -96,20 +93,17 @@ extern "C" void IterativeSolverAddVector(double* parameters, double* action, con
   }
 }
 
-extern "C" int IterativeSolverEndIteration(double* solution, double* residual, double* error, int* active) {
+extern "C" int IterativeSolverEndIteration(double* solution, double* residual, double* error) {
   std::vector<v> cc, gg;
   cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
   gg.reserve(instance->m_roots);
-  std::vector<bool> activev;
   for (size_t root = 0; root < instance->m_roots; root++) {
-    activev.push_back(1);
     cc.emplace_back(&solution[root * instance->m_dimension], instance->m_dimension);
     gg.emplace_back(&residual[root * instance->m_dimension], instance->m_dimension);
   }
-  bool result = instance->endIteration(cc, gg, activev);
+  bool result = instance->endIteration(cc, gg);
   for (size_t root = 0; root < instance->m_roots; root++) {
     error[root] = instance->errors()[root];
-    active[root] = activev[root] ? 1 : 0;
   }
   return result;
 }
@@ -154,24 +148,20 @@ extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
 
 extern "C" size_t IterativeSolverSuggestP(const double* solution,
                                           const double* residual,
-                                          const int* activec,
                                           size_t maximumNumber,
                                           double threshold,
                                           size_t* indices) {
   std::vector<v> cc, gg;
   cc.reserve(instance->m_roots);
   gg.reserve(instance->m_roots);
-  std::vector<bool> active;
   for (size_t root = 0; root < instance->m_roots; root++) {
-    active.push_back(activec[root]!=0);
     cc.push_back(v(&const_cast<double*>(solution)[root * instance->m_dimension],
                    instance->m_dimension));
     gg.push_back(v(&const_cast<double*>(residual)[root * instance->m_dimension],
                    instance->m_dimension));
-    active[root] = (instance->errors().size() <= root || instance->errors()[root] >= instance->m_thresh);
   }
 
-  auto result = instance->suggestP(cc, gg, active, maximumNumber, threshold);
+  auto result = instance->suggestP(cc, gg, maximumNumber, threshold);
   for (size_t i = 0; i < result.size(); i++)
     indices[i] = result[i];
   return result.size();

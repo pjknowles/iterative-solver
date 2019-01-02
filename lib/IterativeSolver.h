@@ -384,7 +384,7 @@ class IterativeSolver {
 //    xout << "active "<<active[0]<<std::endl;
 //          xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution[0]<<std::endl;
     if (m_orthogonalize) {
-//          xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution<<std::endl;
+//          xout << "IterativeSolverBase::adjustUpdate solution before orthogonalization: "<<solution[0]<<std::endl;
       for (auto rep = 0; rep < 2; rep++)
         for (size_t kkk = 0; kkk < solution.size(); kkk++) {
           if (active[kkk]) {
@@ -415,7 +415,7 @@ class IterativeSolver {
               solution[kkk].scal(1 / std::sqrt(s));
           }
         }
-//          xout << "IterativeSolverBase::adjustUpdate solution after orthogonalization: "<<solution<<std::endl;
+//          xout << "IterativeSolverBase::adjustUpdate solution after orthogonalization: "<<solution[0]<<std::endl;
     }
   }
 

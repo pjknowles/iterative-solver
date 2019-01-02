@@ -65,11 +65,9 @@ int main(int argc, char *argv[]) {
   solver.m_thresh = 1e-6;
   vectorSet g;
   vectorSet x;
-  std::vector<bool> active;
   for (size_t root = 0; root < solver.m_roots; root++) {
     x.emplace_back(n);
     g.emplace_back(n);
-    active.push_back(true);
   }
   size_t p = 0;
   std::vector<scalar> PP;
@@ -86,9 +84,9 @@ int main(int argc, char *argv[]) {
   for (auto iter = 0; iter < 100; iter++) {
     actionP(pspace, Pcoeff, g);
     update(x, g, solver.eigenvalues());
-    if (solver.endIteration(x, g, active)) break;
+    if (solver.endIteration(x, g)) break;
     action(x, g);
-    solver.addVector(x, g, active, Pcoeff);
+    solver.addVector(x, g, Pcoeff);
   }
 
   std::cout << "Error={ ";

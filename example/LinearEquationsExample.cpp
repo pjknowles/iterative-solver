@@ -63,7 +63,6 @@ int main(int argc, char* argv[]) {
   vectorSet g; g.reserve(nRoot);
   vectorSet b; b.reserve(nRoot);
   vectorSet x; x.reserve(nRoot);
-  std::vector<bool> active;
   for (size_t root = 0; root < nRoot; root++) {
     std::vector<scalar> bb(n);
     for (size_t i = 0; i < n; i++)
@@ -72,7 +71,6 @@ int main(int argc, char* argv[]) {
     b.back().put(bb.data(), bb.size(), 0);
     x.emplace_back(n);
     g.emplace_back(n);
-    active.push_back(true);
   }
   std::vector<double> augmented_hessian_factors = {0, .001, .01, .1, 1};
   for (const auto& augmented_hessian_factor : augmented_hessian_factors) {
@@ -96,9 +94,9 @@ int main(int argc, char* argv[]) {
     for (auto iter = 0; iter < 100; iter++) {
       actionP(pspace, Pcoeff, g);
       update(x, g);
-      if (solver.endIteration(x, g, active)) break;
+      if (solver.endIteration(x, g)) break;
       action(x, g);
-      solver.addVector(x, g, active, Pcoeff);
+      solver.addVector(x, g, Pcoeff);
     }
 
     std::cout << "Error={ ";

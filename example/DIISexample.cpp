@@ -41,18 +41,16 @@ int main(int argc, char* argv[]) {
   solver.m_maxIterations = 100;
   std::vector<pv> g;
   std::vector<pv> x;
-  std::vector<bool> active;
   g.emplace_back(n);
   x.emplace_back(n);
   x.back().scal(0);
   scalar one = 1;
   x.back().put(&one, 1, 0);  // initial guess
-  active.push_back(true);
   for (size_t iter = 0; iter < solver.m_maxIterations; ++iter) {
     anharmonic_residual(x, g);
-    solver.addVector(x, g, active);
+    solver.addVector(x, g);
     update(x, g);
-    if (solver.endIteration(x, g, active)) break;
+    if (solver.endIteration(x, g)) break;
   }
   std::cout << "Distance of solution from origin: " << std::sqrt(x[0].dot(x[0])) << std::endl;
   std::cout << "Error=" << solver.errors().front() << " after " << solver.iterations() << " iterations" << std::endl;

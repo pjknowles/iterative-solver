@@ -10,7 +10,6 @@ PROGRAM DIIS_Example
   DOUBLE PRECISION, DIMENSION (n) :: c, g
   DOUBLE PRECISION :: e
   DOUBLE PRECISION, DIMENSION(1) :: error
-  LOGICAL, DIMENSION(1) :: active
   INTEGER :: i, j
   LOGICAL :: converged
   PRINT *, 'Fortran binding of IterativeSolver::DIIS'
@@ -25,7 +24,7 @@ PROGRAM DIIS_Example
     g = g - e * c
     CALL Iterative_Solver_Add_Vector(c, g)
     c = c - g / ([(m(j, j), j = 1, n)] - e + 1d-15)
-    converged = Iterative_Solver_End_Iteration(c, g, error, active)
+    converged = Iterative_Solver_End_Iteration(c, g, error)
     IF (converged) EXIT
   END DO
   PRINT *, 'error =', error

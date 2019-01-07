@@ -145,46 +145,43 @@ void DIISTest(int verbosity = 0,
               double svdThreshold = 1e-10,
               enum DIIS<ptype>::DIISmode_type mode = DIIS<ptype>::DIISmode,
               double difficulty = 0.1) {
-  using vectorSet = std::vector<ptype>;
   using scalar = typename DIIS<ptype>::scalar_type;
   static struct {
-    void operator()(const vectorSet& psx, vectorSet& outputs) const {
+    void operator()(const ptype& psx, ptype& outputs) const {
       size_t n = 2;
       std::vector<scalar> psxk(n);
       std::vector<scalar> output(n);
 
-      psx.front().get(&(psxk[0]), n, 0);
+      psx.get(&(psxk[0]), n, 0);
       output[0] = (2 * psxk[0] - 2 + 400 * psxk[0] * (psxk[0] * psxk[0] - psxk[1]));
       output[1] = (200 * (psxk[1] - psxk[0] * psxk[0])); // Rosenbrock
-      outputs.front().put(&(output[0]), n, 0);
+      outputs.put(&(output[0]), n, 0);
     }
   } _Rosenbrock_residual;
 
   static struct {
-    void operator()(vectorSet& psc,
-                    const vectorSet& psg,
+    void operator()(ptype& psc,
+                    const ptype& psg,
                     std::vector<scalar> shift,
                     bool append = true) const {
       size_t n = 2;
       std::vector<scalar> psck(n);
       std::vector<scalar> psgk(n);
-      psg.front().get(&psgk[0], n, 0);
+      psg.get(&psgk[0], n, 0);
       if (append) {
-        psc.front().get(&psck[0], n, 0);
+        psc.get(&psck[0], n, 0);
         psck[0] -= psgk[0] / 700;
         psck[1] -= psgk[1] / 200;
       } else {
         psck[0] = -psgk[0] / 700;
         psck[1] = -psgk[1] / 200;
       }
-      psc.front().put(&psck[0], n, 0);
+      psc.put(&psck[0], n, 0);
 //    xout << "Rosenbrock updater, new psc="<<psc<<std::endl;
     }
   } _Rosenbrock_updater;
-  vectorSet x;
-  x.emplace_back(2);
-  vectorSet g;
-  g.emplace_back(2);
+  ptype x(2);
+  ptype g(2);
   DIIS<ptype> d;
   d.m_maxDim = maxDim;
   d.m_svdThreshold = svdThreshold;
@@ -197,7 +194,7 @@ void DIISTest(int verbosity = 0,
   return;
   std::vector<scalar> xxx(2);
   xxx[0] = xxx[1] = 1 - difficulty; // initial guess
-  x.front().put(&xxx[0], 2, 0);
+  x.put(&xxx[0], 2, 0);
 //  xout << "initial guess " << x << std::endl;
   bool converged = false;
   for (int iteration = 1; iteration < 1000 && not converged; iteration++) {
@@ -209,7 +206,7 @@ void DIISTest(int verbosity = 0,
     shift.push_back(1e-10);
     _Rosenbrock_updater(x, g, shift);
     converged = d.endIteration(x, g);
-    x.front().get(&xxx[0], 2, 0);
+    x.get(&xxx[0], 2, 0);
 //    if (verbosity > 2)
 //      xout << "new x after iterate " << x.front() << std::endl;
     if (verbosity >= 0)
@@ -221,7 +218,7 @@ void DIISTest(int verbosity = 0,
 //   xout <<"end of iteration "<<iteration<<std::endl;
   }
 
-  x.front().get(&xxx[0], 2, 0);
+  x.get(&xxx[0], 2, 0);
   xout << "Distance from solution = " << std::sqrt((xxx[0] - 1) * (xxx[0] - 1) + (xxx[1] - 1) * (xxx[1] - 1))
        << std::endl;
 

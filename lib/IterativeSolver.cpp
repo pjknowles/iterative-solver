@@ -80,7 +80,7 @@ extern "C" void IterativeSolverAddVector(double* parameters, double* action, dou
   std::vector<v> cc, gg;
   cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
   gg.reserve(instance->m_roots);
-  std::vector<std::vector<typename v::value_type> > ccp;
+  std::vector<std::vector<typename v::value_type> > ccp(instance->m_roots);
   for (size_t root = 0; root < instance->m_roots; root++) {
     cc.emplace_back(&parameters[root * instance->m_dimension], instance->m_dimension);
     gg.emplace_back(&action[root * instance->m_dimension], instance->m_dimension);
@@ -112,7 +112,7 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
                                     const double* coefficients, const double* pp,
                                     double* parameters, double* action, double* parametersP) {
   std::vector<v> cc, gg;
-  std::vector<std::vector<v::value_type> > ccp;
+  std::vector<std::vector<v::value_type> > ccp(instance->m_roots);
   for (size_t root = 0; root < instance->m_roots; root++) {
     cc.push_back(v(instance->m_dimension));
     gg.push_back(v(instance->m_dimension));

@@ -982,6 +982,7 @@ for (auto repeat=0; repeat<3; ++repeat)
         }
       }
     }
+    m_subspaceRHS.conservativeResize(m_PQMatrix.rows()+new_size, m_rhs.size());
     m_QQMatrix.conservativeResize(new_size, new_size);
     m_QQOverlap.conservativeResize(new_size, new_size);
     //    xout << "new m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
@@ -1233,6 +1234,8 @@ class LinearEquations : public IterativeSolver<T> {
         this->m_interpolation.col(root) =
             evec.col(imax).real().head(n) / (this->m_augmented_hessian * evec.real()(n, imax));
       } else { // straight solution of linear equations
+//        xout << "m_subspaceMatrix dimensions: "<<this->m_subspaceMatrix.rows()<<","<<this->m_subspaceMatrix.cols()<<std::endl;
+//        xout << "m_subspaceRHS dimensions: "<<this->m_subspaceRHS.rows()<<","<<this->m_subspaceRHS.cols()<<std::endl;
         this->m_interpolation = this->m_subspaceMatrix.ldlt().solve(this->m_subspaceRHS);
       }
     }

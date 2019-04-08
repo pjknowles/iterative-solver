@@ -690,8 +690,8 @@ class IterativeSolver {
 #ifdef TIMING
     startTiming=std::chrono::steady_clock::now();
 #endif
-    Eigen::MatrixXcd ovlTimesVec(m_subspaceEigenvectors.cols(),m_subspaceEigenvectors.cols()); // FIXME templating
-for (auto repeat=0; repeat<1; ++repeat)
+    Eigen::MatrixXcd ovlTimesVec(m_subspaceEigenvectors.cols(),m_subspaceEigenvectors.rows()); // FIXME templating
+for (auto repeat=0; repeat<3; ++repeat)
     for (Eigen::Index k = 0; k < m_subspaceEigenvectors.cols(); k++) {
       if (std::abs(m_subspaceEigenvalues(k)) < 1e-12) { // special case of zero eigenvalue -- make some real non-zero vector definitely in the null space
         m_subspaceEigenvectors.col(k).real() += double(0.3256897) * m_subspaceEigenvectors.col(k).imag();

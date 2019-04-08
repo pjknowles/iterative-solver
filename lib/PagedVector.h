@@ -1,5 +1,8 @@
 #ifndef PAGEDVECTOR_H
 #define PAGEDVECTOR_H
+#ifdef TIMING
+#include <chrono>
+#endif
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
@@ -90,7 +93,7 @@ class PagedVector {
                 default_offline_buffer_size : m_segment_length
         ) {
 //   init(option);
-//    std::cout <<" option "<<( option)<<std::endl;
+//    std::cout <<" PagedVector constructor length="<<length<<", option "<<( option)<<std::endl;
 //    std::cout <<"LINEARALGEBRA_OFFLINE & option "<<(LINEARALGEBRA_OFFLINE & option)<<std::endl;
 //    std::cout <<"cache preferred length "<<m_cache.preferred_length<<std::endl;
 //   std::cout << m_mpi_rank << " in constructor m_segment_length="<<m_segment_length<<", m_segment_offset="<<m_segment_offset<<std::endl;
@@ -109,7 +112,17 @@ class PagedVector {
         m_segment_length(m_replicated ? m_size : std::min((m_size - 1) / m_mpi_size + 1, m_size - m_segment_offset)),
         m_cache(m_segment_length,
                 (LINEARALGEBRA_OFFLINE & option) ? default_offline_buffer_size : m_segment_length) {
+#ifdef TIMING
+    auto start=std::chrono::steady_clock::now();
+#endif
     *this = source;
+#ifdef TIMING
+    auto end=std::chrono::steady_clock::now();
+    std::cout <<" PagedVector copy constructor length="<<m_size<<", option "<<( option)
+    <<", seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count()*1e-9
+        <<", bandwidth="<<m_size*8*1e3/std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count()<<"MB/s"
+    <<std::endl;
+#endif
   }
 
   /*!

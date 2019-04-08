@@ -1,5 +1,8 @@
 #ifndef ITERATIVESOLVER_H
 #define ITERATIVESOLVER_H
+#ifdef TIMING
+#include <chrono>
+#endif
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
@@ -161,9 +164,26 @@ class IterativeSolver {
         this->m_options.count("weight") ? (
             std::strtod(this->m_options.find("weight")->second.c_str(), NULL)) : 1.0;
     this->m_Weights.push_back(weight); // TODO not conformant - add style
+#ifdef TIMING
+    auto startTiming=std::chrono::steady_clock::now();
+#endif
     buildSubspace();
+#ifdef TIMING
+    auto endTiming=std::chrono::steady_clock::now();
+    std::cout <<" addVector buildSubspace():  seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
+    startTiming=endTiming;
+#endif
     solveReducedProblem();
+#ifdef TIMING
+    endTiming=std::chrono::steady_clock::now();
+    std::cout <<" addVector solveReducedProblem():  seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
+    startTiming=endTiming;
+#endif
     doInterpolation(parameters, action, parametersP, other);
+#ifdef TIMING
+    endTiming=std::chrono::steady_clock::now();
+    std::cout <<" addVector doInterpolation():  seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
+#endif
   }
   void addVector(std::vector<T>& parameters,
                  std::vector<T>& action,
@@ -581,6 +601,9 @@ class IterativeSolver {
     Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> H = m_subspaceMatrix.block(0, 0, kept, kept);
     Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> S = m_subspaceOverlap.block(0, 0, kept, kept);
 //   Eigen::GeneralizedEigenSolver<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
+#ifdef TIMING
+    auto startTiming=std::chrono::steady_clock::now();
+#endif
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV);
     svd.setThreshold(m_svdThreshold);
 //   xout << "singular values of overlap "<<svd.singularValues().transpose()<<std::endl;
@@ -591,19 +614,36 @@ class IterativeSolver {
       xout << "singular values " << svd.singularValues().transpose() << std::endl;
     auto svmh = svd.singularValues().head(svd.rank()).eval();
     for (auto k = 0; k < svd.rank(); k++) svmh(k) = 1 / std::sqrt(svmh(k));
+#ifdef TIMING
+    auto endTiming=std::chrono::steady_clock::now();
+    std::cout <<" construct svd and svmh:  seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
+    startTiming=std::chrono::steady_clock::now();
+#endif
     auto Hbar =
         (svmh.asDiagonal()) * (svd.matrixU().leftCols(svd.rank()).adjoint()) * H * svd.matrixV().leftCols(svd.rank())
             * (svmh.asDiagonal());
+#ifdef TIMING
+    endTiming=std::chrono::steady_clock::now();
+    std::cout <<" construct Hbar:  seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
+#endif
 //   xout << "S\n"<<S<<std::endl;
 //   xout << "S singular values"<<(Eigen::DiagonalMatrix<T, Eigen::Dynamic, Eigen::Dynamic>(svd.singularValues().head(svd.rank())))<<std::endl;
 //   xout << "S inverse singular values"<<Eigen::DiagonalMatrix<T, Eigen::Dynamic>(svd.singularValues().head(svd.rank())).inverse()<<std::endl;
 //   xout << "S singular values"<<sv<<std::endl;
 //   xout << "H\n"<<H<<std::endl;
 //   xout << "Hbar\n"<<Hbar<<std::endl;
-//   xout << "symmetric Hbar? " << (Hbar-Hbar.adjoint()).norm() << std::endl;
+#ifdef TIMING
+   xout << "symmetric Hbar? " << (Hbar-Hbar.adjoint()).norm() << std::endl;
+    startTiming=std::chrono::steady_clock::now();
+#endif
     Eigen::EigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> s(Hbar);
 //    xout << "s.eigenvectors()\n"<<s.eigenvectors()<<std::endl;
     m_subspaceEigenvalues = s.eigenvalues();
+#ifdef TIMING
+    endTiming=std::chrono::steady_clock::now();
+    std::cout <<" EigenSolver():  seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
+    startTiming=endTiming;
+#endif
     if (s.eigenvalues().imag().norm() < 1e-10 and s.eigenvectors().imag().norm() < 1e-10) { // real eigenvectors
       m_subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors().real();
 
@@ -617,6 +657,9 @@ class IterativeSolver {
 //   xout << "unsorted eigenvectors\n"<<m_subspaceEigenvectors<<std::endl;
 
     {
+#ifdef TIMING
+      auto startTiming=std::chrono::steady_clock::now();
+#endif
       // sort
       auto eigval = m_subspaceEigenvalues;
       auto eigvec = m_subspaceEigenvectors;
@@ -636,10 +679,18 @@ class IterativeSolver {
 //    xout << eigvec.col(ll)<<std::endl;
         m_subspaceEigenvectors.col(k) = eigvec.col(ll);
       }
+#ifdef TIMING
+      auto endTiming=std::chrono::steady_clock::now();
+      std::cout <<" sort seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
+#endif
     }
 //   xout << "sorted eigenvalues\n"<<m_subspaceEigenvalues<<std::endl;
 //   xout << "sorted eigenvectors\n"<<m_subspaceEigenvectors<<std::endl;
 //   xout << m_subspaceOverlap<<std::endl;
+#ifdef TIMING
+    startTiming=std::chrono::steady_clock::now();
+#endif
+    Eigen::MatrixXcd ovlTimesVec(m_subspaceEigenvectors.cols(),m_subspaceEigenvectors.cols()); // FIXME templating
 for (auto repeat=0; repeat<1; ++repeat)
     for (Eigen::Index k = 0; k < m_subspaceEigenvectors.cols(); k++) {
       if (std::abs(m_subspaceEigenvalues(k)) < 1e-12) { // special case of zero eigenvalue -- make some real non-zero vector definitely in the null space
@@ -647,23 +698,28 @@ for (auto repeat=0; repeat<1; ++repeat)
         m_subspaceEigenvectors.col(k).imag().setZero();
       }
       for (Eigen::Index l = 0; l < k; l++) {
-        auto ovl =
-            (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0);
-        auto norm =
-            (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(l))(
-                0,
-                0);
+//        auto ovl =
+//            (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0);
+//            (ovlTimesVec.row(l) * m_subspaceEigenvectors.col(k))(0,0);
+//            ovlTimesVec.row(l).dot(m_subspaceEigenvectors.col(k));
+//        auto norm =
+//            (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(l))(
+//                0,
+//                0);
 //      xout << "k="<<k<<", l="<<l<<", ovl="<<ovl<<" norm="<<norm<<std::endl;
 //      xout << m_subspaceEigenvectors.col(k).transpose()<<std::endl;
 //      xout << m_subspaceEigenvectors.col(l).transpose()<<std::endl;
-        m_subspaceEigenvectors.col(k) -= m_subspaceEigenvectors.col(l) * ovl / norm;
+        m_subspaceEigenvectors.col(k) -= m_subspaceEigenvectors.col(l) * //ovl;// / norm;
+            ovlTimesVec.row(l).dot(m_subspaceEigenvectors.col(k));
 //        xout<<"immediately after projection " << k<<l<<" "<< (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
       }
 //      for (Eigen::Index l = 0; l < k; l++) xout<<"after projection loop " << k<<l<<" "<< (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
 //      xout << "eigenvector"<<std::endl<<m_subspaceEigenvectors.col(k).adjoint()<<std::endl;
       auto ovl =
-          (m_subspaceEigenvectors.col(k).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))(0,0);
+//          (m_subspaceEigenvectors.col(k).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))(0,0);
+      m_subspaceEigenvectors.col(k).adjoint().dot(m_subspaceOverlap * m_subspaceEigenvectors.col(k));
       m_subspaceEigenvectors.col(k) /= std::sqrt(ovl.real());
+      ovlTimesVec.row(k) = m_subspaceEigenvectors.col(k).adjoint()*m_subspaceOverlap;
 //      for (Eigen::Index l = 0; l < k; l++)
 //      xout<<"after normalisation " << k<<l<<" "<< (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
 //      xout << "eigenvector"<<std::endl<<m_subspaceEigenvectors.col(k).adjoint()<<std::endl;
@@ -677,6 +733,10 @@ for (auto repeat=0; repeat<1; ++repeat)
 //      xout << k<<l<<" "<<
 //                       (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
     }
+#ifdef TIMING
+    endTiming=std::chrono::steady_clock::now();
+    std::cout <<" repeat dimension="<<m_subspaceEigenvectors.cols()<<",  seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
+#endif
 //     xout << "eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
 //     xout << "eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
   }
@@ -1020,7 +1080,16 @@ class LinearEigensystem : public IterativeSolver<T> {
     if (this->m_rspt) {
       throw std::logic_error("RSPT not yet implemented");
     } else {
+#ifdef TIMING
+      auto start=std::chrono::steady_clock::now();
+#endif
       this->diagonalizeSubspaceMatrix();
+#ifdef TIMING
+      auto end=std::chrono::steady_clock::now();
+      std::cout <<" diagonalizeSubspaceMatrix()"
+                <<", seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count()*1e-9
+                <<std::endl;
+#endif
       this->m_interpolation = this->m_subspaceEigenvectors.block(0, 0, this->m_subspaceEigenvectors.rows(),
                                                                  std::min(int(this->m_roots), int(
                                                                      this->m_subspaceEigenvectors.rows()))).real();

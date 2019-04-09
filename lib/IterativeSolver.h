@@ -1248,6 +1248,44 @@ class LinearEquations : public IterativeSolver<T> {
 
 };
 
+/** @example QuasiNewtonExample.cpp */
+/*!
+* \brief A class that minimises a function using a Quasi-Newton method
+ * When addVector() is called, the first and second parameters should be the current position and gradient of objective function, respectively.
+ * The fourth parameter should contain the action of the initial inverse hessian on the current gradient
+ * The third parameter should be empty: nullVectorP \\TODO CHECK
+*
+* Example of simplest use: @include QuasiNewtonExample.cpp
+* \tparam scalar Type of matrix elements
+*
+*/
+template<class T>
+class QuasiNewton : public IterativeSolver<T> {
+  using typename IterativeSolver<T>::scalar_type;
+  using typename IterativeSolver<T>::value_type;
+ public:
+  using vectorSet = typename std::vector<T>; ///< Container of vectors
+  using vectorRefSet = typename std::vector<std::reference_wrapper<T> >; ///< Container of vectors
+  using constVectorRefSet = typename std::vector<std::reference_wrapper<const T> >; ///< Container of vectors
+  using IterativeSolver<T>::m_verbosity;
+
+  /*!
+   * \brief Constructor
+   * \param algorithm. Allowed values: "BFGS"
+   */
+  explicit QuasiNewton(const std::string& algorithm="BFGS")
+      : m_algorithm(algorithm) {
+    this->m_linear = false;
+  }
+
+ protected:
+  void solveReducedProblem() override {
+  }
+ protected:
+  std::string m_algorithm; ///< which variant of Quasi-Newton methods
+
+};
+
 /** @example DIISexample.cpp */
 /*!
 * \brief A class that encapsulates accelerated convergence of non-linear equations

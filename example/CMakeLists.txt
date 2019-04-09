@@ -1,5 +1,6 @@
 if (CMAKE_Fortran_COMPILER_ID)
     set(ITERATIVESOLVER_FORTRAN_EXAMPLES
+            QuasiNewtonExampleF.F90
             DIISExampleF.F90
             LinearEigensystemExampleF.F90
             LinearEigensystemExampleF-Pspace.F90
@@ -8,6 +9,7 @@ if (CMAKE_Fortran_COMPILER_ID)
             )
 endif ()
 set(EXAMPLES DIISexample.cpp
+        QuasiNewtonexample.cpp
         LinearEigensystemExample.cpp LinearEigensystemExample-paged.cpp
         LinearEquationsExample.cpp
         ${ITERATIVESOLVER_FORTRAN_EXAMPLES}

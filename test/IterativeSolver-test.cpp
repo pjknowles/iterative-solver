@@ -491,7 +491,7 @@ TEST(IterativeSolver_test,Optimize) {
   using ptype = LinearAlgebra::PagedVector<double>;
   using scalar = typename LinearAlgebra::Optimize<ptype>::scalar_type;
   static struct {
-    void operator()(const ptype& psx, ptype& outputs) const {
+    scalar operator()(const ptype& psx, ptype& outputs) const {
       size_t n = 2;
       std::vector<scalar> psxk(n);
       std::vector<scalar> output(n);
@@ -500,6 +500,7 @@ TEST(IterativeSolver_test,Optimize) {
       output[0] = (2 * psxk[0] - 2 + 400 * psxk[0] * (psxk[0] * psxk[0] - psxk[1]));
       output[1] = (200 * (psxk[1] - psxk[0] * psxk[0])); // Rosenbrock
       outputs.put(&(output[0]), n, 0);
+      return (1 - psxk[0]) * (1 - psxk[0]) + 100 * (psxk[1] - psxk[0] * psxk[0]) * (psxk[1] - psxk[0] * psxk[0]);
     }
   } _Rosenbrock_residual;
 
@@ -533,22 +534,23 @@ TEST(IterativeSolver_test,Optimize) {
 
   if (verbosity >= 0) xout << "Test Optimize, difficulty=" << difficulty << std::endl;
   d.m_verbosity = verbosity - 1;
+  d.m_options["convergence"] = "residual";
   std::vector<scalar> xxx(2);
   xxx[0] = xxx[1] = 1 - difficulty; // initial guess
   x.put(&xxx[0], 2, 0);
   xout << "initial guess " << x << std::endl;
   bool converged = false;
-  for (int iteration = 1; iteration < 1000 && not converged; iteration++) {
+  for (int iteration = 1; iteration < 50 && not converged; iteration++) {
    xout <<"start of iteration "<<iteration<<std::endl;
-    _Rosenbrock_residual(x, g);
-    xout << "residual: " << g;
+    auto value = _Rosenbrock_residual(x, g);
     std::vector<scalar> shift;
     shift.push_back(1e-10);
     hg.scal(0);
     _Rosenbrock_updater(hg, g, shift);
-    std::vector<double> dummy;
-    d.addVector(x, g, dummy, hg);
-    converged = d.endIteration(x, g);
+    xout << "x: " << x;
+    xout << "g: " << g;
+    xout << "hg: " << hg;
+    converged = d.iterate(x, g, hg, value);
     x.get(&xxx[0], 2, 0);
     if (verbosity > 2)
       xout << "new x after iterate " << x << std::endl;
@@ -557,6 +559,7 @@ TEST(IterativeSolver_test,Optimize) {
            << ", Distance from solution = " << std::sqrt((xxx[0] - 1) * (xxx[0] - 1) + (xxx[1] - 1) * (xxx[1] - 1))
            << ", error = " << d.errors().front()
            << ", converged? " << converged
+           << ", value= " << value
            << std::endl;
 //   xout <<"end of iteration "<<iteration<<std::endl;
   }

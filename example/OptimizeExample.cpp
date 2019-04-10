@@ -49,9 +49,7 @@ int main(int argc, char* argv[]) {
     anharmonic_residual(x, g);
     hg.scal(0);
     update(hg, g);
-    std::vector<scalar> dummy;
-    solver.addVector(x, g, dummy, hg);
-    if (solver.endIteration(x, g)) break;
+    if (solver.iterate(x, g, hg, 0)) break; //TODO implement function value
   }
   std::cout << "Distance of solution from origin: " << std::sqrt(x.dot(x)) << std::endl;
   std::cout << "Error=" << solver.errors().front() << " after " << solver.iterations() << " iterations" << std::endl;

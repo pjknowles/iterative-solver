@@ -858,6 +858,11 @@ for (auto repeat=0; repeat<3; ++repeat)
                                | LINEARALGEBRA_OFFLINE); // TODO template-ise these options
     history.emplace_back(newcopy);
   }
+  static void copyvec(std::vector<T>& history, std::reference_wrapper<const T> newvec) {
+    history.emplace_back(newvec,
+                         LINEARALGEBRA_DISTRIBUTED
+                             | LINEARALGEBRA_OFFLINE); // TODO template-ise these options
+  }
  public:
 
   size_t
@@ -1250,10 +1255,7 @@ class LinearEquations : public IterativeSolver<T> {
 
 /** @example OptimizeExample.cpp */
 /*!
-* \brief A class that minimises a function using a Quasi-Newton or other method
- * When addVector() is called, the first and second parameters should be the current position and gradient of objective function, respectively.
- * The fourth parameter should contain the action of the initial inverse hessian on the current gradient
- * The third parameter should be empty: nullVectorP \\TODO CHECK
+* \brief A class that optimises a function using a Quasi-Newton or other method
 *
 * Example of simplest use: @include OptimizeExample.cpp
 * \tparam scalar Type of matrix elements
@@ -1272,20 +1274,66 @@ class Optimize : public IterativeSolver<T> {
   /*!
    * \brief Constructor
    * \param algorithm. Allowed values: "BFGS"
+   * \param minimize. If false, a maximum, not minimum, will be sought
    */
-  explicit Optimize(const std::string& algorithm="BFGS")
-      : m_algorithm(algorithm) {
+  explicit Optimize(const std::string& algorithm = "BFGS", bool minimize = true)
+      : m_algorithm(algorithm), m_minimize(minimize) {
     this->m_linear = false;
+    this->m_orthogonalize = false;
+  }
+
+  /*!
+   * @brief Introduce a new approximation to the optimum
+   * @param parameters Current values of the parameter. On exit, contains new values predicted to be closer to optimum
+   * @param gradient Derivative of the objective function with respect to parameters
+   * @param preconditionedGradient gradient premultiplied by approximate inverse hessian
+   * @param value Current value of the objective function
+   * @return whether or not converged
+   */
+  bool iterate(T& parameters, T& gradient, const T& preconditionedGradient, const value_type value) {
+    T parameterChanges(parameters);
+    if (not this->m_solutions.empty()) parameterChanges.axpy(-1, this->m_solutions.back().back());
+    this->copyvec(this->m_solutions, vectorRefSet(1, parameters));
+    this->copyvec(m_parameterChanges, parameterChanges);
+    this->copyvec(this->m_residuals, vectorRefSet(1, gradient));
+    this->copyvec(m_preconditionedGradient, preconditionedGradient);
+    size_t n = m_parameterChanges.size();
+
+    m_ss.conservativeResize(n, n);
+    for (size_t i = 0; i < n; i++)
+      m_ss(i, n - 1) = m_ss(n - 1, i) = parameterChanges.dot(m_parameterChanges[i]);
+//    std::cout << "ss\n" << m_ss << std::endl;
+
+    m_gg.conservativeResize(n, n);
+    size_t i = 0;
+    for (const auto& g : this->m_residuals)
+      for (const auto& gg : g) {
+        m_gg(i, n - 1) = m_gg(n - 1, i) = gradient.dot(gg);
+        ++i;
+      }
+//    std::cout << "gg\n" << m_gg << std::endl;
+
+    if (m_algorithm == "null") {
+      parameters.axpy(1, preconditionedGradient);
+    } else
+      throw std::logic_error(std::string{"Invalid algorithm "} + m_algorithm);
+
+    this->m_lastVectorIndex = n - 1;
+    this->m_vector_active.push_back(std::vector<bool>(1, true));
+    if (this->m_active.empty()) this->m_active.push_back(true);
+    auto converged = this->endIteration(parameters, gradient);
+    return converged;
   }
 
  protected:
-  void solveReducedProblem() override {
-    if (m_algorithm == "null") {
-      return;
-    }
-  }
+  void solveReducedProblem() override {}
  protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
+  bool m_minimize; ///< whether to minimize or maximize
+  std::vector<T> m_parameterChanges;
+  std::vector<T> m_preconditionedGradient;
+  Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_gg;
+  Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_ss;
 
 };
 

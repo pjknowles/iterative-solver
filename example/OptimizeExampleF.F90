@@ -25,7 +25,7 @@ PROGRAM QuasiNewton_Example
     e = dot_product(c, g)
     g = g - e * c
     hg = g / ([(m(j, j), j = 1, n)] - e0 + 1d-15)
-    CALL Iterative_Solver_Add_Vector(c, g, pnull, hg)
+    converged = Iterative_Solver_QuasiNewton_Iterate(c, g, hg)
     converged = Iterative_Solver_End_Iteration(c, g, error)
     IF (converged) EXIT
   END DO

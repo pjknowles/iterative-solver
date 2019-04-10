@@ -1,5 +1,5 @@
-!> @example QuasiNewtonExampleF.F90
-!> This is an example of simplest use of the QuasiNewton framework for iterative
+!> @example OptimizeExampleF.F90
+!> This is an example of simplest use of the Optimize framework for iterative
 !> solution of non-linear equations
 !> The example makes stationary a quadratic form, so is equivalent to finding an eigenvector
 PROGRAM QuasiNewton_Example
@@ -13,7 +13,7 @@ PROGRAM QuasiNewton_Example
   DOUBLE PRECISION, DIMENSION(0,0) :: pnull
   INTEGER :: i, j
   LOGICAL :: converged
-  PRINT *, 'Fortran binding of IterativeSolver::QuasiNewton'
+  PRINT *, 'Fortran binding of IterativeSolver::Optimize'
   m = 1; DO i = 1, n; m(i, i) = 3 * i;
   END DO
   CALL Iterative_Solver_QuasiNewton_Initialize(n, thresh = 1d-11, verbosity = 1)

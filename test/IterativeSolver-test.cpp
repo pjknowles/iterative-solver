@@ -487,9 +487,9 @@ TEST(IterativeSolver_test,old)
     IterativeSolverFTest();
   }
 }
-TEST(IterativeSolver_test,QuasiNewton) {
+TEST(IterativeSolver_test,Optimize) {
   using ptype = LinearAlgebra::PagedVector<double>;
-  using scalar = typename LinearAlgebra::QuasiNewton<ptype>::scalar_type;
+  using scalar = typename LinearAlgebra::Optimize<ptype>::scalar_type;
   static struct {
     void operator()(const ptype& psx, ptype& outputs) const {
       size_t n = 2;
@@ -527,11 +527,11 @@ TEST(IterativeSolver_test,QuasiNewton) {
   ptype x(2);
   ptype g(2);
   ptype hg(2);
-  LinearAlgebra::QuasiNewton<ptype> d("null");
+  LinearAlgebra::Optimize<ptype> d("null");
   const double difficulty=.1;
   const int verbosity=5;
 
-  if (verbosity >= 0) xout << "Test QuasiNewton, difficulty=" << difficulty << std::endl;
+  if (verbosity >= 0) xout << "Test Optimize, difficulty=" << difficulty << std::endl;
   d.m_verbosity = verbosity - 1;
   std::vector<scalar> xxx(2);
   xxx[0] = xxx[1] = 1 - difficulty; // initial guess

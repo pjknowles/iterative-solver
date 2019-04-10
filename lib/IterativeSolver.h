@@ -1248,19 +1248,19 @@ class LinearEquations : public IterativeSolver<T> {
 
 };
 
-/** @example QuasiNewtonExample.cpp */
+/** @example OptimizeExample.cpp */
 /*!
-* \brief A class that minimises a function using a Quasi-Newton method
+* \brief A class that minimises a function using a Quasi-Newton or other method
  * When addVector() is called, the first and second parameters should be the current position and gradient of objective function, respectively.
  * The fourth parameter should contain the action of the initial inverse hessian on the current gradient
  * The third parameter should be empty: nullVectorP \\TODO CHECK
 *
-* Example of simplest use: @include QuasiNewtonExample.cpp
+* Example of simplest use: @include OptimizeExample.cpp
 * \tparam scalar Type of matrix elements
 *
 */
 template<class T>
-class QuasiNewton : public IterativeSolver<T> {
+class Optimize : public IterativeSolver<T> {
  public:
   using typename IterativeSolver<T>::scalar_type;
   using typename IterativeSolver<T>::value_type;
@@ -1273,7 +1273,7 @@ class QuasiNewton : public IterativeSolver<T> {
    * \brief Constructor
    * \param algorithm. Allowed values: "BFGS"
    */
-  explicit QuasiNewton(const std::string& algorithm="BFGS")
+  explicit Optimize(const std::string& algorithm="BFGS")
       : m_algorithm(algorithm) {
     this->m_linear = false;
   }
@@ -1285,7 +1285,7 @@ class QuasiNewton : public IterativeSolver<T> {
     }
   }
  protected:
-  std::string m_algorithm; ///< which variant of Quasi-Newton methods
+  std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
 
 };
 

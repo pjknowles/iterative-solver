@@ -1261,9 +1261,9 @@ class LinearEquations : public IterativeSolver<T> {
 */
 template<class T>
 class QuasiNewton : public IterativeSolver<T> {
+ public:
   using typename IterativeSolver<T>::scalar_type;
   using typename IterativeSolver<T>::value_type;
- public:
   using vectorSet = typename std::vector<T>; ///< Container of vectors
   using vectorRefSet = typename std::vector<std::reference_wrapper<T> >; ///< Container of vectors
   using constVectorRefSet = typename std::vector<std::reference_wrapper<const T> >; ///< Container of vectors
@@ -1280,6 +1280,9 @@ class QuasiNewton : public IterativeSolver<T> {
 
  protected:
   void solveReducedProblem() override {
+    if (m_algorithm == "null") {
+      return;
+    }
   }
  protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton methods

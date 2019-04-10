@@ -487,3 +487,82 @@ TEST(IterativeSolver_test,old)
     IterativeSolverFTest();
   }
 }
+TEST(IterativeSolver_test,QuasiNewton) {
+  using ptype = LinearAlgebra::PagedVector<double>;
+  using scalar = typename LinearAlgebra::QuasiNewton<ptype>::scalar_type;
+  static struct {
+    void operator()(const ptype& psx, ptype& outputs) const {
+      size_t n = 2;
+      std::vector<scalar> psxk(n);
+      std::vector<scalar> output(n);
+
+      psx.get(&(psxk[0]), n, 0);
+      output[0] = (2 * psxk[0] - 2 + 400 * psxk[0] * (psxk[0] * psxk[0] - psxk[1]));
+      output[1] = (200 * (psxk[1] - psxk[0] * psxk[0])); // Rosenbrock
+      outputs.put(&(output[0]), n, 0);
+    }
+  } _Rosenbrock_residual;
+
+  static struct {
+    void operator()(ptype& psc,
+                    const ptype& psg,
+                    std::vector<scalar> shift,
+                    bool append = true) const {
+      size_t n = 2;
+      std::vector<scalar> psck(n);
+      std::vector<scalar> psgk(n);
+      psg.get(&psgk[0], n, 0);
+      if (append) {
+        psc.get(&psck[0], n, 0);
+        psck[0] -= psgk[0] / 700;
+        psck[1] -= psgk[1] / 200;
+      } else {
+        psck[0] = -psgk[0] / 700;
+        psck[1] = -psgk[1] / 200;
+      }
+      psc.put(&psck[0], n, 0);
+//    xout << "Rosenbrock updater, new psc="<<psc<<std::endl;
+    }
+  } _Rosenbrock_updater;
+  ptype x(2);
+  ptype g(2);
+  ptype hg(2);
+  LinearAlgebra::QuasiNewton<ptype> d("null");
+  const double difficulty=.1;
+  const int verbosity=5;
+
+  if (verbosity >= 0) xout << "Test QuasiNewton, difficulty=" << difficulty << std::endl;
+  d.m_verbosity = verbosity - 1;
+  std::vector<scalar> xxx(2);
+  xxx[0] = xxx[1] = 1 - difficulty; // initial guess
+  x.put(&xxx[0], 2, 0);
+  xout << "initial guess " << x << std::endl;
+  bool converged = false;
+  for (int iteration = 1; iteration < 1000 && not converged; iteration++) {
+   xout <<"start of iteration "<<iteration<<std::endl;
+    _Rosenbrock_residual(x, g);
+    xout << "residual: " << g;
+    std::vector<scalar> shift;
+    shift.push_back(1e-10);
+    hg.scal(0);
+    _Rosenbrock_updater(hg, g, shift);
+    std::vector<double> dummy;
+    d.addVector(x, g, dummy, hg);
+    converged = d.endIteration(x, g);
+    x.get(&xxx[0], 2, 0);
+    if (verbosity > 2)
+      xout << "new x after iterate " << x << std::endl;
+    if (verbosity >= 0)
+      xout << "iteration " << iteration
+           << ", Distance from solution = " << std::sqrt((xxx[0] - 1) * (xxx[0] - 1) + (xxx[1] - 1) * (xxx[1] - 1))
+           << ", error = " << d.errors().front()
+           << ", converged? " << converged
+           << std::endl;
+//   xout <<"end of iteration "<<iteration<<std::endl;
+  }
+
+  x.get(&xxx[0], 2, 0);
+  xout << "Distance from solution = " << std::sqrt((xxx[0] - 1) * (xxx[0] - 1) + (xxx[1] - 1) * (xxx[1] - 1))
+       << std::endl;
+
+}

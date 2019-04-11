@@ -577,7 +577,7 @@ class RosenbrockTest : public testing::TestWithParam<std::string> {
 //      xout << "g: " << g;
       std::vector<scalar> shift;
       shift.push_back(1e-10);
-      if (method == "null-iterate" or method == "bfgs") {
+      if (method == "null-iterate" or method == "BFGS") {
         hg.scal(0);
         _Rosenbrock_updater(hg, g, shift);
 //        xout << "hg: " << hg;

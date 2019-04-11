@@ -1023,10 +1023,9 @@ for (auto repeat=0; repeat<3; ++repeat)
   Eigen::VectorXcd m_subspaceEigenvalues; // FIXME templating
  public:
   size_t m_dimension;
- private:
+ protected:
   unsigned int m_iterations;
   scalar_type m_singularity_threshold;
- protected:
   size_t m_added_vectors; //!< number of vectors recently added to subspace
   scalar_type
       m_augmented_hessian; //!< The scale factor for augmented hessian solution of linear inhomogeneous systems. Special values:
@@ -1298,6 +1297,7 @@ class Optimize : public IterativeSolver<T> {
     this->copyvec(this->m_residuals, vectorRefSet(1, gradient));
     this->copyvec(m_preconditionedGradient, preconditionedGradient);
     size_t n = m_parameterChanges.size();
+    this->m_iterations++;
 
     m_ss.conservativeResize(n, n);
     for (size_t i = 0; i < n; i++)

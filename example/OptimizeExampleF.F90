@@ -5,7 +5,7 @@
 PROGRAM QuasiNewton_Example
   USE Iterative_Solver
   IMPLICIT NONE
-  INTEGER, PARAMETER :: n = 1000
+  INTEGER, PARAMETER :: n = 10
   DOUBLE PRECISION, DIMENSION (n, n) :: m
   DOUBLE PRECISION, DIMENSION (n) :: c, g
   DOUBLE PRECISION :: e,e0

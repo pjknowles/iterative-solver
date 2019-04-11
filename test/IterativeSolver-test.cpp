@@ -490,6 +490,8 @@ TEST(IterativeSolver_test,old)
 TEST(IterativeSolver_test,Optimize) {
   using ptype = LinearAlgebra::PagedVector<double>;
   using scalar = typename LinearAlgebra::Optimize<ptype>::scalar_type;
+  constexpr double Rosenbrock_a = 1;
+  constexpr double Rosenbrock_b = 1;
   static struct {
     scalar operator()(const ptype& psx, ptype& outputs) const {
       size_t n = 2;
@@ -497,14 +499,15 @@ TEST(IterativeSolver_test,Optimize) {
       std::vector<scalar> output(n);
 
       psx.get(&(psxk[0]), n, 0);
-      output[0] = (2 * psxk[0] - 2 + 400 * psxk[0] * (psxk[0] * psxk[0] - psxk[1]));
-      output[1] = (200 * (psxk[1] - psxk[0] * psxk[0])); // Rosenbrock
+      output[0] = (2 * psxk[0] - 2 * Rosenbrock_a + 4 * Rosenbrock_b * psxk[0] * (psxk[0] * psxk[0] - psxk[1]));
+      output[1] = (2 * Rosenbrock_b * (psxk[1] - psxk[0] * psxk[0])); // Rosenbrock
       outputs.put(&(output[0]), n, 0);
       return (1 - psxk[0]) * (1 - psxk[0]) + 100 * (psxk[1] - psxk[0] * psxk[0]) * (psxk[1] - psxk[0] * psxk[0]);
     }
   } _Rosenbrock_residual;
 
   static struct {
+    bool diagonalHessian=false;
     void operator()(ptype& psc,
                     const ptype& psg,
                     std::vector<scalar> shift,
@@ -513,14 +516,32 @@ TEST(IterativeSolver_test,Optimize) {
       std::vector<scalar> psck(n);
       std::vector<scalar> psgk(n);
       psg.get(&psgk[0], n, 0);
-      if (append) {
+      if (append)
         psc.get(&psck[0], n, 0);
-        psck[0] -= psgk[0] / 700;
-        psck[1] -= psgk[1] / 200;
+      else
+        psck.assign(0, 0);
+      const auto& x = psck[0];
+      const auto& y = psck[1];
+      scalar dx, dy;
+      if (diagonalHessian) {
+//      dx = -psgk[0] / 7*Rosenbrock_b;
+//      dy = -psgk[1] / 2*Rosenbrock_b;
+        dx =
+            -psgk[0] / (4 + 8 * Rosenbrock_b * (x * x - y));
+        dy =
+            -psgk[1] / (4 * Rosenbrock_b)
+                - psgk[1] * x * x / (1 + 2 * Rosenbrock_b * (x * x - y));
       } else {
-        psck[0] = -psgk[0] / 700;
-        psck[1] = -psgk[1] / 200;
+        dx =
+            -psgk[0] / (4 + 8 * Rosenbrock_b * (x * x - y))
+                - psgk[1] / (4 + 4 * Rosenbrock_b * (x * x - y));
+        dy =
+            -psgk[1] / (4 * Rosenbrock_b)
+                - psgk[1] * x * x / (1 + 2 * Rosenbrock_b * (x * x - y))
+                - psgk[0] / (4 + 4 * Rosenbrock_b * (x * x - y));
       }
+      psck[0] += dx;
+      psck[1] += dy;
       psc.put(&psck[0], n, 0);
 //    xout << "Rosenbrock updater, new psc="<<psc<<std::endl;
     }
@@ -529,7 +550,7 @@ TEST(IterativeSolver_test,Optimize) {
   ptype g(2);
   ptype hg(2);
   LinearAlgebra::Optimize<ptype> d("null");
-  const double difficulty=.1;
+  const double difficulty = 1;
   const int verbosity=5;
 
   if (verbosity >= 0) xout << "Test Optimize, difficulty=" << difficulty << std::endl;
@@ -539,6 +560,7 @@ TEST(IterativeSolver_test,Optimize) {
   xxx[0] = xxx[1] = 1 - difficulty; // initial guess
   x.put(&xxx[0], 2, 0);
   xout << "initial guess " << x << std::endl;
+  _Rosenbrock_updater.diagonalHessian=false;
   bool converged = false;
   for (int iteration = 1; iteration < 50 && not converged; iteration++) {
    xout <<"start of iteration "<<iteration<<std::endl;
@@ -556,7 +578,8 @@ TEST(IterativeSolver_test,Optimize) {
       xout << "new x after iterate " << x << std::endl;
     if (verbosity >= 0)
       xout << "iteration " << iteration
-           << ", Distance from solution = " << std::sqrt((xxx[0] - 1) * (xxx[0] - 1) + (xxx[1] - 1) * (xxx[1] - 1))
+           << ", Distance from solution = " << std::sqrt(
+          (xxx[0] - Rosenbrock_a) * (xxx[0] - Rosenbrock_a) + (xxx[1] - Rosenbrock_a) * (xxx[1] - Rosenbrock_a))
            << ", error = " << d.errors().front()
            << ", converged? " << converged
            << ", value= " << value
@@ -565,7 +588,8 @@ TEST(IterativeSolver_test,Optimize) {
   }
 
   x.get(&xxx[0], 2, 0);
-  xout << "Distance from solution = " << std::sqrt((xxx[0] - 1) * (xxx[0] - 1) + (xxx[1] - 1) * (xxx[1] - 1))
+  xout << "Distance from solution = " << std::sqrt(
+      (xxx[0] - Rosenbrock_a) * (xxx[0] - Rosenbrock_a) + (xxx[1] - Rosenbrock_a) * (xxx[1] - Rosenbrock_a))
        << std::endl;
 
 }

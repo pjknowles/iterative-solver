@@ -549,47 +549,49 @@ TEST(IterativeSolver_test,Optimize) {
   ptype x(2);
   ptype g(2);
   ptype hg(2);
-  LinearAlgebra::Optimize<ptype> d("null");
   const double difficulty = 1;
   const int verbosity=5;
 
-  if (verbosity >= 0) xout << "Test Optimize, difficulty=" << difficulty << std::endl;
-  d.m_verbosity = verbosity - 1;
-  d.m_options["convergence"] = "residual";
-  std::vector<scalar> xxx(2);
-  xxx[0] = xxx[1] = 1 - difficulty; // initial guess
-  x.put(&xxx[0], 2, 0);
-  xout << "initial guess " << x << std::endl;
-  _Rosenbrock_updater.diagonalHessian=false;
-  bool converged = false;
-  for (int iteration = 1; iteration < 50 && not converged; iteration++) {
-   xout <<"start of iteration "<<iteration<<std::endl;
-    auto value = _Rosenbrock_residual(x, g);
-    std::vector<scalar> shift;
-    shift.push_back(1e-10);
-    hg.scal(0);
-    _Rosenbrock_updater(hg, g, shift);
-    xout << "x: " << x;
-    xout << "g: " << g;
-    xout << "hg: " << hg;
-    converged = d.iterate(x, g, hg, value);
-    x.get(&xxx[0], 2, 0);
-    if (verbosity > 2)
-      xout << "new x after iterate " << x << std::endl;
-    if (verbosity >= 0)
-      xout << "iteration " << iteration
-           << ", Distance from solution = " << std::sqrt(
-          (xxx[0] - Rosenbrock_a) * (xxx[0] - Rosenbrock_a) + (xxx[1] - Rosenbrock_a) * (xxx[1] - Rosenbrock_a))
-           << ", error = " << d.errors().front()
-           << ", converged? " << converged
-           << ", value= " << value
-           << std::endl;
+  for (const auto& method : std::vector<std::string>{"null"}) {
+    if (verbosity >= 0) xout << "Test Optimize, method=" << method << ", difficulty=" << difficulty << std::endl;
+    LinearAlgebra::Optimize<ptype> d(method);
+    d.m_verbosity = verbosity - 1;
+    d.m_options["convergence"] = "residual";
+    std::vector<scalar> xxx(2);
+    xxx[0] = xxx[1] = 1 - difficulty; // initial guess
+    x.put(&xxx[0], 2, 0);
+    xout << "initial guess " << x << std::endl;
+    _Rosenbrock_updater.diagonalHessian=false;
+    bool converged = false;
+    for (int iteration = 1; iteration < 50 && not converged; iteration++) {
+      xout << "start of iteration " << iteration<<std::endl;
+      auto value = _Rosenbrock_residual(x, g);
+      std::vector<scalar> shift;
+      shift.push_back(1e-10);
+      hg.scal(0);
+      _Rosenbrock_updater(hg, g, shift);
+      xout << "x: " << x;
+      xout << "g: " << g;
+      xout << "hg: " << hg;
+      converged = d.iterate(x, g, hg, value);
+      x.get(&xxx[0], 2, 0);
+      if (verbosity > 2)
+        xout << "new x after iterate " << x << std::endl;
+      if (verbosity >= 0)
+        xout << "iteration " << iteration
+            << ", Distance from solution = " << std::sqrt(
+            (xxx[0] - Rosenbrock_a) * (xxx[0] - Rosenbrock_a) + (xxx[1] - Rosenbrock_a) * (xxx[1] - Rosenbrock_a))
+            << ", error = " << d.errors().front()
+            << ", converged? " << converged
+            << ", value= " << value
+            << std::endl;
 //   xout <<"end of iteration "<<iteration<<std::endl;
+    }
+
+    x.get(&xxx[0], 2, 0);
+    xout << "Distance from solution = " << std::sqrt(
+        (xxx[0] - Rosenbrock_a) * (xxx[0] - Rosenbrock_a) + (xxx[1] - Rosenbrock_a) * (xxx[1] - Rosenbrock_a))
+         << std::endl;
+
   }
-
-  x.get(&xxx[0], 2, 0);
-  xout << "Distance from solution = " << std::sqrt(
-      (xxx[0] - Rosenbrock_a) * (xxx[0] - Rosenbrock_a) + (xxx[1] - Rosenbrock_a) * (xxx[1] - Rosenbrock_a))
-       << std::endl;
-
 }

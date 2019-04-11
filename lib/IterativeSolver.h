@@ -1326,7 +1326,12 @@ class Optimize : public IterativeSolver<T> {
   }
 
  protected:
-  void solveReducedProblem() override {}
+  void solveReducedProblem() override {
+    auto n = this->m_residuals.size();
+    this->m_interpolation.conservativeResize(n, 1);
+    this->m_interpolation.setConstant(0);
+    this->m_interpolation(n - 1) = 1;
+  }
  protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
   bool m_minimize; ///< whether to minimize or maximize

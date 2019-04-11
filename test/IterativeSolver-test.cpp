@@ -488,7 +488,7 @@ TEST(IterativeSolver_test,old)
   }
 }
 #include <regex>
-class OptimizeTest : public testing::TestWithParam<std::string> {
+class RosenbrockTest : public testing::TestWithParam<std::string> {
  public:
   using ptype = LinearAlgebra::PagedVector<double>;
   using scalar = typename LinearAlgebra::Optimize<ptype>::scalar_type;
@@ -509,7 +509,7 @@ class OptimizeTest : public testing::TestWithParam<std::string> {
   } _Rosenbrock_residual;
 
   struct {
-    bool diagonalHessian=false;
+    bool approximateHessian = false;
     void operator()(ptype& psc,
                     const ptype& psg,
                     std::vector<scalar> shift,
@@ -522,17 +522,21 @@ class OptimizeTest : public testing::TestWithParam<std::string> {
         psc.get(&psck[0], n, 0);
       else
         psck.assign(0, 0);
+//      xout << "Rosenbrock updater, initial psc=" << psc << std::endl;
+//      xout << "Rosenbrock updater, initial psg=" << psg << std::endl;
+//      xout << "Rosenbrock updater, approximateHessian=" << approximateHessian << std::endl;
       const auto& x = psck[0];
       const auto& y = psck[1];
       scalar dx, dy;
-      if (diagonalHessian) {
+      if (approximateHessian) {
 //      dx = -psgk[0] / 7*Rosenbrock_b;
 //      dy = -psgk[1] / 2*Rosenbrock_b;
-        dx =
-            -psgk[0] / (4 + 8 * Rosenbrock_b * (x * x - y));
-        dy =
-            -psgk[1] / (4 * Rosenbrock_b)
-                - psgk[1] * x * x / (1 + 2 * Rosenbrock_b * (x * x - y));
+//        dx =
+//            -psgk[0] / (4 + 8 * Rosenbrock_b * (x * x - y));
+//        dy =
+//            -psgk[1] / (4 * Rosenbrock_b)
+//                - psgk[1] * x * x / (1 + 2 * Rosenbrock_b * (x * x - y));
+        dx = dy = (-psgk[0] - psgk[1]) / 4;
       } else {
         dx =
             -psgk[0] / (4 + 8 * Rosenbrock_b * (x * x - y))
@@ -545,7 +549,7 @@ class OptimizeTest : public testing::TestWithParam<std::string> {
       psck[0] += dx;
       psck[1] += dy;
       psc.put(&psck[0], n, 0);
-//    xout << "Rosenbrock updater, new psc="<<psc<<std::endl;
+//      xout << "Rosenbrock updater, new psc=" << psc << std::endl;
     }
   } _Rosenbrock_updater;
   bool run(std::string method) {
@@ -553,7 +557,7 @@ class OptimizeTest : public testing::TestWithParam<std::string> {
     ptype x(2);
     ptype g(2);
     ptype hg(2);
-    const double difficulty = 1;
+    const double difficulty = .9;
     const int verbosity = 1;
 
     if (verbosity >= 0) xout << "Test Optimize, method=" << method << ", difficulty=" << difficulty << std::endl;
@@ -563,25 +567,27 @@ class OptimizeTest : public testing::TestWithParam<std::string> {
     std::vector<scalar> xxx(2);
     xxx[0] = xxx[1] = 1 - difficulty; // initial guess
     x.put(&xxx[0], 2, 0);
-    xout << "initial guess " << x << std::endl;
-    _Rosenbrock_updater.diagonalHessian = false;
+//    xout << "initial guess " << x << std::endl;
+    _Rosenbrock_updater.approximateHessian = true;
     bool converged = false;
     for (int iteration = 1; iteration < 50 && not converged; iteration++) {
-      xout << "start of iteration " << iteration << std::endl;
+//      xout << "start of iteration " << iteration << std::endl;
       auto value = _Rosenbrock_residual(x, g);
-      xout << "x: " << x;
-      xout << "g: " << g;
+//      xout << "x: " << x;
+//      xout << "g: " << g;
       std::vector<scalar> shift;
       shift.push_back(1e-10);
       if (method == "null-iterate" or method == "bfgs") {
-
         hg.scal(0);
         _Rosenbrock_updater(hg, g, shift);
-        xout << "hg: " << hg;
+//        xout << "hg: " << hg;
         converged = d.iterate(x, g, hg, value);
       } else {
         d.addVector(x, g);
+//        xout << "x before update " << x << std::endl;
+//        xout << "g before update " << g << std::endl;
         _Rosenbrock_updater(x, g, shift);
+//        xout << "x after update " << x << std::endl;
         converged = d.endIteration(x, g);
       }
       x.get(&xxx[0], 2, 0);
@@ -606,7 +612,7 @@ class OptimizeTest : public testing::TestWithParam<std::string> {
     return converged;
   }
 };
-INSTANTIATE_TEST_CASE_P(OptimizeTest, OptimizeTest, ::testing::Values("null-iterate", "null"));
-TEST_P(OptimizeTest, cases) {
+INSTANTIATE_TEST_CASE_P(RosenbrockTest, RosenbrockTest, ::testing::Values("null-iterate", "null"));
+TEST_P(RosenbrockTest, cases) {
   ASSERT_TRUE(run(GetParam()));
 }

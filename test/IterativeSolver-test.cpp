@@ -487,6 +487,7 @@ TEST(IterativeSolver_test,old)
     IterativeSolverFTest();
   }
 }
+#include <regex>
 TEST(IterativeSolver_test,Optimize) {
   using ptype = LinearAlgebra::PagedVector<double>;
   using scalar = typename LinearAlgebra::Optimize<ptype>::scalar_type;
@@ -552,9 +553,9 @@ TEST(IterativeSolver_test,Optimize) {
   const double difficulty = 1;
   const int verbosity=5;
 
-  for (const auto& method : std::vector<std::string>{"null"}) {
+  for (const auto& method : std::vector<std::string>{"null-iterate","null"}) {
     if (verbosity >= 0) xout << "Test Optimize, method=" << method << ", difficulty=" << difficulty << std::endl;
-    LinearAlgebra::Optimize<ptype> d(method);
+    LinearAlgebra::Optimize<ptype> d(regex_replace(method,std::regex("-.*"),""));
     d.m_verbosity = verbosity - 1;
     d.m_options["convergence"] = "residual";
     std::vector<scalar> xxx(2);
@@ -566,14 +567,21 @@ TEST(IterativeSolver_test,Optimize) {
     for (int iteration = 1; iteration < 50 && not converged; iteration++) {
       xout << "start of iteration " << iteration<<std::endl;
       auto value = _Rosenbrock_residual(x, g);
-      std::vector<scalar> shift;
-      shift.push_back(1e-10);
-      hg.scal(0);
-      _Rosenbrock_updater(hg, g, shift);
       xout << "x: " << x;
       xout << "g: " << g;
+      std::vector<scalar> shift;
+      shift.push_back(1e-10);
+      if (method=="null-iterate" or method=="bfgs") {
+
+      hg.scal(0);
+      _Rosenbrock_updater(hg, g, shift);
       xout << "hg: " << hg;
       converged = d.iterate(x, g, hg, value);
+      } else {
+        d.addVector(x,g);
+        _Rosenbrock_updater(x, g, shift);
+        converged = d.endIteration(x,g);
+      }
       x.get(&xxx[0], 2, 0);
       if (verbosity > 2)
         xout << "new x after iterate " << x << std::endl;

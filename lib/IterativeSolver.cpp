@@ -71,6 +71,28 @@ IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIteration
   instance->m_maxIterations = maxIterations;
   instance->m_verbosity = verbosity;
 }
+extern "C" void
+IterativeSolverOptimizeInitialize(size_t n,
+                                  double thresh,
+                                  unsigned int maxIterations,
+                                  int verbosity,
+                                  char* algorithm,
+                                  int minimize) {
+#ifdef HAVE_MPI_H
+  int flag;
+  MPI_Initialized(&flag);
+  if (!flag) MPI_Init(0, nullptr);
+#endif
+  if (*algorithm)
+    instance.reset(new Optimize<v>(algorithm, minimize != 0));
+  else
+    instance.reset(new Optimize<v>());
+  instance->m_dimension = n;
+  instance->m_roots = 1;
+  instance->m_thresh = thresh;
+  instance->m_maxIterations = maxIterations;
+  instance->m_verbosity = verbosity;
+}
 
 extern "C" void IterativeSolverFinalize() {
   instance.release();

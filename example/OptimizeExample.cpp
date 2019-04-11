@@ -34,16 +34,15 @@ void update(pv& psc, const pv& psg) {
 }
 
 int main(int argc, char* argv[]) {
-  alpha = 1;
+  alpha = 7;
   n = 100;
-  anharmonicity = .5;
-  n = 2;
-  anharmonicity = 0;
+  n = 5;
+  anharmonicity = 0.2;
   for (const auto& method : std::vector<std::string>{"null", "null-iterate"}) {
     std::cout << "optimize with " << method << std::endl;
     LinearAlgebra::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_verbosity = 1;
-    solver.m_maxIterations = 10;
+    solver.m_maxIterations = 50;
     pv g(n);
     pv x(n);
     pv hg(n);

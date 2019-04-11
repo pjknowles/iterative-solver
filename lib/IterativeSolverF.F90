@@ -3,6 +3,7 @@ MODULE Iterative_Solver
   USE iso_c_binding
   PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize, Iterative_Solver_Finalize
   PUBLIC :: Iterative_Solver_DIIS_Initialize, Iterative_Solver_Linear_Equations_Initialize
+  PUBLIC :: Iterative_Solver_Optimize_Initialize
   PUBLIC :: Iterative_Solver_Add_Vector, Iterative_Solver_End_Iteration
   PUBLIC :: Iterative_Solver_Add_P, Iterative_Solver_Suggest_P
   PUBLIC :: Iterative_Solver_Eigenvalues
@@ -109,6 +110,73 @@ CONTAINS
     CALL Iterative_Solver_Linear_Equations_InitializeC(m_nq, m_nroot, rhs, augmented_hessianC, threshC, maxIterationsC, &
         verbosityC, orthogonalizeC)
   END SUBROUTINE Iterative_Solver_Linear_Equations_Initialize
+
+  !> \brief Optimization
+  !> through the BFGS or related methods.
+  !> Example of simplest use: @include OptimizeExampleF.F90
+  SUBROUTINE Iterative_Solver_Optimize_Initialize(nq, thresh, maxIterations, verbosity, algorithm, minimize)
+    INTEGER, INTENT(in) :: nq !< dimension of parameter space
+    DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
+    INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
+    INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
+    CHARACTER(*), INTENT(in), OPTIONAL :: algorithm !< keyword specifying optimization algorithm
+    LOGICAL, INTENT(in), OPTIONAL :: minimize !< whether to minimize (default) or maximize
+    !< One gives a single progress-report line each iteration.
+    INTERFACE
+      SUBROUTINE Iterative_Solver_Optimize_InitializeC(nq, thresh, maxIterations, verbosity, algorithm, minimize) &
+          BIND(C, name = 'IterativeSolverOptimizeInitialize')
+        USE iso_c_binding
+        INTEGER(C_size_t), INTENT(in), VALUE :: nq
+        REAL(c_double), INTENT(in), VALUE :: thresh
+        INTEGER(C_int), INTENT(in), VALUE :: maxIterations
+        INTEGER(C_int), INTENT(in), VALUE :: verbosity
+        INTEGER(C_int), INTENT(in), VALUE :: minimize
+        CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: algorithm
+      END SUBROUTINE Iterative_Solver_Optimize_InitializeC
+    END INTERFACE
+    INTEGER(c_int) :: verbosityC, maxIterationsC, minimizeC
+    REAL(c_double) :: threshC
+    CHARACTER(LEN=128) :: algorith
+    m_nq = INT(nq, kind = c_size_t)
+    m_nroot = 1
+    IF (PRESENT(thresh)) THEN
+      threshC = thresh
+    ELSE
+      threshC = 0
+    END IF
+    IF (PRESENT(maxIterations)) THEN
+      maxIterationsC = INT(maxIterations, kind = c_int)
+    ELSE
+      maxIterationsC = 0
+    END IF
+    IF (PRESENT(verbosity)) THEN
+      verbosityC = INT(verbosity, kind = c_int)
+    ELSE
+      verbosityC = 0
+    END IF
+    IF (PRESENT(algorithm)) THEN
+      algorith = algorithm
+    ELSE
+      algorith = ""
+    END IF
+    minimize_C = 1
+    IF (PRESENT(minimize)) THEN
+      IF (.NOT. minimize) minimizeC = 0
+    END IF
+    CALL Iterative_Solver_Optimize_InitializeC(m_nq, threshC, maxIterationsC, verbosityC, c_string_c(algorith),minimizeC)
+  CONTAINS
+    FUNCTION c_string_c(fstring)
+      CHARACTER(*), INTENT(in) :: fstring
+      CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: c_string_c
+      INTEGER :: i
+      ALLOCATE(CHARACTER(kind = c_char) :: c_string_c(len_TRIM(fstring) + 1))
+      DO i = 1, len_TRIM(fstring)
+        c_string_c(i) = fstring(i:i)
+      END DO
+      c_string_c(len_TRIM(fstring) + 1) = c_null_char
+    END FUNCTION c_string_c
+  END SUBROUTINE Iterative_Solver_Optimize_Initialize
+
 
   !> \brief Accelerated convergence of non-linear equations
   !> through the DIIS or related methods.

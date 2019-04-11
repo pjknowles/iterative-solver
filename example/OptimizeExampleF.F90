@@ -7,16 +7,15 @@ PROGRAM QuasiNewton_Example
   IMPLICIT NONE
   INTEGER, PARAMETER :: n = 1000
   DOUBLE PRECISION, DIMENSION (n, n) :: m
-  DOUBLE PRECISION, DIMENSION (n) :: c, g, hg
+  DOUBLE PRECISION, DIMENSION (n) :: c, g
   DOUBLE PRECISION :: e,e0
   DOUBLE PRECISION, DIMENSION(1) :: error
-  DOUBLE PRECISION, DIMENSION(0,0) :: pnull
   INTEGER :: i, j
   LOGICAL :: converged
   PRINT *, 'Fortran binding of IterativeSolver::Optimize'
   m = 1; DO i = 1, n; m(i, i) = 3 * i;
   END DO
-  CALL Iterative_Solver_QuasiNewton_Initialize(n, thresh = 1d-11, verbosity = 1)
+  CALL Iterative_Solver_Optimize_Initialize(n, thresh = 1d-11, verbosity = 8, algorithm="null")
   c = 0; c(1) = 1
   e0 = m(1,1)
   DO i = 1, n
@@ -24,8 +23,11 @@ PROGRAM QuasiNewton_Example
     g = MATMUL(m, c)
     e = dot_product(c, g)
     g = g - e * c
-    hg = g / ([(m(j, j), j = 1, n)] - e0 + 1d-15)
-    converged = Iterative_Solver_QuasiNewton_Iterate(c, g, hg)
+    write (6,*) 'c ',c
+    write (6,*) 'g ',g
+    CALL Iterative_Solver_Add_Vector(c, g)
+    c = c - g / ([(m(j, j), j = 1, n)] - e0 + 1d-15)
+    write (6,*) 'c ',c
     converged = Iterative_Solver_End_Iteration(c, g, error)
     IF (converged) EXIT
   END DO

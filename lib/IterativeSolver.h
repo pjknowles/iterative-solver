@@ -1561,6 +1561,9 @@ IterativeSolverLinearEquationsInitialize(size_t n,
 extern "C" void
 IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity);
 
+extern "C" void
+IterativeSolverOptimizeInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity, char* algorithm, int minimize);
+
 extern "C" void IterativeSolverFinalize();
 
 extern "C" void

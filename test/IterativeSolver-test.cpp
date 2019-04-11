@@ -488,12 +488,13 @@ TEST(IterativeSolver_test,old)
   }
 }
 #include <regex>
-TEST(IterativeSolver_test,Optimize) {
+class OptimizeTest : public testing::TestWithParam<std::string> {
+ public:
   using ptype = LinearAlgebra::PagedVector<double>;
   using scalar = typename LinearAlgebra::Optimize<ptype>::scalar_type;
-  constexpr double Rosenbrock_a = 1;
-  constexpr double Rosenbrock_b = 1;
-  static struct {
+  static constexpr double Rosenbrock_a = 1;
+  static constexpr double Rosenbrock_b = 1;
+  struct {
     scalar operator()(const ptype& psx, ptype& outputs) const {
       size_t n = 2;
       std::vector<scalar> psxk(n);
@@ -507,7 +508,7 @@ TEST(IterativeSolver_test,Optimize) {
     }
   } _Rosenbrock_residual;
 
-  static struct {
+  struct {
     bool diagonalHessian=false;
     void operator()(ptype& psc,
                     const ptype& psg,
@@ -547,52 +548,53 @@ TEST(IterativeSolver_test,Optimize) {
 //    xout << "Rosenbrock updater, new psc="<<psc<<std::endl;
     }
   } _Rosenbrock_updater;
-  ptype x(2);
-  ptype g(2);
-  ptype hg(2);
-  const double difficulty = 1;
-  const int verbosity=5;
+  bool run(std::string method) {
 
-  for (const auto& method : std::vector<std::string>{"null-iterate","null"}) {
+    ptype x(2);
+    ptype g(2);
+    ptype hg(2);
+    const double difficulty = 1;
+    const int verbosity = 1;
+
     if (verbosity >= 0) xout << "Test Optimize, method=" << method << ", difficulty=" << difficulty << std::endl;
-    LinearAlgebra::Optimize<ptype> d(regex_replace(method,std::regex("-.*"),""));
+    LinearAlgebra::Optimize<ptype> d(regex_replace(method, std::regex("-.*"), ""));
     d.m_verbosity = verbosity - 1;
     d.m_options["convergence"] = "residual";
     std::vector<scalar> xxx(2);
     xxx[0] = xxx[1] = 1 - difficulty; // initial guess
     x.put(&xxx[0], 2, 0);
     xout << "initial guess " << x << std::endl;
-    _Rosenbrock_updater.diagonalHessian=false;
+    _Rosenbrock_updater.diagonalHessian = false;
     bool converged = false;
     for (int iteration = 1; iteration < 50 && not converged; iteration++) {
-      xout << "start of iteration " << iteration<<std::endl;
+      xout << "start of iteration " << iteration << std::endl;
       auto value = _Rosenbrock_residual(x, g);
       xout << "x: " << x;
       xout << "g: " << g;
       std::vector<scalar> shift;
       shift.push_back(1e-10);
-      if (method=="null-iterate" or method=="bfgs") {
+      if (method == "null-iterate" or method == "bfgs") {
 
-      hg.scal(0);
-      _Rosenbrock_updater(hg, g, shift);
-      xout << "hg: " << hg;
-      converged = d.iterate(x, g, hg, value);
+        hg.scal(0);
+        _Rosenbrock_updater(hg, g, shift);
+        xout << "hg: " << hg;
+        converged = d.iterate(x, g, hg, value);
       } else {
-        d.addVector(x,g);
+        d.addVector(x, g);
         _Rosenbrock_updater(x, g, shift);
-        converged = d.endIteration(x,g);
+        converged = d.endIteration(x, g);
       }
       x.get(&xxx[0], 2, 0);
       if (verbosity > 2)
         xout << "new x after iterate " << x << std::endl;
       if (verbosity >= 0)
         xout << "iteration " << iteration
-            << ", Distance from solution = " << std::sqrt(
+             << ", Distance from solution = " << std::sqrt(
             (xxx[0] - Rosenbrock_a) * (xxx[0] - Rosenbrock_a) + (xxx[1] - Rosenbrock_a) * (xxx[1] - Rosenbrock_a))
-            << ", error = " << d.errors().front()
-            << ", converged? " << converged
-            << ", value= " << value
-            << std::endl;
+             << ", error = " << d.errors().front()
+             << ", converged? " << converged
+             << ", value= " << value
+             << std::endl;
 //   xout <<"end of iteration "<<iteration<<std::endl;
     }
 
@@ -601,5 +603,10 @@ TEST(IterativeSolver_test,Optimize) {
         (xxx[0] - Rosenbrock_a) * (xxx[0] - Rosenbrock_a) + (xxx[1] - Rosenbrock_a) * (xxx[1] - Rosenbrock_a))
          << std::endl;
 
+    return converged;
   }
+};
+INSTANTIATE_TEST_CASE_P(OptimizeTest, OptimizeTest, ::testing::Values("null-iterate", "null"));
+TEST_P(OptimizeTest, cases) {
+  ASSERT_TRUE(run(GetParam()));
 }

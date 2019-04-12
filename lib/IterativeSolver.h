@@ -1279,6 +1279,11 @@ class Optimize : public IterativeSolver<T> {
       : m_algorithm(algorithm), m_minimize(minimize) {
     this->m_linear = false;
     this->m_orthogonalize = false;
+    this->m_residual_rhs = false;
+    this->m_residual_eigen = false;
+    this->m_orthogonalize = false;
+    this->m_roots = 1;
+    this->m_subspaceMatrixResRes = true;
   }
 
   /*!

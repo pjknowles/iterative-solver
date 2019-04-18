@@ -1483,7 +1483,7 @@ class DIIS : public IterativeSolver<T> {
   DIIS()
       : m_maxDim(6), m_LastResidualNormSq(0), m_LastAmplitudeCoeff(1) {
     this->m_residual_rhs = false;
-    this->m_difference_vectors = true;
+    this->m_difference_vectors = false;
     this->m_residual_eigen = false;
     this->m_orthogonalize = false;
     this->m_roots = 1;

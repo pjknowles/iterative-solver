@@ -773,29 +773,29 @@ class IterativeSolver {
               xout << "IterativeSolver::doInterpolation kkk=" << kkk << ", ll=" << ll << ", lll=" << lll << ", l=" << l
                    << std::endl;
             if (m_verbosity > 3) xout << "Interpolation:\n" << this->m_interpolation(l, kkk) << std::endl;
-            xout << "residual before interpolation contribution " << residual[kkk].get() << std::endl;
+//            xout << "residual before interpolation contribution " << residual[kkk].get() << std::endl;
             solution[kkk].get().axpy(this->m_interpolation(l, kkk), this->m_solutions[ll][lll]);
             residual[kkk].get().axpy(this->m_interpolation(l, kkk), this->m_residuals[ll][lll]);
-            xout << "residual after interpolation contribution " << residual[kkk].get() << std::endl;
-            xout << "residual after interpolation contribution " << residual[kkk].get() << std::endl;
+//            xout << "residual after interpolation contribution " << residual[kkk].get() << std::endl;
+//            xout << "residual after interpolation contribution " << residual[kkk].get() << std::endl;
             if (other.size() > kkk) other[kkk].get().axpy(this->m_interpolation(l, kkk), this->m_others[ll][lll]);
             l++;
           }
         }
       }
-      xout << "residual before axpy " << residual[kkk].get() << std::endl;
+//      xout << "residual before axpy " << residual[kkk].get() << std::endl;
 //      xout << "square norm of solution after Q contribution " << solution[kkk]->dot(*solution[kkk]) << std::endl;
 //      xout << "m_residual_eigen " << m_residual_eigen << std::endl;
 //      xout << "g.w before axpy contribution " << solution[kkk]->dot(*residual[kkk]) << std::endl;
       if (m_residual_eigen || (m_residual_rhs && m_augmented_hessian > 0))
         residual[kkk].get().axpy(-this->m_subspaceEigenvalues(kkk).real(), solution[kkk]);
       if (m_residual_rhs) residual[kkk].get().axpy(-1, this->m_rhs[kkk]);
-      xout << "residual after axpy " << residual[kkk].get() << std::endl;
+//      xout << "residual after axpy " << residual[kkk].get() << std::endl;
       if (m_difference_vectors) residual[kkk].get().axpy(1, this->m_last_residual[kkk]);
 //      if (m_difference_vectors) solution[kkk].get().axpy(1, this->m_last_solution[kkk]);
       if (m_difference_vectors) solution[kkk].get() = this->m_last_solution[kkk];
-      xout << "last_residual " << this->m_last_residual[kkk] << std::endl;
-      xout << "residual after last_residual " << residual[kkk].get() << std::endl;
+//      xout << "last_residual " << this->m_last_residual[kkk] << std::endl;
+//      xout << "residual after last_residual " << residual[kkk].get() << std::endl;
 //      xout << "solution after axpy "<<solution[kkk]<<std::endl;
 //      xout << "square norm of solution after axpy contribution " << solution[kkk]->dot(*solution[kkk]) << std::endl;
 //      xout << "g.w after axpy contribution " << solution[kkk]->dot(*residual[kkk]) << std::endl;
@@ -1406,51 +1406,51 @@ class Optimize : public IterativeSolver<T> {
     auto& minusAlpha = this->m_interpolation;
     minusAlpha.conservativeResize(n, 1);
     minusAlpha.setConstant(0);
-    xout << "m_subspaceMatrix\n" << this->m_subspaceMatrix << std::endl;
-    xout << "m_subspaceGradient\n" << this->m_subspaceGradient << std::endl;
+//    xout << "m_subspaceMatrix\n" << this->m_subspaceMatrix << std::endl;
+//    xout << "m_subspaceGradient\n" << this->m_subspaceGradient << std::endl;
     if (this->m_algorithm == "BFGS") {
       for (int i = n - 1; i >= 0; i--) {
         minusAlpha(i, 0) = -this->m_subspaceGradient(i, 0);
-        xout << "calculate alpha i="<<i<<", t contribution"<<minusAlpha(i,0)<<std::endl;
+//        xout << "calculate alpha i="<<i<<", t contribution"<<minusAlpha(i,0)<<std::endl;
         for (size_t j = i + 1; j < n; j++) {
           minusAlpha(i, 0) -= minusAlpha(j, 0) * this->m_subspaceMatrix(i, j);
-        xout << "calculate alpha j="<<j<<", alpha(j) "<<minusAlpha(j,0)<<std::endl;
+//        xout << "calculate alpha j="<<j<<", alpha(j) "<<minusAlpha(j,0)<<std::endl;
         }
         minusAlpha(i, 0) /= this->m_subspaceMatrix(i, i);
       }
-      xout << "minusAlpha: " << minusAlpha << std::endl;
+//      xout << "minusAlpha: " << minusAlpha << std::endl;
     }
   }
  public:
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
-    xout << "Optimize::endIteration" << std::endl;
+//    xout << "Optimize::endIteration" << std::endl;
     if (m_algorithm == "BFGS" and this->m_interpolation.size() > 0) {
 //      solution.back().get().scal(0);
-      xout << "provided solution: " << solution.front().get() << std::endl;
-      xout << "provided residual: " << residual.front().get() << std::endl;
+//      xout << "provided solution: " << solution.front().get() << std::endl;
+//      xout << "provided residual: " << residual.front().get() << std::endl;
       solution.back().get().axpy(-1, this->m_last_solution.back());
 //      solution.back().get().scal(0);
-      xout << "BFGS" << std::endl;
+//      xout << "BFGS" << std::endl;
       auto& minusAlpha = this->m_interpolation;
       size_t l = 0;
       for (size_t ll = 0; ll < this->m_residuals.size(); ll++) {
         for (size_t lll = 0; lll < this->m_residuals[ll].size(); lll++) {
           if (this->m_vector_active[ll][lll]) {
             auto factor = minusAlpha(l, 0) - this->m_residuals[ll][lll].dot(solution.back().get()) / this->m_subspaceMatrix(l, l);
-            xout << "minusAlpha="<< -minusAlpha(l, 0) <<" beta="<< this->m_residuals[ll][lll].dot(solution.back().get()) / this->m_subspaceMatrix(l, l)<<std::endl;
-            xout << "factor="<<factor<<std::endl;
-            xout << "solution "<<solution.back().get()<<std::endl;
-            xout <<"y: "<<this->m_residuals[ll][lll]<<std::endl;
+//            xout << "minusAlpha="<< -minusAlpha(l, 0) <<" beta="<< this->m_residuals[ll][lll].dot(solution.back().get()) / this->m_subspaceMatrix(l, l)<<std::endl;
+//            xout << "factor="<<factor<<std::endl;
+//            xout << "solution "<<solution.back().get()<<std::endl;
+//            xout <<"y: "<<this->m_residuals[ll][lll]<<std::endl;
             solution.back().get().axpy(factor, this->m_solutions[ll][lll]);
-            xout << "solution after increment "<<solution.back().get()<<std::endl;
+//            xout << "solution after increment "<<solution.back().get()<<std::endl;
             l++;
           }
         }
       }
-      xout << "update: " << solution.back().get() << std::endl;
-      xout << "old solution: " << this->m_last_solution.front() << std::endl;
+//      xout << "update: " << solution.back().get() << std::endl;
+//      xout << "old solution: " << this->m_last_solution.front() << std::endl;
       solution.back().get().axpy(1, this->m_last_solution.front());
-      xout << "new solution: " << solution.back().get() << std::endl;
+//      xout << "new solution: " << solution.back().get() << std::endl;
     }
     return IterativeSolver<T>::endIteration(solution, residual);
   }

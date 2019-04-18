@@ -1354,6 +1354,7 @@ class Optimize : public IterativeSolver<T> {
     this->m_orthogonalize = false;
     this->m_roots = 1;
     this->m_subspaceMatrixResRes = false;
+    this->m_singularity_threshold = 0;
   }
 
   /*!
@@ -1410,8 +1411,11 @@ class Optimize : public IterativeSolver<T> {
     if (this->m_algorithm == "BFGS") {
       for (int i = n - 1; i >= 0; i--) {
         minusAlpha(i, 0) = -this->m_subspaceGradient(i, 0);
-        for (size_t j = i + 1; j < n - 1; j++)
+        xout << "calculate alpha i="<<i<<", t contribution"<<minusAlpha(i,0)<<std::endl;
+        for (size_t j = i + 1; j < n; j++) {
           minusAlpha(i, 0) -= minusAlpha(j, 0) * this->m_subspaceMatrix(i, j);
+        xout << "calculate alpha j="<<j<<", alpha(j) "<<minusAlpha(j,0)<<std::endl;
+        }
         minusAlpha(i, 0) /= this->m_subspaceMatrix(i, i);
       }
       xout << "minusAlpha: " << minusAlpha << std::endl;

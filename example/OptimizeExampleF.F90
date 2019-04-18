@@ -1,7 +1,8 @@
 !> @example OptimizeExampleF.F90
 !> This is an example of simplest use of the Optimize framework for iterative
-!> solution of non-linear equations
-!> The example makes stationary a quadratic form, so is equivalent to finding an eigenvector
+!> solution of non-linear equations.
+!> With forced=.false., the example makes stationary a normalised quadratic form, so is equivalent to finding an eigenvector.
+!> With forced=.true., the example makes stationary a quadratic form plus a linear force.
 PROGRAM QuasiNewton_Example
   USE Iterative_Solver
   IMPLICIT NONE
@@ -13,7 +14,6 @@ PROGRAM QuasiNewton_Example
   INTEGER :: i, j
   LOGICAL :: converged
   LOGICAL, PARAMETER :: forced = .FALSE.
-!  DOUBLE PRECISION, PARAMETER :: penalty = 1e-1
   PRINT *, 'Fortran binding of IterativeSolver::Optimize'
   m = 1; DO i = 1, n; m(i, i) = 3*i;
   END DO
@@ -30,20 +30,11 @@ PROGRAM QuasiNewton_Example
       e = dot_product(c, g) / dot_product(c, c)
       g = (g - e * c) / dot_product(c, c)
     end if
-    write (6, *) 'e ', e
+    write (6, *) 'function value ',e
     CALL Iterative_Solver_Add_Vector(c, g)
     if (forced) then
       c = c - g / [(m(j, j), j = 1, n)]
     else
-!      block
-!        double precision :: numerator, denominator
-!        double precision :: shift
-!        shift = 0.5d0*penalty*(dot_product(c,c)-1)
-!        numerator =     sum([(c(j)*g(j)/(m(j,j)-e+1d-15+shift),j=1,n)])*penalty
-!        denominator = 1+sum([(c(j)**2/(m(j,j)-e+1d-15+shift),j=1,n)])*penalty
-!        c = c - g / ([(m(j, j), j = 1, n)] - e + 1d-15) &
-!            + (numerator/denominator) * c / ([(m(j, j), j = 1, n)] - e + 1d-15+shift)
-!      end block
       c = c - g / ([(m(j, j), j = 1, n)] - e + 1d-15) &
           + (sum([(c(j)*g(j),j=1,n)])/sum([(c(j)**2,j=1,n)])) * c &
               / ([(m(j, j), j = 1, n)] - e + 1d-15)
@@ -51,9 +42,7 @@ PROGRAM QuasiNewton_Example
     converged = Iterative_Solver_End_Iteration(c, g, error)
     IF (converged) EXIT
   END DO
-  PRINT *, 'error =', error
   if (.not. forced) c = c / sqrt(dot_product(c, c))
   PRINT *, 'solution ', c(1:MIN(n, 10))
-  print *, 'expectation ', e
   CALL Iterative_Solver_Finalize
 END PROGRAM QuasiNewton_Example

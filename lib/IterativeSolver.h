@@ -345,13 +345,13 @@ class IterativeSolver {
     report();
     return m_error < m_thresh;
   }
-  bool endIteration(std::vector<T>& solution, const std::vector<T>& residual) {
+  virtual bool endIteration(std::vector<T>& solution, const std::vector<T>& residual) {
     return endIteration(
         vectorRefSet(solution.begin(), solution.end()),
         constVectorRefSet(residual.begin(), residual.end())
     );
   }
-  bool endIteration(T& solution, const T& residual) {
+  virtual bool endIteration(T& solution, const T& residual) {
     return endIteration(
         vectorRefSet(1, solution),
         constVectorRefSet(1, residual)
@@ -1454,6 +1454,13 @@ class Optimize : public IterativeSolver<T> {
     }
     return IterativeSolver<T>::endIteration(solution, residual);
   }
+  virtual bool endIteration(T& solution, const T& residual) override {
+    return endIteration(
+        vectorRefSet(1, solution),
+        constVectorRefSet(1, residual)
+    );
+  }
+
 
  protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton or other methods

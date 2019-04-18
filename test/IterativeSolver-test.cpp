@@ -509,7 +509,7 @@ class RosenbrockTest : public testing::TestWithParam<std::string> {
   } _Rosenbrock_residual;
 
   struct {
-    bool approximateHessian = false;
+    bool approximateHessian = true;
     void operator()(ptype& psc,
                     const ptype& psg,
                     std::vector<scalar> shift,
@@ -577,7 +577,7 @@ class RosenbrockTest : public testing::TestWithParam<std::string> {
 //      xout << "g: " << g;
       std::vector<scalar> shift;
       shift.push_back(1e-10);
-      if (method == "null-iterate" or method == "BFGS") {
+      if (method == "null-iterate") {
         hg.scal(0);
         _Rosenbrock_updater(hg, g, shift);
 //        xout << "hg: " << hg;
@@ -612,7 +612,7 @@ class RosenbrockTest : public testing::TestWithParam<std::string> {
     return converged;
   }
 };
-INSTANTIATE_TEST_CASE_P(RosenbrockTest, RosenbrockTest, ::testing::Values("null-iterate", "null"));
+INSTANTIATE_TEST_CASE_P(RosenbrockTest, RosenbrockTest, ::testing::Values("null", "BFGS"));
 TEST_P(RosenbrockTest, cases) {
   ASSERT_TRUE(run(GetParam()));
 }

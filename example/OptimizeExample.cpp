@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
   n = 100;
   n = 5;
   anharmonicity = 0.2;
-  for (const auto& method : std::vector<std::string>{"null", "null-iterate"}) {
+  for (const auto& method : std::vector<std::string>{"null", "BFGS"}) {
     std::cout << "optimize with " << method << std::endl;
     LinearAlgebra::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_verbosity = 1;
@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
     x.put(&zero, 1, 0);  // initial guess
     for (size_t iter = 0; iter < solver.m_maxIterations; ++iter) {
       anharmonic_residual(x, g);
-      if (method == "null-iterate" or method == "BFGS") {
+      if (method == "null-iterate") {
         hg.scal(0);
         update(hg, g);
         if (solver.iterate(x, g, hg, 0)) break; //TODO implement function value

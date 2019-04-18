@@ -1341,8 +1341,8 @@ class Optimize : public IterativeSolver<T> {
 
   /*!
    * \brief Constructor
-   * \param algorithm. Allowed values: "BFGS","null"
-   * \param minimize. If false, a maximum, not minimum, will be sought
+   * \param algorithm Allowed values: "BFGS","null"
+   * \param minimize If false, a maximum, not minimum, will be sought
    */
   explicit Optimize(const std::string& algorithm = "BFGS", bool minimize = true)
       : m_algorithm(algorithm), m_minimize(minimize) {

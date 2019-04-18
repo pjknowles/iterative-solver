@@ -35,7 +35,7 @@ PROGRAM QuasiNewton_Example
     if (forced) then
       c = c - g / [(m(j, j), j = 1, n)]
     else
-      block
+!      block
 !        double precision :: numerator, denominator
 !        double precision :: shift
 !        shift = 0.5d0*penalty*(dot_product(c,c)-1)
@@ -43,10 +43,10 @@ PROGRAM QuasiNewton_Example
 !        denominator = 1+sum([(c(j)**2/(m(j,j)-e+1d-15+shift),j=1,n)])*penalty
 !        c = c - g / ([(m(j, j), j = 1, n)] - e + 1d-15) &
 !            + (numerator/denominator) * c / ([(m(j, j), j = 1, n)] - e + 1d-15+shift)
+!      end block
       c = c - g / ([(m(j, j), j = 1, n)] - e + 1d-15) &
           + (sum([(c(j)*g(j),j=1,n)])/sum([(c(j)**2,j=1,n)])) * c &
               / ([(m(j, j), j = 1, n)] - e + 1d-15)
-      end block
     end if
     converged = Iterative_Solver_End_Iteration(c, g, error)
     IF (converged) EXIT

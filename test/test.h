@@ -11,7 +11,9 @@ class MPIEnvironment : public ::testing::Environment {
  public:
   virtual void SetUp() {
 #ifdef HAVE_MPI_H
-    int mpiError = MPI_Init(nullptr, nullptr);
+    int result;
+    MPI_Initialized(&result);
+    int mpiError = result ? 0 : MPI_Init(nullptr, nullptr);
     ASSERT_FALSE(mpiError);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);

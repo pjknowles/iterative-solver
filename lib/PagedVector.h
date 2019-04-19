@@ -161,6 +161,8 @@ class PagedVector {
   int mpi_size() {
 #ifdef HAVE_MPI_H
     int result;
+    MPI_Initialized(&result);
+    if (!result) MPI_Init(0,nullptr);
     MPI_Comm_size(m_communicator, &result);
 #else
     int result = 1;
@@ -522,7 +524,7 @@ class PagedVector {
       if (m_cache.io && other.m_cache.io) {
         auto l = std::min(m_cache.preferred_length, other.m_cache.preferred_length);
         for (other.m_cache.move(0, l), m_cache.move(other.m_segment_offset,
-                                                   l); other.m_cache.length; ++m_cache, ++other.m_cache) {
+                                                    l); other.m_cache.length; ++m_cache, ++other.m_cache) {
           for (size_t i = 0; i < other.m_cache.length; i++)
             m_cache.buffer[i] += a * other.m_cache.buffer[i];
           m_cache.dirty = true;
@@ -655,7 +657,7 @@ class PagedVector {
         if (m_cache.io && other.m_cache.io) {
           auto l = std::min(m_cache.preferred_length, other.m_cache.preferred_length);
           for (other.m_cache.move(0, l), m_cache.move(other.m_segment_offset,
-                                                     l); other.m_cache.length; ++m_cache, ++other.m_cache) {
+                                                      l); other.m_cache.length; ++m_cache, ++other.m_cache) {
             for (size_t i = 0; i < other.m_cache.length; i++)
               result += m_cache.buffer[i] * other.m_cache.buffer[i];
           }
@@ -678,7 +680,8 @@ class PagedVector {
       } else { // this is not replicated, other is replicated
         if (m_cache.io && other.m_cache.io) {
           auto l = std::min(m_cache.preferred_length, other.m_cache.preferred_length);
-          for (other.m_cache.move(m_segment_offset, l), m_cache.move(0, l); m_cache.length; ++m_cache, ++other.m_cache) {
+          for (other.m_cache.move(m_segment_offset, l), m_cache.move(0, l); m_cache.length;
+               ++m_cache, ++other.m_cache) {
             for (size_t i = 0; i < m_cache.length; i++)
               result += m_cache.buffer[i] * other.m_cache.buffer[i];
           }
@@ -702,13 +705,13 @@ class PagedVector {
     }
 #ifdef HAVE_MPI_H
     //    std::cout <<m_mpi_rank<<" dot result before reduce="<<result<<std::endl;
-        if (!m_replicated || !other.m_replicated) {
-          double resultLocal = result;
-          double resultGlobal = result;
-          MPI_Allreduce(&resultLocal, &resultGlobal, 1, MPI_DOUBLE, MPI_SUM, m_communicator);
-          result = resultGlobal;
-    //    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
-        }
+    if (!m_replicated || !other.m_replicated) {
+      double resultLocal = result;
+      double resultGlobal = result;
+      MPI_Allreduce(&resultLocal, &resultGlobal, 1, MPI_DOUBLE, MPI_SUM, m_communicator);
+      result = resultGlobal;
+      //    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
+    }
 #endif
     return result;
   }

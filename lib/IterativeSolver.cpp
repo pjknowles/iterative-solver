@@ -3,8 +3,8 @@
 #include <memory>
 
 // C interface to IterativeSolver
-namespace LinearAlgebra {
-using v = PagedVector<double>;
+namespace IterativeSolver {
+using v = LinearAlgebra::PagedVector<double>;
 
 static std::unique_ptr<IterativeSolver<v> > instance;
 

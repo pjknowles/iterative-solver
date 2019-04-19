@@ -5,7 +5,7 @@
 #include "PagedVector.h"
 #include "SimpleVector.h"
 #include "OpaqueVector.h"
-namespace LinearAlgebra {
+namespace IterativeSolver {
 /*!
  * \brief Test iterative solution of linear eigenvalue problem
  * \param dimension The dimension of the test matrix
@@ -23,8 +23,8 @@ static void DavidsonTest(size_t dimension,
                          int problem = 0,
                          bool orthogonalize = true) {
 
-  using scalar = typename LinearAlgebra::LinearEigensystem<ptype>::scalar_type;
-  using element = typename LinearAlgebra::LinearEigensystem<ptype>::value_type;
+  using scalar = typename LinearEigensystem<ptype>::scalar_type;
+  using element = typename LinearEigensystem<ptype>::value_type;
   using vectorSet = std::vector<ptype>;
   static Eigen::Matrix<element, Eigen::Dynamic, Eigen::Dynamic> testmatrix;
 
@@ -453,37 +453,37 @@ static std::unique_ptr<std::ofstream> out;
 TEST(IterativeSolver_test,old)
  {
   if (true) {
-    using namespace LinearAlgebra;
+    using namespace IterativeSolver;
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.2,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
-//  LinearAlgebra::DIIS<double>::randomTest(100,100,0.1,3.0);
-    DIISTest<PagedVector<double> >(2, 6, 1e-10, LinearAlgebra::DIIS<PagedVector<double> >::DIISmode, 0.0002);
+//  IterativeSolver::DIIS<double>::randomTest(100,100,0.1,3.0);
+    DIISTest<LinearAlgebra::PagedVector<double> >(2, 6, 1e-10, DIIS<LinearAlgebra::PagedVector<double> >::DIISmode, 0.0002);
 //  MPI_Abort(MPI_COMM_WORLD,1);
-//  DIISTest<PagedVector<double> >(1,6,1e-10,LinearAlgebra::DIIS<PagedVector<double> >::DIISmode,0.2);
-//  DIISTest<PagedVector<double> >(1,6,1e-3,LinearAlgebra::DIIS<PagedVector<double> >::disabled,0.0002);
-//   DavidsonTest<PagedVector<double> >(2,2,2,2,false);
+//  DIISTest<LinearAlgebra::PagedVector<double> >(1,6,1e-10,IterativeSolver::DIIS<LinearAlgebra::PagedVector<double> >::DIISmode,0.2);
+//  DIISTest<LinearAlgebra::PagedVector<double> >(1,6,1e-3,IterativeSolver::DIIS<LinearAlgebra::PagedVector<double> >::disabled,0.0002);
+//   DavidsonTest<LinearAlgebra::PagedVector<double> >(2,2,2,2,false);
     if (true) {
 
-      DavidsonTest<SimpleVector<double> >(3, 3, 1, 2, true);
-      DavidsonTest<PagedVector<double> >(3, 3, 1, 2, true);
-      DavidsonTest<PagedVector<double> >(3, 2, 1, 2, true);
-      DavidsonTest<PagedVector<double> >(9, 1, 1, 2, true);
-//      DavidsonTest<PagedVector<double> >(9, 1, 1, 2, false);
-      DavidsonTest<PagedVector<double> >(9, 9, 1, 1, true);
-//      DavidsonTest<PagedVector<double> >(9, 1, 1, 1, false);
-      DavidsonTest<PagedVector<double> >(9, 1, 1, 1, true);
-      DavidsonTest<PagedVector<double> >(9, 1, 1, 2);
-      DavidsonTest<PagedVector<double> >(9, 2, 1, 2);
-      DavidsonTest<PagedVector<double> >(100, 1, 1, 2);
-//      DavidsonTest<PagedVector<double> >(100, 3, 1, 2, false);
-      DavidsonTest<PagedVector<double> >(100, 3, 1, 2, true);
-      DavidsonTest<SimpleVector<double> >(100, 3, 1, 2, true);
-      DavidsonTest<OpaqueVector<double> >(100, 3, 1, 2, true);
+      DavidsonTest<LinearAlgebra::SimpleVector<double> >(3, 3, 1, 2, true);
+      DavidsonTest<LinearAlgebra::PagedVector<double> >(3, 3, 1, 2, true);
+      DavidsonTest<LinearAlgebra::PagedVector<double> >(3, 2, 1, 2, true);
+      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 2, true);
+//      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 2, false);
+      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 9, 1, 1, true);
+//      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 1, false);
+      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 1, true);
+      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 2);
+      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 2, 1, 2);
+      DavidsonTest<LinearAlgebra::PagedVector<double> >(100, 1, 1, 2);
+//      DavidsonTest<LinearAlgebra::PagedVector<double> >(100, 3, 1, 2, false);
+      DavidsonTest<LinearAlgebra::PagedVector<double> >(100, 3, 1, 2, true);
+      DavidsonTest<LinearAlgebra::SimpleVector<double> >(100, 3, 1, 2, true);
+      DavidsonTest<LinearAlgebra::OpaqueVector<double> >(100, 3, 1, 2, true);
     }
-//  DavidsonTest<PagedVector<double> >(600,3,1,2,true);
-//  RSPTTest<PagedVector<double> ,double>(100,2e0);
+//  DavidsonTest<LinearAlgebra::PagedVector<double> >(600,3,1,2,true);
+//  RSPTTest<LinearAlgebra::PagedVector<double> ,double>(100,2e0);
     IterativeSolverFTest();
   }
 }
@@ -491,7 +491,7 @@ TEST(IterativeSolver_test,old)
 class RosenbrockTest : public testing::TestWithParam<std::string> {
  public:
   using ptype = LinearAlgebra::PagedVector<double>;
-  using scalar = typename LinearAlgebra::Optimize<ptype>::scalar_type;
+  using scalar = typename IterativeSolver::Optimize<ptype>::scalar_type;
   static constexpr double Rosenbrock_a = 1;
   static constexpr double Rosenbrock_b = 1;
   struct {
@@ -561,7 +561,7 @@ class RosenbrockTest : public testing::TestWithParam<std::string> {
     const int verbosity = 1;
 
     if (verbosity >= 0) xout << "Test Optimize, method=" << method << ", difficulty=" << difficulty << std::endl;
-    LinearAlgebra::Optimize<ptype> d(regex_replace(method, std::regex("-.*"), ""));
+    IterativeSolver::Optimize<ptype> d(regex_replace(method, std::regex("-.*"), ""));
     d.m_verbosity = verbosity - 1;
     d.m_options["convergence"] = "residual";
     std::vector<scalar> xxx(2);

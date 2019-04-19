@@ -37,7 +37,7 @@ extern std::ostream &xout;
 /*!
  * @brief Contains IterativeSolver and supporting classes, including an abstract opaque vector
  */
-namespace LinearAlgebra {
+namespace IterativeSolver {
 typedef std::map<std::string, std::string> optionMap;
 template<class T>
 static T nullVector;
@@ -1115,7 +1115,7 @@ operator*(const typename IterativeSolver<T>::Pvector& a, const typename Iterativ
 }
 }
 
-namespace LinearAlgebra {
+namespace IterativeSolver {
 
 /*! @example LinearEigensystemExample.cpp */
 /*! @example LinearEigensystemExample-paged.cpp */

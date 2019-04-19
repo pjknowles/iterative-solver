@@ -59,7 +59,7 @@ void update(vectorSet &psc, const vectorSet &psg,
 }
 
 int main(int argc, char *argv[]) {
-  LinearAlgebra::LinearEigensystem<pv> solver;
+  IterativeSolver::LinearEigensystem<pv> solver;
   solver.m_verbosity = 1;
   solver.m_roots = 4;
   solver.m_thresh = 1e-6;

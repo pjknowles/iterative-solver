@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
   alpha = 1;
   n = 100;
   anharmonicity = .5;
-  LinearAlgebra::DIIS<pv> solver;
+  IterativeSolver::DIIS<pv> solver;
   solver.m_verbosity = 1;
   solver.m_maxIterations = 100;
   pv g(n);

@@ -21,7 +21,7 @@ TEST(TestIterativeSolver, small_eigenproblem) {
 
       LinearAlgebra::SimpleVector<double> mm(n);
       std::vector<LinearAlgebra::SimpleVector<double> > x, g;
-      LinearAlgebra::LinearEigensystem<LinearAlgebra::SimpleVector<double> > solver;
+      IterativeSolver::LinearEigensystem<LinearAlgebra::SimpleVector<double> > solver;
       solver.m_verbosity = -1;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0) std::cout << "Test n=" << n << ", nroot=" << nroot << std::endl;
@@ -124,7 +124,7 @@ TEST(TestIterativeSolver, linear_equations) {
         auto trueSolution = m.colPivHouseholderQr().solve(erhs).eval();
         rhs.back()[root]=1/trueSolution(root);
       }
-      LinearAlgebra::LinearEquations<LinearAlgebra::SimpleVector<double> > solver(rhs);
+      IterativeSolver::LinearEquations<LinearAlgebra::SimpleVector<double> > solver(rhs);
       solver.m_verbosity = 0;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0) std::cout << "Test n=" << n << ", nroot=" << nroot << std::endl;

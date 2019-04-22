@@ -112,7 +112,7 @@ CONTAINS
   END SUBROUTINE Iterative_Solver_Linear_Equations_Initialize
 
   !> \brief Optimization
-  !> through the BFGS or related methods.
+  !> through the L-BFGS or related methods.
   !> Example of simplest use: @include OptimizeExampleF.F90
   SUBROUTINE Iterative_Solver_Optimize_Initialize(nq, thresh, maxIterations, verbosity, algorithm, minimize)
     INTEGER, INTENT(in) :: nq !< dimension of parameter space

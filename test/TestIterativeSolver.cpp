@@ -324,5 +324,5 @@ class RosenbrockTest {
   }
 };
 
-TEST(Rosenbrock_BFGS,Optimize) { ASSERT_TRUE(RosenbrockTest().run("BFGS")); }
+TEST(Rosenbrock_BFGS,Optimize) { ASSERT_TRUE(RosenbrockTest().run("L-BFGS")); }
 TEST(Rosenbrock_null,Optimize) { ASSERT_TRUE(RosenbrockTest().run("null")); }

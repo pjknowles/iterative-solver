@@ -1341,10 +1341,10 @@ class Optimize : public Base<T> {
 
   /*!
    * \brief Constructor
-   * \param algorithm Allowed values: "BFGS","null"
+   * \param algorithm Allowed values: "L-BFGS","null"
    * \param minimize If false, a maximum, not minimum, will be sought
    */
-  explicit Optimize(const std::string& algorithm = "BFGS", bool minimize = true)
+  explicit Optimize(const std::string& algorithm = "L-BFGS", bool minimize = true)
       : m_algorithm(algorithm), m_minimize(minimize) {
     this->m_linear = false;
     this->m_orthogonalize = false;
@@ -1405,7 +1405,7 @@ class Optimize : public Base<T> {
     auto n = this->m_subspaceMatrix.rows();
     auto& minusAlpha = this->m_interpolation;
     minusAlpha.conservativeResize(n, 1);
-    if (this->m_algorithm == "BFGS") {
+    if (this->m_algorithm == "L-BFGS") {
       for (int i = n - 1; i >= 0; i--) {
         minusAlpha(i, 0) = -this->m_subspaceGradient(i, 0);
         for (size_t j = i + 1; j < n; j++)
@@ -1417,7 +1417,7 @@ class Optimize : public Base<T> {
   }
  public:
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
-    if (m_algorithm == "BFGS" and this->m_interpolation.size() > 0) {
+    if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
       solution.back().get().axpy(-1, this->m_last_solution.back());
       auto& minusAlpha = this->m_interpolation;
       size_t l = 0;

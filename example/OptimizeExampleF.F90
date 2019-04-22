@@ -17,7 +17,7 @@ PROGRAM QuasiNewton_Example
   PRINT *, 'Fortran binding of IterativeSolver::Optimize'
   m = 1; DO i = 1, n; m(i, i) = 3*i;
   END DO
-  CALL Iterative_Solver_Optimize_Initialize(n, thresh = 1d-9, verbosity = 1, algorithm = "BFGS")
+  CALL Iterative_Solver_Optimize_Initialize(n, thresh = 1d-9, verbosity = 1, algorithm = "L-BFGS")
   c = 0; if (.not. forced) c(1) = 1
   e0 = m(1, 1)
   DO i = 1, 30

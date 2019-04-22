@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
   n = 100;
   n = 5;
   anharmonicity = 0.2;
-  for (const auto& method : std::vector<std::string>{"null", "BFGS"}) {
+  for (const auto& method : std::vector<std::string>{"null", "L-BFGS"}) {
     std::cout << "optimize with " << method << std::endl;
     IterativeSolver::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_verbosity = 1;

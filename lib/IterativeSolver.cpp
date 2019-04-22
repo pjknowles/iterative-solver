@@ -3,10 +3,9 @@
 #include <memory>
 
 // C interface to IterativeSolver
-namespace IterativeSolver {
 using v = LinearAlgebra::PagedVector<double>;
 
-static std::unique_ptr<IterativeSolver<v> > instance;
+static std::unique_ptr<IterativeSolver::Base<v> > instance;
 
 extern "C" void
 IterativeSolverLinearEigensystemInitialize(size_t n,
@@ -20,7 +19,7 @@ IterativeSolverLinearEigensystemInitialize(size_t n,
   MPI_Initialized(&flag);
   if (!flag) MPI_Init(0, nullptr);
 #endif
-  instance.reset(new LinearEigensystem<v>());
+  instance.reset(new IterativeSolver::LinearEigensystem<v>());
   instance->m_dimension = n;
   instance->m_roots = nroot;
   instance->m_thresh = thresh;
@@ -49,7 +48,7 @@ IterativeSolverLinearEquationsInitialize(size_t n,
     rr.push_back(v(const_cast<double*>(&rhs[root * n]),
                    n)); // in principle the const_cast is dangerous, but we trust LinearEquations to behanve
   }
-  instance.reset(new LinearEquations<v>(rr, aughes));
+  instance.reset(new IterativeSolver::LinearEquations<v>(rr, aughes));
   instance->m_dimension = n;
   instance->m_roots = nroot;
   instance->m_thresh = thresh;
@@ -65,7 +64,7 @@ IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIteration
   MPI_Initialized(&flag);
   if (!flag) MPI_Init(0, nullptr);
 #endif
-  instance.reset(new DIIS<v>());
+  instance.reset(new IterativeSolver::DIIS<v>());
   instance->m_dimension = n;
   instance->m_thresh = thresh;
   instance->m_maxIterations = maxIterations;
@@ -84,9 +83,9 @@ IterativeSolverOptimizeInitialize(size_t n,
   if (!flag) MPI_Init(0, nullptr);
 #endif
   if (*algorithm)
-    instance.reset(new Optimize<v>(algorithm, minimize != 0));
+    instance.reset(new IterativeSolver::Optimize<v>(algorithm, minimize != 0));
   else
-    instance.reset(new Optimize<v>());
+    instance.reset(new IterativeSolver::Optimize<v>());
   instance->m_dimension = n;
   instance->m_roots = 1;
   instance->m_thresh = thresh;
@@ -187,5 +186,4 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution,
   for (size_t i = 0; i < result.size(); i++)
     indices[i] = result[i];
   return result.size();
-}
 }

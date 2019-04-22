@@ -35,7 +35,10 @@ extern std::ostream &xout;
 #endif
 
 /*!
- * @brief Contains IterativeSolver and supporting classes, including an abstract opaque vector
+ * @brief Contains classes that implement various iterative equation solvers.
+ * They all share the feature that access to the client-provided solution and residual
+ * vectors is via a potentially opaque interface to copy, scale, scalar product and
+ * scalar-times-vector operations only.
  */
 namespace IterativeSolver {
 typedef std::map<std::string, std::string> optionMap;
@@ -81,9 +84,9 @@ static std::vector<std::vector<std::reference_wrapper<typename T::value_type> > 
  * @tparam T The class encapsulating solution and residual vectors
  */
 template<class T>
-class IterativeSolver {
+class Base {
  public:
-  IterativeSolver(
+  Base(
   ) :
       m_Pvectors(0),
       m_verbosity(0),
@@ -120,7 +123,7 @@ class IterativeSolver {
       m_svdThreshold(1e-15),
       m_maxQ(std::max(m_roots, size_t(16))) {}
 
-  virtual ~IterativeSolver() = default;
+  virtual ~Base() = default;
 
  protected:
   using value_type = typename T::value_type; ///< The underlying type of elements of vectors
@@ -1106,7 +1109,7 @@ class IterativeSolver {
 
 template<class T>
 typename T::scalar_type inline
-operator*(const typename IterativeSolver<T>::Pvector& a, const typename IterativeSolver<T>::Pvector& b) {
+operator*(const typename Base<T>::Pvector& a, const typename Base<T>::Pvector& b) {
   typename T::scalar_type result = 0;
   for (const auto& aa: a)
     if (b.find(aa.first))
@@ -1129,11 +1132,11 @@ namespace IterativeSolver {
 * \tparam scalar Type of matrix elements
 */
 template<class T>
-class LinearEigensystem : public IterativeSolver<T> {
+class LinearEigensystem : public Base<T> {
  public:
-  using typename IterativeSolver<T>::scalar_type;
-  using typename IterativeSolver<T>::value_type;
-  using IterativeSolver<T>::m_verbosity;
+  using typename Base<T>::scalar_type;
+  using typename Base<T>::value_type;
+  using Base<T>::m_verbosity;
 
   /*!
    * \brief LinearEigensystem
@@ -1199,14 +1202,14 @@ class LinearEigensystem : public IterativeSolver<T> {
 *
 */
 template<class T>
-class LinearEquations : public IterativeSolver<T> {
-  using typename IterativeSolver<T>::scalar_type;
-  using typename IterativeSolver<T>::value_type;
+class LinearEquations : public Base<T> {
+  using typename Base<T>::scalar_type;
+  using typename Base<T>::value_type;
  public:
   using vectorSet = typename std::vector<T>; ///< Container of vectors
   using vectorRefSet = typename std::vector<std::reference_wrapper<T> >; ///< Container of vectors
   using constVectorRefSet = typename std::vector<std::reference_wrapper<const T> >; ///< Container of vectors
-  using IterativeSolver<T>::m_verbosity;
+  using Base<T>::m_verbosity;
 
   /*!
    * \brief Constructor
@@ -1215,13 +1218,10 @@ class LinearEquations : public IterativeSolver<T> {
    * the augmented hessian problem. Other values scale the augmented hessian damping.
    */
   explicit LinearEquations(constVectorRefSet rhs, scalar_type augmented_hessian = 0)
-//    : m_linear(true)
-//    , IterativeSolver<T>::m_orthogonalize(true)
-//    , IterativeSolver<T>::m_residual_eigen(false)
-//    , IterativeSolver<T>::m_residual_rhs(true)
-//    , IterativeSolver<T>::m_augmented_hessian(augmented_hessian)
   {
+    this->m_orthogonalize = true;
     this->m_linear = true;
+    this->m_residual_eigen = true;
     this->m_residual_rhs = true;
     this->m_difference_vectors = false;
     this->m_augmented_hessian = augmented_hessian;
@@ -1330,14 +1330,14 @@ class LinearEquations : public IterativeSolver<T> {
 *
 */
 template<class T>
-class Optimize : public IterativeSolver<T> {
+class Optimize : public Base<T> {
  public:
-  using typename IterativeSolver<T>::scalar_type;
-  using typename IterativeSolver<T>::value_type;
+  using typename Base<T>::scalar_type;
+  using typename Base<T>::value_type;
   using vectorSet = typename std::vector<T>; ///< Container of vectors
   using vectorRefSet = typename std::vector<std::reference_wrapper<T> >; ///< Container of vectors
   using constVectorRefSet = typename std::vector<std::reference_wrapper<const T> >; ///< Container of vectors
-  using IterativeSolver<T>::m_verbosity;
+  using Base<T>::m_verbosity;
 
   /*!
    * \brief Constructor
@@ -1432,7 +1432,7 @@ class Optimize : public IterativeSolver<T> {
       }
       solution.back().get().axpy(1, this->m_last_solution.front());
     }
-    return IterativeSolver<T>::endIteration(solution, residual);
+    return Base<T>::endIteration(solution, residual);
   }
 
   virtual bool endIteration(T& solution, const T& residual) override {
@@ -1462,15 +1462,15 @@ class Optimize : public IterativeSolver<T> {
 *
 */
 template<class T>
-class DIIS : public IterativeSolver<T> {
-  using IterativeSolver<T>::m_residuals;
-  using IterativeSolver<T>::m_solutions;
-  using IterativeSolver<T>::m_others;
+class DIIS : public Base<T> {
+  using Base<T>::m_residuals;
+  using Base<T>::m_solutions;
+  using Base<T>::m_others;
  public:
-  using typename IterativeSolver<T>::scalar_type;
-  using typename IterativeSolver<T>::value_type;
-  using IterativeSolver<T>::m_verbosity;
-  using IterativeSolver<T>::m_Weights;
+  using typename Base<T>::scalar_type;
+  using typename Base<T>::value_type;
+  using Base<T>::m_verbosity;
+  using Base<T>::m_Weights;
   enum DIISmode_type {
     disabled ///< No extrapolation is performed
     , DIISmode ///< Direct Inversion in the Iterative Subspace

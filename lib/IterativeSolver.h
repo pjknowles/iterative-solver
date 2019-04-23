@@ -471,6 +471,11 @@ class Base {
   ///< - m_options["convergence"]=="energy" (the default), meaning that m_errors() returns the predicted eigenvalue change in the next iteration, ie the scalar product of the step and the residual
   ///< - m_options["convergence"]=="step": m_errors() returns the norm of the step in the solution
   ///< - m_options["convergence"]=="residual": m_errors() returns the norm of the residual vector
+  /*!
+   * @brief Report the number of action vectors introduced so far.
+   * @return
+   */
+  int actions() {return m_actions;}
 
  private:
   void adjustUpdate(vectorRefSet solution) {

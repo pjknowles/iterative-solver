@@ -7,7 +7,6 @@
 // C interface to IterativeSolver
 using v = LinearAlgebra::PagedVector<double>;
 
-//static std::unique_ptr<IterativeSolver::Base<v> > instance;
 static std::stack<std::unique_ptr<IterativeSolver::Base<v> > > instances;
 
 extern "C" void
@@ -49,7 +48,7 @@ IterativeSolverLinearEquationsInitialize(size_t n,
   std::vector<v> rr;
   for (size_t root = 0; root < nroot; root++) {
     rr.push_back(v(const_cast<double*>(&rhs[root * n]),
-                   n)); // in principle the const_cast is dangerous, but we trust LinearEquations to behanve
+                   n)); // in principle the const_cast is dangerous, but we trust LinearEquations to behave
   }
   instances.push(std::make_unique<IterativeSolver::LinearEquations<v> >(IterativeSolver::LinearEquations<v>(rr, aughes)));
   auto& instance = instances.top();

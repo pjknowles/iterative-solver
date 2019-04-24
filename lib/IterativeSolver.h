@@ -885,7 +885,7 @@ class Base {
                                | LINEARALGEBRA_OFFLINE // TODO template-ise these options
       );
     if (!subtract.empty())
-      for (auto k = 0; k < newvec.size(); k++)
+      for (size_t k = 0; k < newvec.size(); k++)
         newcopy[k].axpy(-1, subtract[k]); // TODO not the most efficient because on disk already
     history.emplace_back(newcopy);
   }
@@ -923,7 +923,7 @@ class Base {
         copyvec(m_solutions, solution, m_last_solution);
         copyvec(m_others, other, m_last_other);
         m_subspaceGradient.conservativeResize(m_solutions.size(), residual.size());
-        for (int i = 0; i < m_solutions.size(); i++)
+        for (size_t i = 0; i < m_solutions.size(); i++)
           for (size_t k = 0; k < residual.size(); k++)
             m_subspaceGradient(i, k) = residual[k].get().dot(m_solutions[i][k]);
       } else {
@@ -1414,9 +1414,9 @@ class Optimize : public Base<T> {
     auto& minusAlpha = this->m_interpolation;
     minusAlpha.conservativeResize(n, 1);
     if (this->m_algorithm == "L-BFGS") {
-      for (int i = n - 1; i >= 0; i--) {
+      for (Eigen::Index i = n - 1; i >= 0; i--) {
         minusAlpha(i, 0) = -this->m_subspaceGradient(i, 0);
-        for (size_t j = i + 1; j < n; j++)
+        for (Eigen::Index j = i + 1; j < n; j++)
           minusAlpha(i, 0) -= minusAlpha(j, 0) * this->m_subspaceMatrix(i, j);
         minusAlpha(i, 0) /= this->m_subspaceMatrix(i, i);
       }

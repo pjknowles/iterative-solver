@@ -520,9 +520,101 @@ class RosenbrockTest {
 
 TEST(Rosenbrock_BFGS, Optimize
 ) {
-ASSERT_TRUE (RosenbrockTest()
-.run("L-BFGS")); }
+  ASSERT_TRUE (RosenbrockTest()
+                   .run("L-BFGS"));
+}
 TEST(Rosenbrock_null, Optimize
 ) {
-ASSERT_TRUE (RosenbrockTest()
-.run("null")); }
+  ASSERT_TRUE (RosenbrockTest()
+                   .run("null"));
+}
+class MonomialTest {
+ public:
+  using ptype = LinearAlgebra::SimpleVector<double>;
+  using scalar = typename IterativeSolver::Optimize<ptype>::scalar_type;
+  struct {
+    double power;
+    double normPower;
+    scalar operator()(const ptype& psx, ptype& outputs) const {
+      size_t n = psx.size();
+      std::vector<scalar> psxk(n);
+      std::vector<scalar> output(n);
+
+      psx.get(&(psxk[0]), n, 0);
+      double fp = 0;
+      for (size_t i = 0; i < n; i++)
+        fp += (i + 1) * std::pow(psxk[i], power);
+      for (size_t i = 0; i < n; i++) {
+        output[i] = power * (i + 1) * std::pow(psxk[i], power-1) * (normPower/power) * pow(fp,normPower/power-1);
+      }
+      outputs.put(&(output[0]), n, 0);
+      return fp;
+    }
+  } _Monomial_residual;
+
+  struct {
+    void operator()(ptype& psc,
+                    const ptype& psg,
+                    std::vector<scalar> shift,
+                    bool append = true) const {
+      size_t n = psc.size();
+      std::vector<scalar> psck(n);
+      std::vector<scalar> psgk(n);
+      psg.get(&psgk[0], n, 0);
+      if (append)
+        psc.get(&psck[0], n, 0);
+      else
+        psck.assign(0, 0);
+      for (size_t i = 0; i < n; i++)
+        psck[i] -= psgk[i];
+      psc.put(&psck[0], n, 0);
+    }
+  } _Monomial_updater;
+  bool run(double power, double normPower) {
+    _Monomial_residual.power=power;
+    _Monomial_residual.normPower=normPower;
+    constexpr size_t n = 5;
+    ptype x(n);
+    ptype g(n);
+    ptype hg(n);
+    const int verbosity = 1;
+
+    IterativeSolver::Optimize<ptype> d("L-BFGS");
+//    IterativeSolver::DIIS<ptype> d;
+    d.m_verbosity = verbosity - 1;
+    d.m_options["convergence"] = "residual";
+    std::vector<scalar> xxx(n, .1);
+    x.put(&xxx[0], n, 0);
+//    xout << "initial guess " << x << std::endl;
+    bool converged = false;
+    for (int iteration = 1; iteration < 100 && not converged; iteration++) {
+      auto value = _Monomial_residual(x, g);
+      std::vector<scalar> shift;
+      shift.push_back(1e-10);
+      d.addVector(x, g);
+      _Monomial_updater(x, g, shift);
+      converged = d.endIteration(x, g);
+      x.get(&xxx[0], n, 0);
+      if (verbosity >= 0)
+        xout << "iteration " << iteration
+             << ", error = " << d.errors().front()
+             << ", converged? " << converged
+             << ", value= " << value
+             << std::endl;
+    }
+
+    x.get(&xxx[0], n, 0);
+
+    return converged;
+  }
+};
+
+TEST(Monomial_22, Optimize) {
+  ASSERT_TRUE (MonomialTest().run(2,2));
+}
+TEST(Monomial_44, Optimize) {
+  ASSERT_TRUE (MonomialTest().run(4,4));
+}
+TEST(Monomial_42, Optimize) {
+  ASSERT_TRUE (MonomialTest().run(4,2));
+}

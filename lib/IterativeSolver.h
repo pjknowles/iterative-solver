@@ -1410,8 +1410,6 @@ class Optimize : public Base<T> {
  protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
   bool m_minimize; ///< whether to minimize or maximize
-  Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_gg;
-  Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_ss;
 
 };
 

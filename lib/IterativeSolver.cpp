@@ -102,6 +102,14 @@ extern "C" void IterativeSolverFinalize() {
   instances.pop();
 }
 
+extern "C" int IterativeSolverAddValue(double* parameters, double value, double* action) {
+  auto& instance = instances.top();
+  v ccc(parameters, instance->m_dimension);
+  v ggg(action, instance->m_dimension);
+  return static_cast<IterativeSolver::Optimize<v>*>(instance.get())->addValue(ccc, value, ggg) ? 1 : 0;
+
+}
+
 extern "C" int IterativeSolverAddVector(double* parameters, double* action, double* parametersP) {
   std::vector<v> cc, gg;
   auto& instance = instances.top();

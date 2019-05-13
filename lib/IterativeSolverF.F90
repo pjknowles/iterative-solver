@@ -4,7 +4,7 @@ MODULE Iterative_Solver
   PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize, Iterative_Solver_Finalize
   PUBLIC :: Iterative_Solver_DIIS_Initialize, Iterative_Solver_Linear_Equations_Initialize
   PUBLIC :: Iterative_Solver_Optimize_Initialize
-  PUBLIC :: Iterative_Solver_Add_Vector, Iterative_Solver_End_Iteration
+  PUBLIC :: Iterative_Solver_Add_Value, Iterative_Solver_Add_Vector, Iterative_Solver_End_Iteration
   PUBLIC :: Iterative_Solver_Add_P, Iterative_Solver_Suggest_P
   PUBLIC :: Iterative_Solver_Eigenvalues
   PUBLIC :: Iterative_Solver_Option
@@ -229,6 +229,30 @@ CONTAINS
     CALL IterativeSolverFinalize
   END SUBROUTINE Iterative_Solver_Finalize
 
+  !> \brief Take a current solution, value and residual, add it to the expansion set, and return new solution.
+  !> \param value On input, the current objective function value.
+  !> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
+  !> \param action On input, the residual for parameters.
+  !> On exit, the expected residual of the interpolated parameters.
+  !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before the subsequent call to Iterative_Solver_End_Iteration()
+  FUNCTION Iterative_Solver_Add_Value(value, parameters, action)
+    USE iso_c_binding
+    LOGICAL :: Iterative_Solver_Add_Value
+    DOUBLE PRECISION, INTENT(in) :: value
+    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
+    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+    INTERFACE
+      FUNCTION Iterative_Solver_Add_Value_C(value, parameters, action) &
+          BIND(C, name = 'IterativeSolverAddValue')
+        USE iso_c_binding
+        INTEGER(c_int) Iterative_Solver_Add_Value_C
+        REAL(c_double), VALUE, INTENT(in) :: value
+        REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
+        REAL(c_double), DIMENSION(*), INTENT(inout) :: action
+      END FUNCTION Iterative_Solver_Add_Value_C
+    END INTERFACE
+      Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action).NE.0
+  END FUNCTION Iterative_Solver_Add_Value
   !> \brief Take, typically, a current solution and residual, add it to the expansion set, and return new solution.
   !> In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
   !> acting on it with the matrix, and the output will be a new expansion vector.

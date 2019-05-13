@@ -839,9 +839,9 @@ class Base {
                                    / solution[k].get().dot(solution[k].get())
                            )
                                        : 0);
-//        xout << "solution . solution " << solution[k]->dot(*solution[k]) << std::endl;
-//        xout << "residual . solution " << residual[k]->dot(*solution[k]) << std::endl;
-//        xout << "residual . residual " << residual[k]->dot(*residual[k]) << std::endl;
+//        xout << "solution . solution " << solution[k].get().dot(solution[k].get()) << std::endl;
+//        xout << "residual . solution " << residual[k].get().dot(solution[k].get()) << std::endl;
+//        xout << "residual . residual " << residual[k].get().dot(residual[k].get()) << std::endl;
       }
     } else {
 //      vectorSet step = solution;
@@ -858,6 +858,15 @@ class Base {
                 (errortype == 1 ? step : m_residuals[m_lastVectorIndex])[k].dot(
                     (errortype == 2 ? m_residuals[m_lastVectorIndex][k] : step[k])))
                                                      : 1));
+//        xout << "errortype="<<errortype<<std::endl;
+//        xout << "m_difference_vectors="<<m_difference_vectors<<std::endl;
+//        xout << "step . step " << step[k].dot(step[k]) << std::endl;
+//        xout << "step . m_last_residual " << step[k].dot(m_last_residual[k]) << std::endl;
+//        xout << "m_last_residual . m_last_residual " << m_last_residual[k].dot(m_last_residual[k]) << std::endl;
+//        xout << "m_last_solution . m_last_solution " << m_last_solution[k].dot(m_last_solution[k]) << std::endl;
+//        xout << "solution . solution " << solution[k].get().dot(solution[k].get()) << std::endl;
+//        xout << "residual . solution " << residual[k].get().dot(solution[k].get()) << std::endl;
+//        xout << "residual . residual " << residual[k].get().dot(residual[k].get()) << std::endl;
       }
     }
     for (const auto& e : m_errors)
@@ -930,6 +939,7 @@ class Base {
             m_subspaceGradient(i, k) = residual[k].get().dot(m_solutions[i][k]);
       } else {
       }
+//      xout << "copyvec m_last_residual residual, self dot = "<<residual.front().get().dot(residual.front().get())<<std::endl;
       copyvec(m_last_residual, residual);
       copyvec(m_last_solution, solution);
       copyvec(m_last_other, other);
@@ -1385,6 +1395,21 @@ class Optimize : public Base<T> {
     return true;
   }
  public:
+
+  /*!
+   * \brief Take a current solution, objective function value and residual, and return new solution.
+   * \param parameters On input, the current solution. On exit, the interpolated solution vector.
+   * \param action On input, the residual for parameters. On exit, the expected (non-linear) residual of the interpolated parameters.
+   * \return whether it is expected that the client should make an update, based on the returned parameters and residual, before the subsequent call to endIteration()
+   */
+  bool addValue(T& parameters, scalar_type value, T& action) {
+    auto n = this->m_QQMatrix.rows();
+    this->m_values.conservativeResize(n+1);
+    m_values(n) = value;
+    auto update = this->addVector(parameters, action);
+    return update;
+  }
+
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
     if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
       solution.back().get().axpy(-1, this->m_last_solution.back());
@@ -1415,6 +1440,7 @@ class Optimize : public Base<T> {
  protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
   bool m_minimize; ///< whether to minimize or maximize
+  Eigen::Matrix<scalar_type, Eigen::Dynamic, 1> m_values; //< function values
 
 };
 
@@ -1651,6 +1677,9 @@ extern "C" void IterativeSolverFinalize();
 
 extern "C" int
 IterativeSolverAddVector(double* parameters, double* action, double* parametersP);
+
+extern "C" int
+IterativeSolverAddValue(double* parameters, double value, double* action);
 
 extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error);
 

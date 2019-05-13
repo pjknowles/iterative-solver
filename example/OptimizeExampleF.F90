@@ -31,7 +31,7 @@ PROGRAM QuasiNewton_Example
       g = (g - e * c) / dot_product(c, c)
     end if
     write (6, *) 'function value ',e
-    IF (Iterative_Solver_Add_Vector(c, g)) THEN
+    IF (Iterative_Solver_Add_Value(e, c, g)) THEN
       if (forced) then
         c = c - g / [(m(j, j), j = 1, n)]
       else

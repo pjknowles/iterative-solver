@@ -320,8 +320,8 @@ class RosenbrockTest {
       auto value = _Rosenbrock_residual(x, g);
       std::vector<scalar> shift;
       shift.push_back(1e-10);
-      d.addVector(x, g);
-      _Rosenbrock_updater(x, g, shift);
+      if (d.addValue(x, value, g))
+        _Rosenbrock_updater(x, g, shift);
       converged = d.endIteration(x, g);
       x.get(&xxx[0], 2, 0);
       if (verbosity >= 0)
@@ -417,8 +417,8 @@ class MonomialTest {
       auto value = _Monomial_residual(x, g);
       std::vector<scalar> shift;
       shift.push_back(1e-10);
-      d.addVector(x, g);
-      _Monomial_updater(x, g, shift);
+      if (d.addValue(x, value, g))
+        _Monomial_updater(x, g, shift);
       converged = d.endIteration(x, g);
       x.get(&xxx[0], n, 0);
       if (verbosity >= 0)

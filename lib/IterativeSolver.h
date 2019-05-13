@@ -1399,6 +1399,7 @@ class Optimize : public Base<T> {
   /*!
    * \brief Take a current solution, objective function value and residual, and return new solution.
    * \param parameters On input, the current solution. On exit, the interpolated solution vector.
+   * \param value The value of the objective function for parameters.
    * \param action On input, the residual for parameters. On exit, the expected (non-linear) residual of the interpolated parameters.
    * \return whether it is expected that the client should make an update, based on the returned parameters and residual, before the subsequent call to endIteration()
    */

@@ -15,6 +15,7 @@ PROGRAM Linear_Eigensystem_Example
   DOUBLE PRECISION, DIMENSION(nP) :: coefficients
   DOUBLE PRECISION, DIMENSION(nP, nP) :: pp
   INTEGER :: i, j, root
+  LOGICAL :: update
   PRINT *, 'Fortran binding of IterativeSolver'
   m = 1
   DO i = 1, n
@@ -57,7 +58,7 @@ PROGRAM Linear_Eigensystem_Example
     !write (6,*) 'solution after end_iteration ',c(:,1)
     g = MATMUL(m, c)
     !write (6,*) 'action before add_vector',g(:,1)
-    CALL Iterative_Solver_Add_Vector(c, g, p)
+    update = Iterative_Solver_Add_Vector(c, g, p)
   END DO
   CALL Iterative_Solver_Finalize
 END PROGRAM Linear_Eigensystem_Example

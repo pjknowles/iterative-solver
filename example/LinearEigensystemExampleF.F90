@@ -17,13 +17,14 @@ PROGRAM Linear_Eigensystem_Example
   ENDDO
   DO i = 1, n
     g = MATMUL(m, c)
-    CALL Iterative_Solver_Add_Vector(c, g, e)
-    e = Iterative_Solver_Eigenvalues()
-    DO root = 1, nroot
-      DO j = 1, n
-        c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(root) + 1e-15)
+    IF (Iterative_Solver_Add_Vector(c, g, e)) THEN
+      e = Iterative_Solver_Eigenvalues()
+      DO root = 1, nroot
+        DO j = 1, n
+          c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(root) + 1e-15)
+        END DO
       END DO
-    END DO
+    END IF
     converged = Iterative_Solver_End_Iteration(c, g, error)
     IF (converged) EXIT
   END DO

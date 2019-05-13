@@ -58,7 +58,7 @@ CONTAINS
 
   !> \brief Finds the solutions of linear equation systems using a generalisation of Davidson's method, i.e. preconditioned Lanczos
   !> Example of simplest use: @include LinearEquationsExampleF.F90
-  !> <!-- Example including use of P space: @include LinearEquationsExampleF-Pspace.F90 -->
+  !! Example including use of P space: include LinearEquationsExampleF-Pspace.F90
   SUBROUTINE Iterative_Solver_Linear_Equations_Initialize(nq, nroot, rhs, augmented_hessian, thresh, maxIterations, &
       verbosity, orthogonalize)
     INTEGER, INTENT(in) :: nq !< dimension of matrix
@@ -236,27 +236,30 @@ CONTAINS
   !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear).
   !> On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
   !> \param parametersP On exit, the interpolated solution projected onto the P space.
-  SUBROUTINE Iterative_Solver_Add_Vector(parameters, action, parametersP)
+  !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before the subsequent call to Iterative_Solver_End_Iteration()
+  FUNCTION Iterative_Solver_Add_Vector(parameters, action, parametersP)
     USE iso_c_binding
+    LOGICAL :: Iterative_Solver_Add_Vector
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP
     INTERFACE
-      SUBROUTINE Iterative_Solver_Add_Vector_C(parameters, action, parametersP) &
+      FUNCTION Iterative_Solver_Add_Vector_C(parameters, action, parametersP) &
           BIND(C, name = 'IterativeSolverAddVector')
         USE iso_c_binding
+        INTEGER(c_int) Iterative_Solver_Add_Vector_C
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
-      END SUBROUTINE Iterative_Solver_Add_Vector_C
+      END FUNCTION Iterative_Solver_Add_Vector_C
     END INTERFACE
     DOUBLE PRECISION, DIMENSION(0) :: pdummy
     IF (PRESENT(parametersP)) THEN
-      CALL Iterative_Solver_Add_Vector_C(parameters, action, parametersP)
+      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, parametersP).NE.0
     ELSE
-      CALL Iterative_Solver_Add_Vector_C(parameters, action, pdummy)
+      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, pdummy).NE.0
     END IF
-  END SUBROUTINE Iterative_Solver_Add_Vector
+  END FUNCTION Iterative_Solver_Add_Vector
 
   !>@brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
   !> be used in the next iteration; this is done only in the case of linear solvers where the orthogonalize option is set.
@@ -426,7 +429,7 @@ CONTAINS
     DOUBLE PRECISION, DIMENSION(:, :), ALLOCATABLE :: pp
     INTEGER :: i, j, root
     DOUBLE PRECISION :: alpha, anharmonicity, threshold
-    LOGICAL :: orthogonalize
+    LOGICAL :: orthogonalize, update
     PRINT *, 'Test Fortran binding of IterativeSolver'
     m = 1
     DO i = 1, n
@@ -442,14 +445,15 @@ CONTAINS
       CALL Iterative_Solver_Option("convergence", "residual")
       c = 0; DO i = 1, nroot; c(i, i) = 1;
       ENDDO
-        g = MATMUL(m, c)
-        CALL Iterative_Solver_Add_Vector(c, g, p)
+      g = MATMUL(m, c)
+      IF(Iterative_Solver_Add_Vector(c, g, p)) THEN
         e = Iterative_Solver_Eigenvalues()
         DO root = 1, nroot
           DO j = 1, n
             c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(root) + 1d-15)
           END DO
         END DO
+      END IF
         IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
       CALL Iterative_Solver_Finalize
       !write (6,*) 'end of irep loop ',irep
@@ -460,6 +464,7 @@ CONTAINS
       ALLOCATE(p(np, nroot))
       WRITE (6, *) 'P-space=', nP, ', dimension=', n, ', roots=', nroot
       CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, thresh = 1d-8, verbosity = 1)
+      update = .TRUE.
       offsets(0) = 0
       DO i = 1, nP
         offsets(i) = i
@@ -480,14 +485,16 @@ CONTAINS
             END DO
           END DO
         END DO
-        DO root = 1, nroot
-          DO j = 1, n
-            c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(i) + 1d-15)
+        IF (update) THEN
+          DO root = 1, nroot
+            DO j = 1, n
+              c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(i) + 1d-15)
+            END DO
           END DO
-        END DO
+        END IF
         IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
         g = MATMUL(m, c)
-        CALL Iterative_Solver_Add_Vector(c, g, p)
+        update = Iterative_Solver_Add_Vector(c, g, p)
       END DO
       CALL Iterative_Solver_Finalize
       DEALLOCATE(p)
@@ -508,10 +515,11 @@ CONTAINS
       END DO
       !WRITE (6,*) 'c ',c(:,1)
       !WRITE (6,*) 'g ',g(:,1)
-      CALL Iterative_Solver_Add_Vector(c, g, p)
-      DO j = 1, n
-        c(j, 1) = c(j, 1) - g(j, 1) / (alpha * (j))
-      END DO
+      IF (Iterative_Solver_Add_Vector(c, g, p)) THEN
+        DO j = 1, n
+          c(j, 1) = c(j, 1) - g(j, 1) / (alpha * (j))
+        END DO
+      END IF
       IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
     END DO
     WRITE (6, *) 'error ', error(1), SQRT(dot_PRODUCT(c(:, 1), c(:, 1)))

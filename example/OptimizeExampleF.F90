@@ -31,14 +31,15 @@ PROGRAM QuasiNewton_Example
       g = (g - e * c) / dot_product(c, c)
     end if
     write (6, *) 'function value ',e
-    CALL Iterative_Solver_Add_Vector(c, g)
-    if (forced) then
-      c = c - g / [(m(j, j), j = 1, n)]
-    else
-      c = c - g / ([(m(j, j), j = 1, n)] - e + 1d-15) &
-          + (sum([(c(j)*g(j),j=1,n)])/sum([(c(j)**2,j=1,n)])) * c &
-              / ([(m(j, j), j = 1, n)] - e + 1d-15)
-    end if
+    IF (Iterative_Solver_Add_Vector(c, g)) THEN
+      if (forced) then
+        c = c - g / [(m(j, j), j = 1, n)]
+      else
+        c = c - g / ([(m(j, j), j = 1, n)] - e + 1d-15) &
+            + (sum([(c(j)*g(j),j=1,n)])/sum([(c(j)**2,j=1,n)])) * c &
+                / ([(m(j, j), j = 1, n)] - e + 1d-15)
+      end if
+    END IF
     converged = Iterative_Solver_End_Iteration(c, g, error)
     IF (converged) EXIT
   END DO

@@ -65,7 +65,7 @@ static std::vector<std::vector<std::reference_wrapper<typename T::value_type> > 
  * - make a call to addVector() which takes the current and previous parameters and proposes
  * an improved estimate, and the best estimate of the residual vector.
  * - calculate a new solution (non-linear) or expansion vector (linear) by implementing
- * appropriate preconditioning on the residual
+ * appropriate preconditioning on the residual, if addVector() has requested it.
  * -  make a call to endIteration()
  *
  * Classes that derive from this will, in the simplest case, need to provide just the solveReducedProblem() method that governs how the parameter and residual vectors from successive iterations
@@ -146,8 +146,9 @@ class Base {
    * \param parametersP On exit, the interpolated solution projected onto the P space.
    * \param other Optional additional vectors that should be interpolated like the residual.
    * corresponding element of other contains data to be used.
+   * \return whether it is expected that the client should make an update, based on the returned parameters and residual, before the subsequent call to endIteration()
    */
-  void addVector(vectorRefSet parameters,
+  bool addVector(vectorRefSet parameters,
                  vectorRefSet action,
                  vectorRefSetP parametersP = nullVectorRefSetP<T>,
                  vectorRefSet other = nullVectorRefSet<T>) {
@@ -177,7 +178,7 @@ class Base {
     std::cout <<" addVector buildSubspace():  seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
     startTiming=endTiming;
 #endif
-    solveReducedProblem();
+    auto update = solveReducedProblem();
 #ifdef TIMING
     endTiming=std::chrono::steady_clock::now();
     std::cout <<" addVector solveReducedProblem():  seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
@@ -188,23 +189,24 @@ class Base {
     endTiming=std::chrono::steady_clock::now();
     std::cout <<" addVector doInterpolation():  seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
 #endif
+    return update;
   }
-  void addVector(std::vector<T>& parameters,
+  bool addVector(std::vector<T>& parameters,
                  std::vector<T>& action,
                  vectorSetP& parametersP = nullVectorSetP<T>,
                  std::vector<T>& other = nullStdVector<T>) {
-    addVector(
+    return addVector(
         vectorRefSet(parameters.begin(), parameters.end()),
         vectorRefSet(action.begin(), action.end()),
         vectorRefSetP(parametersP.begin(), parametersP.end()),
         vectorRefSet(other.begin(), other.end())
     );
   }
-  void addVector(T& parameters,
+  bool addVector(T& parameters,
                  T& action,
                  vectorP& parametersP = nullVectorP<T>,
                  T& other = nullVector<T>) {
-    addVector(
+    return addVector(
         vectorRefSet(1, parameters),
         vectorRefSet(1, action),
         vectorRefSetP(1, parametersP),
@@ -522,7 +524,7 @@ class Base {
 
  protected:
 
-  virtual void solveReducedProblem() = 0;
+  virtual bool solveReducedProblem() = 0;
 
   virtual void report() {
     if (m_verbosity > 0) {
@@ -1157,7 +1159,7 @@ class LinearEigensystem : public Base<T> {
 
  private:
 
-  void solveReducedProblem() override {
+  bool solveReducedProblem() override {
     if (this->m_rspt) {
       throw std::logic_error("RSPT not yet implemented");
     } else {
@@ -1183,6 +1185,7 @@ class LinearEigensystem : public Base<T> {
           (static_cast<Eigen::Index>(root) < this->m_subspaceEigenvectors.rows()
            ? this->m_subspaceEigenvalues[root].real()
            : 0);
+    return true;
   }
 
   void report() override {
@@ -1275,7 +1278,7 @@ class LinearEquations : public Base<T> {
   }
 
  protected:
-  void solveReducedProblem() override {
+  bool solveReducedProblem() override {
     const auto nP = this->m_Pvectors.size();
     const auto nQ = this->m_QQMatrix.rows();
     const Eigen::Index n = nP + nQ;
@@ -1324,6 +1327,7 @@ class LinearEquations : public Base<T> {
     this->m_subspaceOverlap.conservativeResize(n, n);
 //   xout << "solveReducedProblem final subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
 //   xout << "solveReducedProblem subspaceRHS\n"<<this->m_subspaceRHS<<std::endl;
+    return true;
   }
 
 };
@@ -1365,7 +1369,7 @@ class Optimize : public Base<T> {
   }
 
  protected:
-  void solveReducedProblem() override {
+  bool solveReducedProblem() override {
     auto n = this->m_subspaceMatrix.rows();
     auto& minusAlpha = this->m_interpolation;
     minusAlpha.conservativeResize(n, 1);
@@ -1378,6 +1382,7 @@ class Optimize : public Base<T> {
       }
     } else
       minusAlpha.setConstant(0);
+    return true;
   }
  public:
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
@@ -1480,13 +1485,13 @@ class DIIS : public Base<T> {
   }
 
  protected:
-  void solveReducedProblem() override {
+  bool solveReducedProblem() override {
     //	  xout << "Enter DIIS::solveReducedProblem"<<std::endl;
     //	  xout << "residual : "<<residual<<std::endl;
     //	  xout << "solution : "<<solution<<std::endl;
     this->m_updateShift.clear();
     this->m_updateShift.push_back(-(1 + std::numeric_limits<double>::epsilon()) * this->m_subspaceMatrix(0, 0));
-    if (this->m_maxDim <= 1 || this->m_DIISmode == disabled) return;
+    if (this->m_maxDim <= 1 || this->m_DIISmode == disabled) return true;
 
     if (this->m_roots > 1) throw std::logic_error("DIIS does not handle multiple solutions");
 
@@ -1570,6 +1575,7 @@ class DIIS : public Base<T> {
         throw std::overflow_error("NaN detected in DIIS submatrix solution");
       }
     this->m_interpolation = Coeffs.head(nDim);
+    return true;
   }
 
   /*!
@@ -1643,7 +1649,7 @@ IterativeSolverOptimizeInitialize(size_t n,
 
 extern "C" void IterativeSolverFinalize();
 
-extern "C" void
+extern "C" int
 IterativeSolverAddVector(double* parameters, double* action, double* parametersP);
 
 extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error);

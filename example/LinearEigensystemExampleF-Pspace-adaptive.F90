@@ -82,7 +82,7 @@ PROGRAM Linear_Eigensystem_Example
     END DO
     IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
     g = MATMUL(m, c)
-    CALL Iterative_Solver_Add_Vector(c, g, p)
+     IF (.NOT. Iterative_Solver_Add_Vector(c, g, p)) STOP 'unexpected'
   END DO
   CALL Iterative_Solver_Finalize
   DO i = 1, nroot

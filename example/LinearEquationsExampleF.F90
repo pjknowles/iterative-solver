@@ -28,12 +28,13 @@ PROGRAM Linear_Equations_Example
     ENDDO
     DO i = 1, n
       g = MATMUL(m, c)
-      CALL Iterative_Solver_Add_Vector(c, g)
-      DO root = 1, nroot
-        DO j = 1, n
-          c(j, root) = c(j, root) - g(j, root) / m(j, j)
+      IF (Iterative_Solver_Add_Vector(c, g)) THEN
+        DO root = 1, nroot
+          DO j = 1, n
+            c(j, root) = c(j, root) - g(j, root) / m(j, j)
+          END DO
         END DO
-      END DO
+      END IF
       converged = Iterative_Solver_End_Iteration(c, g, error)
       IF (converged) EXIT
     END DO

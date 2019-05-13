@@ -102,7 +102,7 @@ extern "C" void IterativeSolverFinalize() {
   instances.pop();
 }
 
-extern "C" void IterativeSolverAddVector(double* parameters, double* action, double* parametersP) {
+extern "C" int IterativeSolverAddVector(double* parameters, double* action, double* parametersP) {
   std::vector<v> cc, gg;
   auto& instance = instances.top();
   cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
@@ -112,12 +112,13 @@ extern "C" void IterativeSolverAddVector(double* parameters, double* action, dou
     cc.emplace_back(&parameters[root * instance->m_dimension], instance->m_dimension);
     gg.emplace_back(&action[root * instance->m_dimension], instance->m_dimension);
   }
-  instance->addVector(cc, gg, ccp);
+  bool update = instance->addVector(cc, gg, ccp);
 
   for (size_t root = 0; root < instance->m_roots; root++) {
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }
+  return update ? 1 : 0;
 }
 
 extern "C" int IterativeSolverEndIteration(double* solution, double* residual, double* error) {

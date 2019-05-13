@@ -22,8 +22,8 @@ PROGRAM DIIS_Example
     g = MATMUL(m, c)
     e = dot_product(c, g)
     g = g - e * c
-    CALL Iterative_Solver_Add_Vector(c, g)
-    c = c - g / ([(m(j, j), j = 1, n)] - e + 1d-15)
+    IF (Iterative_Solver_Add_Vector(c, g)) &
+      c = c - g / ([(m(j, j), j = 1, n)] - e + 1d-15)
     converged = Iterative_Solver_End_Iteration(c, g, error)
     IF (converged) EXIT
   END DO

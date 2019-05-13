@@ -1379,8 +1379,56 @@ class Optimize : public Base<T> {
   }
 
  protected:
+  bool interpolatedMinimum(value_type& x,
+                           scalar_type& f,
+                           value_type x0,
+                           value_type x1,
+                           scalar_type f0,
+                           scalar_type f1,
+                           scalar_type g0,
+                           scalar_type g1) {
+    auto alpham = (3 * f0 - 3 * f1 + 2 * g0 + g1
+        - std::sqrt(std::pow(3 * f0 - 3 * f1 + g0, 2) + (6 * f0 - 6 * f1 + g0) * g1 + std::pow(g1, 2))) / (3.
+        * (2 * f0 - 2 * f1 + g0 + g1));
+    auto alphap = (3 * f0 - 3 * f1 + 2 * g0 + g1
+        + std::sqrt(std::pow(3 * f0 - 3 * f1 + g0, 2) + (6 * f0 - 6 * f1 + g0) * g1 + std::pow(g1, 2))) / (3.
+        * (2 * f0 - 2 * f1 + g0 + g1));
+    auto fm = f0 + alpham * (g0 + alpham * (-3 * f0 + 3 * f1 - 2 * g0 - g1 + alpham * (2 * f0 - 2 * f1 + g0 + g1)));
+    auto fp = f0 + alphap * (g0 + alphap * (-3 * f0 + 3 * f1 - 2 * g0 - g1 + alphap * (2 * f0 - 2 * f1 + g0 + g1)));
+    auto hm = -2*(3*f0-3*f1+2*g0+g1)+6*(2*f0-2*f1+g0+g1)*alpham;
+    auto hp = -2*(3*f0-3*f1+2*g0+g1)+6*(2*f0-2*f1+g0+g1)*alphap;
+    xout << "alpham=" << alpham << ", fm=" << fm << ", hm=" << hm << std::endl;
+    xout << "alphap=" << alphap << ", fp=" << fp << ", hp=" << hp << std::endl;
+    if (fm < fp && alpham >= 0 && alpham <= 1 && hm > 0) {
+      x = x0 + alpham * (x1 - x0);
+      f = alpham;
+      return true;
+    } else if (alphap >= 0 && alphap <= 1 && hp > 0) {
+      x = x0 + alphap * (x1 - x0);
+      f = alphap;
+      return true;
+    }
+    return false;
+  }
   bool solveReducedProblem() override {
     auto n = this->m_subspaceMatrix.rows();
+    xout << "solveReduced Problem n=" << n << std::endl;
+    if (n > 0) {
+
+      // first consider whether this point can be taken as the next iteration point, or whether further line-searching is needed
+      auto f0 = m_values[n - 1];
+      auto f1 = m_values[n];
+      auto g1 = this->m_subspaceGradient(n - 1);
+      auto g0 = g1 - this->m_residuals[n - 1][0].dot(this->m_solutions[n - 1][0]);
+      xout << "f0=" << f0 << std::endl;
+      xout << "f1=" << f1 << std::endl;
+      xout << "g0=" << g0 << std::endl;
+      xout << "g1=" << g1 << std::endl;
+      scalar_type finterp;
+      value_type xinterp;
+      if (interpolatedMinimum(xinterp, finterp, 0, 1, f0, f1, g0, g1))
+        xout << "minimum value " << finterp << " at alpha=" << xinterp << std::endl;
+    }
     auto& minusAlpha = this->m_interpolation;
     minusAlpha.conservativeResize(n, 1);
     if (this->m_algorithm == "L-BFGS") {
@@ -1399,14 +1447,14 @@ class Optimize : public Base<T> {
   /*!
    * \brief Take a current solution, objective function value and residual, and return new solution.
    * \param parameters On input, the current solution. On exit, the interpolated solution vector.
-   * \param value The value of the objective function for parameters.
+ * \param value The value of the objective function for parameters.
    * \param action On input, the residual for parameters. On exit, the expected (non-linear) residual of the interpolated parameters.
    * \return whether it is expected that the client should make an update, based on the returned parameters and residual, before the subsequent call to endIteration()
    */
   bool addValue(T& parameters, scalar_type value, T& action) {
-    auto n = this->m_QQMatrix.rows();
-    this->m_values.conservativeResize(n+1);
-    m_values(n) = value;
+    m_values.push_back(value);
+    std::cout << "m_values resized to " << m_values.size() << " and filled with " << value
+              << std::endl;
     auto update = this->addVector(parameters, action);
     return update;
   }
@@ -1441,7 +1489,7 @@ class Optimize : public Base<T> {
  protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
   bool m_minimize; ///< whether to minimize or maximize
-  Eigen::Matrix<scalar_type, Eigen::Dynamic, 1> m_values; //< function values
+  std::vector<scalar_type> m_values; //< function values
 
 };
 

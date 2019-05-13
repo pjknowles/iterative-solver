@@ -6,7 +6,7 @@
 PROGRAM QuasiNewton_Example
   USE Iterative_Solver
   IMPLICIT NONE
-  INTEGER, PARAMETER :: n = 100
+  INTEGER, PARAMETER :: n = 2
   DOUBLE PRECISION, DIMENSION (n, n) :: m
   DOUBLE PRECISION, DIMENSION (n) :: c, g
   DOUBLE PRECISION :: e, e0
@@ -31,6 +31,8 @@ PROGRAM QuasiNewton_Example
       g = (g - e * c) / dot_product(c, c)
     end if
     write (6, *) 'function value ',e
+        write (6,*) 'c ',c
+        write (6,*) 'g ',g
     IF (Iterative_Solver_Add_Value(e, c, g)) THEN
       if (forced) then
         c = c - g / [(m(j, j), j = 1, n)]

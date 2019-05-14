@@ -214,6 +214,21 @@ class Base {
     );
   }
 
+  /*!
+   * \brief Take a current solution, objective function value and residual, and return new solution.
+   * \param parameters On input, the current solution. On exit, the interpolated solution vector.
+ * \param value The value of the objective function for parameters.
+   * \param action On input, the residual for parameters. On exit, the expected (non-linear) residual of the interpolated parameters.
+   * \return whether it is expected that the client should make an update, based on the returned parameters and residual, before the subsequent call to endIteration()
+   */
+  bool addValue(T& parameters, scalar_type value, T& action) {
+    m_values.push_back(value);
+    std::cout << "m_values resized to " << m_values.size() << " and filled with " << value
+              << std::endl;
+    auto update = this->addVector(parameters, action);
+    return update;
+  }
+
  public:
   /*!
    * \brief Specify a P-space vector as a sparse combination of parameters. The container holds a number of segments,
@@ -529,6 +544,8 @@ class Base {
   virtual void report() {
     if (m_verbosity > 0) {
       xout << "iteration " << iterations();
+      if (not m_values.empty())
+        xout << ", value = " << m_values.back();
       if (this->m_roots > 1)
         xout << ", error[" << m_worst << "] = ";
       else
@@ -1108,6 +1125,7 @@ class Base {
   Eigen::MatrixXcd m_subspaceSolution; // FIXME templating
   Eigen::MatrixXcd m_subspaceEigenvectors; // FIXME templating
   Eigen::VectorXcd m_subspaceEigenvalues; // FIXME templating
+  std::vector<scalar_type> m_values; //< function values
  public:
   size_t m_dimension;
  protected:
@@ -1359,6 +1377,7 @@ class Optimize : public Base<T> {
   using vectorRefSet = typename std::vector<std::reference_wrapper<T> >; ///< Container of vectors
   using constVectorRefSet = typename std::vector<std::reference_wrapper<const T> >; ///< Container of vectors
   using Base<T>::m_verbosity;
+  using Base<T>::m_values;
 
   /*!
    * \brief Constructor
@@ -1444,21 +1463,6 @@ class Optimize : public Base<T> {
   }
  public:
 
-  /*!
-   * \brief Take a current solution, objective function value and residual, and return new solution.
-   * \param parameters On input, the current solution. On exit, the interpolated solution vector.
- * \param value The value of the objective function for parameters.
-   * \param action On input, the residual for parameters. On exit, the expected (non-linear) residual of the interpolated parameters.
-   * \return whether it is expected that the client should make an update, based on the returned parameters and residual, before the subsequent call to endIteration()
-   */
-  bool addValue(T& parameters, scalar_type value, T& action) {
-    m_values.push_back(value);
-    std::cout << "m_values resized to " << m_values.size() << " and filled with " << value
-              << std::endl;
-    auto update = this->addVector(parameters, action);
-    return update;
-  }
-
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
     if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
       solution.back().get().axpy(-1, this->m_last_solution.back());
@@ -1489,7 +1493,6 @@ class Optimize : public Base<T> {
  protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
   bool m_minimize; ///< whether to minimize or maximize
-  std::vector<scalar_type> m_values; //< function values
 
 };
 

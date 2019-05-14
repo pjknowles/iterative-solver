@@ -55,6 +55,7 @@ int main(int argc, char* argv[]) {
     x.put(&zero, 1, 0);  // initial guess
     for (size_t iter = 0; iter < solver.m_maxIterations; ++iter) {
       auto value = anharmonic_residual(x, g);
+      xout << "iteration "<<iter<<" value="<<value<<"\n x: "<<x<<"\n g: "<<g<<std::endl;
       if (solver.addValue(x, value, g))
         update(x, g);
       if (solver.endIteration(x, g)) break;

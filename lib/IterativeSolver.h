@@ -224,10 +224,9 @@ class Base {
    */
   bool addValue(T& parameters, scalar_type value, T& action) {
     m_values.push_back(value);
-    std::cout << "m_values resized to " << m_values.size() << " and filled with " << value
-              << std::endl;
-    auto update = this->addVector(parameters, action);
-    return update;
+//    std::cout << "m_values resized to " << m_values.size() << " and filled with " << value
+//              << std::endl;
+    return this->addVector(parameters, action);
   }
 
  public:
@@ -1421,11 +1420,11 @@ class Optimize : public Base<T> {
     xout << "alphap=" << alphap << ", fp=" << fp << ", hp=" << hp << std::endl;
     if (fm < fp && alpham >= 0 && alpham <= 1 && hm > 0) {
       x = x0 + alpham * (x1 - x0);
-      f = alpham;
+      f = fm;
       return true;
     } else if (alphap >= 0 && alphap <= 1 && hp > 0) {
       x = x0 + alphap * (x1 - x0);
-      f = alphap;
+      f = fp;
       return true;
     }
     return false;

@@ -116,6 +116,7 @@ class Base {
       m_updateShift(0),
       m_interpolation(),
       m_dimension(0),
+      m_value_print_name("value"),
       m_iterations(0),
       m_singularity_threshold(1e-16),
       m_added_vectors(0),
@@ -492,7 +493,7 @@ class Base {
    * @brief Report the number of action vectors introduced so far.
    * @return
    */
-  int actions() {return m_actions;}
+  int actions() { return m_actions; }
 
  private:
   void adjustUpdate(vectorRefSet solution) {
@@ -545,7 +546,7 @@ class Base {
     if (m_verbosity > 0) {
       xout << "iteration " << iterations();
       if (not m_values.empty())
-        xout << ", value = " << m_values.back();
+        xout << ", " << m_value_print_name << " = " << m_values.back();
       if (this->m_roots > 1)
         xout << ", error[" << m_worst << "] = ";
       else
@@ -1128,6 +1129,7 @@ class Base {
   std::vector<scalar_type> m_values; //< function values
  public:
   size_t m_dimension;
+  std::string m_value_print_name; //< the title report() will give to the function value
  protected:
   unsigned int m_iterations;
   scalar_type m_singularity_threshold;
@@ -1255,8 +1257,7 @@ class LinearEquations : public Base<T> {
    * \param augmented_hessian If zero, solve the inhomogeneous equations unmodified. If 1, solve instead
    * the augmented hessian problem. Other values scale the augmented hessian damping.
    */
-  explicit LinearEquations(constVectorRefSet rhs, scalar_type augmented_hessian = 0)
-  {
+  explicit LinearEquations(constVectorRefSet rhs, scalar_type augmented_hessian = 0) {
     this->m_orthogonalize = true;
     this->m_linear = true;
     this->m_residual_eigen = true;
@@ -1414,8 +1415,8 @@ class Optimize : public Base<T> {
         * (2 * f0 - 2 * f1 + g0 + g1));
     auto fm = f0 + alpham * (g0 + alpham * (-3 * f0 + 3 * f1 - 2 * g0 - g1 + alpham * (2 * f0 - 2 * f1 + g0 + g1)));
     auto fp = f0 + alphap * (g0 + alphap * (-3 * f0 + 3 * f1 - 2 * g0 - g1 + alphap * (2 * f0 - 2 * f1 + g0 + g1)));
-    auto hm = -2*(3*f0-3*f1+2*g0+g1)+6*(2*f0-2*f1+g0+g1)*alpham;
-    auto hp = -2*(3*f0-3*f1+2*g0+g1)+6*(2*f0-2*f1+g0+g1)*alphap;
+    auto hm = -2 * (3 * f0 - 3 * f1 + 2 * g0 + g1) + 6 * (2 * f0 - 2 * f1 + g0 + g1) * alpham;
+    auto hp = -2 * (3 * f0 - 3 * f1 + 2 * g0 + g1) + 6 * (2 * f0 - 2 * f1 + g0 + g1) * alphap;
     xout << "alpham=" << alpham << ", fm=" << fm << ", hm=" << hm << std::endl;
     xout << "alphap=" << alphap << ", fp=" << fp << ", hp=" << hp << std::endl;
     if (fm < fp && alpham >= 0 && alpham <= 1 && hm > 0) {
@@ -1471,7 +1472,8 @@ class Optimize : public Base<T> {
       for (size_t ll = 0; ll < this->m_residuals.size(); ll++) {
         for (size_t lll = 0; lll < this->m_residuals[ll].size(); lll++) {
           if (this->m_vector_active[ll][lll]) {
-            auto factor = minusAlpha(l, 0) - this->m_residuals[ll][lll].dot(solution.back().get()) / this->m_subspaceMatrix(l, l);
+            auto factor =
+                minusAlpha(l, 0) - this->m_residuals[ll][lll].dot(solution.back().get()) / this->m_subspaceMatrix(l, l);
             solution.back().get().axpy(factor, this->m_solutions[ll][lll]);
             l++;
           }
@@ -1488,7 +1490,6 @@ class Optimize : public Base<T> {
         constVectorRefSet(1, residual)
     );
   }
-
 
  protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton or other methods

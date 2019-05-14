@@ -1385,7 +1385,12 @@ class Optimize : public Base<T> {
    * \param minimize If false, a maximum, not minimum, will be sought
    */
   explicit Optimize(const std::string& algorithm = "L-BFGS", bool minimize = true)
-      : m_algorithm(algorithm), m_minimize(minimize) {
+      : m_algorithm(algorithm),
+        m_minimize(minimize),
+        m_strong_Wolfe(true),
+        m_Wolfe_1(0.0001),
+        m_Wolfe_2(0.9) // recommended values Nocedal and Wright p142
+  {
     this->m_linear = false;
     this->m_orthogonalize = false;
     this->m_residual_rhs = false;
@@ -1398,6 +1403,15 @@ class Optimize : public Base<T> {
   }
 
  protected:
+  std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
+  bool m_minimize; ///< whether to minimize or maximize
+ public:
+  bool m_strong_Wolfe; /// Whether to use strong or weak Wolfe conditions
+  scalar_type m_Wolfe_1; ///< Acceptance parameter for function value
+  scalar_type m_Wolfe_2; ///< Acceptance parameter for function gradient
+ protected:
+  scalar_type m_stepscale; /// what fraction of the raw QN step is the current step
+
   bool interpolatedMinimum(value_type& x,
                            scalar_type& f,
                            value_type x0,
@@ -1406,12 +1420,10 @@ class Optimize : public Base<T> {
                            scalar_type f1,
                            scalar_type g0,
                            scalar_type g1) {
-    auto alpham = (3 * f0 - 3 * f1 + 2 * g0 + g1
-        - std::sqrt(std::pow(3 * f0 - 3 * f1 + g0, 2) + (6 * f0 - 6 * f1 + g0) * g1 + std::pow(g1, 2))) / (3.
-        * (2 * f0 - 2 * f1 + g0 + g1));
-    auto alphap = (3 * f0 - 3 * f1 + 2 * g0 + g1
-        + std::sqrt(std::pow(3 * f0 - 3 * f1 + g0, 2) + (6 * f0 - 6 * f1 + g0) * g1 + std::pow(g1, 2))) / (3.
-        * (2 * f0 - 2 * f1 + g0 + g1));
+    auto discriminant = (std::pow(3 * f0 - 3 * f1 + g0, 2) + (6 * f0 - 6 * f1 + g0) * g1 + std::pow(g1, 2));
+    if (discriminant < 0) return false;
+    auto alpham = (3 * f0 - 3 * f1 + 2 * g0 + g1 - std::sqrt(discriminant)) / (3. * (2 * f0 - 2 * f1 + g0 + g1));
+    auto alphap = (3 * f0 - 3 * f1 + 2 * g0 + g1 + std::sqrt(discriminant)) / (3. * (2 * f0 - 2 * f1 + g0 + g1));
     auto fm = f0 + alpham * (g0 + alpham * (-3 * f0 + 3 * f1 - 2 * g0 - g1 + alpham * (2 * f0 - 2 * f1 + g0 + g1)));
     auto fp = f0 + alphap * (g0 + alphap * (-3 * f0 + 3 * f1 - 2 * g0 - g1 + alphap * (2 * f0 - 2 * f1 + g0 + g1)));
     auto hm = -2 * (3 * f0 - 3 * f1 + 2 * g0 + g1) + 6 * (2 * f0 - 2 * f1 + g0 + g1) * alpham;
@@ -1439,15 +1451,29 @@ class Optimize : public Base<T> {
       auto f1 = m_values[n];
       auto g1 = this->m_subspaceGradient(n - 1);
       auto g0 = g1 - this->m_residuals[n - 1][0].dot(this->m_solutions[n - 1][0]);
+      bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
+      bool Wolfe_2 = m_strong_Wolfe ?
+                     g1 >= m_Wolfe_2 * g0 :
+                     std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
       xout << "f0=" << f0 << std::endl;
       xout << "f1=" << f1 << std::endl;
       xout << "g0=" << g0 << std::endl;
       xout << "g1=" << g1 << std::endl;
+      xout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
+      if (Wolfe_1 && Wolfe_2) goto accept;
       scalar_type finterp;
       value_type xinterp;
-      if (interpolatedMinimum(xinterp, finterp, 0, 1, f0, f1, g0, g1))
-        xout << "minimum value " << finterp << " at alpha=" << xinterp << std::endl;
+      if (not interpolatedMinimum(xinterp, finterp, 0, 1, f0, f1, g0, g1) or xinterp < 0 or xinterp > 1.1) {
+        xinterp = 2; // expand the search range
+      } else {
+        xout << "accept interpolated minimum value " << finterp << " at alpha=" << xinterp << std::endl;
+      }
+      if (xinterp > 0.9 and xinterp < 1.1) goto accept; // if we are within spitting distance already, don't bother to make a line step
+      // when we arrive here, we need to do a new line-search step
+      xout << "we need to do a new line-search step "<<xinterp<<std::endl;
+//      return false;
     }
+    accept:
     auto& minusAlpha = this->m_interpolation;
     minusAlpha.conservativeResize(n, 1);
     if (this->m_algorithm == "L-BFGS") {
@@ -1489,10 +1515,6 @@ class Optimize : public Base<T> {
         constVectorRefSet(1, residual)
     );
   }
-
- protected:
-  std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
-  bool m_minimize; ///< whether to minimize or maximize
 
 };
 

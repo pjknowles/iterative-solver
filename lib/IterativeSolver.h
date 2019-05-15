@@ -1391,8 +1391,8 @@ class Optimize : public Base<T> {
         m_strong_Wolfe(true),
         m_Wolfe_1(0.0001), m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
         m_linesearch_tolerance(0.2),
-        m_linesearching(false),
-        m_linesearch_steplength(1) {
+//        m_linesearching(false),
+        m_linesearch_steplength(0) {
     this->m_linear = false;
     this->m_orthogonalize = false;
     this->m_residual_rhs = false;
@@ -1413,8 +1413,12 @@ class Optimize : public Base<T> {
   scalar_type m_Wolfe_2; ///< Acceptance parameter for function gradient
   scalar_type m_linesearch_tolerance; ///< If the predicted line search is within 1\pm tolerance, don't bother taking it
  protected:
-  bool m_linesearching; ///< Whether we are currently line-searching
-  scalar_type m_linesearch_steplength; ///< what fraction of the Quasi-Newton step is the current line search step
+  std::vector<scalar_type> m_linesearch_steps;
+  std::vector<scalar_type> m_linesearch_values;
+  std::vector<scalar_type> m_linesearch_gradients; ///< the actual gradient projected onto the unit step
+//  bool m_linesearching; ///< Whether we are currently line-searching
+  scalar_type m_linesearch_steplength; ///< the current line search step. Zero means continue with QN
+//  scalar_type m_linesearch_quasinewton_steplength; ///< what fraction of the Quasi-Newton step is the current line search step
 
 
   bool interpolatedMinimum(value_type& x,
@@ -1466,20 +1470,20 @@ class Optimize : public Base<T> {
       xout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
       if (Wolfe_1 && Wolfe_2) goto accept;
       scalar_type finterp;
-      value_type xinterp;
-        if (not interpolatedMinimum(xinterp, finterp, 0, 1, f0, f1, g0, g1) or std::abs(xinterp-1) > m_linesearch_tolerance) {
-          xout << "reject interpolated minimum value " << finterp << " at alpha=" << xinterp << std::endl;
-        xinterp = 2; // expand the search range
+        if (not interpolatedMinimum(m_linesearch_steplength, finterp, 0, 1, f0, f1, g0, g1) or std::abs(m_linesearch_steplength-1) > m_linesearch_tolerance) {
+          xout << "reject interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength << std::endl;
+        m_linesearch_steplength = 2; // expand the search range
       } else {
-        xout << "accept interpolated minimum value " << finterp << " at alpha=" << xinterp << std::endl;
+        xout << "accept interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength << std::endl;
       }
-      if (std::abs(xinterp-1) < m_linesearch_tolerance)
+      if (std::abs(m_linesearch_steplength-1) < m_linesearch_tolerance)
         goto accept; // if we are within spitting distance already, don't bother to make a line step
       // when we arrive here, we need to do a new line-search step
-      xout << "we need to do a new line-search step " << xinterp << std::endl;
+      xout << "we need to do a new line-search step " << m_linesearch_steplength << std::endl;
 //      return false;
     }
     accept:
+    m_linesearch_steplength=0;
     auto& minusAlpha = this->m_interpolation;
     minusAlpha.conservativeResize(n, 1);
     if (this->m_algorithm == "L-BFGS") {

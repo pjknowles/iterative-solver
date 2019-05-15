@@ -1390,6 +1390,7 @@ class Optimize : public Base<T> {
         m_minimize(minimize),
         m_strong_Wolfe(true),
         m_Wolfe_1(0.0001), m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
+        m_linesearch_tolerance(0.2),
         m_linesearching(false),
         m_linesearch_steplength(1) {
     this->m_linear = false;
@@ -1434,16 +1435,9 @@ class Optimize : public Base<T> {
     auto hp = -2 * (3 * f0 - 3 * f1 + 2 * g0 + g1) + 6 * (2 * f0 - 2 * f1 + g0 + g1) * alphap;
     xout << "alpham=" << alpham << ", fm=" << fm << ", hm=" << hm << std::endl;
     xout << "alphap=" << alphap << ", fp=" << fp << ", hp=" << hp << std::endl;
-    if (fm < fp && alpham >= 0 && alpham <= 1 && hm > 0) {
-      x = x0 + alpham * (x1 - x0);
-      f = fm;
-      return true;
-    } else if (alphap >= 0 && alphap <= 1 && hp > 0) {
-      x = x0 + alphap * (x1 - x0);
-      f = fp;
-      return true;
-    }
-    return false;
+    f = std::min(fm,fp);
+    x = x0 + (fm<fp?alpham:alphap)*(x1-x0);
+    return true;
   }
   bool solveReducedProblem() override {
     auto n = this->m_subspaceMatrix.rows();
@@ -1451,6 +1445,7 @@ class Optimize : public Base<T> {
     if (n > 0) {
 
       // first consider whether this point can be taken as the next iteration point, or whether further line-searching is needed
+      auto step = std::sqrt(this->m_subspaceOverlap(n-1,n-1));
       auto f0 = m_values[n - 1];
       auto f1 = m_values[n];
       auto g1 = this->m_subspaceGradient(n - 1);
@@ -1459,15 +1454,21 @@ class Optimize : public Base<T> {
       bool Wolfe_2 = m_strong_Wolfe ?
                      g1 >= m_Wolfe_2 * g0 :
                      std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
+      xout << "subspace Matrix diagonal "<<this->m_subspaceMatrix(n-1,n-1)<<std::endl;
+      xout << "subspace Overlap diagonal "<<this->m_subspaceOverlap(n-1,n-1)<<std::endl;
+      xout << "step=" << step << std::endl;
       xout << "f0=" << f0 << std::endl;
       xout << "f1=" << f1 << std::endl;
+      xout << " m_Wolfe_1 * g0=" <<  m_Wolfe_1 * g0 << std::endl;
+      xout << "f0 + m_Wolfe_1 * g0=" << f0 + m_Wolfe_1 * g0 << std::endl;
       xout << "g0=" << g0 << std::endl;
       xout << "g1=" << g1 << std::endl;
       xout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
       if (Wolfe_1 && Wolfe_2) goto accept;
       scalar_type finterp;
       value_type xinterp;
-      if (not interpolatedMinimum(xinterp, finterp, 0, 1, f0, f1, g0, g1) or xinterp < 0 or xinterp > 1.1) {
+        if (not interpolatedMinimum(xinterp, finterp, 0, 1, f0, f1, g0, g1) or std::abs(xinterp-1) > m_linesearch_tolerance) {
+          xout << "reject interpolated minimum value " << finterp << " at alpha=" << xinterp << std::endl;
         xinterp = 2; // expand the search range
       } else {
         xout << "accept interpolated minimum value " << finterp << " at alpha=" << xinterp << std::endl;

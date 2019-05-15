@@ -39,7 +39,7 @@ void update(pv& psc, const pv& psg) {
 int main(int argc, char* argv[]) {
   alpha = 7;
   n = 100;
-  n = 5;
+  n = 1;
   anharmonicity = 0.2;
   for (const auto& method : std::vector<std::string>{"null", "L-BFGS"}) {
     std::cout << "optimize with " << method << std::endl;
@@ -61,7 +61,8 @@ int main(int argc, char* argv[]) {
         update(x, g);
       if (solver.endIteration(x, g)) break;
     }
-    std::cout << "Distance of solution from origin: " << std::sqrt(x.dot(x)) << std::endl;
+    for (size_t i=0; i<x.size(); i++) {scalar val; x.get(&val,1,i); val-=1;x.put(&val,1,i); }
+    std::cout << "Distance of solution from exact solution: " << std::sqrt(x.dot(x)) << std::endl;
     std::cout << "Error=" << solver.errors().front() << " after " << solver.iterations() << " iterations" << std::endl;
   }
 }

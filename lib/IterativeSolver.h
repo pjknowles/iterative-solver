@@ -1047,6 +1047,7 @@ class Base {
       for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
         if (m_vector_active[ll][lll]) {
           if (l == index) { // this is the one to delete
+            // 2019-05-15 TODO ymd consider actually deleting the vector here
             if (m_Weights.size() > l) m_Weights.erase(m_Weights.begin() + l);
             m_dateOfBirth.erase(m_dateOfBirth.begin() + l);
             m_vector_active[ll][lll] = false;
@@ -1409,6 +1410,7 @@ class Optimize : public Base<T> {
   bool m_strong_Wolfe; /// Whether to use strong or weak Wolfe conditions
   scalar_type m_Wolfe_1; ///< Acceptance parameter for function value
   scalar_type m_Wolfe_2; ///< Acceptance parameter for function gradient
+  scalar_type m_linesearch_tolerance; ///< If the predicted line search is within 1\pm tolerance, don't bother taking it
  protected:
   bool m_linesearching; ///< Whether we are currently line-searching
   scalar_type m_linesearch_steplength; ///< what fraction of the Quasi-Newton step is the current line search step
@@ -1470,7 +1472,7 @@ class Optimize : public Base<T> {
       } else {
         xout << "accept interpolated minimum value " << finterp << " at alpha=" << xinterp << std::endl;
       }
-      if (xinterp > 0.9 and xinterp < 1.1)
+      if (std::abs(xinterp-1) < m_linesearch_tolerance)
         goto accept; // if we are within spitting distance already, don't bother to make a line step
       // when we arrive here, we need to do a new line-search step
       xout << "we need to do a new line-search step " << xinterp << std::endl;

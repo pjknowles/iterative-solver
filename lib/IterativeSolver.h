@@ -1388,9 +1388,9 @@ class Optimize : public Base<T> {
       : m_algorithm(algorithm),
         m_minimize(minimize),
         m_strong_Wolfe(true),
-        m_Wolfe_1(0.0001),
-        m_Wolfe_2(0.9) // recommended values Nocedal and Wright p142
-  {
+        m_Wolfe_1(0.0001), m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
+        m_linesearching(false),
+        m_linesearch_steplength(1) {
     this->m_linear = false;
     this->m_orthogonalize = false;
     this->m_residual_rhs = false;
@@ -1410,7 +1410,9 @@ class Optimize : public Base<T> {
   scalar_type m_Wolfe_1; ///< Acceptance parameter for function value
   scalar_type m_Wolfe_2; ///< Acceptance parameter for function gradient
  protected:
-  scalar_type m_stepscale; /// what fraction of the raw QN step is the current step
+  bool m_linesearching; ///< Whether we are currently line-searching
+  scalar_type m_linesearch_steplength; ///< what fraction of the Quasi-Newton step is the current line search step
+
 
   bool interpolatedMinimum(value_type& x,
                            scalar_type& f,
@@ -1468,9 +1470,10 @@ class Optimize : public Base<T> {
       } else {
         xout << "accept interpolated minimum value " << finterp << " at alpha=" << xinterp << std::endl;
       }
-      if (xinterp > 0.9 and xinterp < 1.1) goto accept; // if we are within spitting distance already, don't bother to make a line step
+      if (xinterp > 0.9 and xinterp < 1.1)
+        goto accept; // if we are within spitting distance already, don't bother to make a line step
       // when we arrive here, we need to do a new line-search step
-      xout << "we need to do a new line-search step "<<xinterp<<std::endl;
+      xout << "we need to do a new line-search step " << xinterp << std::endl;
 //      return false;
     }
     accept:

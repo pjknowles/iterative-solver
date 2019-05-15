@@ -1390,7 +1390,7 @@ class Optimize : public Base<T> {
         m_minimize(minimize),
         m_strong_Wolfe(true),
         m_Wolfe_1(0.0001), m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
-        m_linesearch_tolerance(0.2),
+        m_linesearch_tolerance(0.002),
 //        m_linesearching(false),
         m_linesearch_steplength(0) {
     this->m_linear = false;
@@ -1463,6 +1463,7 @@ class Optimize : public Base<T> {
       xout << "step=" << step << std::endl;
       xout << "f0=" << f0 << std::endl;
       xout << "f1=" << f1 << std::endl;
+      xout << " m_Wolfe_1 =" << m_Wolfe_1 << std::endl;
       xout << " m_Wolfe_1 * g0=" <<  m_Wolfe_1 * g0 << std::endl;
       xout << "f0 + m_Wolfe_1 * g0=" << f0 + m_Wolfe_1 * g0 << std::endl;
       xout << "g0=" << g0 << std::endl;
@@ -1470,17 +1471,20 @@ class Optimize : public Base<T> {
       xout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
       if (Wolfe_1 && Wolfe_2) goto accept;
       scalar_type finterp;
-        if (not interpolatedMinimum(m_linesearch_steplength, finterp, 0, 1, f0, f1, g0, g1) or std::abs(m_linesearch_steplength-1) > m_linesearch_tolerance) {
-          xout << "reject interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength << std::endl;
+      xout << "before interpolatedMinimum" << std::endl;
+      auto interpolated = interpolatedMinimum(m_linesearch_steplength, finterp, 0, 1, f0, f1, g0, g1);
+      if (not interpolated or std::abs(m_linesearch_steplength - 1) > m_linesearch_tolerance) {
+        xout << "reject interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength
+             << std::endl;
         m_linesearch_steplength = 2; // expand the search range
+      } else if (std::abs(m_linesearch_steplength - 1) < m_linesearch_tolerance) {
+        goto accept; // if we are within spitting distance already, don't bother to make a line step
       } else {
         xout << "accept interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength << std::endl;
       }
-      if (std::abs(m_linesearch_steplength-1) < m_linesearch_tolerance)
-        goto accept; // if we are within spitting distance already, don't bother to make a line step
       // when we arrive here, we need to do a new line-search step
       xout << "we need to do a new line-search step " << m_linesearch_steplength << std::endl;
-//      return false;
+      return false;
     }
     accept:
     m_linesearch_steplength=0;
@@ -1500,21 +1504,26 @@ class Optimize : public Base<T> {
  public:
 
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
-    if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
-      solution.back().get().axpy(-1, this->m_last_solution.back());
-      auto& minusAlpha = this->m_interpolation;
-      size_t l = 0;
-      for (size_t ll = 0; ll < this->m_residuals.size(); ll++) {
-        for (size_t lll = 0; lll < this->m_residuals[ll].size(); lll++) {
-          if (this->m_vector_active[ll][lll]) {
-            auto factor =
-                minusAlpha(l, 0) - this->m_residuals[ll][lll].dot(solution.back().get()) / this->m_subspaceMatrix(l, l);
-            solution.back().get().axpy(factor, this->m_solutions[ll][lll]);
-            l++;
+    if (m_linesearch_steplength != 0) { // line search
+      solution.front().get().axpy(1-m_linesearch_steplength,this->m_solutions.back().front());
+      this->deleteVector(this->m_solutions.size() - 1);
+    } else { // quasi-Newton
+      if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
+        solution.back().get().axpy(-1, this->m_last_solution.back());
+        auto& minusAlpha = this->m_interpolation;
+        size_t l = 0;
+        for (size_t ll = 0; ll < this->m_residuals.size(); ll++) {
+          for (size_t lll = 0; lll < this->m_residuals[ll].size(); lll++) {
+            if (this->m_vector_active[ll][lll]) {
+              auto factor =
+                  minusAlpha(l, 0) - this->m_residuals[ll][lll].dot(solution.back().get()) / this->m_subspaceMatrix(l, l);
+              solution.back().get().axpy(factor, this->m_solutions[ll][lll]);
+              l++;
+            }
           }
         }
+        solution.back().get().axpy(1, this->m_last_solution.front());
       }
-      solution.back().get().axpy(1, this->m_last_solution.front());
     }
     return Base<T>::endIteration(solution, residual);
   }
@@ -1524,6 +1533,17 @@ class Optimize : public Base<T> {
         vectorRefSet(1, solution),
         constVectorRefSet(1, residual)
     );
+  }
+
+  virtual void report() override {
+    if (m_verbosity > 0) {
+      xout << "iteration " << this->iterations();
+      if (m_linesearch_steplength != 0)
+        xout << ", line search step = " << m_linesearch_steplength;
+      if (not m_values.empty())
+        xout << ", " << this->m_value_print_name << " = " << m_values.back();
+      xout << ", error = " << this->m_error << std::endl;
+    }
   }
 
 };

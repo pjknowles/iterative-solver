@@ -59,7 +59,9 @@ int main(int argc, char* argv[]) {
       xout << "iteration "<<iter<<" value="<<value<<"\n x: "<<x<<"\n g: "<<g<<std::endl;
       if (solver.addValue(x, value, g))
         update(x, g);
+      xout << "before endIteration\n x: "<<x<<"\n g: "<<g<<std::endl;
       if (solver.endIteration(x, g)) break;
+      xout << "after endIteration\n x: "<<x<<"\n g: "<<g<<std::endl;
     }
     for (size_t i=0; i<x.size(); i++) {scalar val; x.get(&val,1,i); val-=1;x.put(&val,1,i); }
     std::cout << "Distance of solution from exact solution: " << std::sqrt(x.dot(x)) << std::endl;

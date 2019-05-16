@@ -185,7 +185,8 @@ class Base {
     std::cout <<" addVector solveReducedProblem():  seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
     startTiming=endTiming;
 #endif
-    doInterpolation(parameters, action, parametersP, other);
+    if (update)
+      doInterpolation(parameters, action, parametersP, other);
 #ifdef TIMING
     endTiming=std::chrono::steady_clock::now();
     std::cout <<" addVector doInterpolation():  seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
@@ -1439,8 +1440,8 @@ class Optimize : public Base<T> {
     auto hp = -2 * (3 * f0 - 3 * f1 + 2 * g0 + g1) + 6 * (2 * f0 - 2 * f1 + g0 + g1) * alphap;
     xout << "alpham=" << alpham << ", fm=" << fm << ", hm=" << hm << std::endl;
     xout << "alphap=" << alphap << ", fp=" << fp << ", hp=" << hp << std::endl;
-    f = std::min(fm,fp);
-    x = x0 + (fm<fp?alpham:alphap)*(x1-x0);
+    f = std::min(fm, fp);
+    x = x0 + (fm < fp ? alpham : alphap) * (x1 - x0);
     return true;
   }
   bool solveReducedProblem() override {
@@ -1449,7 +1450,7 @@ class Optimize : public Base<T> {
     if (n > 0) {
 
       // first consider whether this point can be taken as the next iteration point, or whether further line-searching is needed
-      auto step = std::sqrt(this->m_subspaceOverlap(n-1,n-1));
+      auto step = std::sqrt(this->m_subspaceOverlap(n - 1, n - 1));
       auto f0 = m_values[n - 1];
       auto f1 = m_values[n];
       auto g1 = this->m_subspaceGradient(n - 1);
@@ -1458,13 +1459,13 @@ class Optimize : public Base<T> {
       bool Wolfe_2 = m_strong_Wolfe ?
                      g1 >= m_Wolfe_2 * g0 :
                      std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
-      xout << "subspace Matrix diagonal "<<this->m_subspaceMatrix(n-1,n-1)<<std::endl;
-      xout << "subspace Overlap diagonal "<<this->m_subspaceOverlap(n-1,n-1)<<std::endl;
+      xout << "subspace Matrix diagonal " << this->m_subspaceMatrix(n - 1, n - 1) << std::endl;
+      xout << "subspace Overlap diagonal " << this->m_subspaceOverlap(n - 1, n - 1) << std::endl;
       xout << "step=" << step << std::endl;
       xout << "f0=" << f0 << std::endl;
       xout << "f1=" << f1 << std::endl;
       xout << " m_Wolfe_1 =" << m_Wolfe_1 << std::endl;
-      xout << " m_Wolfe_1 * g0=" <<  m_Wolfe_1 * g0 << std::endl;
+      xout << " m_Wolfe_1 * g0=" << m_Wolfe_1 * g0 << std::endl;
       xout << "f0 + m_Wolfe_1 * g0=" << f0 + m_Wolfe_1 * g0 << std::endl;
       xout << "g0=" << g0 << std::endl;
       xout << "g1=" << g1 << std::endl;
@@ -1487,7 +1488,7 @@ class Optimize : public Base<T> {
       return false;
     }
     accept:
-    m_linesearch_steplength=0;
+    m_linesearch_steplength = 0;
     auto& minusAlpha = this->m_interpolation;
     minusAlpha.conservativeResize(n, 1);
     if (this->m_algorithm == "L-BFGS") {
@@ -1505,8 +1506,13 @@ class Optimize : public Base<T> {
 
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
     if (m_linesearch_steplength != 0) { // line search
-      solution.front().get().axpy(1-m_linesearch_steplength,this->m_solutions.back().front());
-      this->deleteVector(this->m_solutions.size() - 1);
+      xout << "endIteration m_linesearch_steplength="<<m_linesearch_steplength<<std::endl;
+      solution.front().get().axpy(1 - m_linesearch_steplength, this->m_solutions.back().front());
+      xout << "dimension "<<this->m_QQMatrix.rows()<<std::endl;
+      xout << "m_solutions.size()="<<this->m_solutions.size()<<std::endl;
+      this->deleteVector(this->m_QQMatrix.rows() - 1);
+      xout << "dimension "<<this->m_QQMatrix.rows()<<std::endl;
+      xout << "m_solutions.size()="<<this->m_solutions.size()<<std::endl;
     } else { // quasi-Newton
       if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
         solution.back().get().axpy(-1, this->m_last_solution.back());
@@ -1516,7 +1522,8 @@ class Optimize : public Base<T> {
           for (size_t lll = 0; lll < this->m_residuals[ll].size(); lll++) {
             if (this->m_vector_active[ll][lll]) {
               auto factor =
-                  minusAlpha(l, 0) - this->m_residuals[ll][lll].dot(solution.back().get()) / this->m_subspaceMatrix(l, l);
+                  minusAlpha(l, 0)
+                      - this->m_residuals[ll][lll].dot(solution.back().get()) / this->m_subspaceMatrix(l, l);
               solution.back().get().axpy(factor, this->m_solutions[ll][lll]);
               l++;
             }

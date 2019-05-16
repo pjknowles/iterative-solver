@@ -1507,7 +1507,10 @@ class Optimize : public Base<T> {
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
     if (m_linesearch_steplength != 0) { // line search
       xout << "endIteration m_linesearch_steplength="<<m_linesearch_steplength<<std::endl;
-      solution.front().get().axpy(1 - m_linesearch_steplength, this->m_solutions.back().front());
+      this->m_last_solution.front().axpy(-1,this->m_solutions.back().front());
+      this->m_last_residual.front().axpy(-1,this->m_residuals.back().front());
+      solution.front().get() = this->m_last_solution.front();
+      solution.front().get().axpy(m_linesearch_steplength, this->m_solutions.back().front());
       xout << "dimension "<<this->m_QQMatrix.rows()<<std::endl;
       xout << "m_solutions.size()="<<this->m_solutions.size()<<std::endl;
       this->deleteVector(this->m_QQMatrix.rows() - 1);

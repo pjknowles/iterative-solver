@@ -950,20 +950,24 @@ class Base {
       if (m_iterations > 1) {
         copyvec(m_residuals, residual, m_last_residual);
         copyvec(m_solutions, solution, m_last_solution);
-        xout << "copyvec into m_solutions:"<<std::endl;
-        xout << "solution: "<<solution.front().get()<<std::endl;
-        xout << "m_last_solution: "<<m_last_solution.front()<<std::endl;
-        xout << "m_solutions: "<<m_solutions.size()<<m_solutions.back().front()<<std::endl;
+//        xout << "copyvec into m_solutions:"<<std::endl;
+//        xout << "solution: "<<solution.front().get()<<std::endl;
+//        xout << "m_last_solution: "<<m_last_solution.front()<<std::endl;
+//        xout << "m_solutions: "<<m_solutions.size()<<m_solutions.back().front()<<std::endl;
         copyvec(m_others, other, m_last_other);
         m_subspaceGradient.conservativeResize(m_solutions.size(), residual.size());
-        for (size_t i = 0; i < m_solutions.size(); i++)
+        size_t i=0;
+        for (size_t ii = 0; ii < m_solutions.size(); ii++) {
+          if (not m_vector_active[ii][0]) continue;
           for (size_t k = 0; k < residual.size(); k++) {
-            xout << "form m_subspaceGradient(" << i << "," << k << ") from" << std::endl;
-            xout << residual[k].get() << std::endl;
-            xout << m_solutions[i][k] << std::endl;
-            m_subspaceGradient(i, k) = residual[k].get().dot(m_solutions[i][k]);
-            xout << "form m_subspaceGradient(" << i << "," << k << ") =" << m_subspaceGradient(i, k) << std::endl;
+//            xout << "form m_subspaceGradient(" << i << "," << k << ") from" << std::endl;
+//            xout << residual[k].get() << std::endl;
+//            xout << m_solutions[ii][k] << std::endl;
+            m_subspaceGradient(i, k) = residual[k].get().dot(m_solutions[ii][k]);
+//            xout << "form m_subspaceGradient(" << i << "," << k << ") =" << m_subspaceGradient(i, k) << std::endl;
           }
+          i++;
+        }
       } else {
       }
 //      xout << "copyvec m_last_residual residual, self dot = "<<residual.front().get().dot(residual.front().get())<<std::endl;
@@ -1081,7 +1085,7 @@ class Base {
                 m_QQOverlap(l2 - 1, k) = m_QQOverlap(l2, k);
               }
             }
-            xout << "compress over m_subspaceGradient(" << l << ",*)" << std::endl;
+//            xout << "compress over m_subspaceGradient(" << l << ",*)" << std::endl;
             for (Eigen::Index l2 = l + 1; l2 < m_QQMatrix.cols(); l2++) {
               for (Eigen::Index k = 0; k < m_subspaceGradient.cols(); k++)
                 m_subspaceGradient(l2 - 1, k) = m_subspaceGradient(l2, k);
@@ -1401,7 +1405,7 @@ class Optimize : public Base<T> {
         m_minimize(minimize),
         m_strong_Wolfe(true),
         m_Wolfe_1(0.0001), m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
-        m_linesearch_tolerance(0.002),
+        m_linesearch_tolerance(0.2),
 //        m_linesearching(false),
         m_linesearch_steplength(0) {
     this->m_linear = false;
@@ -1446,17 +1450,17 @@ class Optimize : public Base<T> {
     auto alphap = (3 * f0 - 3 * f1 + 2 * g0 + g1 + std::sqrt(discriminant)) / (3. * (2 * f0 - 2 * f1 + g0 + g1));
     auto fm = f0 + alpham * (g0 + alpham * (-3 * f0 + 3 * f1 - 2 * g0 - g1 + alpham * (2 * f0 - 2 * f1 + g0 + g1)));
     auto fp = f0 + alphap * (g0 + alphap * (-3 * f0 + 3 * f1 - 2 * g0 - g1 + alphap * (2 * f0 - 2 * f1 + g0 + g1)));
-    auto hm = -2 * (3 * f0 - 3 * f1 + 2 * g0 + g1) + 6 * (2 * f0 - 2 * f1 + g0 + g1) * alpham;
-    auto hp = -2 * (3 * f0 - 3 * f1 + 2 * g0 + g1) + 6 * (2 * f0 - 2 * f1 + g0 + g1) * alphap;
-    xout << "alpham=" << alpham << ", fm=" << fm << ", hm=" << hm << std::endl;
-    xout << "alphap=" << alphap << ", fp=" << fp << ", hp=" << hp << std::endl;
+//    auto hm = -2 * (3 * f0 - 3 * f1 + 2 * g0 + g1) + 6 * (2 * f0 - 2 * f1 + g0 + g1) * alpham;
+//    auto hp = -2 * (3 * f0 - 3 * f1 + 2 * g0 + g1) + 6 * (2 * f0 - 2 * f1 + g0 + g1) * alphap;
+//    xout << "alpham=" << alpham << ", fm=" << fm << ", hm=" << hm << std::endl;
+//    xout << "alphap=" << alphap << ", fp=" << fp << ", hp=" << hp << std::endl;
     f = std::min(fm, fp);
     x = x0 + (fm < fp ? alpham : alphap) * (x1 - x0);
     return true;
   }
   bool solveReducedProblem() override {
     auto n = this->m_subspaceMatrix.rows();
-    xout << "solveReduced Problem n=" << n << std::endl;
+//    xout << "solveReduced Problem n=" << n << std::endl;
     if (n > 0) {
 
       // first consider whether this point can be taken as the next iteration point, or whether further line-searching is needed
@@ -1464,17 +1468,17 @@ class Optimize : public Base<T> {
       auto f0 = m_values[n - 1];
       auto f1 = m_values[n];
       auto g1 = this->m_subspaceGradient(n - 1);
-      xout << "this->m_residuals[n-1][0] " << this->m_residuals[n - 1][0] << std::endl;
-      xout << "this->m_solutions[n-1][0] " << this->m_solutions[n - 1][0] << std::endl;
-      xout << "this->m_residuals.back()[0] " << this->m_residuals.back()[0] << std::endl;
-      xout << "this->m_solutions.back()[0] " << this->m_solutions.back()[0] << std::endl;
+//      xout << "this->m_residuals[n-1][0] " << this->m_residuals[n - 1][0] << std::endl;
+//      xout << "this->m_solutions[n-1][0] " << this->m_solutions[n - 1][0] << std::endl;
+//      xout << "this->m_residuals.back()[0] " << this->m_residuals.back()[0] << std::endl;
+//      xout << "this->m_solutions.back()[0] " << this->m_solutions.back()[0] << std::endl;
       auto g0 = g1 - this->m_residuals.back()[0].dot(this->m_solutions.back()[0]);
       bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
       bool Wolfe_2 = m_strong_Wolfe ?
                      g1 >= m_Wolfe_2 * g0 :
                      std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
-      xout << "subspace Matrix diagonal " << this->m_subspaceMatrix(n - 1, n - 1) << std::endl;
-      xout << "subspace Overlap diagonal " << this->m_subspaceOverlap(n - 1, n - 1) << std::endl;
+//      xout << "subspace Matrix diagonal " << this->m_subspaceMatrix(n - 1, n - 1) << std::endl;
+//      xout << "subspace Overlap diagonal " << this->m_subspaceOverlap(n - 1, n - 1) << std::endl;
       xout << "step=" << step << std::endl;
       xout << "f0=" << f0 << std::endl;
       xout << "f1=" << f1 << std::endl;
@@ -1486,19 +1490,19 @@ class Optimize : public Base<T> {
       xout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
       if (Wolfe_1 && Wolfe_2) goto accept;
       scalar_type finterp;
-      xout << "before interpolatedMinimum" << std::endl;
+//      xout << "before interpolatedMinimum" << std::endl;
       auto interpolated = interpolatedMinimum(m_linesearch_steplength, finterp, 0, 1, f0, f1, g0, g1);
-      if (not interpolated or std::abs(m_linesearch_steplength - 1) > m_linesearch_tolerance) {
-        xout << "reject interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength
-             << std::endl;
+      if (not interpolated or (m_linesearch_steplength - 1) > m_linesearch_tolerance) {
+//        xout << "reject interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength
+//             << std::endl;
         m_linesearch_steplength = 2; // expand the search range
       } else if (std::abs(m_linesearch_steplength - 1) < m_linesearch_tolerance) {
         goto accept; // if we are within spitting distance already, don't bother to make a line step
       } else {
-        xout << "accept interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength << std::endl;
+//        xout << "accept interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength << std::endl;
       }
       // when we arrive here, we need to do a new line-search step
-      xout << "we need to do a new line-search step " << m_linesearch_steplength << std::endl;
+//      xout << "we need to do a new line-search step " << m_linesearch_steplength << std::endl;
       return false;
     }
     accept:
@@ -1520,23 +1524,23 @@ class Optimize : public Base<T> {
 
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
     if (m_linesearch_steplength != 0) { // line search
-      xout << "*enter endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
-      xout << "m_last_solution " << this->m_last_solution.front() << std::endl;
-      xout << "m_last_residual " << this->m_last_residual.front() << std::endl;
-      xout << "solution " << solution.front().get() << std::endl;
+//      xout << "*enter endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
+//      xout << "m_last_solution " << this->m_last_solution.front() << std::endl;
+//      xout << "m_last_residual " << this->m_last_residual.front() << std::endl;
+//      xout << "solution " << solution.front().get() << std::endl;
       this->m_last_solution.front().axpy(-1, this->m_solutions.back().front());
       this->m_last_residual.front().axpy(-1, this->m_residuals.back().front());
       solution.front().get() = this->m_last_solution.front();
       solution.front().get().axpy(m_linesearch_steplength, this->m_solutions.back().front());
-      xout << "m_last_solution " << this->m_last_solution.front() << std::endl;
-      xout << "m_last_residual " << this->m_last_residual.front() << std::endl;
-      xout << "solution " << solution.front().get() << std::endl;
-      xout << "dimension " << this->m_QQMatrix.rows() << std::endl;
-      xout << "m_solutions.size()=" << this->m_solutions.size() << std::endl;
+//      xout << "m_last_solution " << this->m_last_solution.front() << std::endl;
+//      xout << "m_last_residual " << this->m_last_residual.front() << std::endl;
+//      xout << "solution " << solution.front().get() << std::endl;
+//      xout << "dimension " << this->m_QQMatrix.rows() << std::endl;
+//      xout << "m_solutions.size()=" << this->m_solutions.size() << std::endl;
       m_values.pop_back();
       this->deleteVector(this->m_QQMatrix.rows() - 1);
-      xout << "dimension " << this->m_QQMatrix.rows() << std::endl;
-      xout << "m_solutions.size()=" << this->m_solutions.size() << std::endl;
+//      xout << "dimension " << this->m_QQMatrix.rows() << std::endl;
+//      xout << "m_solutions.size()=" << this->m_solutions.size() << std::endl;
     } else { // quasi-Newton
       if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
         solution.back().get().axpy(-1, this->m_last_solution.back());
@@ -1556,7 +1560,7 @@ class Optimize : public Base<T> {
         solution.back().get().axpy(1, this->m_last_solution.front());
       }
     }
-    xout << "*exit endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
+//    xout << "*exit endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
     return Base<T>::endIteration(solution, residual);
   }
 

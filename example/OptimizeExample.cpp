@@ -39,31 +39,36 @@ void update(pv& psc, const pv& psg) {
 int main(int argc, char* argv[]) {
   alpha = 7;
   n = 100;
-  n = 1;
   anharmonicity = 0.2;
   for (const auto& method : std::vector<std::string>{"null", "L-BFGS"}) {
     std::cout << "optimize with " << method << std::endl;
     IterativeSolver::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_verbosity = 1;
-    solver.m_maxIterations = 50;
+    solver.m_maxIterations = 20;
     solver.m_Wolfe_1=.8;
+    solver.m_linesearch_tolerance = .0001;
     pv g(n);
     pv x(n);
     pv hg(n);
-    scalar one = 5;
+    scalar one = 1;
     for (auto i = 0; i < n; i++) x.put(&one, 1, i);
     scalar zero = 0;
     x.put(&zero, 1, 0);  // initial guess
     for (size_t iter = 0; iter < solver.m_maxIterations; ++iter) {
       auto value = anharmonic_residual(x, g);
-      xout << "iteration "<<iter<<" value="<<value<<"\n x: "<<x<<"\n g: "<<g<<std::endl;
+//      xout << "iteration "<<iter<<" value="<<value<<"\n x: "<<x<<"\n g: "<<g<<std::endl;
       if (solver.addValue(x, value, g))
         update(x, g);
-      xout << "before endIteration\n x: "<<x<<"\n g: "<<g<<std::endl;
+//      xout << "before endIteration\n x: "<<x<<"\n g: "<<g<<std::endl;
       if (solver.endIteration(x, g)) break;
-      xout << "after endIteration\n x: "<<x<<"\n g: "<<g<<std::endl;
+//      xout << "after endIteration\n x: "<<x<<"\n g: "<<g<<std::endl;
     }
-    for (size_t i=0; i<x.size(); i++) {scalar val; x.get(&val,1,i); val-=1;x.put(&val,1,i); }
+    for (size_t i = 0; i < x.size(); i++) {
+      scalar val;
+      x.get(&val, 1, i);
+      val -= 1;
+      x.put(&val, 1, i);
+    }
     std::cout << "Distance of solution from exact solution: " << std::sqrt(x.dot(x)) << std::endl;
     std::cout << "Error=" << solver.errors().front() << " after " << solver.iterations() << " iterations" << std::endl;
   }

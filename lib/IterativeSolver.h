@@ -950,11 +950,20 @@ class Base {
       if (m_iterations > 1) {
         copyvec(m_residuals, residual, m_last_residual);
         copyvec(m_solutions, solution, m_last_solution);
+        xout << "copyvec into m_solutions:"<<std::endl;
+        xout << "solution: "<<solution.front().get()<<std::endl;
+        xout << "m_last_solution: "<<m_last_solution.front()<<std::endl;
+        xout << "m_solutions: "<<m_solutions.size()<<m_solutions.back().front()<<std::endl;
         copyvec(m_others, other, m_last_other);
         m_subspaceGradient.conservativeResize(m_solutions.size(), residual.size());
         for (size_t i = 0; i < m_solutions.size(); i++)
-          for (size_t k = 0; k < residual.size(); k++)
+          for (size_t k = 0; k < residual.size(); k++) {
+            xout << "form m_subspaceGradient(" << i << "," << k << ") from" << std::endl;
+            xout << residual[k].get() << std::endl;
+            xout << m_solutions[i][k] << std::endl;
             m_subspaceGradient(i, k) = residual[k].get().dot(m_solutions[i][k]);
+            xout << "form m_subspaceGradient(" << i << "," << k << ") =" << m_subspaceGradient(i, k) << std::endl;
+          }
       } else {
       }
 //      xout << "copyvec m_last_residual residual, self dot = "<<residual.front().get().dot(residual.front().get())<<std::endl;
@@ -1072,6 +1081,7 @@ class Base {
                 m_QQOverlap(l2 - 1, k) = m_QQOverlap(l2, k);
               }
             }
+            xout << "compress over m_subspaceGradient(" << l << ",*)" << std::endl;
             for (Eigen::Index l2 = l + 1; l2 < m_QQMatrix.cols(); l2++) {
               for (Eigen::Index k = 0; k < m_subspaceGradient.cols(); k++)
                 m_subspaceGradient(l2 - 1, k) = m_subspaceGradient(l2, k);
@@ -1454,7 +1464,11 @@ class Optimize : public Base<T> {
       auto f0 = m_values[n - 1];
       auto f1 = m_values[n];
       auto g1 = this->m_subspaceGradient(n - 1);
-      auto g0 = g1 - this->m_residuals[n - 1][0].dot(this->m_solutions[n - 1][0]);
+      xout << "this->m_residuals[n-1][0] " << this->m_residuals[n - 1][0] << std::endl;
+      xout << "this->m_solutions[n-1][0] " << this->m_solutions[n - 1][0] << std::endl;
+      xout << "this->m_residuals.back()[0] " << this->m_residuals.back()[0] << std::endl;
+      xout << "this->m_solutions.back()[0] " << this->m_solutions.back()[0] << std::endl;
+      auto g0 = g1 - this->m_residuals.back()[0].dot(this->m_solutions.back()[0]);
       bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
       bool Wolfe_2 = m_strong_Wolfe ?
                      g1 >= m_Wolfe_2 * g0 :
@@ -1467,8 +1481,8 @@ class Optimize : public Base<T> {
       xout << " m_Wolfe_1 =" << m_Wolfe_1 << std::endl;
       xout << " m_Wolfe_1 * g0=" << m_Wolfe_1 * g0 << std::endl;
       xout << "f0 + m_Wolfe_1 * g0=" << f0 + m_Wolfe_1 * g0 << std::endl;
-      xout << "g0=" << g0 << std::endl;
-      xout << "g1=" << g1 << std::endl;
+      xout << "g0=" << g0 << ", g0/step=" << g0 / step << std::endl;
+      xout << "g1=" << g1 << ", g1/step=" << g1 / step << std::endl;
       xout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
       if (Wolfe_1 && Wolfe_2) goto accept;
       scalar_type finterp;
@@ -1506,16 +1520,23 @@ class Optimize : public Base<T> {
 
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
     if (m_linesearch_steplength != 0) { // line search
-      xout << "endIteration m_linesearch_steplength="<<m_linesearch_steplength<<std::endl;
-      this->m_last_solution.front().axpy(-1,this->m_solutions.back().front());
-      this->m_last_residual.front().axpy(-1,this->m_residuals.back().front());
+      xout << "*enter endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
+      xout << "m_last_solution " << this->m_last_solution.front() << std::endl;
+      xout << "m_last_residual " << this->m_last_residual.front() << std::endl;
+      xout << "solution " << solution.front().get() << std::endl;
+      this->m_last_solution.front().axpy(-1, this->m_solutions.back().front());
+      this->m_last_residual.front().axpy(-1, this->m_residuals.back().front());
       solution.front().get() = this->m_last_solution.front();
       solution.front().get().axpy(m_linesearch_steplength, this->m_solutions.back().front());
-      xout << "dimension "<<this->m_QQMatrix.rows()<<std::endl;
-      xout << "m_solutions.size()="<<this->m_solutions.size()<<std::endl;
+      xout << "m_last_solution " << this->m_last_solution.front() << std::endl;
+      xout << "m_last_residual " << this->m_last_residual.front() << std::endl;
+      xout << "solution " << solution.front().get() << std::endl;
+      xout << "dimension " << this->m_QQMatrix.rows() << std::endl;
+      xout << "m_solutions.size()=" << this->m_solutions.size() << std::endl;
+      m_values.pop_back();
       this->deleteVector(this->m_QQMatrix.rows() - 1);
-      xout << "dimension "<<this->m_QQMatrix.rows()<<std::endl;
-      xout << "m_solutions.size()="<<this->m_solutions.size()<<std::endl;
+      xout << "dimension " << this->m_QQMatrix.rows() << std::endl;
+      xout << "m_solutions.size()=" << this->m_solutions.size() << std::endl;
     } else { // quasi-Newton
       if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
         solution.back().get().axpy(-1, this->m_last_solution.back());
@@ -1535,6 +1556,7 @@ class Optimize : public Base<T> {
         solution.back().get().axpy(1, this->m_last_solution.front());
       }
     }
+    xout << "*exit endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
     return Base<T>::endIteration(solution, residual);
   }
 

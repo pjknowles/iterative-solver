@@ -1406,7 +1406,7 @@ class Optimize : public Base<T> {
         m_strong_Wolfe(true),
         m_Wolfe_1(0.0001), m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
         m_linesearch_tolerance(0.2),
-//        m_linesearching(false),
+        m_linesearch_grow_factor(2),
         m_linesearch_steplength(0) {
     this->m_linear = false;
     this->m_orthogonalize = false;
@@ -1427,6 +1427,7 @@ class Optimize : public Base<T> {
   scalar_type m_Wolfe_1; ///< Acceptance parameter for function value
   scalar_type m_Wolfe_2; ///< Acceptance parameter for function gradient
   scalar_type m_linesearch_tolerance; ///< If the predicted line search is within 1\pm tolerance, don't bother taking it
+  scalar_type m_linesearch_grow_factor; ///< If the predicted line search step is extrapolation, limit the step to this factor times the current step
  protected:
   std::vector<scalar_type> m_linesearch_steps;
   std::vector<scalar_type> m_linesearch_values;
@@ -1445,19 +1446,16 @@ class Optimize : public Base<T> {
                            scalar_type g0,
                            scalar_type g1) {
     auto discriminant = (std::pow(3 * f0 - 3 * f1 + g0, 2) + (6 * f0 - 6 * f1 + g0) * g1 + std::pow(g1, 2));
-    if (discriminant < 0) return false;
-    auto alpham = (3 * f0 - 3 * f1 + 2 * g0 + g1 - std::sqrt(discriminant)) / (3. * (2 * f0 - 2 * f1 + g0 + g1));
-    auto alphap = (3 * f0 - 3 * f1 + 2 * g0 + g1 + std::sqrt(discriminant)) / (3. * (2 * f0 - 2 * f1 + g0 + g1));
+    if (discriminant < 0) return false; // cubic has no turning points
+    auto alpham = (3 * f0 - 3 * f1 + 2 * g0 + g1 - std::sqrt(discriminant)) / (3 * (2 * f0 - 2 * f1 + g0 + g1));
+    auto alphap = (3 * f0 - 3 * f1 + 2 * g0 + g1 + std::sqrt(discriminant)) / (3 * (2 * f0 - 2 * f1 + g0 + g1));
     auto fm = f0 + alpham * (g0 + alpham * (-3 * f0 + 3 * f1 - 2 * g0 - g1 + alpham * (2 * f0 - 2 * f1 + g0 + g1)));
     auto fp = f0 + alphap * (g0 + alphap * (-3 * f0 + 3 * f1 - 2 * g0 - g1 + alphap * (2 * f0 - 2 * f1 + g0 + g1)));
-//    auto hm = -2 * (3 * f0 - 3 * f1 + 2 * g0 + g1) + 6 * (2 * f0 - 2 * f1 + g0 + g1) * alpham;
-//    auto hp = -2 * (3 * f0 - 3 * f1 + 2 * g0 + g1) + 6 * (2 * f0 - 2 * f1 + g0 + g1) * alphap;
-//    xout << "alpham=" << alpham << ", fm=" << fm << ", hm=" << hm << std::endl;
-//    xout << "alphap=" << alphap << ", fp=" << fp << ", hp=" << hp << std::endl;
     f = std::min(fm, fp);
     x = x0 + (fm < fp ? alpham : alphap) * (x1 - x0);
     return true;
   }
+
   bool solveReducedProblem() override {
     auto n = this->m_subspaceMatrix.rows();
 //    xout << "solveReduced Problem n=" << n << std::endl;
@@ -1494,11 +1492,11 @@ class Optimize : public Base<T> {
       scalar_type finterp;
 //      xout << "before interpolatedMinimum" << std::endl;
       auto interpolated = interpolatedMinimum(m_linesearch_steplength, finterp, 0, 1, f0, f1, g0, g1);
-      if (not interpolated or (m_linesearch_steplength - 1) > 1) {
+      if (not interpolated or m_linesearch_steplength > m_linesearch_grow_factor) {
         if (this->m_verbosity > 1)
           xout << "reject interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength
                << std::endl;
-        m_linesearch_steplength = 2; // expand the search range
+        m_linesearch_steplength = m_linesearch_grow_factor; // expand the search range
       } else if (std::abs(m_linesearch_steplength - 1) < m_linesearch_tolerance) {
         if (this->m_verbosity > 1)
           xout << "Don't bother with linesearch " << m_linesearch_steplength << std::endl;

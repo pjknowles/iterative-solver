@@ -25,6 +25,19 @@ scalar anharmonic_residual(const pv& psx, pv& outputs) {
   outputs.put(output.data(), n, 0);
   return value;
 }
+scalar trig_residual(const pv& psx, pv& outputs) {
+  std::vector<scalar> psxk(n);
+  std::vector<scalar> output(n);
+  psx.get(psxk.data(), n, 0);
+  scalar value = 0;
+  for (size_t i = 0; i < n; i++) {
+    value += std::sin(scalar(i+1)*(psxk[i]-1));
+    value += (alpha * (i + 1) / scalar(2) + anharmonicity * (psxk[i] - 1) / scalar(3)) * (psxk[i] - 1) * (psxk[i] - 1);
+    output[i] =scalar(i+1)*std::cos(scalar(i+1)*(psxk[i]-1));
+  }
+  outputs.put(output.data(), n, 0);
+  return value;
+}
 
 void update(pv& psc, const pv& psg) {
   std::vector<scalar> psck(n);
@@ -43,25 +56,25 @@ int main(int argc, char* argv[]) {
   for (const auto& method : std::vector<std::string>{"null", "L-BFGS"}) {
     std::cout << "optimize with " << method << std::endl;
     IterativeSolver::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
-    solver.m_verbosity = 1;
+    solver.m_verbosity = 2;
     solver.m_maxIterations = 20;
 //    solver.m_Wolfe_1=.8;
 //    solver.m_linesearch_tolerance = .0001;
     pv g(n);
     pv x(n);
     pv hg(n);
-    scalar one = 50;
+    scalar one = 1;
     for (auto i = 0; i < n; i++) x.put(&one, 1, i);
     scalar zero = 0;
     x.put(&zero, 1, 0);  // initial guess
     for (size_t iter = 0; iter < solver.m_maxIterations; ++iter) {
-      auto value = anharmonic_residual(x, g);
-//      xout << "iteration "<<iter<<" value="<<value<<"\n x: "<<x<<"\n g: "<<g<<std::endl;
+      auto value = trig_residual(x, g);
+      xout << "iteration "<<iter<<" value="<<value<<"\n x: "<<x<<"\n g: "<<g<<std::endl;
       if (solver.addValue(x, value, g))
         update(x, g);
-//      xout << "before endIteration\n x: "<<x<<"\n g: "<<g<<std::endl;
+      xout << "before endIteration\n x: "<<x<<"\n g: "<<g<<std::endl;
       if (solver.endIteration(x, g)) break;
-//      xout << "after endIteration\n x: "<<x<<"\n g: "<<g<<std::endl;
+      xout << "after endIteration\n x: "<<x<<"\n g: "<<g<<std::endl;
     }
     for (size_t i = 0; i < x.size(); i++) {
       scalar val;

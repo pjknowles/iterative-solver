@@ -38,19 +38,19 @@ void update(pv& psc, const pv& psg) {
 
 int main(int argc, char* argv[]) {
   alpha = 7;
-  n = 100;
+  n = 2;
   anharmonicity = 0.2;
   for (const auto& method : std::vector<std::string>{"null", "L-BFGS"}) {
     std::cout << "optimize with " << method << std::endl;
     IterativeSolver::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_verbosity = 1;
     solver.m_maxIterations = 20;
-    solver.m_Wolfe_1=.8;
-    solver.m_linesearch_tolerance = .0001;
+//    solver.m_Wolfe_1=.8;
+//    solver.m_linesearch_tolerance = .0001;
     pv g(n);
     pv x(n);
     pv hg(n);
-    scalar one = 1;
+    scalar one = 50;
     for (auto i = 0; i < n; i++) x.put(&one, 1, i);
     scalar zero = 0;
     x.put(&zero, 1, 0);  // initial guess

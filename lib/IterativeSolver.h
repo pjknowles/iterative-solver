@@ -1477,29 +1477,36 @@ class Optimize : public Base<T> {
       bool Wolfe_2 = m_strong_Wolfe ?
                      g1 >= m_Wolfe_2 * g0 :
                      std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
+      if (this->m_verbosity > 1) {
 //      xout << "subspace Matrix diagonal " << this->m_subspaceMatrix(n - 1, n - 1) << std::endl;
 //      xout << "subspace Overlap diagonal " << this->m_subspaceOverlap(n - 1, n - 1) << std::endl;
-      xout << "step=" << step << std::endl;
-      xout << "f0=" << f0 << std::endl;
-      xout << "f1=" << f1 << std::endl;
-      xout << " m_Wolfe_1 =" << m_Wolfe_1 << std::endl;
-      xout << " m_Wolfe_1 * g0=" << m_Wolfe_1 * g0 << std::endl;
-      xout << "f0 + m_Wolfe_1 * g0=" << f0 + m_Wolfe_1 * g0 << std::endl;
-      xout << "g0=" << g0 << ", g0/step=" << g0 / step << std::endl;
-      xout << "g1=" << g1 << ", g1/step=" << g1 / step << std::endl;
-      xout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
+        xout << "step=" << step << std::endl;
+        xout << "f0=" << f0 << std::endl;
+        xout << "f1=" << f1 << std::endl;
+        xout << " m_Wolfe_1 =" << m_Wolfe_1 << std::endl;
+        xout << " m_Wolfe_1 * g0=" << m_Wolfe_1 * g0 << std::endl;
+        xout << "f0 + m_Wolfe_1 * g0=" << f0 + m_Wolfe_1 * g0 << std::endl;
+        xout << "g0=" << g0 << ", g0/step=" << g0 / step << std::endl;
+        xout << "g1=" << g1 << ", g1/step=" << g1 / step << std::endl;
+        xout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
+      }
       if (Wolfe_1 && Wolfe_2) goto accept;
       scalar_type finterp;
 //      xout << "before interpolatedMinimum" << std::endl;
       auto interpolated = interpolatedMinimum(m_linesearch_steplength, finterp, 0, 1, f0, f1, g0, g1);
-      if (not interpolated or (m_linesearch_steplength - 1) > m_linesearch_tolerance) {
-//        xout << "reject interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength
-//             << std::endl;
+      if (not interpolated or (m_linesearch_steplength - 1) > 1) {
+        if (this->m_verbosity > 1)
+          xout << "reject interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength
+               << std::endl;
         m_linesearch_steplength = 2; // expand the search range
       } else if (std::abs(m_linesearch_steplength - 1) < m_linesearch_tolerance) {
+        if (this->m_verbosity > 1)
+          xout << "Don't bother with linesearch " << m_linesearch_steplength << std::endl;
         goto accept; // if we are within spitting distance already, don't bother to make a line step
       } else {
-//        xout << "accept interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength << std::endl;
+        if (this->m_verbosity > 1)
+          xout << "cubic linesearch interpolant has minimum " << finterp << " at " << m_linesearch_steplength
+               << "(absolute step " << m_linesearch_steplength * step << ")" << std::endl;
       }
       // when we arrive here, we need to do a new line-search step
 //      xout << "we need to do a new line-search step " << m_linesearch_steplength << std::endl;

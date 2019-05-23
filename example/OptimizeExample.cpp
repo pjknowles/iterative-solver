@@ -31,9 +31,8 @@ scalar trig_residual(const pv& psx, pv& outputs) {
   psx.get(psxk.data(), n, 0);
   scalar value = 0;
   for (size_t i = 0; i < n; i++) {
-    value += std::sin(scalar(i+1)*(psxk[i]-1));
-    value += (alpha * (i + 1) / scalar(2) + anharmonicity * (psxk[i] - 1) / scalar(3)) * (psxk[i] - 1) * (psxk[i] - 1);
-    output[i] =scalar(i+1)*std::cos(scalar(i+1)*(psxk[i]-1));
+    value += 1-std::cos(scalar(i+1)*(psxk[i]-1));
+    output[i] =scalar(i+1)*std::sin(scalar(i+1)*(psxk[i]-1));
   }
   outputs.put(output.data(), n, 0);
   return value;
@@ -51,9 +50,11 @@ void update(pv& psc, const pv& psg) {
 
 int main(int argc, char* argv[]) {
   alpha = 7;
-  n = 2;
+  n = 1;
   anharmonicity = 0.2;
-  for (const auto& method : std::vector<std::string>{"null", "L-BFGS"}) {
+  for (const auto& method : std::vector<std::string>{
+    // "null",
+    "L-BFGS"}) {
     std::cout << "optimize with " << method << std::endl;
     IterativeSolver::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_verbosity = 2;
@@ -65,7 +66,7 @@ int main(int argc, char* argv[]) {
     pv hg(n);
     scalar one = 1;
     for (auto i = 0; i < n; i++) x.put(&one, 1, i);
-    scalar zero = 0;
+    scalar zero = -0.58;
     x.put(&zero, 1, 0);  // initial guess
     for (size_t iter = 0; iter < solver.m_maxIterations; ++iter) {
       auto value = trig_residual(x, g);

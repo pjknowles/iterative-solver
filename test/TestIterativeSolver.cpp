@@ -7,6 +7,7 @@
 #include <cmath>
 #include <numeric>
 #include <vector>
+#include <regex>
 #include "IterativeSolver.h"
 #include "SimpleVector.h"
 #include "PagedVector.h"
@@ -446,3 +447,72 @@ TEST(Monomial_44, Optimize) {
 TEST(Monomial_42, Optimize) {
   ASSERT_TRUE (MonomialTest().run(4, 2));
 }
+
+class trigTest {
+
+ public:
+  using scalar = double;
+  using pv = LinearAlgebra::PagedVector<scalar>;
+
+  size_t n;
+  std::string method;
+  double hessian;
+  scalar initial;
+
+  trigTest(std::string method = "L-BFGS", size_t n = 1, double hessian = 1, double initial = 1)
+      : n(n), method(method), hessian(hessian), initial(initial) {}
+
+  scalar residual(const pv& psx, pv& outputs) {
+    std::vector<scalar> psxk(n);
+    std::vector<scalar> output(n);
+    psx.get(psxk.data(), n, 0);
+    scalar value = 0;
+    for (size_t i = 0; i < n; i++) {
+      value += 1 - std::cos(scalar(i + 1) * psxk[i]);
+      output[i] = scalar(i + 1) * std::sin(scalar(i + 1) * psxk[i]);
+    }
+    outputs.put(output.data(), n, 0);
+    return value;
+  }
+
+  void update(pv& psc, const pv& psg) {
+    std::vector<scalar> psck(n);
+    std::vector<scalar> psgk(n);
+    psg.get(psgk.data(), n, 0);
+    psc.get(psck.data(), n, 0);
+    for (size_t i = 0; i < n; i++)
+      psck[i] -= psgk[i] / hessian;
+    psc.put(psck.data(), n, 0);
+  }
+
+  bool run() {
+    std::cout << "optimize with " << method << std::endl;
+    IterativeSolver::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
+    solver.m_verbosity = 2;
+    solver.m_maxIterations = 50;
+    solver.m_thresh=1e-12;
+//    solver.m_Wolfe_1=.8;
+//    solver.m_linesearch_tolerance = .0001;
+    std::cout << "Wolfe condition parameters: " << solver.m_Wolfe_1 << ", " << solver.m_Wolfe_2 << std::endl;
+    pv g(n);
+    pv x(n);
+    for (auto i = 0; i < n; i++) x.put(&initial, 1, i);
+    for (size_t iter = 1; iter <= solver.m_maxIterations; ++iter) {
+      auto value = residual(x, g);
+      if (solver.m_verbosity > 1)
+        xout << "start iteration " << iter << " value=" << value << "\n x: " << x << "\n g: " << g << std::endl;
+      if (solver.addValue(x, value, g))
+        update(x, g);
+      if (solver.endIteration(x, g)) break;
+    }
+    std::cout << "Distance of solution from exact solution: " << std::sqrt(x.dot(x)) << std::endl;
+    std::cout << "Error=" << solver.errors().front() << " after " << solver.iterations() << " iterations" << std::endl;
+    return std::sqrt(x.dot(x)) < 1e-5 && solver.errors().front() < 1e-5;
+  }
+
+};
+
+TEST(Trig_BFGS1, Optimize) { ASSERT_TRUE (trigTest("L-BFGS", 1, 1, 1).run()); }
+TEST(Trig_BFGS2, Optimize) { ASSERT_TRUE (trigTest("L-BFGS", 1, 2, 1).run()); }
+TEST(Trig_BFGS3, Optimize) { ASSERT_TRUE (trigTest("L-BFGS", 1, 2, 3).run()); }
+TEST(Trig_BFGS4, Optimize) { ASSERT_TRUE (trigTest("L-BFGS", 10, 5, .1).run()); }

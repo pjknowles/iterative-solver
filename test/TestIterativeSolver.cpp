@@ -39,7 +39,7 @@ TEST(TestIterativeSolver, small_eigenproblem) {
       LinearAlgebra::SimpleVector<double> mm(n);
       std::vector<LinearAlgebra::SimpleVector<double> > x, g;
       IterativeSolver::LinearEigensystem<LinearAlgebra::SimpleVector<double> > solver;
-      solver.m_verbosity = -1;
+      solver.m_verbosity = 1;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0)
         std::cout << "Test n=" << n << ", nroot=" << nroot <<

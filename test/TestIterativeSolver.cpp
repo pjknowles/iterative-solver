@@ -22,24 +22,18 @@ TEST(TestIterativeSolver, small_eigenproblem) {
             n && nroot <
             10; nroot++) {
       Eigen::MatrixXd m(n, n);
-      for (
-          size_t i = 0;
-          i < n;
-          i++)
-        for (
-            size_t j = 0;
-            j < n;
-            j++)
-          m(i, j
-          ) = 1 + (i + j) *
-              std::sqrt(double(i + j));
+      for ( size_t i = 0; i < n; i++) {
+        for ( size_t j = 0; j < n; j++)
+          m(i, j ) = 1 + (i + j) * std::sqrt(double(i + j));
+        m(i,i) += i;
+      }
       Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> denseSolver(m);
       auto val = denseSolver.eigenvalues();
 
       LinearAlgebra::SimpleVector<double> mm(n);
       std::vector<LinearAlgebra::SimpleVector<double> > x, g;
       IterativeSolver::LinearEigensystem<LinearAlgebra::SimpleVector<double> > solver;
-      solver.m_verbosity = 1;
+      solver.m_verbosity = -1;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0)
         std::cout << "Test n=" << n << ", nroot=" << nroot <<

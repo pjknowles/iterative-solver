@@ -20,4 +20,4 @@ pipelines:
           - ctest -V
 definitions:
   caches:
-    iterative-solver-cmake: builddir
+    iterative-solver-cmake: build

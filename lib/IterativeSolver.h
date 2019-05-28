@@ -633,6 +633,9 @@ class Base {
 #ifdef TIMING
     auto startTiming=std::chrono::steady_clock::now();
 #endif
+    for (auto k = 0; k < S.rows(); k++)
+      if (std::abs(S(k, k) - 1) < 1e-15)
+        S(k, k) = 1; // somehow avoid problems that eigen with Intel 18 get the SVD wrong if near-unit matrix
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV);
     svd.setThreshold(m_svdThreshold);
 //   xout << "singular values of overlap "<<svd.singularValues().transpose()<<std::endl;
@@ -678,6 +681,9 @@ class Base {
 
     } else { // complex eigenvectors
 #ifdef __INTEL_COMPILER
+      xout << "Hbar\n"<<Hbar<<std::endl;
+      xout << "Eigenvalues\n"<<s.eigenvalues()<<std::endl;
+      xout << "Eigenvectors\n"<<s.eigenvectors()<<std::endl;
       throw std::runtime_error("Intel compiler does not support working with complex eigen3 entities properly");
 #endif
       m_subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors();

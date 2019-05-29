@@ -1432,7 +1432,7 @@ class Optimize : public Base<T> {
   bool m_strong_Wolfe; /// Whether to use strong or weak Wolfe conditions
   scalar_type m_Wolfe_1; ///< Acceptance parameter for function value
   scalar_type m_Wolfe_2; ///< Acceptance parameter for function gradient
-  scalar_type m_linesearch_tolerance; ///< If the predicted line search is within 1\pm tolerance, don't bother taking it
+  scalar_type m_linesearch_tolerance; ///< If the predicted line search is within tolerance of 1, don't bother taking it
   scalar_type m_linesearch_grow_factor; ///< If the predicted line search step is extrapolation, limit the step to this factor times the current step
  protected:
   std::vector<scalar_type> m_linesearch_steps;

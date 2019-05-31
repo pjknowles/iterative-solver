@@ -234,7 +234,8 @@ CONTAINS
   !> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
   !> \param action On input, the residual for parameters.
   !> On exit, the expected residual of the interpolated parameters.
-  !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before the subsequent call to Iterative_Solver_End_Iteration()
+  !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
+  !> the subsequent call to Iterative_Solver_End_Iteration()
   FUNCTION Iterative_Solver_Add_Value(value, parameters, action)
     USE iso_c_binding
     LOGICAL :: Iterative_Solver_Add_Value
@@ -260,7 +261,8 @@ CONTAINS
   !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear).
   !> On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
   !> \param parametersP On exit, the interpolated solution projected onto the P space.
-  !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before the subsequent call to Iterative_Solver_End_Iteration()
+  !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
+  !> the subsequent call to Iterative_Solver_End_Iteration()
   FUNCTION Iterative_Solver_Add_Vector(parameters, action, parametersP)
     USE iso_c_binding
     LOGICAL :: Iterative_Solver_Add_Vector

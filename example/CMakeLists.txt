@@ -27,4 +27,3 @@ foreach (fil ${EXAMPLES})
     target_link_libraries(${test_name} PUBLIC ${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
     add_test(${nam} ${PROJECT_BINARY_DIR}/${test_name})
 endforeach ()
-

@@ -1,0 +1,20 @@
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths: # cache everything so that unnecessary recompilation is avoided
+    - lib
+    - test
+    - example
+    - dependencies
+    - CMakeLists.txt
+    - Doxyfile.in
+job:
+  image: pjknowles/opensuse
+  script:
+    - TOP=$PWD
+    - git reset --hard $CI_COMMIT_SHA # because of cache
+    - procs=$(lscpu -p | egrep -v '^#' | wc -l); echo $procs processors available
+    - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/serial-fortran ; mkdir -p $BUILD && cd $BUILD && pwd && cmake $TOP -DITERATIVESOLVER_FORTRAN=1 && cmake --build . -- -j ${procs} && ctest -V
+    - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/serial ; mkdir -p $BUILD && cd $BUILD && pwd && cmake $TOP -DITERATIVESOLVER_FORTRAN=0 && cmake --build . -- -j ${procs} && ctest -V
+    - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/parallel-fortran ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DMPI=1 -DMPIOPTIONS="--allow-run-as-root" -DITERATIVESOLVER_FORTRAN=1 $TOP && cmake --build . -- -j ${procs} && ctest -V
+    - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/parallel ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DMPI=1 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest -V
+

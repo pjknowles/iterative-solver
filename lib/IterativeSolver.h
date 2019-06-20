@@ -1,5 +1,6 @@
 #ifndef ITERATIVESOLVER_H
 #define ITERATIVESOLVER_H
+#include "IterativeSolver-config.h"
 #ifdef TIMING
 #include <chrono>
 #endif

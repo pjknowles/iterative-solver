@@ -2,6 +2,7 @@
 #define ITERATIVESOLVER_TEST_H
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include "IterativeSolver-config.h"
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif

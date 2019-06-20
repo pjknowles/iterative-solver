@@ -1,5 +1,6 @@
 #ifndef PAGEDVECTOR_H
 #define PAGEDVECTOR_H
+#include "IterativeSolver-config.h"
 #ifdef TIMING
 #include <chrono>
 #endif

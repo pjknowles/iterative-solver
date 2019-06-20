@@ -448,7 +448,9 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
 }
 }
 
+#ifdef ITERATIVESOLVER_FORTRAN
 extern "C" { void IterativeSolverFTest(); }
+#endif
 static std::unique_ptr<std::ofstream> out;
 TEST(IterativeSolver_test,old)
  {
@@ -484,6 +486,8 @@ TEST(IterativeSolver_test,old)
     }
 //  DavidsonTest<LinearAlgebra::PagedVector<double> >(600,3,1,2,true);
 //  RSPTTest<LinearAlgebra::PagedVector<double> ,double>(100,2e0);
+#ifdef ITERATIVESOLVER_FORTRAN
     IterativeSolverFTest();
+#endif
   }
 }

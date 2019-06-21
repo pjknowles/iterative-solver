@@ -4,4 +4,5 @@
 #cmakedefine ITERATIVESOLVER_I8
 #cmakedefine HAVE_MPI_H
 #cmakedefine EIGEN_DONT_VECTORIZE
+#cmakedefine MOLPRO
 #endif

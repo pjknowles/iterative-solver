@@ -18,7 +18,7 @@ set(EXAMPLES DIISexample.cpp
 foreach (fil ${EXAMPLES})
     get_filename_component(nam ${fil} NAME_WE)
     set(test_name ${PROJECT_NAME}-${nam})
-    add_executable(${test_name} ${fil})
+    add_executable(${test_name} ${fil} dummy.cpp)
     set_target_properties(${test_name}
             PROPERTIES
             COMPILE_FLAGS -UHAVE_MPI_H

@@ -7,6 +7,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         $<INSTALL_INTERFACE:include>
         )
 target_compile_definitions(${PROJECT_NAME} PRIVATE NOMAIN)
+if (MOLPRO)
+    target_include_directories(${PROJECT_NAME} PRIVATE "${MOLPRO}/build" "${MOLPRO}/src")
+endif ()
 
 install(DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY}/ DESTINATION include)
 
@@ -14,6 +17,7 @@ install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}Targets LIBRARY DESTINATIO
         ARCHIVE DESTINATION lib
         RUNTIME DESTINATION bin
         INCLUDES DESTINATION include
+        PUBLIC_HEADER DESTINATION include
         )
 install(EXPORT ${PROJECT_NAME}Targets
         FILE ${PROJECT_NAME}Targets.cmake
@@ -22,9 +26,15 @@ install(EXPORT ${PROJECT_NAME}Targets
         )
 
 include(CMakePackageConfigHelpers)
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" "
-#include(CMakeFindDependencyMacro)
-#find_dependency(Bar 2.0)
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+"include(CMakeFindDependencyMacro)
+")
+foreach (dep ${DEPENDENCIES})
+    file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    "find_dependency(${dep} ${DEPENDENCY_${dep}})
+")
+endforeach ()
+file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" "
 include(\"\${CMAKE_CURRENT_LIST_DIR}/${PROJECT_NAME}Targets.cmake\")
 ")
 write_basic_package_version_file("${PROJECT_NAME}ConfigVersion.cmake"
@@ -42,7 +52,8 @@ if (FLAGS)
         set(CONFIG_CPPFLAGS "${CONFIG_CPPFLAGS} -D${flag}")
     endforeach ()
 endif ()
-set(CONFIG_FCFLAGS "${CMAKE_Fortran_MODDIR_FLAG} ${CMAKE_INSTALL_PREFIX}/include")
+#set(CONFIG_FCFLAGS "${CMAKE_Fortran_MODDIR_FLAG}${CMAKE_INSTALL_PREFIX}/include")
+set(CONFIG_FCFLAGS "-I${CMAKE_INSTALL_PREFIX}/include") #TODO should not be hard-wired -I
 set(CONFIG_LDFLAGS "-L${CMAKE_INSTALL_PREFIX}/lib")
 set(CONFIG_LIBS "-l${PROJECT_NAME}")
 configure_file(config.in ${PROJECT_NAME}-config @ONLY)

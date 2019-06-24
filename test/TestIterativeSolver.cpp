@@ -12,6 +12,11 @@
 #include "SimpleVector.h"
 #include "PagedVector.h"
 
+#ifdef MOLPRO
+#include <iostream>
+auto& xout=std::cout;
+#endif
+
 TEST(TestIterativeSolver, small_eigenproblem) {
   for (
       size_t n = 1;

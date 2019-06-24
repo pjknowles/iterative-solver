@@ -51,7 +51,7 @@ endif ()
 ########## Dependencies ##########
 
 if (NOT TARGET Eigen3::Eigen)
-    find_package(Eigen3 3.3.5)
+    find_package(Eigen3 3.3)
     if (NOT TARGET Eigen3::Eigen)
         include(FetchContent)
         FetchContent_Declare(

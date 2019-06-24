@@ -46,19 +46,11 @@ install(EXPORT ${PROJECT_NAME}Targets
 
 include(CMakePackageConfigHelpers)
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-<<<<<<< HEAD
-"include(CMakeFindDependencyMacro)
-")
-foreach (dep ${DEPENDENCIES})
-    file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-    "find_dependency(${dep} ${DEPENDENCY_${dep}})
-=======
         "include(CMakeFindDependencyMacro)
 ")
 foreach (dep ${DEPENDENCIES})
     file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
             "find_dependency(${dep} ${DEPENDENCY_${dep}})
->>>>>>> origin/master
 ")
 endforeach ()
 file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" "

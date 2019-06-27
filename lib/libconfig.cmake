@@ -7,9 +7,28 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         $<INSTALL_INTERFACE:include>
         )
 target_compile_definitions(${PROJECT_NAME} PRIVATE NOMAIN)
-if (MOLPRO)
-    target_include_directories(${PROJECT_NAME} PRIVATE "${MOLPRO}/build" "${MOLPRO}/src")
+if (Molpro_SOURCE_DIR)
+    set(MOLPRO 1)
+    target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_BINARY_DIR}/src" "${Molpro_SOURCE_DIR}/build" "${Molpro_SOURCE_DIR}/src")
 endif ()
+if (FORTRAN)
+    set(${PROJECT_UPPER_NAME}_FORTRAN 1)
+    if (INTEGER8)
+        set(${PROJECT_UPPER_NAME}_I8 1)
+    endif ()
+    include(CheckFortranCompilerFlag)
+    CHECK_Fortran_COMPILER_FLAG("-Wall" _Wallf)
+    if (_Wallf)
+        set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} -Wall")
+    endif ()
+endif ()
+
+include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-Wall" _Wall)
+if (_Wall)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
+endif ()
+configure_file(${PROJECT_NAME}-config.h.in ${PROJECT_NAME}-config.h)
 
 install(DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY}/ DESTINATION include)
 
@@ -27,11 +46,11 @@ install(EXPORT ${PROJECT_NAME}Targets
 
 include(CMakePackageConfigHelpers)
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-"include(CMakeFindDependencyMacro)
+        "include(CMakeFindDependencyMacro)
 ")
 foreach (dep ${DEPENDENCIES})
     file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-    "find_dependency(${dep} ${DEPENDENCY_${dep}})
+            "find_dependency(${dep} ${DEPENDENCY_${dep}})
 ")
 endforeach ()
 file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" "

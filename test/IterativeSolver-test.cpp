@@ -5,6 +5,12 @@
 #include "PagedVector.h"
 #include "SimpleVector.h"
 #include "OpaqueVector.h"
+
+#ifdef MOLPRO
+#include <iostream>
+auto& xout=std::cout;
+#endif
+
 namespace IterativeSolver {
 /*!
  * \brief Test iterative solution of linear eigenvalue problem

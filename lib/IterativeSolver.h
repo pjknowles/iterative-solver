@@ -44,8 +44,6 @@ extern std::ostream &xout;
 namespace IterativeSolver {
 typedef std::map<std::string, std::string> optionMap;
 template<class T>
-static T nullVector;
-template<class T>
 static std::vector<T> nullStdVector;
 template<class T>
 static std::vector<typename T::value_type> nullVectorP;
@@ -207,8 +205,19 @@ class Base {
   }
   bool addVector(T& parameters,
                  T& action,
-                 vectorP& parametersP = nullVectorP<T>,
-                 T& other = nullVector<T>) {
+                 vectorP& parametersP,
+                 T& other) {
+    return addVector(
+        vectorRefSet(1, parameters),
+        vectorRefSet(1, action),
+        vectorRefSetP(1, parametersP),
+        vectorRefSet(1, other)
+    );
+  }
+  bool addVector(T& parameters,
+                 T& action,
+                 vectorP& parametersP = nullVectorP<T>) {
+    T other;
     return addVector(
         vectorRefSet(1, parameters),
         vectorRefSet(1, action),

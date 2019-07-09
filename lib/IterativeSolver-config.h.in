@@ -1,8 +1,0 @@
-#ifndef ITERATIVESOLVER_CONFIG_H
-#define ITERATIVESOLVER_CONFIG_H
-#cmakedefine ITERATIVESOLVER_FORTRAN
-#cmakedefine ITERATIVESOLVER_I8
-#cmakedefine HAVE_MPI_H
-#cmakedefine EIGEN_DONT_VECTORIZE
-#cmakedefine MOLPRO
-#endif

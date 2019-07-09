@@ -1,3 +1,4 @@
+include (libconfig.cmake)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/fortran)
 add_library(${PROJECT_NAME} STATIC
         SimpleVector.h
@@ -47,4 +48,4 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
 set (EIGEN_DONT_VECTORIZE ON)
 endif ()
 
-include (libconfig.cmake)
+configure_library(${PROJECT_NAME} "${DEPENDENCIES}")

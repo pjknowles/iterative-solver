@@ -16,10 +16,16 @@ if (FORTRAN)
     if (INTEGER8)
         set(${PROJECT_UPPER_NAME}_I8 1)
     endif ()
-    include(CheckFortranCompilerFlag)
-    CHECK_Fortran_COMPILER_FLAG("-Wall" _Wallf)
-    if (_Wallf)
-        set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} -Wall")
+    if (FORTRAN)
+        set(${PROJECT_UPPER_NAME}_FORTRAN 1)
+        if (INTEGER8)
+            set(${PROJECT_UPPER_NAME}_I8 1)
+        endif ()
+        include(CheckFortranCompilerFlag)
+        CHECK_Fortran_COMPILER_FLAG("-Wall" _Wallf)
+        if (_Wallf)
+            set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} -Wall")
+        endif ()
     endif ()
 endif ()
 
@@ -52,28 +58,104 @@ foreach (dep ${DEPENDENCIES})
     file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
             "find_dependency(${dep} ${DEPENDENCY_${dep}})
 ")
-endforeach ()
-file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" "
-include(\"\${CMAKE_CURRENT_LIST_DIR}/${PROJECT_NAME}Targets.cmake\")
+    foreach (dep ${DEPENDENCIES})
+        file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}Config.cmake"
+                "find_dependency(${dep} ${DEPENDENCY_${dep}})
 ")
-write_basic_package_version_file("${PROJECT_NAME}ConfigVersion.cmake"
-        VERSION ${CMAKE_PROJECT_VERSION}
-        COMPATIBILITY SameMajorVersion
-        )
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-        DESTINATION lib/cmake/${PROJECT_NAME}
-        )
-
-set(CONFIG_CPPFLAGS "-I${CMAKE_INSTALL_PREFIX}/include")
-get_target_property(FLAGS ${PROJECT_NAME} INTERFACE_COMPILE_DEFINITIONS)
-if (FLAGS)
-    foreach (flag ${FLAGS})
-        set(CONFIG_CPPFLAGS "${CONFIG_CPPFLAGS} -D${flag}")
     endforeach ()
-endif ()
-#set(CONFIG_FCFLAGS "${CMAKE_Fortran_MODDIR_FLAG}${CMAKE_INSTALL_PREFIX}/include")
-set(CONFIG_FCFLAGS "-I${CMAKE_INSTALL_PREFIX}/include") #TODO should not be hard-wired -I
-set(CONFIG_LDFLAGS "-L${CMAKE_INSTALL_PREFIX}/lib")
-set(CONFIG_LIBS "-l${PROJECT_NAME}")
-configure_file(config.in ${PROJECT_NAME}-config @ONLY)
-install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config DESTINATION bin)
+    file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}Config.cmake" "
+include(\"\${CMAKE_CURRENT_LIST_DIR}/${LIBRARY_NAME}Targets.cmake\")
+")
+    write_basic_package_version_file("${LIBRARY_NAME}ConfigVersion.cmake"
+            VERSION ${CMAKE_PROJECT_VERSION}
+            COMPATIBILITY SameMajorVersion
+            )
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}Config.cmake" "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}ConfigVersion.cmake"
+            DESTINATION lib/cmake/${LIBRARY_NAME}
+            )
+
+    set(CONFIG_CPPFLAGS "-I${CMAKE_INSTALL_PREFIX}/include")
+    get_target_property(FLAGS ${LIBRARY_NAME} INTERFACE_COMPILE_DEFINITIONS)
+    if (FLAGS)
+        foreach (flag ${FLAGS})
+            set(CONFIG_CPPFLAGS "${CONFIG_CPPFLAGS} -D${flag}")
+        endforeach ()
+    endif ()
+    #set(CONFIG_FCFLAGS "${CMAKE_Fortran_MODDIR_FLAG}${CMAKE_INSTALL_PREFIX}/include")
+    set(CONFIG_FCFLAGS "-I${CMAKE_INSTALL_PREFIX}/include") #TODO should not be hard-wired -I
+    set(CONFIG_LDFLAGS "-L${CMAKE_INSTALL_PREFIX}/lib")
+    set(CONFIG_LIBS "-l${LIBRARY_NAME}")
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}/config.in" "
+#!/bin/sh
+
+prefix=\"@CMAKE_INSTALL_PREFIX@\"
+exec_prefix=\"\${prefix}\"
+
+usage='Usage: '$0' [--cppflags] [--cxxflags] [--exec-prefix] [--ldflags] [--libs] [--prefix] [--version]
+
+ For example, 'test.cpp' may be compiled to produce 'test' as follows:
+
+  c++ -o test test.cpp `'$0' --cppflags --cxxflags --ldflags --libs`'
+
+if test $# -eq 0; then
+      echo \"\${usage}\" 1>&2
+      exit 1
+fi
+
+while test $# -gt 0; do
+  case \"\$1\" in
+    -*=*) optarg=`echo \"\$1\" | sed 's/[-_a-zA-Z0-9]*=//'` ;;
+    *) optarg= ;;
+  esac
+  case $1 in
+    --prefix=*)
+      prefix=$optarg
+      ;;
+    --prefix)
+      echo $prefix
+      ;;
+    --exec-prefix=*)
+      exec_prefix=$optarg
+      ;;
+    --exec-prefix)
+      echo $exec_prefix
+      ;;
+    --version)
+      echo '@CMAKE_PROJECT_VERSION@'
+      ;;
+    --cflags)
+      echo '@CONFIG_CFLAGS@'
+      ;;
+    --cxxflags)
+      echo '@CONFIG_CXXFLAGS@'
+      ;;
+    --cppflags)
+      echo '@CONFIG_CPPFLAGS@'
+      ;;
+    --fflags)
+      echo '@CONFIG_FFLAGS@'
+      ;;
+    --fcflags)
+      echo '@CONFIG_FCFLAGS@'
+      ;;
+    --ldflags)
+      echo '@CONFIG_LDFLAGS@'
+      ;;
+    --libs)
+      echo '@CONFIG_LIBS@'
+      ;;
+    *)
+      echo \"\${usage}\" 1>&2
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+
+")
+    configure_file("${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}/config.in" ${LIBRARY_NAME}-config @ONLY)
+    install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config DESTINATION bin)
+endfunction()
+
+

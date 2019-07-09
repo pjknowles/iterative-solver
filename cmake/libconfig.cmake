@@ -1,24 +1,68 @@
 include(FetchContent)
-function(get_dependency MAKESUBDIR)
-    foreach (dep IN LISTS ARGN)
-        FetchContent_GetProperties(${dep})
-        if (NOT ${dep}_POPULATED)
-            file(LOCK ${CMAKE_SOURCE_DIR}/dependencies/${dep}_lockfile GUARD FILE TIMEOUT 1000)
-            FetchContent_Populate(${dep})
-            if (MAKESUBDIR)
-                add_subdirectory(${${dep}_SOURCE_DIR} ${${dep}_BINARY_DIR} EXCLUDE_FROM_ALL)
-            endif ()
-            file(LOCK ${CMAKE_SOURCE_DIR}/dependencies/${dep}_lockfile RELEASE)
+
+# Declare an external git-hosted library on which this project depends
+# The first parameter is a character string that will be used to generate file
+# and target names, and as a handle for a subsequent get_dependency() call.
+# The second parameter is the URL where the git repository can be found.
+# The node in the git repository is specified separately in the file
+# ${CMAKE_SOURCE_DIR}/dependencies/${NAME}_SHA1
+function(declare_dependency NAME URL)
+    get_dependency_name(${NAME})
+    file(STRINGS "${_SHA_file}" GIT_TAG)
+    message(STATUS "Declare dependency NAME=${NAME} URL=${URL} TAG=${GIT_TAG} DEPENDENCY=${_dependency_name}")
+    FetchContent_Declare(
+            ${_dependency_name}
+            SOURCE_DIR "${CMAKE_SOURCE_DIR}/dependencies/${NAME}"
+            GIT_REPOSITORY ${URL}
+            GIT_TAG ${GIT_TAG}
+            UPDATE_COMMAND "${CMAKE_SOURCE_DIR}/dependencies/checkout.sh" ${NAME} ${CMAKE_BUILD_TYPE}
+    )
+endfunction()
+
+# Load an external git-hosted library on which this project depends.
+# The first parameter is the name of the dependency, as passed previously to
+# declare_dependency().
+# A second parameter can be given, which if evaluating to true includes the
+# library in the cmake build via add_subdirectory(). If omitted, true is assumed.
+function(get_dependency name)
+    get_dependency_name(${name})
+    if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.15)
+        message(VERBOSE "get_dependency(${name})")
+    endif ()
+    FetchContent_GetProperties(${_dependency_name})
+    if (NOT ${_dependency_name}_POPULATED)
+        file(LOCK "${CMAKE_SOURCE_DIR}/dependencies/.${name}_lockfile" GUARD FILE TIMEOUT 1000)
+        FetchContent_Populate(${_dependency_name})
+        file(LOCK "${CMAKE_SOURCE_DIR}/dependencies/.${name}_lockfile" RELEASE)
+    endif ()
+    if (ARGV1 OR (NOT DEFINED ARGV1))
+        if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.15)
+            message(VERBOSE "add_subdirectory() for get_dependency ${name}")
         endif ()
-        foreach (s SOURCE_DIR BINARY_DIR POPULATED)
-            set(${dep}_${s} "${${dep}_${s}}" PARENT_SCOPE)
-        endforeach ()
+        add_subdirectory(${${_dependency_name}_SOURCE_DIR} ${${_dependency_name}_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif ()
+    foreach (s SOURCE_DIR BINARY_DIR POPULATED)
+        set(${_dependency_name}_${s} "${${_dependency_name}_${s}}" PARENT_SCOPE)
     endforeach ()
 endfunction()
 
-# completion of configuration for a library, including exports.
+# Completion of configuration for a library, including installation and package
+# configuration. After installation, ${CMAKE_INSTALL_PREFIX}/bin/${LIBRARY_NAME}-config
+# is a script that can be used to discover build options for using the library.
+# LIBRARY_NAME: target name of library, which should already have been defined
+# via add_library()
+# DEPENDENCIES: A (possibly empty) list of existing target names of libraries on
+# which LIBRARY_NAME depends. For each ${lib} in the list, the variable
+# ${DEPENDENCY_${lib}} contains additional specification to be appended to the
+# library name in the export definition expressed through the find_dependency()
+# command for constructing the package configuration file. Normally, this will
+# be the version number of the dependency.
 function(configure_library LIBRARY_NAME DEPENDENCIES)
-    message("configure_library ${LIBRARY_NAME} ${DEPENDENCIES}")
+    if (DEPENDENCIES)
+        message(STATUS "Configure_library ${LIBRARY_NAME} with dependencies ${DEPENDENCIES}")
+    else ()
+        message(STATUS "Configure_library ${LIBRARY_NAME}")
+    endif ()
     string(TOUPPER ${LIBRARY_NAME} PROJECT_UPPER_NAME)
     add_library(${LIBRARY_NAME}::${LIBRARY_NAME} ALIAS ${LIBRARY_NAME})
     target_include_directories(${LIBRARY_NAME} PUBLIC
@@ -69,7 +113,6 @@ function(configure_library LIBRARY_NAME DEPENDENCIES)
             INCLUDES DESTINATION include
             PUBLIC_HEADER DESTINATION include
             )
-    message("DEPENDENCIES for ${LIBRARY_NAME}: ${DEPENDENCIES}")
     foreach (dep ${DEPENDENCIES})
         install(TARGETS ${dep} EXPORT ${LIBRARY_NAME}Targets LIBRARY DESTINATION lib
                 ARCHIVE DESTINATION lib
@@ -188,4 +231,8 @@ done
     install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config DESTINATION bin)
 endfunction()
 
+function(get_dependency_name dep)
+    set(_dependency_name _private_dep_${dep} PARENT_SCOPE)
+    set(_SHA_file "${CMAKE_SOURCE_DIR}/dependencies/${dep}_SHA1" PARENT_SCOPE)
+endfunction()
 

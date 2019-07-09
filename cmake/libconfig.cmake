@@ -7,6 +7,7 @@ include(FetchContent)
 # The node in the git repository is specified separately in the file
 # ${CMAKE_SOURCE_DIR}/dependencies/${NAME}_SHA1
 function(declare_dependency NAME URL)
+    set(_private_dependency_${NAME}_directory "${CMAKE_CURRENT_SOURCE_DIR}" CACHE INTERNAL "dependency directory for ${NAME}")
     get_dependency_name(${NAME})
     file(STRINGS "${_SHA_file}" GIT_TAG)
     message(STATUS "Declare dependency NAME=${NAME} URL=${URL} TAG=${GIT_TAG} DEPENDENCY=${_dependency_name}")
@@ -233,6 +234,6 @@ endfunction()
 
 function(get_dependency_name dep)
     set(_dependency_name _private_dep_${dep} PARENT_SCOPE)
-    set(_SHA_file "${CMAKE_SOURCE_DIR}/dependencies/${dep}_SHA1" PARENT_SCOPE)
+    set(_SHA_file "${_private_dependency_${NAME}_directory}/${dep}_SHA1" PARENT_SCOPE)
 endfunction()
 

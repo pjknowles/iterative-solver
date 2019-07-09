@@ -82,5 +82,5 @@ build
 .project
 .settings
 .idea
-cmake-build-debug
-cmake-build-release
+cmake-build*
+*_lockfile

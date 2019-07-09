@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.11)
 
 project(IterativeSolver LANGUAGES CXX VERSION 1.0)
-string(TOUPPER ${PROJECT_NAME} PROJECT_UPPER_NAME)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+include(libconfig)
 
 option(FORTRAN "Whether to build fortran binding" ON)
 option(INTEGER8 "Whether to build for 64-bit fortran integers" ON)
@@ -50,30 +52,7 @@ endif ()
 
 ########## Dependencies ##########
 
-if (NOT TARGET Eigen3::Eigen)
-    find_package(Eigen3 3.3)
-    if (NOT TARGET Eigen3::Eigen)
-        include(FetchContent)
-        FetchContent_Declare(
-                eigen3_dep
-                SOURCE_DIR "${CMAKE_SOURCE_DIR}/dependencies/Eigen3"
-                GIT_REPOSITORY https://github.com/eigenteam/eigen-git-mirror.git
-                GIT_TAG "3.3.5"
-                GIT_SHALLOW TRUE
-        )
-        FetchContent_GetProperties(eigen3_dep)
-        if (NOT eigen3_dep_POPULATED)
-            FetchContent_Populate(eigen3_dep)
-            add_library(ExternalEigen3 INTERFACE)
-            target_include_directories(ExternalEigen3 INTERFACE ${CMAKE_SOURCE_DIR}/dependencies/Eigen3)
-            add_library(Eigen3::Eigen ALIAS ExternalEigen3)
-            message("Using external Eigen3 library")
-        endif ()
-    else ()
-        message("Using existing Eigen3 library")
-    endif ()
-endif ()
-
+add_subdirectory(dependencies)
 
 ########## Targets ##########
 add_subdirectory(lib)

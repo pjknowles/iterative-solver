@@ -1,6 +1,4 @@
-file(STRINGS "ppidd_SHA1" ppidd_GIT_TAG)
-    FetchContent_Declare(
-            ppidd_dep
-            GIT_REPOSITORY https://bitbucket.org/pjknowles/ppidd
-            GIT_TAG ${ppidd_GIT_TAG}
-    )
+declare_dependency(ppidd https://bitbucket.org/pjknowles/ppidd)
+declare_dependency(googletest https://github.com/google/googletest.git)
+declare_dependency(eigen3 https://github.com/eigenteam/eigen-git-mirror.git)
+

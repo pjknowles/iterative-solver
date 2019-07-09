@@ -1,4 +1,3 @@
-include (libconfig.cmake)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/fortran)
 add_library(${PROJECT_NAME} STATIC
         SimpleVector.h

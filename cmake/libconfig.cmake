@@ -64,6 +64,7 @@ function(configure_library LIBRARY_NAME DEPENDENCIES)
     else ()
         message(STATUS "Configure_library ${LIBRARY_NAME}")
     endif ()
+    list(REMOVE_DUPLICATES DEPENDENCIES)
     string(TOUPPER ${LIBRARY_NAME} PROJECT_UPPER_NAME)
     add_library(${LIBRARY_NAME}::${LIBRARY_NAME} ALIAS ${LIBRARY_NAME})
     target_include_directories(${LIBRARY_NAME} PUBLIC
@@ -115,7 +116,9 @@ function(configure_library LIBRARY_NAME DEPENDENCIES)
             PUBLIC_HEADER DESTINATION include
             )
     foreach (dep ${DEPENDENCIES})
-        message(STATUS "install(TARGETS ${dep} EXPORT ${LIBRARY_NAME}Targets ...)")
+        if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.15)
+            message(VERBOSE "install(TARGETS ${dep} EXPORT ${LIBRARY_NAME}Targets ...)")
+        endif ()
         install(TARGETS ${dep} EXPORT ${LIBRARY_NAME}Targets LIBRARY DESTINATION lib
                 ARCHIVE DESTINATION lib
                 RUNTIME DESTINATION bin

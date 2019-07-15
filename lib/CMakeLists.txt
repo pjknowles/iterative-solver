@@ -1,4 +1,3 @@
-unset(DEPENDENCIES)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/fortran)
 add_library(${PROJECT_NAME} STATIC
         SimpleVector.h
@@ -39,38 +38,18 @@ if (NOT TARGET Eigen3::Eigen)
 else ()
     message(STATUS "IterativeSolver: Eigen3::Eigen target already defined")
 endif ()
-get_target_property(incl eigen INTERFACE_INCLUDE_DIRECTORIES)
-install(TARGETS eigen EXPORT ${PROJECT_NAME}Targets LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin
-        INCLUDES DESTINATION include
-        PUBLIC_HEADER DESTINATION include
-        )
-set(DEPENDENCY_Eigen3::Eigen 3.3.0)
-target_link_libraries(${PROJECT_NAME} PUBLIC Eigen3::Eigen)
 
-if (Molpro_SOURCE_DIR)
-    message(STATUS "IterativeSolver Molpro configuration")
-    get_dependency(ppidd)
-    if (TARGET ppidd::ppidd)
-        message(STATUS "ppidd::ppidd is a target")
-    else ()
-        message(STATUS "ppidd::ppidd is not a target")
-endif()
-if (TARGET ppidd)
-message(STATUS "ppidd is a target")
-else()
-message(STATUS "ppidd is not a target")
-endif()
-    list(APPEND DEPENDENCIES ppidd)
-    set(DEPENDENCY_ppidd 1.0)
-    target_link_libraries(${PROJECT_NAME} PUBLIC ppidd::ppidd)
-endif ()
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "SimpleVector.h;PagedVector.h;OpaqueVector.h;IterativeSolver.h;${CMAKE_CURRENT_BINARY_DIR}/IterativeSolver-config.h")
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
-set (EIGEN_DONT_VECTORIZE ON)
+    set(EIGEN_DONT_VECTORIZE ON)
 endif ()
 
-configure_library(${PROJECT_NAME} "${DEPENDENCIES}")
+if (Molpro_SOURCE_DIR)
+    message(STATUS "IterativeSolver Molpro configuration")
+    get_dependency(ppidd)
+    configure_library(${PROJECT_NAME} ppidd/1.0 eigen3/3.3.0/Eigen3::Eigen)
+else ()
+    configure_library(${PROJECT_NAME} eigen3/3.3.0/Eigen3::Eigen)
+endif ()

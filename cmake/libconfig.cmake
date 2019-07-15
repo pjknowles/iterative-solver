@@ -52,19 +52,15 @@ endfunction()
 # is a script that can be used to discover build options for using the library.
 # LIBRARY_NAME: target name of library, which should already have been defined
 # via add_library()
-# DEPENDENCIES: A (possibly empty) list of existing target names of libraries on
-# which LIBRARY_NAME depends. For each ${lib} in the list, the variable
-# ${DEPENDENCY_${lib}} contains additional specification to be appended to the
-# library name in the export definition expressed through the find_dependency()
-# command for constructing the package configuration file. Normally, this will
-# be the version number of the dependency.
-function(configure_library LIBRARY_NAME DEPENDENCIES)
-    if (DEPENDENCIES)
-        message(STATUS "Configure_library ${LIBRARY_NAME} with dependencies ${DEPENDENCIES}")
-    else ()
+# Any subsequent arguments are interpreted as a dependency specification, given in
+# the form package/version/target-name , with version defaulting to "" and target-name
+# to package::package
+# If the target target-name is not found, find_package(package version REQUIRED) is issued.
+# Then add_library(${LIBRARY_NAME} PUBLIC ${target-name}) is executed.
+# Finally, the dependency information is added to the package configuration of ${LIBRARY_NAME}
+function(configure_library LIBRARY_NAME)
         message(STATUS "Configure_library ${LIBRARY_NAME}")
-    endif ()
-    list(REMOVE_DUPLICATES DEPENDENCIES)
+#    list(REMOVE_DUPLICATES DEPENDENCIES)
     string(TOUPPER ${LIBRARY_NAME} PROJECT_UPPER_NAME)
     add_library(${LIBRARY_NAME}::${LIBRARY_NAME} ALIAS ${LIBRARY_NAME})
     target_include_directories(${LIBRARY_NAME} PUBLIC
@@ -80,13 +76,20 @@ function(configure_library LIBRARY_NAME DEPENDENCIES)
     endif ()
     if (FORTRAN)
         set(${PROJECT_UPPER_NAME}_FORTRAN 1)
-        if (INTEGER8)
-            set(${PROJECT_UPPER_NAME}_I8 1)
-        endif ()
         include(CheckFortranCompilerFlag)
         CHECK_Fortran_COMPILER_FLAG("-Wall" _Wallf)
         if (_Wallf)
             set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} -Wall")
+        endif ()
+        if (INTEGER8)
+            set(${PROJECT_UPPER_NAME}_I8 1)
+            foreach (f "-fdefault-integer-8" "-i8")
+                CHECK_Fortran_COMPILER_FLAG(${f} _fortran_flags)
+                if (_fortran_flags)
+                    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${f}")
+                endif ()
+                unset(_fortran_flags CACHE)
+            endforeach ()
         endif ()
     endif ()
 
@@ -106,26 +109,20 @@ function(configure_library LIBRARY_NAME DEPENDENCIES)
 #endif
 ")
     configure_file("${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config.h.in" ${LIBRARY_NAME}-config.h)
+    get_target_property(tp ${LIBRARY_NAME} PUBLIC_HEADER)
+    set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${tp};${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config.h")
 
-    install(DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY}/ DESTINATION include)
+        if (FORTRAN AND CMAKE_Fortran_MODULE_DIRECTORY)
+        install(DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY}/ DESTINATION include)
+    endif ()
 
-    install(TARGETS ${LIBRARY_NAME} EXPORT ${LIBRARY_NAME}Targets LIBRARY DESTINATION lib
+    install(TARGETS ${LIBRARY_NAME} EXPORT ${LIBRARY_NAME}Targets
+            LIBRARY DESTINATION lib
             ARCHIVE DESTINATION lib
             RUNTIME DESTINATION bin
             INCLUDES DESTINATION include
             PUBLIC_HEADER DESTINATION include
             )
-    foreach (dep ${DEPENDENCIES})
-        if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.15)
-            message(VERBOSE "install(TARGETS ${dep} EXPORT ${LIBRARY_NAME}Targets ...)")
-        endif ()
-        install(TARGETS ${dep} EXPORT ${LIBRARY_NAME}Targets LIBRARY DESTINATION lib
-                ARCHIVE DESTINATION lib
-                RUNTIME DESTINATION bin
-                INCLUDES DESTINATION include
-                PUBLIC_HEADER DESTINATION include
-                )
-    endforeach ()
     install(EXPORT ${LIBRARY_NAME}Targets
             FILE ${LIBRARY_NAME}Targets.cmake
             NAMESPACE ${LIBRARY_NAME}::
@@ -133,17 +130,6 @@ function(configure_library LIBRARY_NAME DEPENDENCIES)
             )
 
     include(CMakePackageConfigHelpers)
-    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}Config.cmake"
-            "include(CMakeFindDependencyMacro)
-")
-    foreach (dep ${DEPENDENCIES})
-        file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}Config.cmake"
-                "find_dependency(${dep} ${DEPENDENCY_${dep}})
-")
-    endforeach ()
-    file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}Config.cmake" "
-include(\"\${CMAKE_CURRENT_LIST_DIR}/${LIBRARY_NAME}Targets.cmake\")
-")
     write_basic_package_version_file("${LIBRARY_NAME}ConfigVersion.cmake"
             VERSION ${CMAKE_PROJECT_VERSION}
             COMPATIBILITY SameMajorVersion
@@ -152,6 +138,47 @@ include(\"\${CMAKE_CURRENT_LIST_DIR}/${LIBRARY_NAME}Targets.cmake\")
             DESTINATION lib/cmake/${LIBRARY_NAME}
             )
 
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}Config.cmake"
+            "include(CMakeFindDependencyMacro)
+")
+        unset(CONFIG_LIBS)
+        foreach (libspec ${ARGN})
+        string(REPLACE "/" ";" libspeclist "${libspec}" )
+        list(APPEND libspeclist "")
+        list(APPEND libspeclist "")
+        list(GET libspeclist 0 dep)
+        list(GET libspeclist 1 ver)
+        list(GET libspeclist 2 target)
+        if (NOT target)
+            set(target ${dep}::${dep})
+        endif ()
+        if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.15)
+            message(VERBOSE "Export dependency ${dep} version ${ver}")
+        else ()
+            message(STATUS "Export dependency ${dep} version ${ver}")
+        endif ()
+        if (NOT TARGET ${target})
+            find_package(${dep} ${ver} REQUIRED)
+        endif ()
+        foreach (path "${CMAKE_INSTALL_PREFIX}/bin")
+            message(STATUS "target_link_libraries(${LIBRARY_NAME} PUBLIC ${target})")
+            execute_process(COMMAND "${path}/${dep}-config" --libs
+                    RESULT_VARIABLE rc
+                    OUTPUT_VARIABLE libs
+                    )
+#                message("${path}/${dep}-config --libs returns ${rc} and ${libs}")
+            if (NOT rc)
+                string(PREPEND CONFIG_LIBS "${libs} ") # this might not always work
+            endif ()
+        endforeach ()
+        target_link_libraries(${LIBRARY_NAME} PUBLIC ${target})
+        file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}Config.cmake"
+                "find_dependency(${dep} ${ver})
+")
+    endforeach ()
+    file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}Config.cmake" "
+include(\"\${CMAKE_CURRENT_LIST_DIR}/${LIBRARY_NAME}Targets.cmake\")
+")
     set(CONFIG_CPPFLAGS "-I${CMAKE_INSTALL_PREFIX}/include")
     get_target_property(FLAGS ${LIBRARY_NAME} INTERFACE_COMPILE_DEFINITIONS)
     if (FLAGS)
@@ -162,7 +189,7 @@ include(\"\${CMAKE_CURRENT_LIST_DIR}/${LIBRARY_NAME}Targets.cmake\")
     #set(CONFIG_FCFLAGS "${CMAKE_Fortran_MODDIR_FLAG}${CMAKE_INSTALL_PREFIX}/include")
     set(CONFIG_FCFLAGS "-I${CMAKE_INSTALL_PREFIX}/include") #TODO should not be hard-wired -I
     set(CONFIG_LDFLAGS "-L${CMAKE_INSTALL_PREFIX}/lib")
-    set(CONFIG_LIBS "-l${LIBRARY_NAME}")
+    string(PREPEND CONFIG_LIBS "-l${LIBRARY_NAME} ")
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}/config.in" "
 #!/bin/sh
 

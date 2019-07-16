@@ -12,7 +12,7 @@ endif ()
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_14)
 
 if (NOT TARGET Eigen3::Eigen)
-    message(STATUS "Eigen3::Eigen is not yet a target")
+    messagev("Eigen3::Eigen is not yet a target")
     find_package(Eigen3 3.3.0 NO_MODULE NO_CMAKE_ENVIRONMENT_PATH NO_CMAKE_PACKAGE_REGISTRY QUIET)
     if (EIGEN3_FOUND)
         message(STATUS "Eigen3 found on system: ${EIGEN3_INCLUDE_DIR}")

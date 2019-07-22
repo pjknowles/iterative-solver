@@ -1585,6 +1585,12 @@ class Optimize : public Base<T> {
     return Base<T>::endIteration(solution, residual);
   }
 
+  virtual bool endIteration(std::vector<T>& solution, const std::vector<T>& residual) override {
+    return endIteration(
+        vectorRefSet(solution.begin(), solution.end()),
+        constVectorRefSet(residual.begin(), residual.end())
+    );
+  }
   virtual bool endIteration(T& solution, const T& residual) override {
     return endIteration(
         vectorRefSet(1, solution),

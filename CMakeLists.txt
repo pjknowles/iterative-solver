@@ -6,8 +6,13 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(libconfig)
 
 option(FORTRAN "Whether to build fortran binding" ON)
+option(BENCHMARK "Whether to build benchmark job" OFF)
 option(INTEGER8 "Whether to build for 64-bit fortran integers" ON)
 if (Molpro_SOURCE_DIR)
+    set(FORTRAN ON)
+endif ()
+
+if (BENCHMARK)
     set(FORTRAN ON)
 endif ()
 

@@ -38,6 +38,13 @@ if (NOT TARGET Eigen3::Eigen)
 else ()
     message(STATUS "IterativeSolver: Eigen3::Eigen target already defined")
 endif ()
+get_target_property(incl eigen INTERFACE_INCLUDE_DIRECTORIES)
+install(TARGETS eigen EXPORT ${PROJECT_NAME}Targets LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin
+        INCLUDES DESTINATION include
+        PUBLIC_HEADER DESTINATION include
+        )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "SimpleVector.h;PagedVector.h;OpaqueVector.h;IterativeSolver.h;${CMAKE_CURRENT_BINARY_DIR}/IterativeSolver-config.h")

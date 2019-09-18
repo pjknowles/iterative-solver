@@ -61,6 +61,7 @@ add_subdirectory(dependencies)
 
 ########## Targets ##########
 add_subdirectory(lib)
+add_subdirectory(benchmark)
 
 enable_testing()
 add_subdirectory(test)

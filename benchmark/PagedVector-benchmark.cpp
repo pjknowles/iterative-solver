@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
   if (mpiRank==0) std::cout << mpiSize<<" MPI processes"<<std::endl;
   using pv = LinearAlgebra::PagedVector<double, window_size>;
   for (int option = 0; option < 4; option++) {
-    pv v0(vector_size,1);
+    pv v0(vector_size,0);
     auto startTiming = std::chrono::steady_clock::now();
     auto v1 = pv(v0, option);
     auto endTiming = std::chrono::steady_clock::now();
@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
     std::cout << " copy PagedVector from memory, construction option="<<option<<":  seconds="
               << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
               << ", bandwidth="
-        << vector_size*sizeof(double)/double((option&2?mpiSize:1)*std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count())<<" Gb/s"
+        << vector_size*sizeof(double)/double(std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count())<<" Gb/s"
               << std::endl;
     if (v0.dot(v0) != v1.dot(v1)) throw std::runtime_error("copy error");
     if (v0.dot(v1) != v1.dot(v1)) throw std::runtime_error("copy error");

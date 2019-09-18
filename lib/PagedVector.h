@@ -621,7 +621,7 @@ class PagedVector {
    * \param other The object to be contracted with this.
    * \return
    */
-  scalar_type dot(const PagedVector<T>& other) const {
+  scalar_type dot(const PagedVector<T, default_offline_buffer_size >& other) const {
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
     scalar_type result = 0;
     if (this == &other) {

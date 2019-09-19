@@ -30,6 +30,10 @@
 #define LINEARALGEBRA_DISTRIBUTED 0x02
 #endif
 
+#ifdef MOLPRO
+#define HAVE_MPI_H
+#endif
+
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #ifdef MOLPRO

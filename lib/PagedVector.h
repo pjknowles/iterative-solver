@@ -236,7 +236,11 @@ class PagedVector {
 //     buffer=nullptr;
         buffer = bufferContainer.data();
         char* tmpname = strdup("tmpfileXXXXXX");
-        mkstemp(tmpname);
+        {
+          auto ifile = mkstemp(tmpname); // actually create the file atomically with the name to avoid race resulting in duplicates or conflicts
+          if (ifile < 0) throw std::runtime_error(std::string("Cannot open cache file ") + tmpname);
+          close(ifile);
+        }
         m_file.open(tmpname, std::ios::out | std::ios::in | std::ios::binary);
         if (!m_file.is_open()) throw std::runtime_error(std::string("Cannot open cache file ") + tmpname);
         unlink(tmpname);

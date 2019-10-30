@@ -923,16 +923,16 @@ class Base {
                       const vectorSet& subtract = vectorSet()
   ) {
     vectorSet newcopy;
-    newcopy.reserve(newvec.size());
+    history.emplace_back(newcopy);
+    history.back().reserve(newvec.size());
     for (auto& v : newvec)
-      newcopy.emplace_back(v,
+      history.back().emplace_back(v,
                            LINEARALGEBRA_DISTRIBUTED
                                | LINEARALGEBRA_OFFLINE // TODO template-ise these options
       );
     if (!subtract.empty())
       for (size_t k = 0; k < newvec.size(); k++)
-        newcopy[k].axpy(-1, subtract[k]); // TODO not the most efficient because on disk already
-    history.emplace_back(newcopy);
+        history.back()[k].axpy(-1, subtract[k]); // TODO not the most efficient because on disk already
   }
   static void copyvec(vectorSet& copy,
                       const vectorRefSet source

@@ -123,6 +123,12 @@ extern "C" int IterativeSolverAddVector(double* parameters, double* action, doub
   bool update = instance->addVector(cc, gg, ccp);
 
   for (size_t root = 0; root < instance->m_roots; root++) {
+  // When calling from fci.F (Davidson) I comment the below synchronisations out to improve scaling. 
+  // Need to add optional argument to control.
+ #ifdef HAVE_MPI_H
+    if (!cc[root].synchronised()) cc[root].sync();
+    if (!gg[root].synchronised()) gg[root].sync();
+ #endif
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }
@@ -140,6 +146,10 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
   }
   bool result = instance->endIteration(cc, gg);
   for (size_t root = 0; root < instance->m_roots; root++) {
+#ifdef HAVE_MPI_H
+    if (!cc[root].synchronised()) cc[root].sync();
+    if (!gg[root].synchronised()) gg[root].sync();
+#endif
     error[root] = instance->errors()[root];
   }
   return result;

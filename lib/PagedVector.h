@@ -86,6 +86,7 @@ class PagedVector {
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(
             !(LINEARALGEBRA_DISTRIBUTED & option)),
+        m_sync(m_replicated),
         m_segment_offset(m_replicated
                          ? 0 : ((m_size - 1) / m_mpi_size + 1) * m_mpi_rank),
         m_segment_length(m_replicated
@@ -113,6 +114,7 @@ class PagedVector {
       : m_size(source.m_size),
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(!(LINEARALGEBRA_DISTRIBUTED & option)),
+        m_sync(m_replicated),
         m_segment_offset(m_replicated ? 0 : std::min(((m_size - 1) / m_mpi_size + 1) * m_mpi_rank, m_size)),
         m_segment_length(m_replicated ? m_size : std::min((m_size - 1) / m_mpi_size + 1, m_size - m_segment_offset)),
         m_cache(m_segment_length,
@@ -141,6 +143,7 @@ class PagedVector {
       : m_size(length),
         m_communicator(MPI_COMM_COMPUTE), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(true),
+        m_sync(true),
         m_segment_offset(0),
         m_segment_length(m_size),
         m_cache(m_segment_length, m_segment_length, buffer) {
@@ -161,6 +164,8 @@ class PagedVector {
      * \return
      */
   bool replicated() const { return m_replicated; }
+
+  bool synchronised() const { return m_sync; }
 
  private:
   int mpi_size() {
@@ -189,6 +194,7 @@ class PagedVector {
   int m_mpi_size;
   int m_mpi_rank;
   bool m_replicated; //!< whether a full copy of data is on every MPI process
+  bool m_sync; //!< whether replicated data is in sync on all processes
   size_t m_segment_offset; //!< offset in the overall data object of this process' data
   size_t m_segment_length; //!< length of this process' data
 
@@ -495,6 +501,46 @@ class PagedVector {
     return os.str();
   }
 
+  /*
+   * \brief replicate the vectors over the MPI ranks
+   * \return
+   */
+  void sync() {
+    if (m_replicated) {
+#ifdef HAVE_MPI_H
+// std::cout <<m_mpi_rank<<"before broadcast this="<<*this<<std::endl;
+      size_t lenseg = ((m_size - 1) / m_mpi_size + 1);
+//    std::cout <<m_mpi_rank<<"lenseg="<<lenseg<<std::endl;
+      if (m_cache.io) { // ! this needs to be probably re-written ! - has not been touched after moving from axpy() (still MPI_Bcast())
+        for (int rank = 0; rank < m_mpi_size; rank++) {
+          for (m_cache.move(lenseg * rank, std::min(m_cache.preferred_length, lenseg));
+               m_cache.length && m_cache.offset < lenseg * (rank + 1); ++m_cache) {
+            size_t l = std::min(m_cache.length, (rank + 1) * lenseg - m_cache.offset);
+//      std::cout << m_mpi_rank<<"broadcast from "<<rank<<" offset="<<m_cache.offset<<", length="<<l<<std::endl;
+//      std::cout <<m_mpi_rank<<"before Bcast"; for (auto i=0; i<l; i++) std::cout <<" "<<m_cache.buffer[i]; std::cout <<std::endl;
+            if (l > 0)
+              MPI_Bcast(m_cache.buffer, l, MPI_DOUBLE, rank, m_communicator); // needs attention for non-double
+//      std::cout <<m_mpi_rank<<"after Bcast m_cache.length="<<m_cache.length<<", lenseg="<<lenseg<<", m_cache.offset="<<m_cache.offset<<std::endl;
+//      std::cout <<m_mpi_rank<<"after Bcast"; for (auto i=0; i<l; i++) std::cout <<" "<<m_cache.buffer[i]; std::cout <<std::endl;
+            if (rank != m_mpi_rank) m_cache.dirty = true;
+//       usleep(100);
+          }
+        }
+      } else {
+        int chunks[m_mpi_size];
+        int displs[m_mpi_size];
+        for (int i = 0; i < m_mpi_size; i++) {
+            chunks[i] = std::min(m_size - lenseg * i, lenseg);
+            displs[i] = i*lenseg;
+            if (m_mpi_rank == 0) std::cout<<"Chunk: "<<chunks[i]<<" Displ: "<<displs[i]<<std::endl;
+        }
+        MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,&m_cache.buffer[0],chunks,displs,MPI_DOUBLE,m_communicator); // May want to try non-blocking
+      }
+#endif
+    m_sync = true;
+    }
+  }
+
   /*!
    * \brief Add a constant times another object to this object
    * \param a The factor to multiply.
@@ -525,6 +571,11 @@ class PagedVector {
             m_cache.buffer[i] += a * other.m_cache.buffer[offset + i];
           m_cache.dirty = true;
         }
+      } else if (this->m_replicated) {
+        size_t segoffset = ((m_size - 1) / m_mpi_size + 1) * m_mpi_rank;
+        size_t seglength = std::min((m_size - 1) / m_mpi_size + 1, m_size - segoffset);
+        for (size_t i = 0; i < seglength; i++)
+          m_cache.buffer[segoffset + i] += a * other.m_cache.buffer[segoffset + i];
       } else {
         for (size_t i = 0; i < this->m_segment_length; i++)
           m_cache.buffer[i] += a * other.m_cache.buffer[i];
@@ -579,37 +630,7 @@ class PagedVector {
           m_cache.buffer[i] += a * other.m_cache.buffer[m_segment_offset + i];
       }
     }
-#ifdef HAVE_MPI_H
-    if (m_replicated && !other.m_replicated) { // replicated <- distributed
-// std::cout <<m_mpi_rank<<"before broadcast this="<<*this<<std::endl;
-      size_t lenseg = ((m_size - 1) / m_mpi_size + 1);
-//    std::cout <<m_mpi_rank<<"lenseg="<<lenseg<<std::endl;
-      for (int rank = 0; rank < m_mpi_size; rank++) {
-        if (m_cache.io) {
-          for (m_cache.move(lenseg * rank, std::min(m_cache.preferred_length, lenseg));
-               m_cache.length && m_cache.offset < lenseg * (rank + 1); ++m_cache) {
-            size_t l = std::min(m_cache.length, (rank + 1) * lenseg - m_cache.offset);
-//      std::cout << m_mpi_rank<<"broadcast from "<<rank<<" offset="<<m_cache.offset<<", length="<<l<<std::endl;
-//      std::cout <<m_mpi_rank<<"before Bcast"; for (auto i=0; i<l; i++) std::cout <<" "<<m_cache.buffer[i]; std::cout <<std::endl;
-            if (l > 0)
-              MPI_Bcast(m_cache.buffer, l, MPI_DOUBLE, rank, m_communicator); // needs attention for non-double
-//      std::cout <<m_mpi_rank<<"after Bcast m_cache.length="<<m_cache.length<<", lenseg="<<lenseg<<", m_cache.offset="<<m_cache.offset<<std::endl;
-//      std::cout <<m_mpi_rank<<"after Bcast"; for (auto i=0; i<l; i++) std::cout <<" "<<m_cache.buffer[i]; std::cout <<std::endl;
-            if (rank != m_mpi_rank) m_cache.dirty = true;
-//       usleep(100);
-          }
-        } else {
-          size_t l = std::min(m_size - lenseg * rank, lenseg);
-          if (l > 0)
-            MPI_Bcast(&m_cache.buffer[lenseg * rank],
-                      l,
-                      MPI_DOUBLE,
-                      rank,
-                      m_communicator); // needs attention for non-double
-        }
-      }
-    }
-#endif
+    if (m_replicated) m_sync = false;
   }
 
   /*!
@@ -633,10 +654,20 @@ class PagedVector {
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
     scalar_type result = 0;
     if (this == &other) {
-      for (m_cache.ensure(0); m_cache.length; ++m_cache) {
-        for (size_t i = 0; i < m_cache.length; i++) {
-          result += m_cache.buffer[i] * m_cache.buffer[i];
+      if (m_cache.io) {
+        for (m_cache.ensure(0); m_cache.length; ++m_cache) {
+          for (size_t i = 0; i < m_cache.length; i++) {
+            result += m_cache.buffer[i] * m_cache.buffer[i];
+          }
         }
+      } else if (this->m_replicated) {
+          size_t segoffset = ((m_size - 1) / m_mpi_size + 1) * m_mpi_rank;
+          size_t seglength = std::min((m_size - 1) / m_mpi_size + 1, m_size - segoffset);
+          for (size_t i = 0; i < seglength; i++)
+            result += m_cache.buffer[segoffset+i] * m_cache.buffer[segoffset+i];
+      } else {
+          for (size_t i = 0; i < this->m_segment_length; i++)
+            result += m_cache.buffer[m_segment_offset+i] * m_cache.buffer[m_segment_offset+i];
       }
     } else {
       if (this->m_replicated == other.m_replicated) {
@@ -657,10 +688,15 @@ class PagedVector {
           for (m_cache.ensure(0); m_cache.length; offset += m_cache.length, ++m_cache)
             for (size_t i = 0; i < m_cache.length; i++)
               result += m_cache.buffer[i] * other.m_cache.buffer[offset + i];
-        } else {
+        } else if (this->m_replicated) { // both are replicated
+            size_t segoffset = ((m_size - 1) / m_mpi_size + 1) * m_mpi_rank;
+            size_t seglength = std::min((m_size - 1) / m_mpi_size + 1, m_size - segoffset);
+            for (size_t i = 0; i < seglength; i++)
+              result += m_cache.buffer[segoffset+i] * other.m_cache.buffer[segoffset+i];
+        } else { // both are distributed
 //          size_t l = std::min(m_cache.length, other.m_cache.length); // FIXME puzzle as to what this is
-          for (size_t i = 0; i < this->m_segment_length; i++)
-            result += m_cache.buffer[i] * other.m_cache.buffer[i];
+            for (size_t i = 0; i < this->m_segment_length; i++)
+              result += m_cache.buffer[m_segment_offset+i] * other.m_cache.buffer[other.m_segment_offset+i];
         }
       } else if (this->m_replicated) { // this is replicated, other is not replicated
         if (m_cache.io && other.m_cache.io) {
@@ -714,13 +750,13 @@ class PagedVector {
     }
 #ifdef HAVE_MPI_H
     //    std::cout <<m_mpi_rank<<" dot result before reduce="<<result<<std::endl;
-    if (!m_replicated || !other.m_replicated) {
+    //if (!m_replicated || !other.m_replicated) {
       double resultLocal = result;
       double resultGlobal = result;
       MPI_Allreduce(&resultLocal, &resultGlobal, 1, MPI_DOUBLE, MPI_SUM, m_communicator);
       result = resultGlobal;
       //    std::cout <<m_mpi_rank<<" dot result after reduce="<<result<<std::endl;
-    }
+    //}
 #endif
     return result;
   }

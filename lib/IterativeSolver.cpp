@@ -50,7 +50,8 @@ IterativeSolverLinearEquationsInitialize(size_t n,
     rr.push_back(v(const_cast<double*>(&rhs[root * n]),
                    n)); // in principle the const_cast is dangerous, but we trust LinearEquations to behave
   }
-  instances.push(std::make_unique<IterativeSolver::LinearEquations<v> >(IterativeSolver::LinearEquations<v>(rr, aughes)));
+  instances.push(std::make_unique<IterativeSolver::LinearEquations<v> >(IterativeSolver::LinearEquations<v>(rr,
+                                                                                                            aughes)));
   auto& instance = instances.top();
   instance->m_dimension = n;
   instance->m_roots = nroot;
@@ -87,7 +88,8 @@ IterativeSolverOptimizeInitialize(size_t n,
   if (!flag) MPI_Init(0, nullptr);
 #endif
   if (*algorithm)
-    instances.push(std::make_unique<IterativeSolver::Optimize<v> >(IterativeSolver::Optimize<v>(algorithm, minimize != 0)));
+    instances.push(std::make_unique<IterativeSolver::Optimize<v> >(IterativeSolver::Optimize<v>(algorithm,
+                                                                                                minimize != 0)));
   else
     instances.push(std::make_unique<IterativeSolver::Optimize<v> >(IterativeSolver::Optimize<v>()));
   auto& instance = instances.top();
@@ -102,15 +104,21 @@ extern "C" void IterativeSolverFinalize() {
   instances.pop();
 }
 
-extern "C" int IterativeSolverAddValue(double* parameters, double value, double* action) {
+extern "C" int IterativeSolverAddValue(double* parameters, double value, double* action, int sync) {
   auto& instance = instances.top();
   v ccc(parameters, instance->m_dimension);
   v ggg(action, instance->m_dimension);
-  return static_cast<IterativeSolver::Optimize<v>*>(instance.get())->addValue(ccc, value, ggg) ? 1 : 0;
-
+  auto result = static_cast<IterativeSolver::Optimize<v>*>(instance.get())->addValue(ccc, value, ggg) ? 1 : 0;
+#ifdef HAVE_MPI_H
+  if (sync) {
+    if (!ccc.synchronised()) ccc.sync();
+    if (!ggg.synchronised()) ggg.sync();
+  }
+#endif
+  return result;
 }
 
-extern "C" int IterativeSolverAddVector(double* parameters, double* action, double* parametersP) {
+extern "C" int IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync) {
   std::vector<v> cc, gg;
   auto& instance = instances.top();
   cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
@@ -123,12 +131,12 @@ extern "C" int IterativeSolverAddVector(double* parameters, double* action, doub
   bool update = instance->addVector(cc, gg, ccp);
 
   for (size_t root = 0; root < instance->m_roots; root++) {
-  // When calling from fci.F (Davidson) I comment the below synchronisations out to improve scaling. 
-  // Need to add optional argument to control.
- #ifdef HAVE_MPI_H
-    if (!cc[root].synchronised()) cc[root].sync();
-    if (!gg[root].synchronised()) gg[root].sync();
- #endif
+#ifdef HAVE_MPI_H
+    if (sync) {
+      if (!cc[root].synchronised()) cc[root].sync();
+      if (!gg[root].synchronised()) gg[root].sync();
+    }
+#endif
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }

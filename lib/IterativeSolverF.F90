@@ -234,25 +234,33 @@ CONTAINS
   !> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
   !> \param action On input, the residual for parameters.
   !> On exit, the expected residual of the interpolated parameters.
+  !> \param synchronize Whether to synchronize any distributed storage of parameters and action before return. Unnecessary if the client preconditioner is diagonal, but otherwise should be done. The default is the safe .TRUE. but can be .FALSE. if appropriate.
   !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
   !> the subsequent call to Iterative_Solver_End_Iteration()
-  FUNCTION Iterative_Solver_Add_Value(value, parameters, action)
+  FUNCTION Iterative_Solver_Add_Value(value, parameters, action, synchronize)
     USE iso_c_binding
     LOGICAL :: Iterative_Solver_Add_Value
     DOUBLE PRECISION, INTENT(in) :: value
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+    LOGICAL, INTENT(in), OPTIONAL :: synchronize
     INTERFACE
-      FUNCTION Iterative_Solver_Add_Value_C(value, parameters, action) &
+      FUNCTION Iterative_Solver_Add_Value_C(value, parameters, action, sync) &
           BIND(C, name = 'IterativeSolverAddValue')
         USE iso_c_binding
         INTEGER(c_int) Iterative_Solver_Add_Value_C
         REAL(c_double), VALUE, INTENT(in) :: value
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
+        INTEGER(c_int), INTENT(in), VALUE :: sync
       END FUNCTION Iterative_Solver_Add_Value_C
     END INTERFACE
-      Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action).NE.0
+    INTEGER(c_int) :: sync
+    sync = 1
+    IF (PRESENT(synchronize)) THEN
+      IF (.NOT. synchronize) sync = 0
+    END IF
+      Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action, sync).NE.0
   END FUNCTION Iterative_Solver_Add_Value
   !> \brief Take, typically, a current solution and residual, add it to the expansion set, and return new solution.
   !> In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
@@ -261,29 +269,37 @@ CONTAINS
   !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear).
   !> On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
   !> \param parametersP On exit, the interpolated solution projected onto the P space.
+  !> \param synchronize Whether to synchronize any distributed storage of parameters and action before return. Unnecessary if the client preconditioner is diagonal, but otherwise should be done. The default is the safe .TRUE. but can be .FALSE. if appropriate.
   !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
   !> the subsequent call to Iterative_Solver_End_Iteration()
-  FUNCTION Iterative_Solver_Add_Vector(parameters, action, parametersP)
+  FUNCTION Iterative_Solver_Add_Vector(parameters, action, parametersP, synchronize)
     USE iso_c_binding
     LOGICAL :: Iterative_Solver_Add_Vector
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP
+    LOGICAL, INTENT(in), OPTIONAL :: synchronize
     INTERFACE
-      FUNCTION Iterative_Solver_Add_Vector_C(parameters, action, parametersP) &
+      FUNCTION Iterative_Solver_Add_Vector_C(parameters, action, parametersP, synchronize) &
           BIND(C, name = 'IterativeSolverAddVector')
         USE iso_c_binding
         INTEGER(c_int) Iterative_Solver_Add_Vector_C
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
+        INTEGER(c_int), INTENT(in), VALUE :: synchronize
       END FUNCTION Iterative_Solver_Add_Vector_C
     END INTERFACE
     DOUBLE PRECISION, DIMENSION(0) :: pdummy
+    INTEGER(c_int) :: sync
+    sync = 1
+    IF (PRESENT(synchronize)) THEN
+      IF (.NOT. synchronize) sync = 0
+      END IF
     IF (PRESENT(parametersP)) THEN
-      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, parametersP).NE.0
+      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, parametersP, sync).NE.0
     ELSE
-      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, pdummy).NE.0
+      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, pdummy, sync).NE.0
     END IF
   END FUNCTION Iterative_Solver_Add_Vector
 

@@ -1843,10 +1843,10 @@ IterativeSolverOptimizeInitialize(size_t n,
 extern "C" void IterativeSolverFinalize();
 
 extern "C" int
-IterativeSolverAddVector(double* parameters, double* action, double* parametersP);
+IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync);
 
 extern "C" int
-IterativeSolverAddValue(double* parameters, double value, double* action);
+IterativeSolverAddValue(double* parameters, double value, double* action, int sync);
 
 extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error);
 

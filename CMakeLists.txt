@@ -31,13 +31,14 @@ if (NOT MPI_FOUND)
     find_package(MPI)
 endif (NOT MPI_FOUND)
 
-if (MPI_CXX_FOUND)
+if (MPI_MPICXX_FOUND)
     include_directories(${MPI_CXX_INCLUDE_PATH})
     set(HAVE_MPI_H ON)
+    add_compile_definitions(HAVE_MPI_H=1)
     message("MPI build of ${CMAKE_CURRENT_SOURCE_DIR} for ${CMAKE_PROJECT_NAME} with CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} Fortran=${CMAKE_Fortran_COMPILER}")
 else ()
     message("Serial build of ${CMAKE_CURRENT_SOURCE_DIR} for ${CMAKE_PROJECT_NAME} with CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} Fortran=${CMAKE_Fortran_COMPILER}")
-endif (MPI_CXX_FOUND)
+endif (MPI_MPICXX_FOUND)
 
 
 if (FORTRAN)

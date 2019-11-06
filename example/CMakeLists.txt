@@ -25,6 +25,9 @@ foreach (fil ${EXAMPLES})
             RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
             )
     target_link_libraries(${test_name} PUBLIC ${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
+    if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
+        target_link_libraries(${test_name} PUBLIC ifcore)
+    endif()
     add_test(${nam} ${PROJECT_BINARY_DIR}/${test_name})
 endforeach ()
 

@@ -1,4 +1,6 @@
-if (CMAKE_Fortran_COMPILER_ID)
+if (CMAKE_Fortran_COMPILER_ID
+    AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL "Intel"  # avoid the challenge of linking C++ and Fortran with Intel
+)
     set(ITERATIVESOLVER_FORTRAN_EXAMPLES
             OptimizeExampleF.F90
             DIISExampleF.F90
@@ -21,7 +23,6 @@ foreach (fil ${EXAMPLES})
     add_executable(${test_name} ${fil} dummy.cpp)
     set_target_properties(${test_name}
             PROPERTIES
-            COMPILE_FLAGS -UHAVE_MPI_H
             RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
             )
     target_link_libraries(${test_name} PUBLIC ${PROJECT_NAME} ${MPI_CXX_LIBRARIES})

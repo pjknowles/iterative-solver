@@ -583,8 +583,8 @@ class Base {
       }
     }
     if (nP + nQ > 0) {// look for linear dependency
-      if (m_verbosity > 1) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
-      if (m_verbosity > 1) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
+      if (m_verbosity > 2) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
+      if (m_verbosity > 2) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
 //    Eigen::EigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
 //    xout << "eigenvalues "<<ss.eigenvalues()<<std::endl;
       const auto& singularTester = m_residual_eigen ? m_subspaceOverlap : m_subspaceMatrix;
@@ -620,7 +620,7 @@ class Base {
           if (nP > 0) xout << "Q + " << nP << "P";
           xout << std::endl;
         }
-        if (m_verbosity > 1) xout << "  SVD right matrix column: " << svd.matrixV().col(k).transpose() << std::endl;
+        if (m_verbosity > 2) xout << "  SVD right matrix column: " << svd.matrixV().col(k).transpose() << std::endl;
         deleteVector(imax);
         return; // deleteVector calls this function to rebuild the subspace
       }
@@ -629,8 +629,8 @@ class Base {
     if (m_verbosity > 3 && m_PQMatrix.rows() > 0) xout << "PQ overlap" << std::endl << this->m_PQOverlap << std::endl;
     if (m_verbosity > 3 && m_PQMatrix.rows() > 0) xout << "QQ matrix" << std::endl << this->m_QQMatrix << std::endl;
     if (m_verbosity > 3 && m_PQMatrix.rows() > 0) xout << "QQ overlap" << std::endl << this->m_QQOverlap << std::endl;
-    if (m_verbosity > 1) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
-    if (m_verbosity > 1) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
+    if (m_verbosity > 2) xout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
+    if (m_verbosity > 2) xout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
   }
 
  protected:

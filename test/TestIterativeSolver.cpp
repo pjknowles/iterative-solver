@@ -27,10 +27,10 @@ TEST(TestIterativeSolver, small_eigenproblem) {
             n && nroot <
             10; nroot++) {
       Eigen::MatrixXd m(n, n);
-      for ( size_t i = 0; i < n; i++) {
-        for ( size_t j = 0; j < n; j++)
-          m(i, j ) = 1 + (i + j) * std::sqrt(double(i + j));
-        m(i,i) += i;
+      for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j < n; j++)
+          m(i, j) = 1 + (i + j) * std::sqrt(double(i + j));
+        m(i, i) += i;
       }
       Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> denseSolver(m);
       auto val = denseSolver.eigenvalues();
@@ -489,7 +489,7 @@ class trigTest {
     IterativeSolver::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_verbosity = 2;
     solver.m_maxIterations = 50;
-    solver.m_thresh=1e-12;
+    solver.m_thresh = 1e-12;
 //    solver.m_Wolfe_1=.8;
 //    solver.m_linesearch_tolerance = .0001;
     std::cout << "Wolfe condition parameters: " << solver.m_Wolfe_1 << ", " << solver.m_Wolfe_2 << std::endl;
@@ -514,4 +514,150 @@ class trigTest {
 TEST(Trig_BFGS1, Optimize) { ASSERT_TRUE (trigTest("L-BFGS", 1, 1, 1).run()); }
 TEST(Trig_BFGS2, Optimize) { ASSERT_TRUE (trigTest("L-BFGS", 1, 2, 1).run()); }
 TEST(Trig_BFGS3, Optimize) { ASSERT_TRUE (trigTest("L-BFGS", 1, 2, 3).run()); }
-TEST(Trig_BFGS4, Optimize) { ASSERT_TRUE (trigTest("L-BFGS", 10, 5, .1).run()); }
+
+class optTest {
+
+ public:
+  using scalar = double;
+  using pv = LinearAlgebra::PagedVector<scalar>;
+
+ protected:
+  std::string method;
+  std::string name;
+  double hessian;
+  scalar initial;
+  std::vector<scalar> exact;
+
+ public:
+  optTest(std::string method = "L-BFGS", double hessian = 1, double initial = 1)
+      : method(method), hessian(hessian), initial(initial) {}
+
+ protected:
+  virtual scalar residual(const std::vector<scalar>& psxk, std::vector<scalar>& output) {
+    std::size_t n = exact.size();
+    scalar value = 0;
+    for (size_t i = 0; i < n; i++) {
+      value += 1 - std::cos(scalar(i + 1) * psxk[i]);
+      output[i] = scalar(i + 1) * std::sin(scalar(i + 1) * psxk[i]);
+    }
+    return value;
+  }
+  scalar vresidual(const pv& psx, pv& outputs) {
+    std::size_t n = exact.size();
+    std::vector<scalar> psxk(n);
+    std::vector<scalar> output(n);
+    psx.get(psxk.data(), n, 0);
+    scalar value = residual(psxk, output);
+    outputs.put(output.data(), n, 0);
+    return value;
+  }
+
+  void update(pv& psc, const pv& psg) {
+    std::size_t n = exact.size();
+    ASSERT_EQ(n, psc.size());
+    std::vector<scalar> psck(n);
+    std::vector<scalar> psgk(n);
+    psg.get(psgk.data(), n, 0);
+    psc.get(psck.data(), n, 0);
+    for (size_t i = 0; i < n; i++)
+      psck[i] -= psgk[i] / hessian;
+    psc.put(psck.data(), n, 0);
+  }
+
+ public:
+  int run(int verbosity = 0) {
+    std::size_t n = exact.size();
+    if (verbosity > 0)
+      std::cout << "optimize " << name << "(" << n << ") with " << method << std::endl;
+    IterativeSolver::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
+    solver.m_verbosity = verbosity;
+    solver.m_maxIterations = 1000;
+    solver.m_thresh = 1e-12;
+//    solver.m_Wolfe_1=.8;
+//    solver.m_linesearch_tolerance = .0001;
+    if (verbosity > 0) {
+      std::cout << "Wolfe condition parameters: " << solver.m_Wolfe_1 << ", " << solver.m_Wolfe_2 << std::endl;
+      std::cout << "initial=" << initial << ", hessian=" << hessian << std::endl;
+    }
+    pv g(n);
+    pv x(n);
+    for (auto i = 0; i < n; i++) x.put(&initial, 1, i);
+    for (size_t iter = 1; iter <= solver.m_maxIterations; ++iter) {
+      auto value = vresidual(x, g);
+      if (solver.m_verbosity > 1)
+        xout << "start iteration " << iter << " value=" << value << "\n x: " << x << "\n g: " << g << std::endl;
+      if (solver.addValue(x, value, g))
+        update(x, g);
+      if (solver.endIteration(x, g)) break;
+    }
+    std::vector<scalar> xx(n);
+    x.get(xx.data(), n, 0);
+    scalar dist = 0;
+    for (int k = 0; k < n; k++) dist += std::pow(xx[k] - exact[k], 2);
+    dist = std::sqrt(dist);
+    if (verbosity > 0) {
+      std::cout << "Distance of solution from exact solution: " << dist << std::endl;
+      std::cout << "Error=" << solver.errors().front() << " after " << solver.iterations() << " iterations"
+                << std::endl;
+    }
+    return (dist < 1e-5 && solver.errors().front() < 1e-5) ? solver.iterations() : 1000000;
+  }
+
+};
+
+TEST(trigonometric, Optimize) {
+  class Test : public optTest {
+   public:
+    Test(std::string method = "L-BFGS", double hessian = 1, double initial = 1)
+        : optTest(method, hessian, initial) {
+      this->name = "trigonometric";
+      this->exact.push_back(0);
+    }
+   private:
+    scalar residual(const std::vector<scalar>& psxk, std::vector<scalar>& output) override {
+      scalar value = 0;
+      size_t n = exact.size();
+      for (size_t i = 0; i < n; i++) {
+        value += 1 - std::cos(scalar(i + 1) * psxk[i]);
+        output[i] = scalar(i + 1) * std::sin(scalar(i + 1) * psxk[i]);
+      }
+      return value;
+    }
+  };
+  ASSERT_LE (Test().run(), 5);
+}
+
+TEST(Rosenbrock, Optimize) {
+  class Test : public optTest {
+   public:
+    Test(double initial = 2, double hessian = 100)
+        : optTest("L-BFGS", hessian, initial) {
+      this->name = "Rosenbrock";
+      this->exact.push_back(1);
+      this->exact.push_back(1);
+    }
+   private:
+    scalar residual(const std::vector<scalar>& x, std::vector<scalar>& g) override {
+      g[0] = -400 * x[0] * (x[1] - std::pow(x[0], 2)) + 2 * (x[0] - 1);
+      g[1] = 200 * (x[1] - std::pow(x[0], 2));
+      scalar value = 100 * std::pow(x[1] - std::pow(x[0], 2), 2)
+          + std::pow(x[0] - 1, 2);
+//      std::cout << "x=" << x[0] << "," << x[1] << "; g=" << g[0] << "," << g[1] << std::endl;
+//      std::cout << "Rosenbrock residual() at "<<x[0]<<","<<x[1]<<", function="<<value<<", gradient="<<g[0]<<","<<g[1] << std::endl;
+      return value;
+    }
+  };
+  std::map<double, int> expected_iterations; // to catch performance regressions
+  expected_iterations[-20] = 63;
+  expected_iterations[-2] = 27;
+  expected_iterations[-1] = 32;
+  expected_iterations[0.01] = 35;
+  expected_iterations[1] = 1;
+  expected_iterations[2] = 30;
+  expected_iterations[3] = 41;
+  expected_iterations[8] = 56;
+  expected_iterations[30] = 88;
+  for (const auto& x : expected_iterations)
+    ASSERT_LE (Test(x.first, 800 * x.first * x.first).run(0), x.second);
+}
+

@@ -532,7 +532,7 @@ class PagedVector {
         for (int i = 0; i < m_mpi_size; i++) {
             chunks[i] = std::min(m_size - lenseg * i, lenseg);
             displs[i] = i*lenseg;
-            if (m_mpi_rank == 0) std::cout<<"Chunk: "<<chunks[i]<<" Displ: "<<displs[i]<<std::endl;
+//            if (m_mpi_rank == 0) std::cout<<"Chunk: "<<chunks[i]<<" Displ: "<<displs[i]<<std::endl;
         }
         MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,&m_cache.buffer[0],chunks,displs,MPI_DOUBLE,m_communicator); // May want to try non-blocking
       }

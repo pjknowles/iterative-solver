@@ -234,7 +234,9 @@ CONTAINS
   !> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
   !> \param action On input, the residual for parameters.
   !> On exit, the expected residual of the interpolated parameters.
-  !> \param synchronize Whether to synchronize any distributed storage of parameters and action before return. Unnecessary if the client preconditioner is diagonal, but otherwise should be done. The default is the safe .TRUE. but can be .FALSE. if appropriate.
+  !> \param synchronize Whether to synchronize any distributed storage of parameters and action before return. 
+  !>        Unnecessary if the client preconditioner is diagonal, but otherwise should be done. 
+  !>        The default is the safe .TRUE. but can be .FALSE. if appropriate.
   !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
   !> the subsequent call to Iterative_Solver_End_Iteration()
   FUNCTION Iterative_Solver_Add_Value(value, parameters, action, synchronize)

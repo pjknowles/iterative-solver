@@ -271,7 +271,9 @@ CONTAINS
   !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear).
   !> On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
   !> \param parametersP On exit, the interpolated solution projected onto the P space.
-  !> \param synchronize Whether to synchronize any distributed storage of parameters and action before return. Unnecessary if the client preconditioner is diagonal, but otherwise should be done. The default is the safe .TRUE. but can be .FALSE. if appropriate.
+  !> \param synchronize Whether to synchronize any distributed storage of parameters and action before return. Unnecessary if the
+  !> client preconditioner is diagonal, but otherwise should be done. The default is the safe .TRUE. but can be .FALSE. if
+  !> appropriate.
   !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
   !> the subsequent call to Iterative_Solver_End_Iteration()
   FUNCTION Iterative_Solver_Add_Vector(parameters, action, parametersP, synchronize)

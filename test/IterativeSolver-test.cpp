@@ -13,6 +13,15 @@ auto& xout=std::cout;
 #endif
 
 namespace IterativeSolver {
+
+template<class T>
+void syncr(T& x, std::true_type) {
+     if (!x.synchronised()) x.sync();
+}
+
+template<class T>
+void syncr(T& x, std::false_type) {}
+
 /*!
  * \brief Test iterative solution of linear eigenvalue problem
  * \param dimension The dimension of the test matrix
@@ -99,11 +108,9 @@ static void DavidsonTest(size_t dimension,
   for (size_t iteration = 0; iteration < dimension + 1; iteration++) {
     action(x, g);
     d.addVector(x, g);
-    if (std::is_same<ptype, LinearAlgebra::PagedVector<double>>::value) {
-        for (size_t root = 0; root < (size_t) d.m_roots; root++) {
-            if (!x[root].synchronised()) x[root].sync();
-            if (!g[root].synchronised()) g[root].sync();
-        }
+    for (size_t root = 0; root < (size_t) d.m_roots; root++) {
+        syncr(x[root],std::is_same<ptype, LinearAlgebra::PagedVector<double>>{});
+        syncr(g[root],std::is_same<ptype, LinearAlgebra::PagedVector<double>>{});
     }
     std::vector<scalar> shift;
     for (size_t root = 0; root < (size_t) d.m_roots; root++) shift.push_back(-d.eigenvalues()[root] + 1e-14);
@@ -111,11 +118,9 @@ static void DavidsonTest(size_t dimension,
 //    auto newp = d.suggestP(x, g, 3);
     //if (d.endIteration(x, g)) break;
     bool upd = d.endIteration(x, g);
-    if (std::is_same<ptype, LinearAlgebra::PagedVector<double>>::value) {
-        for (size_t root = 0; root < (size_t) d.m_roots; root++) {
-            if (!x[root].synchronised()) x[root].sync();
-            if (!g[root].synchronised()) g[root].sync();
-        }
+    for (size_t root = 0; root < (size_t) d.m_roots; root++) {
+        syncr(x[root],std::is_same<ptype, LinearAlgebra::PagedVector<double>>{});
+        syncr(g[root],std::is_same<ptype, LinearAlgebra::PagedVector<double>>{});
     }
     if (upd) break;
   }

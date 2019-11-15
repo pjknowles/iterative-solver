@@ -500,9 +500,17 @@ class trigTest {
       auto value = residual(x, g);
       if (solver.m_verbosity > 1)
         xout << "start iteration " << iter << " value=" << value << "\n x: " << x << "\n g: " << g << std::endl;
-      if (solver.addValue(x, value, g))
-        update(x, g);
-      if (solver.endIteration(x, g)) break;
+      //if (solver.addValue(x, value, g))
+      //  update(x, g);
+      bool upd = solver.addValue(x, value, g);
+      if (!x.synchronised()) x.sync();
+      if (!g.synchronised()) g.sync();
+      if (upd) update(x, g); 
+      //if (solver.endIteration(x, g)) break;
+      upd = solver.endIteration(x, g);
+      if (!x.synchronised()) x.sync();
+      if (!g.synchronised()) g.sync();
+      if (upd) break;
     }
     std::cout << "Distance of solution from exact solution: " << std::sqrt(x.dot(x)) << std::endl;
     std::cout << "Error=" << solver.errors().front() << " after " << solver.iterations() << " iterations" << std::endl;
@@ -586,9 +594,17 @@ class optTest {
       auto value = vresidual(x, g);
       if (solver.m_verbosity > 1)
         xout << "start iteration " << iter << " value=" << value << "\n x: " << x << "\n g: " << g << std::endl;
-      if (solver.addValue(x, value, g))
-        update(x, g);
-      if (solver.endIteration(x, g)) break;
+      //if (solver.addValue(x, value, g))
+      //  update(x, g);
+      bool upd = solver.addValue(x, value, g);
+      if (!x.synchronised()) x.sync();
+      if (!g.synchronised()) g.sync();
+      if (upd) update(x, g); 
+      //if (solver.endIteration(x, g)) break;
+      upd = solver.endIteration(x, g);
+      if (!x.synchronised()) x.sync();
+      if (!g.synchronised()) g.sync();
+      if (upd) break;
     }
     std::vector<scalar> xx(n);
     x.get(xx.data(), n, 0);

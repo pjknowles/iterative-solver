@@ -5,6 +5,7 @@
 #include "PagedVector.h"
 #include "SimpleVector.h"
 #include "OpaqueVector.h"
+#include <type_traits>
 
 #ifdef MOLPRO
 #include <iostream>
@@ -98,11 +99,25 @@ static void DavidsonTest(size_t dimension,
   for (size_t iteration = 0; iteration < dimension + 1; iteration++) {
     action(x, g);
     d.addVector(x, g);
+    if (std::is_same<ptype, LinearAlgebra::PagedVector<double>>::value) {
+        for (size_t root = 0; root < (size_t) d.m_roots; root++) {
+            if (!x[root].synchronised()) x[root].sync();
+            if (!g[root].synchronised()) g[root].sync();
+        }
+    }
     std::vector<scalar> shift;
     for (size_t root = 0; root < (size_t) d.m_roots; root++) shift.push_back(-d.eigenvalues()[root] + 1e-14);
     update(x, g, shift);
 //    auto newp = d.suggestP(x, g, 3);
-    if (d.endIteration(x, g)) break;
+    //if (d.endIteration(x, g)) break;
+    bool upd = d.endIteration(x, g);
+    if (std::is_same<ptype, LinearAlgebra::PagedVector<double>>::value) {
+        for (size_t root = 0; root < (size_t) d.m_roots; root++) {
+            if (!x[root].synchronised()) x[root].sync();
+            if (!g[root].synchronised()) g[root].sync();
+        }
+    }
+    if (upd) break;
   }
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>> es(testmatrix);
 //    xout << "true eigenvalues: "<<es.eigenvalues().head(d.m_roots).transpose()<<std::endl;

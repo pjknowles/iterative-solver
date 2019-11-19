@@ -186,6 +186,10 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
 
   instance->addP(Pvectors, pp, cc, gg, ccp);
   for (size_t root = 0; root < instance->m_roots; root++) {
+#ifdef HAVE_MPI_H
+    if (!cc[root].synchronised()) cc[root].sync();
+    if (!gg[root].synchronised()) gg[root].sync();
+#endif
     cc[root].get(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
     gg[root].get(&action[root * instance->m_dimension], instance->m_dimension, 0);
     for (size_t i = 0; i < ccp[0].size(); i++)

@@ -88,11 +88,9 @@ class PagedVector {
             !(LINEARALGEBRA_DISTRIBUTED & option)),
         m_sync(m_replicated),
         m_segment_offset(m_replicated
-                         ? 0 : ((m_size - 1) / m_mpi_size + 1) * m_mpi_rank),
+                         ? 0 : seg_offset()),
         m_segment_length(m_replicated
-                         ?
-                         m_size : std::min((m_size - 1) / m_mpi_size + 1, m_size - m_segment_offset)
-        ),
+                         ? m_size : seg_length()),
 //     m_segment_length(!(LINEARALGEBRA_DISTRIBUTED & option) ? m_size : std::min( (m_size-1) / m_mpi_size + 1, m_size-m_segment_offset)),
         m_cache(m_segment_length,
                 (LINEARALGEBRA_OFFLINE & option) ?
@@ -115,8 +113,8 @@ class PagedVector {
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(!(LINEARALGEBRA_DISTRIBUTED & option)),
         m_sync(m_replicated),
-        m_segment_offset(m_replicated ? 0 : std::min(((m_size - 1) / m_mpi_size + 1) * m_mpi_rank, m_size)),
-        m_segment_length(m_replicated ? m_size : std::min((m_size - 1) / m_mpi_size + 1, m_size - m_segment_offset)),
+        m_segment_offset(m_replicated ? 0 : seg_offset()),
+        m_segment_length(m_replicated ? m_size : seg_length()),
         m_cache(m_segment_length,
                 (LINEARALGEBRA_OFFLINE & option) ? default_offline_buffer_size : m_segment_length) {
 #ifdef TIMING
@@ -197,6 +195,28 @@ class PagedVector {
   bool m_sync; //!< whether replicated data is in sync on all processes
   size_t m_segment_offset; //!< offset in the overall data object of this process' data
   size_t m_segment_length; //!< length of this process' data
+
+  /*!
+ * Calculate the segment length for asynchronous operations on replicated vectors
+ * @return the length of a vector segment
+ */
+  size_t seg_length() const {
+    size_t alpha = m_size/m_mpi_size;
+    size_t beta = m_size%m_mpi_size;
+    size_t segl = (m_mpi_rank < beta) ? alpha+1 : alpha;
+    return segl;
+  }
+
+  /*!
+ * Calculate the segment offset for asynchronous operations on replicated vectors
+ * @return the offset of a vector segment
+ */
+  size_t seg_offset() const {
+    size_t alpha = m_size/m_mpi_size;
+    size_t beta = m_size%m_mpi_size;
+    size_t segoff = (m_mpi_rank < beta) ? (alpha+1)*m_mpi_rank : alpha*m_mpi_rank + beta; 
+    return segoff;
+  }
 
   /*!
  * Get a pointer to the entire data structure if possible
@@ -509,9 +529,12 @@ class PagedVector {
     if (m_replicated) {
 #ifdef HAVE_MPI_H
 // std::cout <<m_mpi_rank<<"before broadcast this="<<*this<<std::endl;
-      size_t lenseg = ((m_size - 1) / m_mpi_size + 1);
+      size_t alpha = m_size/m_mpi_size;
+      size_t beta = m_size%m_mpi_size;
 //    std::cout <<m_mpi_rank<<"lenseg="<<lenseg<<std::endl;
       if (m_cache.io) { // ! this needs to be probably re-written ! - has not been touched after moving from axpy() (still MPI_Bcast())
+        //size_t lenseg = ((m_size - 1) / m_mpi_size + 1);
+        size_t lenseg = seg_length();;
         for (int rank = 0; rank < m_mpi_size; rank++) {
           for (m_cache.move(lenseg * rank, std::min(m_cache.preferred_length, lenseg));
                m_cache.length && m_cache.offset < lenseg * (rank + 1); ++m_cache) {
@@ -530,8 +553,8 @@ class PagedVector {
         int chunks[m_mpi_size];
         int displs[m_mpi_size];
         for (int i = 0; i < m_mpi_size; i++) {
-            chunks[i] = std::min(m_size - lenseg * i, lenseg);
-            displs[i] = i*lenseg;
+            chunks[i] = (i < beta) ? alpha+1 : alpha;
+            displs[i] = (i < beta) ? chunks[i]*i : chunks[i]*i + beta;
 //            if (m_mpi_rank == 0) std::cout<<"Chunk: "<<chunks[i]<<" Displ: "<<displs[i]<<std::endl;
         }
         MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,&m_cache.buffer[0],chunks,displs,MPI_DOUBLE,m_communicator); // May want to try non-blocking
@@ -572,8 +595,8 @@ class PagedVector {
           m_cache.dirty = true;
         }
       } else if (this->m_replicated) {
-        size_t segoffset = ((m_size - 1) / m_mpi_size + 1) * m_mpi_rank;
-        size_t seglength = std::min((m_size - 1) / m_mpi_size + 1, m_size - segoffset);
+        size_t seglength = seg_length(); 
+        size_t segoffset = seg_offset();
         for (size_t i = 0; i < seglength; i++)
           m_cache.buffer[segoffset + i] += a * other.m_cache.buffer[segoffset + i];
       } else {
@@ -661,13 +684,13 @@ class PagedVector {
           }
         }
       } else if (this->m_replicated) {
-          size_t segoffset = ((m_size - 1) / m_mpi_size + 1) * m_mpi_rank;
-          size_t seglength = std::min((m_size - 1) / m_mpi_size + 1, m_size - segoffset);
+          size_t seglength = seg_length();
+          size_t segoffset = seg_offset();
           for (size_t i = 0; i < seglength; i++)
             result += m_cache.buffer[segoffset+i] * m_cache.buffer[segoffset+i];
       } else {
           for (size_t i = 0; i < this->m_segment_length; i++)
-            result += m_cache.buffer[m_segment_offset+i] * m_cache.buffer[m_segment_offset+i];
+            result += m_cache.buffer[i] * m_cache.buffer[i];
       }
     } else {
       if (this->m_replicated == other.m_replicated) {
@@ -689,14 +712,15 @@ class PagedVector {
             for (size_t i = 0; i < m_cache.length; i++)
               result += m_cache.buffer[i] * other.m_cache.buffer[offset + i];
         } else if (this->m_replicated) { // both are replicated
-            size_t segoffset = ((m_size - 1) / m_mpi_size + 1) * m_mpi_rank;
-            size_t seglength = std::min((m_size - 1) / m_mpi_size + 1, m_size - segoffset);
+            size_t seglength = seg_length();
+            size_t segoffset = seg_offset();
             for (size_t i = 0; i < seglength; i++)
               result += m_cache.buffer[segoffset+i] * other.m_cache.buffer[segoffset+i];
         } else { // both are distributed
 //          size_t l = std::min(m_cache.length, other.m_cache.length); // FIXME puzzle as to what this is
+            //std::cout<<"Rank "<<m_mpi_rank<<" "; for (auto i=0; i<m_segment_length; i++) std::cout <<" "<<m_cache.buffer[i]; std::cout <<std::endl;
             for (size_t i = 0; i < this->m_segment_length; i++)
-              result += m_cache.buffer[m_segment_offset+i] * other.m_cache.buffer[other.m_segment_offset+i];
+              result += m_cache.buffer[i] * other.m_cache.buffer[i];
         }
       } else if (this->m_replicated) { // this is replicated, other is not replicated
         if (m_cache.io && other.m_cache.io) {
@@ -768,11 +792,19 @@ class PagedVector {
    */
   scalar_type dot(const std::map<size_t, T>& other) const {
     scalar_type result = 0;
-    for (const auto& o: other)
-      if (o.first >= m_segment_offset && o.first < m_segment_offset + m_segment_length)
-        result += o.second * (*this)[o.first];
+    if (m_replicated) {
+      size_t seglength = seg_length();
+      size_t segoffset = seg_offset();
+      for (const auto& o: other)
+        if (o.first >= segoffset && o.first < segoffset + seglength)
+          result += o.second * (*this)[o.first];
+    } else {
+      for (const auto& o: other)
+        if (o.first >= m_segment_offset && o.first < m_segment_offset + m_segment_length)
+          result += o.second * (*this)[o.first];
+    }
 #ifdef HAVE_MPI_H
-    if (!m_replicated) {
+    //if (!m_replicated) {
       double resultLocal = result;
       MPI_Allreduce(&resultLocal,
                     &result,
@@ -780,7 +812,7 @@ class PagedVector {
                     MPI_DOUBLE,
                     MPI_SUM,
                     m_communicator); // FIXME needs attention for non-double
-    }
+    //}
 #endif
     return result;
   }

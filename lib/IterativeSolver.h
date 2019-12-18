@@ -927,8 +927,8 @@ class Base {
     history.back().reserve(newvec.size());
     for (auto& v : newvec)
       history.back().emplace_back(v,
-                           LINEARALGEBRA_DISTRIBUTED
-                               | LINEARALGEBRA_OFFLINE // TODO template-ise these options
+                                  LINEARALGEBRA_DISTRIBUTED
+                                      | LINEARALGEBRA_OFFLINE // TODO template-ise these options
       );
     if (!subtract.empty())
       for (size_t k = 0; k < newvec.size(); k++)
@@ -972,7 +972,7 @@ class Base {
 //        xout << "m_solutions: "<<m_solutions.size()<<m_solutions.back().front()<<std::endl;
         copyvec(m_others, other, m_last_other);
         m_subspaceGradient.conservativeResize(m_solutions.size(), residual.size());
-        size_t i=0;
+        size_t i = 0;
         for (size_t ii = 0; ii < m_solutions.size(); ii++) {
           if (not m_vector_active[ii][0]) continue;
           for (size_t k = 0; k < residual.size(); k++) {
@@ -1041,7 +1041,12 @@ class Base {
 //              xout << "bra"<<std::endl<<(*bra)[ll][lll]<<std::endl;
 //              xout << "residual1"<<std::endl<<residual1[kkk]<<std::endl;
 //              xout << "m_solutions[ll]"<<std::endl<<m_solutions[ll][lll]<<std::endl;
-              m_QQMatrix(k, l) = m_QQMatrix(l, k) = (*bra)[ll][lll].dot(residual1[kkk]);
+              if (m_hermitian) {
+                m_QQMatrix(k, l) = m_QQMatrix(l, k) = (*bra)[ll][lll].dot(residual1[kkk]);
+              } else {
+                m_QQMatrix(l, k) = (*bra)[ll][lll].dot(residual1[kkk]);
+                m_QQMatrix(k, l) = m_residuals[ll][lll].dot(solution1[kkk]);
+              }
               m_QQOverlap(k, l) = m_QQOverlap(l, k) = m_solutions[ll][lll].dot(solution1[kkk]);
               l++;
             }
@@ -1443,7 +1448,8 @@ class Optimize : public Base<T> {
   scalar_type m_Wolfe_1; ///< Acceptance parameter for function value
   scalar_type m_Wolfe_2; ///< Acceptance parameter for function gradient
   scalar_type m_linesearch_tolerance; ///< If the predicted line search is within tolerance of 1, don't bother taking it
-  scalar_type m_linesearch_grow_factor; ///< If the predicted line search step is extrapolation, limit the step to this factor times the current step
+  scalar_type
+      m_linesearch_grow_factor; ///< If the predicted line search step is extrapolation, limit the step to this factor times the current step
  protected:
   std::vector<scalar_type> m_linesearch_steps;
   std::vector<scalar_type> m_linesearch_values;

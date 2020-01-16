@@ -1041,7 +1041,7 @@ class Base {
 //              xout << "bra"<<std::endl<<(*bra)[ll][lll]<<std::endl;
 //              xout << "residual1"<<std::endl<<residual1[kkk]<<std::endl;
 //              xout << "m_solutions[ll]"<<std::endl<<m_solutions[ll][lll]<<std::endl;
-              if (m_hermitian) {
+              if (m_hermitian or m_subspaceMatrixResRes) {
                 m_QQMatrix(k, l) = m_QQMatrix(l, k) = (*bra)[ll][lll].dot(residual1[kkk]);
               } else {
                 m_QQMatrix(l, k) = (*bra)[ll][lll].dot(residual1[kkk]);

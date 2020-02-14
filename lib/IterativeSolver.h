@@ -217,12 +217,12 @@ class Base {
   bool addVector(T& parameters,
                  T& action,
                  vectorP& parametersP = nullVectorP<T>) {
-    T other;
+    //T other;
     return addVector(
         vectorRefSet(1, parameters),
         vectorRefSet(1, action),
-        vectorRefSetP(1, parametersP),
-        vectorRefSet(1, other)
+        vectorRefSetP(1, parametersP)
+     //   vectorRefSet(1, other)
     );
   }
 
@@ -938,6 +938,7 @@ class Base {
                       const vectorRefSet source
   ) {
     copy.clear();
+    //copy.reserve(source.size());
     for (auto& v : source)
       copy.emplace_back(v,
                         LINEARALGEBRA_DISTRIBUTED

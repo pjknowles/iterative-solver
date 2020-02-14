@@ -3,6 +3,7 @@ add_library(${PROJECT_NAME} STATIC
         SimpleVector.h
         PagedVector.h
         OpaqueVector.h
+        OutOfCoreArray.h
         IterativeSolver.cpp IterativeSolver.h
         ${CMAKE_CURRENT_BINARY_DIR}/IterativeSolver-config.h
         )
@@ -47,7 +48,7 @@ install(TARGETS eigen EXPORT ${PROJECT_NAME}Targets LIBRARY DESTINATION lib
         )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
-set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "SimpleVector.h;PagedVector.h;OpaqueVector.h;IterativeSolver.h;${CMAKE_CURRENT_BINARY_DIR}/IterativeSolver-config.h")
+set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "SimpleVector.h;PagedVector.h;OpaqueVector.h;OutOfCoreArray.h;IterativeSolver.h;${CMAKE_CURRENT_BINARY_DIR}/IterativeSolver-config.h")
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
     set(EIGEN_DONT_VECTORIZE ON)

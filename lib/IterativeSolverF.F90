@@ -547,6 +547,7 @@ CONTAINS
       DEALLOCATE(pp)
     END DO
 
+    stop
     alpha = 1
     anharmonicity = .5
     WRITE (6, *) 'DIIS, dimension=', n

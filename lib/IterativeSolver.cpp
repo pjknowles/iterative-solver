@@ -1,11 +1,13 @@
 #include "IterativeSolver.h"
-#include "PagedVector.h"
+//#include "PagedVector.h"
+#include "OutOfCoreArray.h"
 #include <memory>
 #include <string>
 #include <stack>
 
 // C interface to IterativeSolver
-using v = LinearAlgebra::PagedVector<double>;
+//using v = LinearAlgebra::PagedVector<double>;
+using v = LinearAlgebra::OutOfCoreArray<double>;
 
 static std::stack<std::unique_ptr<IterativeSolver::Base<v> > > instances;
 
@@ -46,12 +48,15 @@ IterativeSolverLinearEquationsInitialize(size_t n,
   if (!flag) MPI_Init(0, nullptr);
 #endif
   std::vector<v> rr;
+  rr.reserve(nroot);
   for (size_t root = 0; root < nroot; root++) {
-    rr.push_back(v(const_cast<double*>(&rhs[root * n]),
-                   n)); // in principle the const_cast is dangerous, but we trust LinearEquations to behave
+      rr.emplace_back(&const_cast<double*>(rhs)[root * n],n);
+    //rr.push_back(v(const_cast<double*>(&rhs[root * n]),
+    //               n)); // in principle the const_cast is dangerous, but we trust LinearEquations to behave
   }
-  instances.push(std::make_unique<IterativeSolver::LinearEquations<v> >(IterativeSolver::LinearEquations<v>(rr,
-                                                                                                            aughes)));
+    instances.push(std::make_unique<IterativeSolver::LinearEquations<v> >(rr,aughes));
+  //instances.push(std::make_unique<IterativeSolver::LinearEquations<v> >(IterativeSolver::LinearEquations<v>(rr,
+  //                                                                                                          aughes)));
   auto& instance = instances.top();
   instance->m_dimension = n;
   instance->m_roots = nroot;
@@ -169,9 +174,11 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
   std::vector<v> cc, gg;
   auto& instance = instances.top();
   std::vector<std::vector<v::value_type> > ccp(instance->m_roots);
+  cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
+  gg.reserve(instance->m_roots);
   for (size_t root = 0; root < instance->m_roots; root++) {
-    cc.push_back(v(instance->m_dimension));
-    gg.push_back(v(instance->m_dimension));
+    cc.emplace_back(&parameters[root * instance->m_dimension],instance->m_dimension);
+    gg.emplace_back(&action[root * instance->m_dimension],instance->m_dimension);
   }
   std::vector<std::map<size_t, v::value_type> > Pvectors;
   Pvectors.reserve(nP);
@@ -190,8 +197,8 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
     if (!cc[root].synchronised()) cc[root].sync();
     if (!gg[root].synchronised()) gg[root].sync();
 #endif
-    cc[root].get(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
-    gg[root].get(&action[root * instance->m_dimension], instance->m_dimension, 0);
+//    cc[root].get(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
+//    gg[root].get(&action[root * instance->m_dimension], instance->m_dimension, 0);
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }
@@ -218,10 +225,10 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution,
   cc.reserve(instance->m_roots);
   gg.reserve(instance->m_roots);
   for (size_t root = 0; root < instance->m_roots; root++) {
-    cc.push_back(v(&const_cast<double*>(solution)[root * instance->m_dimension],
-                   instance->m_dimension));
-    gg.push_back(v(&const_cast<double*>(residual)[root * instance->m_dimension],
-                   instance->m_dimension));
+    cc.emplace_back(&const_cast<double*>(solution)[root * instance->m_dimension],
+                   instance->m_dimension);
+    gg.emplace_back(&const_cast<double*>(residual)[root * instance->m_dimension],
+                   instance->m_dimension);
   }
 
   auto result = instance->suggestP(cc, gg, maximumNumber, threshold);

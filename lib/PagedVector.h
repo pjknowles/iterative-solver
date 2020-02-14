@@ -1033,8 +1033,9 @@ class PagedVector {
   }
 
 };
-template<class scalar>
-inline std::ostream& operator<<(std::ostream& os, PagedVector<scalar> const& obj) { return os << obj.str(); }
 
 }
+template<class scalar, unsigned long N>
+inline std::ostream& operator<<(std::ostream& os, LinearAlgebra::PagedVector<scalar, N> const& obj) { return os << obj.str(); }
+
 #endif // PAGEDVECTOR_H

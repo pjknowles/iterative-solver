@@ -129,7 +129,7 @@ TEST(TestIterativeSolver, small_eigenproblem) {
 TEST(TestIterativeSolver, small_nonhermitian_eigenproblem) {
   for (
       size_t n = 2;
-      n < 90; n++) {
+      n < 30; n++) {
     for (
         size_t nroot = 1;
         nroot <=

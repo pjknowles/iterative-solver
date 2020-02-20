@@ -101,7 +101,10 @@ class OutOfCoreArray {
     if (source.m_data == nullptr) {
         throw std::logic_error("Source object must be pointing to external buffer");
     }
-    if (!source.m_sync) throw std::logic_error("Source object must be synchronised across ranks"); //or just sync this?
+    if (!source.m_sync
+        and option == 0 // this is a fix to condone IterativeSolver playing tricks where synchronisation isn't actually needed
+        )
+      throw std::logic_error("Source object must be synchronised across ranks"); //or just sync this?
     if (m_buf_size == 0) return;
     size_t offset = 0;
     while ((m_segment_length-offset)/m_buf_size != 0) {

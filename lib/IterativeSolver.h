@@ -222,7 +222,7 @@ class Base {
         vectorRefSet(1, parameters),
         vectorRefSet(1, action),
         vectorRefSetP(1, parametersP)
-     //   vectorRefSet(1, other)
+        //   vectorRefSet(1, other)
     );
   }
 
@@ -744,7 +744,7 @@ class Base {
           m_subspaceEigenvectors.col(k).imag().setZero();
         }
         if (m_hermitian)
-        for (Eigen::Index l = 0; l < k; l++) {
+          for (Eigen::Index l = 0; l < k; l++) {
 //        auto ovl =
 //            (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0);
 //            (ovlTimesVec.row(l) * m_subspaceEigenvectors.col(k))(0,0);
@@ -756,10 +756,10 @@ class Base {
 //      xout << "k="<<k<<", l="<<l<<", ovl="<<ovl<<" norm="<<norm<<std::endl;
 //      xout << m_subspaceEigenvectors.col(k).transpose()<<std::endl;
 //      xout << m_subspaceEigenvectors.col(l).transpose()<<std::endl;
-          m_subspaceEigenvectors.col(k) -= m_subspaceEigenvectors.col(l) * //ovl;// / norm;
-              ovlTimesVec.row(l).dot(m_subspaceEigenvectors.col(k));
+            m_subspaceEigenvectors.col(k) -= m_subspaceEigenvectors.col(l) * //ovl;// / norm;
+                ovlTimesVec.row(l).dot(m_subspaceEigenvectors.col(k));
 //        xout<<"immediately after projection " << k<<l<<" "<< (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
-        }
+          }
 //      for (Eigen::Index l = 0; l < k; l++) xout<<"after projection loop " << k<<l<<" "<< (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
 //      xout << "eigenvector"<<std::endl<<m_subspaceEigenvectors.col(k).adjoint()<<std::endl;
         auto ovl =
@@ -879,13 +879,21 @@ class Base {
 //        xout << "residual . residual " << residual[k].get().dot(residual[k].get()) << std::endl;
       }
     } else {
-//      vectorSet step = solution;
-      vectorSet step(solution.begin(), solution.end());
-      for (size_t k = 0; k < solution.size(); k++) {
+      vectorSet step;
+      step.reserve(solution.size());
+      for (size_t k = 0; k < solution.size(); k++) { // contorted logic because we cannot do arithmetic on step once it is created
         if (m_difference_vectors)
-          step[k].axpy(-1, m_last_solution[k]);
+          solution[k].get().axpy(-1, m_last_solution[k]); // we won't synchronize this because the action gets undone just below
         else
-          step[k].axpy(-1, m_solutions[m_lastVectorIndex][k]);
+          solution[k].get().axpy(-1, m_solutions[m_lastVectorIndex][k]); // we won't synchronize this because the action gets undone just below
+        step.emplace_back(solution[k].get(),
+        LINEARALGEBRA_DISTRIBUTED
+            | LINEARALGEBRA_OFFLINE // TODO template-ise these options
+        );
+        if (m_difference_vectors)
+          solution[k].get().axpy(1, m_last_solution[k]);
+        else
+          solution[k].get().axpy(1, m_solutions[m_lastVectorIndex][k]);
         m_errors.push_back(
             m_difference_vectors
             ? std::abs(m_last_residual[k].dot(step[k])) // TODO: too pessismistic, as should used estimated gradient
@@ -926,14 +934,23 @@ class Base {
     vectorSet newcopy;
     history.emplace_back(newcopy);
     history.back().reserve(newvec.size());
-    for (auto& v : newvec)
-      history.back().emplace_back(v,
-                                  LINEARALGEBRA_DISTRIBUTED
-                                      | LINEARALGEBRA_OFFLINE // TODO template-ise these options
-      );
-    if (!subtract.empty())
-      for (size_t k = 0; k < newvec.size(); k++)
-        history.back()[k].axpy(-1, subtract[k]); // TODO not the most efficient because on disk already
+    if (subtract.empty()) {
+      for (auto& v : newvec)
+        history.back().emplace_back(v,
+                                    LINEARALGEBRA_DISTRIBUTED
+                                        | LINEARALGEBRA_OFFLINE // TODO template-ise these options
+        );
+    } else {
+      for (size_t k = 0; k < newvec.size(); k++) {
+        auto& v = newvec[k].get();
+        v.axpy(-1, subtract[k]); // we won't synchronize this because the action gets undone just below
+        history.back().emplace_back(v,
+                                    LINEARALGEBRA_DISTRIBUTED
+                                        | LINEARALGEBRA_OFFLINE // TODO template-ise these options
+        );
+        v.axpy(1, subtract[k]);
+      }
+    }
   }
   static void copyvec(vectorSet& copy,
                       const vectorRefSet source
@@ -1807,9 +1824,9 @@ class DIIS : public Base<T> {
   // the following variables are kept for informative/displaying purposes
   scalar_type
   // dot(R,R) of last residual vector fed into this state.
-      m_LastResidualNormSq,
+  m_LastResidualNormSq,
   // coefficient the actual new vector got in the last DIIS step
-      m_LastAmplitudeCoeff;
+  m_LastAmplitudeCoeff;
 
 };
 

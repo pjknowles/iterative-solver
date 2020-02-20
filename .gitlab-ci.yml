@@ -15,6 +15,6 @@ job:
     - procs=$(lscpu -p | egrep -v '^#' | wc -l); echo $procs processors available
     - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/serial-fortran ; mkdir -p $BUILD && cd $BUILD && pwd && cmake $TOP -DFORTRAN=1 && cmake --build . -- -j ${procs} && ctest -V
     - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/serial ; mkdir -p $BUILD && cd $BUILD && pwd && cmake $TOP -DFORTRAN=0 && cmake --build . -- -j ${procs} && ctest -V
-    - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/parallel-fortran ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DMPI=1 -DMPIOPTIONS="--allow-run-as-root" -DFORTRAN=1 $TOP && cmake --build . -- -j ${procs} && ctest -V
-    - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/parallel ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DMPI=1 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest -V
+    - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/parallel-fortran ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DMPI=1 -DMPIOPTIONS="--allow-run-as-root" -DFORTRAN=1 $TOP && cmake --build . -- -j ${procs} && ctest -V -E 'IterativeSolver.*test'
+    - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/parallel ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DMPI=1 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest -V -E 'IterativeSolver.*test'
 

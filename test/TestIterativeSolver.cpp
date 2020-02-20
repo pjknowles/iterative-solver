@@ -265,7 +265,7 @@ TEST(TestIterativeSolver, linear_equations
         std::cout << "Test n=" << n << ", nroot=" << nroot << std::endl;
       if (solver.m_verbosity > 1)
         std::cout << "Matrix:\n" << m << std::endl;
-      for (size_t iter = 0; iter < n + 1; iter++) {
+      for (size_t iter = 0; iter < n + 5; iter++) {
         for (size_t root = 0; root < x.size(); root++) {
           g[root].scal(0);
           if (solver.active()[root])

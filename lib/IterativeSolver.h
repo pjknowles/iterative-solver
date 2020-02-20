@@ -743,6 +743,7 @@ class Base {
           m_subspaceEigenvectors.col(k).real() += double(0.3256897) * m_subspaceEigenvectors.col(k).imag();
           m_subspaceEigenvectors.col(k).imag().setZero();
         }
+        if (m_hermitian)
         for (Eigen::Index l = 0; l < k; l++) {
 //        auto ovl =
 //            (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0);

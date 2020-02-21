@@ -708,20 +708,17 @@ class OutOfCoreArray {
     long_intindices.reserve(maximumNumber * m_mpi_size);
     std::vector<T> long_values;
     long_values.reserve(maximumNumber * m_mpi_size);
-    size_t alpha = m_size/m_mpi_size;
-    size_t beta = m_size%m_mpi_size;
-    int *chunks = new int[m_mpi_size];
-    int *displs = new int[m_mpi_size];
-    for (int i = 0; i < m_mpi_size; i++) {
-        chunks[i] = (i < beta) ? alpha+1 : alpha;
-        displs[i] = (i < beta) ? chunks[i]*i : chunks[i]*i + beta;
+    int chunks[m_mpi_size],displs[m_mpi_size];
+    int ssize = sortlist.size();
+    MPI_Allgather(&ssize,1,MPI_INT,chunks,1,MPI_INT,m_communicator);
+    displs[0] = 0;
+    for (int i = 1; i < m_mpi_size; i++) {
+        displs[i] = chunks[i-1];
     }
     MPI_Allgatherv(values.data(), values.size(), MPI_DOUBLE,
             long_values.data(), chunks, displs, MPI_DOUBLE, m_communicator); //non-blocking??
     MPI_Allgatherv(intindices.data(), intindices.size(), MPI_INT,
                   long_intindices.data(), chunks, displs, MPI_INT, m_communicator); //non-blocking??
-    delete [] chunks;
-    delete [] displs;
     std::vector<size_t> long_indices(long_intindices.begin(),long_intindices.end());
     MyMap fsortlist;
     for (size_t i = 0; i < long_indices.size(); i++) {

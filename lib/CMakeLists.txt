@@ -54,6 +54,13 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
     set(EIGEN_DONT_VECTORIZE ON)
 endif ()
 
+get_dependency(profiler)
+if (MPI_CXX_FOUND)
+    target_link_libraries(${PROJECT_NAME} PUBLIC Profiler::mpi)
+else ()
+    target_link_libraries(${PROJECT_NAME} PUBLIC Profiler::serial)
+endif ()
+
 if (Molpro_SOURCE_DIR)
     message(STATUS "IterativeSolver Molpro configuration")
     get_dependency(ppidd)

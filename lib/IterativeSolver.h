@@ -1,6 +1,7 @@
 #ifndef ITERATIVESOLVER_H
 #define ITERATIVESOLVER_H
 #include "IterativeSolver-config.h"
+#include "ProfilerSingle.h"
 #ifdef TIMING
 #include <chrono>
 #endif
@@ -85,7 +86,7 @@ static std::vector<std::vector<std::reference_wrapper<typename T::value_type> > 
 template<class T>
 class Base {
  public:
-  Base(
+  Base(std::shared_ptr<Profiler> profiler = nullptr
   ) :
       m_Pvectors(0),
       m_verbosity(0),
@@ -121,7 +122,8 @@ class Base {
       m_added_vectors(0),
       m_augmented_hessian(0),
       m_svdThreshold(1e-15),
-      m_maxQ(std::max(m_roots, size_t(16))) {}
+      m_maxQ(std::max(m_roots, size_t(16))),
+      m_profiler(profiler) {}
 
   virtual ~Base() = default;
 
@@ -136,6 +138,7 @@ class Base {
   using vectorSetP = typename std::vector<vectorP>; ///<Container of P-space parameters
  public:
   using scalar_type = decltype(std::declval<T>().dot(std::declval<const T&>())); ///< The type of scalar products of vectors
+  std::shared_ptr<Profiler> m_profiler;
   /*!
    * \brief Take, typically, a current solution and residual, and return new solution.
    * In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
@@ -1232,10 +1235,11 @@ class LinearEigensystem : public Base<T> {
   using typename Base<T>::value_type;
   using Base<T>::m_verbosity;
 
+
   /*!
    * \brief LinearEigensystem
    */
-  explicit LinearEigensystem() {
+  explicit LinearEigensystem(std::shared_ptr<Profiler> profiler = nullptr) : Base<T>(profiler) {
     this->m_residual_rhs = false;
     this->m_difference_vectors = false;
     this->m_residual_eigen = true;
@@ -1842,7 +1846,7 @@ class DIIS : public Base<T> {
 // C interface
 extern "C" void
 IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh, unsigned int maxIterations,
-                                           int verbosity, int orthogonalize);
+                                           int verbosity, int orthogonalize, const char* fname, int fcomm);
 
 extern "C" void
 IterativeSolverLinearEquationsInitialize(size_t n,

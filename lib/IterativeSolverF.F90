@@ -16,17 +16,20 @@ CONTAINS
   !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
   !> Example of simplest use: @include LinearEigensystemExampleF.F90
   !> Example including use of P space: @include LinearEigensystemExampleF-Pspace.F90
-  SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, maxIterations, verbosity, orthogonalize)
+  SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, maxIterations, verbosity, &
+                                                            orthogonalize, pname, pcomm)
     INTEGER, INTENT(in) :: nq !< dimension of matrix
     INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
+    CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
+    INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
     INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
     INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
     !< One gives a single progress-report line each iteration.
     LOGICAL, INTENT(in), OPTIONAL :: orthogonalize !< whether to orthogonalize expansion vectors (default true)
     INTERFACE
-      SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, thresh, maxIterations, verbosity, orthogonalize) &
-          BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
+      SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, thresh, maxIterations, verbosity, orthogonalize, &
+                  pname, pcomm) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
         USE iso_c_binding
         INTEGER(C_size_t), INTENT(in), VALUE :: nq
         INTEGER(C_size_t), INTENT(in), VALUE :: nroot
@@ -34,10 +37,21 @@ CONTAINS
         INTEGER(C_int), INTENT(in), VALUE :: maxIterations
         INTEGER(C_int), INTENT(in), VALUE :: verbosity
         INTEGER(C_int), INTENT(in), VALUE :: orthogonalize
+        CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
+        INTEGER(C_int), INTENT(in), VALUE :: pcomm
       END SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC
     END INTERFACE
     INTEGER(c_int) :: verbosityC = 0, maxIterationsC = 0, orthogonalizeC = 1
     REAL(c_double) :: threshC = 0d0
+    CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
+    INTEGER(c_int) :: pcommC = 0 ! is this OK? In principle should be MPI_COMM_NULL?
+    IF (PRESENT(pname)) THEN
+      ALLOCATE(pnameC(LEN(pname)+1))
+      CALL c_string_from_f(pname, pnameC)
+    ELSE
+      ALLOCATE(pnameC(1))
+      pnameC(1) = c_null_char
+    ENDIF
     m_nq = INT(nq, kind = c_size_t)
     m_nroot = INT(nroot, kind = c_size_t)
     IF (PRESENT(thresh)) THEN
@@ -53,7 +67,12 @@ CONTAINS
       IF (orthogonalize) orthogonalizeC = 1
       IF (.NOT.orthogonalize) orthogonalizeC = 0
     END IF
-    CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, threshC, maxIterationsC, verbosityC, orthogonalizeC)
+    IF (PRESENT(pcomm)) THEN
+      pcommC = INT(pcomm,kind = c_int)
+    ENDIF
+    CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, threshC, maxIterationsC, verbosityC, orthogonalizeC, &
+                                                         pnameC, pcommC)
+    DEALLOCATE(pnameC)
   END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize
 
   !> \brief Finds the solutions of linear equation systems using a generalisation of Davidson's method, i.e. preconditioned Lanczos

@@ -36,9 +36,12 @@ if (BENCHMARK)
     add_executable(LinearEigensystemBenchmarkF LinearEigensystemBenchmarkF.F90)
     set_target_properties(LinearEigensystemBenchmarkF
             PROPERTIES
-            COMPILE_FLAGS -UHAVE_MPI_H
             RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
             )
     get_dependency(profiler)
-    target_link_libraries(LinearEigensystemBenchmarkF PUBLIC ${PROJECT_NAME} ${MPI_CXX_LIBRARIES} Profiler::Profiler)
+    if (MPI_CXX_FOUND)
+        target_link_libraries(LinearEigensystemBenchmarkF PUBLIC ${PROJECT_NAME} Profiler::mpi)
+    else ()
+        target_link_libraries(LinearEigensystemBenchmarkF PUBLIC ${PROJECT_NAME} Profiler::serial)
+    endif ()
 endif ()

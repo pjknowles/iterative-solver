@@ -1842,7 +1842,7 @@ class DIIS : public Base<T> {
 // C interface
 extern "C" void
 IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh, unsigned int maxIterations,
-                                           int verbosity, int orthogonalize);
+                                           int verbosity, int orthogonalize, int fcomm);
 
 extern "C" void
 IterativeSolverLinearEquationsInitialize(size_t n,
@@ -1868,16 +1868,17 @@ IterativeSolverOptimizeInitialize(size_t n,
 extern "C" void IterativeSolverFinalize();
 
 extern "C" int
-IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync);
+IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync, int fcomm);
 
 extern "C" int
-IterativeSolverAddValue(double* parameters, double value, double* action, int sync);
+IterativeSolverAddValue(double* parameters, double value, double* action, int sync, int fcomm);
 
-extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error);
+extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error, int fcomm);
 
 extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                     const double* coefficients, const double* pp,
-                                    double* parameters, double* action, double* parametersP);
+                                    double* parameters, double* action, double* parametersP,
+                                    int fcomm);
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues);
 
@@ -1887,6 +1888,7 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution,
                                           const double* residual,
                                           size_t maximumNumber,
                                           double threshold,
-                                          size_t* indices);
+                                          size_t* indices,
+                                          int fcomm);
 
 #endif // ITERATIVESOLVER_H

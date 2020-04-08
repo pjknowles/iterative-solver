@@ -18,7 +18,6 @@ IterativeSolverLinearEigensystemInitialize(size_t n,
                                            unsigned int maxIterations,
                                            int verbosity,
                                            int orthogonalize,
-                                           const char* fname,
                                            int fcomm) {
 #ifdef HAVE_MPI_H
   int flag;
@@ -122,16 +121,18 @@ extern "C" void IterativeSolverFinalize() {
 extern "C" int IterativeSolverAddValue(double* parameters, double value, double* action, int sync, int fcomm) {
   auto& instance = instances.top();
 #ifdef HAVE_MPI_H
+  MPI_Comm ccomm;
   if (fcomm != 0) { //OK?
-    MPI_Comm ccomm = MPI_Comm_f2c(fcomm);
+    ccomm = MPI_Comm_f2c(fcomm);
   } else {
-    MPI_Comm ccomm = MPI_COMM_COMPUTE;
+    ccomm = MPI_COMM_COMPUTE;
   } 
-#else
-  int ccomm = 0;
-#endif
   v ccc(parameters, instance->m_dimension, ccomm);
   v ggg(action, instance->m_dimension, ccomm);
+#else
+  v ccc(parameters, instance->m_dimension);
+  v ggg(action, instance->m_dimension);
+#endif
   auto result = static_cast<IterativeSolver::Optimize<v>*>(instance.get())->addValue(ccc, value, ggg) ? 1 : 0;
 #ifdef HAVE_MPI_H
   if (sync) { //throw an error if communicator was not passed?
@@ -149,18 +150,22 @@ extern "C" int IterativeSolverAddVector(double* parameters, double* action, doub
   gg.reserve(instance->m_roots);
   std::vector<std::vector<typename v::value_type> > ccp(instance->m_roots);
 #ifdef HAVE_MPI_H
+  MPI_Comm ccomm;
   if (fcomm != 0) {
-    MPI_Comm ccomm = MPI_Comm_f2c(fcomm);
+    ccomm = MPI_Comm_f2c(fcomm);
   } else {
-    MPI_Comm ccomm = MPI_COMM_COMPUTE;
+    ccomm = MPI_COMM_COMPUTE;
   } 
-#else
-  int ccomm = 0;
-#endif
   for (size_t root = 0; root < instance->m_roots; root++) {
     cc.emplace_back(&parameters[root * instance->m_dimension], instance->m_dimension, ccomm);
     gg.emplace_back(&action[root * instance->m_dimension], instance->m_dimension, ccomm);
   }
+#else
+  for (size_t root = 0; root < instance->m_roots; root++) {
+    cc.emplace_back(&parameters[root * instance->m_dimension], instance->m_dimension);
+    gg.emplace_back(&action[root * instance->m_dimension], instance->m_dimension);
+  }
+#endif
   bool update = instance->addVector(cc, gg, ccp);
 
   for (size_t root = 0; root < instance->m_roots; root++) {
@@ -182,18 +187,22 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
   cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
   gg.reserve(instance->m_roots);
 #ifdef HAVE_MPI_H
+  MPI_Comm ccomm;
   if (fcomm != 0) {
-    MPI_Comm ccomm = MPI_Comm_f2c(fcomm);
+    ccomm = MPI_Comm_f2c(fcomm);
   } else {
-    MPI_Comm ccomm = MPI_COMM_COMPUTE;
+    ccomm = MPI_COMM_COMPUTE;
   } 
-#else
-  int ccomm = 0;
-#endif
   for (size_t root = 0; root < instance->m_roots; root++) {
     cc.emplace_back(&solution[root * instance->m_dimension], instance->m_dimension, ccomm);
     gg.emplace_back(&residual[root * instance->m_dimension], instance->m_dimension, ccomm);
   }
+#else
+  for (size_t root = 0; root < instance->m_roots; root++) {
+    cc.emplace_back(&solution[root * instance->m_dimension], instance->m_dimension);
+    gg.emplace_back(&residual[root * instance->m_dimension], instance->m_dimension);
+  }
+#endif
   bool result = instance->endIteration(cc, gg);
   for (size_t root = 0; root < instance->m_roots; root++) {
 #ifdef HAVE_MPI_H
@@ -215,18 +224,22 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
   cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
   gg.reserve(instance->m_roots);
 #ifdef HAVE_MPI_H
+  MPI_Comm ccomm;
   if (fcomm != 0) {
-    MPI_Comm ccomm = MPI_Comm_f2c(fcomm);
+    ccomm = MPI_Comm_f2c(fcomm);
   } else {
-    MPI_Comm ccomm = MPI_COMM_COMPUTE;
+    ccomm = MPI_COMM_COMPUTE;
   } 
-#else
-  int ccomm = 0;
-#endif
   for (size_t root = 0; root < instance->m_roots; root++) {
     cc.emplace_back(&parameters[root * instance->m_dimension],instance->m_dimension, ccomm);
     gg.emplace_back(&action[root * instance->m_dimension],instance->m_dimension, ccomm);
   }
+#else
+  for (size_t root = 0; root < instance->m_roots; root++) {
+    cc.emplace_back(&parameters[root * instance->m_dimension],instance->m_dimension);
+    gg.emplace_back(&action[root * instance->m_dimension],instance->m_dimension);
+  }
+#endif
   std::vector<std::map<size_t, v::value_type> > Pvectors;
   Pvectors.reserve(nP);
   for (size_t p = 0; p < nP; p++) {
@@ -273,20 +286,26 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution,
   cc.reserve(instance->m_roots);
   gg.reserve(instance->m_roots);
 #ifdef HAVE_MPI_H
+  MPI_Comm ccomm;
   if (fcomm != 0) {
-    MPI_Comm ccomm = MPI_Comm_f2c(fcomm);
+    ccomm = MPI_Comm_f2c(fcomm);
   } else {
-    MPI_Comm ccomm = MPI_COMM_COMPUTE;
+    ccomm = MPI_COMM_COMPUTE;
   } 
-#else
-  int ccomm = 0;
-#endif
   for (size_t root = 0; root < instance->m_roots; root++) {
     cc.emplace_back(&const_cast<double*>(solution)[root * instance->m_dimension],
                    instance->m_dimension, ccomm);
     gg.emplace_back(&const_cast<double*>(residual)[root * instance->m_dimension],
                    instance->m_dimension, ccomm);
   }
+#else
+  for (size_t root = 0; root < instance->m_roots; root++) {
+    cc.emplace_back(&const_cast<double*>(solution)[root * instance->m_dimension],
+                   instance->m_dimension);
+    gg.emplace_back(&const_cast<double*>(residual)[root * instance->m_dimension],
+                   instance->m_dimension);
+  }
+#endif
 
   auto result = instance->suggestP(cc, gg, maximumNumber, threshold);
   for (size_t i = 0; i < result.size(); i++)

@@ -17,10 +17,10 @@ CONTAINS
   !> Example of simplest use: @include LinearEigensystemExampleF.F90
   !> Example including use of P space: @include LinearEigensystemExampleF-Pspace.F90
   SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, maxIterations, verbosity, &
-                                                            orthogonalize, pcomm)
+                                                            orthogonalize, comm)
     INTEGER, INTENT(in) :: nq !< dimension of matrix
     INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
-    INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
+    INTEGER, INTENT(in), OPTIONAL :: comm !< Communicator
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
     INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
     INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
@@ -28,7 +28,7 @@ CONTAINS
     LOGICAL, INTENT(in), OPTIONAL :: orthogonalize !< whether to orthogonalize expansion vectors (default true)
     INTERFACE
       SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, thresh, maxIterations, verbosity, orthogonalize, &
-                  pcomm) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
+                  comm) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
         USE iso_c_binding
         INTEGER(C_size_t), INTENT(in), VALUE :: nq
         INTEGER(C_size_t), INTENT(in), VALUE :: nroot
@@ -36,12 +36,12 @@ CONTAINS
         INTEGER(C_int), INTENT(in), VALUE :: maxIterations
         INTEGER(C_int), INTENT(in), VALUE :: verbosity
         INTEGER(C_int), INTENT(in), VALUE :: orthogonalize
-        INTEGER(C_int), INTENT(in), VALUE :: pcomm
+        INTEGER(C_int), INTENT(in), VALUE :: comm
       END SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC
     END INTERFACE
     INTEGER(c_int) :: verbosityC = 0, maxIterationsC = 0, orthogonalizeC = 1
     REAL(c_double) :: threshC = 0d0
-    INTEGER(c_int) :: pcommC = 0 ! is this OK? In principle should be MPI_COMM_NULL?
+    INTEGER(c_int) :: commC = 0 ! is this OK? In principle should be MPI_COMM_NULL?
     m_nq = INT(nq, kind = c_size_t)
     m_nroot = INT(nroot, kind = c_size_t)
     IF (PRESENT(thresh)) THEN
@@ -57,11 +57,11 @@ CONTAINS
       IF (orthogonalize) orthogonalizeC = 1
       IF (.NOT.orthogonalize) orthogonalizeC = 0
     END IF
-    IF (PRESENT(pcomm)) THEN
-      pcommC = INT(pcomm,kind = c_int)
+    IF (PRESENT(comm)) THEN
+      commC = INT(comm,kind = c_int)
     ENDIF
     CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, threshC, maxIterationsC, verbosityC, orthogonalizeC, &
-                                                         pcommC)
+                                                         commC)
   END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize
 
   !> \brief Finds the solutions of linear equation systems using a generalisation of Davidson's method, i.e. preconditioned Lanczos

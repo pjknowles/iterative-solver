@@ -16,17 +16,19 @@ CONTAINS
   !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
   !> Example of simplest use: @include LinearEigensystemExampleF.F90
   !> Example including use of P space: @include LinearEigensystemExampleF-Pspace.F90
-  SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, maxIterations, verbosity, orthogonalize)
+  SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, maxIterations, verbosity, &
+                                                            orthogonalize, comm)
     INTEGER, INTENT(in) :: nq !< dimension of matrix
     INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
+    INTEGER, INTENT(in), OPTIONAL :: comm !< Communicator
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
     INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
     INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
     !< One gives a single progress-report line each iteration.
     LOGICAL, INTENT(in), OPTIONAL :: orthogonalize !< whether to orthogonalize expansion vectors (default true)
     INTERFACE
-      SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, thresh, maxIterations, verbosity, orthogonalize) &
-          BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
+      SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, thresh, maxIterations, verbosity, orthogonalize, &
+                  comm) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
         USE iso_c_binding
         INTEGER(C_size_t), INTENT(in), VALUE :: nq
         INTEGER(C_size_t), INTENT(in), VALUE :: nroot
@@ -34,10 +36,12 @@ CONTAINS
         INTEGER(C_int), INTENT(in), VALUE :: maxIterations
         INTEGER(C_int), INTENT(in), VALUE :: verbosity
         INTEGER(C_int), INTENT(in), VALUE :: orthogonalize
+        INTEGER(C_int), INTENT(in), VALUE :: comm
       END SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC
     END INTERFACE
     INTEGER(c_int) :: verbosityC = 0, maxIterationsC = 0, orthogonalizeC = 1
     REAL(c_double) :: threshC = 0d0
+    INTEGER(c_int) :: commC = 0 ! is this OK? In principle should be MPI_COMM_NULL?
     m_nq = INT(nq, kind = c_size_t)
     m_nroot = INT(nroot, kind = c_size_t)
     IF (PRESENT(thresh)) THEN
@@ -53,7 +57,11 @@ CONTAINS
       IF (orthogonalize) orthogonalizeC = 1
       IF (.NOT.orthogonalize) orthogonalizeC = 0
     END IF
-    CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, threshC, maxIterationsC, verbosityC, orthogonalizeC)
+    IF (PRESENT(comm)) THEN
+      commC = INT(comm,kind = c_int)
+    ENDIF
+    CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, threshC, maxIterationsC, verbosityC, orthogonalizeC, &
+                                                         commC)
   END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize
 
   !> \brief Finds the solutions of linear equation systems using a generalisation of Davidson's method, i.e. preconditioned Lanczos
@@ -239,15 +247,16 @@ CONTAINS
   !>        The default is the safe .TRUE. but can be .FALSE. if appropriate.
   !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
   !> the subsequent call to Iterative_Solver_End_Iteration()
-  FUNCTION Iterative_Solver_Add_Value(value, parameters, action, synchronize)
+  FUNCTION Iterative_Solver_Add_Value(value, parameters, action, synchronize, comm)
     USE iso_c_binding
     LOGICAL :: Iterative_Solver_Add_Value
     DOUBLE PRECISION, INTENT(in) :: value
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
     LOGICAL, INTENT(in), OPTIONAL :: synchronize
+    INTEGER, INTENT(in), OPTIONAL :: comm !< Communicator
     INTERFACE
-      FUNCTION Iterative_Solver_Add_Value_C(value, parameters, action, sync) &
+      FUNCTION Iterative_Solver_Add_Value_C(value, parameters, action, sync, comm) &
           BIND(C, name = 'IterativeSolverAddValue')
         USE iso_c_binding
         INTEGER(c_int) Iterative_Solver_Add_Value_C
@@ -255,14 +264,19 @@ CONTAINS
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
         INTEGER(c_int), INTENT(in), VALUE :: sync
+        INTEGER(c_int), INTENT(in), VALUE :: comm
       END FUNCTION Iterative_Solver_Add_Value_C
     END INTERFACE
     INTEGER(c_int) :: sync
+    INTEGER(c_int) :: commC = 0 ! is this OK? In principle should be MPI_COMM_NULL?
     sync = 1
     IF (PRESENT(synchronize)) THEN
       IF (.NOT. synchronize) sync = 0
     END IF
-      Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action, sync).NE.0
+    IF (PRESENT(comm)) THEN
+      commC = INT(comm,kind = c_int)
+    ENDIF
+    Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action, sync, commC).NE.0
   END FUNCTION Iterative_Solver_Add_Value
   !> \brief Take, typically, a current solution and residual, add it to the expansion set, and return new solution.
   !> In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
@@ -276,15 +290,16 @@ CONTAINS
   !> appropriate.
   !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
   !> the subsequent call to Iterative_Solver_End_Iteration()
-  FUNCTION Iterative_Solver_Add_Vector(parameters, action, parametersP, synchronize)
+  FUNCTION Iterative_Solver_Add_Vector(parameters, action, parametersP, synchronize, comm)
     USE iso_c_binding
     LOGICAL :: Iterative_Solver_Add_Vector
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP
     LOGICAL, INTENT(in), OPTIONAL :: synchronize
+    INTEGER, INTENT(in), OPTIONAL :: comm !< Communicator
     INTERFACE
-      FUNCTION Iterative_Solver_Add_Vector_C(parameters, action, parametersP, synchronize) &
+      FUNCTION Iterative_Solver_Add_Vector_C(parameters, action, parametersP, synchronize, comm) &
           BIND(C, name = 'IterativeSolverAddVector')
         USE iso_c_binding
         INTEGER(c_int) Iterative_Solver_Add_Vector_C
@@ -292,18 +307,23 @@ CONTAINS
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
         INTEGER(c_int), INTENT(in), VALUE :: synchronize
+        INTEGER(c_int), INTENT(in), VALUE :: comm
       END FUNCTION Iterative_Solver_Add_Vector_C
     END INTERFACE
     DOUBLE PRECISION, DIMENSION(0) :: pdummy
     INTEGER(c_int) :: sync
+    INTEGER(c_int) :: commC = 0
     sync = 1
     IF (PRESENT(synchronize)) THEN
       IF (.NOT. synchronize) sync = 0
-      END IF
+    END IF
+    IF (PRESENT(comm)) THEN
+      commC = INT(comm,kind = c_int)
+    ENDIF
     IF (PRESENT(parametersP)) THEN
-      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, parametersP, sync).NE.0
+      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, parametersP, sync, commC).NE.0
     ELSE
-      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, pdummy, sync).NE.0
+      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, pdummy, sync, commC).NE.0
     END IF
   END FUNCTION Iterative_Solver_Add_Vector
 
@@ -314,22 +334,28 @@ CONTAINS
   !> \param residual The residual after interpolation.
   !> \param error Error indicator for each sought root.
   !> \return .TRUE. if convergence reached for all roots
-  LOGICAL FUNCTION Iterative_Solver_End_Iteration(solution, residual, error)
+  LOGICAL FUNCTION Iterative_Solver_End_Iteration(solution, residual, error, comm)
     USE iso_c_binding
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: error
+    INTEGER, INTENT(in), OPTIONAL :: comm !< Communicator
     INTERFACE
-      INTEGER(c_int) FUNCTION Iterative_Solver_End_Iteration_C(solution, residual, error) &
+      INTEGER(c_int) FUNCTION Iterative_Solver_End_Iteration_C(solution, residual, error, comm) &
           BIND(C, name = 'IterativeSolverEndIteration')
         USE iso_c_binding
         REAL(c_double), DIMENSION(*), INTENT(inout) :: solution
         REAL(c_double), DIMENSION(*), INTENT(inout) :: residual
         REAL(c_double), DIMENSION(*), INTENT(inout) :: error
+        INTEGER(c_int), INTENT(in), VALUE :: comm
       END FUNCTION Iterative_Solver_End_Iteration_C
     END INTERFACE
+    INTEGER(c_int) :: commC = 0
+    IF (PRESENT(comm)) THEN
+      commC = INT(comm,kind = c_int)
+    ENDIF
     Iterative_Solver_End_Iteration = &
-        Iterative_Solver_End_Iteration_C(solution, residual, error) /= 0
+        Iterative_Solver_End_Iteration_C(solution, residual, error, commC) /= 0
   END FUNCTION Iterative_Solver_End_Iteration
 
 
@@ -343,7 +369,7 @@ CONTAINS
   !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear).
   !> On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
   !> \param parametersP On exit, the interpolated solution projected onto the P space.
-  SUBROUTINE Iterative_Solver_Add_P(nP, offsets, indices, coefficients, pp, parameters, action, parametersP)
+  SUBROUTINE Iterative_Solver_Add_P(nP, offsets, indices, coefficients, pp, parameters, action, parametersP, comm)
     INTEGER, INTENT(in) :: nP
     INTEGER, INTENT(in), DIMENSION(0 : nP) :: offsets
     INTEGER, INTENT(in), DIMENSION(offsets(nP)) :: indices
@@ -352,8 +378,9 @@ CONTAINS
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parametersP
+    INTEGER, INTENT(in), OPTIONAL :: comm !< Communicator
     INTERFACE
-      SUBROUTINE IterativeSolverAddPC(nP, offsets, indices, coefficients, pp, parameters, action, parametersP) &
+      SUBROUTINE IterativeSolverAddPC(nP, offsets, indices, coefficients, pp, parameters, action, parametersP, comm) &
           BIND(C, name = 'IterativeSolverAddP')
         USE iso_c_binding
         INTEGER(c_size_t), INTENT(in), VALUE :: nP
@@ -364,10 +391,15 @@ CONTAINS
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
+        INTEGER(c_int), INTENT(in), VALUE :: comm
       END SUBROUTINE IterativeSolverAddPC
     END INTERFACE
     INTEGER(c_size_t), DIMENSION(0 : nP) :: offsetsC
     INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC
+    INTEGER(c_int) :: commC = 0
+    IF (PRESENT(comm)) THEN
+      commC = INT(comm,kind = c_int)
+    ENDIF
     offsetsC = INT(offsets, c_size_t)
     !write (6,*) 'fortrann addp nP ',nP
     !write (6,*) 'fortrann addp offsets ',offsets
@@ -379,7 +411,7 @@ CONTAINS
     end do
     !write (6,*) 'indicesC ',indicesC
     CALL IterativeSolverAddPC(INT(nP, c_size_t), offsetsC, indicesC, coefficients, &
-        pp, parameters, action, parametersP)
+        pp, parameters, action, parametersP, commC)
   END SUBROUTINE Iterative_Solver_Add_P
 
   !> \brief Take an existing solution and its residual, and suggest P vectors
@@ -389,14 +421,15 @@ CONTAINS
   !> \param threshold Base vectors whose predicted contribution is less than
   !> than this are not considered
   !> \return The number of vectors suggested.
-  FUNCTION Iterative_Solver_Suggest_P(solution, residual, indices, threshold)
+  FUNCTION Iterative_Solver_Suggest_P(solution, residual, indices, threshold, comm)
     INTEGER :: Iterative_Solver_Suggest_P
     DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: solution
     DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: residual
     INTEGER, INTENT(inout), DIMENSION(:) :: indices
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: threshold
+    INTEGER, INTENT(in), OPTIONAL :: comm !< Communicator
     INTERFACE
-      FUNCTION IterativeSolverSuggestP(solution, residual, maximumNumber, threshold, indices) &
+      FUNCTION IterativeSolverSuggestP(solution, residual, maximumNumber, threshold, indices, comm) &
           BIND(C, name = 'IterativeSolverSuggestP')
         USE iso_c_binding
         INTEGER(c_size_t) :: IterativeSolverSuggestP
@@ -405,16 +438,21 @@ CONTAINS
         REAL(c_double), DIMENSION(*), INTENT(in) :: solution
         REAL(c_double), DIMENSION(*), INTENT(in) :: residual
         REAL(c_double), INTENT(in), VALUE :: threshold
+        INTEGER(c_int), INTENT(in), VALUE :: comm
       END FUNCTION IterativeSolverSuggestP
     END INTERFACE
     REAL(C_double) :: thresholdC = 0
     INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC
     INTEGER(c_size_t) :: maximumNumber
+    INTEGER(c_int) :: commC = 0
+    IF (PRESENT(comm)) THEN
+      commC = INT(comm,kind = c_int)
+    ENDIF
     maximumNumber = INT(size(indices), c_size_t)
     !write (6,*) 'fortran suggestP, maximumNumber=',size(indices)
     IF (PRESENT(threshold)) thresholdC = threshold
     Iterative_Solver_Suggest_P = INT(&
-        IterativeSolverSuggestP(solution, residual, maximumNumber, thresholdC, indicesC) &
+        IterativeSolverSuggestP(solution, residual, maximumNumber, thresholdC, indicesC, commC) &
         )
     do i = 1, Iterative_Solver_Suggest_P
       indices(i) = int(indicesC(i)) + 1

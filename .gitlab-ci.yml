@@ -1,9 +1,9 @@
 cache:
   key: ${CI_COMMIT_REF_SLUG}
   paths: # cache everything so that unnecessary recompilation is avoided
-    - lib
+    - molpro
     - test
-    - example
+    - examples
     - dependencies
     - CMakeLists.txt
     - Doxyfile.in

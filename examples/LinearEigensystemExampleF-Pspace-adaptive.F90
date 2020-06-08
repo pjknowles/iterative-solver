@@ -1,5 +1,5 @@
-!> @example LinearEigensystemExampleF-Pspace-adaptive.F90
-!> This is an example of use of the LinearEigensystem framework for iterative
+!> @examples LinearEigensystemExampleF-Pspace-adaptive.F90
+!> This is an examples of use of the LinearEigensystem framework for iterative
 !> finding of the lowest few eigensolutions of a large matrix.
 !> A P-space is discovered.
 PROGRAM Linear_Eigensystem_Example

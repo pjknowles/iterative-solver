@@ -1,8 +1,8 @@
-!> @example OptimizeExampleF.F90
-!> This is an example of simplest use of the Optimize framework for iterative
+!> @examples OptimizeExampleF.F90
+!> This is an examples of simplest use of the Optimize framework for iterative
 !> solution of non-linear equations.
-!> With forced=.false., the example makes stationary a normalised quadratic form, so is equivalent to finding an eigenvector.
-!> With forced=.true., the example makes stationary a quadratic form plus a linear force.
+!> With forced=.false., the examples makes stationary a normalised quadratic form, so is equivalent to finding an eigenvector.
+!> With forced=.true., the examples makes stationary a quadratic form plus a linear force.
 PROGRAM QuasiNewton_Example
   USE Iterative_Solver
   IMPLICIT NONE

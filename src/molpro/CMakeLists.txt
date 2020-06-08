@@ -1,0 +1,78 @@
+LibraryManager_Append(${PROJECT_NAME}
+        SOURCES
+        IterativeSolver.cpp
+        PUBLIC_HEADER
+        SimpleVector.h
+        PagedVector.h
+        OpaqueVector.h
+        OutOfCoreArray.h
+        IterativeSolver.h
+        )
+if (CMAKE_Fortran_COMPILER)
+    LibraryManager_Append(${PROJECT_NAME}
+            SOURCES IterativeSolverF.F90
+            )
+endif ()
+
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_14)
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
+
+include(DependencyManager)
+DependencyManager_Populate(Profiler)
+DependencyManager_Populate(ppidd)
+
+LibraryManager_BLAS(${PROJECT_NAME} Intel10_64lp_seq)
+
+if (MPI_CXX_FOUND)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_MPI)
+    target_link_libraries(${PROJECT_NAME} PUBLIC MPI::MPI_CXX)
+    target_link_libraries(${PROJECT_NAME} PUBLIC Profiler::mpi)
+else ()
+    target_link_libraries(${PROJECT_NAME} PUBLIC Profiler::serial)
+endif ()
+
+LibraryManager_BLAS(${PROJECT_NAME} Intel10_64lp_seq Intel10_64lp)
+if (BLA_VENDOR MATCHES "^Intel10_64lp.*")
+    message(STATUS "Eigen will use MKL")
+    target_compile_definitions(${PROJECT_NAME} PUBLIC EIGEN_USE_MKL_ALL)
+endif ()
+if (CMAKE_Fortran_COMPILER AND NOT LAPACK_FOUND)
+    find_package(LAPACK REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PUBLIC ${LAPACK_LIBRARIES})
+endif()
+
+if (NOT TARGET Eigen3::Eigen)
+    message(VERBOSE "Eigen3::Eigen is not yet a target")
+    find_package(Eigen3 3.3.0 NO_MODULE NO_CMAKE_ENVIRONMENT_PATH NO_CMAKE_PACKAGE_REGISTRY QUIET)
+    if (EIGEN3_FOUND)
+        message(STATUS "Eigen3 found on system: ${EIGEN3_INCLUDE_DIR}")
+        add_library(eigen INTERFACE)
+        target_include_directories(eigen INTERFACE
+                $<BUILD_INTERFACE:${EIGEN3_INCLUDE_DIR}>
+                $<INSTALL_INTERFACE:${EIGEN3_INCLUDE_DIR}>
+                )
+        add_library(Eigen3::Eigen ALIAS eigen)
+    else ()
+        if (NOT CMAKE_Fortran_COMPILER)
+            message(FATAL_ERROR "Eigen3 cannot be configured from source with FORTRAN=OFF; install it in the system first")
+        endif ()
+        include(FetchContent)
+        FetchContent_Declare(eigen3
+                GIT_REPOSITORY https://gitlab.com/libeigen/eigen
+                GIT_TAG 3.3.7
+                )
+        FetchContent_MakeAvailable(eigen3)
+        add_library(Eigen3::Eigen ALIAS eigen)
+        message(STATUS "Eigen3::Eigen not found on system, and downloaded")
+    endif ()
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
+        set(EIGEN_DONT_VECTORIZE ON)
+    endif ()
+else ()
+    message(STATUS "SymmetryMatrix: Eigen3::Eigen target already defined")
+endif ()
+
+target_link_libraries(${PROJECT_NAME} PUBLIC Eigen3::Eigen)
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
+    target_compile_definitions(${PROJECT_NAME} -DEIGEN_DONT_VECTORIZE)
+endif ()

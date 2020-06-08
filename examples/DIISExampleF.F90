@@ -1,7 +1,7 @@
-!> @example DIISExampleF.F90
-!> This is an example of simplest use of the DIIS framework for iterative
+!> @examples DIISExampleF.F90
+!> This is an examples of simplest use of the DIIS framework for iterative
 !> solution of non-linear equations
-!> The example makes stationary a quadratic form, so is equivalent to finding an eigenvector
+!> The examples makes stationary a quadratic form, so is equivalent to finding an eigenvector
 PROGRAM DIIS_Example
   USE Iterative_Solver
   IMPLICIT NONE

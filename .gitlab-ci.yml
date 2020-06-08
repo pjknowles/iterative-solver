@@ -1,20 +1,38 @@
 cache:
-  key: ${CI_COMMIT_REF_SLUG}
-  paths: # cache everything so that unnecessary recompilation is avoided
-    - molpro
-    - test
-    - examples
-    - dependencies
-    - CMakeLists.txt
-    - Doxyfile.in
-job:
-  image: pjknowles/opensuse
+  key: ${CI_PROJECT_NAME}
+  paths:
+    - public
+    - build
+build:
+  image: ${CI_REGISTRY}/molpro/${CI_PROJECT_NAME}
+  #  only:
+  #    - merge_requests
   script:
     - TOP=$PWD
-    - git reset --hard $CI_COMMIT_SHA # because of cache
-    - procs=$(lscpu -p | egrep -v '^#' | wc -l); echo $procs processors available
-    - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/serial-fortran ; mkdir -p $BUILD && cd $BUILD && pwd && cmake $TOP -DFORTRAN=1 && cmake --build . -- -j ${procs} && ctest -V
-    - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/serial ; mkdir -p $BUILD && cd $BUILD && pwd && cmake $TOP -DFORTRAN=0 && cmake --build . -- -j ${procs} && ctest -V
-    - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/parallel-fortran ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DMPI=1 -DMPIOPTIONS="--allow-run-as-root" -DFORTRAN=1 $TOP && cmake --build . -- -j ${procs} && ctest -V -E 'IterativeSolver.*test'
-    - cd $TOP; BUILD=build/$(git rev-parse --abbrev-ref HEAD)/parallel ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DMPI=1 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest -V -E 'IterativeSolver.*test'
+    - PROJECT_NAME=example
+    - git checkout $CI_COMMIT_SHA # because of cache
+    - git fetch --tags
+    - git reset --hard
+    - git clean -f src examples docs test
+    - procs=$(lscpu -p | egrep -v '^#' | wc -l ) || procs=$(sysctl -n hw.physicalcpu) || procs=1; echo $procs processors available
+      - cd $TOP; BUILD=build/serial-fortran ; mkdir -p $BUILD && cd $BUILD && pwd && cmake $TOP -DFORTRAN=1 && cmake --build . -- -j ${procs} && ctest -V
+    - cd $TOP; BUILD=build/serial ; mkdir -p $BUILD && cd $BUILD && pwd && cmake $TOP -DFORTRAN=0 && cmake --build . -- -j ${procs} && ctest -V
+    - cd $TOP; BUILD=build/parallel-fortran ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DMPI=1 -DMPIOPTIONS="--allow-run-as-root" -DFORTRAN=1 $TOP && cmake --build . -- -j ${procs} && ctest -V -E 'IterativeSolver.*test'
+    - cd $TOP; BUILD=build/parallel ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DMPI=1 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest -V -E 'IterativeSolver.*test'
+
+    - mkdir -p $TOP/public
+    - mkdir -p $TOP/$BUILD/docs/$PROJECT_NAME/html/DoxygenTagFiles && cp $TOP/$BUILD/docs/$PROJECT_NAME/$PROJECT_NAME.tag $TOP/$BUILD/docs/$PROJECT_NAME/html/DoxygenTagFiles
+    - . $TOP/$BUILD/project_version.sh ; rsync -a --delete $TOP/$BUILD/docs/*/html/ $TOP/public/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    - rm -f  $TOP/public/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    - if [ $(git describe --tags --abbrev=0 --always HEAD) = $(git describe --tags --abbrev=0 --always origin/master) ]; then cd $TOP/public; rm -f latest; ln -s ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR} latest ; rm -f ./index.html; fi
+    - echo '<head><meta http-equiv="refresh" content="0; URL=latest"></head>' > $TOP/public/index.html
+pages:
+  stage: deploy
+  only:
+    - tags
+  script:
+    - echo nothing
+  artifacts:
+    paths:
+      - public
 

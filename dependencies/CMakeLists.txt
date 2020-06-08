@@ -12,4 +12,4 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" PARENT_SCOPE)
 
 DependencyManager_Declare(ppidd https://gitlab.com/molpro/ppidd.git)
 
-DependencyManager_Declare(profiler https://gitlab.com/molpro/profiler.git)
+DependencyManager_Declare(Profiler https://gitlab.com/molpro/profiler.git)

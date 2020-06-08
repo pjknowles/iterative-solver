@@ -38,10 +38,9 @@ if (BENCHMARK)
             PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
             )
-    get_dependency(profiler)
     if (MPI_CXX_FOUND)
-        target_link_libraries(LinearEigensystemBenchmarkF molpro::PUBLIC ${PROJECT_NAME} Profiler::mpi)
+        target_link_libraries(LinearEigensystemBenchmarkF PUBLIC molpro::${PROJECT_NAME})# Profiler::mpi)
     else ()
-        target_link_libraries(LinearEigensystemBenchmarkF PUBLIC molpro::${PROJECT_NAME} Profiler::serial)
+        target_link_libraries(LinearEigensystemBenchmarkF PUBLIC molpro::${PROJECT_NAME})# Profiler::serial)
     endif ()
 endif ()

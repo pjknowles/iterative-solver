@@ -9,7 +9,7 @@ build:
   #    - merge_requests
   script:
     - TOP=$PWD
-    - PROJECT_NAME=example
+    - PROJECT_NAME=${CI_PROJECT_NAME}
     - git checkout $CI_COMMIT_SHA # because of cache
     - git fetch --tags
     - git reset --hard

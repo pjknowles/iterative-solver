@@ -1,5 +1,5 @@
-#include "IterativeSolver.h"
-#include "PagedVector.h"
+#include "molpro/IterativeSolver.h"
+#include "molpro/PagedVector.h"
 
 
 //  typedef SimpleParameterVector pv;

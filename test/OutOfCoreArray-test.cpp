@@ -1,4 +1,4 @@
-#include "OutOfCoreArray.h"
+#include "molpro/OutOfCoreArray.h"
 #include "test.h"
 #include <cmath>
 

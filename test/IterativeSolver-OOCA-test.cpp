@@ -1,14 +1,9 @@
 #include <ctime>
 #include <memory>
 #include "test.h"
-#include "IterativeSolver.h"
-#include "OutOfCoreArray.h"
+#include "molpro/IterativeSolver.h"
+#include "molpro/OutOfCoreArray.h"
 #include <type_traits>
-
-#ifdef MOLPRO
-#include <iostream>
-auto& xout=std::cout;
-#endif
 
 namespace IterativeSolver {
 
@@ -77,7 +72,7 @@ static void DavidsonTest(size_t dimension,
     }
   } update;
 
-  xout << "Test IterativeSolver::LinearEigensystem dimension=" << dimension << ", roots=" << roots << ", problem="
+  molpro::cout << "Test IterativeSolver::LinearEigensystem dimension=" << dimension << ", roots=" << roots << ", problem="
        << problem << ", orthogonalize=" << orthogonalize << std::endl;
   testmatrix.resize(dimension, dimension);
   for (size_t k = 0; k < dimension; k++)
@@ -140,18 +135,18 @@ static void DavidsonTest(size_t dimension,
     if (upd) break;
   }
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>> es(testmatrix);
-//    xout << "true eigenvalues: "<<es.eigenvalues().head(d.m_roots).transpose()<<std::endl;
-//    xout << "true eigenvectors:\n"<<es.eigenvectors().leftCols(d.m_roots).transpose()<<std::endl;
+//    molpro::cout << "true eigenvalues: "<<es.eigenvalues().head(d.m_roots).transpose()<<std::endl;
+//    molpro::cout << "true eigenvectors:\n"<<es.eigenvectors().leftCols(d.m_roots).transpose()<<std::endl;
 
 
   auto ev = d.eigenvalues();
-  xout << "Eigenvalues: ";
+  molpro::cout << "Eigenvalues: ";
   size_t root = 0;
-  for (const auto& e : ev) xout << " " << e << "(error=" << e - es.eigenvalues()(root++) << ")";
-  xout << std::endl;
-  xout << "Reported errors: ";
-  for (const auto& e: d.errors()) xout << " " << e;
-  xout << std::endl;
+  for (const auto& e : ev) molpro::cout << " " << e << "(error=" << e - es.eigenvalues()(root++) << ")";
+  molpro::cout << std::endl;
+  molpro::cout << "Reported errors: ";
+  for (const auto& e: d.errors()) molpro::cout << " " << e;
+  molpro::cout << std::endl;
 
   action(xvec, gvec);
   std::vector<scalar> errors;
@@ -159,10 +154,10 @@ static void DavidsonTest(size_t dimension,
     g[root].axpy(-ev[root], x[root]);
     errors.push_back(g[root].dot(g[root]));
   }
-//   xout << "Square residual norms: "; for (typename std::vector<T>::const_iterator e=errors.begin(); e!=errors.end(); e++) xout<<" "<<*e;xout<<std::endl;
-  xout << "Square residual norms: ";
-  for (const auto& e: errors) xout << " " << e;
-  xout << std::endl;
+//   molpro::cout << "Square residual norms: "; for (typename std::vector<T>::const_iterator e=errors.begin(); e!=errors.end(); e++) molpro::cout<<" "<<*e;molpro::cout<<std::endl;
+  molpro::cout << "Square residual norms: ";
+  for (const auto& e: errors) molpro::cout << " " << e;
+  molpro::cout << std::endl;
   // be noisy about obvious problems
   if (*std::max_element(errors.begin(), errors.end()) > 1e-7)
     throw std::runtime_error("IterativeSolver::LinearEigensystem has failed tests");
@@ -218,7 +213,7 @@ void DIISTest(int verbosity = 0,
         psck[1] = -psgk[1] / 200;
       }
       psc.put(&psck[0], n, 0);
-//    xout << "Rosenbrock updater, new psc="<<psc<<std::endl;
+//    molpro::cout << "Rosenbrock updater, new psc="<<psc<<std::endl;
     }
   } _Rosenbrock_updater;
   ptype x(2);
@@ -228,7 +223,7 @@ void DIISTest(int verbosity = 0,
   d.m_svdThreshold = svdThreshold;
   d.setMode(mode);
 
-  if (verbosity >= 0) xout << "Test DIIS::iterate, difficulty=" << difficulty << std::endl;
+  if (verbosity >= 0) molpro::cout << "Test DIIS::iterate, difficulty=" << difficulty << std::endl;
   d.Reset();
   d.m_verbosity = verbosity - 1;
 //  d.m_options["weight"]=2;
@@ -236,12 +231,12 @@ void DIISTest(int verbosity = 0,
   std::vector<scalar> xxx(2);
   xxx[0] = xxx[1] = 1 - difficulty; // initial guess
   x.put(&xxx[0], 2, 0);
-//  xout << "initial guess " << x << std::endl;
+//  molpro::cout << "initial guess " << x << std::endl;
   bool converged = false;
   for (int iteration = 1; iteration < 1000 && not converged; iteration++) {
-//   xout <<"start of iteration "<<iteration<<std::endl;
+//   molpro::cout <<"start of iteration "<<iteration<<std::endl;
     _Rosenbrock_residual(x, g);
-//    xout << "residual: " << g;
+//    molpro::cout << "residual: " << g;
     d.addVector(x, g);
     std::vector<scalar> shift;
     shift.push_back(1e-10);
@@ -249,18 +244,18 @@ void DIISTest(int verbosity = 0,
     converged = d.endIteration(x, g);
     x.get(&xxx[0], 2, 0);
 //    if (verbosity > 2)
-//      xout << "new x after iterate " << x.front() << std::endl;
+//      molpro::cout << "new x after iterate " << x.front() << std::endl;
     if (verbosity >= 0)
-      xout << "iteration " << iteration << ", Residual norm = " << std::sqrt(d.fLastResidual())
+      molpro::cout << "iteration " << iteration << ", Residual norm = " << std::sqrt(d.fLastResidual())
            << ", Distance from solution = " << std::sqrt((xxx[0] - 1) * (xxx[0] - 1) + (xxx[1] - 1) * (xxx[1] - 1))
            << ", error = " << d.errors().front()
            << ", converged? " << converged
            << std::endl;
-//   xout <<"end of iteration "<<iteration<<std::endl;
+//   molpro::cout <<"end of iteration "<<iteration<<std::endl;
   }
 
   x.get(&xxx[0], 2, 0);
-  xout << "Distance from solution = " << std::sqrt((xxx[0] - 1) * (xxx[0] - 1) + (xxx[1] - 1) * (xxx[1] - 1))
+  molpro::cout << "Distance from solution = " << std::sqrt((xxx[0] - 1) * (xxx[0] - 1) + (xxx[1] - 1) * (xxx[1] - 1))
        << std::endl;
 
 }
@@ -351,7 +346,7 @@ void DIISTest(int verbosity = 0,
 //      if (maxIterations<d.iterations())
 //        maxIterations=d.iterations();
 //    }
-//  xout << "sample="<<sample<<", n="<<n<<", alpha="<<alpha<<", gamma="<<gamma<<", average iterations="<<iterations/sample<<", maximum iterations="<<maxIterations<<", nfail="<<nfail<<std::endl;
+//  molpro::cout << "sample="<<sample<<", n="<<n<<", alpha="<<alpha<<", gamma="<<gamma<<", average iterations="<<iterations/sample<<", maximum iterations="<<maxIterations<<", nfail="<<nfail<<std::endl;
 //}
 
 
@@ -365,7 +360,7 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
     rsptpot() {}
     size_t m_reference;
     void set(size_t n, double alpha) {
-//        xout<<"rsptpot set"<<n<<std::endl;
+//        molpro::cout<<"rsptpot set"<<n<<std::endl;
       m_n = n;
       m_reference = 0; // asserting that m_F(0,0) is the lowest
 
@@ -375,7 +370,7 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
           m_F(i, j) = m_F(j, i) = -0.5 + (((double) rand()) / RAND_MAX);
         m_F(j, j) = (j * alpha - 1);
       }
-//      xout << "m_F:"<<std::endl<<m_F<<std::endl;
+//      molpro::cout << "m_F:"<<std::endl<<m_F<<std::endl;
     }
     ptype guess() {
       std::vector<scalar> r(m_n);
@@ -394,8 +389,8 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
                     vectorSet& outputs,
                     std::vector<scalar> shift = std::vector<scalar>(),
                     bool append = false) const {
-//        xout << "rsptpot_residual"<<std::endl;
-//        xout << "input "<<psx<<std::endl;
+//        molpro::cout << "rsptpot_residual"<<std::endl;
+//        molpro::cout << "input "<<psx<<std::endl;
       std::vector<scalar> psxk(instance.m_n);
       std::vector<scalar> output(instance.m_n);
       psx.front()->get(&(psxk[0]), instance.m_n, 0);
@@ -410,7 +405,7 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
         }
       }
       outputs.front()->put(&(output[0]), instance.m_n, 0);
-//        xout << "output "<<outputs<<std::endl;
+//        molpro::cout << "output "<<outputs<<std::endl;
     }
   } _rsptpot_residual;
   static struct {
@@ -418,9 +413,9 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
                     const vectorSet& psg,
                     std::vector<scalar> shift = std::vector<scalar>(),
                     bool append = false) const {
-//        xout << "preconditioner input="<<psg<<std::endl;
+//        molpro::cout << "preconditioner input="<<psg<<std::endl;
 //      if (shift.front()==0)
-//          xout << "H0 not resolvent"<<std::endl;
+//          molpro::cout << "H0 not resolvent"<<std::endl;
       std::vector<scalar> psck(instance.m_n);
       std::vector<scalar> psgk(instance.m_n);
       psg.front()->get(&psgk[0], instance.m_n, 0);
@@ -429,19 +424,19 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
           psck[i] = psgk[i] * instance.m_F(i, i);
       else if (append) {
         psc.front()->get(&psck[0], instance.m_n, 0);
-//          xout << "resolvent action append "<<shift.front()<<shift.front()-1<<std::endl;
-//        xout << "initial psc="<<psc<<std::endl;
+//          molpro::cout << "resolvent action append "<<shift.front()<<shift.front()-1<<std::endl;
+//        molpro::cout << "initial psc="<<psc<<std::endl;
         for (size_t i = 0; i < instance.m_n; i++)
           if (i != instance.m_reference)
             psck[i] -= psgk[i] / (instance.m_F(i, i) + shift.front());
       } else {
-//          xout << "resolvent action replace "<<shift.front()<<std::endl;
+//          molpro::cout << "resolvent action replace "<<shift.front()<<std::endl;
         for (size_t i = 0; i < instance.m_n; i++)
           psck[i] = -psgk[i] / (instance.m_F(i, i) + shift.front());
         psck[instance.m_reference] = 0;
       }
       psc.front()->put(&psck[0], instance.m_n, 0);
-//        xout << "preconditioner output="<<psc<<std::endl;
+//        molpro::cout << "preconditioner output="<<psc<<std::endl;
     }
   } _rsptpot_updater;
 
@@ -465,26 +460,26 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
     bool converged = false;
     for (int iteration = 1; (iteration < d.m_maxIterations && not converged) || iteration < d.m_minIterations;
          iteration++) {
-      xout << "start of iteration " << iteration << std::endl;
+      molpro::cout << "start of iteration " << iteration << std::endl;
       _rsptpot_residual(x, g);
       d.addVector(x, g);
       std::vector<scalar> shift;
       shift.push_back(1e-10);
       _rsptpot_updater(x, g, shift);
       converged = d.endIteration(x, g);
-      xout << "end of iteration " << iteration << std::endl;
+      molpro::cout << "end of iteration " << iteration << std::endl;
     }
     if (std::fabs(d.energy(d.m_minIterations) - d.eigenvalues().front()) > 1e-10) nfail++;
-    xout << "Variational eigenvalue " << d.eigenvalues().front() << std::endl;
+    molpro::cout << "Variational eigenvalue " << d.eigenvalues().front() << std::endl;
     for (size_t k = 0; k <= d.iterations(); k++) {
-      xout << "E(" << k << ") = " << d.incremental_energies()[k] << ", cumulative=" << d.energy(k) << ", error="
+      molpro::cout << "E(" << k << ") = " << d.incremental_energies()[k] << ", cumulative=" << d.energy(k) << ", error="
            << d.energy(k) - d.eigenvalues()[0] << std::endl;
     }
     iterations += d.iterations();
     if (maxIterations < d.iterations())
       maxIterations = d.iterations();
   }
-  xout << "sample=" << sample << ", n=" << n << ", alpha=" << alpha << ", average iterations=" << iterations / sample
+  molpro::cout << "sample=" << sample << ", n=" << n << ", alpha=" << alpha << ", average iterations=" << iterations / sample
        << ", maximum iterations=" << maxIterations << ", nfail=" << nfail << std::endl;
 }
 }

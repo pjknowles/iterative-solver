@@ -9,7 +9,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(LibraryManager)
 
+
 LibraryManager_Project(FORTRAN_OPTION MPI_OPTION)
+option(PPIDD "Whether to build on PPIDD" OFF)
 
 add_subdirectory(dependencies)
 

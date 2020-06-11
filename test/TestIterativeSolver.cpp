@@ -8,14 +8,10 @@
 #include <numeric>
 #include <vector>
 #include <regex>
-#include "IterativeSolver.h"
-#include "SimpleVector.h"
-#include "PagedVector.h"
-
-#ifdef MOLPRO
-#include <iostream>
-auto& xout=std::cout;
-#endif
+#include "molpro/IterativeSolver.h"
+#include "molpro/SimpleVector.h"
+#include "molpro/PagedVector.h"
+#include <molpro/iostream.h>
 
 TEST(TestIterativeSolver, small_eigenproblem) {
   std::cerr << "hello"<<std::endl;
@@ -375,9 +371,9 @@ class RosenbrockTest {
         psc.get(&psck[0], n, 0);
       else
         psck.assign(0, 0);
-//      xout << "Rosenbrock updater, initial psc=" << psc << std::endl;
-//      xout << "Rosenbrock updater, initial psg=" << psg << std::endl;
-//      xout << "Rosenbrock updater, approximateHessian=" << approximateHessian << std::endl;
+//      molpro::cout << "Rosenbrock updater, initial psc=" << psc << std::endl;
+//      molpro::cout << "Rosenbrock updater, initial psg=" << psg << std::endl;
+//      molpro::cout << "Rosenbrock updater, approximateHessian=" << approximateHessian << std::endl;
       const auto& x = psck[0];
       const auto& y = psck[1];
       scalar dx, dy;
@@ -402,7 +398,7 @@ class RosenbrockTest {
       psck[0] += dx;
       psck[1] += dy;
       psc.put(&psck[0], n, 0);
-//      xout << "Rosenbrock updater, new psc=" << psc << std::endl;
+//      molpro::cout << "Rosenbrock updater, new psc=" << psc << std::endl;
     }
   } _Rosenbrock_updater;
   bool run(std::string method) {
@@ -413,14 +409,14 @@ class RosenbrockTest {
     const double difficulty = .9;
     const int verbosity = 1;
 
-    if (verbosity >= 0) xout << "Test Optimize, method=" << method << ", difficulty=" << difficulty << std::endl;
+    if (verbosity >= 0) molpro::cout << "Test Optimize, method=" << method << ", difficulty=" << difficulty << std::endl;
     IterativeSolver::Optimize<ptype> d(regex_replace(method, std::regex("-.*"), ""));
     d.m_verbosity = verbosity - 1;
     d.m_options["convergence"] = "residual";
     std::vector<scalar> xxx(2);
     xxx[0] = xxx[1] = 1 - difficulty; // initial guess
     x.put(&xxx[0], 2, 0);
-//    xout << "initial guess " << x << std::endl;
+//    molpro::cout << "initial guess " << x << std::endl;
     _Rosenbrock_updater.approximateHessian = true;
     bool converged = false;
     for (int iteration = 1; iteration < 50 && not converged; iteration++) {
@@ -432,7 +428,7 @@ class RosenbrockTest {
       converged = d.endIteration(x, g);
       x.get(&xxx[0], 2, 0);
       if (verbosity >= 0)
-        xout << "iteration " << iteration
+        molpro::cout << "iteration " << iteration
              << ", Distance from solution = " << std::sqrt(
             (xxx[0] - Rosenbrock_a) * (xxx[0] - Rosenbrock_a) + (xxx[1] - Rosenbrock_a) * (xxx[1] - Rosenbrock_a))
              << ", error = " << d.errors().front()
@@ -442,7 +438,7 @@ class RosenbrockTest {
     }
 
     x.get(&xxx[0], 2, 0);
-    xout << "Distance from solution = " << std::sqrt(
+    molpro::cout << "Distance from solution = " << std::sqrt(
         (xxx[0] - Rosenbrock_a) * (xxx[0] - Rosenbrock_a) + (xxx[1] - Rosenbrock_a) * (xxx[1] - Rosenbrock_a))
          << std::endl;
 
@@ -518,7 +514,7 @@ class MonomialTest {
     d.m_options["convergence"] = "residual";
     std::vector<scalar> xxx(n, .1);
     x.put(&xxx[0], n, 0);
-//    xout << "initial guess " << x << std::endl;
+//    molpro::cout << "initial guess " << x << std::endl;
     bool converged = false;
     for (int iteration = 1; iteration < 100 && not converged; iteration++) {
       auto value = _Monomial_residual(x, g);
@@ -529,7 +525,7 @@ class MonomialTest {
       converged = d.endIteration(x, g);
       x.get(&xxx[0], n, 0);
       if (verbosity >= 0)
-        xout << "iteration " << iteration
+        molpro::cout << "iteration " << iteration
              << ", error = " << d.errors().front()
              << ", converged? " << converged
              << ", value= " << value
@@ -537,8 +533,8 @@ class MonomialTest {
     }
 
 //    x.get(&xxx[0], n, 0);
-//    xout << "final solution:" ;
-//    for (const auto& xxxx : xxx) xout << " "<<xxxx; xout <<std::endl;
+//    molpro::cout << "final solution:" ;
+//    for (const auto& xxxx : xxx) molpro::cout << " "<<xxxx; molpro::cout <<std::endl;
 
     return converged;
   }
@@ -606,7 +602,7 @@ class trigTest {
     for (size_t iter = 1; iter <= solver.m_maxIterations; ++iter) {
       auto value = residual(x, g);
       if (solver.m_verbosity > 1)
-        xout << "start iteration " << iter << " value=" << value << "\n x: " << x << "\n g: " << g << std::endl;
+        molpro::cout << "start iteration " << iter << " value=" << value << "\n x: " << x << "\n g: " << g << std::endl;
       //if (solver.addValue(x, value, g))
       //  update(x, g);
       bool upd = solver.addValue(x, value, g);
@@ -700,7 +696,7 @@ class optTest {
     for (size_t iter = 1; iter <= solver.m_maxIterations; ++iter) {
       auto value = vresidual(x, g);
       if (solver.m_verbosity > 1)
-        xout << "start iteration " << iter << " value=" << value << "\n x: " << x << "\n g: " << g << std::endl;
+        molpro::cout << "start iteration " << iter << " value=" << value << "\n x: " << x << "\n g: " << g << std::endl;
       //if (solver.addValue(x, value, g))
       //  update(x, g);
       bool upd = solver.addValue(x, value, g);

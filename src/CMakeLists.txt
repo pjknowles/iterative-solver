@@ -6,6 +6,10 @@ if (MPI)
     find_package(MPI COMPONENTS CXX)
 endif ()
 
+if (PPIDD)
+    DependencyManager_Populate(ppidd)
+endif ()
+
 # Its source files are conventionally in directories named by C++ namespace
 add_subdirectory(molpro)
 

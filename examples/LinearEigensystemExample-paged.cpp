@@ -1,5 +1,5 @@
-#include "IterativeSolver.h"
-#include "PagedVector.h"
+#include "molpro/IterativeSolver.h"
+#include "molpro/PagedVector.h"
 // Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
 // Storage of vectors distributed and out of memory via PagedVector class
 using scalar = double;

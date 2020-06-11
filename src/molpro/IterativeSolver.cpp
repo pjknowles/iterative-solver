@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 #include <stack>
-#include "ProfilerSingle.h"
+#include "molpro/ProfilerSingle.h"
 
 // C interface to IterativeSolver
 //using v = LinearAlgebra::PagedVector<double>;
@@ -21,7 +21,7 @@ IterativeSolverLinearEigensystemInitialize(size_t n,
                                            int orthogonalize,
                                            const char* fname,
                                            int fcomm) {
-  std::shared_ptr<Profiler> profiler = nullptr;
+  std::shared_ptr<molpro::Profiler> profiler = nullptr;
 #ifdef HAVE_MPI_H
   int flag;
   MPI_Initialized(&flag);
@@ -34,12 +34,12 @@ IterativeSolverLinearEigensystemInitialize(size_t n,
   }
   std::string pname(fname);
   if (!pname.empty()) {
-     profiler = ProfilerSingle::instance(pname,pcomm);
+     profiler = molpro::ProfilerSingle::instance(pname,pcomm);
   }
 #else
   std::string pname(fname);
   if (!pname.empty()) {
-     profiler = ProfilerSingle::instance(pname);
+     profiler = molpro::ProfilerSingle::instance(pname);
   }
 #endif
   instances.push(std::make_unique<IterativeSolver::LinearEigensystem<v> >(IterativeSolver::LinearEigensystem<v>(profiler)));

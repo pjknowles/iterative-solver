@@ -1,4 +1,4 @@
-#include "SimpleVector.h"
+#include "molpro/SimpleVector.h"
 #include "test.h"
 #include <cmath>
 

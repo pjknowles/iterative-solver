@@ -1,5 +1,5 @@
 #include <iostream>
-#include "PagedVector.h"
+#include "molpro/PagedVector.h"
 #include <chrono>
 #ifdef HAVE_MPI_H
 #include <mpi.h>

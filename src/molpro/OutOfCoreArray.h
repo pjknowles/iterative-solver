@@ -1,6 +1,5 @@
 #ifndef OUTOFCOREARRAY_H
 #define OUTOFCOREARRAY_H
-#include "IterativeSolver-config.h"
 #ifdef TIMING
 #include <chrono>
 #endif
@@ -24,17 +23,18 @@
 #include <vector>
 #include <iostream>
 
-#ifdef MOLPRO
-#define HAVE_MPI_H
-#endif
 
 #ifdef HAVE_MPI_H
 #include <mpi.h>
-#ifdef MOLPRO
+#ifdef HAVE_PPIDD_H
 #include "ppidd.h"
+#endif
+#ifndef MPI_COMM_COMPUTE
+#ifdef HAVE_PPIDD_H
 #define MPI_COMM_COMPUTE MPI_Comm_f2c(PPIDD_Worker_comm())
 #else
 #define MPI_COMM_COMPUTE MPI_COMM_WORLD
+#endif
 #endif
 #else
 #define MPI_COMM_COMPUTE 0

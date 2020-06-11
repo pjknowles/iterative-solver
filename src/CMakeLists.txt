@@ -7,6 +7,11 @@ if (MPI)
 endif ()
 
 if (PPIDD)
+    if (CMAKE_Fortran_COMPILER)
+        set(PPIDD_FORTRAN ON)
+    else ()
+        set(PPIDD_FORTRAN OFF)
+    endif ()
     DependencyManager_Populate(ppidd)
 endif ()
 

@@ -36,12 +36,12 @@ if (TARGET ppidd::ppidd)
 endif ()
 
 LibraryManager_BLAS(${PROJECT_NAME} Intel10_64lp_seq Intel10_64lp)
-message(STATUS "BLA_VENDOR=${BLA_VENDOR}")
-if(APPLE) # should be inside BLA_VENDOR TEST BELOW
-    target_link_options(${PROJECT_NAME} PUBLIC "-Wl,-rpath,$ENV{MKLROOT}/lib")
-endif()
-if (BLA_VENDOR MATCHES "^Intel10_64lp.*")
+message(STATUS "MKL_TYPE=${MKL_TYPE}")
+if (MKL_TYPE MATCHES "^Intel10_64lp.*")
     message(STATUS "Eigen will use MKL")
+    if(APPLE) # should be inside BLA_VENDOR TEST BELOW
+        target_link_options(${PROJECT_NAME} PUBLIC "-Wl,-rpath,$ENV{MKLROOT}/lib")
+    endif()
     target_compile_definitions(${PROJECT_NAME} PUBLIC EIGEN_USE_MKL_ALL)
 endif ()
 if (CMAKE_Fortran_COMPILER AND NOT LAPACK_FOUND)

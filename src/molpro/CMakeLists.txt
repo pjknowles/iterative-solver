@@ -36,7 +36,6 @@ if (TARGET ppidd::ppidd)
 endif ()
 
 LibraryManager_LAPACK(${PROJECT_NAME} PUBLIC Intel10_64lp_seq Intel10_64lp)
-print_variable(MKL_TYPE)
 if (MKL_TYPE STREQUAL "lp64")
     message(STATUS "Eigen will use MKL")
     target_compile_definitions(${PROJECT_NAME} PUBLIC EIGEN_USE_MKL_ALL)
@@ -72,6 +71,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
 endif ()
 
 
+include(LibraryManagerUtils)
 print_target_properties(LAPACK::LAPACK DEBUG)
 print_target_properties(Eigen3::Eigen DEBUG)
 print_target_properties(${PROJECT_NAME} DEBUG)

@@ -16,13 +16,12 @@ build:
     - git clean -f src examples docs test
     - procs=$(lscpu -p | egrep -v '^#' | wc -l ) || procs=$(sysctl -n hw.physicalcpu) || procs=1; echo $procs processors available
     - cd $TOP; BUILD=build/FORTRAN=1/MPI=0/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DFORTRAN=1 -DMPI=0 -DPPIDD=0 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest || ctest -V -E 'IterativeSolver.*test'
-      - cd $TOP; BUILD=build/FORTRAN=1/MPI=1/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DFORTRAN=1 -DMPI=1 -DPPIDD=0 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest || ctest -V -E 'IterativeSolver.*test'
-      - cd $TOP; BUILD=build/FORTRAN=1/MPI=1/PPIDD=1 ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DFORTRAN=1 -DMPI=1 -DPPIDD=1 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest || ctest -V -E 'IterativeSolver.*test'
+    - cd $TOP; BUILD=build/FORTRAN=1/MPI=1/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DFORTRAN=1 -DMPI=1 -DPPIDD=0 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest || ctest -V -E 'IterativeSolver.*test'
+    - cd $TOP; BUILD=build/FORTRAN=1/MPI=1/PPIDD=1 ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DFORTRAN=1 -DMPI=1 -DPPIDD=1 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest || ctest -V -E 'IterativeSolver.*test'
     - cd $TOP; BUILD=build/FORTRAN=0/MPI=0/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DFORTRAN=0 -DMPI=0 -DPPIDD=0 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest || ctest -V -E 'IterativeSolver.*test'
-      - cd $TOP; BUILD=build/FORTRAN=0/MPI=1/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DFORTRAN=0 -DMPI=1 -DPPIDD=0 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest || ctest -V -E 'IterativeSolver.*test'
-      - cd $TOP; BUILD=build/FORTRAN=0/MPI=1/PPIDD=1 ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DFORTRAN=0 -DMPI=1 -DPPIDD=1 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest || ctest -V -E 'IterativeSolver.*test'
-
-      - mkdir -p $TOP/public
+    - cd $TOP; BUILD=build/FORTRAN=0/MPI=1/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DFORTRAN=0 -DMPI=1 -DPPIDD=0 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest || ctest -V -E 'IterativeSolver.*test'
+    - cd $TOP; BUILD=build/FORTRAN=0/MPI=1/PPIDD=1 ; mkdir -p $BUILD && cd $BUILD && pwd && cmake -DFORTRAN=0 -DMPI=1 -DPPIDD=1 -DMPIOPTIONS="--allow-run-as-root" $TOP && cmake --build . -- -j ${procs} && ctest || ctest -V -E 'IterativeSolver.*test'
+    - mkdir -p $TOP/public
     - mkdir -p $TOP/$BUILD/docs/$PROJECT_NAME/html/DoxygenTagFiles && cp $TOP/$BUILD/docs/$PROJECT_NAME/$PROJECT_NAME.tag $TOP/$BUILD/docs/$PROJECT_NAME/html/DoxygenTagFiles
     - . $TOP/$BUILD/project_version.sh ; rsync -a --delete $TOP/$BUILD/docs/*/html/ $TOP/public/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     - rm -f  $TOP/public/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}

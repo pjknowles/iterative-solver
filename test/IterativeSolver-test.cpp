@@ -1,6 +1,6 @@
 #include "molpro/iostream.h"
 #include "molpro/linalg/IterativeSolver.h"
-#include "molpro/linalg/OpaqueVector.h"
+#include "molpro/linalg/OpaqueArray.h"
 #include "molpro/linalg/PagedVector.h"
 #include "molpro/linalg/SimpleVector.h"
 #include "test.h"
@@ -506,7 +506,7 @@ TEST(IterativeSolver_test,old)
 //      DavidsonTest<LinearAlgebra::PagedVector<double> >(100, 3, 1, 2, false);
       DavidsonTest<PagedVector<double> >(100, 3, 1, 2, true);
       DavidsonTest<SimpleVector<double> >(100, 3, 1, 2, true);
-      DavidsonTest<OpaqueVector<double> >(100, 3, 1, 2, true);
+      DavidsonTest<OpaqueArray<double> >(100, 3, 1, 2, true);
     }
 //  DavidsonTest<LinearAlgebra::PagedVector<double> >(600,3,1,2,true);
 //  RSPTTest<LinearAlgebra::PagedVector<double> ,double>(100,2e0);

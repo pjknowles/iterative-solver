@@ -78,14 +78,14 @@ template<class T=double,
     std::allocator<T>
 #endif
 >
-class PagedVector {
+class PagedArray {
   typedef double scalar_type; //TODO implement this properly from T
  public:
   typedef T value_type;
   /*!
    * \brief Construct an object without any data.
    */
-  explicit PagedVector(size_t length = 0, unsigned int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
+  explicit PagedArray(size_t length = 0, unsigned int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
       : m_size(length),
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(
@@ -112,7 +112,7 @@ class PagedVector {
    * @param option
    * @param mpi_communicator
    */
-  PagedVector(const PagedVector& source, unsigned int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
+  PagedArray(const PagedArray& source, unsigned int option = 0, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
       : m_size(source.m_size),
         m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(!(LINEARALGEBRA_DISTRIBUTED & option)),
@@ -141,7 +141,7 @@ class PagedVector {
    * @param length
    */
 
-  PagedVector(T* buffer, size_t length)
+  PagedArray(T* buffer, size_t length)
       : m_size(length),
         m_communicator(MPI_COMM_COMPUTE), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_replicated(true),
@@ -152,7 +152,7 @@ class PagedVector {
 //    std::cout << "PagedVector map constructor "<<buffer<<" : "<<&(*this)[0]<<std::endl;
   }
 
-  ~PagedVector() = default;
+  ~PagedArray() = default;
 
   /*!
      * \brief Specify a cache size for manipulating the data
@@ -503,7 +503,7 @@ class PagedVector {
    */
   T& operator[](size_t pos) {
     T* result;
-    result = &const_cast<T&>(static_cast<const PagedVector*>(this)->operator[](pos));
+    result = &const_cast<T&>(static_cast<const PagedArray*>(this)->operator[](pos));
     m_cache.dirty = true;
     return *result;
   }
@@ -578,7 +578,7 @@ class PagedVector {
    * \param other The object to be added to this.
    * \return
    */
-  void axpy(scalar_type a, const PagedVector<T>& other) {
+  void axpy(scalar_type a, const PagedArray<T>& other) {
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
     if (this->m_replicated == other.m_replicated) {
       if (this->m_cache.io && other.m_cache.io) {
@@ -681,7 +681,7 @@ class PagedVector {
    * \param other The object to be contracted with this.
    * \return
    */
-  scalar_type dot(const PagedVector<T, default_offline_buffer_size >& other) const {
+  scalar_type dot(const PagedArray<T, default_offline_buffer_size >& other) const {
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
     scalar_type result = 0;
     if (this == &other) {
@@ -851,12 +851,12 @@ class PagedVector {
     *
     */
   std::tuple<std::vector<size_t>, std::vector<T> > select(
-      const PagedVector<T>& measure,
+      const PagedArray<T>& measure,
       const size_t maximumNumber = 1000,
       const scalar_type threshold = 0
   ) const {
     std::multimap<T, size_t, std::greater<T> > sortlist;
-    const auto& measur = dynamic_cast <const PagedVector<T>&> (measure);
+    const auto& measur = dynamic_cast <const PagedArray<T>&> (measure);
     if (this->m_size != m_size) throw std::logic_error("mismatching lengths");
     if (this->m_replicated != measur.m_replicated) throw std::logic_error("mismatching replication status");
     if (this == &measur) {
@@ -904,7 +904,7 @@ class PagedVector {
    * \param other The source of data.
    * \return
    */
-  PagedVector& operator=(const PagedVector& other) {
+  PagedArray& operator=(const PagedArray& other) {
     assert(m_size == other.m_size);
     if (!m_cache.io && !other.m_cache.io) { // std::cout << "both in memory"<<std::endl;
       size_t off = (m_replicated && !other.m_replicated) ? other.m_segment_offset : 0;
@@ -984,7 +984,7 @@ class PagedVector {
    * @param other
    * @return
    */
-  bool operator==(const PagedVector& other) {
+  bool operator==(const PagedArray& other) {
     if (this->m_size != other.m_size) throw std::logic_error("mismatching lengths");
     int diff = 0;
     if (!m_cache.io && !other.m_cache.io) { // std::cout << "both in memory"<<std::endl;
@@ -1045,6 +1045,6 @@ class PagedVector {
 }
 }  // namespace molpro
 template<class scalar, unsigned long N>
-inline std::ostream& operator<<(std::ostream& os, molpro::linalg::PagedVector<scalar, N> const& obj) { return os << obj.str(); }
+inline std::ostream& operator<<(std::ostream& os, molpro::linalg::PagedArray<scalar, N> const& obj) { return os << obj.str(); }
 
 #endif // PAGEDVECTOR_H

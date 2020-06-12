@@ -3,7 +3,7 @@
 #include "test.h"
 
 #include "molpro/linalg/IterativeSolver.h"
-#include "molpro/linalg/PagedVector.h"
+#include "molpro/linalg/PagedArray.h"
 #include "molpro/linalg/SimpleVector.h"
 #include <Eigen/Dense>
 #include <cmath>
@@ -554,7 +554,7 @@ class trigTest {
 
  public:
   using scalar = double;
-  using pv = molpro::linalg::PagedVector<scalar>;
+  using pv = molpro::linalg::PagedArray<scalar>;
 
   size_t n;
   std::string method;
@@ -630,7 +630,7 @@ class optTest {
 
  public:
   using scalar = double;
-  using pv = molpro::linalg::PagedVector<scalar>;
+  using pv = molpro::linalg::PagedArray<scalar>;
 
  protected:
   std::string method;

@@ -1,4 +1,4 @@
-#include "molpro/PagedVector.h"
+#include "molpro/linalg/array/PagedVector.h"
 #include "test.h"
 #include <cmath>
 

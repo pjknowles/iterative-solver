@@ -2,16 +2,16 @@
 #include <gtest/gtest.h>
 #include "test.h"
 
+#include "molpro/linalg/IterativeSolver.h"
+#include "molpro/linalg/array/PagedVector.h"
+#include "molpro/linalg/array/SimpleVector.h"
 #include <Eigen/Dense>
-#include <limits>
 #include <cmath>
-#include <numeric>
-#include <vector>
-#include <regex>
-#include "molpro/IterativeSolver.h"
-#include "molpro/SimpleVector.h"
-#include "molpro/PagedVector.h"
+#include <limits>
 #include <molpro/iostream.h>
+#include <numeric>
+#include <regex>
+#include <vector>
 
 TEST(TestIterativeSolver, small_eigenproblem) {
   std::cerr << "hello"<<std::endl;

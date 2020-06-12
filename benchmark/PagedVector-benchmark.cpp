@@ -1,6 +1,6 @@
-#include <iostream>
-#include "molpro/PagedVector.h"
+#include "molpro/linalg/array/PagedVector.h"
 #include <chrono>
+#include <iostream>
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif

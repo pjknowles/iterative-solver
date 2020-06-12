@@ -1,5 +1,5 @@
-#include "molpro/IterativeSolver.h"
-#include "molpro/PagedVector.h"
+#include "molpro/linalg/IterativeSolver.h"
+#include "molpro/linalg/array/PagedVector.h"
 // For M(i,j) = alpha*(i+1)*delta(i,j) + i + j, b(i,n)=n+i
 // solve M x = b
 // Storage of vectors distributed and out of memory via PagedVector class

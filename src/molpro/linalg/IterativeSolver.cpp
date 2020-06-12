@@ -1,10 +1,10 @@
 #include "IterativeSolver.h"
 //#include "PagedVector.h"
-#include "OutOfCoreArray.h"
-#include <memory>
-#include <string>
-#include <stack>
 #include "molpro/ProfilerSingle.h"
+#include "molpro/linalg/array/OutOfCoreArray.h"
+#include <memory>
+#include <stack>
+#include <string>
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif

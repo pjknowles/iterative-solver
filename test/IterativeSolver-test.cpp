@@ -1,13 +1,12 @@
+#include "molpro/iostream.h"
+#include "molpro/linalg/IterativeSolver.h"
+#include "molpro/linalg/array/OpaqueVector.h"
+#include "molpro/linalg/array/PagedVector.h"
+#include "molpro/linalg/array/SimpleVector.h"
+#include "test.h"
 #include <ctime>
 #include <memory>
-#include "test.h"
-#include "molpro/IterativeSolver.h"
-#include "molpro/PagedVector.h"
-#include "molpro/SimpleVector.h"
-#include "molpro/OpaqueVector.h"
-#include "molpro/iostream.h"
 #include <type_traits>
-
 
 namespace IterativeSolver {
 

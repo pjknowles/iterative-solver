@@ -1,6 +1,5 @@
-#include "molpro/IterativeSolver.h"
-#include "molpro/PagedVector.h"
-
+#include "molpro/linalg/IterativeSolver.h"
+#include "molpro/linalg/array/PagedVector.h"
 
 //  typedef SimpleParameterVector pv;
 using scalar = double;

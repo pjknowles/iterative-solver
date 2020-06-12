@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(IterativeSolver CXX)
+project(LinearAlgebra CXX)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -9,9 +9,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(LibraryManager)
 
-
 LibraryManager_Project(FORTRAN_OPTION MPI_OPTION)
+
+##############################
+### Options
+
 option(PPIDD "Whether to build on PPIDD" OFF)
+option(LINEAR_ALGEBRA_GAArray "Build with GAArray" OFF)
+##############################
+
 
 add_subdirectory(dependencies)
 
@@ -26,7 +32,6 @@ endif ()
 
 # Documentation has to come last to make sure all dependencies have been added
 include(DependencyManagerDocs)
-
 DependencyManagerDocs_Add(${PROJECT_NAME}
         FILES README.md
         DOC_URL "https://molpro.gitlab.io/IterativeSolver/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"

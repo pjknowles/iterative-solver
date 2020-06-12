@@ -37,6 +37,7 @@
  * vectors is via a potentially opaque interface to copy, scale, scalar product and
  * scalar-times-vector operations only.
  */
+namespace molpro {
 namespace linalg {
 typedef std::map<std::string, std::string> optionMap;
 template<class T>
@@ -1209,7 +1210,9 @@ operator*(const typename Base<T>::Pvector& a, const typename Base<T>::Pvector& b
   return result;
 }
 }
+}  // namespace molpro
 
+namespace molpro {
 namespace linalg {
 
 /*! @example LinearEigensystemExample.cpp */
@@ -1837,6 +1840,7 @@ class DIIS : public Base<T> {
 //class DIIS<double>;
 
 }
+}  // namespace molpro
 
 // C interface
 extern "C" void

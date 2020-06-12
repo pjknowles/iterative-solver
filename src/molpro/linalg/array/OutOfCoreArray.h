@@ -41,6 +41,7 @@
 using MPI_Comm = int;
 #endif
 
+namespace molpro {
 namespace linalg {
 
 /*!
@@ -844,5 +845,6 @@ template<class scalar, unsigned long N>
 inline std::ostream& operator<<(std::ostream& os, OutOfCoreArray<scalar, N> const& obj) { return os << obj.str(); }
 
 }
+}  // namespace molpro {
 
 #endif // OUTOFCOREARRAY_H

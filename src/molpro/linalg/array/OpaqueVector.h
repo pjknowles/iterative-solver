@@ -20,6 +20,7 @@
 #include <vector>
 #include <numeric>
 
+namespace molpro{
 namespace linalg {
 
 /*!
@@ -137,4 +138,5 @@ class OpaqueVector {
 };
 
 }
+}  // namespace molpro
 #endif // OPAQUEVECTOR_H

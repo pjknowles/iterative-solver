@@ -3,7 +3,7 @@
 #include <cmath>
 
 TEST(OutOfCoreArray, copy_constructor) {
-  using ocv = linalg::OutOfCoreArray<double, 100>;
+  using ocv = molpro::linalg::OutOfCoreArray<double, 100>;
   std::vector<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
@@ -21,7 +21,7 @@ TEST(OutOfCoreArray, copy_constructor) {
 TEST(OutOfCoreArray, pass_through) { //Do we really need it?
   std::vector<double> v(10001);
   for (size_t i = 0; i < v.size(); ++i) v[i] = 2 * i + 1;
-  auto v1 = linalg::OutOfCoreArray<double,100>(v.data(), v.size());
+  auto v1 = molpro::linalg::OutOfCoreArray<double,100>(v.data(), v.size());
   auto& w = v1;
   double r = 0;
   bool ad = true;
@@ -34,7 +34,7 @@ TEST(OutOfCoreArray, pass_through) { //Do we really need it?
 }
 
 TEST(OutOfCoreArray, equal) {
-    using ocv = linalg::OutOfCoreArray<double, 100>;
+    using ocv = molpro::linalg::OutOfCoreArray<double, 100>;
     std::vector<double> v(10001);
     for (size_t i = 0; i < v.size(); ++i) v[i] = 2 * i + 1;
     ocv v0(v.data(),v.size());
@@ -54,7 +54,7 @@ TEST(OutOfCoreArray, equal) {
 }
 
 TEST(OutOfCoreArray, dot) { //Also tests "==" operator
-    using ocv = linalg::OutOfCoreArray<double, 100>;
+    using ocv = molpro::linalg::OutOfCoreArray<double, 100>;
     std::vector<double> v(10001);
     for (size_t i = 0; i < v.size(); ++i) v[i] = 2 * i + 1;
     ocv v0(v.data(),v.size());
@@ -82,7 +82,7 @@ TEST(OutOfCoreArray, dot) { //Also tests "==" operator
 }
 
 TEST(OutOfCoreArray, dot_map) { //Also tests "==" operator
-    using ocv = linalg::OutOfCoreArray<double, 100>;
+    using ocv = molpro::linalg::OutOfCoreArray<double, 100>;
     std::vector<double> v(10001);
     for (size_t i = 0; i < v.size(); ++i) v[i] = i;
     ocv v0(v.data(),v.size());
@@ -96,7 +96,7 @@ TEST(OutOfCoreArray, dot_map) { //Also tests "==" operator
 }
 
 TEST(OutOfCoreArray, axpy) {
-    using ocv = linalg::OutOfCoreArray<double, 100>;
+    using ocv = molpro::linalg::OutOfCoreArray<double, 100>;
     std::vector<double> v(10001);
     for (size_t i = 0; i < v.size(); ++i) v[i] = 2 * i + 1;
     ocv v0(v.data(),v.size());
@@ -109,7 +109,7 @@ TEST(OutOfCoreArray, axpy) {
 }
 
 TEST(OutOfCoreArray, axpy_map) {
-    using ocv = linalg::OutOfCoreArray<double, 100>;
+    using ocv = molpro::linalg::OutOfCoreArray<double, 100>;
     std::vector<double> v(10001);
     for (size_t i = 0; i < v.size(); ++i) v[i] = 2 * i + 1;
     ocv v0(v.data(),v.size());
@@ -128,7 +128,7 @@ TEST(OutOfCoreArray, axpy_map) {
 }
 
 TEST(OutOfCoreArray, scal) {
-    using ocv = linalg::OutOfCoreArray<double, 100>;
+    using ocv = molpro::linalg::OutOfCoreArray<double, 100>;
     std::vector<double> v(10001);
     for (size_t i = 0; i < v.size(); ++i) v[i] = 2 * i + 1;
     ocv v0(v.data(),v.size());
@@ -141,7 +141,7 @@ TEST(OutOfCoreArray, scal) {
 }
 
 TEST(OutOfCoreArray, zero) {
-    using ocv = linalg::OutOfCoreArray<double, 100>;
+    using ocv = molpro::linalg::OutOfCoreArray<double, 100>;
     std::vector<double> v(10001);
     for (size_t i = 0; i < v.size(); ++i) v[i] = 2 * i + 1;
     ocv v0(v.data(),v.size());
@@ -153,7 +153,7 @@ TEST(OutOfCoreArray, zero) {
 }
 
 TEST(OutOfCoreArray, select) {
-    using ocv = linalg::OutOfCoreArray<double, 100>;
+    using ocv = molpro::linalg::OutOfCoreArray<double, 100>;
     std::vector<double> v(10001);
     for (size_t i = 0; i < v.size(); ++i) v[i] = 2 * i + 1;
     ocv v0(v.data(), v.size());

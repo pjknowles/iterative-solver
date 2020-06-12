@@ -5,7 +5,7 @@
 
 //  typedef SimpleParameterVector pv;
 using scalar = double;
-using pv = linalg::PagedVector<scalar>;
+using pv = molpro::linalg::PagedVector<scalar>;
 
 static double alpha;
 static double anharmonicity;
@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
      "null",
     "L-BFGS"}) {
     std::cout << "optimize with " << method << std::endl;
-    linalg::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
+    molpro::linalg::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_maxIterations = 100;
     solver.m_verbosity = 1;
     pv g(n);

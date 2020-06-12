@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
   MPI_Comm_rank(MPI_COMM_COMPUTE, &mpiRank);
   if (mpiRank==0) std::cout << mpiSize<<" MPI processes"<<std::endl;
 #endif
-  using pv = linalg::PagedVector<double, window_size>;
+  using pv = molpro::linalg::PagedVector<double, window_size>;
   for (int option = 0; option < 4; option++) {
     pv v0(vector_size,0);
 #ifdef HAVE_MPI_H

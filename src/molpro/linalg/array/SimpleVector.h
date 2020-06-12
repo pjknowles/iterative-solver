@@ -20,6 +20,7 @@
 #include <vector>
 #include <numeric>
 
+namespace molpro{
 namespace linalg {
 
 /*!
@@ -208,4 +209,5 @@ class SimpleVector {
 };
 
 }
+}  // namespace molpro
 #endif // SIMPLEVECTOR_H

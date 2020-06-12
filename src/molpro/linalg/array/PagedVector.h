@@ -50,6 +50,7 @@
 using MPI_Comm = int;
 #endif
 
+namespace molpro {
 namespace linalg {
 
 /*!
@@ -1042,7 +1043,8 @@ class PagedVector {
 };
 
 }
+}  // namespace molpro
 template<class scalar, unsigned long N>
-inline std::ostream& operator<<(std::ostream& os, linalg::PagedVector<scalar, N> const& obj) { return os << obj.str(); }
+inline std::ostream& operator<<(std::ostream& os, molpro::linalg::PagedVector<scalar, N> const& obj) { return os << obj.str(); }
 
 #endif // PAGEDVECTOR_H

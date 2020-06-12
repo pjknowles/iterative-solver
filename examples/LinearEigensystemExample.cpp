@@ -78,7 +78,7 @@ void update(std::vector<pv>& psc, const std::vector<pv>& psg,
 }
 
 int main(int argc, char* argv[]) {
-  linalg::LinearEigensystem<pv> solver;
+  molpro::linalg::LinearEigensystem<pv> solver;
   solver.m_verbosity = 1;
   solver.m_roots = 4;
   solver.m_thresh = 1e-6;

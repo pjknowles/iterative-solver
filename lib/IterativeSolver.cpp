@@ -244,7 +244,7 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
   Pvectors.reserve(nP);
   for (size_t p = 0; p < nP; p++) {
     std::map<size_t, v::value_type> ppp;
-    for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
+//    for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
 //    std::cout << "indices["<<k<<"]="<<indices[k]<<": "<<coefficients[k]<<std::endl;
       for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
         ppp.insert(std::pair<size_t, v::value_type>(indices[k], coefficients[k]));

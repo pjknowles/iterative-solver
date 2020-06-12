@@ -2,7 +2,7 @@
 #include "molpro/linalg/IterativeSolver.h"
 #include "molpro/linalg/OpaqueArray.h"
 #include "molpro/linalg/PagedArray.h"
-#include "molpro/linalg/SimpleVector.h"
+#include "molpro/linalg/SimpleArray.h"
 #include "test.h"
 #include <ctime>
 #include <memory>
@@ -492,7 +492,7 @@ TEST(IterativeSolver_test,old)
 //   DavidsonTest<LinearAlgebra::PagedVector<double> >(2,2,2,2,false);
     if (true) {
 
-      DavidsonTest<SimpleVector<double> >(3, 3, 1, 2, true);
+      DavidsonTest<SimpleArray<double> >(3, 3, 1, 2, true);
       DavidsonTest<PagedArray<double> >(3, 3, 1, 2, true);
       DavidsonTest<PagedArray<double> >(3, 2, 1, 2, true);
       DavidsonTest<PagedArray<double> >(9, 1, 1, 2, true);
@@ -505,7 +505,7 @@ TEST(IterativeSolver_test,old)
       DavidsonTest<PagedArray<double> >(100, 1, 1, 2);
 //      DavidsonTest<LinearAlgebra::PagedVector<double> >(100, 3, 1, 2, false);
       DavidsonTest<PagedArray<double> >(100, 3, 1, 2, true);
-      DavidsonTest<SimpleVector<double> >(100, 3, 1, 2, true);
+      DavidsonTest<SimpleArray<double> >(100, 3, 1, 2, true);
       DavidsonTest<OpaqueArray<double> >(100, 3, 1, 2, true);
     }
 //  DavidsonTest<LinearAlgebra::PagedVector<double> >(600,3,1,2,true);

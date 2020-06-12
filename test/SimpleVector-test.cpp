@@ -1,9 +1,9 @@
-#include "molpro/linalg/SimpleVector.h"
+#include "molpro/linalg/SimpleArray.h"
 #include "test.h"
 #include <cmath>
 
 TEST(SimpleVector, copy_constructor) {
-  using pv = molpro::linalg::SimpleVector<double>;
+  using pv = molpro::linalg::SimpleArray<double>;
   pv v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
@@ -24,20 +24,20 @@ TEST(SimpleVector, copy_constructor) {
 }
 
 TEST(SimpleVector, dot_product) {
-  molpro::linalg::SimpleVector<double> v0(10001);
+  molpro::linalg::SimpleArray<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
 //       std::cout << "v0=k<<v0<<std::endl;
   bool result = true;
   for (size_t i = 0; i < 4; i++) {
 //       for (size_t i=2; i<3; i++) {
 //       std::cout << "before copy to v1 v0="<<v0<<std::endl;
-    auto v1 = molpro::linalg::SimpleVector<double>(v0, i);
+    auto v1 = molpro::linalg::SimpleArray<double>(v0, i);
 //       std::cout << "after copy to v1 v0="<<v0<<std::endl;
 //       std::cout << "after copy to v1 v1="<<v0<<std::endl;
 //        for (auto j=i-i%2; j<=i; j++) {
     for (auto j = 0; j < 4; j++) {
 //         for (auto j = 1; j < 2; j++) {
-      auto v2 = molpro::linalg::SimpleVector<double>(v0, j);
+      auto v2 = molpro::linalg::SimpleArray<double>(v0, j);
 //         std::cout << "v0="<<v0<<std::endl;
 //         std::cout << "v2="<<v2<<std::endl;
 //      std::cout << v0.size() << std::endl;
@@ -61,15 +61,15 @@ TEST(SimpleVector, dot_product) {
 
 #ifndef none
 TEST(SimpleVector, axpy) {
-  molpro::linalg::SimpleVector<double> v0(10001);
+  molpro::linalg::SimpleArray<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
   for (auto i = 0; i < 4; i++) {
     for (auto j = 0; j < 4; j++) {
 // for (auto i = 1; i < 2; i++) {
 //  for (auto j = 2; j < 3 ; j++) {
-      auto v1 = molpro::linalg::SimpleVector<double>(v0, i);
-      auto v2 = molpro::linalg::SimpleVector<double>(v0, j);
+      auto v1 = molpro::linalg::SimpleArray<double>(v0, i);
+      auto v2 = molpro::linalg::SimpleArray<double>(v0, j);
 //         std::cout <<mpi_rank<< "v0="<<v0<<std::endl;
       v2.axpy(2, v1);
 //   std::cout <<mpi_rank<< "after first axpy v2="<<v2<<std::endl;
@@ -88,12 +88,12 @@ TEST(SimpleVector, axpy) {
 #endif
 #ifndef none
 TEST(SimpleVector, scal) {
-  molpro::linalg::SimpleVector<double> v0(10000);
+  molpro::linalg::SimpleArray<double> v0(10000);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
   for (auto i = 0; i < 4; i++) {
-    auto v1 = molpro::linalg::SimpleVector<double>(v0, i);
-    auto v2 = molpro::linalg::SimpleVector<double>(v0, i);
+    auto v1 = molpro::linalg::SimpleArray<double>(v0, i);
+    auto v2 = molpro::linalg::SimpleArray<double>(v0, i);
     v2.scal(3);
     v2.axpy(-3, v1);
 //         std::cout << v2.dot(v2) <<std::endl;
@@ -103,12 +103,12 @@ TEST(SimpleVector, scal) {
 }
 
 TEST(SimpleVector, zero) {
-  molpro::linalg::SimpleVector<double> v0(10001);
+  molpro::linalg::SimpleArray<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
   for (auto i = 0; i < 4; i++) {
-    auto v1 = molpro::linalg::SimpleVector<double>(v0, i);
-    auto v2 = molpro::linalg::SimpleVector<double>(v0, i);
+    auto v1 = molpro::linalg::SimpleArray<double>(v0, i);
+    auto v2 = molpro::linalg::SimpleArray<double>(v0, i);
     v2.scal(0);
 //         std::cout << v2.dot(&v2) <<std::endl;
     result &= v2.dot(v2) < 1e-20;
@@ -122,7 +122,7 @@ TEST(SimpleVector,put) {
 //  usleep(100);
 //  std::cout << "option "<<i<<std::endl;
 
-molpro::linalg::SimpleVector<double> v0(10001, i);
+molpro::linalg::SimpleArray<double> v0(10001, i);
     size_t segment_length = (v0.size() - 1) / mpi_size + 1;
     v0.scal(0);
 #ifndef none

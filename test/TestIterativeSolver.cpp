@@ -4,7 +4,7 @@
 
 #include "molpro/linalg/IterativeSolver.h"
 #include "molpro/linalg/PagedArray.h"
-#include "molpro/linalg/SimpleVector.h"
+#include "molpro/linalg/SimpleArray.h"
 #include <Eigen/Dense>
 #include <cmath>
 #include <limits>
@@ -32,9 +32,9 @@ TEST(TestIterativeSolver, small_eigenproblem) {
       Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> denseSolver(m);
       auto val = denseSolver.eigenvalues();
 
-      molpro::linalg::SimpleVector<double> mm(n);
-      std::vector<molpro::linalg::SimpleVector<double> > x, g;
-      molpro::linalg::LinearEigensystem<molpro::linalg::SimpleVector<double> > solver;
+      molpro::linalg::SimpleArray<double> mm(n);
+      std::vector<molpro::linalg::SimpleArray<double> > x, g;
+      molpro::linalg::LinearEigensystem<molpro::linalg::SimpleArray<double> > solver;
       solver.m_verbosity = -1;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0)
@@ -139,9 +139,9 @@ TEST(TestIterativeSolver, small_nonhermitian_eigenproblem) {
       Eigen::EigenSolver<Eigen::MatrixXd> denseSolver(m);
       auto val = denseSolver.eigenvalues();
 
-      molpro::linalg::SimpleVector<double> mm(n);
-      std::vector<molpro::linalg::SimpleVector<double> > x, g;
-      molpro::linalg::LinearEigensystem<molpro::linalg::SimpleVector<double> > solver;
+      molpro::linalg::SimpleArray<double> mm(n);
+      std::vector<molpro::linalg::SimpleArray<double> > x, g;
+      molpro::linalg::LinearEigensystem<molpro::linalg::SimpleArray<double> > solver;
       solver.m_verbosity = -1;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0)
@@ -239,8 +239,8 @@ TEST(TestIterativeSolver, linear_equations
       for (size_t i = 0; i < n; i++)
         m(i, i) += i;
 
-      molpro::linalg::SimpleVector<double> mm(n);
-      std::vector<molpro::linalg::SimpleVector<double> > x, g, rhs;
+      molpro::linalg::SimpleArray<double> mm(n);
+      std::vector<molpro::linalg::SimpleArray<double> > x, g, rhs;
       for (size_t root = 0; root < nroot; root++) {
         x.emplace_back(n);
         x.back().scal(0);
@@ -254,7 +254,7 @@ TEST(TestIterativeSolver, linear_equations
         auto trueSolution = m.colPivHouseholderQr().solve(erhs).eval();
         rhs.back()[root] = 1 / trueSolution(root);
       }
-      molpro::linalg::LinearEquations<molpro::linalg::SimpleVector<double> > solver(rhs);
+      molpro::linalg::LinearEquations<molpro::linalg::SimpleArray<double> > solver(rhs);
       solver.m_verbosity = 0;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0)
@@ -337,7 +337,7 @@ TEST(TestIterativeSolver, linear_equations
 #include <regex>
 class RosenbrockTest {
  public:
-  using ptype = molpro::linalg::SimpleVector<double>;
+  using ptype = molpro::linalg::SimpleArray<double>;
   using scalar = typename molpro::linalg::Optimize<ptype>::scalar_type;
   static constexpr double Rosenbrock_a = 1;
   static constexpr double Rosenbrock_b = 1;
@@ -458,7 +458,7 @@ TEST(Rosenbrock_null, Optimize
 }
 class MonomialTest {
  public:
-  using ptype = molpro::linalg::SimpleVector<double>;
+  using ptype = molpro::linalg::SimpleArray<double>;
   using scalar = typename molpro::linalg::Optimize<ptype>::scalar_type;
   struct {
     double power;

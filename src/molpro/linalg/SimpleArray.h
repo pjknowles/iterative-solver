@@ -37,20 +37,20 @@ template<class T=double,
     class Allocator =
     std::allocator<T>
 >
-class SimpleVector {
+class SimpleArray {
   using container = std::vector<T, Allocator>;
   container m_buffer;
  public:
   typedef double scalar_type; //TODO implement this properly from T
   typedef T value_type;
-  explicit SimpleVector(size_t length = 0, const T& value = T())
+  explicit SimpleArray(size_t length = 0, const T& value = T())
       : m_buffer(length, value) {}
   /*!
    * @brief Copy constructor
    * @param source
    * @param option
    */
-  SimpleVector<T, Allocator>(const SimpleVector& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
+  SimpleArray<T, Allocator>(const SimpleArray& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
 
   /*!
    * \brief Update a range of the object data with the contents of a provided buffer
@@ -102,7 +102,7 @@ class SimpleVector {
    * \param other The object to be added to this.
    * \return
    */
-  void axpy(scalar_type a, const SimpleVector<T>& other) {
+  void axpy(scalar_type a, const SimpleArray<T>& other) {
     assert(this->m_buffer.size() == other.m_buffer.size());
     std::transform(other.m_buffer.begin(),
                    other.m_buffer.end(),
@@ -127,7 +127,7 @@ class SimpleVector {
    * \param other The object to be contracted with this.
    * \return
    */
-  scalar_type dot(const SimpleVector<T>& other) const {
+  scalar_type dot(const SimpleArray<T>& other) const {
     assert(this->m_buffer.size() == other.m_buffer.size());
     return std::inner_product(m_buffer.begin(), m_buffer.end(), other.m_buffer.begin(), (scalar_type)0);
   }
@@ -165,7 +165,7 @@ class SimpleVector {
     *
     */
   std::tuple<std::vector<size_t>, std::vector<T> > select(
-      const SimpleVector<T>& measure,
+      const SimpleArray<T>& measure,
       const size_t maximumNumber = 1000,
       const scalar_type threshold = 0
   ) const {
@@ -201,7 +201,7 @@ class SimpleVector {
 
   }
 
-  bool operator==(const SimpleVector& other) {
+  bool operator==(const SimpleArray& other) {
     return m_buffer == other.m_buffer;
   }
 

@@ -1,10 +1,10 @@
 #include "IterativeSolver.h"
 //#include "PagedVector.h"
 #include "OutOfCoreArray.h"
-#include <memory>
-#include <string>
-#include <stack>
 #include "molpro/ProfilerSingle.h"
+#include <memory>
+#include <stack>
+#include <string>
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
@@ -14,9 +14,9 @@
 
 // C interface to IterativeSolver
 //using v = LinearAlgebra::PagedVector<double>;
-using v = LinearAlgebra::OutOfCoreArray<double>;
+using v = molpro::linalg::OutOfCoreArray<double>;
 
-static std::stack<std::unique_ptr<IterativeSolver::Base<v> > > instances;
+static std::stack<std::unique_ptr<molpro::linalg::Base<v> > > instances;
 
 extern "C" void
 IterativeSolverLinearEigensystemInitialize(size_t n,
@@ -52,7 +52,7 @@ IterativeSolverLinearEigensystemInitialize(size_t n,
      profiler = molpro::ProfilerSingle::instance(pname);
   }
 #endif
-  instances.push(std::make_unique<IterativeSolver::LinearEigensystem<v> >(IterativeSolver::LinearEigensystem<v>(profiler)));
+  instances.push(std::make_unique<molpro::linalg::LinearEigensystem<v> >(molpro::linalg::LinearEigensystem<v>(profiler)));
   auto& instance = instances.top();
   instance->m_dimension = n;
   instance->m_roots = nroot;
@@ -87,7 +87,7 @@ IterativeSolverLinearEquationsInitialize(size_t n,
     //rr.push_back(v(const_cast<double*>(&rhs[root * n]),
     //               n)); // in principle the const_cast is dangerous, but we trust LinearEquations to behave
   }
-    instances.push(std::make_unique<IterativeSolver::LinearEquations<v> >(rr,aughes));
+    instances.push(std::make_unique<molpro::linalg::LinearEquations<v> >(rr,aughes));
   //instances.push(std::make_unique<IterativeSolver::LinearEquations<v> >(IterativeSolver::LinearEquations<v>(rr,
   //                                                                                                          aughes)));
   auto& instance = instances.top();
@@ -110,7 +110,7 @@ IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIteration
   if (!flag) MPI_Init(0, nullptr);
 #endif
 #endif
-  instances.push(std::make_unique<IterativeSolver::DIIS<v> >(IterativeSolver::DIIS<v>()));
+  instances.push(std::make_unique<molpro::linalg::DIIS<v> >(molpro::linalg::DIIS<v>()));
   auto& instance = instances.top();
   instance->m_dimension = n;
   instance->m_thresh = thresh;
@@ -134,10 +134,10 @@ IterativeSolverOptimizeInitialize(size_t n,
 #endif
 #endif
   if (*algorithm)
-    instances.push(std::make_unique<IterativeSolver::Optimize<v> >(IterativeSolver::Optimize<v>(algorithm,
+    instances.push(std::make_unique<molpro::linalg::Optimize<v> >(molpro::linalg::Optimize<v>(algorithm,
                                                                                                 minimize != 0)));
   else
-    instances.push(std::make_unique<IterativeSolver::Optimize<v> >(IterativeSolver::Optimize<v>()));
+    instances.push(std::make_unique<molpro::linalg::Optimize<v> >(molpro::linalg::Optimize<v>()));
   auto& instance = instances.top();
   instance->m_dimension = n;
   instance->m_roots = 1;
@@ -154,7 +154,7 @@ extern "C" int IterativeSolverAddValue(double* parameters, double value, double*
   auto& instance = instances.top();
   v ccc(parameters, instance->m_dimension);
   v ggg(action, instance->m_dimension);
-  auto result = static_cast<IterativeSolver::Optimize<v>*>(instance.get())->addValue(ccc, value, ggg) ? 1 : 0;
+  auto result = static_cast<molpro::linalg::Optimize<v>*>(instance.get())->addValue(ccc, value, ggg) ? 1 : 0;
 #ifdef HAVE_MPI_H
   if (sync) {
     if (!ccc.synchronised()) ccc.sync();

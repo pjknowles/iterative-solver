@@ -1,4 +1,4 @@
-#include "molpro/IterativeSolver.h"
+#include "molpro/linalg/IterativeSolver.h"
 #include <cmath>
 // Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
 // Storage of vectors in-memory via class pv
@@ -78,7 +78,7 @@ void update(std::vector<pv>& psc, const std::vector<pv>& psg,
 }
 
 int main(int argc, char* argv[]) {
-  IterativeSolver::LinearEigensystem<pv> solver;
+  molpro::linalg::LinearEigensystem<pv> solver;
   solver.m_verbosity = 1;
   solver.m_roots = 4;
   solver.m_thresh = 1e-6;

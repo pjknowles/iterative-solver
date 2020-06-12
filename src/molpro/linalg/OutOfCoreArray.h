@@ -41,7 +41,8 @@
 using MPI_Comm = int;
 #endif
 
-namespace LinearAlgebra {
+namespace molpro {
+namespace linalg {
 
 /*!
   * \brief A class that implements a fixed-size vector container that has the following public features:
@@ -844,5 +845,6 @@ template<class scalar, unsigned long N>
 inline std::ostream& operator<<(std::ostream& os, OutOfCoreArray<scalar, N> const& obj) { return os << obj.str(); }
 
 }
+}  // namespace molpro {
 
 #endif // OUTOFCOREARRAY_H

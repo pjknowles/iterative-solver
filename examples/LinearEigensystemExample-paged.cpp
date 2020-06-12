@@ -1,9 +1,9 @@
-#include "molpro/IterativeSolver.h"
-#include "molpro/PagedVector.h"
+#include "molpro/linalg/IterativeSolver.h"
+#include "molpro/linalg/PagedArray.h"
 // Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
 // Storage of vectors distributed and out of memory via PagedVector class
 using scalar = double;
-using pv = LinearAlgebra::PagedVector<scalar>;
+using pv = molpro::linalg::PagedArray<scalar>;
 using vectorSet = std::vector<pv>;
 constexpr size_t n = 300; // dimension of problem
 constexpr scalar alpha = 1000; // separation of diagonal elements
@@ -59,7 +59,7 @@ void update(vectorSet &psc, const vectorSet &psg,
 }
 
 int main(int argc, char *argv[]) {
-  IterativeSolver::LinearEigensystem<pv> solver;
+  molpro::linalg::LinearEigensystem<pv> solver;
   solver.m_verbosity = 1;
   solver.m_roots = 4;
   solver.m_thresh = 1e-6;

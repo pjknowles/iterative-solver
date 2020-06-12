@@ -20,7 +20,8 @@
 #include <vector>
 #include <numeric>
 
-namespace LinearAlgebra {
+namespace molpro{
+namespace linalg {
 
 /*!
   * \brief A class that implements a vector container that has the following features:
@@ -33,19 +34,19 @@ template<class T=double,
     class Allocator =
     std::allocator<T>
 >
-class OpaqueVector {
+class OpaqueArray {
   typedef double scalar_type; //TODO implement this properly from T
   std::vector<T, Allocator> m_buffer;
  public:
   typedef T value_type;
-  explicit OpaqueVector(size_t length = 0, const T& value = T())
+  explicit OpaqueArray(size_t length = 0, const T& value = T())
       : m_buffer(length, value) {}
   /*!
    * @brief Copy constructor
    * @param source
    * @param option
    */
-  OpaqueVector<T, Allocator>(const OpaqueVector& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
+  OpaqueArray<T, Allocator>(const OpaqueArray& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
 
   /*!
     * \brief Add a constant times a sparse vector to this object
@@ -63,7 +64,7 @@ class OpaqueVector {
    * \param other The object to be contracted with this.
    * \return
    */
-  scalar_type dot(const OpaqueVector<T>& other) const {
+  scalar_type dot(const OpaqueArray<T>& other) const {
     assert(this->m_buffer.size() == other.m_buffer.size());
     return std::inner_product(m_buffer.begin(), m_buffer.end(), other.m_buffer.begin(), (scalar_type) 0);
   }
@@ -98,7 +99,7 @@ class OpaqueVector {
    * \param other The object to be added to this.
    * \return
    */
-  void axpy(scalar_type a, const OpaqueVector<T>& other) {
+  void axpy(scalar_type a, const OpaqueArray<T>& other) {
     assert(this->m_buffer.size() == other.m_buffer.size());
     std::transform(other.m_buffer.begin(),
                    other.m_buffer.end(),
@@ -137,4 +138,5 @@ class OpaqueVector {
 };
 
 }
+}  // namespace molpro
 #endif // OPAQUEVECTOR_H

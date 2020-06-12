@@ -1,15 +1,15 @@
+#include "molpro/iostream.h"
+#include "molpro/linalg/IterativeSolver.h"
+#include "molpro/linalg/OpaqueArray.h"
+#include "molpro/linalg/PagedArray.h"
+#include "molpro/linalg/SimpleArray.h"
+#include "test.h"
 #include <ctime>
 #include <memory>
-#include "test.h"
-#include "molpro/IterativeSolver.h"
-#include "molpro/PagedVector.h"
-#include "molpro/SimpleVector.h"
-#include "molpro/OpaqueVector.h"
-#include "molpro/iostream.h"
 #include <type_traits>
 
-
-namespace IterativeSolver {
+namespace molpro {
+namespace linalg {
 
 template<class T>
 void syncr(T& x, std::true_type) {
@@ -106,8 +106,8 @@ static void DavidsonTest(size_t dimension,
     action(x, g);
     d.addVector(x, g);
     for (size_t root = 0; root < (size_t) d.m_roots; root++) {
-        syncr(x[root],std::is_same<ptype, LinearAlgebra::PagedVector<double>>{});
-        syncr(g[root],std::is_same<ptype, LinearAlgebra::PagedVector<double>>{});
+        syncr(x[root],std::is_same<ptype, linalg::PagedArray<double>>{});
+        syncr(g[root],std::is_same<ptype, linalg::PagedArray<double>>{});
     }
     std::vector<scalar> shift;
     for (size_t root = 0; root < (size_t) d.m_roots; root++) shift.push_back(-d.eigenvalues()[root] + 1e-14);
@@ -116,8 +116,8 @@ static void DavidsonTest(size_t dimension,
     //if (d.endIteration(x, g)) break;
     bool upd = d.endIteration(x, g);
     for (size_t root = 0; root < (size_t) d.m_roots; root++) {
-        syncr(x[root],std::is_same<ptype, LinearAlgebra::PagedVector<double>>{});
-        syncr(g[root],std::is_same<ptype, LinearAlgebra::PagedVector<double>>{});
+        syncr(x[root],std::is_same<ptype, linalg::PagedArray<double>>{});
+        syncr(g[root],std::is_same<ptype, linalg::PagedArray<double>>{});
     }
     if (upd) break;
   }
@@ -470,6 +470,7 @@ void RSPTTest(size_t n, double alpha) { //TODO conversion not finished
        << ", maximum iterations=" << maxIterations << ", nfail=" << nfail << std::endl;
 }
 }
+}  // namespace molpro
 
 #ifdef ITERATIVESOLVER_FORTRAN
 extern "C" { void IterativeSolverFTest(); }
@@ -478,34 +479,34 @@ static std::unique_ptr<std::ofstream> out;
 TEST(IterativeSolver_test,old)
  {
   if (true) {
-    using namespace IterativeSolver;
+    using namespace molpro::linalg;
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.2,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
 //  IterativeSolver::DIIS<double>::randomTest(100,100,0.1,3.0);
-    DIISTest<LinearAlgebra::PagedVector<double> >(2, 6, 1e-10, DIIS<LinearAlgebra::PagedVector<double> >::DIISmode, 0.0002);
+    DIISTest<PagedArray<double> >(2, 6, 1e-10, DIIS<PagedArray<double> >::DIISmode, 0.0002);
 //  MPI_Abort(MPI_COMM_WORLD,1);
 //  DIISTest<LinearAlgebra::PagedVector<double> >(1,6,1e-10,IterativeSolver::DIIS<LinearAlgebra::PagedVector<double> >::DIISmode,0.2);
 //  DIISTest<LinearAlgebra::PagedVector<double> >(1,6,1e-3,IterativeSolver::DIIS<LinearAlgebra::PagedVector<double> >::disabled,0.0002);
 //   DavidsonTest<LinearAlgebra::PagedVector<double> >(2,2,2,2,false);
     if (true) {
 
-      DavidsonTest<LinearAlgebra::SimpleVector<double> >(3, 3, 1, 2, true);
-      DavidsonTest<LinearAlgebra::PagedVector<double> >(3, 3, 1, 2, true);
-      DavidsonTest<LinearAlgebra::PagedVector<double> >(3, 2, 1, 2, true);
-      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 2, true);
+      DavidsonTest<SimpleArray<double> >(3, 3, 1, 2, true);
+      DavidsonTest<PagedArray<double> >(3, 3, 1, 2, true);
+      DavidsonTest<PagedArray<double> >(3, 2, 1, 2, true);
+      DavidsonTest<PagedArray<double> >(9, 1, 1, 2, true);
 //      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 2, false);
-      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 9, 1, 1, true);
+      DavidsonTest<PagedArray<double> >(9, 9, 1, 1, true);
 //      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 1, false);
-      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 1, true);
-      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 2);
-      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 2, 1, 2);
-      DavidsonTest<LinearAlgebra::PagedVector<double> >(100, 1, 1, 2);
+      DavidsonTest<PagedArray<double> >(9, 1, 1, 1, true);
+      DavidsonTest<PagedArray<double> >(9, 1, 1, 2);
+      DavidsonTest<PagedArray<double> >(9, 2, 1, 2);
+      DavidsonTest<PagedArray<double> >(100, 1, 1, 2);
 //      DavidsonTest<LinearAlgebra::PagedVector<double> >(100, 3, 1, 2, false);
-      DavidsonTest<LinearAlgebra::PagedVector<double> >(100, 3, 1, 2, true);
-      DavidsonTest<LinearAlgebra::SimpleVector<double> >(100, 3, 1, 2, true);
-      DavidsonTest<LinearAlgebra::OpaqueVector<double> >(100, 3, 1, 2, true);
+      DavidsonTest<PagedArray<double> >(100, 3, 1, 2, true);
+      DavidsonTest<SimpleArray<double> >(100, 3, 1, 2, true);
+      DavidsonTest<OpaqueArray<double> >(100, 3, 1, 2, true);
     }
 //  DavidsonTest<LinearAlgebra::PagedVector<double> >(600,3,1,2,true);
 //  RSPTTest<LinearAlgebra::PagedVector<double> ,double>(100,2e0);

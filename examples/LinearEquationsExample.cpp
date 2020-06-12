@@ -1,10 +1,10 @@
-#include "molpro/IterativeSolver.h"
-#include "molpro/PagedVector.h"
+#include "molpro/linalg/IterativeSolver.h"
+#include "molpro/linalg/PagedArray.h"
 // For M(i,j) = alpha*(i+1)*delta(i,j) + i + j, b(i,n)=n+i
 // solve M x = b
 // Storage of vectors distributed and out of memory via PagedVector class
 using scalar = double;
-using pv = LinearAlgebra::PagedVector<scalar>;
+using pv = molpro::linalg::PagedArray<scalar>;
 using vectorSet = std::vector<pv>;
 constexpr size_t n = 300; // dimension of problem
 constexpr scalar alpha = 300; // separation of diagonal elements
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
   std::vector<double> augmented_hessian_factors = {0, .001, .01, .1, 1};
   for (const auto& augmented_hessian_factor : augmented_hessian_factors) {
     std::cout << "Augmented hessian factor = " << augmented_hessian_factor << std::endl;
-    IterativeSolver::LinearEquations<pv> solver(b, augmented_hessian_factor);
+    molpro::linalg::LinearEquations<pv> solver(b, augmented_hessian_factor);
     solver.m_verbosity = 1;
     solver.m_roots = nRoot;
     solver.m_thresh = 1e-6;

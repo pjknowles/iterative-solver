@@ -1,11 +1,11 @@
-#include "molpro/IterativeSolver.h"
-#include "molpro/PagedVector.h"
+#include "molpro/linalg/IterativeSolver.h"
+#include "molpro/linalg/PagedArray.h"
 #include <regex>
 
 
 //  typedef SimpleParameterVector pv;
 using scalar = double;
-using pv = LinearAlgebra::PagedVector<scalar>;
+using pv = molpro::linalg::PagedArray<scalar>;
 
 static double alpha;
 static double anharmonicity;
@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
      "null",
     "L-BFGS"}) {
     std::cout << "optimize with " << method << std::endl;
-    IterativeSolver::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
+    molpro::linalg::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_maxIterations = 100;
     solver.m_verbosity = 1;
     pv g(n);

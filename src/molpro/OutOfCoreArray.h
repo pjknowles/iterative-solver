@@ -179,7 +179,11 @@ class OutOfCoreArray {
 #ifdef HAVE_MPI_H
     int result;
     MPI_Initialized(&result);
+#ifdef HAVE_PPIDD_H
+    if (!result) PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
+#else
     if (!result) MPI_Init(0,nullptr);
+#endif
     MPI_Comm_size(m_communicator, &result);
 #else
     int result = 1;

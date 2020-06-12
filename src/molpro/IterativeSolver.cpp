@@ -5,6 +5,12 @@
 #include <string>
 #include <stack>
 #include "molpro/ProfilerSingle.h"
+#ifdef HAVE_MPI_H
+#include <mpi.h>
+#endif
+#ifdef HAVE_PPIDD_H
+#include <ppidd.h>
+#endif
 
 // C interface to IterativeSolver
 //using v = LinearAlgebra::PagedVector<double>;
@@ -27,7 +33,11 @@ IterativeSolverLinearEigensystemInitialize(size_t n,
   MPI_Initialized(&flag);
   MPI_Comm pcomm;
   if (!flag) {
+#ifdef HAVE_PPIDD_H
+     PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
+#else
      MPI_Init(0, nullptr);
+#endif
      pcomm = MPI_COMM_WORLD;
   } else {
      pcomm = MPI_Comm_f2c(fcomm); // Check it's not MPI_COMM_NULL? Will crash if handle is invalid.
@@ -64,7 +74,11 @@ IterativeSolverLinearEquationsInitialize(size_t n,
 #ifdef HAVE_MPI_H
   int flag;
   MPI_Initialized(&flag);
+#ifdef HAVE_PPIDD_H
+  if (!flag) PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
+#else
   if (!flag) MPI_Init(0, nullptr);
+#endif
 #endif
   std::vector<v> rr;
   rr.reserve(nroot);
@@ -90,7 +104,11 @@ IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIteration
 #ifdef HAVE_MPI_H
   int flag;
   MPI_Initialized(&flag);
+#ifdef HAVE_PPIDD_H
+  if (!flag) PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
+#else
   if (!flag) MPI_Init(0, nullptr);
+#endif
 #endif
   instances.push(std::make_unique<IterativeSolver::DIIS<v> >(IterativeSolver::DIIS<v>()));
   auto& instance = instances.top();
@@ -109,7 +127,11 @@ IterativeSolverOptimizeInitialize(size_t n,
 #ifdef HAVE_MPI_H
   int flag;
   MPI_Initialized(&flag);
+#ifdef HAVE_PPIDD_H
+  if (!flag) PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
+#else
   if (!flag) MPI_Init(0, nullptr);
+#endif
 #endif
   if (*algorithm)
     instances.push(std::make_unique<IterativeSolver::Optimize<v> >(IterativeSolver::Optimize<v>(algorithm,

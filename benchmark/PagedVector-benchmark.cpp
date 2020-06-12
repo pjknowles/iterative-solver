@@ -4,13 +4,20 @@
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
+#ifdef HAVE_PPIDD_H
+#include <ppidd.h>
+#endif
 constexpr size_t window_size = 10000;
 constexpr size_t vector_size = 50000000;
 int main(int argc, char* argv[]) {
   int mpiSize=1;
   int mpiRank=0;
 #ifdef HAVE_MPI_H
+#ifdef HAVE_PPIDD_H
+  PPIDD_Initialize(&argc, &argv, PPIDD_IMPL_DEFAULT);
+#else
   MPI_Init(&argc,&argv);
+#endif
   MPI_Comm_size(MPI_COMM_COMPUTE, &mpiSize);
   MPI_Comm_rank(MPI_COMM_COMPUTE, &mpiRank);
   if (mpiRank==0) std::cout << mpiSize<<" MPI processes"<<std::endl;
@@ -37,7 +44,11 @@ int main(int argc, char* argv[]) {
     if (v0.dot(v1) != v1.dot(v1)) throw std::runtime_error("copy error");
   }
 #ifdef HAVE_MPI_H
+#ifdef HAVE_PPIDD_H
+  PPIDD_Finalize();
+#else
   MPI_Finalize();
+#endif
 #endif
   return 0;
 }

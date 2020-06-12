@@ -1,4 +1,4 @@
-#include "molpro/linalg/array/PagedVector.h"
+#include "molpro/linalg/PagedVector.h"
 #include <chrono>
 #include <iostream>
 #ifdef HAVE_MPI_H

@@ -1,12 +1,13 @@
+LibraryManager_Append(${PROJECT_NAME} PUBLIC_HEADER )
+
+# Extra checking for HDF5 and global arrays will go here
 LibraryManager_Append(${PROJECT_NAME}
         SOURCES IterativeSolver.cpp
-        PUBLIC_HEADER IterativeSolver.h
+        PUBLIC_HEADER IterativeSolver.h OpaqueVector.h  OutOfCoreArray.h  PagedVector.h  SimpleVector.h
         )
 if (FORTRAN)
     LibraryManager_Append(${PROJECT_NAME} SOURCES IterativeSolverF.F90)
 endif ()
-
-add_subdirectory(array)
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_14)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)

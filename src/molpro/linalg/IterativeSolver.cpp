@@ -1,7 +1,7 @@
 #include "IterativeSolver.h"
 //#include "PagedVector.h"
+#include "OutOfCoreArray.h"
 #include "molpro/ProfilerSingle.h"
-#include "molpro/linalg/array/OutOfCoreArray.h"
 #include <memory>
 #include <stack>
 #include <string>

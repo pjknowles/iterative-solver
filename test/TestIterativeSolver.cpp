@@ -3,8 +3,8 @@
 #include "test.h"
 
 #include "molpro/linalg/IterativeSolver.h"
-#include "molpro/linalg/array/PagedVector.h"
-#include "molpro/linalg/array/SimpleVector.h"
+#include "molpro/linalg/PagedVector.h"
+#include "molpro/linalg/SimpleVector.h"
 #include <Eigen/Dense>
 #include <cmath>
 #include <limits>

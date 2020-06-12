@@ -1,8 +1,8 @@
 #include "molpro/iostream.h"
 #include "molpro/linalg/IterativeSolver.h"
-#include "molpro/linalg/array/OpaqueVector.h"
-#include "molpro/linalg/array/PagedVector.h"
-#include "molpro/linalg/array/SimpleVector.h"
+#include "molpro/linalg/OpaqueVector.h"
+#include "molpro/linalg/PagedVector.h"
+#include "molpro/linalg/SimpleVector.h"
 #include "test.h"
 #include <ctime>
 #include <memory>

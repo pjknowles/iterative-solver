@@ -20,7 +20,7 @@
 #include <vector>
 #include <numeric>
 
-namespace LinearAlgebra {
+namespace linalg {
 
 /*!
   * \brief A class that implements a vector container that has the following features:

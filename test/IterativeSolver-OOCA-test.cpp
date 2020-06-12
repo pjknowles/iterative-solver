@@ -5,7 +5,7 @@
 #include <memory>
 #include <type_traits>
 
-namespace IterativeSolver {
+namespace linalg {
 
 template<class T>
 void syncr(T& x, std::true_type) {
@@ -115,10 +115,10 @@ static void DavidsonTest(size_t dimension,
     action(xvec, gvec);
     d.addVector(x, g);
     for (size_t root = 0; root < (size_t) d.m_roots; root++) {
-        syncr(x[root],std::is_same<ptype, LinearAlgebra::OutOfCoreArray<double>>{});
-        syncr(g[root],std::is_same<ptype, LinearAlgebra::OutOfCoreArray<double>>{});
-        syncr(x[root],std::is_same<ptype, LinearAlgebra::OutOfCoreArray<double>>{});
-        syncr(g[root],std::is_same<ptype, LinearAlgebra::OutOfCoreArray<double>>{});
+        syncr(x[root],std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
+        syncr(g[root],std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
+        syncr(x[root],std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
+        syncr(g[root],std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
     }
     std::vector<scalar> shift;
     for (size_t root = 0; root < (size_t) d.m_roots; root++) shift.push_back(-d.eigenvalues()[root] + 1e-14);
@@ -127,10 +127,10 @@ static void DavidsonTest(size_t dimension,
     //if (d.endIteration(x, g)) break;
     bool upd = d.endIteration(x, g);
     for (size_t root = 0; root < (size_t) d.m_roots; root++) {
-        syncr(x[root],std::is_same<ptype, LinearAlgebra::OutOfCoreArray<double>>{});
-        syncr(g[root],std::is_same<ptype, LinearAlgebra::OutOfCoreArray<double>>{});
-        syncr(x[root],std::is_same<ptype, LinearAlgebra::OutOfCoreArray<double>>{});
-        syncr(g[root],std::is_same<ptype, LinearAlgebra::OutOfCoreArray<double>>{});
+        syncr(x[root],std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
+        syncr(g[root],std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
+        syncr(x[root],std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
+        syncr(g[root],std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
     }
     if (upd) break;
   }
@@ -491,7 +491,7 @@ static std::unique_ptr<std::ofstream> out;
 TEST(IterativeSolver_test,old)
  {
   if (true) {
-    using namespace IterativeSolver;
+    using namespace linalg;
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.2,0.0);
 //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
@@ -504,18 +504,18 @@ TEST(IterativeSolver_test,old)
 //  DIISTest<LinearAlgebra::OutOfCoreArray<double> >(1,6,1e-3,IterativeSolver::DIIS<LinearAlgebra::OutOfCoreArray<double> >::disabled,0.0002);
 //   DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(2,2,2,2,false);
     if (true) {
-      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(3, 3, 1, 2, true);
-      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(3, 2, 1, 2, true);
-      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(9, 1, 1, 2, true);
+      DavidsonTest<linalg::OutOfCoreArray<double> >(3, 3, 1, 2, true);
+      DavidsonTest<linalg::OutOfCoreArray<double> >(3, 2, 1, 2, true);
+      DavidsonTest<linalg::OutOfCoreArray<double> >(9, 1, 1, 2, true);
 //      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(9, 1, 1, 2, false);
-      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(9, 9, 1, 1, true);
+      DavidsonTest<linalg::OutOfCoreArray<double> >(9, 9, 1, 1, true);
 //      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(9, 1, 1, 1, false);
-      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(9, 1, 1, 1, true);
-      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(9, 1, 1, 2);
-      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(9, 2, 1, 2);
-      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(100, 1, 1, 2);
+      DavidsonTest<linalg::OutOfCoreArray<double> >(9, 1, 1, 1, true);
+      DavidsonTest<linalg::OutOfCoreArray<double> >(9, 1, 1, 2);
+      DavidsonTest<linalg::OutOfCoreArray<double> >(9, 2, 1, 2);
+      DavidsonTest<linalg::OutOfCoreArray<double> >(100, 1, 1, 2);
 //      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(100, 3, 1, 2, false);
-      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(100, 3, 1, 2, true);
+      DavidsonTest<linalg::OutOfCoreArray<double> >(100, 3, 1, 2, true);
     }
 //  DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(600,3,1,2,true);
 //  RSPTTest<LinearAlgebra::OutOfCoreArray<double> ,double>(100,2e0);

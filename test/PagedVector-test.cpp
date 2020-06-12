@@ -3,7 +3,7 @@
 #include <cmath>
 
 TEST(PagedVector_test, copy_constructor) {
-  using pv = LinearAlgebra::PagedVector<double, 100>;
+  using pv = linalg::PagedVector<double, 100>;
   pv v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
@@ -28,7 +28,7 @@ TEST(PagedVector, pass_through) {
   for (size_t i = 0; i < v.size(); ++i) {
     v[i] = 2 * i + 1;
   }
-  auto v1 = LinearAlgebra::PagedVector<double>(v.data(), v.size());
+  auto v1 = linalg::PagedVector<double>(v.data(), v.size());
   auto& w = v1;
   double r = 0;
   bool ad = true;
@@ -41,20 +41,20 @@ TEST(PagedVector, pass_through) {
 }
 
 TEST(PagedVector, dot) {
-  LinearAlgebra::PagedVector<double> v0(10001);
+  linalg::PagedVector<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
 //       std::cout << "v0="<<v0<<std::endl;
   bool result = true;
   for (size_t i = 0; i < 4; i++) {
 //       for (size_t i=2; i<3; i++) {
 //       std::cout << "before copy to v1 v0="<<v0<<std::endl;
-    auto v1 = LinearAlgebra::PagedVector<double>(v0, i);
+    auto v1 = linalg::PagedVector<double>(v0, i);
 //       std::cout << "after copy to v1 v0="<<v0<<std::endl;
 //       std::cout << "after copy to v1 v1="<<v0<<std::endl;
 //        for (auto j=i-i%2; j<=i; j++) {
     for (auto j = 0; j < 4; j++) {
 //         for (auto j = 1; j < 2; j++) {
-      auto v2 = LinearAlgebra::PagedVector<double>(v0, j);
+      auto v2 = linalg::PagedVector<double>(v0, j);
 //         std::cout << "v0="<<v0<<std::endl;
 //         std::cout << "v2="<<v2<<std::endl;
 //         std::cout <<i<<","<<j<<": "<< v2.dot(v1) <<"=="<< v0.mpi_size()*(2*v0.mpi_size()-1)*(2*v0.mpi_size()+1)/3<<std::endl;;
@@ -68,15 +68,15 @@ TEST(PagedVector, dot) {
 
 #ifndef none
 TEST(PagedVector, axpy) {
-  LinearAlgebra::PagedVector<double> v0(10001);
+  linalg::PagedVector<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
   for (auto i = 0; i < 4; i++) {
     for (auto j = 0; j < 4; j++) {
 // for (auto i = 1; i < 2; i++) {
 //  for (auto j = 2; j < 3 ; j++) {
-      auto v1 = LinearAlgebra::PagedVector<double>(v0, i);
-      auto v2 = LinearAlgebra::PagedVector<double>(v0, j);
+      auto v1 = linalg::PagedVector<double>(v0, i);
+      auto v2 = linalg::PagedVector<double>(v0, j);
 //         std::cout <<mpi_rank<< "v0="<<v0<<std::endl;
       v2.axpy(2, v1);
 //   std::cout <<mpi_rank<< "after first axpy v2="<<v2<<std::endl;
@@ -95,12 +95,12 @@ TEST(PagedVector, axpy) {
 #endif
 #ifndef none
 TEST(PagedVector, scal) {
-  LinearAlgebra::PagedVector<double> v0(10000);
+  linalg::PagedVector<double> v0(10000);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
   for (auto i = 0; i < 4; i++) {
-    auto v1 = LinearAlgebra::PagedVector<double>(v0, i);
-    auto v2 = LinearAlgebra::PagedVector<double>(v0, i);
+    auto v1 = linalg::PagedVector<double>(v0, i);
+    auto v2 = linalg::PagedVector<double>(v0, i);
     v2.scal(3);
     v2.axpy(-3, v1);
 //         std::cout << v2.dot(v2) <<std::endl;
@@ -110,12 +110,12 @@ TEST(PagedVector, scal) {
 }
 
 TEST(PagedVector, zero) {
-  LinearAlgebra::PagedVector<double> v0(10001);
+  linalg::PagedVector<double> v0(10001);
   for (size_t i = 0; i < v0.size(); i++) v0[i] = 2 * i + 1;
   bool result = true;
   for (auto i = 0; i < 4; i++) {
-    auto v1 = LinearAlgebra::PagedVector<double>(v0, i);
-    auto v2 = LinearAlgebra::PagedVector<double>(v0, i);
+    auto v1 = linalg::PagedVector<double>(v0, i);
+    auto v2 = linalg::PagedVector<double>(v0, i);
     v2.scal(0);
 //         std::cout << v2.dot(&v2) <<std::endl;
     result &= v2.dot(v2) < 1e-20;
@@ -129,7 +129,7 @@ TEST(PagedVector, put) {
 //  usleep(100);
 //  std::cout << "option "<<i<<std::endl;
 
-    LinearAlgebra::PagedVector<double> v0(10001, i);
+linalg::PagedVector<double> v0(10001, i);
     size_t segment_length = (v0.size() - 1) / mpi_size + 1;
     v0.scal(0);
 #ifndef none
@@ -185,7 +185,7 @@ TEST(PagedVector, put) {
 
 #ifdef none
 TEST(PagedVector,element_operator) {
- LinearAlgebra::PagedVector<double> v0(10);
+ linalg::PagedVector<double> v0(10);
  v0.scal(0);
  double val=99;
  size_t offset=1;

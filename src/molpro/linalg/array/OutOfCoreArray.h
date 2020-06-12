@@ -41,7 +41,7 @@
 using MPI_Comm = int;
 #endif
 
-namespace LinearAlgebra {
+namespace linalg {
 
 /*!
   * \brief A class that implements a fixed-size vector container that has the following public features:

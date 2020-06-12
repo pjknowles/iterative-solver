@@ -3,7 +3,7 @@
 
 //  typedef SimpleParameterVector pv;
 using scalar = double;
-using pv = LinearAlgebra::PagedVector<scalar>;
+using pv = linalg::PagedVector<scalar>;
 
 static double alpha;
 static double anharmonicity;
@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
   alpha = 1;
   n = 100;
   anharmonicity = .5;
-  IterativeSolver::DIIS<pv> solver;
+  linalg::DIIS<pv> solver;
   solver.m_verbosity = 1;
   solver.m_maxIterations = 100;
   pv g(n);

@@ -32,9 +32,9 @@ TEST(TestIterativeSolver, small_eigenproblem) {
       Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> denseSolver(m);
       auto val = denseSolver.eigenvalues();
 
-      LinearAlgebra::SimpleVector<double> mm(n);
-      std::vector<LinearAlgebra::SimpleVector<double> > x, g;
-      IterativeSolver::LinearEigensystem<LinearAlgebra::SimpleVector<double> > solver;
+      linalg::SimpleVector<double> mm(n);
+      std::vector<linalg::SimpleVector<double> > x, g;
+      linalg::LinearEigensystem<linalg::SimpleVector<double> > solver;
       solver.m_verbosity = -1;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0)
@@ -139,9 +139,9 @@ TEST(TestIterativeSolver, small_nonhermitian_eigenproblem) {
       Eigen::EigenSolver<Eigen::MatrixXd> denseSolver(m);
       auto val = denseSolver.eigenvalues();
 
-      LinearAlgebra::SimpleVector<double> mm(n);
-      std::vector<LinearAlgebra::SimpleVector<double> > x, g;
-      IterativeSolver::LinearEigensystem<LinearAlgebra::SimpleVector<double> > solver;
+      linalg::SimpleVector<double> mm(n);
+      std::vector<linalg::SimpleVector<double> > x, g;
+      linalg::LinearEigensystem<linalg::SimpleVector<double> > solver;
       solver.m_verbosity = -1;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0)
@@ -239,8 +239,8 @@ TEST(TestIterativeSolver, linear_equations
       for (size_t i = 0; i < n; i++)
         m(i, i) += i;
 
-      LinearAlgebra::SimpleVector<double> mm(n);
-      std::vector<LinearAlgebra::SimpleVector<double> > x, g, rhs;
+      linalg::SimpleVector<double> mm(n);
+      std::vector<linalg::SimpleVector<double> > x, g, rhs;
       for (size_t root = 0; root < nroot; root++) {
         x.emplace_back(n);
         x.back().scal(0);
@@ -254,7 +254,7 @@ TEST(TestIterativeSolver, linear_equations
         auto trueSolution = m.colPivHouseholderQr().solve(erhs).eval();
         rhs.back()[root] = 1 / trueSolution(root);
       }
-      IterativeSolver::LinearEquations<LinearAlgebra::SimpleVector<double> > solver(rhs);
+      linalg::LinearEquations<linalg::SimpleVector<double> > solver(rhs);
       solver.m_verbosity = 0;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0)
@@ -337,8 +337,8 @@ TEST(TestIterativeSolver, linear_equations
 #include <regex>
 class RosenbrockTest {
  public:
-  using ptype = LinearAlgebra::SimpleVector<double>;
-  using scalar = typename IterativeSolver::Optimize<ptype>::scalar_type;
+  using ptype = linalg::SimpleVector<double>;
+  using scalar = typename linalg::Optimize<ptype>::scalar_type;
   static constexpr double Rosenbrock_a = 1;
   static constexpr double Rosenbrock_b = 1;
   std::string algorithm;
@@ -410,7 +410,7 @@ class RosenbrockTest {
     const int verbosity = 1;
 
     if (verbosity >= 0) molpro::cout << "Test Optimize, method=" << method << ", difficulty=" << difficulty << std::endl;
-    IterativeSolver::Optimize<ptype> d(regex_replace(method, std::regex("-.*"), ""));
+    linalg::Optimize<ptype> d(regex_replace(method, std::regex("-.*"), ""));
     d.m_verbosity = verbosity - 1;
     d.m_options["convergence"] = "residual";
     std::vector<scalar> xxx(2);
@@ -458,8 +458,8 @@ TEST(Rosenbrock_null, Optimize
 }
 class MonomialTest {
  public:
-  using ptype = LinearAlgebra::SimpleVector<double>;
-  using scalar = typename IterativeSolver::Optimize<ptype>::scalar_type;
+  using ptype = linalg::SimpleVector<double>;
+  using scalar = typename linalg::Optimize<ptype>::scalar_type;
   struct {
     double power;
     double normPower;
@@ -508,7 +508,7 @@ class MonomialTest {
     ptype hg(n);
     const int verbosity = 1;
 
-    IterativeSolver::Optimize<ptype> d("L-BFGS");
+    linalg::Optimize<ptype> d("L-BFGS");
 //    IterativeSolver::DIIS<ptype> d;
     d.m_verbosity = verbosity - 1;
     d.m_options["convergence"] = "residual";
@@ -554,7 +554,7 @@ class trigTest {
 
  public:
   using scalar = double;
-  using pv = LinearAlgebra::PagedVector<scalar>;
+  using pv = linalg::PagedVector<scalar>;
 
   size_t n;
   std::string method;
@@ -589,7 +589,7 @@ class trigTest {
 
   bool run() {
     std::cout << "optimize with " << method << std::endl;
-    IterativeSolver::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
+    linalg::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_verbosity = 2;
     solver.m_maxIterations = 50;
     solver.m_thresh = 1e-12;
@@ -630,7 +630,7 @@ class optTest {
 
  public:
   using scalar = double;
-  using pv = LinearAlgebra::PagedVector<scalar>;
+  using pv = linalg::PagedVector<scalar>;
 
  protected:
   std::string method;
@@ -680,7 +680,7 @@ class optTest {
     std::size_t n = exact.size();
     if (verbosity > 0)
       std::cout << "optimize " << name << "(" << n << ") with " << method << std::endl;
-    IterativeSolver::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
+    linalg::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_verbosity = verbosity;
     solver.m_maxIterations = 1000;
     solver.m_thresh = 1e-12;

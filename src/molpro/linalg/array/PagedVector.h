@@ -50,7 +50,7 @@
 using MPI_Comm = int;
 #endif
 
-namespace LinearAlgebra {
+namespace linalg {
 
 /*!
   * \brief A class that implements a vector container that has the following public features:
@@ -1043,6 +1043,6 @@ class PagedVector {
 
 }
 template<class scalar, unsigned long N>
-inline std::ostream& operator<<(std::ostream& os, LinearAlgebra::PagedVector<scalar, N> const& obj) { return os << obj.str(); }
+inline std::ostream& operator<<(std::ostream& os, linalg::PagedVector<scalar, N> const& obj) { return os << obj.str(); }
 
 #endif // PAGEDVECTOR_H

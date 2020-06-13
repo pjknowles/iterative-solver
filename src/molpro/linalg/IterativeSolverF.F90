@@ -47,6 +47,7 @@ CONTAINS
     REAL(c_double) :: threshC = 0d0
     CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
     INTEGER(c_int) :: pcommC = 0 ! is this OK? In principle should be MPI_COMM_NULL?
+    INTEGER(c_int) :: lmppxC = 0
     IF (PRESENT(pname)) THEN
       ALLOCATE(pnameC(LEN(pname)+1))
       CALL c_string_from_f(pname, pnameC)
@@ -54,7 +55,6 @@ CONTAINS
       ALLOCATE(pnameC(1))
       pnameC(1) = c_null_char
     ENDIF
-    INTEGER(c_int) :: lmppxC = 0
     m_nq = INT(nq, kind = c_size_t)
     m_nroot = INT(nroot, kind = c_size_t)
     IF (PRESENT(thresh)) THEN

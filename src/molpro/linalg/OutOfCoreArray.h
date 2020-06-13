@@ -137,9 +137,9 @@ class OutOfCoreArray {
    * @param mpi_communicator Not used by this object, but can be specified so that it is taken when copy-constructing from this object
    */
 
-  OutOfCoreArray(T* buffer, size_t length)
+  OutOfCoreArray(T* buffer, size_t length, MPI_Comm mpi_communicator = MPI_COMM_COMPUTE)
       : m_size(length),
-        m_communicator(MPI_COMM_COMPUTE), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
+        m_communicator(mpi_communicator), m_mpi_size(mpi_size()), m_mpi_rank(mpi_rank()),
         m_segment_offset(seg_offset()),
         m_segment_length(seg_length()),
         m_data(buffer == nullptr ? nullptr : buffer),

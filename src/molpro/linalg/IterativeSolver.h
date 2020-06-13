@@ -1871,16 +1871,17 @@ IterativeSolverOptimizeInitialize(size_t n,
 extern "C" void IterativeSolverFinalize();
 
 extern "C" int
-IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync);
+IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync, int lmppx);
 
 extern "C" int
-IterativeSolverAddValue(double* parameters, double value, double* action, int sync);
+IterativeSolverAddValue(double* parameters, double value, double* action, int sync, int lmppx);
 
-extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error);
+extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error, int lmppx);
 
 extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                     const double* coefficients, const double* pp,
-                                    double* parameters, double* action, double* parametersP);
+                                    double* parameters, double* action, double* parametersP,
+                                    int lmppx);
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues);
 
@@ -1890,6 +1891,7 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution,
                                           const double* residual,
                                           size_t maximumNumber,
                                           double threshold,
-                                          size_t* indices);
+                                          size_t* indices,
+                                          int lmppx);
 
 #endif // ITERATIVESOLVER_H

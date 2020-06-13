@@ -1407,7 +1407,12 @@ class LinearEquations : public Base<T> {
       } else { // straight solution of linear equations
 //        xout << "m_subspaceMatrix dimensions: "<<this->m_subspaceMatrix.rows()<<","<<this->m_subspaceMatrix.cols()<<std::endl;
 //        xout << "m_subspaceRHS dimensions: "<<this->m_subspaceRHS.rows()<<","<<this->m_subspaceRHS.cols()<<std::endl;
-        this->m_interpolation = this->m_subspaceMatrix.ldlt().solve(this->m_subspaceRHS);
+
+	//use QR decomposition so that also matrices that are not positive/negative semidefinite
+        //can be used with IterativeSolver
+        //this->m_interpolation = this->m_subspaceMatrix.ldlt().solve(this->m_subspaceRHS);
+	this->m_interpolation = this->m_subspaceMatrix.householderQr().solve(this->m_subspaceRHS);
+
       }
     }
 //   xout << "m_interpolation\n"<<this->m_interpolation<<std::endl;

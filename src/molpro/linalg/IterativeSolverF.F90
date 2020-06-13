@@ -72,6 +72,7 @@ CONTAINS
     END IF
     IF (PRESENT(pcomm)) THEN
       pcommC = INT(pcomm,kind = c_int)
+    ENDIF
     IF (PRESENT(lmppx)) THEN
       IF (lmppx) lmppxC = 1
     ENDIF

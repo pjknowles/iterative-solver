@@ -26,7 +26,7 @@ IterativeSolverLinearEigensystemInitialize(size_t n,
                                            int verbosity,
                                            int orthogonalize,
                                            const char* fname,
-                                           int fcomm) {
+                                           int fcomm, int lmppx) {
   std::shared_ptr<molpro::Profiler> profiler = nullptr;
 #ifdef HAVE_MPI_H
   int flag;
@@ -35,7 +35,7 @@ IterativeSolverLinearEigensystemInitialize(size_t n,
   if (!flag) {
 #ifdef HAVE_PPIDD_H
      PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
-     pcomm = MPI_Comm_f2c(PPIDD_Worker_comm()); // Check it's not MPI_COMM_NULL? Will crash if handle is invalid.
+     pcomm = PPIDD_Worker_comm(); 
 #else
      MPI_Init(0, nullptr);
      pcomm = MPI_COMM_WORLD;
@@ -43,11 +43,10 @@ IterativeSolverLinearEigensystemInitialize(size_t n,
   } else if (lmppx != 0) {
      pcomm = MPI_COMM_SELF;
   } else {
-     pcomm = MPI_COMM_COMPUTE; //defined in OOCA header
+     pcomm = MPI_Comm_f2c(fcomm); // Check it's not MPI_COMM_NULL? Will crash if handle is invalid.
   }
-#endif
   std::string pname(fname);
-  if (!pname.empty()) {
+  if (!pname.empty()) { // and not lmppx??
      profiler = molpro::ProfilerSingle::instance(pname,pcomm);
   }
 #else

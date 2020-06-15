@@ -14,4 +14,4 @@ DependencyManager_Declare(ppidd https://gitlab.com/molpro/ppidd.git)
 
 DependencyManager_Declare(Profiler https://gitlab.com/molpro/profiler.git)
 
-DependencyManager_Declare( utilities https://gitlab+deploy-token-181030:whWoM4qkenzjGjWsFTxj@gitlab.com/molpro/utilities )
+DependencyManager_Declare( utilities https://gitlab+deploy-token-181030:whWoM4qkenzjGjWsFTxj@gitlab.com/molpro/utilities.git )

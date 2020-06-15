@@ -1849,7 +1849,7 @@ class DIIS : public Base<T> {
 // C interface
 extern "C" void
 IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh, unsigned int maxIterations,
-                                           int verbosity, int orthogonalize, const char* fname, int fcomm);
+                                           int verbosity, int orthogonalize, const char* fname, int64_t fcomm, int lmppx);
 
 extern "C" void
 IterativeSolverLinearEquationsInitialize(size_t n,

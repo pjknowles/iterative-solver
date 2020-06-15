@@ -39,14 +39,14 @@ CONTAINS
         INTEGER(C_int), INTENT(in), VALUE :: verbosity
         INTEGER(C_int), INTENT(in), VALUE :: orthogonalize
         CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
-        INTEGER(C_int), INTENT(in), VALUE :: pcomm
+        INTEGER(C_int64_t), INTENT(in), VALUE :: pcomm
         INTEGER(C_int), INTENT(in), VALUE :: lmppx
       END SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC
     END INTERFACE
     INTEGER(c_int) :: verbosityC = 0, maxIterationsC = 0, orthogonalizeC = 1
     REAL(c_double) :: threshC = 0d0
     CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
-    INTEGER(c_int) :: pcommC = 0 ! is this OK? In principle should be MPI_COMM_NULL?
+    INTEGER(c_int64_t) :: pcommC = 0 ! is this OK? In principle should be MPI_COMM_NULL?
     INTEGER(c_int) :: lmppxC = 0
     IF (PRESENT(pname)) THEN
       ALLOCATE(pnameC(LEN(pname)+1))
@@ -71,7 +71,7 @@ CONTAINS
       IF (.NOT.orthogonalize) orthogonalizeC = 0
     END IF
     IF (PRESENT(pcomm)) THEN
-      pcommC = INT(pcomm,kind = c_int)
+      pcommC = INT(pcomm,kind = c_int64_t)
     ENDIF
     IF (PRESENT(lmppx)) THEN
       IF (lmppx) lmppxC = 1

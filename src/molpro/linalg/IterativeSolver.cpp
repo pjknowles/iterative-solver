@@ -26,7 +26,7 @@ IterativeSolverLinearEigensystemInitialize(size_t n,
                                            int verbosity,
                                            int orthogonalize,
                                            const char* fname,
-                                           int fcomm, int lmppx) {
+                                           int64_t fcomm, int lmppx) {
   std::shared_ptr<molpro::Profiler> profiler = nullptr;
 #ifdef HAVE_MPI_H
   int flag;

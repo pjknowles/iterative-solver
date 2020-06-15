@@ -35,7 +35,7 @@ IterativeSolverLinearEigensystemInitialize(size_t n,
   if (!flag) {
 #ifdef HAVE_PPIDD_H
      PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
-     pcomm = PPIDD_Worker_comm(); 
+     pcomm = MPI_Comm_f2c(PPIDD_Worker_comm()); 
 #else
      MPI_Init(0, nullptr);
      pcomm = MPI_COMM_WORLD;

@@ -1,4 +1,4 @@
-LibraryManager_Append(${PROJECT_NAME} PUBLIC_HEADER )
+LibraryManager_Append(${PROJECT_NAME} PUBLIC_HEADER)
 
 # Extra checking for HDF5 and global arrays will go here
 LibraryManager_Append(${PROJECT_NAME}
@@ -52,6 +52,7 @@ if (NOT TARGET Eigen3::Eigen)
                 GIT_TAG 3.3.7
                 )
         FetchContent_MakeAvailable(eigen3)
+        add_library(Eigen3::Eigen ALIAS eigen)
         message(STATUS "Eigen3::Eigen not found on system, and downloaded")
     endif ()
 else ()

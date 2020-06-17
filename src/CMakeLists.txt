@@ -7,7 +7,7 @@ if (MPI)
 endif ()
 
 if (PPIDD)
-    if (CMAKE_Fortran_COMPILER)
+    if (FORTRAN)
         set(PPIDD_FORTRAN ON)
     else ()
         set(PPIDD_FORTRAN OFF)

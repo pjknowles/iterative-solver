@@ -43,9 +43,6 @@ if (NOT TARGET Eigen3::Eigen)
     if (EIGEN3_FOUND)
         message(STATUS "Eigen3 found on system")
     else ()
-        if (NOT FORTRAN)
-            message(FATAL_ERROR "Eigen3 cannot be configured from source with FORTRAN=OFF; install it in the system first")
-        endif ()
         include(FetchContent)
         FetchContent_Declare(eigen3
                 GIT_REPOSITORY https://gitlab.com/libeigen/eigen

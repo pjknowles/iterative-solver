@@ -60,6 +60,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
 endif ()
 
 target_link_libraries(${PROJECT_NAME} PUBLIC Eigen3::Eigen)
+target_compile_definitions(${PROJECT_NAME} PUBLIC -DEIGEN_MPL2_ONLY)
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
     target_compile_definitions(${PROJECT_NAME} PUBLIC -DEIGEN_DONT_VECTORIZE)
 endif ()

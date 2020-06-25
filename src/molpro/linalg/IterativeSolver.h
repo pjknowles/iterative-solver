@@ -1,5 +1,6 @@
 #ifndef ITERATIVESOLVER_H
 #define ITERATIVESOLVER_H
+#include "Q.h"
 #include "molpro/ProfilerSingle.h"
 #ifdef TIMING
 #include <chrono>
@@ -498,6 +499,9 @@ class Base {
   ///< - m_options["convergence"]=="energy" (the default), meaning that m_errors() returns the predicted eigenvalue change in the next iteration, ie the scalar product of the step and the residual
   ///< - m_options["convergence"]=="step": m_errors() returns the norm of the step in the solution
   ///< - m_options["convergence"]=="residual": m_errors() returns the norm of the residual vector
+protected:
+  Q<T> m_qspace;
+public:
   /*!
    * @brief Report the number of action vectors introduced so far.
    * @return

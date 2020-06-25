@@ -2,7 +2,7 @@ LibraryManager_Append(${PROJECT_NAME} PUBLIC_HEADER)
 
 # Extra checking for HDF5 and global arrays will go here
 LibraryManager_Append(${PROJECT_NAME}
-        SOURCES IterativeSolver.cpp
+        SOURCES IterativeSolver.cpp P.h P.cpp Q.h Q.cpp
         PUBLIC_HEADER IterativeSolver.h OpaqueArray.h OutOfCoreArray.h PagedArray.h SimpleArray.h
         )
 if (FORTRAN)

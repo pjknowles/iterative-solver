@@ -25,6 +25,7 @@ public:
    * matrices
    * @param Pvectors the vectors to add
    * @param PP Matrix projected onto the existing+new, new P space. It should be provided as a
+   * 1-dimensional array, with the existing+new index running fastest.
    */
   void add(const std::vector<Pvector>& Pvectors, const scalar_type* PP) {
     auto old_size = m_vectors.size();

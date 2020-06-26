@@ -31,6 +31,7 @@
 #undef isnan
 #undef isinf
 #include <molpro/iostream.h>
+#include <memory>
 
 /*!
  * @brief Contains classes that implement various iterative equation solvers.
@@ -120,7 +121,9 @@ class Base {
       m_augmented_hessian(0),
       m_svdThreshold(1e-15),
       m_maxQ(std::max(m_roots, size_t(16))),
-      m_profiler(profiler) {}
+      m_profiler(profiler),
+      m_pspace(),
+      m_qspace(std::shared_ptr<P<value_type,scalar_type>>(&m_pspace),m_hermitian){}
 
   virtual ~Base() = default;
 
@@ -501,6 +504,7 @@ class Base {
   ///< - m_options["convergence"]=="residual": m_errors() returns the norm of the residual vector
 protected:
   Q<T> m_qspace;
+  P<value_type,scalar_type> m_pspace;
 public:
   /*!
    * @brief Report the number of action vectors introduced so far.

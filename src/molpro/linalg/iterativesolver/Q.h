@@ -6,6 +6,11 @@
 #include <memory>
 #include <vector>
 
+/*!
+ * @brief A class holding a Q space
+ * @tparam fastvector In-memory vectors. New instances will not be created.
+ * @tparam slowvector Out-of memory vectors to be used for storing the space.
+ */
 template <class fastvector, class slowvector = fastvector>
 class Q {
   using scalar_type = decltype(
@@ -30,6 +35,10 @@ public:
 
   size_t size() const { return m_vectors.size(); }
 
+  /*!
+   * @brief Obtain all of the keys that index vectors in the Q space
+   * @return
+   */
   std::vector<int> keys() const {
     std::vector<int> result(size());
     for (const auto& vi : m_vectors)
@@ -38,8 +47,19 @@ public:
   }
 
   /*!
+   * @brief  Assert or test whether the underlying kernel matrix in linear problems is hermitian.
+   * @param hermitian The new state
+   * @return The previous state
+   */
+  bool hermitian(bool hermitian = true) {
+    auto old = m_hermitian;
+    m_hermitian = hermitian;
+    return old;
+  }
+
+  /*!
    * @brief Add a new vector to the Q space. Also compute and store the new elements of the QQ overlap and action
-   * matrices, and interaction with P space.
+   * matrices, and overlap and interaction with P space.
    * @param vector
    * @param action
    */

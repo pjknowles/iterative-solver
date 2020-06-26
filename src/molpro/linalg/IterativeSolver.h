@@ -1,7 +1,7 @@
 #ifndef ITERATIVESOLVER_H
 #define ITERATIVESOLVER_H
-#include "Q.h"
 #include "molpro/ProfilerSingle.h"
+#include "molpro/linalg/iterativesolver/Q.h"
 #ifdef TIMING
 #include <chrono>
 #endif

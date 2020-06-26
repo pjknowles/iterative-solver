@@ -4,6 +4,7 @@
 #include <cmath>
 #include <map>
 #include <memory>
+#include <vector>
 
 template <class fastvector, class slowvector = fastvector>
 class Q {
@@ -15,9 +16,9 @@ class Q {
   int m_index = 0;
   std::map<int, slowvector> m_vectors;
   std::map<int, slowvector> m_actions;
-
-public:
   std::shared_ptr<P<typename fastvector::value_type, scalar_type>> m_pspace;
+  std::map<int, std::vector<scalar_type>> m_metric_pspace;
+  std::map<int, std::vector<scalar_type>> m_action_pspace;
 
 public:
   Q(std::shared_ptr<P<typename fastvector::value_type, scalar_type>> pspace = nullptr, bool hermitian = false)
@@ -27,15 +28,18 @@ public:
 
   scalar_type action(int i, int j) const { return m_action[i][j]; }
 
-  void add(const std::vector<fastvector>& vectors, const std::vector<fastvector>& actions) {
-    assert(vectors.size() == actions.size());
-    for (auto i = 0; i < vectors.size(); i++)
-      add(vectors[i], actions[i]);
+  size_t size() const { return m_vectors.size(); }
+
+  std::vector<int> keys() const {
+    std::vector<int> result(size());
+    for (const auto& vi : m_vectors)
+      result.push_back(vi.first);
+    return result;
   }
 
   /*!
    * @brief Add a new vector to the Q space. Also compute and store the new elements of the QQ overlap and action
-   * matrices
+   * matrices, and interaction with P space.
    * @param vector
    * @param action
    */
@@ -54,6 +58,14 @@ public:
     }
     m_metric[m_index][m_index] = vector.dot(vector);
     m_action[m_index][m_index] = vector.dot(action);
+    if (m_pspace != nullptr) {
+      m_metric_pspace[m_index] = std::vector<scalar_type>(m_pspace->size());
+      m_action_pspace[m_index] = std::vector<scalar_type>(m_pspace->size());
+      for (auto i = 0; i < m_pspace->size(); i++) {
+        m_metric_pspace[m_index][i] = vector.dot(*m_pspace[i]);
+        m_action_pspace[m_index][i] = action.dot(*m_pspace[i]);
+      }
+    }
     m_vectors.emplace(std::make_pair(m_index, slowvector{vector}));
     m_actions.emplace(std::make_pair(m_index, slowvector{action}));
     m_index++;
@@ -84,6 +96,28 @@ public:
   }
 
   /*!
+   * @brief Refresh stored interactions with P space. Must be called whenever the P space is changed.
+   * @param workspace is used as scratch space, and its contents are undefined on exit unless the P space is null.
+   */
+  void refreshP(fastvector& workspace) {
+    if (m_pspace != nullptr) {
+      for (const auto& vi : m_vectors) {
+        const auto& i = vi.first;
+        m_metric_pspace[i].resize(m_pspace->size());
+        m_action_pspace[i].resize(m_pspace->size());
+        workspace = m_vectors[i];
+        for (auto j = 0; j < m_pspace->size(); j++) {
+          m_metric_pspace[m_index][j] = workspace.dot(*m_pspace[j]);
+        }
+        workspace = m_actions[i];
+        for (auto j = 0; j < m_pspace->size(); j++) {
+          m_action_pspace[m_index][j] = workspace.dot(*m_pspace[j]);
+        }
+      }
+    }
+  }
+
+  /*!
    * @brief Remove a vector from the Q space
    * @param index
    */
@@ -98,6 +132,10 @@ public:
       const auto& i = vi.first;
       m_metric[i].erase(index);
       m_action[i].erase(index);
+    }
+    if (m_pspace != nullptr) {
+      m_metric_pspace.erase(index);
+      m_action_pspace.erase(index);
     }
   }
 };

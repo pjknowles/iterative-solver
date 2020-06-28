@@ -35,6 +35,8 @@ public:
 
   size_t size() const { return m_vectors.size(); }
 
+  const slowvector& operator[](int i) const { return m_vectors[i]; }
+
   /*!
    * @brief Obtain all of the keys that index vectors in the Q space
    * @return
@@ -97,8 +99,9 @@ public:
    * @param action
    * @param oldvector
    * @param oldaction
+   * @return The scale factor applied to make the new vector length 1
    */
-  void add(const fastvector& vector, const fastvector& action, const slowvector& oldvector,
+  scalar_type add(const fastvector& vector, const fastvector& action, const slowvector& oldvector,
            const slowvector& oldaction) {
     auto norm = vector.dot(vector) + oldvector.dot(oldvector) - 2 * vector.dot(oldvector);
     auto scale = 1 / std::sqrt(norm);
@@ -113,6 +116,7 @@ public:
     v.scal(1 / scale);
     a.axpy(scale, oldaction);
     a.scal(1 / scale);
+    return scale;
   }
 
   /*!

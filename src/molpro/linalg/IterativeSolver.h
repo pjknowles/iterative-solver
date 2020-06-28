@@ -80,8 +80,9 @@ static std::vector<std::vector<std::reference_wrapper<typename T::value_type> > 
  * vectors are taken to store the history, and if implemented, can save memory.
  *
  * @tparam T The class encapsulating solution and residual vectors
+ * @tparam slowvector Class for storing vectors on backing store
  */
-template<class T>
+template <class T, class slowvector = T>
 class Base {
  public:
   Base(std::shared_ptr<molpro::Profiler> profiler = nullptr
@@ -155,23 +156,36 @@ class Base {
                  vectorRefSet action,
                  vectorRefSetP parametersP = nullVectorRefSetP<T>,
                  vectorRefSet other = nullVectorRefSet<T>) {
-//   if (m_rhs.size())
-//    molpro::cout << "addVector entry m_rhs.back()="<<this->m_rhs.back()<<std::endl;
     m_active.resize(parameters.size(), true);
     if (m_roots < 1) m_roots = parameters.size(); // number of roots defaults to size of parameters
-    if (!m_orthogonalize && m_roots > m_maxQ) m_maxQ = m_roots;
+//    if (!m_orthogonalize && m_roots > m_maxQ) m_maxQ = m_roots;
     assert(parameters.size() == action.size());
+    assert(m_roots == parameters.size());
     m_iterations++;
-    m_added_vectors = 0;
-    for (size_t k = 0; k < action.size(); k++) if (m_active[k]) m_added_vectors++;
-    m_actions += m_added_vectors;
-    m_lastVectorIndex = addVectorSet(parameters, action, other)
-        - 1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
+    if (not m_last_d.empty()) {
+      assert(m_last_d.size() == parameters.size());
+      assert(m_last_hd.size() == parameters.size());
+      for (size_t k = 0; k < parameters.size(); k++) {
+        if (m_active[k])
+          m_qspace.add(parameters[k], m_last_d[k], action[k], m_last_hd[k]);
+        else
+          parameters[k] = m_last_d[k];
+        action[k] = m_last_hd[k];
+      }
+      m_last_d.clear();
+      m_last_hd.clear();
+    }
+
+//    m_added_vectors = 0;
+//    for (size_t k = 0; k < action.size(); k++) if (m_active[k]) m_added_vectors++;
+//    m_actions += m_added_vectors;
+//    m_lastVectorIndex = addVectorSet(parameters, action, other)
+//        - 1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
 //   molpro::cout << "set lastVectorIndex=addVectorSet-1="<<m_lastVectorIndex<<std::endl;
-    scalar_type weight =
-        this->m_options.count("weight") ? (
-            std::strtod(this->m_options.find("weight")->second.c_str(), NULL)) : 1.0;
-    this->m_Weights.push_back(weight); // TODO not conformant - add style
+//    scalar_type weight =
+//        this->m_options.count("weight") ? (
+//            std::strtod(this->m_options.find("weight")->second.c_str(), NULL)) : 1.0;
+//    this->m_Weights.push_back(weight); // TODO not conformant - add style
 #ifdef TIMING
     auto startTiming=std::chrono::steady_clock::now();
 #endif
@@ -193,6 +207,10 @@ class Base {
     endTiming=std::chrono::steady_clock::now();
     std::cout <<" addVector doInterpolation():  seconds="<<std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming-startTiming).count()*1e-9 <<std::endl;
 #endif
+    for (size_t k = 0; k < parameters.size(); k++) {
+      m_last_d.emplace_back(parameters[k]);
+      m_last_hd.emplace_back(action[k]);
+    }
     return update;
   }
   bool addVector(std::vector<T>& parameters,
@@ -505,6 +523,9 @@ class Base {
 protected:
   Q<T> m_qspace;
   P<value_type,scalar_type> m_pspace;
+  std::vector<slowvector> m_last_d ; ///< optimum solution in last iteration
+  std::vector<slowvector> m_last_hd ; ///< action vector corresponding to optimum solution in last iteration
+  std::vector<std::vector<scalar_type>> m_q_scale_factors;
 public:
   /*!
    * @brief Report the number of action vectors introduced so far.

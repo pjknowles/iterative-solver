@@ -30,8 +30,8 @@
 
 #undef isnan
 #undef isinf
-#include <molpro/iostream.h>
 #include <memory>
+#include <molpro/iostream.h>
 
 /*!
  * @brief Contains classes that implement various iterative equation solvers.
@@ -130,7 +130,6 @@ public:
       m_profiler(profiler),
       m_pspace(),
       m_qspace(std::shared_ptr<P<value_type,scalar_type>>(&m_pspace),m_hermitian){}
-      m_profiler(profiler) {}
   // clang-format on
 
   virtual ~Base() = default;
@@ -165,8 +164,9 @@ public:
   bool addVector(vectorRefSet parameters, vectorRefSet action, vectorRefSetP parametersP = nullVectorRefSetP<T>,
                  vectorRefSet other = nullVectorRefSet<T>) {
     m_active.resize(parameters.size(), true);
-    if (m_roots < 1) m_roots = parameters.size(); // number of roots defaults to size of parameters
-//    if (!m_orthogonalize && m_roots > m_maxQ) m_maxQ = m_roots;
+    if (m_roots < 1)
+      m_roots = parameters.size(); // number of roots defaults to size of parameters
+                                   //    if (!m_orthogonalize && m_roots > m_maxQ) m_maxQ = m_roots;
     assert(parameters.size() == action.size());
     assert(m_roots == parameters.size());
     m_iterations++;
@@ -188,7 +188,8 @@ public:
 //    for (size_t k = 0; k < action.size(); k++) if (m_active[k]) m_added_vectors++;
 //    m_actions += m_added_vectors;
 //    m_lastVectorIndex = addVectorSet(parameters, action, other)
-//        - 1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will need to store the position here for later calculation of iteration step
+//        - 1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will
+//        need to store the position here for later calculation of iteration step
 //   molpro::cout << "set lastVectorIndex=addVectorSet-1="<<m_lastVectorIndex<<std::endl;
 //    scalar_type weight =
 //        this->m_options.count("weight") ? (
@@ -498,10 +499,11 @@ public:
   ///< - m_options["convergence"]=="residual": m_errors() returns the norm of the residual vector
 protected:
   Q<T> m_qspace;
-  P<value_type,scalar_type> m_pspace;
-  std::vector<slowvector> m_last_d ; ///< optimum solution in last iteration
-  std::vector<slowvector> m_last_hd ; ///< action vector corresponding to optimum solution in last iteration
+  P<value_type, scalar_type> m_pspace;
+  std::vector<slowvector> m_last_d;  ///< optimum solution in last iteration
+  std::vector<slowvector> m_last_hd; ///< action vector corresponding to optimum solution in last iteration
   std::vector<std::vector<scalar_type>> m_q_scale_factors;
+
 public:
   /*!
    * @brief Report the number of action vectors introduced so far.

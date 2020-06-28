@@ -5,13 +5,11 @@
 using scalar = double;
 using pv = molpro::linalg::PagedArray<scalar>;
 using vectorSet = std::vector<pv>;
-constexpr size_t n = 300; // dimension of problem
+constexpr size_t n = 300;      // dimension of problem
 constexpr scalar alpha = 1000; // separation of diagonal elements
-constexpr size_t nP = 10; // number in initial P-space
+constexpr size_t nP = 10;      // number in initial P-space
 
-scalar matrix(const size_t i, const size_t j) {
-  return (i == j ? alpha * (i + 1) : 0) + i + j;
-}
+scalar matrix(const size_t i, const size_t j) { return (i == j ? alpha * (i + 1) : 0) + i + j; }
 
 void action(const vectorSet &psx, vectorSet &outputs) {
   std::vector<scalar> psxk(n);
@@ -27,10 +25,8 @@ void action(const vectorSet &psx, vectorSet &outputs) {
   }
 }
 
-void actionP(
-    const std::vector<std::map<size_t, scalar> > pspace,
-    const std::vector<std::vector<scalar> > &psx,
-    vectorSet &outputs) {
+void actionP(const std::vector<std::map<size_t, scalar>> pspace, const std::vector<std::vector<scalar>> &psx,
+             vectorSet &outputs) {
   const size_t nP = pspace.size();
   for (size_t k = 0; k < psx.size(); k++) {
     std::vector<scalar> output(n);
@@ -45,8 +41,7 @@ void actionP(
   }
 }
 
-void update(vectorSet &psc, const vectorSet &psg,
-            std::vector<scalar> shift = std::vector<scalar>()) {
+void update(vectorSet &psc, const vectorSet &psg, std::vector<scalar> shift = std::vector<scalar>()) {
   std::vector<scalar> psck(n);
   std::vector<scalar> psgk(n);
   for (size_t k = 0; k < psc.size(); k++) {
@@ -71,32 +66,37 @@ int main(int argc, char *argv[]) {
   }
   size_t p = 0;
   std::vector<scalar> PP;
-  std::vector<std::map<size_t, scalar> > pspace(nP);
+  std::vector<std::map<size_t, scalar>> pspace(nP);
   for (auto &pc : pspace) {
     pc.clear();
     pc[p] = 1;
-    for (size_t q = 0; q < nP; q++) PP.push_back(matrix(p, q));
+    for (size_t q = 0; q < nP; q++)
+      PP.push_back(matrix(p, q));
     ++p;
   }
-  std::vector<std::vector<scalar> > Pcoeff(solver.m_roots);
-  for (size_t i = 0; i < solver.m_roots; ++i) Pcoeff[i].resize(nP);
+  std::vector<std::vector<scalar>> Pcoeff(solver.m_roots);
+  for (size_t i = 0; i < solver.m_roots; ++i)
+    Pcoeff[i].resize(nP);
   solver.addP(pspace, PP.data(), x, g, Pcoeff);
   for (auto iter = 0; iter < 100; iter++) {
     actionP(pspace, Pcoeff, g);
     update(x, g, solver.eigenvalues());
-    if (solver.endIteration(x, g)) break;
+    if (solver.endIteration(x, g))
+      break;
     action(x, g);
     solver.addVector(x, g, Pcoeff);
   }
 
   std::cout << "Error={ ";
-  for (const auto &e : solver.errors()) std::cout << e << " ";
+  for (const auto &e : solver.errors())
+    std::cout << e << " ";
   std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
   for (size_t root = 0; root < solver.m_roots; root++) {
     std::vector<scalar> buf(n);
     x[root].get(&buf[0], n, 0);
     std::cout << "Eigenvector:";
-    for (size_t k = 0; k < n; k++) std::cout << " " << buf[k];
+    for (size_t k = 0; k < n; k++)
+      std::cout << " " << buf[k];
     std::cout << std::endl;
   }
 }

@@ -1,6 +1,6 @@
 if (FORTRAN
-    AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL "Intel"  # avoid the challenge of linking C++ and Fortran with Intel
-)
+        AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL "Intel"  # avoid the challenge of linking C++ and Fortran with Intel
+        )
     set(ITERATIVESOLVER_FORTRAN_EXAMPLES
             OptimizeExampleF.F90
             DIISExampleF.F90
@@ -28,7 +28,7 @@ foreach (fil ${EXAMPLES})
     target_link_libraries(${test_name} PUBLIC molpro::${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
     if (FORTRAN AND CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
         target_link_libraries(${test_name} PUBLIC ifcore)
-    endif()
+    endif ()
     add_test(${nam} ${PROJECT_BINARY_DIR}/${test_name})
 endforeach ()
 

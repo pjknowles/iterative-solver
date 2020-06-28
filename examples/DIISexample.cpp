@@ -42,12 +42,13 @@ int main(int argc, char* argv[]) {
   pv x(n);
   x.scal(0);
   scalar one = 1;
-  x.put(&one, 1, 0);  // initial guess
+  x.put(&one, 1, 0); // initial guess
   for (size_t iter = 0; iter < solver.m_maxIterations; ++iter) {
     anharmonic_residual(x, g);
     solver.addVector(x, g);
     update(x, g);
-    if (solver.endIteration(x, g)) break;
+    if (solver.endIteration(x, g))
+      break;
   }
   std::cout << "Distance of solution from origin: " << std::sqrt(x.dot(x)) << std::endl;
   std::cout << "Error=" << solver.errors().front() << " after " << solver.iterations() << " iterations" << std::endl;

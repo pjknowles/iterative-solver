@@ -2,7 +2,6 @@
 #include "molpro/linalg/PagedArray.h"
 #include <regex>
 
-
 //  typedef SimpleParameterVector pv;
 using scalar = double;
 using pv = molpro::linalg::PagedArray<scalar>;
@@ -40,9 +39,7 @@ int main(int argc, char* argv[]) {
   alpha = 7;
   n = 10;
   anharmonicity = 0.7;
-  for (const auto& method : std::vector<std::string>{
-     "null",
-    "L-BFGS"}) {
+  for (const auto& method : std::vector<std::string>{"null", "L-BFGS"}) {
     std::cout << "optimize with " << method << std::endl;
     molpro::linalg::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_maxIterations = 100;
@@ -51,15 +48,17 @@ int main(int argc, char* argv[]) {
     pv x(n);
     pv hg(n);
     scalar one = 1;
-    for (auto i = 0; i < n; i++) x.put(&one, 1, i);
+    for (auto i = 0; i < n; i++)
+      x.put(&one, 1, i);
     scalar zero = 0;
-    x.put(&zero, 1, 0);  // initial guess
+    x.put(&zero, 1, 0); // initial guess
     for (size_t iter = 1; iter <= solver.m_maxIterations; ++iter) {
       auto value = anharmonic_residual(x, g);
-//      xout << "iteration "<<iter<<" value="<<value<<"\n x: "<<x<<"\n g: "<<g<<std::endl;
+      //      xout << "iteration "<<iter<<" value="<<value<<"\n x: "<<x<<"\n g: "<<g<<std::endl;
       if (solver.addValue(x, value, g))
         update(x, g);
-      if (solver.endIteration(x, g)) break;
+      if (solver.endIteration(x, g))
+        break;
     }
     for (size_t i = 0; i < x.size(); i++) {
       scalar val;

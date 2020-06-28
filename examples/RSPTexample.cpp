@@ -2,17 +2,18 @@
 //#include "IterativeSolver/PagedParameterVector.h"
 //#include "IterativeSolver/SimpleParameterVector.h"
 
-//using namespace LinearAlgebra;
+// using namespace LinearAlgebra;
 
 ////  typedef SimpleParameterVector pv;
 //  typedef PagedParameterVector pv;
 
 //// Perturbatively find lowest eigensolution of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
-//static double n; // dimension of problem
-//static double alpha; // separation of diagonal elements
+// static double n; // dimension of problem
+// static double alpha; // separation of diagonal elements
 
-//struct : IterativeSolverBase::ParameterSetTransformation {
-//void operator()(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) const override {
+// struct : IterativeSolverBase::ParameterSetTransformation {
+// void operator()(const ParameterVectorSet & psx, ParameterVectorSet & outputs, std::vector<ParameterScalar>
+// shift=std::vector<ParameterScalar>(), bool append=false) const override {
 //  std::cout << "matrix_residual() n="<<n<<std::endl;
 //  std::vector<ParameterScalar> psxk(n);
 //  std::vector<ParameterScalar> output(n);
@@ -33,8 +34,9 @@
 //}
 //} _matrix_residual;
 
-//struct : IterativeSolverBase::ParameterSetTransformation {
-//void operator()(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar> shift=std::vector<ParameterScalar>(), bool append=false) const override {
+// struct : IterativeSolverBase::ParameterSetTransformation {
+// void operator()(const ParameterVectorSet & psg, ParameterVectorSet & psc, std::vector<ParameterScalar>
+// shift=std::vector<ParameterScalar>(), bool append=false) const override {
 //  std::cout << "matrix_preconditioner() n="<<n<<std::endl;
 //  std::vector<ParameterScalar> psck(n);
 //  std::vector<ParameterScalar> psgk(n);
@@ -58,25 +60,26 @@
 //} _matrix_preconditioner;
 
 int main(int argc, char *argv[]) {
-//  alpha=100;
-//  n=10;
-//  RSPT solver(_matrix_residual,_matrix_preconditioner);
-//  solver.m_verbosity=1;
-//  solver.m_roots=1;
-//  ParameterVectorSet g;
-//  ParameterVectorSet x;
-//  for (size_t root=0; root<solver.m_roots; root++) {
-//      x.push_back(std::make_shared<pv>(n));
-//      g.push_back(std::make_shared<pv>(n));
-//      x.back()->zero(); double one=1; x.back()->put(&one,1,root); // initial guess
-//    }
-//  if (not solver.solve(g,x)) std::cout << "Failure"<<std::endl;
-//      xout << "Variational eigenvalue "<<solver.eigenvalues().front()<<std::endl;
-//      for (size_t k=0; k<=solver.iterations(); k++) {
-//          xout << "E("<<k<<") = "<<solver.incremental_energies()[k]<<", cumulative="<<solver.energy(k)<<", error="<<solver.energy(k)-solver.eigenvalues()[0]<<std::endl;
-//      }
-//  std::cout << "Error=";
-//  for (size_t root=0; root<solver.m_roots; root++)
-//    std::cout <<solver.errors()[root]<<" ";
-//  std::cout <<"after "<<solver.iterations()<<" iterations"<<std::endl;
+  //  alpha=100;
+  //  n=10;
+  //  RSPT solver(_matrix_residual,_matrix_preconditioner);
+  //  solver.m_verbosity=1;
+  //  solver.m_roots=1;
+  //  ParameterVectorSet g;
+  //  ParameterVectorSet x;
+  //  for (size_t root=0; root<solver.m_roots; root++) {
+  //      x.push_back(std::make_shared<pv>(n));
+  //      g.push_back(std::make_shared<pv>(n));
+  //      x.back()->zero(); double one=1; x.back()->put(&one,1,root); // initial guess
+  //    }
+  //  if (not solver.solve(g,x)) std::cout << "Failure"<<std::endl;
+  //      xout << "Variational eigenvalue "<<solver.eigenvalues().front()<<std::endl;
+  //      for (size_t k=0; k<=solver.iterations(); k++) {
+  //          xout << "E("<<k<<") = "<<solver.incremental_energies()[k]<<", cumulative="<<solver.energy(k)<<",
+  //          error="<<solver.energy(k)-solver.eigenvalues()[0]<<std::endl;
+  //      }
+  //  std::cout << "Error=";
+  //  for (size_t root=0; root<solver.m_roots; root++)
+  //    std::cout <<solver.errors()[root]<<" ";
+  //  std::cout <<"after "<<solver.iterations()<<" iterations"<<std::endl;
 }

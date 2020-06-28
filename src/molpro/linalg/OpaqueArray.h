@@ -5,42 +5,39 @@
 #endif
 
 #include <algorithm>
-#include <limits>
-#include <stdexcept>
+#include <cassert>
 #include <climits>
-#include <cstring>
 #include <cstddef>
 #include <cstdlib>
-#include <unistd.h>
-#include <cassert>
+#include <cstring>
 #include <fstream>
-#include <sstream>
-#include <ostream>
+#include <limits>
 #include <map>
-#include <vector>
 #include <numeric>
+#include <ostream>
+#include <sstream>
+#include <stdexcept>
+#include <unistd.h>
+#include <vector>
 
-namespace molpro{
+namespace molpro {
 namespace linalg {
 
 /*!
-  * \brief A class that implements a vector container that has the following features:
-  * - opaque implementation of BLAS including dot(), axpy(), scal() as required by IterativeSolver without P-space
-  * - import and export of data ranges
-  * \tparam T the type of elements of the vector
-  * \tparam Allocator alternative to std::allocator
-  */
-template<class T=double,
-    class Allocator =
-    std::allocator<T>
->
+ * \brief A class that implements a vector container that has the following features:
+ * - opaque implementation of BLAS including dot(), axpy(), scal() as required by IterativeSolver without P-space
+ * - import and export of data ranges
+ * \tparam T the type of elements of the vector
+ * \tparam Allocator alternative to std::allocator
+ */
+template <class T = double, class Allocator = std::allocator<T>>
 class OpaqueArray {
-  typedef double scalar_type; //TODO implement this properly from T
+  typedef double scalar_type; // TODO implement this properly from T
   std::vector<T, Allocator> m_buffer;
- public:
+
+public:
   typedef T value_type;
-  explicit OpaqueArray(size_t length = 0, const T& value = T())
-      : m_buffer(length, value) {}
+  explicit OpaqueArray(size_t length = 0, const T& value = T()) : m_buffer(length, value) {}
   /*!
    * @brief Copy constructor
    * @param source
@@ -49,13 +46,13 @@ class OpaqueArray {
   OpaqueArray<T, Allocator>(const OpaqueArray& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
 
   /*!
-    * \brief Add a constant times a sparse vector to this object
-    * \param a The factor to multiply.
-    * \param other The object to be added to this.
-    * \return
-    */
+   * \brief Add a constant times a sparse vector to this object
+   * \param a The factor to multiply.
+   * \param other The object to be added to this.
+   * \return
+   */
   void axpy(scalar_type a, const std::map<size_t, T>& other) {
-    for (const auto& o: other)
+    for (const auto& o : other)
       m_buffer[o.first] += a * o.second;
   }
 
@@ -66,10 +63,10 @@ class OpaqueArray {
    */
   scalar_type dot(const OpaqueArray<T>& other) const {
     assert(this->m_buffer.size() == other.m_buffer.size());
-    return std::inner_product(m_buffer.begin(), m_buffer.end(), other.m_buffer.begin(), (scalar_type) 0);
+    return std::inner_product(m_buffer.begin(), m_buffer.end(), other.m_buffer.begin(), (scalar_type)0);
   }
 
-  //TODO this function should be removed once IterativeSolver doesn't need it to compile correctly
+  // TODO this function should be removed once IterativeSolver doesn't need it to compile correctly
   /*!
    * \brief Scalar product with a sparse vector
    * \param other The object to be contracted with this.
@@ -77,15 +74,15 @@ class OpaqueArray {
    */
   scalar_type dot(const std::map<size_t, T>& other) const {
     scalar_type result = 0;
-    for (const auto& o: other)
+    for (const auto& o : other)
       result += o.second * m_buffer[o.first];
     return result;
   }
 
   /*!
-     * \brief scal Scale the object by a factor.
-     * \param a The factor to scale by. If a is zero, then the current contents of the object are ignored.
-     */
+   * \brief scal Scale the object by a factor.
+   * \param a The factor to scale by. If a is zero, then the current contents of the object are ignored.
+   */
   void scal(scalar_type a) {
     if (a != 0)
       std::transform(m_buffer.begin(), m_buffer.end(), m_buffer.begin(), [a](T& x) { return a * x; });
@@ -101,10 +98,7 @@ class OpaqueArray {
    */
   void axpy(scalar_type a, const OpaqueArray<T>& other) {
     assert(this->m_buffer.size() == other.m_buffer.size());
-    std::transform(other.m_buffer.begin(),
-                   other.m_buffer.end(),
-                   m_buffer.begin(),
-                   m_buffer.begin(),
+    std::transform(other.m_buffer.begin(), other.m_buffer.end(), m_buffer.begin(), m_buffer.begin(),
                    [a](T x, T y) -> T { return y + a * x; });
   }
 
@@ -121,9 +115,7 @@ class OpaqueArray {
    * \param length
    * \param offset
    */
-  void put(const T* buffer, size_t length, size_t offset) {
-    std::copy(buffer, buffer + length, &m_buffer[offset]);
-  }
+  void put(const T* buffer, size_t length, size_t offset) { std::copy(buffer, buffer + length, &m_buffer[offset]); }
 
   /*!
    * \brief Read a range of the object data into a provided buffer
@@ -134,9 +126,8 @@ class OpaqueArray {
   void get(T* buffer, size_t length, size_t offset) const {
     std::copy(&m_buffer[offset], &m_buffer[offset + length], buffer);
   }
-
 };
 
-}
-}  // namespace molpro
+} // namespace linalg
+} // namespace molpro
 #endif // OPAQUEVECTOR_H

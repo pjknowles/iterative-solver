@@ -7,6 +7,7 @@ class P {
   using Pvector = std::map<size_t, value_type>;
   std::vector<scalar_type> m_metric;
   std::vector<scalar_type> m_action;
+  std::vector<scalar_type> m_rhs;
   std::vector<Pvector> m_vectors;
 
 public:
@@ -27,16 +28,21 @@ public:
    * @param PP Matrix projected onto the existing+new, new P space. It should be provided as a
    * 1-dimensional array, with the existing+new index running fastest.
    */
-  void add(const std::vector<Pvector>& Pvectors, const scalar_type* PP) {
+   template <class slowvector>
+  void add(const std::vector<Pvector>& Pvectors, const scalar_type* PP, const std::vector<slowvector>& rhs) {
     auto old_size = m_vectors.size();
     auto new_size = m_vectors.size() + Pvectors.size();
     {
       std::vector<scalar_type> new_metric(new_size * new_size);
       std::vector<scalar_type> new_action(new_size * new_size);
+      std::vector<scalar_type> new_rhs(new_size * rhs.size());
       for (int i = 0; i < old_size; i++) {
         for (int j = 0; j < old_size; j++) {
           new_metric[i * new_size + j] = m_metric[i * old_size + j];
           new_action[i * new_size + j] = m_action[i * old_size + j];
+        }
+        for (int j = 0; j < rhs.size() ; j++) {
+          new_rhs[i + new_size * j] = m_action[i + old_size * j];
         }
       }
       for (int i = 0; i < Pvectors.size(); i++) {
@@ -51,9 +57,13 @@ public:
           }
           new_metric[j * new_size + (i + old_size)] = new_metric[j + new_size * (i + old_size)] = overlap;
         }
+        for (int j = 0; j < rhs.size() ; j++) {
+          new_rhs[i+old_size + new_size * j] = rhs[j].dot(m_vectors[i]);
+        }
       }
-      m_metric = (new_metric);
-      m_action = (new_action);
+      m_metric = new_metric;
+      m_action = new_action;
+      m_rhs = new_rhs;
     }
   }
 };

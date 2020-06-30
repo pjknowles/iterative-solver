@@ -18,9 +18,12 @@ class Q {
   bool m_hermitian;
   std::map<int, std::map<int, scalar_type>> m_metric;
   std::map<int, std::map<int, scalar_type>> m_action;
+  std::map<int, std::vector<scalar_type>> m_rhs;
   int m_index = 0;
+public:
   std::map<int, slowvector> m_vectors;
   std::map<int, slowvector> m_actions;
+protected:
   std::shared_ptr<P<typename fastvector::value_type, scalar_type>> m_pspace;
   std::map<int, std::vector<scalar_type>> m_metric_pspace;
   std::map<int, std::vector<scalar_type>> m_action_pspace;
@@ -29,13 +32,17 @@ public:
   Q(std::shared_ptr<P<typename fastvector::value_type, scalar_type>> pspace = nullptr, bool hermitian = false)
       : m_hermitian(hermitian or pspace != nullptr), m_pspace(pspace) {}
 
-  scalar_type metric(int i, int j) const { return m_metric[i][j]; }
+  const scalar_type& metric(int i, int j) const { return m_metric.at(i).at(j); }
 
-  scalar_type action(int i, int j) const { return m_action[i][j]; }
+  const scalar_type& action(int i, int j) const { return m_action.at(i).at(j); }
+
+  const std::vector<scalar_type>& metric_pspace(int i) const { return m_metric_pspace.at(i); }
+  const std::vector<scalar_type>& action_pspace(int i) const { return m_action_pspace.at(i); }
 
   size_t size() const { return m_vectors.size(); }
 
-  const slowvector& operator[](int i) const { return m_vectors[i]; }
+  const slowvector& operator[](int i) const { return m_vectors.at(i); }
+  const slowvector& action(int i) const { return m_actions.at(i); }
 
   /*!
    * @brief Obtain all of the keys that index vectors in the Q space
@@ -64,8 +71,9 @@ public:
    * matrices, and overlap and interaction with P space.
    * @param vector
    * @param action
+   * @param rhs
    */
-  void add(const fastvector& vector, const fastvector& action) {
+  void add(const fastvector& vector, const fastvector& action, const std::vector<slowvector>& rhs) {
     for (const auto& vi : m_vectors) {
       const auto& i = vi.first;
       m_metric[m_index][i] = m_metric[i][m_index] = vector.dot(vi.second);
@@ -84,10 +92,13 @@ public:
       m_metric_pspace[m_index] = std::vector<scalar_type>(m_pspace->size());
       m_action_pspace[m_index] = std::vector<scalar_type>(m_pspace->size());
       for (auto i = 0; i < m_pspace->size(); i++) {
-        m_metric_pspace[m_index][i] = vector.dot(*m_pspace[i]);
-        m_action_pspace[m_index][i] = action.dot(*m_pspace[i]);
+        m_metric_pspace[m_index][i] = vector.dot((*m_pspace)[i]);
+        m_action_pspace[m_index][i] = action.dot((*m_pspace)[i]);
       }
     }
+    m_rhs[m_index] = std::vector<scalar_type>();
+    for (const auto& rhs1 : rhs)
+      m_rhs[m_index].push_back(vector.dot(rhs1));
     m_vectors.emplace(std::make_pair(m_index, slowvector{vector}));
     m_actions.emplace(std::make_pair(m_index, slowvector{action}));
     m_index++;
@@ -99,19 +110,20 @@ public:
    * @param action
    * @param oldvector
    * @param oldaction
+   * @param rhs
    * @return The scale factor applied to make the new vector length 1
    */
   scalar_type add(const fastvector& vector, const fastvector& action, const slowvector& oldvector,
-           const slowvector& oldaction) {
+                  const slowvector& oldaction, const std::vector<slowvector>& rhs) {
     auto norm = vector.dot(vector) + oldvector.dot(oldvector) - 2 * vector.dot(oldvector);
     auto scale = 1 / std::sqrt(norm);
-    auto& v = const_cast<fastvector>(vector);
-    auto& a = const_cast<fastvector>(action);
+    auto& v = const_cast<fastvector&>(vector);
+    auto& a = const_cast<fastvector&>(action);
     v.scal(scale);
     v.axpy(-scale, oldvector);
     a.scal(scale);
     a.axpy(-scale, oldaction);
-    add(v, a);
+    add(v, a, rhs);
     v.axpy(scale, oldvector);
     v.scal(1 / scale);
     a.axpy(scale, oldaction);
@@ -131,11 +143,11 @@ public:
         m_action_pspace[i].resize(m_pspace->size());
         workspace = m_vectors[i];
         for (auto j = 0; j < m_pspace->size(); j++) {
-          m_metric_pspace[m_index][j] = workspace.dot(*m_pspace[j]);
+          m_metric_pspace[m_index][j] = workspace.dot((*m_pspace)[j]);
         }
         workspace = m_actions[i];
         for (auto j = 0; j < m_pspace->size(); j++) {
-          m_action_pspace[m_index][j] = workspace.dot(*m_pspace[j]);
+          m_action_pspace[m_index][j] = workspace.dot((*m_pspace)[j]);
         }
       }
     }
@@ -152,6 +164,7 @@ public:
       throw std::runtime_error("non-existent vector to erase");
     m_metric.erase(index);
     m_action.erase(index);
+    m_rhs.erase(index);
     for (const auto& vi : m_vectors) {
       const auto& i = vi.first;
       m_metric[i].erase(index);

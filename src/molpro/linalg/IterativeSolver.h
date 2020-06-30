@@ -84,7 +84,7 @@ static std::vector<std::vector<std::reference_wrapper<typename T::value_type>>> 
  * are taken to store the history, and if implemented, can save memory.
  *
  * @tparam T The class encapsulating solution and residual vectors
- * @tparam slowvector Class for storing vectors on backing store
+ * @tparam slowvector Used internally as a class for storing vectors on backing store
  */
 template <class T, class slowvector = T>
 class Base {
@@ -170,18 +170,59 @@ public:
     assert(parameters.size() == action.size());
     assert(m_roots == parameters.size());
     m_iterations++;
+    m_current_c.clear();
+    m_current_g.clear();
+    for (size_t k = 0; k < parameters.size(); k++) {
+      m_current_c.push_back(parameters[k]);
+      m_current_g.push_back(action[k]);
+    }
     if (not m_last_d.empty()) {
       assert(m_last_d.size() == parameters.size());
       assert(m_last_hd.size() == parameters.size());
       for (size_t k = 0; k < parameters.size(); k++) {
         if (m_active[k])
-          m_qspace.add(parameters[k], m_last_d[k], action[k], m_last_hd[k]);
-        else
+          m_qspace.add(parameters[k], m_last_d[k], action[k], m_last_hd[k], m_rhs);
+        else {
           parameters[k] = m_last_d[k];
-        action[k] = m_last_hd[k];
+          action[k] = m_last_hd[k];
+        }
       }
       m_last_d.clear();
       m_last_hd.clear();
+    }
+    // TODO this generates another read for the q space which could perhaps be avoided
+    for (const auto& q : m_qspace.keys()) {
+      m_s_qc[q] = std::vector<scalar_type>(parameters.size());
+      m_h_qc[q] = std::vector<scalar_type>(parameters.size());
+      m_h_cq[q] = std::vector<scalar_type>(parameters.size());
+      for (size_t k = 0; k < parameters.size(); k++) {
+        m_s_qc[q][k] = parameters[k].get().dot(m_qspace[q]);
+        m_h_qc[q][k] = action[k].get().dot(m_qspace[q]);
+        m_h_cq[q][k] = m_hermitian ? m_h_qc[q][k] : parameters[k].get().dot(m_qspace.action(q));
+//        molpro::cout << "m_s_qc "<<m_s_qc[q][k]<<std::endl;
+      }
+    }
+    m_s_pc.clear();
+    m_h_pc.clear();
+    m_h_cp.clear();
+    for (auto p = 0; p < m_pspace.size(); p++) {
+      m_s_pc.push_back(std::vector<scalar_type>(parameters.size()));
+      m_h_pc.push_back(std::vector<scalar_type>(parameters.size()));
+      m_h_cp.push_back(std::vector<scalar_type>(parameters.size()));
+      for (size_t k = 0; k < parameters.size(); k++) {
+        m_s_pc[p][k] = parameters[k].get().dot(m_pspace[p]);
+        m_h_pc[p][k] = m_h_cp[p][k] = action[k].get().dot(m_pspace[p]);
+      }
+    }
+    m_s_cc.clear();
+    m_h_cc.clear();
+    for (auto m = 0; m < parameters.size(); m++) {
+      m_s_cc.push_back(std::vector<scalar_type>(parameters.size()));
+      m_h_cc.push_back(std::vector<scalar_type>(parameters.size()));
+      for (size_t n = 0; n < parameters.size(); n++) {
+        m_s_cc[m][n] = parameters[n].get().dot(parameters[m].get());
+        m_h_cc[m][n] = action[n].get().dot(parameters[m].get());
+      }
     }
 
 //    m_added_vectors = 0;
@@ -279,63 +320,65 @@ public:
    */
   void addP(std::vector<Pvector> Pvectors, const scalar_type* PP, vectorRefSet parameters, vectorRefSet action,
             vectorRefSetP parametersP, vectorRefSet other = nullVectorRefSet<T>) {
-    auto oldss = m_subspaceMatrix.rows();
+    m_pspace.add(Pvectors, PP, m_rhs);
+    m_qspace.refreshP(action.front());
+    //    auto oldss = m_subspaceMatrix.rows();
     m_active.resize(parameters.size(), true);
-    //    molpro::cout << "oldss " << oldss << ", Pvectors,size() " << Pvectors.size() << std::endl;
-    m_subspaceMatrix.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
-    m_subspaceOverlap.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
-    Eigen::Index oldNP = m_PQMatrix.rows();
-    Eigen::Index newNP = oldNP + Pvectors.size();
-    assert(newNP + m_QQMatrix.rows() == m_subspaceOverlap.rows());
-    m_PQMatrix.conservativeResize(newNP, m_QQMatrix.rows());
-    m_PQOverlap.conservativeResize(newNP, m_QQMatrix.rows());
-    m_subspaceRHS.conservativeResize(newNP, m_rhs.size());
-    size_t offset = 0;
+    //        molpro::cout << "oldss " << oldss << ", Pvectors,size() " << Pvectors.size() << std::endl;
+    //    m_subspaceMatrix.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
+    //    m_subspaceOverlap.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
+    //    Eigen::Index oldNP = m_PQMatrix.rows();
+    //    Eigen::Index newNP = oldNP + Pvectors.size();
+    //    assert(newNP + m_QQMatrix.rows() == m_subspaceOverlap.rows());
+    //    m_PQMatrix.conservativeResize(newNP, m_QQMatrix.rows());
+    //    m_PQOverlap.conservativeResize(newNP, m_QQMatrix.rows());
+    //    m_subspaceRHS.conservativeResize(newNP, m_rhs.size());
+    //    size_t offset = 0;
     //    molpro::cout << "addP PP\n";
     //    for (auto i = 0; i < Pvectors.size(); i++)
     //      for (auto j = 0; j < newNP; j++)
     //        molpro::cout << i << " " << j << " " << PP[offset++]<<std::endl;
     //    offset = 0;
-    for (size_t n = 0; n < Pvectors.size(); n++)
-      m_Pvectors.push_back(Pvectors[n]);
-    for (size_t n = 0; n < Pvectors.size(); n++) {
-      for (Eigen::Index i = 0; i < newNP; i++) {
-        //        molpro::cout << "offset " << offset << std::endl;
-        //        molpro::cout << "PP " << PP[offset] << std::endl;
-        m_subspaceMatrix(oldNP + n, i) = m_subspaceMatrix(i, oldNP + n) = PP[offset++];
-        double overlap = 0;
-        //        molpro::cout << "n=" << n << ", i=" << i << std::endl;
-        for (const auto& p : Pvectors[n]) {
-          //          molpro::cout << "addP Pvector=" << p.first << " : " << p.second << " " <<
-          //          m_Pvectors[i].count(p.first) << std::endl;
-          if (m_Pvectors[i].count(p.first))
-            overlap += p.second * m_Pvectors[i][p.first];
-        }
-        //        molpro::cout << "overlap: " << overlap << std::endl;
-        //        molpro::cout << "oldNP+n=" << oldNP + n << ", i=" << i << ", dimensions: " << m_subspaceOverlap.rows()
-        //        << ", "
-        //             << m_subspaceOverlap.cols() << std::endl;
-        m_subspaceOverlap(oldNP + n, i) = m_subspaceOverlap(i, oldNP + n) = overlap;
-        //        molpro::cout << "stored " << m_subspaceOverlap(oldNP + n, i) << std::endl;
-      }
-    }
-    size_t l = 0;
-    for (size_t ll = 0; ll < m_solutions.size(); ll++) {
-      for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
-        if (m_vector_active[ll][lll]) {
-          for (size_t n = 0; n < Pvectors.size(); n++) {
-            m_PQMatrix(oldNP + n, l) = m_residuals[ll][lll].dot(Pvectors[n]);
-            m_PQOverlap(oldNP + n, l) = m_solutions[ll][lll].dot(Pvectors[n]);
-          }
-          l++;
-        }
-      }
-    }
-    for (size_t n = 0; n < Pvectors.size(); n++) {
-      for (size_t l = 0; l < m_rhs.size(); l++) {
-        m_subspaceRHS(oldNP + n, l) = m_rhs[l].dot(Pvectors[n]);
-      }
-    }
+    //    for (size_t n = 0; n < Pvectors.size(); n++)
+    //      m_Pvectors.push_back(Pvectors[n]);
+    //    for (size_t n = 0; n < Pvectors.size(); n++) {
+    //      for (Eigen::Index i = 0; i < newNP; i++) {
+    //        molpro::cout << "offset " << offset << std::endl;
+    //        molpro::cout << "PP " << PP[offset] << std::endl;
+    //        m_subspaceMatrix(oldNP + n, i) = m_subspaceMatrix(i, oldNP + n) = PP[offset++];
+    //        double overlap = 0;
+    //        molpro::cout << "n=" << n << ", i=" << i << std::endl;
+    //        for (const auto& p : Pvectors[n]) {
+    //          molpro::cout << "addP Pvector=" << p.first << " : " << p.second << " " <<
+    //          m_Pvectors[i].count(p.first) << std::endl;
+    //          if (m_Pvectors[i].count(p.first))
+    //            overlap += p.second * m_Pvectors[i][p.first];
+    //        }
+    //        molpro::cout << "overlap: " << overlap << std::endl;
+    //        molpro::cout << "oldNP+n=" << oldNP + n << ", i=" << i << ", dimensions: " << m_subspaceOverlap.rows()
+    //        << ", "
+    //             << m_subspaceOverlap.cols() << std::endl;
+    //        m_subspaceOverlap(oldNP + n, i) = m_subspaceOverlap(i, oldNP + n) = overlap;
+    //        molpro::cout << "stored " << m_subspaceOverlap(oldNP + n, i) << std::endl;
+    //      }
+    //    }
+    //    size_t l = 0;
+    //    for (size_t ll = 0; ll < m_solutions.size(); ll++) {
+    //      for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
+    //        if (m_vector_active[ll][lll]) {
+    //          for (size_t n = 0; n < Pvectors.size(); n++) {
+    //            m_PQMatrix(oldNP + n, l) = m_residuals[ll][lll].dot(Pvectors[n]);
+    //            m_PQOverlap(oldNP + n, l) = m_solutions[ll][lll].dot(Pvectors[n]);
+    //          }
+    //          l++;
+    //        }
+    //      }
+    //    }
+    //    for (size_t n = 0; n < Pvectors.size(); n++) {
+    //      for (size_t l = 0; l < m_rhs.size(); l++) {
+    //        m_subspaceRHS(oldNP + n, l) = m_rhs[l].dot(Pvectors[n]);
+    //      }
+    //    }
     buildSubspace();
     solveReducedProblem();
     doInterpolation(parameters, action, parametersP, other);
@@ -358,12 +401,13 @@ public:
    * \brief Remove completely the whole P space
    */
   void clearP() {
-    m_subspaceMatrix.conservativeResize(m_QQMatrix.rows(), m_QQMatrix.rows());
-    m_subspaceOverlap.conservativeResize(m_QQMatrix.rows(), m_QQMatrix.rows());
-    m_PQMatrix.conservativeResize(0, m_QQMatrix.rows());
-    m_PQOverlap.conservativeResize(0, m_QQMatrix.rows());
-    m_subspaceRHS.conservativeResize(0, m_rhs.size());
-    m_Pvectors.clear();
+    throw std::logic_error("clearP no longer implemented");
+    //    m_subspaceMatrix.conservativeResize(m_QQMatrix.rows(), m_QQMatrix.rows());
+    //    m_subspaceOverlap.conservativeResize(m_QQMatrix.rows(), m_QQMatrix.rows());
+    //    m_PQMatrix.conservativeResize(0, m_QQMatrix.rows());
+    //    m_PQOverlap.conservativeResize(0, m_QQMatrix.rows());
+    //    m_subspaceRHS.conservativeResize(0, m_rhs.size());
+    //    m_Pvectors.clear();
   }
 
   /*!
@@ -500,9 +544,14 @@ public:
 protected:
   Q<T> m_qspace;
   P<value_type, scalar_type> m_pspace;
-  std::vector<slowvector> m_last_d;  ///< optimum solution in last iteration
-  std::vector<slowvector> m_last_hd; ///< action vector corresponding to optimum solution in last iteration
+  std::vector<slowvector> m_last_d;    ///< optimum solution in last iteration
+  std::vector<slowvector> m_last_hd;   ///< action vector corresponding to optimum solution in last iteration
+  std::vector<slowvector> m_current_c; ///< current solution TODO can probably eliminate using m_last_d
+  std::vector<slowvector> m_current_g; ///< action vector corresponding to current solution
   std::vector<std::vector<scalar_type>> m_q_scale_factors;
+  std::vector<std::vector<scalar_type>> m_s_cc, m_h_cc; ///< interactions within C space
+  std::map<int, std::vector<scalar_type>> m_s_qc, m_h_qc, m_h_cq; ///< interactions between C and Q spaces
+  std::vector<std::vector<scalar_type>> m_s_pc, m_h_pc, m_h_cp;   ///< interactions between C and P spaces
 
 public:
   /*!
@@ -573,77 +622,114 @@ protected:
     }
   }
 
+  int propose_singularity_deletion(size_t n, size_t nQ, size_t maxQ, const scalar_type* m,
+                                   scalar_type threshold = 1e-10) {
+    return -1;
+    // TODO implement
+    //    Eigen::EigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
+    //    molpro::cout << "eigenvalues "<<ss.eigenvalues()<<std::endl;
+    //    Eigen::Map<const Eigen::Matrix<scalar_type,Eigen::Dynamic,Eigen::Dynamic>> singularTester(m,{n,n});
+    //      Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(
+    //          singularTester, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    //      //    molpro::cout << "singular values: "<<svd.singularValues().transpose()<<std::endl;
+    //      //    molpro::cout << "U: "<<svd.matrixU()<<std::endl;
+    //      //    molpro::cout << "V: "<<svd.matrixV()<<std::endl;
+    //      //    auto tester = [](Eigen::Index i) { return std::fabs(svd.matrixV(nP+i,k))};
+    //      const auto& k = n - 1;
+    //      //      molpro::cout << "m_singularity_threshold "<<m_singularity_threshold<<std::endl;
+    //      //      molpro::cout << "svd.singularValues()(0) "<<svd.singularValues()(0)<<std::endl;
+    //      //      molpro::cout << "svd.singularValues()(k) "<<svd.singularValues()(k)<<std::endl;
+    //      if (svd.singularValues()(k) < threshold * svd.singularValues()(0) ||
+    //          (m_linear && !m_orthogonalize &&
+    //              nQ > maxQ)) { // condition number assuming singular values are strictly descending
+    //        Eigen::Index imax = 0;
+    //        for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(nQ - 1); i++) { // never consider the very last Q
+    //        vector
+    //          //      molpro::cout << "consider " <<i<<": "<<svd.matrixV()(nP+i,k)<<std::endl;
+    //          //      if (std::fabs(svd.matrixV()(nP + i, k)) > std::fabs(svd.matrixV()(nP + imax, k))) imax = i;
+    //          if (std::fabs(svd.matrixV()(nP + i, k) * singularTester(nP + i, nP + i)) >
+    //              std::fabs(svd.matrixV()(nP + imax, k) * singularTester(nP + imax, nP + imax)))
+    //            imax = i;
+    //        }
+    //        //     imax=0;
+    //        if (m_verbosity > 0) {
+    //          molpro::cout << " removing singular value " << svd.singularValues()(k) / svd.singularValues()(0)
+    //                       << " by deleting redundant expansion vector " << imax << ";  new subspace size " << nQ - 1;
+    //          if (nP > 0)
+    //            molpro::cout << "Q + " << nP << "P";
+    //          molpro::cout << std::endl;
+    //        }
+    //        if (m_verbosity > 2)
+    //          molpro::cout << "  SVD right matrix column: " << svd.matrixV().col(k).transpose() << std::endl;
+    //        deleteVector(imax);
+    //        return; // deleteVector calls this function to rebuild the subspace
+    //      }
+    //    }
+  }
+
   void buildSubspace() {
-    const size_t nP = m_Pvectors.size();
-    const size_t nQ = m_QQMatrix.rows();
-    const size_t n = nP + nQ;
+    const size_t nP = m_pspace.size();
+    const size_t nQ = m_qspace.size();
+    const size_t nC = m_linear ? m_roots : 0;
+    const size_t nX = nP + nQ + nC;
+    const auto oP = 0;
+    const auto oQ = oP + nP;
+    const auto oC = oQ + nQ;
     //   molpro::cout << "buildSubspace nP="<<nP<<", nQ="<<nQ<<std::endl;
-    m_subspaceMatrix.conservativeResize(n, n);
-    m_subspaceOverlap.conservativeResize(n, n);
-    for (size_t i = 0; i < nQ; i++) {
-      for (size_t j = 0; j < nQ; j++) {
-        m_subspaceMatrix(nP + j, nP + i) = m_QQMatrix(j, i);
-        m_subspaceOverlap(nP + j, nP + i) = m_QQOverlap(j, i);
+    m_subspaceMatrix.conservativeResize(nX, nX);
+    m_subspaceOverlap.conservativeResize(nX, nX);
+    for (size_t a = 0; a < nQ; a++) {
+      for (size_t b = 0; b < nQ; b++) {
+        m_subspaceMatrix(oQ + b, oQ + a) = m_qspace.action(b, a);
+        m_subspaceOverlap(oQ + b, oQ + a) = m_qspace.metric(b, a);
       }
-      for (size_t j = 0; j < nP; j++) {
-        m_subspaceMatrix(j, nP + i) = m_subspaceMatrix(nP + i, j) = m_PQMatrix(j, i);
-        m_subspaceOverlap(j, nP + i) = m_subspaceOverlap(nP + i, j) = m_PQOverlap(j, i);
+      const auto& metric_pspace = m_qspace.metric_pspace(a);
+      const auto& action_pspace = m_qspace.action_pspace(a);
+      for (size_t i = 0; i < nP; i++) {
+        m_subspaceMatrix(oP + i, oQ + a) = m_subspaceMatrix(oQ + a, oP + i) = action_pspace[i];
+        m_subspaceOverlap(oP + i, oQ + a) = m_subspaceOverlap(oQ + a, oP + i) = metric_pspace[i];
+      }
+      for (size_t m = 0; m < nC; m++) {
+        m_subspaceMatrix(oC + m, oQ + a) = m_h_cq[a][m];
+        m_subspaceMatrix(oQ + a, oC + m) = m_h_qc[a][m];
+        m_subspaceOverlap(oC + m, oQ + a) = m_s_qc[a][m];
+        m_subspaceOverlap(oQ + a, oC + m) = m_s_qc[a][m];
       }
     }
-    if (nP + nQ > 0) { // look for linear dependency
-      if (m_verbosity > 2)
-        molpro::cout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
-      if (m_verbosity > 2)
-        molpro::cout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
-      //    Eigen::EigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
-      //    molpro::cout << "eigenvalues "<<ss.eigenvalues()<<std::endl;
+    for (size_t i = 0; i < nP; i++) {
+      for (size_t m = 0; m < nC; m++) {
+        m_subspaceMatrix(oC + m, oP + i) = m_h_cp[i][m];
+        m_subspaceMatrix(oP + i, oC + m) = m_h_pc[i][m];
+        m_subspaceOverlap(oC + m, oP + i) = m_s_pc[i][m];
+        m_subspaceOverlap(oP + i, oC + m) = m_s_pc[i][m];
+      }
+    }
+    for (size_t n = 0; n < nC; n++) {
+      for (size_t m = 0; m < nC; m++) {
+        m_subspaceMatrix(oC + m, oC + n) = m_h_cc[m][n];
+        m_subspaceOverlap(oC + m, oC + n) = m_s_cc[m][n];
+      }
+    }
+    if (nQ > 0) {
       const auto& singularTester = m_residual_eigen ? m_subspaceOverlap : m_subspaceMatrix;
-      Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(
-          singularTester, Eigen::ComputeThinU | Eigen::ComputeThinV);
-      //    molpro::cout << "singular values: "<<svd.singularValues().transpose()<<std::endl;
-      //    molpro::cout << "U: "<<svd.matrixU()<<std::endl;
-      //    molpro::cout << "V: "<<svd.matrixV()<<std::endl;
-      //    auto tester = [](Eigen::Index i) { return std::fabs(svd.matrixV(nP+i,k))};
-      const auto& k = m_subspaceMatrix.rows() - 1;
-      //      molpro::cout << "m_singularity_threshold "<<m_singularity_threshold<<std::endl;
-      //      molpro::cout << "svd.singularValues()(0) "<<svd.singularValues()(0)<<std::endl;
-      //      molpro::cout << "svd.singularValues()(k) "<<svd.singularValues()(k)<<std::endl;
-      if (svd.singularValues()(k) < m_singularity_threshold * svd.singularValues()(0) ||
-          (m_linear && !m_orthogonalize &&
-           nQ > m_maxQ)) { // condition number assuming singular values are strictly descending
-        Eigen::Index imax = 0;
-        for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(nQ - 1); i++) { // never consider the very last Q vector
-          //      molpro::cout << "consider " <<i<<": "<<svd.matrixV()(nP+i,k)<<std::endl;
-          //      if (std::fabs(svd.matrixV()(nP + i, k)) > std::fabs(svd.matrixV()(nP + imax, k))) imax = i;
-          if (std::fabs(svd.matrixV()(nP + i, k) * singularTester(nP + i, nP + i)) >
-              std::fabs(svd.matrixV()(nP + imax, k) * singularTester(nP + imax, nP + imax)))
-            imax = i;
-        }
-        //     imax=0;
-        if (m_verbosity > 0) {
-          molpro::cout << " removing singular value " << svd.singularValues()(k) / svd.singularValues()(0)
-                       << " by deleting redundant expansion vector " << imax << ";  new subspace size " << nQ - 1;
-          if (nP > 0)
-            molpro::cout << "Q + " << nP << "P";
-          molpro::cout << std::endl;
-        }
-        if (m_verbosity > 2)
-          molpro::cout << "  SVD right matrix column: " << svd.matrixV().col(k).transpose() << std::endl;
-        deleteVector(imax);
-        return; // deleteVector calls this function to rebuild the subspace
+      auto del = propose_singularity_deletion(nX, nQ, m_maxQ, &singularTester(0, 0), m_singularity_threshold);
+      if (del >= 0) {
+        m_qspace.remove(m_qspace.keys()[del]);
+        buildSubspace();
+        return;
       }
     }
-    if (m_verbosity > 3 && m_PQMatrix.rows() > 0)
-      molpro::cout << "PQ matrix" << std::endl << this->m_PQMatrix << std::endl;
-    if (m_verbosity > 3 && m_PQMatrix.rows() > 0)
-      molpro::cout << "PQ overlap" << std::endl << this->m_PQOverlap << std::endl;
-    if (m_verbosity > 3 && m_PQMatrix.rows() > 0)
-      molpro::cout << "QQ matrix" << std::endl << this->m_QQMatrix << std::endl;
-    if (m_verbosity > 3 && m_PQMatrix.rows() > 0)
-      molpro::cout << "QQ overlap" << std::endl << this->m_QQOverlap << std::endl;
-    if (m_verbosity > 2)
+    //    if (m_verbosity > 3 && m_PQMatrix.rows() > 0)
+    //      molpro::cout << "PQ matrix" << std::endl << this->m_PQMatrix << std::endl;
+    //    if (m_verbosity > 3 && m_PQMatrix.rows() > 0)
+    //      molpro::cout << "PQ overlap" << std::endl << this->m_PQOverlap << std::endl;
+    //    if (m_verbosity > 3 && m_PQMatrix.rows() > 0)
+    //      molpro::cout << "QQ matrix" << std::endl << this->m_QQMatrix << std::endl;
+    //    if (m_verbosity > 3 && m_PQMatrix.rows() > 0)
+    //      molpro::cout << "QQ overlap" << std::endl << this->m_QQOverlap << std::endl;
+    if (m_verbosity > -2)
       molpro::cout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
-    if (m_verbosity > 2)
+    if (m_verbosity > -2)
       molpro::cout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
   }
 
@@ -824,12 +910,12 @@ protected:
   }
 
   /*!
-   * @brief form the combination of P and Q vectors to give the interpolated solution and corresponding residual (and
+   * @brief form the combination of P, Q and C vectors to give the interpolated solution and corresponding residual (and
    * maybe other vectors). On entry, m_solution contains the interpolation
    *
-   * @param solution On exit, the complete current solution (P and Q parts)
-   * @param residual On exit, the Q contribution to the residual. The action of the matrix on the P solution is missing,
-   * and has to be evaluated by the caller.
+   * @param solution On exit, the complete current solution (C, P and Q parts)
+   * @param residual On exit, the C and Q contribution to the residual. The action of the matrix on the P solution is
+   * missing, and has to be evaluated by the caller.
    * @param solutionP On exit, the solution projected to the P space
    * @param other On exit, interpolation of the other vectors
    */
@@ -838,7 +924,8 @@ protected:
       s.get().scal(0);
     for (auto& s : residual)
       s.get().scal(0);
-    size_t nP = m_Pvectors.size();
+    auto nP = m_pspace.size();
+    auto nQ = m_qspace.size();
     assert(nP == 0 || solutionP.size() == residual.size());
     for (auto& s : other)
       s.get().scal(0);
@@ -847,31 +934,44 @@ protected:
       if (nP > 0)
         solutionP[kkk].get().resize(nP);
       for (size_t l = 0; l < nP; l++)
-        solution[kkk].get().axpy((solutionP[kkk].get()[l] = this->m_interpolation(l, kkk)), m_Pvectors[l]);
+        solution[kkk].get().axpy((solutionP[kkk].get()[l] = this->m_interpolation(l, kkk)), m_pspace[l]);
       //      molpro::cout << "square norm of solution after P contribution " << solution[kkk]->dot(*solution[kkk]) <<
       //      std::endl;
-      size_t l = nP;
-      for (size_t ll = 0; ll < this->m_solutions.size(); ll++) {
-        for (size_t lll = 0; lll < this->m_solutions[ll].size(); lll++) {
-          if (this->m_vector_active[ll][lll]) {
-            if (m_verbosity > 3)
-              molpro::cout << "IterativeSolver::doInterpolation kkk=" << kkk << ", ll=" << ll << ", lll=" << lll
-                           << ", l=" << l << std::endl;
-            if (m_verbosity > 3)
-              molpro::cout << "Interpolation:\n" << this->m_interpolation(l, kkk) << std::endl;
-            //            molpro::cout << "residual before interpolation contribution " << residual[kkk].get() <<
-            //            std::endl;
-            solution[kkk].get().axpy(this->m_interpolation(l, kkk), this->m_solutions[ll][lll]);
-            residual[kkk].get().axpy(this->m_interpolation(l, kkk), this->m_residuals[ll][lll]);
-            //            molpro::cout << "residual after interpolation contribution " << residual[kkk].get() <<
-            //            std::endl; molpro::cout << "residual after interpolation contribution " << residual[kkk].get()
-            //            << std::endl;
-            if (other.size() > kkk)
-              other[kkk].get().axpy(this->m_interpolation(l, kkk), this->m_others[ll][lll]);
-            l++;
-          }
-        }
+      auto qkeys = m_qspace.keys();
+      for (int q = 0; q < m_qspace.size(); q++) {
+        auto l = nP + q;
+        solution[kkk].get().axpy(this->m_interpolation(l, kkk), m_qspace[qkeys[q]]);
+        residual[kkk].get().axpy(this->m_interpolation(l, kkk), m_qspace.action(qkeys[q]));
       }
+      if (m_linear) {
+        for (int c = 0; c < solution.size(); c++) {
+          auto l = nP + nQ + c;
+          solution[kkk].get().axpy(this->m_interpolation(l, kkk), m_current_c[c]);
+          residual[kkk].get().axpy(this->m_interpolation(l, kkk), m_current_g[c]);
+        }
+        // TODO
+      }
+      //      size_t l = nP;
+      //      for (size_t ll = 0; ll < this->m_solutions.size(); ll++) {
+      //        for (size_t lll = 0; lll < this->m_solutions[ll].size(); lll++) {
+      //          if (this->m_vector_active[ll][lll]) {
+      //            if (m_verbosity > 3)
+      //              molpro::cout << "IterativeSolver::doInterpolation kkk=" << kkk << ", ll=" << ll << ", lll=" << lll
+      //                           << ", l=" << l << std::endl;
+      //            if (m_verbosity > 3)
+      //              molpro::cout << "Interpolation:\n" << this->m_interpolation(l, kkk) << std::endl;
+      //                        molpro::cout << "residual before interpolation contribution " << residual[kkk].get() <<
+      //      std::endl;
+      //            solution[kkk].get().axpy(this->m_interpolation(l, kkk), this->m_solutions[ll][lll]);
+      //            residual[kkk].get().axpy(this->m_interpolation(l, kkk), this->m_residuals[ll][lll]);
+      //      molpro::cout << "residual after interpolation contribution " << residual[kkk].get() << std::endl;
+      //      molpro::cout << "residual after interpolation contribution " << residual[kkk].get() << std::endl;
+      //            if (other.size() > kkk)
+      //              other[kkk].get().axpy(this->m_interpolation(l, kkk), this->m_others[ll][lll]);
+      //            l++;
+      //          }
+      //        }
+      //      }
       //      molpro::cout << "residual before axpy " << residual[kkk].get() << std::endl;
       //      molpro::cout << "square norm of solution after Q contribution " << solution[kkk]->dot(*solution[kkk]) <<
       //      std::endl; molpro::cout << "m_residual_eigen " << m_residual_eigen << std::endl; molpro::cout << "g.w
@@ -881,11 +981,13 @@ protected:
       if (m_residual_rhs)
         residual[kkk].get().axpy(-1, this->m_rhs[kkk]);
       //      molpro::cout << "residual after axpy " << residual[kkk].get() << std::endl;
-      if (m_difference_vectors)
-        residual[kkk].get().axpy(1, this->m_last_residual[kkk]);
+      //      if (m_difference_vectors)
+      //        residual[kkk].get().axpy(1, this->m_last_residual[kkk]);
       //      if (m_difference_vectors) solution[kkk].get().axpy(1, this->m_last_solution[kkk]);
-      if (m_difference_vectors)
-        solution[kkk].get() = this->m_last_solution[kkk];
+      //      if (m_difference_vectors)
+      //        solution[kkk].get() = this->m_last_solution[kkk];
+      //         for (size_t m=0; m < residual.size(); m++) {}
+      //           residual[kkk].get().axpy(, solution[kkk]);
       //      molpro::cout << "last_residual " << this->m_last_residual[kkk] << std::endl;
       //      molpro::cout << "residual after last_residual " << residual[kkk].get() << std::endl;
       //      molpro::cout << "solution after axpy "<<solution[kkk]<<std::endl;

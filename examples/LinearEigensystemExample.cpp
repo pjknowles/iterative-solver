@@ -3,7 +3,7 @@
 // Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
 // Storage of vectors in-memory via class pv
 using scalar = double;
-constexpr size_t n = 300;     // dimension of problem
+constexpr size_t n = 10;     // dimension of problem
 constexpr scalar alpha = 100; // separation of diagonal elements
 
 class pv {
@@ -81,7 +81,7 @@ void update(std::vector<pv>& psc, const std::vector<pv>& psg, std::vector<scalar
 int main(int argc, char* argv[]) {
   molpro::linalg::LinearEigensystem<pv> solver;
   solver.m_verbosity = 1;
-  solver.m_roots = 4;
+  solver.m_roots = 2;
   solver.m_thresh = 1e-6;
   std::vector<pv> g;
   std::vector<pv> x;
@@ -94,6 +94,11 @@ int main(int argc, char* argv[]) {
   std::vector<std::vector<scalar>> Pcoeff(solver.m_roots);
   for (auto iter = 0; iter < 1000; iter++) {
     action(x, g);
+    for (auto root=0; root<x.size(); root++) {
+
+    std::cout << "x:"; for(auto i=0;i<n;i++)std::cout << " "<<x[root][i];std::cout << std::endl;
+    std::cout << "g:"; for(auto i=0;i<n;i++)std::cout << " "<<g[root][i];std::cout << std::endl;
+    }
     solver.addVector(x, g, Pcoeff);
     update(x, g, solver.eigenvalues());
     if (solver.endIteration(x, g))

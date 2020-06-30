@@ -20,41 +20,44 @@ class Q {
   std::map<int, std::map<int, scalar_type>> m_action;
   std::map<int, std::vector<scalar_type>> m_rhs;
   int m_index = 0;
-public:
   std::map<int, slowvector> m_vectors;
   std::map<int, slowvector> m_actions;
-protected:
   std::shared_ptr<P<typename fastvector::value_type, scalar_type>> m_pspace;
   std::map<int, std::vector<scalar_type>> m_metric_pspace;
   std::map<int, std::vector<scalar_type>> m_action_pspace;
+  std::vector<int> m_keys;
 
 public:
   Q(std::shared_ptr<P<typename fastvector::value_type, scalar_type>> pspace = nullptr, bool hermitian = false)
-      : m_hermitian(hermitian or pspace != nullptr), m_pspace(pspace) {}
+      : m_hermitian(hermitian or pspace != nullptr), m_pspace(pspace) {
 
-  const scalar_type& metric(int i, int j) const { return m_metric.at(i).at(j); }
+  }
 
-  const scalar_type& action(int i, int j) const { return m_action.at(i).at(j); }
+  const scalar_type& metric(int i, int j) const { return m_metric.at(m_keys[i]).at(m_keys[j]); }
 
-  const std::vector<scalar_type>& metric_pspace(int i) const { return m_metric_pspace.at(i); }
-  const std::vector<scalar_type>& action_pspace(int i) const { return m_action_pspace.at(i); }
+  const scalar_type& action(int i, int j) const { return m_action.at(m_keys[i]).at(m_keys[j]); }
+
+  const std::vector<scalar_type>& metric_pspace(int i) const { return m_metric_pspace.at(m_keys[i]); }
+  const std::vector<scalar_type>& action_pspace(int i) const { return m_action_pspace.at(m_keys[i]); }
 
   size_t size() const { return m_vectors.size(); }
 
-  const slowvector& operator[](int i) const { return m_vectors.at(i); }
-  const slowvector& action(int i) const { return m_actions.at(i); }
+  const slowvector& operator[](int i) const { return m_vectors.at(m_keys[i]); }
+  const slowvector& action(int i) const { return m_actions.at(m_keys[i]); }
 
+protected:
   /*!
    * @brief Obtain all of the keys that index vectors in the Q space
    * @return
    */
   std::vector<int> keys() const {
-    std::vector<int> result(size());
+    std::vector<int> result;
     for (const auto& vi : m_vectors)
       result.push_back(vi.first);
     return result;
   }
 
+public:
   /*!
    * @brief  Assert or test whether the underlying kernel matrix in linear problems is hermitian.
    * @param hermitian The new state
@@ -102,6 +105,7 @@ public:
     m_vectors.emplace(std::make_pair(m_index, slowvector{vector}));
     m_actions.emplace(std::make_pair(m_index, slowvector{action}));
     m_index++;
+    m_keys = keys();
   }
 
   /*!
@@ -174,6 +178,7 @@ public:
       m_metric_pspace.erase(index);
       m_action_pspace.erase(index);
     }
+    m_keys = keys();
   }
 };
 

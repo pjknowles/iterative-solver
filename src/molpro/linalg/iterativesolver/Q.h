@@ -22,20 +22,14 @@ class Q {
   int m_index = 0;
   std::map<int, slowvector> m_vectors;
   std::map<int, slowvector> m_actions;
-  std::shared_ptr<P<typename fastvector::value_type, scalar_type>> m_pspace;
+  const P<typename fastvector::value_type, scalar_type>& m_pspace;
   std::map<int, std::vector<scalar_type>> m_metric_pspace;
   std::map<int, std::vector<scalar_type>> m_action_pspace;
   std::vector<int> m_keys;
 
 public:
-  Q(std::shared_ptr<P<typename fastvector::value_type, scalar_type>> pspace = nullptr, bool hermitian = false)
-      : m_hermitian(hermitian or pspace != nullptr), m_pspace(pspace) {
-
-  }
-
-  ~Q() {
-
-  }
+  Q(const P<typename fastvector::value_type, scalar_type>& pspace, bool hermitian = false)
+      : m_hermitian(hermitian), m_pspace(pspace) {}
 
   const scalar_type& metric(int i, int j) const { return m_metric.at(m_keys[i]).at(m_keys[j]); }
 
@@ -95,13 +89,11 @@ public:
     }
     m_metric[m_index][m_index] = vector.dot(vector);
     m_action[m_index][m_index] = vector.dot(action);
-    if (m_pspace != nullptr) {
-      m_metric_pspace[m_index] = std::vector<scalar_type>(m_pspace->size());
-      m_action_pspace[m_index] = std::vector<scalar_type>(m_pspace->size());
-      for (auto i = 0; i < m_pspace->size(); i++) {
-        m_metric_pspace[m_index][i] = vector.dot((*m_pspace)[i]);
-        m_action_pspace[m_index][i] = action.dot((*m_pspace)[i]);
-      }
+    m_metric_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
+    m_action_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
+    for (auto i = 0; i < m_pspace.size(); i++) {
+      m_metric_pspace[m_index][i] = vector.dot(m_pspace[i]);
+      m_action_pspace[m_index][i] = action.dot(m_pspace[i]);
     }
     m_rhs[m_index] = std::vector<scalar_type>();
     for (const auto& rhs1 : rhs)
@@ -144,19 +136,17 @@ public:
    * @param workspace is used as scratch space, and its contents are undefined on exit unless the P space is null.
    */
   void refreshP(fastvector& workspace) {
-    if (m_pspace != nullptr) {
-      for (const auto& vi : m_vectors) {
-        const auto& i = vi.first;
-        m_metric_pspace[i].resize(m_pspace->size());
-        m_action_pspace[i].resize(m_pspace->size());
-        workspace = m_vectors[i];
-        for (auto j = 0; j < m_pspace->size(); j++) {
-          m_metric_pspace[m_index][j] = workspace.dot((*m_pspace)[j]);
-        }
-        workspace = m_actions[i];
-        for (auto j = 0; j < m_pspace->size(); j++) {
-          m_action_pspace[m_index][j] = workspace.dot((*m_pspace)[j]);
-        }
+    for (const auto& vi : m_vectors) {
+      const auto& i = vi.first;
+      m_metric_pspace[i].resize(m_pspace.size());
+      m_action_pspace[i].resize(m_pspace.size());
+      workspace = m_vectors[i];
+      for (auto j = 0; j < m_pspace.size(); j++) {
+        m_metric_pspace[m_index][j] = workspace.dot(m_pspace[j]);
+      }
+      workspace = m_actions[i];
+      for (auto j = 0; j < m_pspace.size(); j++) {
+        m_action_pspace[m_index][j] = workspace.dot(m_pspace[j]);
       }
     }
   }
@@ -178,10 +168,8 @@ public:
       m_metric[i].erase(index);
       m_action[i].erase(index);
     }
-    if (m_pspace != nullptr) {
-      m_metric_pspace.erase(index);
-      m_action_pspace.erase(index);
-    }
+    m_metric_pspace.erase(index);
+    m_action_pspace.erase(index);
     m_keys = keys();
   }
 };

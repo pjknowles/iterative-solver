@@ -129,7 +129,8 @@ public:
       m_maxQ(std::max(m_roots, size_t(16))),
       m_profiler(profiler),
       m_pspace(),
-      m_qspace(std::shared_ptr<P<value_type,scalar_type>>(&m_pspace),m_hermitian){}
+      m_qspace(m_pspace, m_hermitian)
+{}
   // clang-format on
 
   virtual ~Base() = default;

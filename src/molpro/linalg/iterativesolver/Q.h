@@ -33,6 +33,10 @@ public:
 
   }
 
+  ~Q() {
+
+  }
+
   const scalar_type& metric(int i, int j) const { return m_metric.at(m_keys[i]).at(m_keys[j]); }
 
   const scalar_type& action(int i, int j) const { return m_action.at(m_keys[i]).at(m_keys[j]); }

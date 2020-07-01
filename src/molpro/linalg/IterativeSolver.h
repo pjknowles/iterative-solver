@@ -180,11 +180,12 @@ public:
       assert(m_last_d.size() == parameters.size());
       assert(m_last_hd.size() == parameters.size());
       for (size_t k = 0; k < parameters.size(); k++) {
+        molpro::cout << "k, m_active "<<k<<" "<<m_active[k]<<std::endl;
         if (m_active[k])
           m_qspace.add(parameters[k], action[k], m_last_d[k], m_last_hd[k], m_rhs);
-        else {
-          parameters[k] = m_last_d[k];
-          action[k] = m_last_hd[k];
+        else { // TODO figure this out
+//          parameters[k] = m_last_d[k];
+//          action[k] = m_last_hd[k];
         }
       }
       m_last_d.clear();
@@ -201,7 +202,8 @@ public:
         m_s_qc[a][m] = parameters[m].get().dot(m_qspace[a]);
         m_h_qc[a][m] = action[m].get().dot(m_qspace[a]);
         m_h_cq[a][m] = m_hermitian ? m_h_qc[a][m] : parameters[m].get().dot(m_qspace.action(a));
-        molpro::cout << "a="<<a<<", m="<<m << ", m_s_qc " << m_s_qc[a][m] << ", m_h_qc " << m_h_qc[a][m] << ", m_h_cq " << m_h_cq[a][m] << std::endl;
+        molpro::cout << "a=" << a << ", m=" << m << ", m_s_qc " << m_s_qc[a][m] << ", m_h_qc " << m_h_qc[a][m]
+                     << ", m_h_cq " << m_h_cq[a][m] << std::endl;
       }
     }
     m_s_pc.clear();
@@ -266,13 +268,13 @@ public:
               << std::endl;
 #endif
     for (size_t k = 0; k < parameters.size(); k++) {
-//      m_last_d.emplace_back(parameters[k]);
-//      m_last_hd.emplace_back(action[k]);
+      //      m_last_d.emplace_back(parameters[k]);
+      //      m_last_hd.emplace_back(action[k]);
       m_last_d.emplace_back(m_current_c[k]);
       m_last_hd.emplace_back(m_current_g[k]);
     }
-//    m_last_d = m_current_c;
-//    m_last_hd = m_current_g;
+    //    m_last_d = m_current_c;
+    //    m_last_hd = m_current_g;
     return update;
   }
   bool addVector(std::vector<T>& parameters, std::vector<T>& action, vectorSetP& parametersP = nullVectorSetP<T>,
@@ -574,41 +576,60 @@ private:
     //    molpro::cout << "active "<<active[0]<<std::endl;
     //          molpro::cout << "IterativeSolverBase::adjustUpdate solution before orthogonalization:
     //          "<<solution[0]<<std::endl;
-    if (m_orthogonalize) {
-      //          molpro::cout << "IterativeSolverBase::adjustUpdate solution before orthogonalization:
-      //          "<<solution[0]<<std::endl;
-      for (auto rep = 0; rep < 2; rep++)
-        for (size_t kkk = 0; kkk < solution.size(); kkk++) {
-          if (m_active[kkk]) {
-            for (size_t i = 0; i < m_Pvectors.size(); i++) {
-              const auto& p = m_Pvectors[i];
-              scalar_type s = -solution[kkk].get().dot(p) / m_subspaceOverlap(i, i);
-              solution[kkk].get().axpy(s, p);
-            }
-            for (size_t ll = 0; ll < m_solutions.size(); ll++) {
-              for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
-                if (m_vector_active[ll][lll]) {
-                  scalar_type s =
-                      -(m_solutions[ll][lll].dot(solution[kkk])) / (m_solutions[ll][lll].dot(m_solutions[ll][lll]));
-                  solution[kkk].get().axpy(s, m_solutions[ll][lll]);
-                }
-              }
-            }
+    //    if (false and m_hermitian and m_orthogonalize) {
+    //      //          molpro::cout << "IterativeSolverBase::adjustUpdate solution before orthogonalization:
+    //      //          "<<solution[0]<<std::endl;
+    //      for (auto rep = 0; rep < 2; rep++)
+    //        for (size_t kkk = 0; kkk < solution.size(); kkk++) {
+    //          if (m_active[kkk]) {
+    //            for (size_t i = 0; i < m_Pvectors.size(); i++) {
+    //              const auto& p = m_Pvectors[i];
+    //              scalar_type s = -solution[kkk].get().dot(p) / m_subspaceOverlap(i, i);
+    //              solution[kkk].get().axpy(s, p);
+    //            }
+    //            for (size_t ll = 0; ll < m_solutions.size(); ll++) {
+    //              for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
+    //                if (m_vector_active[ll][lll]) {
+    //                  scalar_type s =
+    //                      -(m_solutions[ll][lll].dot(solution[kkk])) /
+    //                      (m_solutions[ll][lll].dot(m_solutions[ll][lll]));
+    //                  solution[kkk].get().axpy(s, m_solutions[ll][lll]);
+    //                }
+    //              }
+    //            }
+    //            for (size_t lll = 0; lll < kkk; lll++) {
+    //              if (m_active[lll]) {
+    //                scalar_type s = solution[lll].get().dot(solution[kkk]);
+    //                solution[kkk].get().axpy(-s, solution[lll]);
+    //              }
+    //            }
+    //            scalar_type s = solution[kkk].get().dot(solution[kkk]);
+    //            if (s <= 0)
+    //              m_active[kkk] = false;
+    //            else
+    //              solution[kkk].get().scal(1 / std::sqrt(s));
+    //          }
+    //        }
+    //      //          molpro::cout << "IterativeSolverBase::adjustUpdate solution after orthogonalization:
+    //      //          "<<solution[0]<<std::endl;
+    //    } else
+    if (m_residual_eigen) { // normalise and, if hermitian, mutually orthogonalise the solution
+      for (size_t kkk = 0; kkk < solution.size(); kkk++) {
+        if (m_active[kkk]) {
+          if (m_hermitian)
             for (size_t lll = 0; lll < kkk; lll++) {
               if (m_active[lll]) {
                 scalar_type s = solution[lll].get().dot(solution[kkk]);
                 solution[kkk].get().axpy(-s, solution[lll]);
               }
             }
-            scalar_type s = solution[kkk].get().dot(solution[kkk]);
-            if (s <= 0)
-              m_active[kkk] = false;
-            else
-              solution[kkk].get().scal(1 / std::sqrt(s));
-          }
+          scalar_type s = solution[kkk].get().dot(solution[kkk]);
+          if (s <= 0)
+            m_active[kkk] = false;
+          else
+            solution[kkk].get().scal(1 / std::sqrt(s));
         }
-      //          molpro::cout << "IterativeSolverBase::adjustUpdate solution after orthogonalization:
-      //          "<<solution[0]<<std::endl;
+      }
     }
   }
 
@@ -946,6 +967,11 @@ protected:
           auto l = nP + nQ + c;
           solution[kkk].get().axpy(this->m_interpolation(l, kkk), m_current_c[c]);
           residual[kkk].get().axpy(this->m_interpolation(l, kkk), m_current_g[c]);
+        }
+        if (m_residual_eigen) {
+          auto norm = solution[kkk].get().dot(solution[kkk].get());
+          solution[kkk].get().scal(1 / std::sqrt(norm));
+          residual[kkk].get().scal(1 / std::sqrt(norm));
         }
         // TODO
       }

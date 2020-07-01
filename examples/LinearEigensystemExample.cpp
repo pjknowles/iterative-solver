@@ -3,7 +3,7 @@
 // Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
 // Storage of vectors in-memory via class pv
 using scalar = double;
-constexpr size_t n = 10;     // dimension of problem
+constexpr size_t n = 10;      // dimension of problem
 constexpr scalar alpha = 100; // separation of diagonal elements
 
 class pv {
@@ -75,7 +75,7 @@ void action(const std::vector<pv>& psx, std::vector<pv>& outputs) {
 void update(std::vector<pv>& psc, const std::vector<pv>& psg, std::vector<scalar> shift = std::vector<scalar>()) {
   for (size_t k = 0; k < psc.size(); k++)
     for (size_t i = 0; i < n; i++)
-      psc[k][i] -= psg[k][i] / (shift[k] + 2 * i + alpha * (i + 1));
+      psc[k][i] -= psg[k][i] / (-shift[k] + 2 * i + alpha * (i + 1));
 }
 
 int main(int argc, char* argv[]) {
@@ -94,13 +94,39 @@ int main(int argc, char* argv[]) {
   std::vector<std::vector<scalar>> Pcoeff(solver.m_roots);
   for (auto iter = 0; iter < 1000; iter++) {
     action(x, g);
-    for (auto root=0; root<x.size(); root++) {
+    for (auto root = 0; root < x.size(); root++) {
 
-    std::cout << "x:"; for(auto i=0;i<n;i++)std::cout << " "<<x[root][i];std::cout << std::endl;
-    std::cout << "g:"; for(auto i=0;i<n;i++)std::cout << " "<<g[root][i];std::cout << std::endl;
+      std::cout << "x:";
+      for (auto i = 0; i < n; i++)
+        std::cout << " " << x[root][i];
+      std::cout << std::endl;
+      std::cout << "g:";
+      for (auto i = 0; i < n; i++)
+        std::cout << " " << g[root][i];
+      std::cout << std::endl;
     }
     solver.addVector(x, g, Pcoeff);
+    for (auto root = 0; root < x.size(); root++) {
+      std::cout << "after addVector() x:";
+      for (auto i = 0; i < n; i++)
+        std::cout << " " << x[root][i];
+      std::cout << std::endl;
+      std::cout << "after addVector() g:";
+      for (auto i = 0; i < n; i++)
+        std::cout << " " << g[root][i];
+      std::cout << std::endl;
+    }
     update(x, g, solver.eigenvalues());
+    for (auto root = 0; root < x.size(); root++) {
+      std::cout << "after update() x:";
+      for (auto i = 0; i < n; i++)
+        std::cout << " " << x[root][i];
+      std::cout << std::endl;
+      std::cout << "after update() g:";
+      for (auto i = 0; i < n; i++)
+        std::cout << " " << g[root][i];
+      std::cout << std::endl;
+    }
     if (solver.endIteration(x, g))
       break;
   }

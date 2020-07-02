@@ -171,11 +171,11 @@ public:
     assert(parameters.size() == action.size());
     assert(m_roots == parameters.size());
     m_iterations++;
-    m_current_c.clear();
-    m_current_g.clear();
+    m_current_r.clear();
+    m_current_v.clear();
     for (size_t k = 0; k < parameters.size(); k++) {
-      m_current_c.push_back(parameters[k]);
-      m_current_g.push_back(action[k]);
+      m_current_r.push_back(parameters[k]);
+      m_current_v.push_back(action[k]);
     }
     if (not m_last_d.empty()) {
       assert(m_last_d.size() == parameters.size());
@@ -194,39 +194,39 @@ public:
     }
     // TODO this generates another read for the q space which could perhaps be avoided
     for (auto a = 0; a < m_qspace.size(); a++) {
-      m_s_qc[a] = std::vector<scalar_type>(parameters.size());
-      m_h_qc[a] = std::vector<scalar_type>(parameters.size());
-      m_h_cq[a] = std::vector<scalar_type>(parameters.size());
+      m_s_qr[a] = std::vector<scalar_type>(parameters.size());
+      m_h_qr[a] = std::vector<scalar_type>(parameters.size());
+      m_h_rq[a] = std::vector<scalar_type>(parameters.size());
       const auto& qa = m_qspace[a];
       const auto& qha = m_qspace.action(a);
       for (size_t m = 0; m < parameters.size(); m++) {
-        m_s_qc[a][m] = parameters[m].get().dot(m_qspace[a]);
-        m_h_qc[a][m] = action[m].get().dot(m_qspace[a]);
-        m_h_cq[a][m] = m_hermitian ? m_h_qc[a][m] : parameters[m].get().dot(m_qspace.action(a));
-        molpro::cout << "a=" << a << ", m=" << m << ", m_s_qc " << m_s_qc[a][m] << ", m_h_qc " << m_h_qc[a][m]
-                     << ", m_h_cq " << m_h_cq[a][m] << std::endl;
+        m_s_qr[a][m] = parameters[m].get().dot(m_qspace[a]);
+        m_h_qr[a][m] = action[m].get().dot(m_qspace[a]);
+        m_h_rq[a][m] = m_hermitian ? m_h_qr[a][m] : parameters[m].get().dot(m_qspace.action(a));
+        molpro::cout << "a=" << a << ", m=" << m << ", m_s_qc " << m_s_qr[a][m] << ", m_h_qc " << m_h_qr[a][m]
+                     << ", m_h_cq " << m_h_rq[a][m] << std::endl;
       }
     }
-    m_s_pc.clear();
-    m_h_pc.clear();
-    m_h_cp.clear();
+    m_s_pr.clear();
+    m_h_pr.clear();
+    m_h_rp.clear();
     for (auto p = 0; p < m_pspace.size(); p++) {
-      m_s_pc.push_back(std::vector<scalar_type>(parameters.size()));
-      m_h_pc.push_back(std::vector<scalar_type>(parameters.size()));
-      m_h_cp.push_back(std::vector<scalar_type>(parameters.size()));
+      m_s_pr.push_back(std::vector<scalar_type>(parameters.size()));
+      m_h_pr.push_back(std::vector<scalar_type>(parameters.size()));
+      m_h_rp.push_back(std::vector<scalar_type>(parameters.size()));
       for (size_t k = 0; k < parameters.size(); k++) {
-        m_s_pc[p][k] = parameters[k].get().dot(m_pspace[p]);
-        m_h_pc[p][k] = m_h_cp[p][k] = action[k].get().dot(m_pspace[p]);
+        m_s_pr[p][k] = parameters[k].get().dot(m_pspace[p]);
+        m_h_pr[p][k] = m_h_rp[p][k] = action[k].get().dot(m_pspace[p]);
       }
     }
-    m_s_cc.clear();
-    m_h_cc.clear();
+    m_s_rr.clear();
+    m_h_rr.clear();
     for (auto m = 0; m < parameters.size(); m++) {
-      m_s_cc.push_back(std::vector<scalar_type>(parameters.size()));
-      m_h_cc.push_back(std::vector<scalar_type>(parameters.size()));
+      m_s_rr.push_back(std::vector<scalar_type>(parameters.size()));
+      m_h_rr.push_back(std::vector<scalar_type>(parameters.size()));
       for (size_t n = 0; n < parameters.size(); n++) {
-        m_s_cc[m][n] = parameters[n].get().dot(parameters[m].get());
-        m_h_cc[m][n] = action[n].get().dot(parameters[m].get());
+        m_s_rr[m][n] = parameters[n].get().dot(parameters[m].get());
+        m_h_rr[m][n] = action[n].get().dot(parameters[m].get());
       }
     }
 
@@ -271,8 +271,8 @@ public:
     for (size_t k = 0; k < parameters.size(); k++) {
       //      m_last_d.emplace_back(parameters[k]);
       //      m_last_hd.emplace_back(action[k]);
-      m_last_d.emplace_back(m_current_c[k]);
-      m_last_hd.emplace_back(m_current_g[k]);
+      m_last_d.emplace_back(m_current_r[k]);
+      m_last_hd.emplace_back(m_current_v[k]);
     }
     //    m_last_d = m_current_c;
     //    m_last_hd = m_current_g;
@@ -326,8 +326,9 @@ public:
    * The contribution from the new, and any existing, P parameters is missing, and should be added in subsequently.
    * \param parametersP On exit, the interpolated solution projected onto the P space.
    * \param other On exit, interpolation of the other vectors
+   * \return The number of vectors contained in parameters, action, parametersP, other
    */
-  void addP(std::vector<Pvector> Pvectors, const scalar_type* PP, vectorRefSet parameters, vectorRefSet action,
+  int addP(std::vector<Pvector> Pvectors, const scalar_type* PP, vectorRefSet parameters, vectorRefSet action,
             vectorRefSetP parametersP, vectorRefSet other = nullVectorRefSet<T>) {
     m_pspace.add(Pvectors, PP, m_rhs);
     m_qspace.refreshP(action.front());
@@ -394,15 +395,16 @@ public:
     //    for (auto ll = 0; ll < parameters.size(); ll++)
     //      molpro::cout << " after doInterpolation, parameters=" << parameters[ll]<< std::endl;
     //      molpro::cout << " after doInterpolation, g.w=" << parameters[ll]->dot(*action[ll]) << std::endl;
+    return parameters.size(); // TODO temporary
   }
-  void addP(std::vector<Pvector> Pvectors, const scalar_type* PP, std::vector<T>& parameters, std::vector<T>& action,
+  int addP(std::vector<Pvector> Pvectors, const scalar_type* PP, std::vector<T>& parameters, std::vector<T>& action,
             vectorSetP& parametersP, std::vector<T>& other = nullStdVector<T>) {
-    addP(Pvectors, PP, vectorRefSet(parameters.begin(), parameters.end()), vectorRefSet(action.begin(), action.end()),
+    return addP(Pvectors, PP, vectorRefSet(parameters.begin(), parameters.end()), vectorRefSet(action.begin(), action.end()),
          vectorRefSetP(parametersP.begin(), parametersP.end()), vectorRefSet(other.begin(), other.end()));
   }
-  void addP(Pvector Pvectors, const scalar_type* PP, T& parameters, T& action, vectorP& parametersP,
+  int addP(Pvector Pvectors, const scalar_type* PP, T& parameters, T& action, vectorP& parametersP,
             T& other = nullStdVector<T>) {
-    addP(Pvectors, PP, vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP),
+    return addP(Pvectors, PP, vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP),
          vectorRefSet(1, other));
   }
 
@@ -422,9 +424,11 @@ public:
   /*!
    * \brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
    * be used in the next iteration; this is done only in the case of linear solvers where the orthogonalize option is
-   * set. Also calculate the degree of convergence, and write progress to molpro::cout. \param solution The current
-   * solution, after interpolation and updating with the preconditioned residual. \param residual The residual after
-   * interpolation. \return true if convergence reached for all roots
+   * set. Also calculate the degree of convergence, and write progress to molpro::cout.
+   * \param solution The current
+   * solution, after interpolation and updating with the preconditioned residual.
+   * \param residual The residual after interpolation.
+   * \return The number of vectors in solution that require further refinement
    */
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) {
     calculateErrors(solution, residual);
@@ -555,12 +559,12 @@ protected:
   P<value_type, scalar_type> m_pspace;
   std::vector<slowvector> m_last_d;    ///< optimum solution in last iteration
   std::vector<slowvector> m_last_hd;   ///< action vector corresponding to optimum solution in last iteration
-  std::vector<slowvector> m_current_c; ///< current solution TODO can probably eliminate using m_last_d
-  std::vector<slowvector> m_current_g; ///< action vector corresponding to current solution
+  std::vector<slowvector> m_current_r; ///< current working space TODO can probably eliminate using m_last_d
+  std::vector<slowvector> m_current_v; ///< action vector corresponding to current working space
   std::vector<std::vector<scalar_type>> m_q_scale_factors;
-  std::vector<std::vector<scalar_type>> m_s_cc, m_h_cc;           ///< interactions within C space
-  std::map<int, std::vector<scalar_type>> m_s_qc, m_h_qc, m_h_cq; ///< interactions between C and Q spaces
-  std::vector<std::vector<scalar_type>> m_s_pc, m_h_pc, m_h_cp;   ///< interactions between C and P spaces
+  std::vector<std::vector<scalar_type>> m_s_rr, m_h_rr;           ///< interactions within R space
+  std::map<int, std::vector<scalar_type>> m_s_qr, m_h_qr, m_h_rq; ///< interactions between R and Q spaces
+  std::vector<std::vector<scalar_type>> m_s_pr, m_h_pr, m_h_rp;   ///< interactions between R and P spaces
 
 public:
   /*!
@@ -570,7 +574,12 @@ public:
   int actions() { return m_actions; }
 
 private:
-  void adjustUpdate(vectorRefSet solution) {
+  /*!
+   * @brief
+   * @param solution
+   * @return the number of solutions retained
+   */
+  int adjustUpdate(vectorRefSet solution) {
     //         molpro::cout << "m_errors[0] "<<m_errors[0]<<", m_thresh "<<m_thresh<<std::endl;
     for (size_t k = 0; k < solution.size(); k++)
       m_active[k] = (m_errors[k] >= m_thresh || m_minIterations > m_iterations);
@@ -650,19 +659,21 @@ protected:
     }
   }
 
-  int propose_singularity_deletion(size_t n, size_t nQ, size_t maxQ, const scalar_type* m,
+  int propose_singularity_deletion(size_t n, size_t nP, size_t nQ, size_t maxQ, const scalar_type* m,
                                    scalar_type threshold = 1e-10) {
-    return -1;
-    // TODO implement
     //    Eigen::EigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
     //    molpro::cout << "eigenvalues "<<ss.eigenvalues()<<std::endl;
-    //    Eigen::Map<const Eigen::Matrix<scalar_type,Eigen::Dynamic,Eigen::Dynamic>> singularTester(m,{n,n});
-    //      Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(
-    //          singularTester, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    //      //    molpro::cout << "singular values: "<<svd.singularValues().transpose()<<std::endl;
-    //      //    molpro::cout << "U: "<<svd.matrixU()<<std::endl;
-    //      //    molpro::cout << "V: "<<svd.matrixV()<<std::endl;
-    //      //    auto tester = [](Eigen::Index i) { return std::fabs(svd.matrixV(nP+i,k))};
+        Eigen::Map<const Eigen::Matrix<scalar_type,Eigen::Dynamic,Eigen::Dynamic>> singularTester(m,n,n);
+          Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(
+              singularTester, Eigen::ComputeThinU | Eigen::ComputeThinV);
+              molpro::cout << "singular values: "<<svd.singularValues().transpose()<<std::endl;
+              molpro::cout << "U: "<<svd.matrixU()<<std::endl;
+              molpro::cout << "V: "<<svd.matrixV()<<std::endl;
+              for (auto k=0; k<n; k++) {
+                if (svd.singularValues()(k) < threshold and std::fabs(svd.matrixV()(nP,k)) > threshold) return 0; // TODO make this better
+              }
+    return -1;
+//              auto tester = [](Eigen::Index i) { return std::fabs(svd.matrixV(nP+i,k))};
     //      const auto& k = n - 1;
     //      //      molpro::cout << "m_singularity_threshold "<<m_singularity_threshold<<std::endl;
     //      //      molpro::cout << "svd.singularValues()(0) "<<svd.singularValues()(0)<<std::endl;
@@ -698,11 +709,11 @@ protected:
   void buildSubspace() {
     const size_t nP = m_pspace.size();
     const size_t nQ = m_qspace.size();
-    const size_t nC = m_linear ? m_roots : 0;
-    const size_t nX = nP + nQ + nC;
+    const size_t nR = m_linear ? m_s_rr.size() : 0;
+    const size_t nX = nP + nQ + nR;
     const auto oP = 0;
     const auto oQ = oP + nP;
-    const auto oC = oQ + nQ;
+    const auto oR = oQ + nQ;
     //   molpro::cout << "buildSubspace nP="<<nP<<", nQ="<<nQ<<std::endl;
     m_subspaceMatrix.conservativeResize(nX, nX);
     m_subspaceOverlap.conservativeResize(nX, nX);
@@ -717,30 +728,30 @@ protected:
         m_subspaceMatrix(oP + i, oQ + a) = m_subspaceMatrix(oQ + a, oP + i) = action_pspace[i];
         m_subspaceOverlap(oP + i, oQ + a) = m_subspaceOverlap(oQ + a, oP + i) = metric_pspace[i];
       }
-      for (size_t m = 0; m < nC; m++) {
-        m_subspaceMatrix(oC + m, oQ + a) = m_h_cq[a][m];
-        m_subspaceMatrix(oQ + a, oC + m) = m_h_qc[a][m];
-        m_subspaceOverlap(oC + m, oQ + a) = m_s_qc[a][m];
-        m_subspaceOverlap(oQ + a, oC + m) = m_s_qc[a][m];
+      for (size_t m = 0; m < nR; m++) {
+        m_subspaceMatrix(oR + m, oQ + a) = m_h_rq[a][m];
+        m_subspaceMatrix(oQ + a, oR + m) = m_h_qr[a][m];
+        m_subspaceOverlap(oR + m, oQ + a) = m_s_qr[a][m];
+        m_subspaceOverlap(oQ + a, oR + m) = m_s_qr[a][m];
       }
     }
     for (size_t i = 0; i < nP; i++) {
-      for (size_t m = 0; m < nC; m++) {
-        m_subspaceMatrix(oC + m, oP + i) = m_h_cp[i][m];
-        m_subspaceMatrix(oP + i, oC + m) = m_h_pc[i][m];
-        m_subspaceOverlap(oC + m, oP + i) = m_s_pc[i][m];
-        m_subspaceOverlap(oP + i, oC + m) = m_s_pc[i][m];
+      for (size_t m = 0; m < nR; m++) {
+        m_subspaceMatrix(oR + m, oP + i) = m_h_rp[i][m];
+        m_subspaceMatrix(oP + i, oR + m) = m_h_pr[i][m];
+        m_subspaceOverlap(oR + m, oP + i) = m_s_pr[i][m];
+        m_subspaceOverlap(oP + i, oR + m) = m_s_pr[i][m];
       }
     }
-    for (size_t n = 0; n < nC; n++) {
-      for (size_t m = 0; m < nC; m++) {
-        m_subspaceMatrix(oC + m, oC + n) = m_h_cc[m][n];
-        m_subspaceOverlap(oC + m, oC + n) = m_s_cc[m][n];
+    for (size_t n = 0; n < nR; n++) {
+      for (size_t m = 0; m < nR; m++) {
+        m_subspaceMatrix(oR + m, oR + n) = m_h_rr[m][n];
+        m_subspaceOverlap(oR + m, oR + n) = m_s_rr[m][n];
       }
     }
     if (nQ > 0) {
       const auto& singularTester = m_residual_eigen ? m_subspaceOverlap : m_subspaceMatrix;
-      auto del = propose_singularity_deletion(nX, nQ, m_maxQ, &singularTester(0, 0), m_singularity_threshold);
+      auto del = propose_singularity_deletion(nX, nP, nQ, m_maxQ, &singularTester(0, 0), m_singularity_threshold);
       if (del >= 0) {
         m_qspace.remove(del);
         buildSubspace();
@@ -748,7 +759,7 @@ protected:
       }
     }
     if (m_verbosity > -2) {
-      molpro::cout << "nP=" << nP << ", nQ=" << nQ << ", nC=" << nC << std::endl;
+      molpro::cout << "nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
       molpro::cout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
       molpro::cout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
     }
@@ -966,8 +977,8 @@ protected:
       if (m_linear) {
         for (int c = 0; c < solution.size(); c++) {
           auto l = nP + nQ + c;
-          solution[kkk].get().axpy(this->m_interpolation(l, kkk), m_current_c[c]);
-          residual[kkk].get().axpy(this->m_interpolation(l, kkk), m_current_g[c]);
+          solution[kkk].get().axpy(this->m_interpolation(l, kkk), m_current_r[c]);
+          residual[kkk].get().axpy(this->m_interpolation(l, kkk), m_current_v[c]);
         }
         if (m_residual_eigen) {
           auto norm = solution[kkk].get().dot(solution[kkk].get());

@@ -155,7 +155,10 @@ public:
    * @brief Remove a vector from the Q space
    * @param index
    */
-  void remove(const int index) {
+  void remove(const int seq) {
+    if (m_keys.size() <= seq)
+      throw std::runtime_error("non-existent vector to erase");
+    auto index = m_keys[seq];
     if (m_vectors.erase(index) != 1)
       throw std::runtime_error("non-existent vector to erase");
     if (m_actions.erase(index) != 1)

@@ -15,7 +15,7 @@
 
 TEST(TestIterativeSolver, small_eigenproblem) {
   std::cerr << "hello" << std::endl;
-  for (size_t n = 1; n < 20; n++) {
+  for (size_t n = 1; n < 14; n++) {
     for (size_t nroot = 1; nroot <= n && nroot < 10; nroot++) {
       Eigen::MatrixXd m(n, n);
       for (size_t i = 0; i < n; i++) {
@@ -41,8 +41,8 @@ TEST(TestIterativeSolver, small_eigenproblem) {
       }
       for (size_t iter = 0; iter < n + 1; iter++) {
         for (size_t root = 0; root < x.size(); root++) {
-          g[root].scal(0);
           if (solver.active()[root])
+            g[root].scal(0);
             for (size_t i = 0; i < n; i++)
               for (size_t j = 0; j < n; j++)
                 g[root][j] += m(j, i) * x[root][i];

@@ -18,6 +18,7 @@ class Q {
   bool m_hermitian;
   std::map<int, std::map<int, scalar_type>> m_metric;
   std::map<int, std::map<int, scalar_type>> m_action;
+  std::map<int, std::map<int, scalar_type>> m_action_action;
   std::map<int, std::vector<scalar_type>> m_rhs;
   int m_index = 0;
   std::map<int, slowvector> m_vectors;
@@ -34,6 +35,7 @@ public:
   const scalar_type& metric(int i, int j) const { return m_metric.at(m_keys[i]).at(m_keys[j]); }
 
   const scalar_type& action(int i, int j) const { return m_action.at(m_keys[i]).at(m_keys[j]); }
+  const scalar_type& action_action(int i, int j) const { return m_action_action.at(m_keys[i]).at(m_keys[j]); }
 
   const std::vector<scalar_type>& metric_pspace(int i) const { return m_metric_pspace.at(m_keys[i]); }
   const std::vector<scalar_type>& action_pspace(int i) const { return m_action_pspace.at(m_keys[i]); }
@@ -76,9 +78,11 @@ public:
    */
   void add(const fastvector& vector, const fastvector& action, const std::vector<slowvector>& rhs) {
     for (const auto& vi : m_vectors) {
-      const auto& i = vi.first;
-      m_metric[m_index][i] = m_metric[i][m_index] = vector.dot(vi.second);
-      m_action[i][m_index] = action.dot(vi.second);
+      m_metric[m_index][vi.first] = m_metric[vi.first][m_index] = vector.dot(vi.second);
+      m_action[vi.first][m_index] = action.dot(vi.second);
+    }
+    for (const auto& vi : m_actions) {
+      m_action_action[vi.first][m_index] = action.dot(vi.second);
     }
     for (const auto& vi : m_actions) {
       const auto& i = vi.first;
@@ -89,6 +93,7 @@ public:
     }
     m_metric[m_index][m_index] = vector.dot(vector);
     m_action[m_index][m_index] = vector.dot(action);
+    m_action_action[m_index][m_index] = action.dot(action);
     m_metric_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
     m_action_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
     for (auto i = 0; i < m_pspace.size(); i++) {

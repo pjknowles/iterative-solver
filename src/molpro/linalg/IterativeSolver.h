@@ -21,7 +21,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <complex>
 
 #ifndef LINEARALGEBRA_OFFLINE
 #define LINEARALGEBRA_OFFLINE 0x01
@@ -240,17 +239,6 @@ public:
       }
     }
 
-//    m_added_vectors = 0;
-//    for (size_t k = 0; k < action.size(); k++) if (m_active[k]) m_added_vectors++;
-//    m_actions += m_added_vectors;
-//    m_lastVectorIndex = addVectorSet(parameters, action, other)
-//        - 1; // derivative classes might eventually store the vectors on top of previous ones, in which case they will
-//        need to store the position here for later calculation of iteration step
-//   molpro::cout << "set lastVectorIndex=addVectorSet-1="<<m_lastVectorIndex<<std::endl;
-//    scalar_type weight =
-//        this->m_options.count("weight") ? (
-//            std::strtod(this->m_options.find("weight")->second.c_str(), NULL)) : 1.0;
-//    this->m_Weights.push_back(weight); // TODO not conformant - add style
 #ifdef TIMING
     auto startTiming = std::chrono::steady_clock::now();
 #endif
@@ -272,6 +260,19 @@ public:
 #endif
     if (update) {
       calculateResidualConvergence();
+      // move any newly-converged solutions into the q space
+      //      auto save_working_set = m_working_set;
+      m_working_set.clear();
+      for (auto root = 0; root < m_roots; root++)
+        if (m_errors[root] < m_thresh and m_q_solutions.count(root) > 0 and m_working_set.size() < parameters.size()) {
+          m_working_set.push_back(root);
+        }
+      doInterpolation(parameters, action, parametersP, other, true);
+      for (auto k = 0; k < m_working_set.size(); k++) {
+        m_qspace.add(parameters[k], action[k], m_rhs);
+        m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
+      }
+      //      m_working_set = save_working_set;
       revise_working_set();
       doInterpolation(parameters, action, parametersP, other);
     }
@@ -442,14 +443,13 @@ public:
    * \param solution The current
    * solution, after interpolation and updating with the preconditioned residual.
    * \param residual The residual after interpolation.
-   * \return The number of vectors in solution that require further refinement
+   * \return Whether convergence has been reached
    */
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) {
-    calculateErrors(solution, residual);
-    if (m_error >= m_thresh)
-      adjustUpdate(solution);
+    //    calculateErrors(solution, residual);
+    adjustUpdate(solution);
     report();
-    return m_error < m_thresh;
+    return *std::max_element(m_errors.cbegin(), m_errors.cend()) < m_thresh;
   }
   virtual bool endIteration(std::vector<T>& solution, const std::vector<T>& residual) {
     return endIteration(vectorRefSet(solution.begin(), solution.end()),
@@ -525,9 +525,9 @@ public:
    */
   void setThresholds(scalar_type thresh) { m_thresh = thresh; }
 
-  unsigned int iterations() { return m_iterations; } //!< How many iterations have occurred
+  unsigned int iterations() const { return m_iterations; } //!< How many iterations have occurred
 
-  std::vector<scalar_type> eigenvalues() ///< The calculated eigenvalues of m_subspaceMatrix
+  std::vector<scalar_type> eigenvalues() const ///< The calculated eigenvalues of m_subspaceMatrix
   {
     std::vector<scalar_type> result;
     for (size_t root = 0; root < (size_t)m_roots && root < (size_t)m_subspaceEigenvalues.rows(); root++)
@@ -578,7 +578,8 @@ protected:
   std::vector<std::vector<scalar_type>> m_s_rr, m_h_rr, m_hh_rr;           ///< interactions within R space
   std::map<int, std::vector<scalar_type>> m_s_qr, m_h_qr, m_h_rq, m_hh_qr; ///< interactions between R and Q spaces
   std::vector<std::vector<scalar_type>> m_s_pr, m_h_pr, m_h_rp;            ///< interactions between R and P spaces
-  std::vector<int> m_working_set; ///< which roots are being tracked in the working set
+  std::vector<int> m_working_set;   ///< which roots are being tracked in the working set
+  std::map<int, int> m_q_solutions; ///< key of q space vector of a converged solution
 
 public:
   /*!
@@ -591,9 +592,8 @@ private:
   /*!
    * @brief
    * @param solution
-   * @return the number of solutions retained
    */
-  int adjustUpdate(vectorRefSet solution) {
+  void adjustUpdate(vectorRefSet solution) {
     //         molpro::cout << "m_errors[0] "<<m_errors[0]<<", m_thresh "<<m_thresh<<std::endl;
     for (size_t k = 0; k < solution.size(); k++)
       m_active[k] = (m_errors[k] >= m_thresh || m_minIterations > m_iterations);
@@ -638,21 +638,18 @@ private:
     //      //          "<<solution[0]<<std::endl;
     //    } else
     if (m_residual_eigen) { // normalise and, if hermitian, mutually orthogonalise the solution
-      for (size_t kkk = 0; kkk < solution.size(); kkk++) {
-        if (m_active[kkk]) {
-          if (m_hermitian)
-            for (size_t lll = 0; lll < kkk; lll++) {
-              if (m_active[lll]) {
-                scalar_type s = solution[lll].get().dot(solution[kkk]);
-                solution[kkk].get().axpy(-s, solution[lll]);
-              }
-            }
-          scalar_type s = solution[kkk].get().dot(solution[kkk]);
-          if (s <= 0)
-            m_active[kkk] = false;
-          else
-            solution[kkk].get().scal(1 / std::sqrt(s));
-        }
+      for (size_t kkk = 0; kkk < m_working_set.size(); kkk++) {
+        auto root = m_working_set[kkk];
+        if (m_hermitian)
+          for (size_t lll = 0; lll < kkk; lll++) {
+            scalar_type s = solution[lll].get().dot(solution[kkk]);
+            solution[kkk].get().axpy(-s, solution[lll]);
+          }
+        scalar_type s = solution[kkk].get().dot(solution[kkk]);
+        if (s <= 0)
+          throw std::runtime_error("Unexpected linear dependency in working set");
+        else
+          solution[kkk].get().scal(1 / std::sqrt(s));
       }
     }
   }
@@ -660,65 +657,42 @@ private:
 protected:
   virtual bool solveReducedProblem() = 0;
 
-  virtual void report() {
+  virtual void report() const {
     if (m_verbosity > 0) {
       molpro::cout << "iteration " << iterations();
       if (not m_values.empty())
         molpro::cout << ", " << m_value_print_name << " = " << m_values.back();
       if (this->m_roots > 1)
-        molpro::cout << ", error[" << m_worst << "] = ";
+        molpro::cout << ", error[" << std::max_element(m_errors.cbegin(), m_errors.cend()) - m_errors.cbegin()
+                     << "] = ";
       else
         molpro::cout << ", error = ";
-      molpro::cout << m_error << std::endl;
+      molpro::cout << *std::max_element(m_errors.cbegin(), m_errors.cend()) << std::endl;
     }
   }
 
-  int propose_singularity_deletion(size_t n, size_t nP, size_t nQ, size_t maxQ, const scalar_type* m,
+  int propose_singularity_deletion(size_t n, const scalar_type* m,
+                                   const std::vector<int>& candidates = std::vector<int>(),
                                    scalar_type threshold = 1e-10) {
     //    Eigen::EigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
     //    molpro::cout << "eigenvalues "<<ss.eigenvalues()<<std::endl;
     Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester(m, n, n);
-    Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(
-        singularTester, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    molpro::cout << "singular values: " << svd.singularValues().transpose() << std::endl;
-    molpro::cout << "U: " << svd.matrixU() << std::endl;
-    molpro::cout << "V: " << svd.matrixV() << std::endl;
-    for (auto k = 0; k < n; k++) {
-      if (svd.singularValues()(k) < threshold and std::fabs(svd.matrixV()(nP, k)) > threshold)
-        return 0; // TODO make this better
+    Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester,
+                                                                                     Eigen::ComputeThinV);
+    //    molpro::cout << "singular values: " << svd.singularValues().transpose() << std::endl;
+    //    molpro::cout << "V: " << svd.matrixV() << std::endl;
+    auto sv = svd.singularValues();
+    std::vector<int> svv;
+    for (auto k = 0; k < n; k++)
+      svv.push_back(sv(k));
+    auto most_singular = std::min_element(svv.begin(), svv.end()) - svv.begin();
+    if (svv[most_singular] > threshold)
+      return -1;
+    for (const auto& k : candidates) {
+      if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
+        return k;
     }
     return -1;
-    //              auto tester = [](Eigen::Index i) { return std::fabs(svd.matrixV(nP+i,k))};
-    //      const auto& k = n - 1;
-    //      //      molpro::cout << "m_singularity_threshold "<<m_singularity_threshold<<std::endl;
-    //      //      molpro::cout << "svd.singularValues()(0) "<<svd.singularValues()(0)<<std::endl;
-    //      //      molpro::cout << "svd.singularValues()(k) "<<svd.singularValues()(k)<<std::endl;
-    //      if (svd.singularValues()(k) < threshold * svd.singularValues()(0) ||
-    //          (m_linear && !m_orthogonalize &&
-    //              nQ > maxQ)) { // condition number assuming singular values are strictly descending
-    //        Eigen::Index imax = 0;
-    //        for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(nQ - 1); i++) { // never consider the very last Q
-    //        vector
-    //          //      molpro::cout << "consider " <<i<<": "<<svd.matrixV()(nP+i,k)<<std::endl;
-    //          //      if (std::fabs(svd.matrixV()(nP + i, k)) > std::fabs(svd.matrixV()(nP + imax, k))) imax = i;
-    //          if (std::fabs(svd.matrixV()(nP + i, k) * singularTester(nP + i, nP + i)) >
-    //              std::fabs(svd.matrixV()(nP + imax, k) * singularTester(nP + imax, nP + imax)))
-    //            imax = i;
-    //        }
-    //        //     imax=0;
-    //        if (m_verbosity > 0) {
-    //          molpro::cout << " removing singular value " << svd.singularValues()(k) / svd.singularValues()(0)
-    //                       << " by deleting redundant expansion vector " << imax << ";  new subspace size " << nQ - 1;
-    //          if (nP > 0)
-    //            molpro::cout << "Q + " << nP << "P";
-    //          molpro::cout << std::endl;
-    //        }
-    //        if (m_verbosity > 2)
-    //          molpro::cout << "  SVD right matrix column: " << svd.matrixV().col(k).transpose() << std::endl;
-    //        deleteVector(imax);
-    //        return; // deleteVector calls this function to rebuild the subspace
-    //      }
-    //    }
   }
 
   void buildSubspace() {
@@ -766,9 +740,20 @@ protected:
     }
     if (nQ > 0) {
       const auto& singularTester = m_residual_eigen ? m_subspaceOverlap : m_subspaceMatrix;
-      auto del = propose_singularity_deletion(nX, nP, nQ, m_maxQ, &singularTester(0, 0), m_singularity_threshold);
+      std::vector<int> candidates;
+      std::map<int, int> solutions_q; // map from current q space to roots
+      for (const auto& x :
+           m_q_solutions) // loop over all roots that are associated with a q vector. x.first=root, x.second=qindex
+        for (auto k = 0; k < m_qspace.keys().size(); k++)
+          if (m_qspace.keys()[k] == x.second)
+            solutions_q[k] = x.first; // TODO check logic
+      for (auto a = 0; a < nQ; a++)
+        if (solutions_q.count(a) == 0)
+          candidates.push_back(oQ + a);
+      auto del = propose_singularity_deletion(nX, &singularTester(0, 0), candidates,
+                                              nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
-        m_qspace.remove(del);
+        m_qspace.remove(del - oQ);
         buildSubspace();
         return;
       }
@@ -965,8 +950,10 @@ protected:
    * missing, and has to be evaluated by the caller.
    * @param solutionP On exit, the solution projected to the P space
    * @param other On exit, interpolation of the other vectors
+   * @param actionOnly If true, omit P space contribution and calculate action vector, not full residual
    */
-  void doInterpolation(vectorRefSet solution, vectorRefSet residual, vectorRefSetP solutionP, vectorRefSet other) {
+  void doInterpolation(vectorRefSet solution, vectorRefSet residual, vectorRefSetP solutionP, vectorRefSet other,
+                       bool actionOnly = false) {
     for (auto& s : solution)
       s.get().scal(0);
     for (auto& s : residual)
@@ -984,8 +971,9 @@ protected:
       auto root = m_working_set[kkk];
       if (nP > 0)
         solutionP[kkk].get().resize(nP);
-      for (size_t l = 0; l < nP; l++)
-        solution[kkk].get().axpy((solutionP[kkk].get()[l] = this->m_interpolation(l, root)), m_pspace[l]);
+      if (not actionOnly)
+        for (size_t l = 0; l < nP; l++)
+          solution[kkk].get().axpy((solutionP[kkk].get()[l] = this->m_interpolation(l, root)), m_pspace[l]);
       //      molpro::cout << "square norm of solution after P contribution " << solution[kkk]->dot(*solution[kkk]) <<
       //      std::endl;
       for (int q = 0; q < m_qspace.size(); q++) {
@@ -1006,49 +994,10 @@ protected:
         }
         // TODO
       }
-      //      size_t l = nP;
-      //      for (size_t ll = 0; ll < this->m_solutions.size(); ll++) {
-      //        for (size_t lll = 0; lll < this->m_solutions[ll].size(); lll++) {
-      //          if (this->m_vector_active[ll][lll]) {
-      //            if (m_verbosity > 3)
-      //              molpro::cout << "IterativeSolver::doInterpolation kkk=" << kkk << ", ll=" << ll << ", lll=" << lll
-      //                           << ", l=" << l << std::endl;
-      //            if (m_verbosity > 3)
-      //              molpro::cout << "Interpolation:\n" << this->m_interpolation(l, root) << std::endl;
-      //                        molpro::cout << "residual before interpolation contribution " << residual[kkk].get() <<
-      //      std::endl;
-      //            solution[kkk].get().axpy(this->m_interpolation(l, root), this->m_solutions[ll][lll]);
-      //            residual[kkk].get().axpy(this->m_interpolation(l, root), this->m_residuals[ll][lll]);
-      //      molpro::cout << "residual after interpolation contribution " << residual[kkk].get() << std::endl;
-      //      molpro::cout << "residual after interpolation contribution " << residual[kkk].get() << std::endl;
-      //            if (other.size() > kkk)
-      //              other[kkk].get().axpy(this->m_interpolation(l, root), this->m_others[ll][lll]);
-      //            l++;
-      //          }
-      //        }
-      //      }
-      //      molpro::cout << "residual before axpy " << residual[kkk].get() << std::endl;
-      //      molpro::cout << "square norm of solution after Q contribution " << solution[kkk]->dot(*solution[kkk]) <<
-      //      std::endl; molpro::cout << "m_residual_eigen " << m_residual_eigen << std::endl; molpro::cout << "g.w
-      //      before axpy contribution " << solution[kkk]->dot(*residual[kkk]) << std::endl;
-      if (m_residual_eigen || (m_residual_rhs && m_augmented_hessian > 0))
+      if (not actionOnly and (m_residual_eigen || (m_residual_rhs && m_augmented_hessian > 0)))
         residual[kkk].get().axpy(-this->m_subspaceEigenvalues(root).real(), solution[kkk]);
-      if (m_residual_rhs)
+      if (not actionOnly and m_residual_rhs)
         residual[kkk].get().axpy(-1, this->m_rhs[root]);
-      //            molpro::cout << "residual after axpy " << residual[kkk].get() << std::endl;
-      //      if (m_difference_vectors)
-      //        residual[kkk].get().axpy(1, this->m_last_residual[kkk]);
-      //      if (m_difference_vectors) solution[kkk].get().axpy(1, this->m_last_solution[kkk]);
-      //      if (m_difference_vectors)
-      //        solution[kkk].get() = this->m_last_solution[kkk];
-      //         for (size_t m=0; m < residual.size(); m++) {}
-      //           residual[kkk].get().axpy(, solution[kkk]);
-      //      molpro::cout << "last_residual " << this->m_last_residual[kkk] << std::endl;
-      //      molpro::cout << "residual after last_residual " << residual[kkk].get() << std::endl;
-      //      molpro::cout << "solution after axpy "<<solution[kkk]<<std::endl;
-      //      molpro::cout << "square norm of solution after axpy contribution " << solution[kkk]->dot(*solution[kkk])
-      //      << std::endl; molpro::cout << "g.w after axpy contribution " << solution[kkk]->dot(*residual[kkk]) <<
-      //      std::endl;
     }
   }
 
@@ -1057,13 +1006,13 @@ protected:
    * @param max_size
    */
   void revise_working_set(size_t max_size = INT_MAX) {
+    m_working_set.clear();
     const size_t nR = m_linear ? m_s_rr.size() : 0;
     if (max_size == INT_MAX)
       max_size = nR;
     std::vector<std::pair<int, scalar_type>> errors;
     for (auto i = 0; i < m_errors.size(); i++)
-      errors.push_back({i,m_errors[i]});
-    for (const auto& e : errors) molpro::cout << e.second <<std::endl;
+      errors.push_back({i, m_errors[i]});
     std::sort(errors.begin(), errors.end(), [&](const auto& a, const auto& b) { return (a.second < b.second); });
     for (const auto& e : errors) {
       if (m_working_set.size() > max_size or e.second < m_thresh)
@@ -1103,87 +1052,89 @@ protected:
     }
   }
 
-  void calculateErrors(const vectorRefSet solution, constVectorRefSet residual) {
-    auto errortype = 0; // step . residual
-    if (this->m_options.count("convergence") && this->m_options.find("convergence")->second == "step")
-      errortype = 1;
-    if (this->m_options.count("convergence") && this->m_options.find("convergence")->second == "residual")
-      errortype = 2;
-    if (m_verbosity > 5) {
-      molpro::cout << "IterativeSolverBase::calculateErrors m_linear" << m_linear << std::endl;
-      molpro::cout << "IterativeSolverBase::calculateErrors active";
-      for (size_t root = 0; root < solution.size(); root++)
-        molpro::cout << " " << m_active[root];
-      molpro::cout << std::endl;
-      //      molpro::cout << "IterativeSolverBase::calculateErrors solution " << solution << std::endl;
-      molpro::cout << std::endl;
-      //      molpro::cout << "IterativeSolverBase::calculateErrors residual " << residual << std::endl;
-    }
-    m_errors.clear();
-    if (m_linear && errortype != 1) { // we can use the extrapolated residual if the problem is linear
-      //      molpro::cout << "calculateErrors solution.size=" << solution.size() << std::endl;
-      for (size_t k = 0; k < solution.size(); k++) {
-        m_errors.push_back(
-            m_active[k] ? std::fabs(residual[k].get().dot(errortype == 2 ? residual[k].get() : solution[k].get()) /
-                                    solution[k].get().dot(solution[k].get()))
-                        : 0);
-        //        molpro::cout << "solution . solution " << solution[k].get().dot(solution[k].get()) << std::endl;
-        //        molpro::cout << "residual . solution " << residual[k].get().dot(solution[k].get()) << std::endl;
-        //        molpro::cout << "residual . residual " << residual[k].get().dot(residual[k].get()) << std::endl;
-      }
-    } else {
-      vectorSet step;
-      step.reserve(solution.size());
-      for (size_t k = 0; k < solution.size();
-           k++) { // contorted logic because we cannot do arithmetic on step once it is created
-        if (m_difference_vectors)
-          solution[k].get().axpy(
-              -1, m_last_solution[k]); // we won't synchronize this because the action gets undone just below
-        else
-          solution[k].get().axpy(
-              -1,
-              m_solutions[m_lastVectorIndex][k]); // we won't synchronize this because the action gets undone just below
-        step.emplace_back(solution[k].get(),
-                          LINEARALGEBRA_DISTRIBUTED | LINEARALGEBRA_OFFLINE // TODO template-ise these options
-        );
-        if (m_difference_vectors)
-          solution[k].get().axpy(1, m_last_solution[k]);
-        else
-          solution[k].get().axpy(1, m_solutions[m_lastVectorIndex][k]);
-        m_errors.push_back(
-            m_difference_vectors
-                ? std::abs(m_last_residual[k].dot(step[k])) // TODO: too pessismistic, as should used estimated gradient
-                : (m_vector_active[m_lastVectorIndex][k]
-                       ? std::fabs((errortype == 1 ? step : m_residuals[m_lastVectorIndex])[k].dot(
-                             (errortype == 2 ? m_residuals[m_lastVectorIndex][k] : step[k])))
-                       : 1));
-        //        molpro::cout << "errortype="<<errortype<<std::endl;
-        //        molpro::cout << "m_difference_vectors="<<m_difference_vectors<<std::endl;
-        //        molpro::cout << "step . step " << step[k].dot(step[k]) << std::endl;
-        //        molpro::cout << "step . m_last_residual " << step[k].dot(m_last_residual[k]) << std::endl;
-        //        molpro::cout << "m_last_residual . m_last_residual " << m_last_residual[k].dot(m_last_residual[k]) <<
-        //        std::endl; molpro::cout << "m_last_solution . m_last_solution " <<
-        //        m_last_solution[k].dot(m_last_solution[k]) << std::endl; molpro::cout << "solution . solution " <<
-        //        solution[k].get().dot(solution[k].get()) << std::endl; molpro::cout << "residual . solution " <<
-        //        residual[k].get().dot(solution[k].get()) << std::endl; molpro::cout << "residual . residual " <<
-        //        residual[k].get().dot(residual[k].get()) << std::endl;
-      }
-    }
-    for (const auto& e : m_errors)
-      if (std::isnan(e))
-        throw std::overflow_error("NaN detected in error measure");
-    if (errortype != 0)
-      for (auto& e : m_errors)
-        e = std::sqrt(e);
-    m_error = *max_element(m_errors.begin(), m_errors.end());
-    m_worst = max_element(m_errors.begin(), m_errors.end()) - m_errors.begin();
-    if (m_verbosity > 5) {
-      molpro::cout << "IterativeSolverBase::calculateErrors m_errors";
-      for (size_t root = 0; root < solution.size(); root++)
-        molpro::cout << " " << m_errors[root];
-      molpro::cout << std::endl;
-    }
-  }
+  //  void calculateErrors(const vectorRefSet solution, constVectorRefSet residual) {
+  //    auto errortype = 0; // step . residual
+  //    if (this->m_options.count("convergence") && this->m_options.find("convergence")->second == "step")
+  //      errortype = 1;
+  //    if (this->m_options.count("convergence") && this->m_options.find("convergence")->second == "residual")
+  //      errortype = 2;
+  //    if (m_verbosity > 5) {
+  //      molpro::cout << "IterativeSolverBase::calculateErrors m_linear" << m_linear << std::endl;
+  //      molpro::cout << "IterativeSolverBase::calculateErrors active";
+  //      for (size_t root = 0; root < solution.size(); root++)
+  //        molpro::cout << " " << m_active[root];
+  //      molpro::cout << std::endl;
+  //      //      molpro::cout << "IterativeSolverBase::calculateErrors solution " << solution << std::endl;
+  //      molpro::cout << std::endl;
+  //      //      molpro::cout << "IterativeSolverBase::calculateErrors residual " << residual << std::endl;
+  //    }
+  //    m_errors.clear();
+  //    if (m_linear && errortype != 1) { // we can use the extrapolated residual if the problem is linear
+  //      //      molpro::cout << "calculateErrors solution.size=" << solution.size() << std::endl;
+  //      for (size_t k = 0; k < solution.size(); k++) {
+  //        m_errors.push_back(
+  //            m_active[k] ? std::fabs(residual[k].get().dot(errortype == 2 ? residual[k].get() : solution[k].get()) /
+  //                                    solution[k].get().dot(solution[k].get()))
+  //                        : 0);
+  //        //        molpro::cout << "solution . solution " << solution[k].get().dot(solution[k].get()) << std::endl;
+  //        //        molpro::cout << "residual . solution " << residual[k].get().dot(solution[k].get()) << std::endl;
+  //        //        molpro::cout << "residual . residual " << residual[k].get().dot(residual[k].get()) << std::endl;
+  //      }
+  //    } else {
+  //      vectorSet step;
+  //      step.reserve(solution.size());
+  //      for (size_t k = 0; k < solution.size();
+  //           k++) { // contorted logic because we cannot do arithmetic on step once it is created
+  //        if (m_difference_vectors)
+  //          solution[k].get().axpy(
+  //              -1, m_last_solution[k]); // we won't synchronize this because the action gets undone just below
+  //        else
+  //          solution[k].get().axpy(
+  //              -1,
+  //              m_solutions[m_lastVectorIndex][k]); // we won't synchronize this because the action gets undone just
+  //              below
+  //        step.emplace_back(solution[k].get(),
+  //                          LINEARALGEBRA_DISTRIBUTED | LINEARALGEBRA_OFFLINE // TODO template-ise these options
+  //        );
+  //        if (m_difference_vectors)
+  //          solution[k].get().axpy(1, m_last_solution[k]);
+  //        else
+  //          solution[k].get().axpy(1, m_solutions[m_lastVectorIndex][k]);
+  //        m_errors.push_back(
+  //            m_difference_vectors
+  //                ? std::abs(m_last_residual[k].dot(step[k])) // TODO: too pessismistic, as should used estimated
+  //                gradient : (m_vector_active[m_lastVectorIndex][k]
+  //                       ? std::fabs((errortype == 1 ? step : m_residuals[m_lastVectorIndex])[k].dot(
+  //                             (errortype == 2 ? m_residuals[m_lastVectorIndex][k] : step[k])))
+  //                       : 1));
+  //        //        molpro::cout << "errortype="<<errortype<<std::endl;
+  //        //        molpro::cout << "m_difference_vectors="<<m_difference_vectors<<std::endl;
+  //        //        molpro::cout << "step . step " << step[k].dot(step[k]) << std::endl;
+  //        //        molpro::cout << "step . m_last_residual " << step[k].dot(m_last_residual[k]) << std::endl;
+  //        //        molpro::cout << "m_last_residual . m_last_residual " << m_last_residual[k].dot(m_last_residual[k])
+  //        <<
+  //        //        std::endl; molpro::cout << "m_last_solution . m_last_solution " <<
+  //        //        m_last_solution[k].dot(m_last_solution[k]) << std::endl; molpro::cout << "solution . solution " <<
+  //        //        solution[k].get().dot(solution[k].get()) << std::endl; molpro::cout << "residual . solution " <<
+  //        //        residual[k].get().dot(solution[k].get()) << std::endl; molpro::cout << "residual . residual " <<
+  //        //        residual[k].get().dot(residual[k].get()) << std::endl;
+  //      }
+  //    }
+  //    for (const auto& e : m_errors)
+  //      if (std::isnan(e))
+  //        throw std::overflow_error("NaN detected in error measure");
+  //    if (errortype != 0)
+  //      for (auto& e : m_errors)
+  //        e = std::sqrt(e);
+  //    m_error = *max_element(m_errors.begin(), m_errors.end());
+  //    m_worst = max_element(m_errors.begin(), m_errors.end()) - m_errors.begin();
+  //    if (m_verbosity > 5) {
+  //      molpro::cout << "IterativeSolverBase::calculateErrors m_errors";
+  //      for (size_t root = 0; root < solution.size(); root++)
+  //        molpro::cout << " " << m_errors[root];
+  //      molpro::cout << std::endl;
+  //    }
+  //  }
 
 protected:
   static void copyvec(std::vector<vectorSet>& history, const vectorRefSet newvec,
@@ -1222,129 +1173,6 @@ protected:
   }
 
 public:
-  size_t addVectorSet(const vectorRefSet solution, const vectorRefSet residual, const vectorRefSet other) {
-    //   molpro::cout << "addVectorSet entry"<<std::endl;
-    //      if (residual.m_vector_active.front()==0) molpro::cout <<"warning: inactive residual"<<std::endl;
-    //      if (solution.m_vector_active.front()==0) molpro::cout <<"warning: inactive solution"<<std::endl;
-    //         for (size_t kkk=0; kkk<solution.size(); kkk++)
-    //             molpro::cout << "addVectorSet solution: "<<solution[kkk]<<std::endl;
-    //      for (size_t kkk=0; kkk<residual.size(); kkk++)
-    //          molpro::cout << "addVectorSet residual: "<<residual[kkk]<<std::endl;
-    //   molpro::cout << "addVectorSet before emplace_back()"<<std::endl;
-    if (m_difference_vectors) { // TODO incomplete
-      if (m_iterations > 1) {
-        copyvec(m_residuals, residual, m_last_residual);
-        copyvec(m_solutions, solution, m_last_solution);
-        //        molpro::cout << "copyvec into m_solutions:"<<std::endl;
-        //        molpro::cout << "solution: "<<solution.front().get()<<std::endl;
-        //        molpro::cout << "m_last_solution: "<<m_last_solution.front()<<std::endl;
-        //        molpro::cout << "m_solutions: "<<m_solutions.size()<<m_solutions.back().front()<<std::endl;
-        copyvec(m_others, other, m_last_other);
-        m_subspaceGradient.conservativeResize(m_solutions.size(), residual.size());
-        size_t i = 0;
-        for (size_t ii = 0; ii < m_solutions.size(); ii++) {
-          if (not m_vector_active[ii][0])
-            continue;
-          for (size_t k = 0; k < residual.size(); k++) {
-            //            molpro::cout << "form m_subspaceGradient(" << i << "," << k << ") from" << std::endl;
-            //            molpro::cout << residual[k].get() << std::endl;
-            //            molpro::cout << m_solutions[ii][k] << std::endl;
-            m_subspaceGradient(i, k) = residual[k].get().dot(m_solutions[ii][k]);
-            //            molpro::cout << "form m_subspaceGradient(" << i << "," << k << ") =" << m_subspaceGradient(i,
-            //            k) << std::endl;
-          }
-          i++;
-        }
-      } else {
-      }
-      //      molpro::cout << "copyvec m_last_residual residual, self dot =
-      //      "<<residual.front().get().dot(residual.front().get())<<std::endl;
-      copyvec(m_last_residual, residual);
-      copyvec(m_last_solution, solution);
-      copyvec(m_last_other, other);
-    } else {
-      copyvec(m_residuals, residual);
-      copyvec(m_solutions, solution);
-      copyvec(m_others, other);
-    }
-    m_vector_active.emplace_back();
-    for (size_t k = 0; k < solution.size(); k++)
-      m_vector_active.back().push_back(m_active[k]);
-    //   molpro::cout << "addVectorSet after emplace_back()"<<std::endl;
-    const vectorRefSet& residual1 = (m_difference_vectors && !m_residuals.empty())
-                                        ? vectorRefSet(m_residuals.back().begin(), m_residuals.back().end())
-                                        : residual;
-    const vectorRefSet& solution1 = (m_difference_vectors && !m_solutions.empty())
-                                        ? vectorRefSet(m_solutions.back().begin(),
-                                                       m_solutions.back().end())
-                                        : solution; //      for (size_t kkk=0; kkk<solution.size(); kkk++)
-                                                    //   for (size_t kkk=0; kkk<solution.size(); kkk++)
-    //             molpro::cout << "solution: "<<solution[kkk]<<std::endl;
-    //         for (size_t kkk=0; kkk<residual.size(); kkk++)
-    //             molpro::cout << "residual: "<<residual[kkk]<<std::endl;
-    //      molpro::cout << "appendQQMatrix"<<std::endl;
-    //      molpro::cout << "residual"<<std::endl<<residual[0]<<std::endl;
-    //      molpro::cout << "solution"<<std::endl<<solution[0]<<std::endl;
-    auto nP = m_PQMatrix.rows();
-    auto old_size = m_QQMatrix.rows();
-    //    auto new_size = old_size + count(residual1.m_vector_active.begin(), residual1.m_vector_active.end(), true);
-    auto new_size = old_size;
-    if (!m_residuals.empty() && !m_residuals.back().empty())
-      for (size_t i = 0; i < residual1.size(); i++)
-        if (m_active[i])
-          ++new_size;
-    //    molpro::cout << "old_size=" << old_size << std::endl;
-    //    molpro::cout << "new_size=" << new_size << std::endl;
-    //    molpro::cout << "added " << (m_residuals.empty() ? 0 : m_residuals.back().size()) << std::endl;
-    m_QQMatrix.conservativeResize(new_size, new_size);
-    m_QQOverlap.conservativeResize(new_size, new_size);
-    m_PQMatrix.conservativeResize(nP, new_size);
-    m_PQOverlap.conservativeResize(nP, new_size);
-    m_subspaceRHS.conservativeResize(new_size + nP, m_rhs.size());
-    std::vector<vectorSet>* bra = m_subspaceMatrixResRes ? &m_residuals : &m_solutions;
-    auto k = old_size;
-    for (size_t kkk = 0; kkk < residual1.size(); kkk++) {
-      if (m_active[kkk]) {
-        for (auto l = 0; l < nP; l++) {
-          m_PQMatrix(l, k) = residual1[kkk].get().dot(m_Pvectors[l]);
-          m_PQOverlap(l, k) = solution1[kkk].get().dot(m_Pvectors[l]);
-        }
-        size_t l = 0;
-        for (size_t ll = 0; ll < m_solutions.size(); ll++) {
-          for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
-            if (m_vector_active[ll][lll]) {
-              //              molpro::cout << "bra"<<std::endl<<(*bra)[ll][lll]<<std::endl;
-              //              molpro::cout << "residual1"<<std::endl<<residual1[kkk]<<std::endl;
-              //              molpro::cout << "m_solutions[ll]"<<std::endl<<m_solutions[ll][lll]<<std::endl;
-              if (m_hermitian or m_subspaceMatrixResRes) {
-                m_QQMatrix(k, l) = m_QQMatrix(l, k) = (*bra)[ll][lll].dot(residual1[kkk]);
-              } else {
-                m_QQMatrix(l, k) = (*bra)[ll][lll].dot(residual1[kkk]);
-                m_QQMatrix(k, l) = m_residuals[ll][lll].dot(solution1[kkk]);
-              }
-              m_QQOverlap(k, l) = m_QQOverlap(l, k) = m_solutions[ll][lll].dot(solution1[kkk]);
-              l++;
-            }
-          }
-        }
-        for (size_t l = 0; l < m_rhs.size(); l++) {
-          //      molpro::cout << "m_rhs: "<<m_rhs[l]<<std::endl;
-          //      molpro::cout << "solution1: "<<solution1[kkk]<<std::endl;
-          m_subspaceRHS(nP + k, l) = m_rhs[l].dot(solution1[kkk]);
-          //      molpro::cout << "T product: "<<m_subspaceRHS(nP+k,l)<<std::endl;
-        }
-        m_dateOfBirth.push_back(++m_date);
-        k++;
-      }
-    }
-    if (m_verbosity > 3) {
-      molpro::cout << "QQ Matrix: " << std::endl << m_QQMatrix << std::endl;
-      molpro::cout << "QQ Overlap: " << std::endl << m_QQOverlap << std::endl;
-    }
-    //   molpro::cout << "addVectorSet exit"<<std::endl;
-    return m_residuals.size();
-  }
-
   void deleteVector(size_t index) {
     //    molpro::cout << "deleteVector "<<index<<std::endl;
     //    molpro::cout << "old m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
@@ -1534,13 +1362,19 @@ private:
     return true;
   }
 
-  void report() override {
+  void report() const override {
     std::vector<scalar_type> ev = this->eigenvalues();
     if (m_verbosity > 0) {
-      molpro::cout << "iteration " << this->iterations() << "[" << this->m_added_vectors << "]";
+      molpro::cout << "iteration " << this->iterations() << "[" << this->m_working_set.size() << "]";
       if (!this->m_Pvectors.empty())
         molpro::cout << ", P=" << this->m_Pvectors.size();
-      molpro::cout << ", error[" << this->m_worst << "] = " << this->m_error << ", eigenvalues: ";
+      if (this->m_roots > 1)
+        molpro::cout << ", error["
+                     << std::max_element(this->m_errors.cbegin(), this->m_errors.cend()) - this->m_errors.cbegin()
+                     << "] = ";
+      else
+        molpro::cout << ", error = ";
+      molpro::cout << *std::max_element(this->m_errors.cbegin(), this->m_errors.cend()) << ", eigenvalues: ";
       for (const auto e : ev)
         molpro::cout << " " << e;
       molpro::cout << std::endl;
@@ -1869,14 +1703,14 @@ public:
     return endIteration(vectorRefSet(1, solution), constVectorRefSet(1, residual));
   }
 
-  virtual void report() override {
+  virtual void report() const override {
     if (m_verbosity > 0) {
       molpro::cout << "iteration " << this->iterations();
       if (m_linesearch_steplength != 0)
         molpro::cout << ", line search step = " << m_linesearch_steplength;
       if (not m_values.empty())
         molpro::cout << ", " << this->m_value_print_name << " = " << m_values.back();
-      molpro::cout << ", error = " << this->m_error << std::endl;
+      molpro::cout << ", error = " << this->m_errors.front() << std::endl;
     }
   }
 };

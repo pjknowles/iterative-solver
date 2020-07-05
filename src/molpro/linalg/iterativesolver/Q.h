@@ -45,9 +45,10 @@ public:
   const slowvector& operator[](int i) const { return m_vectors.at(m_keys[i]); }
   const slowvector& action(int i) const { return m_actions.at(m_keys[i]); }
 
-protected:
+public:
   /*!
-   * @brief Obtain all of the keys that index vectors in the Q space
+   * @brief Obtain all of the keys that index vectors in the Q space.
+   * If the Q space is modified such that vectors change their position, the key of the vector will never change.
    * @return
    */
   std::vector<int> keys() const {

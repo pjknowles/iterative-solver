@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
       molpro::linalg::LinearEigensystem<pv> solver;
       solver.m_verbosity = 1;
       solver.m_roots = nroot;
-      solver.m_thresh = 1e-8;
+      solver.m_thresh = 1e-9;
       std::vector<pv> g;
       std::vector<pv> x;
       for (size_t root = 0; root < solver.m_roots; root++) {

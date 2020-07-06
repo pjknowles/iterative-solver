@@ -75,11 +75,12 @@ TEST(TestIterativeSolver, small_eigenproblem) {
             }
           }
         }
-        //        std::cout << "eigenvector "<<0<<active[0]<<" before endIteration"; for (size_t i = 0; i < n; i++)
-        //        std::cout << " " << x[0][i]; std::cout << std::endl; auto conv = (solver.endIteration(x, g, active));
+                std::cout << "eigenvector "<<0<<" before endIteration"; for (size_t i = 0; i < n; i++)
+                std::cout << " " << x[0][i]; std::cout << std::endl;
+//                auto conv = (solver.endIteration(x, g, active));
         //        std::cout << "eigenvector "<<0<<active[0]<<" after endIteration"; for (size_t i = 0; i < n; i++)
         //        std::cout << " " << x[0][i]; std::cout << std::endl; if (conv) break;
-        if (solver.endIteration(x, g))
+        if (*std::max_element(solver.errors().begin(),solver.errors().end()) < solver.m_thresh and solver.endIteration(x, g))
           break;
       }
       //  std::cout << "Error={ "; for (const auto& e : solver.errors()) std::cout << e << " "; std::cout << "} after "
@@ -90,9 +91,12 @@ TEST(TestIterativeSolver, small_eigenproblem) {
                   ::testing::Pointwise(::testing::DoubleNear(1e-10), std::vector<double>(nroot, double(0))));
       EXPECT_THAT(solver.eigenvalues(), ::testing::Pointwise(::testing::DoubleNear(1e-10),
                                                              std::vector<double>(val.data(), val.data() + nroot)));
+      std::vector<int> roots;
+      for (size_t root = 0; root < solver.m_roots; root++) roots.push_back(root);
+      solver.solution(roots,x,g);
       for (size_t root = 0; root < solver.m_roots; root++) {
-        if (solver.m_verbosity > 1) {
-          std::cout << "eigenvector " << root << " active=" << solver.active()[root]
+        if (solver.m_verbosity > -2) {
+          std::cout << "eigenvector " << root << " eigenvalue=" << solver.eigenvalues()[root]
                     << " converged=" << solver.errors()[root] << ":";
           for (size_t i = 0; i < n; i++)
             std::cout << " " << x[root][i];

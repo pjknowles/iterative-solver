@@ -83,7 +83,7 @@ public:
       m_action[vi.first][m_index] = action.dot(vi.second);
     }
     for (const auto& vi : m_actions) {
-      m_action_action[vi.first][m_index] = action.dot(vi.second);
+      m_action_action[m_index][vi.first] = m_action_action[vi.first][m_index] = action.dot(vi.second);
     }
     for (const auto& vi : m_actions) {
       const auto& i = vi.first;
@@ -122,6 +122,7 @@ public:
   scalar_type add(const fastvector& vector, const fastvector& action, const slowvector& oldvector,
                   const slowvector& oldaction, const std::vector<slowvector>& rhs) {
     auto norm = vector.dot(vector) + oldvector.dot(oldvector) - 2 * vector.dot(oldvector);
+    if (norm <= 0) norm=1; // let linear dependence code deal with this exceptional case later
     auto scale = 1 / std::sqrt(norm);
     auto& v = const_cast<fastvector&>(vector);
     auto& a = const_cast<fastvector&>(action);

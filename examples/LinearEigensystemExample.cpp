@@ -80,7 +80,7 @@ void update(std::vector<pv>& psc, const std::vector<pv>& psg, std::vector<scalar
 
 int main(int argc, char* argv[]) {
   molpro::linalg::LinearEigensystem<pv> solver;
-  solver.m_verbosity = 1;
+  solver.m_verbosity = 2;
   solver.m_roots = 2;
   solver.m_thresh = 1e-6;
   std::vector<pv> g;
@@ -92,22 +92,24 @@ int main(int argc, char* argv[]) {
     x.back()[root] = 1; // initial guess
   }
   std::vector<std::vector<scalar>> Pcoeff(solver.m_roots);
-  for (auto iter = 0; iter < 1000; iter++) {
+  for (auto iter = 0; iter < (n-1)/solver.m_roots+1; iter++) {
     action(x, g);
     for (auto root = 0; root < x.size(); root++) {
-
-      std::cout << "x:";
+      std::cout << "before addVector() x:";
       for (auto i = 0; i < n; i++)
         std::cout << " " << x[root][i];
       std::cout << std::endl;
-      std::cout << "g:";
+      std::cout << "before addVector() g:";
       for (auto i = 0; i < n; i++)
         std::cout << " " << g[root][i];
       std::cout << std::endl;
     }
     solver.addVector(x, g, Pcoeff);
     for (auto root = 0; root < x.size(); root++) {
-      std::cout << "after addVector() x:";
+      std::cout << "after addVector()"
+                <<" eigenvalue="<<solver.eigenvalues()[root]
+          <<" error="<<solver.errors()[root]
+          <<" x:";
       for (auto i = 0; i < n; i++)
         std::cout << " " << x[root][i];
       std::cout << std::endl;

@@ -123,7 +123,7 @@ public:
       m_dimension(0),
       m_value_print_name("value"),
       m_iterations(0),
-      m_singularity_threshold(1e-16),
+      m_singularity_threshold(1e-14),
       m_added_vectors(0),
       m_augmented_hessian(0),
       m_svdThreshold(1e-15),
@@ -166,61 +166,57 @@ public:
    */
   bool addVector(vectorRefSet parameters, vectorRefSet action, vectorRefSetP parametersP = nullVectorRefSetP<T>,
                  vectorRefSet other = nullVectorRefSet<T>) {
-    m_active.resize(parameters.size(), true);
+    //    m_active.resize(parameters.size(), true);
     if (m_roots < 1)
-      m_roots = parameters.size(); // number of roots defaults to size of parameters
-    if (m_working_set.empty())
+      m_roots = parameters.size();                      // number of roots defaults to size of parameters
+    if (m_qspace.size() == 0 and m_working_set.empty()) // initial
       for (auto i = 0; i < parameters.size(); i++)
         m_working_set.push_back(i);
     //    if (!m_orthogonalize && m_roots > m_maxQ) m_maxQ = m_roots;
+    molpro::cout << "m_working_set size " << m_working_set.size() << std::endl;
+    assert(parameters.size() <= m_working_set.size());
     assert(parameters.size() == action.size());
     m_iterations++;
     m_current_r.clear();
     m_current_v.clear();
-    for (size_t k = 0; k < parameters.size(); k++) {
+    for (size_t k = 0; k < m_working_set.size(); k++) {
       m_current_r.push_back(parameters[k]);
       m_current_v.push_back(action[k]);
     }
     if (not m_last_d.empty()) {
-      assert(m_last_d.size() == parameters.size());
-      assert(m_last_hd.size() == parameters.size());
-      for (size_t k = 0; k < parameters.size(); k++) {
-        molpro::cout << "k, m_active " << k << " " << m_active[k] << std::endl;
-        if (m_active[k])
-          m_qspace.add(parameters[k], action[k], m_last_d[k], m_last_hd[k], m_rhs);
-        else { // TODO figure this out
-               //          parameters[k] = m_last_d[k];
-               //          action[k] = m_last_hd[k];
-        }
+      assert(m_last_d.size() == m_working_set.size());
+      assert(m_last_hd.size() == m_working_set.size());
+      for (size_t k = 0; k < m_working_set.size(); k++) {
+        m_qspace.add(parameters[k], action[k], m_last_d[k], m_last_hd[k], m_rhs);
       }
       m_last_d.clear();
       m_last_hd.clear();
     }
     // TODO this generates another read for the q space which could perhaps be avoided
     for (auto a = 0; a < m_qspace.size(); a++) {
-      m_s_qr[a] = std::vector<scalar_type>(parameters.size());
-      m_h_qr[a] = std::vector<scalar_type>(parameters.size());
-      m_hh_qr[a] = std::vector<scalar_type>(parameters.size());
-      m_h_rq[a] = std::vector<scalar_type>(parameters.size());
+      m_s_qr[a] = std::vector<scalar_type>(m_working_set.size());
+      m_h_qr[a] = std::vector<scalar_type>(m_working_set.size());
+      m_hh_qr[a] = std::vector<scalar_type>(m_working_set.size());
+      m_h_rq[a] = std::vector<scalar_type>(m_working_set.size());
       const auto& qa = m_qspace[a];
       const auto& qha = m_qspace.action(a);
-      for (size_t m = 0; m < parameters.size(); m++) {
+      for (size_t m = 0; m < m_working_set.size(); m++) {
         m_s_qr[a][m] = parameters[m].get().dot(m_qspace[a]);
         m_h_qr[a][m] = action[m].get().dot(m_qspace[a]);
         m_hh_qr[a][m] = action[m].get().dot(m_qspace.action(a));
         m_h_rq[a][m] = m_hermitian ? m_h_qr[a][m] : parameters[m].get().dot(m_qspace.action(a));
-        molpro::cout << "a=" << a << ", m=" << m << ", m_s_qc " << m_s_qr[a][m] << ", m_h_qc " << m_h_qr[a][m]
-                     << ", m_h_cq " << m_h_rq[a][m] << std::endl;
+        //        molpro::cout << "a=" << a << ", m=" << m << ", m_s_qr " << m_s_qr[a][m] << ", m_h_qr " << m_h_qr[a][m]
+        //                     << ", m_h_rq " << m_h_rq[a][m] << std::endl;
       }
     }
     m_s_pr.clear();
     m_h_pr.clear();
     m_h_rp.clear();
     for (auto p = 0; p < m_pspace.size(); p++) {
-      m_s_pr.push_back(std::vector<scalar_type>(parameters.size()));
-      m_h_pr.push_back(std::vector<scalar_type>(parameters.size()));
-      m_h_rp.push_back(std::vector<scalar_type>(parameters.size()));
-      for (size_t k = 0; k < parameters.size(); k++) {
+      m_s_pr.push_back(std::vector<scalar_type>(m_working_set.size()));
+      m_h_pr.push_back(std::vector<scalar_type>(m_working_set.size()));
+      m_h_rp.push_back(std::vector<scalar_type>(m_working_set.size()));
+      for (size_t k = 0; k < m_working_set.size(); k++) {
         m_s_pr[p][k] = parameters[k].get().dot(m_pspace[p]);
         m_h_pr[p][k] = m_h_rp[p][k] = action[k].get().dot(m_pspace[p]);
       }
@@ -228,11 +224,11 @@ public:
     m_s_rr.clear();
     m_h_rr.clear();
     m_hh_rr.clear();
-    for (auto m = 0; m < parameters.size(); m++) {
-      m_s_rr.push_back(std::vector<scalar_type>(parameters.size()));
-      m_h_rr.push_back(std::vector<scalar_type>(parameters.size()));
-      m_hh_rr.push_back(std::vector<scalar_type>(parameters.size()));
-      for (size_t n = 0; n < parameters.size(); n++) {
+    for (auto m = 0; m < m_working_set.size(); m++) {
+      m_s_rr.push_back(std::vector<scalar_type>(m_working_set.size()));
+      m_h_rr.push_back(std::vector<scalar_type>(m_working_set.size()));
+      m_hh_rr.push_back(std::vector<scalar_type>(m_working_set.size()));
+      for (size_t n = 0; n < m_working_set.size(); n++) {
         m_s_rr[m][n] = parameters[n].get().dot(parameters[m].get());
         m_h_rr[m][n] = action[n].get().dot(parameters[m].get());
         m_hh_rr[m][n] = action[n].get().dot(action[m].get());
@@ -282,7 +278,7 @@ public:
               << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
               << std::endl;
 #endif
-    for (size_t k = 0; k < parameters.size(); k++) {
+    for (size_t k = 0; k < m_working_set.size(); k++) {
       //      m_last_d.emplace_back(parameters[k]);
       //      m_last_hd.emplace_back(action[k]);
       m_last_d.emplace_back(m_current_r[k]);
@@ -468,6 +464,25 @@ public:
   bool active(int root) { return m_active[root]; }
   std::vector<bool> active() { return m_active.empty() ? std::vector<bool>(1000, true) : m_active; }
 
+  void solution(const std::vector<int>& roots, vectorRefSet parameters, vectorRefSet residual,
+                vectorRefSetP parametersP = nullVectorRefSetP<T>) const {
+    auto working_set_save = m_working_set;
+    m_working_set = roots;
+    auto other = nullVectorRefSet<T>;
+    doInterpolation(parameters, residual, parametersP, other);
+    m_working_set = working_set_save;
+  }
+  void solution(const std::vector<int>& roots, std::vector<T>& parameters, std::vector<T>& residual,
+                vectorSetP& parametersP = nullVectorSetP<T>) const {
+    return solution(roots, vectorRefSet(parameters.begin(), parameters.end()),
+                    vectorRefSet(residual.begin(), residual.end()),
+                    vectorRefSetP(parametersP.begin(), parametersP.end()));
+  }
+  void solution(int root, T& parameters, T& residual, vectorP& parametersP = nullVectorP<T>) const {
+    return solution(std::vector<int>(1, root), vectorRefSet(1, parameters), vectorRefSet(1, residual),
+                    vectorRefSetP(1, parametersP));
+  }
+
   /*!
    * \brief Get the solver's suggestion of which degrees of freedom would be best
    * to add to the P-space.
@@ -578,8 +593,8 @@ protected:
   std::vector<std::vector<scalar_type>> m_s_rr, m_h_rr, m_hh_rr;           ///< interactions within R space
   std::map<int, std::vector<scalar_type>> m_s_qr, m_h_qr, m_h_rq, m_hh_qr; ///< interactions between R and Q spaces
   std::vector<std::vector<scalar_type>> m_s_pr, m_h_pr, m_h_rp;            ///< interactions between R and P spaces
-  std::vector<int> m_working_set;   ///< which roots are being tracked in the working set
-  std::map<int, int> m_q_solutions; ///< key of q space vector of a converged solution
+  mutable std::vector<int> m_working_set; ///< which roots are being tracked in the working set
+  std::map<int, int> m_q_solutions;       ///< key of q space vector of a converged solution
 
 public:
   /*!
@@ -596,62 +611,62 @@ private:
   void adjustUpdate(vectorRefSet solution) {
     //         molpro::cout << "m_errors[0] "<<m_errors[0]<<", m_thresh "<<m_thresh<<std::endl;
     for (size_t k = 0; k < solution.size(); k++)
-      m_active[k] = (m_errors[k] >= m_thresh || m_minIterations > m_iterations);
-    //    molpro::cout << "active "<<active[0]<<std::endl;
-    //          molpro::cout << "IterativeSolverBase::adjustUpdate solution before orthogonalization:
-    //          "<<solution[0]<<std::endl;
-    //    if (false and m_hermitian and m_orthogonalize) {
-    //      //          molpro::cout << "IterativeSolverBase::adjustUpdate solution before orthogonalization:
-    //      //          "<<solution[0]<<std::endl;
-    //      for (auto rep = 0; rep < 2; rep++)
-    //        for (size_t kkk = 0; kkk < solution.size(); kkk++) {
-    //          if (m_active[kkk]) {
-    //            for (size_t i = 0; i < m_Pvectors.size(); i++) {
-    //              const auto& p = m_Pvectors[i];
-    //              scalar_type s = -solution[kkk].get().dot(p) / m_subspaceOverlap(i, i);
-    //              solution[kkk].get().axpy(s, p);
-    //            }
-    //            for (size_t ll = 0; ll < m_solutions.size(); ll++) {
-    //              for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
-    //                if (m_vector_active[ll][lll]) {
-    //                  scalar_type s =
-    //                      -(m_solutions[ll][lll].dot(solution[kkk])) /
-    //                      (m_solutions[ll][lll].dot(m_solutions[ll][lll]));
-    //                  solution[kkk].get().axpy(s, m_solutions[ll][lll]);
-    //                }
-    //              }
-    //            }
-    //            for (size_t lll = 0; lll < kkk; lll++) {
-    //              if (m_active[lll]) {
-    //                scalar_type s = solution[lll].get().dot(solution[kkk]);
-    //                solution[kkk].get().axpy(-s, solution[lll]);
-    //              }
-    //            }
-    //            scalar_type s = solution[kkk].get().dot(solution[kkk]);
-    //            if (s <= 0)
-    //              m_active[kkk] = false;
-    //            else
-    //              solution[kkk].get().scal(1 / std::sqrt(s));
-    //          }
-    //        }
-    //      //          molpro::cout << "IterativeSolverBase::adjustUpdate solution after orthogonalization:
-    //      //          "<<solution[0]<<std::endl;
-    //    } else
-    if (m_residual_eigen) { // normalise and, if hermitian, mutually orthogonalise the solution
-      for (size_t kkk = 0; kkk < m_working_set.size(); kkk++) {
-        auto root = m_working_set[kkk];
-        if (m_hermitian)
-          for (size_t lll = 0; lll < kkk; lll++) {
-            scalar_type s = solution[lll].get().dot(solution[kkk]);
-            solution[kkk].get().axpy(-s, solution[lll]);
-          }
-        scalar_type s = solution[kkk].get().dot(solution[kkk]);
-        if (s <= 0)
-          throw std::runtime_error("Unexpected linear dependency in working set");
-        else
-          solution[kkk].get().scal(1 / std::sqrt(s));
+      //      m_active[k] = (m_errors[k] >= m_thresh || m_minIterations > m_iterations);
+      //    molpro::cout << "active "<<active[0]<<std::endl;
+      //          molpro::cout << "IterativeSolverBase::adjustUpdate solution before orthogonalization:
+      //          "<<solution[0]<<std::endl;
+      //    if (false and m_hermitian and m_orthogonalize) {
+      //      //          molpro::cout << "IterativeSolverBase::adjustUpdate solution before orthogonalization:
+      //      //          "<<solution[0]<<std::endl;
+      //      for (auto rep = 0; rep < 2; rep++)
+      //        for (size_t kkk = 0; kkk < solution.size(); kkk++) {
+      //          if (m_active[kkk]) {
+      //            for (size_t i = 0; i < m_Pvectors.size(); i++) {
+      //              const auto& p = m_Pvectors[i];
+      //              scalar_type s = -solution[kkk].get().dot(p) / m_subspaceOverlap(i, i);
+      //              solution[kkk].get().axpy(s, p);
+      //            }
+      //            for (size_t ll = 0; ll < m_solutions.size(); ll++) {
+      //              for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
+      //                if (m_vector_active[ll][lll]) {
+      //                  scalar_type s =
+      //                      -(m_solutions[ll][lll].dot(solution[kkk])) /
+      //                      (m_solutions[ll][lll].dot(m_solutions[ll][lll]));
+      //                  solution[kkk].get().axpy(s, m_solutions[ll][lll]);
+      //                }
+      //              }
+      //            }
+      //            for (size_t lll = 0; lll < kkk; lll++) {
+      //              if (m_active[lll]) {
+      //                scalar_type s = solution[lll].get().dot(solution[kkk]);
+      //                solution[kkk].get().axpy(-s, solution[lll]);
+      //              }
+      //            }
+      //            scalar_type s = solution[kkk].get().dot(solution[kkk]);
+      //            if (s <= 0)
+      //              m_active[kkk] = false;
+      //            else
+      //              solution[kkk].get().scal(1 / std::sqrt(s));
+      //          }
+      //        }
+      //      //          molpro::cout << "IterativeSolverBase::adjustUpdate solution after orthogonalization:
+      //      //          "<<solution[0]<<std::endl;
+      //    } else
+      if (m_residual_eigen) { // normalise and, if hermitian, mutually orthogonalise the solution
+        for (size_t kkk = 0; kkk < m_working_set.size(); kkk++) {
+          auto root = m_working_set[kkk];
+          if (m_hermitian)
+            for (size_t lll = 0; lll < kkk; lll++) {
+              scalar_type s = solution[lll].get().dot(solution[kkk]);
+              solution[kkk].get().axpy(-s, solution[lll]);
+            }
+          scalar_type s = solution[kkk].get().dot(solution[kkk]);
+          if (s <= 0)
+            throw std::runtime_error("Unexpected linear dependency in working set");
+          else
+            solution[kkk].get().scal(1 / std::sqrt(s));
+        }
       }
-    }
   }
 
 protected:
@@ -679,10 +694,11 @@ protected:
     Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester(m, n, n);
     Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester,
                                                                                      Eigen::ComputeThinV);
-    //    molpro::cout << "singular values: " << svd.singularValues().transpose() << std::endl;
-    //    molpro::cout << "V: " << svd.matrixV() << std::endl;
+    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
+    molpro::cout << "singular values: " << svd.singularValues().transpose() << std::endl;
+    molpro::cout << "V: " << svd.matrixV() << std::endl;
     auto sv = svd.singularValues();
-    std::vector<int> svv;
+    std::vector<scalar_type> svv;
     for (auto k = 0; k < n; k++)
       svv.push_back(sv(k));
     auto most_singular = std::min_element(svv.begin(), svv.end()) - svv.begin();
@@ -750,10 +766,23 @@ protected:
       for (auto a = 0; a < nQ; a++)
         if (solutions_q.count(a) == 0)
           candidates.push_back(oQ + a);
+      molpro::cout << "singularTester:\n" << singularTester << std::endl;
+      molpro::cout << "candidates:";
+      for (const auto& c : candidates)
+        molpro::cout << " " << c;
+      molpro::cout << std::endl;
       auto del = propose_singularity_deletion(nX, &singularTester(0, 0), candidates,
                                               nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
+        std::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
         m_qspace.remove(del - oQ);
+        for (auto m = 0; m < nR; m++)
+          for (auto a = del - oQ; a < nQ - 1; a++) {
+            m_h_rq[a][m] = m_h_rq[a + 1][m];
+            m_h_qr[a][m] = m_h_qr[a + 1][m];
+            m_s_qr[a][m] = m_s_qr[a + 1][m];
+            m_hh_qr[a][m] = m_hh_qr[a + 1][m];
+          }
         buildSubspace();
         return;
       }
@@ -953,7 +982,7 @@ protected:
    * @param actionOnly If true, omit P space contribution and calculate action vector, not full residual
    */
   void doInterpolation(vectorRefSet solution, vectorRefSet residual, vectorRefSetP solutionP, vectorRefSet other,
-                       bool actionOnly = false) {
+                       bool actionOnly = false) const {
     for (auto& s : solution)
       s.get().scal(0);
     for (auto& s : residual)
@@ -989,6 +1018,8 @@ protected:
         }
         if (m_residual_eigen) {
           auto norm = solution[kkk].get().dot(solution[kkk].get());
+          if (norm == 0)
+            throw std::runtime_error("new solution has zero norm");
           solution[kkk].get().scal(1 / std::sqrt(norm));
           residual[kkk].get().scal(1 / std::sqrt(norm));
         }
@@ -1043,7 +1074,7 @@ protected:
           l2 = l2 + 2 * (m_hh_qr[a][m] * std::conj(m_subspaceEigenvectors(oQ + a, root)) *
                          m_subspaceEigenvectors(oR + m, root))
                             .real();
-      for (auto m = 0; m < nQ; m++)
+      for (auto m = 0; m < nR; m++)
         for (auto n = 0; n < nR; n++)
           l2 = l2 +
                (m_hh_rr[m][n] * std::conj(m_subspaceEigenvectors(oR + m, root)) * m_subspaceEigenvectors(oR + n, root))

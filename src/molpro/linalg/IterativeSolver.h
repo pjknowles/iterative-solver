@@ -173,7 +173,7 @@ public:
       for (auto i = 0; i < parameters.size(); i++)
         m_working_set.push_back(i);
     //    if (!m_orthogonalize && m_roots > m_maxQ) m_maxQ = m_roots;
-    molpro::cout << "m_working_set size " << m_working_set.size() << std::endl;
+//    molpro::cout << "m_working_set size " << m_working_set.size() << std::endl;
     if (m_working_set.size() == 0)
       return 0;
     assert(parameters.size() <= m_working_set.size());
@@ -288,7 +288,7 @@ public:
     }
     //    m_last_d = m_current_c;
     //    m_last_hd = m_current_g;
-    return update;
+    return m_working_set.size();
   }
   int addVector(std::vector<T>& parameters, std::vector<T>& action, vectorSetP& parametersP = nullVectorSetP<T>,
                 std::vector<T>& other = nullStdVector<T>) {
@@ -552,6 +552,21 @@ public:
     return result;
   }
 
+  /*!
+   * @brief The roots that are currently being tracked
+   * @return
+   */
+  const std::vector<int>& working_set() const { return m_working_set; }
+
+  std::vector<scalar_type>
+  working_set_eigenvalues() const ///< The calculated eigenvalues of m_subspaceMatrix belonging to the working set
+  {
+    std::vector<scalar_type> result;
+    for (const auto& root : m_working_set)
+      result.push_back(m_subspaceEigenvalues[root].real());
+    return result;
+  }
+
   std::vector<scalar_type> errors() const { return m_errors; } //!< Error at last iteration
 
   size_t dimensionP() const { return (size_t)m_PQMatrix.rows(); } //!< Size of P space
@@ -660,9 +675,11 @@ private:
           if (m_hermitian)
             for (size_t lll = 0; lll < kkk; lll++) {
               scalar_type s = solution[lll].get().dot(solution[kkk]);
+              molpro::cout << "overlap "<<s<<std::endl;
               solution[kkk].get().axpy(-s, solution[lll]);
             }
           scalar_type s = solution[kkk].get().dot(solution[kkk]);
+          molpro::cout << "self overlap "<<s<<std::endl;
           if (s <= 0)
             throw std::runtime_error("Unexpected linear dependency in working set");
           else
@@ -696,9 +713,9 @@ protected:
     Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester(m, n, n);
     Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester,
                                                                                      Eigen::ComputeThinV);
-        molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
-        molpro::cout << "singular values: " << svd.singularValues().transpose() << std::endl;
-        molpro::cout << "V: " << svd.matrixV() << std::endl;
+//    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
+//    molpro::cout << "singular values: " << svd.singularValues().transpose() << std::endl;
+//    molpro::cout << "V: " << svd.matrixV() << std::endl;
     auto sv = svd.singularValues();
     std::vector<scalar_type> svv;
     for (auto k = 0; k < n; k++)
@@ -768,11 +785,11 @@ protected:
       for (auto a = 0; a < nQ; a++)
         if (solutions_q.count(a) == 0)
           candidates.push_back(oQ + a);
-            molpro::cout << "singularTester:\n" << singularTester << std::endl;
-            molpro::cout << "candidates:";
-            for (const auto& c : candidates)
-              molpro::cout << " " << c;
-            molpro::cout << std::endl;
+//      molpro::cout << "singularTester:\n" << singularTester << std::endl;
+//      molpro::cout << "candidates:";
+//      for (const auto& c : candidates)
+//        molpro::cout << " " << c;
+//      molpro::cout << std::endl;
       auto del = propose_singularity_deletion(nX, &singularTester(0, 0), candidates,
                                               nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
@@ -1001,7 +1018,7 @@ protected:
     assert(nP == 0 || solutionP.size() == residual.size());
     for (size_t kkk = 0; kkk < m_working_set.size(); kkk++) {
       auto root = m_working_set[kkk];
-      molpro::cout << "working set k="<<kkk<<" root="<<root<<std::endl;
+//      molpro::cout << "working set k=" << kkk << " root=" << root << std::endl;
       if (nP > 0)
         solutionP[kkk].get().resize(nP);
       if (not actionOnly)
@@ -1052,6 +1069,7 @@ protected:
     for (const auto& e : errors) {
       if (m_working_set.size() > max_size or e.second < m_thresh)
         break;
+//      molpro::cout << "create working_set " << e.first << " " << e.second << std::endl;
       m_working_set.push_back(e.first);
     }
   }
@@ -1085,7 +1103,8 @@ protected:
           l2 = l2 + ((m_hh_rr[m][n] - eval * (m_h_rr[m][n] + m_h_rr[n][m]) + eval * eval * m_s_rr[m][n]) *
                      std::conj(m_subspaceEigenvectors(oR + m, root)) * m_subspaceEigenvectors(oR + n, root))
                         .real();
-      m_errors[root] = std::sqrt(l2);
+      m_errors[root] = std::sqrt(l2 < 0 ? 0 : l2);
+//      molpro::cout << "error " << root << " " << l2 << std::endl;
     }
   }
 

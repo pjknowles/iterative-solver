@@ -44,3 +44,6 @@ if (BENCHMARK AND FORTRAN)
         target_link_libraries(LinearEigensystemBenchmarkF PUBLIC molpro::${PROJECT_NAME})# Profiler::serial)
     endif ()
 endif ()
+
+file(COPY bh.hamiltonian DESTINATION .)
+file(COPY hf.hamiltonian DESTINATION .)

@@ -39,18 +39,18 @@ endif ()
 
 if (NOT TARGET Eigen3::Eigen)
     message(VERBOSE "Eigen3::Eigen is not yet a target")
-    find_package(Eigen3 3.3.0)
+    find_package(Eigen3 3.3.0 QUIET)
     if (EIGEN3_FOUND)
         message(STATUS "Eigen3 found on system")
     else ()
+        message(STATUS "Eigen3::Eigen not found on system, and will be downloaded")
         include(FetchContent)
         FetchContent_Declare(eigen3
-                GIT_REPOSITORY https://gitlab.com/libeigen/eigen
+                GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
                 GIT_TAG 3.3.7
                 )
         FetchContent_MakeAvailable(eigen3)
         add_library(Eigen3::Eigen ALIAS eigen)
-        message(STATUS "Eigen3::Eigen not found on system, and downloaded")
     endif ()
 else ()
     message(STATUS "LinearAlgebra: Eigen3::Eigen target already defined")

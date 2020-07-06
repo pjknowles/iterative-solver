@@ -1,5 +1,5 @@
 #include "molpro/linalg/IterativeSolver.h"
-// Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
+// Find lowest eigensolutions of a matrix obtained from an external file
 // Storage of vectors in-memory via class pv
 using scalar = double;
 size_t n = 100;               // dimension of problem
@@ -61,6 +61,7 @@ public:
 };
 
 scalar matrix(const size_t i, const size_t j) {
+  return hmat[i * n + j];
   return (i == j ? alpha * (i + 1) : 0) + i + j;
 }
 
@@ -87,7 +88,14 @@ void update(std::vector<pv>& psc, const std::vector<pv>& psg, std::vector<scalar
 }
 
 int main(int argc, char* argv[]) {
+  for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
     for (const auto& nroot : std::vector<int>{1, 2, 4}) {
+      molpro::cout << "\n\n*** " << file << ", " << nroot << " roots" << std::endl;
+      std::ifstream f(std::string{"examples/"} + file + ".hamiltonian");
+      f >> n;
+      hmat.resize(n * n);
+      for (auto i = 0; i < n * n; i++)
+        f >> hmat[i];
       molpro::cout << "diagonal elements";
       for (auto i = 0; i < n; i++)
         molpro::cout << " " << matrix(i, i);
@@ -166,4 +174,5 @@ int main(int argc, char* argv[]) {
         //        std::cout << std::endl;
       }
     }
+  }
 }

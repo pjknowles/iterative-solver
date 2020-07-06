@@ -173,7 +173,7 @@ public:
       for (auto i = 0; i < parameters.size(); i++)
         m_working_set.push_back(i);
     //    if (!m_orthogonalize && m_roots > m_maxQ) m_maxQ = m_roots;
-//    molpro::cout << "m_working_set size " << m_working_set.size() << std::endl;
+    //    molpro::cout << "m_working_set size " << m_working_set.size() << std::endl;
     if (m_working_set.size() == 0)
       return 0;
     assert(parameters.size() <= m_working_set.size());
@@ -182,6 +182,13 @@ public:
     m_current_r.clear();
     m_current_v.clear();
     for (size_t k = 0; k < m_working_set.size(); k++) {
+      if (m_residual_eigen) { // scale to roughly unit length for homogeneous equations in case the update has produced a very large vector in response to degeneracy
+        auto s = parameters[k].get().dot(parameters[k]);
+        if (std::abs(s - 1) > 1e-3) {
+          parameters[k].get().scal(1 / std::sqrt(s));
+          action[k].get().scal(1 / std::sqrt(s));
+        }
+      }
       m_current_r.push_back(parameters[k]);
       m_current_v.push_back(action[k]);
     }
@@ -445,7 +452,6 @@ public:
    */
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) {
     //    calculateErrors(solution, residual);
-    adjustUpdate(solution);
     report();
     return *std::max_element(m_errors.cbegin(), m_errors.cend()) < m_thresh;
   }
@@ -620,74 +626,6 @@ public:
    */
   int actions() { return m_actions; }
 
-private:
-  /*!
-   * @brief
-   * @param solution
-   */
-  void adjustUpdate(vectorRefSet solution) {
-    //         molpro::cout << "m_errors[0] "<<m_errors[0]<<", m_thresh "<<m_thresh<<std::endl;
-    for (size_t k = 0; k < solution.size(); k++)
-      //      m_active[k] = (m_errors[k] >= m_thresh || m_minIterations > m_iterations);
-      //    molpro::cout << "active "<<active[0]<<std::endl;
-      //          molpro::cout << "IterativeSolverBase::adjustUpdate solution before orthogonalization:
-      //          "<<solution[0]<<std::endl;
-      //    if (false and m_hermitian and m_orthogonalize) {
-      //      //          molpro::cout << "IterativeSolverBase::adjustUpdate solution before orthogonalization:
-      //      //          "<<solution[0]<<std::endl;
-      //      for (auto rep = 0; rep < 2; rep++)
-      //        for (size_t kkk = 0; kkk < solution.size(); kkk++) {
-      //          if (m_active[kkk]) {
-      //            for (size_t i = 0; i < m_Pvectors.size(); i++) {
-      //              const auto& p = m_Pvectors[i];
-      //              scalar_type s = -solution[kkk].get().dot(p) / m_subspaceOverlap(i, i);
-      //              solution[kkk].get().axpy(s, p);
-      //            }
-      //            for (size_t ll = 0; ll < m_solutions.size(); ll++) {
-      //              for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
-      //                if (m_vector_active[ll][lll]) {
-      //                  scalar_type s =
-      //                      -(m_solutions[ll][lll].dot(solution[kkk])) /
-      //                      (m_solutions[ll][lll].dot(m_solutions[ll][lll]));
-      //                  solution[kkk].get().axpy(s, m_solutions[ll][lll]);
-      //                }
-      //              }
-      //            }
-      //            for (size_t lll = 0; lll < kkk; lll++) {
-      //              if (m_active[lll]) {
-      //                scalar_type s = solution[lll].get().dot(solution[kkk]);
-      //                solution[kkk].get().axpy(-s, solution[lll]);
-      //              }
-      //            }
-      //            scalar_type s = solution[kkk].get().dot(solution[kkk]);
-      //            if (s <= 0)
-      //              m_active[kkk] = false;
-      //            else
-      //              solution[kkk].get().scal(1 / std::sqrt(s));
-      //          }
-      //        }
-      //      //          molpro::cout << "IterativeSolverBase::adjustUpdate solution after orthogonalization:
-      //      //          "<<solution[0]<<std::endl;
-      //    } else
-      if (m_residual_eigen) { // normalise and, if hermitian, mutually orthogonalise the solution
-        for (size_t kkk = 0; kkk < m_working_set.size(); kkk++) {
-          auto root = m_working_set[kkk];
-          if (m_hermitian)
-            for (size_t lll = 0; lll < kkk; lll++) {
-              scalar_type s = solution[lll].get().dot(solution[kkk]);
-              molpro::cout << "overlap "<<s<<std::endl;
-              solution[kkk].get().axpy(-s, solution[lll]);
-            }
-          scalar_type s = solution[kkk].get().dot(solution[kkk]);
-          molpro::cout << "self overlap "<<s<<std::endl;
-          if (s <= 0)
-            throw std::runtime_error("Unexpected linear dependency in working set");
-          else
-            solution[kkk].get().scal(1 / std::sqrt(s));
-        }
-      }
-  }
-
 protected:
   virtual bool solveReducedProblem() = 0;
 
@@ -713,9 +651,9 @@ protected:
     Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester(m, n, n);
     Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester,
                                                                                      Eigen::ComputeThinV);
-//    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
-//    molpro::cout << "singular values: " << svd.singularValues().transpose() << std::endl;
-//    molpro::cout << "V: " << svd.matrixV() << std::endl;
+    //    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
+    //    molpro::cout << "singular values: " << svd.singularValues().transpose() << std::endl;
+    //    molpro::cout << "V: " << svd.matrixV() << std::endl;
     auto sv = svd.singularValues();
     std::vector<scalar_type> svv;
     for (auto k = 0; k < n; k++)
@@ -785,11 +723,11 @@ protected:
       for (auto a = 0; a < nQ; a++)
         if (solutions_q.count(a) == 0)
           candidates.push_back(oQ + a);
-//      molpro::cout << "singularTester:\n" << singularTester << std::endl;
-//      molpro::cout << "candidates:";
-//      for (const auto& c : candidates)
-//        molpro::cout << " " << c;
-//      molpro::cout << std::endl;
+      //      molpro::cout << "singularTester:\n" << singularTester << std::endl;
+      //      molpro::cout << "candidates:";
+      //      for (const auto& c : candidates)
+      //        molpro::cout << " " << c;
+      //      molpro::cout << std::endl;
       auto del = propose_singularity_deletion(nX, &singularTester(0, 0), candidates,
                                               nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
@@ -1018,7 +956,7 @@ protected:
     assert(nP == 0 || solutionP.size() == residual.size());
     for (size_t kkk = 0; kkk < m_working_set.size(); kkk++) {
       auto root = m_working_set[kkk];
-//      molpro::cout << "working set k=" << kkk << " root=" << root << std::endl;
+      //      molpro::cout << "working set k=" << kkk << " root=" << root << std::endl;
       if (nP > 0)
         solutionP[kkk].get().resize(nP);
       if (not actionOnly)
@@ -1069,7 +1007,7 @@ protected:
     for (const auto& e : errors) {
       if (m_working_set.size() > max_size or e.second < m_thresh)
         break;
-//      molpro::cout << "create working_set " << e.first << " " << e.second << std::endl;
+      //      molpro::cout << "create working_set " << e.first << " " << e.second << std::endl;
       m_working_set.push_back(e.first);
     }
   }
@@ -1104,7 +1042,7 @@ protected:
                      std::conj(m_subspaceEigenvectors(oR + m, root)) * m_subspaceEigenvectors(oR + n, root))
                         .real();
       m_errors[root] = std::sqrt(l2 < 0 ? 0 : l2);
-//      molpro::cout << "error " << root << " " << l2 << std::endl;
+      //      molpro::cout << "error " << root << " " << l2 << std::endl;
     }
   }
 

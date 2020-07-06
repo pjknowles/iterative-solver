@@ -134,32 +134,32 @@ int main(int argc, char* argv[]) {
         nwork = solver.addVector(x, g, Pcoeff);
         if (nwork == 0)
           break;
-                for (auto root = 0; root < nwork; root++) {
-                  std::cout << "after addVector()"
-                            << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" <<
-                            solver.errors()[root]
-                            << " x:";
-                  for (auto i = 0; i < n; i++)
-                    std::cout << " " << x[root][i];
-                  std::cout << std::endl;
-                  std::cout << "after addVector() g:";
-                  for (auto i = 0; i < n; i++)
-                    std::cout << " " << g[root][i];
-                  std::cout << std::endl;
-                }
+//                for (auto root = 0; root < nwork; root++) {
+//                  std::cout << "after addVector()"
+//                            << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" <<
+//                            solver.errors()[root]
+//                            << " x:";
+//                  for (auto i = 0; i < n; i++)
+//                    std::cout << " " << x[root][i];
+//                  std::cout << std::endl;
+//                  std::cout << "after addVector() g:";
+//                  for (auto i = 0; i < n; i++)
+//                    std::cout << " " << g[root][i];
+//                  std::cout << std::endl;
+//                }
         x.resize(nwork);
         g.resize(nwork);
         update(x, g, solver.working_set_eigenvalues());
-            for (auto root = 0; root < nwork; root++) {
-              std::cout << "after update() x:";
-              for (auto i = 0; i < n; i++)
-                std::cout << " " << x[root][i];
-              std::cout << std::endl;
-              std::cout << "after update() g:";
-              for (auto i = 0; i < n; i++)
-                std::cout << " " << g[root][i];
-              std::cout << std::endl;
-            }
+//            for (auto root = 0; root < nwork; root++) {
+//              std::cout << "after update() x:";
+//              for (auto i = 0; i < n; i++)
+//                std::cout << " " << x[root][i];
+//              std::cout << std::endl;
+//              std::cout << "after update() g:";
+//              for (auto i = 0; i < n; i++)
+//                std::cout << " " << g[root][i];
+//              std::cout << std::endl;
+//            }
         if (solver.endIteration(x, g))
           break;
       }

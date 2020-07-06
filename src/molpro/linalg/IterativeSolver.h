@@ -182,7 +182,8 @@ public:
     m_current_r.clear();
     m_current_v.clear();
     for (size_t k = 0; k < m_working_set.size(); k++) {
-      if (m_residual_eigen) { // scale to roughly unit length for homogeneous equations in case the update has produced a very large vector in response to degeneracy
+      if (m_residual_eigen) { // scale to roughly unit length for homogeneous equations in case the update has produced
+                              // a very large vector in response to degeneracy
         auto s = parameters[k].get().dot(parameters[k]);
         if (std::abs(s - 1) > 1e-3) {
           parameters[k].get().scal(1 / std::sqrt(s));
@@ -626,9 +627,6 @@ public:
    */
   int actions() { return m_actions; }
 
-protected:
-  virtual bool solveReducedProblem() = 0;
-
   virtual void report() const {
     if (m_verbosity > 0) {
       molpro::cout << "iteration " << iterations();
@@ -642,6 +640,9 @@ protected:
       molpro::cout << *std::max_element(m_errors.cbegin(), m_errors.cend()) << std::endl;
     }
   }
+
+protected:
+  virtual bool solveReducedProblem() = 0;
 
   int propose_singularity_deletion(size_t n, const scalar_type* m,
                                    const std::vector<int>& candidates = std::vector<int>(),
@@ -731,7 +732,8 @@ protected:
       auto del = propose_singularity_deletion(nX, &singularTester(0, 0), candidates,
                                               nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
-        std::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
+        if (m_verbosity > 2)
+          std::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
         m_qspace.remove(del - oQ);
         for (auto m = 0; m < nR; m++)
           for (auto a = del - oQ; a < nQ - 1; a++) {
@@ -744,7 +746,7 @@ protected:
         return;
       }
     }
-    if (m_verbosity > -2)
+    if (m_verbosity > 1)
       molpro::cout << "nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
     if (m_verbosity > 2) {
       molpro::cout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
@@ -1356,6 +1358,7 @@ private:
     return true;
   }
 
+public:
   void report() const override {
     std::vector<scalar_type> ev = this->eigenvalues();
     if (m_verbosity > 0) {
@@ -1697,6 +1700,7 @@ public:
     return endIteration(vectorRefSet(1, solution), constVectorRefSet(1, residual));
   }
 
+public:
   virtual void report() const override {
     if (m_verbosity > 0) {
       molpro::cout << "iteration " << this->iterations();

@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
         diagonals.push_back(matrix(i, i));
       molpro::cout << std::endl;
       molpro::linalg::LinearEigensystem<pv> solver;
-      solver.m_verbosity = 2;
+      solver.m_verbosity = 1;
       solver.m_roots = nroot;
       solver.m_thresh = 1e-8;
       std::vector<pv> g;
@@ -119,7 +119,7 @@ int main(int argc, char* argv[]) {
       }
       std::vector<std::vector<scalar>> Pcoeff(solver.m_roots);
       int nwork = solver.m_roots;
-      for (auto iter = 0; iter < (n - 1) / solver.m_roots + 1; iter++) {
+      for (auto iter = 0; iter < 100; iter++) {
         action(x, g);
         //        for (auto root = 0; root < nwork; root++) {
         //          std::cout << "before addVector() x:";
@@ -132,48 +132,47 @@ int main(int argc, char* argv[]) {
         //          std::cout << std::endl;
         //        }
         nwork = solver.addVector(x, g, Pcoeff);
+        solver.report();
         if (nwork == 0)
           break;
-//                for (auto root = 0; root < nwork; root++) {
-//                  std::cout << "after addVector()"
-//                            << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" <<
-//                            solver.errors()[root]
-//                            << " x:";
-//                  for (auto i = 0; i < n; i++)
-//                    std::cout << " " << x[root][i];
-//                  std::cout << std::endl;
-//                  std::cout << "after addVector() g:";
-//                  for (auto i = 0; i < n; i++)
-//                    std::cout << " " << g[root][i];
-//                  std::cout << std::endl;
-//                }
+        //                for (auto root = 0; root < nwork; root++) {
+        //                  std::cout << "after addVector()"
+        //                            << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" <<
+        //                            solver.errors()[root]
+        //                            << " x:";
+        //                  for (auto i = 0; i < n; i++)
+        //                    std::cout << " " << x[root][i];
+        //                  std::cout << std::endl;
+        //                  std::cout << "after addVector() g:";
+        //                  for (auto i = 0; i < n; i++)
+        //                    std::cout << " " << g[root][i];
+        //                  std::cout << std::endl;
+        //                }
         x.resize(nwork);
         g.resize(nwork);
         update(x, g, solver.working_set_eigenvalues());
-//            for (auto root = 0; root < nwork; root++) {
-//              std::cout << "after update() x:";
-//              for (auto i = 0; i < n; i++)
-//                std::cout << " " << x[root][i];
-//              std::cout << std::endl;
-//              std::cout << "after update() g:";
-//              for (auto i = 0; i < n; i++)
-//                std::cout << " " << g[root][i];
-//              std::cout << std::endl;
-//            }
-        if (solver.endIteration(x, g))
-          break;
+        //            for (auto root = 0; root < nwork; root++) {
+        //              std::cout << "after update() x:";
+        //              for (auto i = 0; i < n; i++)
+        //                std::cout << " " << x[root][i];
+        //              std::cout << std::endl;
+        //              std::cout << "after update() g:";
+        //              for (auto i = 0; i < n; i++)
+        //                std::cout << " " << g[root][i];
+        //              std::cout << std::endl;
+        //            }
       }
       std::cout << "Error={ ";
       for (const auto& e : solver.errors())
         std::cout << e << " ";
       std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
       for (size_t root = 0; root < solver.m_roots; root++) {
-        std::cout << "Eigenvalue " << solver.eigenvalues()[root] << std::endl;
-        solver.solution(root, x.front(), g.front(), Pcoeff.front());
-        std::cout << "Eigenvector: (norm=" << std::sqrt(x[0].dot(x[0])) << "): ";
-        for (size_t k = 0; k < n; k++)
-          std::cout << " " << (x[0])[k];
-        std::cout << std::endl;
+        std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] << std::endl;
+        //        solver.solution(root, x.front(), g.front(), Pcoeff.front());
+        //        std::cout << "Eigenvector: (norm=" << std::sqrt(x[0].dot(x[0])) << "): ";
+        //        for (size_t k = 0; k < n; k++)
+        //          std::cout << " " << (x[0])[k];
+        //        std::cout << std::endl;
       }
     }
   }

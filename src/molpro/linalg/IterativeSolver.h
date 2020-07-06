@@ -174,6 +174,7 @@ public:
         m_working_set.push_back(i);
     //    if (!m_orthogonalize && m_roots > m_maxQ) m_maxQ = m_roots;
     molpro::cout << "m_working_set size " << m_working_set.size() << std::endl;
+    if (m_working_set.size() == 0) return 0;
     assert(parameters.size() <= m_working_set.size());
     assert(parameters.size() == action.size());
     m_iterations++;
@@ -1063,21 +1064,31 @@ protected:
     const auto oR = oQ + nQ;
     m_errors.resize(m_roots);
     for (auto root = 0; root < m_roots; root++) {
+      auto eval = m_residual_eigen ? eigenvalues()[root] : 0;
       scalar_type l2 = 0;
       for (auto a = 0; a < nQ; a++)
         for (auto b = 0; b < nQ; b++)
-          l2 = l2 + (m_qspace.action_action(a, b) * std::conj(m_subspaceEigenvectors(oQ + a, root)) *
-                     m_subspaceEigenvectors(oQ + b, root))
+          l2 = l2 + ((m_qspace.action_action(a, b) - eval * (m_qspace.action(a, b) + m_qspace.action(b, a)) +
+                      eval * eval * m_qspace.metric(a, b)) *
+                     std::conj(m_subspaceEigenvectors(oQ + a, root)) * m_subspaceEigenvectors(oQ + b, root))
                         .real();
       for (auto a = 0; a < nQ; a++)
         for (auto m = 0; m < nR; m++)
-          l2 = l2 + 2 * (m_hh_qr[a][m] * std::conj(m_subspaceEigenvectors(oQ + a, root)) *
+          l2 = l2 + 2 * ((
+              m_hh_qr[a][m]
+                  -eval*(m_h_qr[a][m]+m_h_rq[a][m])
+      +eval*eval*m_s_qr[a][m]
+          )* std::conj(m_subspaceEigenvectors(oQ + a, root)) *
                          m_subspaceEigenvectors(oR + m, root))
                             .real();
       for (auto m = 0; m < nR; m++)
         for (auto n = 0; n < nR; n++)
           l2 = l2 +
-               (m_hh_rr[m][n] * std::conj(m_subspaceEigenvectors(oR + m, root)) * m_subspaceEigenvectors(oR + n, root))
+               ((
+                   m_hh_rr[m][n]
+                   -eval*(m_h_rr[m][n]+m_h_rr[n][m])
+                       +eval*eval*m_s_rr[m][n]
+      )* std::conj(m_subspaceEigenvectors(oR + m, root)) * m_subspaceEigenvectors(oR + n, root))
                    .real();
       m_errors[root] = std::sqrt(l2);
     }

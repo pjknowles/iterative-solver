@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
     x.back()[root] = 1; // initial guess
   }
   std::vector<std::vector<scalar>> Pcoeff(solver.m_roots);
-  for (auto iter = 0; iter < (n-1)/solver.m_roots+1; iter++) {
+  for (auto iter = 0; iter < (n - 1) / solver.m_roots + 1; iter++) {
     action(x, g);
     for (auto root = 0; root < x.size(); root++) {
       std::cout << "before addVector() x:";
@@ -104,12 +104,12 @@ int main(int argc, char* argv[]) {
         std::cout << " " << g[root][i];
       std::cout << std::endl;
     }
-    solver.addVector(x, g, Pcoeff);
+    auto nwork = solver.addVector(x, g, Pcoeff);
+    if (nwork == 0)
+      break;
     for (auto root = 0; root < x.size(); root++) {
       std::cout << "after addVector()"
-                <<" eigenvalue="<<solver.eigenvalues()[root]
-          <<" error="<<solver.errors()[root]
-          <<" x:";
+                << " eigenvalue=" << solver.eigenvalues()[root] << " error=" << solver.errors()[root] << " x:";
       for (auto i = 0; i < n; i++)
         std::cout << " " << x[root][i];
       std::cout << std::endl;
@@ -119,16 +119,16 @@ int main(int argc, char* argv[]) {
       std::cout << std::endl;
     }
     update(x, g, solver.eigenvalues());
-    for (auto root = 0; root < x.size(); root++) {
-      std::cout << "after update() x:";
-      for (auto i = 0; i < n; i++)
-        std::cout << " " << x[root][i];
-      std::cout << std::endl;
-      std::cout << "after update() g:";
-      for (auto i = 0; i < n; i++)
-        std::cout << " " << g[root][i];
-      std::cout << std::endl;
-    }
+    //    for (auto root = 0; root < x.size(); root++) {
+    //      std::cout << "after update() x:";
+    //      for (auto i = 0; i < n; i++)
+    //        std::cout << " " << x[root][i];
+    //      std::cout << std::endl;
+    //      std::cout << "after update() g:";
+    //      for (auto i = 0; i < n; i++)
+    //        std::cout << " " << g[root][i];
+    //      std::cout << std::endl;
+    //    }
     if (solver.endIteration(x, g))
       break;
   }

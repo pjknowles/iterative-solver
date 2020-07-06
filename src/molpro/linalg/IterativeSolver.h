@@ -123,7 +123,7 @@ public:
       m_dimension(0),
       m_value_print_name("value"),
       m_iterations(0),
-      m_singularity_threshold(1e-14),
+      m_singularity_threshold(1e-12),
       m_added_vectors(0),
       m_augmented_hessian(0),
       m_svdThreshold(1e-15),
@@ -164,8 +164,8 @@ public:
    * be used. \return whether it is expected that the client should make an update, based on the returned parameters and
    * residual, before the subsequent call to endIteration()
    */
-  bool addVector(vectorRefSet parameters, vectorRefSet action, vectorRefSetP parametersP = nullVectorRefSetP<T>,
-                 vectorRefSet other = nullVectorRefSet<T>) {
+  int addVector(vectorRefSet parameters, vectorRefSet action, vectorRefSetP parametersP = nullVectorRefSetP<T>,
+                vectorRefSet other = nullVectorRefSet<T>) {
     //    m_active.resize(parameters.size(), true);
     if (m_roots < 1)
       m_roots = parameters.size();                      // number of roots defaults to size of parameters
@@ -174,7 +174,8 @@ public:
         m_working_set.push_back(i);
     //    if (!m_orthogonalize && m_roots > m_maxQ) m_maxQ = m_roots;
     molpro::cout << "m_working_set size " << m_working_set.size() << std::endl;
-    if (m_working_set.size() == 0) return 0;
+    if (m_working_set.size() == 0)
+      return 0;
     assert(parameters.size() <= m_working_set.size());
     assert(parameters.size() == action.size());
     m_iterations++;
@@ -289,16 +290,16 @@ public:
     //    m_last_hd = m_current_g;
     return update;
   }
-  bool addVector(std::vector<T>& parameters, std::vector<T>& action, vectorSetP& parametersP = nullVectorSetP<T>,
-                 std::vector<T>& other = nullStdVector<T>) {
+  int addVector(std::vector<T>& parameters, std::vector<T>& action, vectorSetP& parametersP = nullVectorSetP<T>,
+                std::vector<T>& other = nullStdVector<T>) {
     return addVector(vectorRefSet(parameters.begin(), parameters.end()), vectorRefSet(action.begin(), action.end()),
                      vectorRefSetP(parametersP.begin(), parametersP.end()), vectorRefSet(other.begin(), other.end()));
   }
-  bool addVector(T& parameters, T& action, vectorP& parametersP, T& other) {
+  int addVector(T& parameters, T& action, vectorP& parametersP, T& other) {
     return addVector(vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP),
                      vectorRefSet(1, other));
   }
-  bool addVector(T& parameters, T& action, vectorP& parametersP = nullVectorP<T>) {
+  int addVector(T& parameters, T& action, vectorP& parametersP = nullVectorP<T>) {
     // T other;
     return addVector(vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP)
                      //   vectorRefSet(1, other)
@@ -313,7 +314,7 @@ public:
    * interpolated parameters. \return whether it is expected that the client should make an update, based on the
    * returned parameters and residual, before the subsequent call to endIteration()
    */
-  bool addValue(T& parameters, scalar_type value, T& action) {
+  int addValue(T& parameters, scalar_type value, T& action) {
     m_values.push_back(value);
     //    std::cout << "m_values resized to " << m_values.size() << " and filled with " << value
     //              << std::endl;
@@ -695,9 +696,9 @@ protected:
     Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester(m, n, n);
     Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester,
                                                                                      Eigen::ComputeThinV);
-    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
-    molpro::cout << "singular values: " << svd.singularValues().transpose() << std::endl;
-    molpro::cout << "V: " << svd.matrixV() << std::endl;
+        molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
+        molpro::cout << "singular values: " << svd.singularValues().transpose() << std::endl;
+        molpro::cout << "V: " << svd.matrixV() << std::endl;
     auto sv = svd.singularValues();
     std::vector<scalar_type> svv;
     for (auto k = 0; k < n; k++)
@@ -767,11 +768,11 @@ protected:
       for (auto a = 0; a < nQ; a++)
         if (solutions_q.count(a) == 0)
           candidates.push_back(oQ + a);
-      molpro::cout << "singularTester:\n" << singularTester << std::endl;
-      molpro::cout << "candidates:";
-      for (const auto& c : candidates)
-        molpro::cout << " " << c;
-      molpro::cout << std::endl;
+            molpro::cout << "singularTester:\n" << singularTester << std::endl;
+            molpro::cout << "candidates:";
+            for (const auto& c : candidates)
+              molpro::cout << " " << c;
+            molpro::cout << std::endl;
       auto del = propose_singularity_deletion(nX, &singularTester(0, 0), candidates,
                                               nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
@@ -788,8 +789,9 @@ protected:
         return;
       }
     }
-    if (m_verbosity > -2) {
+    if (m_verbosity > -2)
       molpro::cout << "nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
+    if (m_verbosity > 2) {
       molpro::cout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
       molpro::cout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
     }
@@ -999,6 +1001,7 @@ protected:
     assert(nP == 0 || solutionP.size() == residual.size());
     for (size_t kkk = 0; kkk < m_working_set.size(); kkk++) {
       auto root = m_working_set[kkk];
+      molpro::cout << "working set k="<<kkk<<" root="<<root<<std::endl;
       if (nP > 0)
         solutionP[kkk].get().resize(nP);
       if (not actionOnly)
@@ -1074,22 +1077,14 @@ protected:
                         .real();
       for (auto a = 0; a < nQ; a++)
         for (auto m = 0; m < nR; m++)
-          l2 = l2 + 2 * ((
-              m_hh_qr[a][m]
-                  -eval*(m_h_qr[a][m]+m_h_rq[a][m])
-      +eval*eval*m_s_qr[a][m]
-          )* std::conj(m_subspaceEigenvectors(oQ + a, root)) *
-                         m_subspaceEigenvectors(oR + m, root))
+          l2 = l2 + 2 * ((m_hh_qr[a][m] - eval * (m_h_qr[a][m] + m_h_rq[a][m]) + eval * eval * m_s_qr[a][m]) *
+                         std::conj(m_subspaceEigenvectors(oQ + a, root)) * m_subspaceEigenvectors(oR + m, root))
                             .real();
       for (auto m = 0; m < nR; m++)
         for (auto n = 0; n < nR; n++)
-          l2 = l2 +
-               ((
-                   m_hh_rr[m][n]
-                   -eval*(m_h_rr[m][n]+m_h_rr[n][m])
-                       +eval*eval*m_s_rr[m][n]
-      )* std::conj(m_subspaceEigenvectors(oR + m, root)) * m_subspaceEigenvectors(oR + n, root))
-                   .real();
+          l2 = l2 + ((m_hh_rr[m][n] - eval * (m_h_rr[m][n] + m_h_rr[n][m]) + eval * eval * m_s_rr[m][n]) *
+                     std::conj(m_subspaceEigenvectors(oR + m, root)) * m_subspaceEigenvectors(oR + n, root))
+                        .real();
       m_errors[root] = std::sqrt(l2);
     }
   }

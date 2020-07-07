@@ -85,17 +85,22 @@ void update(std::vector<pv>& psc, const std::vector<pv>& psg, std::vector<scalar
 }
 
 int main(int argc, char* argv[]) {
-//  for (const auto& nn : std::vector<int>{1, 2, 4, 10, 100}) {
-      for (const auto& nn : std::vector<int>{4}) {
+    for (const auto& nn : std::vector<int>{1, 2, 4, 10, 100}) {
+//  for (const auto& nn : std::vector<int>{4}) {
     n = nn;
-//    for (const auto& nroot : std::vector<int>{1, 2, 4}) {
-          for (const auto& nroot : std::vector<int>{2}) {
+        for (const auto& nroot : std::vector<int>{1, 2, 4}) {
+//    for (const auto& nroot : std::vector<int>{2}) {
       if (nroot > n)
         break;
       std::cout << "\nMatrix dimension=" << n << ", looking for " << nroot << " roots" << std::endl;
-      std::cout << "diagonal elements";
-      for (auto i = 0; i < n; i++)
-        std::cout << " " << matrix(i, i);
+//      std::cout << "diagonal elements";
+//      for (auto i = 0; i < n; i++)
+//        std::cout << " " << matrix(i, i);
+//      for (auto i = 0; i < n; i++) {
+//        for (auto j = 0; j < n; j++)
+//          std::cout << " " << matrix(i, j);
+//        std::cout << std::endl;
+//      }
       std::vector<double> diagonals;
       for (auto i = 0; i < n; i++)
         diagonals.push_back(matrix(i, i));
@@ -128,7 +133,7 @@ int main(int argc, char* argv[]) {
         //          std::cout << std::endl;
         //        }
         nwork = solver.addVector(x, g, Pcoeff);
-        std::cout << "nwork after addVector: " << nwork << std::endl;
+        //        std::cout << "nwork after addVector: " << nwork << std::endl;
         solver.report();
         if (nwork == 0)
           break;
@@ -147,8 +152,9 @@ int main(int argc, char* argv[]) {
         //                }
         x.resize(nwork);
         g.resize(nwork);
-        std::cout << "residual lengths:";
-        for (const auto& gg : g) std::cout <<" "<<std::sqrt(gg.dot(gg))<< " (square="<<gg.dot(gg)<<")"; std::cout <<std::endl;
+        //        std::cout << "residual lengths:";
+        //        for (const auto& gg : g) std::cout <<" "<<std::sqrt(gg.dot(gg))<< " (square="<<gg.dot(gg)<<")";
+        //        std::cout <<std::endl;
         update(x, g, solver.working_set_eigenvalues());
         //            for (auto root = 0; root < nwork; root++) {
         //              std::cout << "after update() x:";

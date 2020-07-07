@@ -257,7 +257,7 @@ public:
               << std::endl;
     startTiming = endTiming;
 #endif
-    auto update = solveReducedProblem();
+    solveReducedProblem();
 #ifdef TIMING
     endTiming = std::chrono::steady_clock::now();
     std::cout << " addVector solveReducedProblem():  seconds="
@@ -265,54 +265,64 @@ public:
               << std::endl;
     startTiming = endTiming;
 #endif
-    molpro::cout << "update=" << update << std::endl;
-    if (update) {
-      calculateResidualConvergence();
-      // move any newly-converged solutions into the q space
-      molpro::cout << "errors after calculateResidualConvergence()";
-      for (const auto& e : m_errors)
-        molpro::cout << " " << e;
-      molpro::cout << std::endl;
-      m_working_set.clear();
-      for (auto root = 0; root < m_roots; root++)
-        if (m_errors[root] < m_thresh and m_q_solutions.count(root) == 0 and m_working_set.size() < parameters.size()) {
-          m_working_set.push_back(root);
-          molpro::cout << "selecting root " << root << " for adding converged solution to Q space" << std::endl;
-        }
-      doInterpolation(parameters, action, parametersP, other, true);
-      for (auto k = 0; k < m_working_set.size(); k++) {
-        m_qspace.add(parameters[k], action[k], m_rhs);
-        m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
+    //    molpro::cout << "update=" << update << std::endl;
+    calculateResidualConvergence();
+    // move any newly-converged solutions into the q space
+    //      molpro::cout << "errors after calculateResidualConvergence()";
+    //      for (const auto& e : m_errors)
+    //        molpro::cout << " " << e;
+    //      molpro::cout << std::endl;
+    m_working_set.clear();
+    for (auto root = 0; root < m_roots; root++)
+      if (m_errors[root] < m_thresh and m_q_solutions.count(root) == 0 and m_working_set.size() < parameters.size()) {
+        m_working_set.push_back(root);
+        //          molpro::cout << "selecting root " << root << " for adding converged solution to Q space" <<
+        //          std::endl;
       }
-
-      revise_working_set(parameters.size());
-      molpro::cout << "after revise_working_set m_working_set:";
-      for (const auto& w : m_working_set)
-        molpro::cout << " " << w;
-      molpro::cout << std::endl;
-      molpro::cout << "after revise_working_set m_errors:";
-      for (const auto& w : m_errors)
-        molpro::cout << " " << w;
-      molpro::cout << std::endl;
-      doInterpolation(parameters, action, parametersP, other);
-      for (int k = m_working_set.size() - 1; k >= 0; k--) {
-        if (m_errors[m_working_set[k]] <= m_threshold_residual_recalculate * 1.0000000001) {
-          m_errors[m_working_set[k]] = std::sqrt(action[k].get().dot(action[k]));
-          if (m_errors[m_working_set[k]] < m_thresh)
-            m_working_set.pop_back();
-          else
-            break;
-        }
-      }
-      molpro::cout << "after refinement m_working_set:";
-      for (const auto& w : m_working_set)
-        molpro::cout << " " << w;
-      molpro::cout << std::endl;
-      molpro::cout << "after refinement m_errors:";
-      for (const auto& w : m_errors)
-        molpro::cout << " " << w;
-      molpro::cout << std::endl;
+    doInterpolation(parameters, action, parametersP, other, true);
+    for (auto k = 0; k < m_working_set.size(); k++) {
+      m_qspace.add(parameters[k], action[k], m_rhs);
+      m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
     }
+
+    revise_working_set(parameters.size());
+//          molpro::cout << "after revise_working_set m_working_set:";
+//          for (const auto& w : m_working_set)
+//            molpro::cout << " " << w;
+//          molpro::cout << std::endl;
+//          molpro::cout << "after revise_working_set m_errors:";
+//          for (const auto& w : m_errors)
+//            molpro::cout << " " << w;
+//          molpro::cout << std::endl;
+    doInterpolation(parameters, action, parametersP, other);
+    for (int k = m_working_set.size() - 1; k >= 0; k--) {
+      if (m_errors[m_working_set[k]] <= m_threshold_residual_recalculate * 1.0000000001) {
+        m_errors[m_working_set[k]] = std::sqrt(action[k].get().dot(action[k]));
+        if (m_errors[m_working_set[k]] < m_thresh) {
+          // second bite of the cherry on retiring a root
+          m_working_set.pop_back();
+          auto save_working_set=m_working_set;
+          auto root = m_working_set[k];
+          m_working_set.clear();
+          m_working_set.push_back(root);
+          auto oth=nullVectorRefSet<T>;
+          doInterpolation(vectorRefSet(1,parameters[k]), vectorRefSet(1,action[k]), vectorRefSetP(1,parametersP[k]), oth, true);
+          m_qspace.add(parameters[k], action[k], m_rhs);
+          m_q_solutions[root] = m_qspace.keys().back();
+          m_working_set=save_working_set;
+        }
+        else
+          break;
+      }
+    }
+//      molpro::cout << "after refinement m_working_set:";
+//      for (const auto& w : m_working_set)
+//        molpro::cout << " " << w;
+//      molpro::cout << std::endl;
+//      molpro::cout << "after refinement m_errors:";
+//      for (const auto& w : m_errors)
+//        molpro::cout << " " << w;
+//      molpro::cout << std::endl;
 #ifdef TIMING
     endTiming = std::chrono::steady_clock::now();
     std::cout << " addVector doInterpolation():  seconds="
@@ -769,7 +779,7 @@ protected:
                                               nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
         if (m_verbosity > 2)
-          std::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
+          molpro::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
         m_qspace.remove(del - oQ);
         for (auto m = 0; m < nR; m++)
           for (auto a = del - oQ; a < nQ - 1; a++) {
@@ -782,7 +792,7 @@ protected:
         return;
       }
     }
-    if (m_verbosity > -1)
+    if (m_verbosity > 1)
       molpro::cout << "nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
     if (m_verbosity > 2) {
       molpro::cout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
@@ -796,6 +806,8 @@ protected:
 
     Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> H = m_subspaceMatrix.block(0, 0, kept, kept);
     Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> S = m_subspaceOverlap.block(0, 0, kept, kept);
+//    molpro::cout << "diagonalizeSubspaceMatrix H:\n" << H.format(Eigen::FullPrecision) << std::endl;
+//    molpro::cout << "diagonalizeSubspaceMatrix S:\n" << S.format(Eigen::FullPrecision) << std::endl;
 //   Eigen::GeneralizedEigenSolver<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
 #ifdef TIMING
     auto startTiming = std::chrono::steady_clock::now();
@@ -805,9 +817,9 @@ protected:
         S(k, k) = 1; // somehow avoid problems that eigen with Intel 18 get the SVD wrong if near-unit matrix
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV);
     svd.setThreshold(m_svdThreshold);
-    //   molpro::cout << "singular values of overlap "<<svd.singularValues().transpose()<<std::endl;
+    //    molpro::cout << "singular values of overlap " << svd.singularValues().transpose() << std::endl;
     //   auto Hbar = svd.solve(H);
-    if (m_verbosity > 1 && svd.rank() < S.cols())
+    if (m_verbosity > -11 && svd.rank() < S.cols())
       molpro::cout << "SVD rank " << svd.rank() << " in subspace of dimension " << S.cols() << std::endl;
     if (m_verbosity > 2 && svd.rank() < S.cols())
       molpro::cout << "singular values " << svd.singularValues().transpose() << std::endl;
@@ -816,18 +828,18 @@ protected:
       svmh(k) = 1 / std::sqrt(svmh(k));
 #ifdef TIMING
     auto endTiming = std::chrono::steady_clock::now();
-    std::cout << " construct svd and svmh:  seconds="
-              << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
-              << std::endl;
+    molpro::cout << " construct svd and svmh:  seconds="
+                 << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
+                 << std::endl;
     startTiming = std::chrono::steady_clock::now();
 #endif
     auto Hbar = (svmh.asDiagonal()) * (svd.matrixU().leftCols(svd.rank()).adjoint()) * H *
                 svd.matrixV().leftCols(svd.rank()) * (svmh.asDiagonal());
 #ifdef TIMING
     endTiming = std::chrono::steady_clock::now();
-    std::cout << " construct Hbar:  seconds="
-              << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
-              << std::endl;
+    molpro::cout << " construct Hbar:  seconds="
+                 << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
+                 << std::endl;
 #endif
 //   molpro::cout << "S\n"<<S<<std::endl;
 //   molpro::cout << "S singular values"<<(Eigen::DiagonalMatrix<T, Eigen::Dynamic,
@@ -845,9 +857,9 @@ protected:
     m_subspaceEigenvalues = s.eigenvalues();
 #ifdef TIMING
     endTiming = std::chrono::steady_clock::now();
-    std::cout << " EigenSolver():  seconds="
-              << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
-              << std::endl;
+    molpro::cout << " EigenSolver():  seconds="
+                 << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
+                 << std::endl;
     startTiming = endTiming;
 #endif
     if (s.eigenvalues().imag().norm() < 1e-10 and s.eigenvectors().imag().norm() < 1e-10) { // real eigenvectors
@@ -891,9 +903,9 @@ protected:
       }
 #ifdef TIMING
       auto endTiming = std::chrono::steady_clock::now();
-      std::cout << " sort seconds="
-                << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
-                << std::endl;
+      molpro::cout << " sort seconds="
+                   << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
+                   << std::endl;
 #endif
     }
 //   molpro::cout << "sorted eigenvalues\n"<<m_subspaceEigenvalues<<std::endl;
@@ -958,9 +970,9 @@ protected:
       }
 #ifdef TIMING
     endTiming = std::chrono::steady_clock::now();
-    std::cout << " repeat dimension=" << m_subspaceEigenvectors.cols() << ",  seconds="
-              << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
-              << std::endl;
+    molpro::cout << " repeat dimension=" << m_subspaceEigenvectors.cols() << ",  seconds="
+                 << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
+                 << std::endl;
 #endif
     //     molpro::cout << "eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
     //     molpro::cout << "eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
@@ -1038,23 +1050,23 @@ protected:
    */
   void revise_working_set(size_t max_size = INT_MAX) {
     m_working_set.clear();
-    std::cout << "revise_working_set max_size="<<max_size<<std::endl;
+    //    molpro::cout << "revise_working_set max_size=" << max_size << std::endl;
     const size_t nR = m_linear ? m_s_rr.size() : 0;
     if (max_size == INT_MAX)
       max_size = nR;
-    std::cout << "revise_working_set max_size="<<max_size<<std::endl;
+    //    molpro::cout << "revise_working_set max_size=" << max_size << std::endl;
     std::vector<std::pair<int, scalar_type>> errors;
     for (auto i = 0; i < m_errors.size(); i++)
       errors.push_back({i, m_errors[i]});
     std::sort(errors.begin(), errors.end(), [&](const auto& a, const auto& b) { return (a.second > b.second); });
     for (const auto& e : errors) {
-      molpro::cout << "error in revise_working_set " << e.second << " (thresh=" << m_thresh << ")" << std::endl;
+      //      molpro::cout << "error in revise_working_set " << e.second << " (thresh=" << m_thresh << ")" << std::endl;
       if (m_working_set.size() >= max_size or e.second < m_thresh)
         break;
       //      molpro::cout << "create working_set " << e.first << " " << e.second << std::endl;
       m_working_set.push_back(e.first);
     }
-    std::cout << "revise_working_set new size="<<m_working_set.size()<<std::endl;
+    //    molpro::cout << "revise_working_set new size=" << m_working_set.size() << std::endl;
   }
 
   /*!
@@ -1066,7 +1078,7 @@ protected:
     const auto oQ = nP;
     const auto nR = m_linear ? m_s_rr.size() : 0;
     const auto oR = oQ + nQ;
-    molpro::cout << "nQ=" << nQ << " nR=" << nR << std::endl;
+//    molpro::cout << "nQ=" << nQ << " nR=" << nR << std::endl;
     assert(nP + nR + nQ == m_subspaceEigenvectors.rows());
     m_errors.resize(m_roots);
     for (auto root = 0; root < m_roots; root++) {
@@ -1088,8 +1100,10 @@ protected:
           l2 = l2 + ((m_hh_rr[m][n] - eval * (m_h_rr[m][n] + m_h_rr[n][m]) + eval * eval * m_s_rr[m][n]) *
                      std::conj(m_subspaceEigenvectors(oR + m, root)) * m_subspaceEigenvectors(oR + n, root))
                         .real();
-      m_errors[root] = std::sqrt(std::max(l2, std::pow(m_threshold_residual_recalculate, 2)));
-      molpro::cout << "square error " << root << " " << l2 << std::endl;
+      if (not m_linear or m_errors[root] == 0)
+        m_errors[root] = 1e20;
+      m_errors[root] = std::min(m_errors[root], std::sqrt(std::max(l2, std::pow(m_threshold_residual_recalculate, 2))));
+      //      molpro::cout << "square error " << root << " " << l2 << std::endl;
     }
   }
 

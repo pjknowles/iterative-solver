@@ -130,7 +130,8 @@ public:
       m_maxQ(std::max(m_roots, size_t(16))),
       m_profiler(profiler),
       m_pspace(),
-      m_qspace(m_pspace, m_hermitian)
+      m_qspace(m_pspace, m_hermitian),
+      m_threshold_residual_recalculate(1e-6)
 {
 }
   // clang-format on
@@ -264,23 +265,53 @@ public:
               << std::endl;
     startTiming = endTiming;
 #endif
+    molpro::cout << "update=" << update << std::endl;
     if (update) {
       calculateResidualConvergence();
       // move any newly-converged solutions into the q space
-      //      auto save_working_set = m_working_set;
+      molpro::cout << "errors after calculateResidualConvergence()";
+      for (const auto& e : m_errors)
+        molpro::cout << " " << e;
+      molpro::cout << std::endl;
       m_working_set.clear();
       for (auto root = 0; root < m_roots; root++)
-        if (m_errors[root] < m_thresh and m_q_solutions.count(root) > 0 and m_working_set.size() < parameters.size()) {
+        if (m_errors[root] < m_thresh and m_q_solutions.count(root) == 0 and m_working_set.size() < parameters.size()) {
           m_working_set.push_back(root);
+          molpro::cout << "selecting root " << root << " for adding converged solution to Q space" << std::endl;
         }
       doInterpolation(parameters, action, parametersP, other, true);
       for (auto k = 0; k < m_working_set.size(); k++) {
         m_qspace.add(parameters[k], action[k], m_rhs);
         m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
       }
-      //      m_working_set = save_working_set;
-      revise_working_set();
+
+      revise_working_set(parameters.size());
+      molpro::cout << "after revise_working_set m_working_set:";
+      for (const auto& w : m_working_set)
+        molpro::cout << " " << w;
+      molpro::cout << std::endl;
+      molpro::cout << "after revise_working_set m_errors:";
+      for (const auto& w : m_errors)
+        molpro::cout << " " << w;
+      molpro::cout << std::endl;
       doInterpolation(parameters, action, parametersP, other);
+      for (int k = m_working_set.size() - 1; k >= 0; k--) {
+        if (m_errors[m_working_set[k]] <= m_threshold_residual_recalculate * 1.0000000001) {
+          m_errors[m_working_set[k]] = std::sqrt(action[k].get().dot(action[k]));
+          if (m_errors[m_working_set[k]] < m_thresh)
+            m_working_set.pop_back();
+          else
+            break;
+        }
+      }
+      molpro::cout << "after refinement m_working_set:";
+      for (const auto& w : m_working_set)
+        molpro::cout << " " << w;
+      molpro::cout << std::endl;
+      molpro::cout << "after refinement m_errors:";
+      for (const auto& w : m_errors)
+        molpro::cout << " " << w;
+      molpro::cout << std::endl;
     }
 #ifdef TIMING
     endTiming = std::chrono::steady_clock::now();
@@ -296,6 +327,8 @@ public:
     }
     //    m_last_d = m_current_c;
     //    m_last_hd = m_current_g;
+    m_current_r.clear();
+    m_current_v.clear();
     return m_working_set.size();
   }
   int addVector(std::vector<T>& parameters, std::vector<T>& action, vectorSetP& parametersP = nullVectorSetP<T>,
@@ -619,6 +652,9 @@ protected:
   std::vector<std::vector<scalar_type>> m_s_pr, m_h_pr, m_h_rp;            ///< interactions between R and P spaces
   mutable std::vector<int> m_working_set; ///< which roots are being tracked in the working set
   std::map<int, int> m_q_solutions;       ///< key of q space vector of a converged solution
+  double
+      m_threshold_residual_recalculate; ///< if the length of a residual comes in lower than this in the subspace-based
+                                        ///< calculation, it will be recalculated with the full residual
 
 public:
   /*!
@@ -746,7 +782,7 @@ protected:
         return;
       }
     }
-    if (m_verbosity > 1)
+    if (m_verbosity > -1)
       molpro::cout << "nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
     if (m_verbosity > 2) {
       molpro::cout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
@@ -950,9 +986,12 @@ protected:
     for (auto& s : other)
       s.get().scal(0);
     auto nP = m_pspace.size();
-    auto nQ = m_qspace.size();
-    auto oQ = nP;
     auto nR = m_current_r.size();
+    //    auto nQ = m_qspace.size();
+    auto nQ = this->m_interpolation.rows() - nP -
+              nR; // guard against using any vectors added to the Q space since the subspace solution was evaluated
+    assert(nQ <= m_qspace.size());
+    auto oQ = nP;
     auto oR = oQ + nQ;
     assert(m_working_set.size() <= solution.size());
     assert(nP == 0 || solutionP.size() == residual.size());
@@ -966,13 +1005,13 @@ protected:
           solution[kkk].get().axpy((solutionP[kkk].get()[l] = this->m_interpolation(l, root)), m_pspace[l]);
       //      molpro::cout << "square norm of solution after P contribution " << solution[kkk]->dot(*solution[kkk]) <<
       //      std::endl;
-      for (int q = 0; q < m_qspace.size(); q++) {
+      for (int q = 0; q < nQ; q++) {
         auto l = oQ + q;
         solution[kkk].get().axpy(this->m_interpolation(l, root), m_qspace[q]);
         residual[kkk].get().axpy(this->m_interpolation(l, root), m_qspace.action(q));
       }
       if (m_linear) {
-        for (int c = 0; c < solution.size(); c++) {
+        for (int c = 0; c < nR; c++) {
           auto l = oR + c;
           solution[kkk].get().axpy(this->m_interpolation(l, root), m_current_r[c]);
           residual[kkk].get().axpy(this->m_interpolation(l, root), m_current_v[c]);
@@ -999,19 +1038,23 @@ protected:
    */
   void revise_working_set(size_t max_size = INT_MAX) {
     m_working_set.clear();
+    std::cout << "revise_working_set max_size="<<max_size<<std::endl;
     const size_t nR = m_linear ? m_s_rr.size() : 0;
     if (max_size == INT_MAX)
       max_size = nR;
+    std::cout << "revise_working_set max_size="<<max_size<<std::endl;
     std::vector<std::pair<int, scalar_type>> errors;
     for (auto i = 0; i < m_errors.size(); i++)
       errors.push_back({i, m_errors[i]});
-    std::sort(errors.begin(), errors.end(), [&](const auto& a, const auto& b) { return (a.second < b.second); });
+    std::sort(errors.begin(), errors.end(), [&](const auto& a, const auto& b) { return (a.second > b.second); });
     for (const auto& e : errors) {
-      if (m_working_set.size() > max_size or e.second < m_thresh)
+      molpro::cout << "error in revise_working_set " << e.second << " (thresh=" << m_thresh << ")" << std::endl;
+      if (m_working_set.size() >= max_size or e.second < m_thresh)
         break;
       //      molpro::cout << "create working_set " << e.first << " " << e.second << std::endl;
       m_working_set.push_back(e.first);
     }
+    std::cout << "revise_working_set new size="<<m_working_set.size()<<std::endl;
   }
 
   /*!
@@ -1023,6 +1066,8 @@ protected:
     const auto oQ = nP;
     const auto nR = m_linear ? m_s_rr.size() : 0;
     const auto oR = oQ + nQ;
+    molpro::cout << "nQ=" << nQ << " nR=" << nR << std::endl;
+    assert(nP + nR + nQ == m_subspaceEigenvectors.rows());
     m_errors.resize(m_roots);
     for (auto root = 0; root < m_roots; root++) {
       auto eval = m_residual_eigen ? eigenvalues()[root] : 0;
@@ -1043,8 +1088,8 @@ protected:
           l2 = l2 + ((m_hh_rr[m][n] - eval * (m_h_rr[m][n] + m_h_rr[n][m]) + eval * eval * m_s_rr[m][n]) *
                      std::conj(m_subspaceEigenvectors(oR + m, root)) * m_subspaceEigenvectors(oR + n, root))
                         .real();
-      m_errors[root] = std::sqrt(l2 < 0 ? 0 : l2);
-      //      molpro::cout << "error " << root << " " << l2 << std::endl;
+      m_errors[root] = std::sqrt(std::max(l2, std::pow(m_threshold_residual_recalculate, 2)));
+      molpro::cout << "square error " << root << " " << l2 << std::endl;
     }
   }
 

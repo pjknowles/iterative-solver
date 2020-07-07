@@ -2,7 +2,7 @@
 // Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
 // Storage of vectors in-memory via class pv
 using scalar = double;
-size_t n = 100;               // dimension of problem
+size_t n;                     // dimension of problem
 constexpr scalar alpha = 100; // separation of diagonal elements
 std::vector<double> hmat;
 
@@ -60,9 +60,7 @@ public:
   scalar& operator[](size_t i) { return buffer[i]; }
 };
 
-scalar matrix(const size_t i, const size_t j) {
-  return (i == j ? alpha * (i + 1) : 0) + i + j;
-}
+scalar matrix(const size_t i, const size_t j) { return (i == j ? alpha * (i + 1) : 0) + i + j; }
 
 void action(const std::vector<pv>& psx, std::vector<pv>& outputs) {
   for (size_t k = 0; k < psx.size(); k++) {
@@ -76,10 +74,10 @@ void action(const std::vector<pv>& psx, std::vector<pv>& outputs) {
 
 void update(std::vector<pv>& psc, const std::vector<pv>& psg, std::vector<scalar> shift = std::vector<scalar>()) {
   //  for (size_t k = 0; k < psc.size(); k++) {
-  //   molpro::cout << "update root "<<k<<", shift="<<shift[k]<<": ";
+  //   std::cout << "update root "<<k<<", shift="<<shift[k]<<": ";
   //    for (size_t i = 0; i < n; i++)
-  //      molpro::cout <<" "<< -psg[k][i] / (1e-12-shift[k] + matrix(i,i));
-  //    molpro::cout<<std::endl;
+  //      std::cout <<" "<< -psg[k][i] / (1e-12-shift[k] + matrix(i,i));
+  //    std::cout<<std::endl;
   //  }
   for (size_t k = 0; k < psc.size(); k++)
     for (size_t i = 0; i < n; i++)
@@ -87,14 +85,21 @@ void update(std::vector<pv>& psc, const std::vector<pv>& psg, std::vector<scalar
 }
 
 int main(int argc, char* argv[]) {
-    for (const auto& nroot : std::vector<int>{1, 2, 4}) {
-      molpro::cout << "diagonal elements";
+//  for (const auto& nn : std::vector<int>{1, 2, 4, 10, 100}) {
+      for (const auto& nn : std::vector<int>{4}) {
+    n = nn;
+//    for (const auto& nroot : std::vector<int>{1, 2, 4}) {
+          for (const auto& nroot : std::vector<int>{2}) {
+      if (nroot > n)
+        break;
+      std::cout << "\nMatrix dimension=" << n << ", looking for " << nroot << " roots" << std::endl;
+      std::cout << "diagonal elements";
       for (auto i = 0; i < n; i++)
-        molpro::cout << " " << matrix(i, i);
+        std::cout << " " << matrix(i, i);
       std::vector<double> diagonals;
       for (auto i = 0; i < n; i++)
         diagonals.push_back(matrix(i, i));
-      molpro::cout << std::endl;
+      std::cout << std::endl;
       molpro::linalg::LinearEigensystem<pv> solver;
       solver.m_verbosity = 1;
       solver.m_roots = nroot;
@@ -123,6 +128,7 @@ int main(int argc, char* argv[]) {
         //          std::cout << std::endl;
         //        }
         nwork = solver.addVector(x, g, Pcoeff);
+        std::cout << "nwork after addVector: " << nwork << std::endl;
         solver.report();
         if (nwork == 0)
           break;
@@ -141,6 +147,8 @@ int main(int argc, char* argv[]) {
         //                }
         x.resize(nwork);
         g.resize(nwork);
+        std::cout << "residual lengths:";
+        for (const auto& gg : g) std::cout <<" "<<std::sqrt(gg.dot(gg))<< " (square="<<gg.dot(gg)<<")"; std::cout <<std::endl;
         update(x, g, solver.working_set_eigenvalues());
         //            for (auto root = 0; root < nwork; root++) {
         //              std::cout << "after update() x:";
@@ -166,4 +174,5 @@ int main(int argc, char* argv[]) {
         //        std::cout << std::endl;
       }
     }
+  }
 }

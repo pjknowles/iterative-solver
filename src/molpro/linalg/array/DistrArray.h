@@ -92,7 +92,7 @@ public:
   //! Provides access to the local portion of the array locking that portion for all other process.
   struct LocalBuffer {
     //! Size of the local buffer
-    size_t size() { return 1 + hi - lo; };
+    size_t size() { return hi - lo; };
     //! Pointer to the start of the buffer
     DistrArray::value_type *begin() { return buffer; };
     //! Pointer to the end of the buffer (element just after the last one)
@@ -102,8 +102,8 @@ public:
     //! Access element at position i relative to begin() without bounds checking
     DistrArray::value_type &at(size_t i) { return buffer[i]; };
     DistrArray::value_type const &at(size_t i) const { return buffer[i]; };
-    const DistrArray::index_type lo; //!< first element of local buffer in the array
-    const DistrArray::index_type hi; //!< last element of local buffer in the array (the one before end())
+    const DistrArray::index_type lo; //!< index of first element of local buffer in the array
+    const DistrArray::index_type hi; //!< index of one past the last element in the buffer (same as end())
   protected:
     DistrArray::value_type *buffer; //!< pointer to the start of the local array buffer
   };
@@ -164,41 +164,48 @@ protected:
 
 //! Set all local elements of array x to val. @note each process has its own val, there is no communication
 void fill(DistrArray &x, DistrArray::value_type val);
-//! Copies all elements of y into x. If both arrays are empty than does nothing. If y is empty, throws an error.
+//! Copies all elements of y into x. If both arrays are empty than does nothing. If only one is empty, throws an error.
 void copy(DistrArray &x, const DistrArray &y);
-//! Copies elements in a patch of y into x. If both arrays are empty than does nothing. If y is empty, throws an error.
-void copy_patch(DistrArray &x, const DistrArray &y, DistrArray::index_type lo, DistrArray::index_type hi);
 /*!
- * \brief x[:] += a * y[:]
+ * @brief Copies elements in a patch of y into x. If both arrays are empty than does nothing. If only one is empty,
+ * throws an error.
+ * @param x array to be copied into
+ * @param y array to copy
+ * @param start index of first element to copy
+ * @param end index of last element to copy
+ */
+void copy_patch(DistrArray &x, const DistrArray &y, DistrArray::index_type start, DistrArray::index_type end);
+/*!
+ * \brief x[:] += a * y[:]. Throws error if any array is empty.
  * Add a multiple of another array to this one. Blocking, collective.
  */
 void axpy(DistrArray &x, DistrArray::value_type a, const DistrArray &y);
 //! Scale by a constant. Local.
 void scal(DistrArray &x, DistrArray::value_type a);
-//! Add another array to this. Local
+//! Add another array to this. Local. Throws error if any array is empty.
 void add(DistrArray &x, const DistrArray &y);
 //! Add a constant. Local.
 void add(DistrArray &x, DistrArray::value_type a);
-//! Subtract another array from this. Local.
+//! Subtract another array from this. Local. Throws error if any array is empty.
 void sub(DistrArray &x, const DistrArray &y);
 //! Subtract a constant. Local.
 void sub(DistrArray &x, DistrArray::value_type a);
 //! Take element-wise reciprocal of this. Local. No checks are made for zero values
 void recip(DistrArray &x);
-//! x[i] *= y[i].
+//! x[i] *= y[i]. Throws error if any array is empty.
 void times(DistrArray &x, const DistrArray &y);
-//! x[i] = y[i]*z[i].
+//! x[i] = y[i]*z[i]. Throws error if any array is empty.
 void times(DistrArray &x, const DistrArray &y, const DistrArray &z);
 
 /*!
- * @brief Scalar product of two arrays. Collective.
+ * @brief Scalar product of two arrays. Collective. Throws error if any array is empty.
  * Both arrays should be part of the same processor group (same communicator).
  * The result is broadcast to each process.
  */
 [[nodiscard]] DistrArray::value_type dot(const DistrArray &x, const DistrArray &y);
 
 /*!
- * @brief x[i] = y[i]/(z[i]+shift). Collective
+ * @brief x[i] = y[i]/(z[i]+shift). Collective. Throws error if any array is empty.
  * @code{.cpp}
  * negative? (append? this -=... : this =-...) : (append? this +=... : this =...)
  * @endcode
@@ -215,21 +222,21 @@ void divide(DistrArray &x, const DistrArray &y, const DistrArray &z, DistrArray:
 /*!
  * @brief returns n smallest elements in array x
  * Collective operation, must be called by all processes in the group.
- * @return list of index and value pairs
+ * @return list of index and value pairs, or empty list if array is empty.
  */
 [[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> min_n(const DistrArray &x, int n);
 
 /*!
  * \brief returns n largest elements in array x
  * Collective operation, must be called by all processes in the group.
- * @return list of index and value pairs
+ * @return list of index and value pairs, or empty list if array is empty.
  */
 [[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> max_n(const DistrArray &x, int n);
 
 /*!
  * \brief returns n elements that are largest by absolute value in array x
  * Collective operation, must be called by all processes in the group.
- * @return list of index and value pairs
+ * @return list of index and value pairs, or empty list if array is empty.
  */
 [[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> min_abs_n(const DistrArray &x,
                                                                                              int n);
@@ -237,7 +244,7 @@ void divide(DistrArray &x, const DistrArray &y, const DistrArray &z, DistrArray:
 /*!
  * \brief returns n elements that are largest by absolute value in array x
  * Collective operation, must be called by all processes in the group.
- * @return list of index and value pairs
+ * @return list of index and value pairs, or empty list if array is empty.
  */
 [[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> max_abs_n(const DistrArray &x,
                                                                                              int n);
@@ -245,7 +252,7 @@ void divide(DistrArray &x, const DistrArray &y, const DistrArray &z, DistrArray:
 /*!
  * \brief find the index of n smallest components in array x
  * Collective operation, must be called by all processes in the group.
- * @return
+ * @return list of indices for smallest n values, or empty list if array is empty.
  */
 [[nodiscard]] std::vector<DistrArray::index_type> min_loc_n(const DistrArray &x, int n);
 

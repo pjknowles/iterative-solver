@@ -36,6 +36,8 @@ void axpy(DistrArray& x, DistrArray::value_type a, const DistrArray& y) {
   auto name = std::string{"Array::axpy"};
   if (!x.compatible(y))
     x.error(name + " incompatible arrays");
+  if (x.empty() || y.empty())
+    x.error(name + " cannot use empty arrays");
   if (a == 0)
     return;
   auto p = util::ScopeProfiler(x.m_prof, name);
@@ -84,6 +86,8 @@ void times(DistrArray& x, const DistrArray& y) {
   auto name = std::string{"Array::times"};
   if (!x.compatible(y))
     x.error(name + " incompatible arrays");
+  if (x.empty() || y.empty())
+    x.error(name + " cannot use empty arrays");
   auto p = util::ScopeProfiler(x.m_prof, name);
   auto loc_x = x.local_buffer();
   auto loc_y = y.local_buffer();
@@ -99,6 +103,8 @@ void times(DistrArray& x, const DistrArray& y, const DistrArray& z) {
     x.error(name + " array y is incompatible");
   if (!x.compatible(z))
     x.error(name + " array z is incompatible");
+  if (x.empty() || y.empty() || z.empty())
+    x.error(name + " cannot use empty arrays");
   auto p = util::ScopeProfiler(x.m_prof, name);
   auto loc_x = x.local_buffer();
   auto loc_y = y.local_buffer();
@@ -244,22 +250,32 @@ template <class Compare> std::list<std::pair<unsigned long, double>> extrema(con
 } // namespace util
 
 std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> min_n(const DistrArray& x, int n) {
+  if (x.empty())
+    return {};
   return util::extrema<std::less<DistrArray::value_type>>(x, n);
 }
 
 std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> max_n(const DistrArray& x, int n) {
+  if (x.empty())
+    return {};
   return util::extrema<std::greater<DistrArray::value_type>>(x, n);
 }
 
 std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> min_abs_n(const DistrArray& x, int n) {
+  if (x.empty())
+    return {};
   return util::extrema<util::CompareAbs<DistrArray::value_type, std::less<>>>(x, n);
 }
 
 std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> max_abs_n(const DistrArray& x, int n) {
+  if (x.empty())
+    return {};
   return util::extrema<util::CompareAbs<DistrArray::value_type, std::greater<>>>(x, n);
 }
 
 std::vector<DistrArray::index_type> min_loc_n(const DistrArray& x, int n) {
+  if (x.empty())
+    return {};
   auto min_list = min_abs_n(x, n);
   auto min_vec = std::vector<DistrArray::index_type>(n);
   std::transform(min_list.cbegin(), min_list.cend(), min_vec.begin(), [](const auto& p) { return p.first; });
@@ -270,6 +286,8 @@ void copy(DistrArray& x, const DistrArray& y) {
   auto name = std::string{"Array::copy"};
   if (!x.compatible(y))
     x.error(name + " incompatible arrays");
+  if (x.empty() != y.empty())
+    x.error(name + " one of the arrays is empty");
   auto p = util::ScopeProfiler(x.m_prof, name);
   auto loc_x = x.local_buffer();
   auto loc_y = y.local_buffer();
@@ -278,20 +296,22 @@ void copy(DistrArray& x, const DistrArray& y) {
   for (size_t i = 0; i < loc_x->size(); ++i)
     loc_x->at(i) = loc_y->at(i);
 }
-void copy_patch(DistrArray& x, const DistrArray& y, DistrArray::index_type lo, DistrArray::index_type hi) {
+void copy_patch(DistrArray& x, const DistrArray& y, DistrArray::index_type start, DistrArray::index_type end) {
   auto name = std::string{"Array::copy_patch"};
   if (!x.compatible(y))
     x.error(name + " incompatible arrays");
+  if (x.empty() != y.empty())
+    x.error(name + " one of the arrays is empty");
   auto p = util::ScopeProfiler(x.m_prof, name);
   auto loc_x = x.local_buffer();
   auto loc_y = y.local_buffer();
   if (!loc_x->compatible(*loc_y))
     x.error(name + " incompatible local buffers");
-  if (lo > hi)
+  if (start > end)
     return;
-  auto start = lo <= loc_x->lo ? 0 : lo - loc_x->lo;
-  auto end = hi - lo + 1 >= loc_x->size() ? loc_x->size() : hi - lo + 1;
-  for (auto i = start; i < end; ++i)
+  auto s = start <= loc_x->lo ? 0 : start - loc_x->lo;
+  auto e = end - start + 1 >= loc_x->size() ? loc_x->size() : end - start + 1;
+  for (auto i = s; i < e; ++i)
     loc_x->at(i) = loc_y->at(i);
 }
 } // namespace molpro::gci::array

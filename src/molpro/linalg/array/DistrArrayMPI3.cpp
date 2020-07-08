@@ -113,7 +113,7 @@ void DistrArrayMPI3::_get_put(index_type lo, index_type hi, const value_type* bu
     error(name + " called on an empty array");
   auto prof = util::ScopeProfiler(m_prof, name);
   auto [p_lo, p_hi] = m_distribution->process_map(lo, hi);
-  auto* curr_buf = buf;
+  auto* curr_buf = const_cast<value_type*>(buf);
   auto requests = std::vector<MPI_Request>(p_hi - p_lo + 1);
   for (size_t i = p_lo; i < p_hi + 1; ++i) {
     MPI_Aint offset = 0;
@@ -125,12 +125,12 @@ void DistrArrayMPI3::_get_put(index_type lo, index_type hi, const value_type* bu
       count -= offset;
     }
     if (option == RMAType::get)
-      MPI_Rget(&curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, m_win, &requests[i - p_lo]);
+      MPI_Rget(curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, m_win, &requests[i - p_lo]);
     else if (option == RMAType::put)
-      MPI_Rput(&curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, m_win, &requests[i - p_lo]);
+      MPI_Rput(curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, m_win, &requests[i - p_lo]);
     else if (option == RMAType::acc)
-      MPI_Raccumulate(&curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, MPI_SUM, m_win, &requests[i - p_lo]);
-    curr_buf = &curr_buf[count];
+      MPI_Raccumulate(curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, MPI_SUM, m_win, &requests[i - p_lo]);
+    curr_buf += count;
   }
   MPI_Waitall(requests.size(), requests.data(), MPI_STATUSES_IGNORE);
 }
@@ -142,7 +142,7 @@ void DistrArrayMPI3::get(index_type lo, index_type hi, value_type* buf) const {
 std::vector<DistrArrayMPI3::value_type> DistrArrayMPI3::get(index_type lo, index_type hi) const {
   if (lo > hi)
     return {};
-  auto val = std::vector<value_type>(hi - lo);
+  auto val = std::vector<value_type>(hi - lo + 1);
   get(lo, hi, val.data());
   return val;
 }

@@ -1,6 +1,7 @@
 #include "DistrArrayGA.h"
-
 #include "util.h"
+
+#include "molpro/Profiler.h"
 #include <algorithm>
 #include <ga-mpi.h>
 #include <ga.h>
@@ -22,7 +23,7 @@ int get_communicator_rank(MPI_Comm comm) {
 
 } // namespace
 
-DistrArrayGA::DistrArrayGA(size_t dimension, MPI_Comm comm, std::shared_ptr<molpro::Profiler> prof)
+DistrArrayGA::DistrArrayGA(size_t dimension, MPI_Comm comm, std::shared_ptr<Profiler> prof)
     : DistrArray(dimension, comm, std::move(prof)), m_comm_rank(get_communicator_rank(comm)),
       m_comm_size(get_communicator_size(comm)), m_ga_handle(0), m_ga_chunk(1), m_ga_pgroup(0), m_ga_allocated(false) {}
 
@@ -33,8 +34,6 @@ DistrArrayGA::DistrArrayGA(const DistrArrayGA &source)
   m_dimension = source.m_dimension;
   *this = source;
 }
-
-DistrArrayGA::DistrArrayGA(const DistrArrayGA &source, int) : DistrArrayGA(source) {}
 
 DistrArrayGA &DistrArrayGA::operator=(const DistrArrayGA &source) {
   m_dimension = source.m_dimension;

@@ -1,6 +1,7 @@
 #ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H
 #define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H
 #include <list>
+#include <map>
 #include <memory>
 #include <mpi.h>
 #include <vector>
@@ -267,6 +268,11 @@ namespace util {
 template <class Compare>
 [[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> extrema(const DistrArray &x, int n);
 }
+
+using SparseArray = std::map<unsigned long int, double>;
+
+double dot(const DistrArray &x, const SparseArray &y);
+void axpy(DistrArray &x, double a, const SparseArray &y);
 
 } // namespace molpro::gci::array
 

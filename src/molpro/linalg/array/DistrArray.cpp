@@ -314,4 +314,50 @@ void copy_patch(DistrArray& x, const DistrArray& y, DistrArray::index_type start
   for (auto i = s; i < e; ++i)
     loc_x->at(i) = loc_y->at(i);
 }
+
+double dot(const DistrArray& x, const SparseArray& y) {
+  auto name = std::string{"Array::dot SparseArray "};
+  if (y.empty())
+    return 0;
+  if (x.empty())
+    x.error(name + " calling dot on empty arrays");
+  if (x.size() < y.rbegin()->first + 1)
+    x.error(name + " sparse array x is incompatible");
+  auto p = util::ScopeProfiler(x.m_prof, name);
+  auto loc_x = x.local_buffer();
+  double res = 0;
+  for (auto it = y.lower_bound(loc_x->lo); it != y.upper_bound(loc_x->hi); ++it) {
+    auto [i, v] = *it;
+    res += loc_x->at(i - loc_x->lo) * v;
+  }
+  MPI_Allreduce(MPI_IN_PLACE, &res, 1, MPI_DOUBLE, MPI_SUM, x.communicator());
+  return res;
+}
+
+void axpy(DistrArray& x, double a, const SparseArray& y) {
+  auto name = std::string{"Array::axpy SparseArray"};
+  if (a == 0 || y.empty())
+    return;
+  if (x.empty())
+    x.error(name + " calling dot on empty arrays");
+  if (x.size() < y.rbegin()->first + 1)
+    x.error(name + " sparse array x is incompatible");
+  auto p = util::ScopeProfiler(x.m_prof, name);
+  auto loc_x = x.local_buffer();
+  if (a == 1)
+    for (auto it = y.lower_bound(loc_x->lo); it != y.upper_bound(loc_x->hi); ++it) {
+      auto [i, v] = *it;
+      loc_x->at(i - loc_x->lo) += v;
+    }
+  else if (a == -1)
+    for (auto it = y.lower_bound(loc_x->lo); it != y.upper_bound(loc_x->hi); ++it) {
+      auto [i, v] = *it;
+      loc_x->at(i - loc_x->lo) -= v;
+    }
+  else
+    for (auto it = y.lower_bound(loc_x->lo); it != y.upper_bound(loc_x->hi); ++it) {
+      auto [i, v] = *it;
+      loc_x->at(i - loc_x->lo) += a * v;
+    }
+}
 } // namespace molpro::gci::array

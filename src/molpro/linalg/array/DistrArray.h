@@ -79,11 +79,9 @@ public:
   //! total number of elements, same as overall dimension of array
   size_t size() const { return m_dimension; };
   //! Checks that arrays are of the same dimensionality
-  virtual bool compatible(const DistrArray &other) const;
+  bool compatible(const DistrArray &other) const;
   //! allocates memory to the array without initializing it with any value. Blocking, collective operation.
   virtual void allocate_buffer() = 0;
-  //! Duplicates GA buffer. Requires communicators to be the same. Blocking, collective operation
-  virtual void copy_buffer(const DistrArray &source) = 0;
   //! checks if array has been allocated
   virtual bool empty() const;
 
@@ -166,6 +164,10 @@ protected:
 
 //! Set all local elements of array x to val. @note each process has its own val, there is no communication
 void fill(DistrArray &x, DistrArray::value_type val);
+//! Copies all elements of y into x. If both arrays are empty than does nothing. If y is empty, throws an error.
+void copy(DistrArray &x, const DistrArray &y);
+//! Copies elements in a patch of y into x. If both arrays are empty than does nothing. If y is empty, throws an error.
+void copy_patch(DistrArray &x, const DistrArray &y, DistrArray::index_type lo, DistrArray::index_type hi);
 /*!
  * \brief x[:] += a * y[:]
  * Add a multiple of another array to this one. Blocking, collective.

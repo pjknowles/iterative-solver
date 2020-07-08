@@ -266,4 +266,32 @@ std::vector<DistrArray::index_type> min_loc_n(const DistrArray& x, int n) {
   return min_vec;
 }
 
+void copy(DistrArray& x, const DistrArray& y) {
+  auto name = std::string{"Array::copy"};
+  if (!x.compatible(y))
+    x.error(name + " incompatible arrays");
+  auto p = util::ScopeProfiler(x.m_prof, name);
+  auto loc_x = x.local_buffer();
+  auto loc_y = y.local_buffer();
+  if (!loc_x->compatible(*loc_y))
+    x.error(name + " incompatible local buffers");
+  for (size_t i = 0; i < loc_x->size(); ++i)
+    loc_x->at(i) = loc_y->at(i);
+}
+void copy_patch(DistrArray& x, const DistrArray& y, DistrArray::index_type lo, DistrArray::index_type hi) {
+  auto name = std::string{"Array::copy_patch"};
+  if (!x.compatible(y))
+    x.error(name + " incompatible arrays");
+  auto p = util::ScopeProfiler(x.m_prof, name);
+  auto loc_x = x.local_buffer();
+  auto loc_y = y.local_buffer();
+  if (!loc_x->compatible(*loc_y))
+    x.error(name + " incompatible local buffers");
+  if (lo > hi)
+    return;
+  auto start = lo <= loc_x->lo ? 0 : lo - loc_x->lo;
+  auto end = hi - lo + 1 >= loc_x->size() ? loc_x->size() : hi - lo + 1;
+  for (auto i = start; i < end; ++i)
+    loc_x->at(i) = loc_y->at(i);
+}
 } // namespace molpro::gci::array

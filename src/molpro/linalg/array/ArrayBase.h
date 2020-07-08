@@ -1,5 +1,6 @@
 #ifndef GCI_SRC_MOLPRO_GCI_ARRAY_ARRAYBASE_H
 #define GCI_SRC_MOLPRO_GCI_ARRAY_ARRAYBASE_H
+#include <mpi.h>
 
 namespace molpro::gci::array {
 /*!
@@ -27,8 +28,8 @@ namespace molpro::gci::array {
  * only needs to operate on the local section of the array and no communication is required, for example scaling
  * array by a constant. Collective operations are naturally synchronised.
  *
- * @warning The distributed array is always open for modification without any locking. We only provide synchronization mechanism
- * to ensure that the RMA calls have completed.
+ * @warning The distributed array is always open for modification without any locking. We only provide synchronization
+ * mechanism to ensure that the RMA calls have completed.
  *
  * Example:
  * \code{.cpp}
@@ -53,9 +54,6 @@ public:
   std::shared_ptr<molpro::Profiler> m_prof = nullptr; //!< optional profiler
   int m_comm_rank = 0;                                //!< rank in process group
   int m_comm_size = 0;                                //!< size of process group
-protected:
-  size_t m_dimension = 0; //!< Overall dimension of the array
-public:
   ArrayBase() = delete;
   //! Initializes array without allocating any memory
   ArrayBase(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof)
@@ -89,7 +87,6 @@ public:
     virtual bool compatible(const LocalBuffer &other) = 0;
     //! Access element at position i relative to begin() without bounds checking
     virtual ArrayBase::value_type &operator[](size_t i) = 0;
-
     ArrayBase::index_type lo;      //!< first element of local buffer in the array
     ArrayBase::index_type hi;      //!< last element of local buffer in the array (the one before end())
     ArrayBase::value_type *buffer; //!< pointer to the start of the local array buffer
@@ -99,12 +96,11 @@ public:
   //! get element at the offset. Blocking.
   [[nodiscard]] virtual ArrayBase::value_type at(size_t offset) const = 0;
   //! Set all local elements to zero.
-  virtual void zero(bool with_sync_before = false, bool with_sync_after = false) = 0;
+  virtual void zero() = 0;
   //! Set all local elements to val.
-  virtual void set(ArrayBase::value_type val, bool with_sync_before = false, bool with_sync_after = false) = 0;
+  virtual void set(ArrayBase::value_type val) = 0;
   //! Set one element to a scalar. Global operation. @todo rename to put
-  virutal void set(size_t ind, ArrayBase::value_type val, bool with_sync_before = false,
-                   bool with_sync_after = false) = 0;
+  virutal void set(size_t ind, ArrayBase::value_type val) = 0;
   //! Gets buffer[lo:hi] from global array (hi inclusive, i.e. not pythonic). Blocking.
   virtual void get(ArrayBase::index_type lo, ArrayBase::index_type hi,
                    std::vector<ArrayBase::value_type> &buf) const = 0;
@@ -113,8 +109,10 @@ public:
   //! array[lo:hi] = data[:] (hi inclusive, i.e. not pythonic). Blocking
   virtual void put(ArrayBase::index_type lo, ArrayBase::index_type hi, const ArrayBase::value_type *data) = 0;
   //!  array[lo:hi] += scaling_constant * data[:] (hi inclusive, i.e. not pythonic). Blocking
-  virtual void acc(ArrayBase::index_type lo, ArrayBase::index_type hi, const ArrayBase::value_type *data,
-                   ArrayBase::value_type scaling_constant = 1.) = 0;
+  void acc(ArrayBase::index_type lo, ArrayBase::index_type hi, const ArrayBase::value_type *data,
+           ArrayBase::value_type scaling_constant = 1.) {
+    _acc(lo, hi, data, scaling_constant);
+  };
   /*!
    * @brief gets elements with discontinuous indices from array. Blocking
    * @return res[i] = array[indices[i]]
@@ -139,32 +137,32 @@ public:
    * Collective operation, must be called by all processes in the group.
    * \param n number of smallest values to be found
    */
-  [[nodiscard]] virtual std::list<std::pair<size_t, ArrayBase::value_type>> min_n(size_t n = 1) const = 0;
+  [[nodiscard]] virtual std::list<std::pair<size_t, ArrayBase::value_type>> min_n(size_t n) const = 0;
   /*!
    * \brief returns n largest elements
    * Collective operation, must be called by all processes in the group.
    * \param n number of smallest values to be found
    */
-  [[nodiscard]] virtual std::list<std::pair<size_t, ArrayBase::value_type>> max_n(size_t n = 1) const = 0;
+  [[nodiscard]] virtual std::list<std::pair<size_t, ArrayBase::value_type>> max_n(size_t n) const = 0;
   /*!
    * \brief returns n elements that are largest by absolute value
    * Collective operation, must be called by all processes in the group.
    * \param n number of smallest values to be found
    */
-  [[nodiscard]] virtual std::list<std::pair<size_t, ArrayBase::value_type>> min_abs_n(size_t n = 1) const = 0;
+  [[nodiscard]] virtual std::list<std::pair<size_t, ArrayBase::value_type>> min_abs_n(size_t n) const = 0;
   /*!
    * \brief returns n elements that are largest by absolute value
    * Collective operation, must be called by all processes in the group.
    * \param n number of smallest values to be found
    */
-  [[nodiscard]] virtual std::list<std::pair<size_t, ArrayBase::value_type>> max_abs_n(size_t n = 1) const = 0;
+  [[nodiscard]] virtual std::list<std::pair<size_t, ArrayBase::value_type>> max_abs_n(size_t n) const = 0;
   /*!
    * \brief find the index of n smallest components
    * Collective operation, must be called by all processes in the group.
    * \param n number of smallest values to be found
    * \return offsets in buffer
    */
-  [[nodiscard]] virtual std::vector<size_t> minlocN(size_t n = 1) const = 0;
+  [[nodiscard]] virtual std::vector<size_t> minlocN(size_t n) const = 0;
   /*!
    * @brief Copies the whole buffer into a vector. Blocking.
    * @note This is only meant for debugging small arrays!
@@ -180,38 +178,43 @@ public:
    * \param a the pre-factor
    * \param x the other array
    */
-  virtual void axpy(ArrayBase::value_type a, const ArrayBase &x, bool with_sync_before = false,
-                    bool with_sync_after = false) = 0;
+  virtual void axpy(ArrayBase::value_type a, const ArrayBase &x) = 0;
   //! Scale by a constant. Local.
-  virtual void scal(ArrayBase::value_type a, bool with_sync_before = false, bool with_sync_after = false) = 0;
+  virtual void scal(ArrayBase::value_type a) = 0;
   //! Add another array to this. Local
-  virtual void add(const ArrayBase &other, bool with_sync_before = false, bool with_sync_after = false) = 0;
+  virtual void add(const ArrayBase &other) = 0;
   //! Add a constant. Local.
-  virtual void add(ArrayBase::value_type a, bool with_sync_before = false, bool with_sync_after = false) = 0;
+  virtual void add(ArrayBase::value_type a) = 0;
   //! Subtract another array from this. Local.
-  virtual void sub(const ArrayBase &other, bool with_sync_before = false, bool with_sync_after = false) = 0;
+  virtual void sub(const ArrayBase &other) = 0;
   //! Subtract a constant. Local.
-  virtual void sub(ArrayBase::value_type a, bool with_sync_before = false, bool with_sync_after = false) = 0;
+  virtual void sub(ArrayBase::value_type a) = 0;
   //! Take element-wise reciprocal of this. Local. No checks are made for zero values
-  virtual void recip(bool with_sync_before = false, bool with_sync_after = false) = 0;
+  virtual void recip() = 0;
   /*!
    * @brief Scalar product with another array. Collective.
    * Both arrays should be part of the same processor group (same communicator).
    * The result is broadcast to each process.
    */
-  virtual ArrayBase::value_type dot(const ArrayBase &other, bool with_sync_before = false) const = 0;
-  virtual ArrayBase::value_type dot(const ArrayBase *other, bool with_sync_before = false) const = 0;
+  virtual ArrayBase::value_type dot(const ArrayBase &other) const = 0;
+  virtual ArrayBase::value_type dot(const ArrayBase *other) const = 0;
   //! this[i] = a[i]*b[i]. Collective.
-  virtual void times(const ArrayBase &a, const ArrayBase &b, bool with_sync_before = false,
-                     bool with_sync_after = false) = 0;
+  virtual void times(const ArrayBase &a, const ArrayBase &b) = 0;
   /*!
    * \brief this[i] = a[i]/(b[i]+shift). Collective
    * negative? (append? this -=... : this =-...) : (append? this +=... : this =...)
    * \param append Whether to += or =
    * \param negative Whether to scale  right hand side by -1
    */
-  virtual void divide(const ArrayBase &a, const ArrayBase *b, ArrayBase::value_type shift = 0, bool append = false,
-                      bool negative = false, bool with_sync_before = false, bool with_sync_after = false) = 0;
+  void divide(const ArrayBase &a, const ArrayBase *b, ArrayBase::value_type shift = 0, bool append = false,
+              bool negative = false) {
+    _divide(a, b, shift, append, negative);
+  };
+
+protected:
+  virtual void _acc(ArrayBase::index_type lo, ArrayBase::index_type hi, const ArrayBase::value_type *data,
+                    ArrayBase::value_type scaling_constant) = 0;
+  virtual void _divide(const ArrayBase &a, const ArrayBase *b, ArrayBase::value_type shift, bool append, bool negative);
 };
 
 } // namespace molpro::gci::array

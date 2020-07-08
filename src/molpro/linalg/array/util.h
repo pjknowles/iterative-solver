@@ -21,14 +21,6 @@ struct ScopeProfiler {
   ScopeProfiler &operator=(const ScopeProfiler &) = delete;
 };
 
-struct Distribution {
-  Distribution(int n_proc, size_t dimension);
-  //! Maps fist and last index in the array to a pair of processes encapsulating the corresponding buffer range
-  std::pair<int, int> process_map(unsigned long lo, unsigned long hi);
-  //! start and size for section of array local to each process
-  std::vector<std::pair<unsigned long, size_t>> proc_buffer;
-  size_t dim;
-};
 } // namespace util
 } // namespace array
 } // namespace gci

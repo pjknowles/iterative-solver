@@ -13,6 +13,7 @@ namespace array {
  */
 class DistrArrayGA : public DistrArray {
 protected:
+  class DistributionGA;
   int m_comm_rank;     //!< rank in process group
   int m_comm_size;     //!< size of process group
   int m_ga_handle;     //!< Global Array handle, needed by GA libary
@@ -21,6 +22,7 @@ protected:
   bool m_ga_allocated; //!< Flags that GA has been allocated
   //! Record every process group created, because GA can only allocate a fixed number of them
   static std::map<MPI_Comm, int> _ga_pgroups;
+  std::unique_ptr<DistributionGA> m_distribution;
 
 public:
   DistrArrayGA() = delete;
@@ -41,7 +43,21 @@ protected:
     explicit LocalBufferGA(DistrArrayGA &source);
   };
 
+  class DistributionGA : public DistrArray::Distribution {
+  public:
+    DistributionGA();
+    DistributionGA(int ga_handle, int n_proc);
+    std::pair<int, int> locate_process(index_type lo, index_type hi) const override;
+    std::pair<index_type, size_t> range(int process_rank) const override;
+
+  protected:
+    int m_ga_handle;
+    bool m_dummy; //!< marks it as a dummy object, because GA was not allocated yet
+    int m_n_proc; //!< number of processes
+  };
+
 public:
+  [[nodiscard]] const Distribution &distribution() const override;
   [[nodiscard]] std::shared_ptr<LocalBuffer> local_buffer() override;
   [[nodiscard]] std::shared_ptr<const LocalBuffer> local_buffer() const override;
   [[nodiscard]] value_type at(index_type ind) const override;

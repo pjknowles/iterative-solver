@@ -84,6 +84,7 @@ void DistrArrayGA::allocate_buffer() {
   if (!succ)
     error("Failed to allocate");
   m_ga_allocated = true;
+  m_distribution = std::make_unique<DistributionGA>(m_ga_handle, get_communicator_size(m_communicator));
 }
 
 void DistrArrayGA::sync() const {
@@ -231,6 +232,33 @@ void DistrArrayGA::acc(index_type lo, index_type hi, const value_type *data) {
   double scaling_constant = 1;
   int ld, ilo = lo, ihi = hi;
   NGA_Acc(m_ga_handle, &ilo, &ihi, const_cast<double *>(data), &ld, &scaling_constant);
+}
+
+const DistrArray::Distribution &DistrArrayGA::distribution() const { return *m_distribution; }
+
+DistrArrayGA::DistributionGA::DistributionGA() : m_ga_handle{0}, m_dummy{true}, m_n_proc{0} {}
+
+DistrArrayGA::DistributionGA::DistributionGA(int ga_handle, int n_proc)
+    : m_ga_handle{ga_handle}, m_dummy{false}, m_n_proc{n_proc} {}
+
+std::pair<int, int> DistrArrayGA::DistributionGA::locate_process(DistrArray::index_type lo,
+                                                                 DistrArray::index_type hi) const {
+  if (m_dummy)
+    return std::pair<int, int>();
+  auto regions = std::vector<int>(2 * m_n_proc);
+  auto procs = std::vector<int>(m_n_proc);
+  int _lo = lo, _hi = hi;
+  auto n_proc = NGA_Locate_region(m_ga_handle, &_lo, &_hi, regions.data(), procs.data());
+  if (n_proc < 1)
+    GA_Error((char *)"failed to locate region of array buffer", 1);
+  return {procs[0], procs[n_proc - 1]};
+}
+
+std::pair<DistrArrayGA::index_type, size_t> DistrArrayGA::DistributionGA::range(int process_rank) const {
+  int lo, hi;
+  NGA_Distribution(m_ga_handle, process_rank, &lo, &hi);
+  size_t size = hi > lo ? hi - lo : 0;
+  return {lo, size};
 }
 
 } // namespace molpro::gci::array

@@ -6,9 +6,6 @@
 namespace molpro {
 namespace gci {
 namespace array {
-namespace util {
-class Distribution;
-}
 
 /*!
  * @brief Implementation of distributed array using MPI3 RMA operations
@@ -19,15 +16,16 @@ class Distribution;
  * @warning Care must be taken that overlapping put and get operations or local buffer modifications
  * do not cause undefined behaviour.
  *
- * @todo I should make implementation more robust by applying properly utilising locks. Current implementation is equivalent to fencing.
+ * @todo I should make implementation more robust by applying properly utilising locks. Current implementation is
+ * equivalent to fencing.
  *
  */
 class DistrArrayMPI3 : public DistrArray {
 protected:
-protected:
+  class DistributionMPI3;
   MPI_Win m_win = MPI_WIN_NULL; //!< window object
   //! distribution of array buffer among processes. Stores start index and size for each
-  std::unique_ptr<util::Distribution> m_distribution;
+  std::unique_ptr<DistributionMPI3> m_distribution;
   bool m_allocated = false; //!< whether the window has been created
 
 public:
@@ -47,15 +45,25 @@ public:
   void allocate_buffer() override;
   bool empty() const override;
 
-  //! Returns distribution of array buffer among processes with start index and size for each process.
-  const util::Distribution &distribution() { return *m_distribution; };
-
 protected:
   struct LocalBufferMPI3 : public DistrArray::LocalBuffer {
     explicit LocalBufferMPI3(DistrArrayMPI3 &source);
   };
 
+  class DistributionMPI3 : public DistrArray::Distribution {
+  public:
+    DistributionMPI3(int n_proc, size_t dimension);
+    std::pair<int, int> locate_process(index_type lo, index_type hi) const override;
+    std::pair<index_type, size_t> range(int process_rank) const override;
+
+  protected:
+    //! start and size for section of array local to each process
+    std::vector<std::pair<unsigned long, size_t>> m_proc_range;
+    size_t m_dim;
+  };
+
 public:
+  [[nodiscard]] const Distribution &distribution() const override;
   [[nodiscard]] std::shared_ptr<LocalBuffer> local_buffer() override;
   [[nodiscard]] std::shared_ptr<const LocalBuffer> local_buffer() const override;
   [[nodiscard]] value_type at(index_type ind) const override;
@@ -115,7 +123,7 @@ protected:
     bool m_deleted = false; //!< whether the lock was already deleted
   };
 
-  //! Keep track of proxy object so that of lock is deleted, the proxy does not try to unlock.
+  //! Keep track of proxy object so that if lock is deleted, the proxy does not try to unlock.
   std::weak_ptr<Proxy> m_proxy;
 
 public:

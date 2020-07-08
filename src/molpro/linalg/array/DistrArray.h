@@ -57,8 +57,8 @@ namespace array {
  *     x.put(lo, hi, values);
  *     x.scatter(indices, values2);
  *   }
- *   x.sync();
  *   initialize(A); // assume A is stored in row major format
+ *   x.sync();
  *   // blocked matrix vector multiplication: y[i] = A[i,j] x[j]
  *   // Let's assume there are nb blocks each of size bs to keep things simple.
  *   // RMA operations need a buffer to copy the data into.
@@ -81,6 +81,7 @@ namespace array {
  *     }
  *     y.accumulate(i_lo, i_hi, result_block.data());
  *   }
+ *   y.sync();
  * \endcode
  *
  */
@@ -91,8 +92,9 @@ public:
   using SparseArray = std::map<unsigned long int, double>;
 
 protected:
-  index_type m_dimension;  //! number of elements in the array
-  MPI_Comm m_communicator; //!< Outer communicator
+  class Distribution;
+  index_type m_dimension;                       //!< number of elements in the array
+  MPI_Comm m_communicator;                      //!< Outer communicator
 public:
   std::shared_ptr<molpro::Profiler> m_prof = nullptr; //!< optional profiler
   DistrArray() = delete;
@@ -145,10 +147,20 @@ protected:
     DistrArray::value_type *buffer; //!< pointer to the start of the local array buffer
   };
 
+  //! Information on how the array is distributed among the processes.
+  struct Distribution {
+    //! Maps fist and last index in the array to a pair of processes encapsulating the corresponding buffer range
+    virtual std::pair<int, int> locate_process(index_type lo, index_type hi) const = 0;
+    //! Returns start and size for section of array local to process_rank
+    virtual std::pair<index_type, size_t> range(int process_rank) const = 0;
+  };
+
 public:
   //! Access the buffer local to this process
   [[nodiscard]] virtual std::shared_ptr<LocalBuffer> local_buffer() = 0;
   [[nodiscard]] virtual std::shared_ptr<const LocalBuffer> local_buffer() const = 0;
+  //! Access distribution of the array among processes
+  [[nodiscard]] virtual const Distribution &distribution() const = 0;
   //! @}
 
   /*! @name One-sided RMA

@@ -10,47 +10,77 @@ namespace molpro {
 class Profiler;
 }
 
-namespace molpro::gci::array {
+namespace molpro {
+namespace gci {
+namespace array {
 /*!
- * @brief Array distributed across many processes with small set of linear algebra operations
+ * @brief Array distributed across many processes supporting remote-memory-access, access to process local buffer, and
+ * some linear algebra operations.
  *
- * This class implements one-sided remote-memory-access operations for getting or putting a copy of any section of the
- * array, provides access to the array data local to the current process, and implements simple linear algebra
- * operations. It also exposes synchronization of processes.
+ * This class implements one-sided remote-memory-access (RMA) operations for getting or putting a copy of any section of
+ * the array, provides access to the array data local to the current process, and implements simple linear algebra
+ * operations. It also exposes synchronization of processes, and fencing to ensure RMA operations complete.
  *
  * This class is designed for the following usage:
  *   - to do simple linear algebra on whole arrays
  *   - getting sections of the array to transform and  accumulate the result into a different array
  *   - initializing the array using put operations
- *   - backing up to and from HDF5 files
  *
  * All RMA operations are blocking, meaning that if putting data into the array the process returns as soon as the data
  * is in the network buffer (not necessarily in the array) and if getting data the process returns when the data
- * is copied into the supplied buffer.
+ * is copied into the supplied buffer. Performing synchronisation ensures that all RMA operations complete.
  *
  * The LocalBuffer nested class gives access to the section of distributed array that exists on the current process.
- * There is no locking mechanism and the buffer can still be modified by the RMA operations.
+ * It is up to specific implementation of DistributedArray whether exclusive access to the buffer is granted.
  *
  * The linear algebra operations can be collective or non-collective. In the former, all processes have to participate
  * in the function call, for example dot which requires a collective broadcast. In case of the latter, each process
  * only needs to operate on the local section of the array and no communication is required, for example scaling
  * array by a constant. Collective operations are naturally synchronised.
  *
- * @warning The distributed array is always open for modification without any locking. We only provide synchronization
- * mechanism to ensure that the RMA calls have completed.
+ * @warning The base class does not enforce any locking or exclusive access mechanism. It is up to the specific
+ * implementation to decide whether this is necessary. The only rule is that synchronisation call must complete
+ * any outstanding RMA and linear algebra operations.
  *
- * Example:
+ * Example: blocked matrix vector multiplication
  * \code{.cpp}
+ *   // y = A x
  *   auto x = Array(n, comm);
- *   // Initialze x
+ *   auto y = Array(n, comm);
+ *   auto A = Array(n*n, comm);
+ *   // Initialze
  *   x.allocate();
  *   x.zero(); // non-collective operation. Each process sets local buffer to zero
+ *   y.zero(); // y uses same communicator as x, so does not need a separate synchronisation. It would for RMA.
  *   x.sync(); // Synchronize to make sure all elements are zero
  *   if (rank == 0) { // Simple initialization
  *     x.put(lo, hi, values);
  *     x.scatter(indices, values2);
  *   }
  *   x.sync();
+ *   initialize(A); // assume A is stored in row major format
+ *   // blocked matrix vector multiplication: y[i] = A[i,j] x[j]
+ *   // Let's assume there are nb blocks each of size bs to keep things simple.
+ *   // RMA operations need a buffer to copy the data into.
+ *   std::vector<double> result_block(bs);
+ *   std::vector<double> x_block(bs);
+ *   std::vector<double> a_block(bs*bs);
+ *   for (auto i = 0; i_col < nb ; ++i){
+ *     auto i_lo = i * bs;
+ *     auto i_hi = i_lo + bs - 1;
+ *     std::fill_n(begin(result_block), bs, 0.);
+ *     for (auto j = 0; j < nb ; ++j){
+ *       auto j_lo = j * bs;
+ *       auto j_hi = j_lo + bs - 1;
+ *       if (NextTask()){ // task counter assigns operation to current process
+ *         x.get(j_lo, j_hi, x_bloc.data());
+ *         A.get((i * nb + j) * bs, (i * nb + j) * bs + bs - 1, a_bloc.data());
+ *         // matrix vector multiplication with accumulation into result vector
+ *         matrix_vector_multiply(a_bloc, x_bloc, result_block);
+ *       }
+ *     }
+ *     y.accumulate(i_lo, i_hi, result_block.data());
+ *   }
  * \endcode
  *
  */
@@ -279,6 +309,8 @@ template <typename T, class Compare> struct CompareAbs {
 template <class Compare>
 [[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> extrema(const DistrArray &x, int n);
 } // namespace util
-} // namespace molpro::gci::array
+} // namespace array
+} // namespace gci
+} // namespace molpro
 
 #endif // GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H

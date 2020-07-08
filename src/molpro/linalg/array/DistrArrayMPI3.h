@@ -15,8 +15,12 @@ class Distribution;
  *
  * The array buffer is a window which is open for all processes on creation and
  * remains open until the destruction of the array.
- * @warning Care must be taken that overlapping put and get operations or linear algebra
+ *
+ * @warning Care must be taken that overlapping put and get operations or local buffer modifications
  * do not cause undefined behaviour.
+ *
+ * @todo I should make implementation more robust by applying properly utilising locks. Current implementation is equivalent to fencing.
+ *
  */
 class DistrArrayMPI3 : public DistrArray {
 protected:
@@ -70,6 +74,7 @@ protected:
   //! Free the window
   void free_buffer();
   enum class RMAType { get, put, acc, gather, scatter, scatter_acc };
+  //! does get or put or accumulate
   void _get_put(index_type lo, index_type hi, const value_type *buf, RMAType option);
   //! does gather or scatter or scatter_acc
   void _gather_scatter(const std::vector<index_type> &indices, std::vector<value_type> &data, RMAType option);

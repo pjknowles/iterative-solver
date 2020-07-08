@@ -175,8 +175,11 @@ std::vector<DistrArrayGA::value_type> DistrArrayGA::gather(const std::vector<ind
   int n = indices.size();
   auto data = std::vector<double>(n);
   auto iind = std::vector<int>(indices.begin(), indices.end());
-  int *start = iind.data();
-  NGA_Gather(m_ga_handle, data.data(), &start, n);
+  int **subsarray = new int *[n];
+  for (int i = 0; i < n; ++i)
+    subsarray[i] = &(iind.at(i));
+  NGA_Gather(m_ga_handle, data.data(), subsarray, n);
+  delete[] subsarray;
   return data;
 }
 
@@ -189,8 +192,11 @@ void DistrArrayGA::scatter(const std::vector<index_type> &indices, const std::ve
   util::ScopeProfiler p{m_prof, name};
   int n = indices.size();
   auto iind = std::vector<int>(indices.begin(), indices.end());
-  int *start = iind.data();
-  NGA_Scatter(m_ga_handle, const_cast<double *>(data.data()), &start, n);
+  int **subsarray = new int *[n];
+  for (int i = 0; i < n; ++i)
+    subsarray[i] = &(iind.at(i));
+  NGA_Scatter(m_ga_handle, const_cast<double *>(data.data()), subsarray, n);
+  delete[] subsarray;
 }
 
 void DistrArrayGA::scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data) {

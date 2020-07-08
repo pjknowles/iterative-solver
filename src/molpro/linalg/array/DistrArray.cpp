@@ -190,8 +190,8 @@ template <class Compare> std::list<std::pair<unsigned long, double>> extrema(con
   }
   auto indices_loc = std::vector<unsigned long>(n, x.size() + 1);
   auto indices_glob = std::vector<unsigned long>(n);
-  auto values_loc = std::vector<unsigned long>(n);
-  auto values_glob = std::vector<unsigned long>(n);
+  auto values_loc = std::vector<double>(n);
+  auto values_glob = std::vector<double>(n);
   size_t ind = 0;
   for (auto [i, v] : loc_extrema) {
     indices_loc[ind] = i;
@@ -228,7 +228,7 @@ template <class Compare> std::list<std::pair<unsigned long, double>> extrema(con
       indices_loc.resize(ntot - tot_dummy);
       values_loc.resize(ntot - tot_dummy);
     }
-    std::vector<double> sort_permutation(indices_loc.size());
+    std::vector<unsigned int> sort_permutation(indices_loc.size());
     std::iota(sort_permutation.begin(), sort_permutation.end(), 0);
     std::sort(
         sort_permutation.begin(), sort_permutation.end(),

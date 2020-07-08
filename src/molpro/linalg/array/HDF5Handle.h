@@ -72,6 +72,49 @@ protected:
  */
 class PHDF5Handle : public HDF5Handle {};
 
+//! Returns true if the file exists
+bool file_exists(const std::string &fname);
+
+/*!
+ * @brief Open an existing hdf5 file in serial mode. File must already exist.
+ *
+ * @param fname name of the file
+ * @param read_only if true open the file with read-only access, otherwise open with read and write access.
+ * @return hid of the hdf5 file object. If it is <0, than operation failed.
+ */
+hid_t hdf5_open_file(const std::string &fname, bool read_only = true);
+/*!
+ * @brief Open an existing hdf5 file in parallel mode. File must already exist. Collective operation.
+ *
+ * @param fname name of the file
+ * @param communicator mpi communicator. All processes in the communicator must call.
+ * @param read_only if true open the file with read-only access, otherwise open with read and write access.
+ * @return hid of the hdf5 file object. If it is <0, than operation failed.
+ */
+hid_t hdf5_open_file(const std::string &fname, MPI_Comm communicator, bool read_only = true);
+/*!
+ * @brief Open an hdf5 file in serial mode overwriting any existing files under the same name. Opens with read and write
+ * access
+ *
+ * @param fname name of the file
+ * @return hid of the hdf5 file object. If it is <0, than operation failed.
+ */
+hid_t hdf5_create_file(const std::string &fname);
+//! Create and open an hdf5 file in parallel mode, overwriting if it already exists. Return its hid, if it is <0, than
+//! operation failed.
+/*!
+ * @brief Open an hdf5 file in parallel mode overwriting any existing files under the same name. Opens with read and
+ * write access. Collective operation.
+ *
+ * @param fname name of the file
+ * @param communicator mpi communicator. All processes in the communicator must call.
+ * @return hid of the hdf5 file object. If it is <0, than operation failed.
+ */
+hid_t hdf5_create_file(const std::string &fname, MPI_Comm communicator);
+
+//! Return true if dataset with name dataset_name exists under specified location
+bool hdf5_dataset_exists(hid_t location, const std::string &dataset_name);
+
 } // namespace util
 } // namespace array
 } // namespace linalg

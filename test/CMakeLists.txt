@@ -19,4 +19,6 @@ foreach (t IterativeSolver-test IterativeSolver-OOCA-test TestIterativeSolver Pa
     endif (MPI_FOUND)
 endforeach ()
 
-add_subdirectory(array)
+if (MPI)
+    add_subdirectory(array)
+endif ()

@@ -29,7 +29,6 @@ public:
 
   DistrArrayGA(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof);
   DistrArrayGA(const DistrArrayGA &other);
-  DistrArrayGA(const DistrArrayGA &other, int);
   DistrArrayGA &operator=(const DistrArrayGA &);
   ~DistrArrayGA() override;
 

@@ -15,7 +15,10 @@
 namespace molpro {
 namespace gci {
 namespace array {
-using Array = GCI_ARRAY_ARRAY_TYPE;
+//using Array = GCI_ARRAY_ARRAY_TYPE;
+struct Array : public GCI_ARRAY_ARRAY_TYPE {
+  using GCI_ARRAY_ARRAY_TYPE::GCI_ARRAY_ARRAY_TYPE;
+};
 } // namespace array
 } // namespace gci
 } // namespace molpro

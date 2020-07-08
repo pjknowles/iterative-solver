@@ -34,7 +34,9 @@ public:
   DistrArrayMPI3(size_t dimension, MPI_Comm commun, std::shared_ptr<Profiler> prof = nullptr);
   //! Copy constructor allocates the buffer if source is not empty
   DistrArrayMPI3(const DistrArray &source);
+  DistrArrayMPI3(const DistrArrayMPI3 &source);
   DistrArrayMPI3 &operator=(const DistrArray &source);
+  DistrArrayMPI3 &operator=(const DistrArrayMPI3 &source);
   ~DistrArrayMPI3() override;
 
   void sync() const override;

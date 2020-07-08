@@ -44,6 +44,8 @@ DistrArrayMPI3::DistrArrayMPI3(const DistrArray& source)
   }
 }
 
+DistrArrayMPI3::DistrArrayMPI3(const DistrArrayMPI3& source) : DistrArrayMPI3(static_cast<const DistrArray&>(source)) {}
+
 DistrArrayMPI3& DistrArrayMPI3::operator=(const DistrArray& source) {
   auto old_dim = m_dimension;
   m_dimension = source.size();
@@ -58,6 +60,11 @@ DistrArrayMPI3& DistrArrayMPI3::operator=(const DistrArray& source) {
     }
     copy(source);
   }
+  return *this;
+}
+
+DistrArrayMPI3& DistrArrayMPI3::operator=(const DistrArrayMPI3& source) {
+  *this = static_cast<const DistrArray&>(source);
   return *this;
 }
 

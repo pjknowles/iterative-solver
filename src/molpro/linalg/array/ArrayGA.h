@@ -1,5 +1,5 @@
-#ifndef GCI_TENSOR_H
-#define GCI_TENSOR_H
+#ifndef GCI_SRC_MOLPRO_GCI_ARRAY_ARRAYGA_H
+#define GCI_SRC_MOLPRO_GCI_ARRAY_ARRAYGA_H
 
 #include <hdf5.h>
 #include <list>
@@ -24,7 +24,7 @@ namespace molpro::gci::array {
 /*!
  * @brief Wrapper over global array exposing functionality required by IterativeSolver and MixedWavefunction
  */
-class Array {
+class ArrayGA {
 public:
   using value_type = double;
   MPI_Comm m_communicator;                  //!< Outer communicator
@@ -38,18 +38,18 @@ protected:
   int m_ga_chunk;      //!< GA chunck size
   bool m_ga_allocated; //!< Flags that GA has been allocated
 public:
-  Array()
+  ArrayGA()
       : m_communicator(), m_comm_rank(0), m_comm_size(0), m_dimension(0), m_ga_handle(0), m_ga_pgroup(0), m_ga_chunk(1),
         m_ga_allocated(false) {}
 
-  explicit Array(MPI_Comm comm);
+  explicit ArrayGA(MPI_Comm comm);
 
-  Array(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof = nullptr);
+  ArrayGA(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof = nullptr);
 
-  Array(const Array &source);
-  Array(const Array &source, int);
+  ArrayGA(const ArrayGA &source);
+  ArrayGA(const ArrayGA &source, int);
 
-  ~Array();
+  ~ArrayGA();
 
   bool empty() const; //!< check if GA has been allocated
 
@@ -59,14 +59,14 @@ public:
    * @brief Duplicates GA buffer
    * Requires communicators to be the same. Blocking, collective operation
    */
-  void copy_buffer(const Array &source);
+  void copy_buffer(const ArrayGA &source);
 
   /*!
    * @brief Provides access to the local portion of GA buffer
    */
   class LocalBuffer {
   public:
-    explicit LocalBuffer(const Array &source);
+    explicit LocalBuffer(const ArrayGA &source);
     ~LocalBuffer();
     size_t size() const;
     double *begin();
@@ -179,7 +179,7 @@ public:
 
   size_t size() const { return m_dimension; } ///< total number of elements
 
-  virtual bool compatible(const Array &other) const; ///< Checks that arrays of the same dimensionality
+  virtual bool compatible(const ArrayGA &other) const; ///< Checks that arrays of the same dimensionality
 
   /*!
    * \brief axpy Add a multiple of another Wavefunction object to this one
@@ -189,8 +189,8 @@ public:
    * \param with_sync_before synchronise at the start
    * \param with_sync_after synchronise at the end
    */
-  void axpy(double a, const Array &x, bool with_sync_before = false, bool with_sync_after = false);
-  void axpy(double a, const Array *other, bool with_sync_before = false, bool with_sync_after = false);
+  void axpy(double a, const ArrayGA &x, bool with_sync_before = false, bool with_sync_after = false);
+  void axpy(double a, const ArrayGA *other, bool with_sync_before = false, bool with_sync_after = false);
   void axpy(double a, const std::map<size_t, double> &x, bool with_sync_before = false, bool with_sync_after = false);
 
   /*!
@@ -202,11 +202,11 @@ public:
   //! Scale by a constant. Works on local buffer
   void scal(double a, bool with_sync_before = false, bool with_sync_after = false);
   //! Add another array to this. Works on local buffer
-  void add(const Array &other, bool with_sync_before = false, bool with_sync_after = false);
+  void add(const ArrayGA &other, bool with_sync_before = false, bool with_sync_after = false);
   //! Add a constant. Works on local buffer
   void add(double a, bool with_sync_before = false, bool with_sync_after = false);
   //! Subtract another array from this. Works on local buffer
-  void sub(const Array &other, bool with_sync_before = false, bool with_sync_after = false);
+  void sub(const ArrayGA &other, bool with_sync_before = false, bool with_sync_after = false);
   //! Subtract a constant. Works on local buffer
   void sub(double a, bool with_sync_before = false, bool with_sync_after = false);
   //! Take element-wise reciprocal of this. Works on local buffer
@@ -217,38 +217,39 @@ public:
    * Collective communication. Both arrays should be part of the same processor group (same communicator).
    * The result is broadcast to each process.
    */
-  double dot(const Array &other, bool with_sync_before = false) const;
-  double dot(const Array *other, bool with_sync_before = false) const;
+  double dot(const ArrayGA &other, bool with_sync_before = false) const;
+  double dot(const ArrayGA *other, bool with_sync_before = false) const;
   double dot(const std::map<size_t, double> &other, bool with_sync_after = false) const;
 
-  Array &operator=(const Array &source) noexcept;
-  Array &operator*=(double value);       //!< multiply by a scalar. Collective communication with synchronization
-  Array &operator+=(const Array &other); //!< add another array. Collective communication with synchronization
-  Array &operator-=(const Array &other); //!< subtract another array. Collective communication with synchronization
-  Array &operator+=(double); //!< add a scalar to every element. Collective communication with synchronization
-  Array &operator-=(double); //!< subtract a scalar from every element. Collective communication with synchronization
-  Array &operator-();        //!< unary minus. Collective communication with synchronization
+  ArrayGA &operator=(const ArrayGA &source) noexcept;
+  ArrayGA &operator*=(double value);         //!< multiply by a scalar. Collective communication with synchronization
+  ArrayGA &operator+=(const ArrayGA &other); //!< add another array. Collective communication with synchronization
+  ArrayGA &operator-=(const ArrayGA &other); //!< subtract another array. Collective communication with synchronization
+  ArrayGA &operator+=(double); //!< add a scalar to every element. Collective communication with synchronization
+  ArrayGA &operator-=(double); //!< subtract a scalar from every element. Collective communication with synchronization
+  ArrayGA &operator-();        //!< unary minus. Collective communication with synchronization
   //! element-by-element division. Collective communication with synchronization
-  Array &operator/=(const Array &other);
+  ArrayGA &operator/=(const ArrayGA &other);
 
   //! this[i] = a[i]*b[i]. Collective communication
-  void times(const Array *a, const Array *b, bool with_sync_before = false, bool with_sync_after = false);
+  void times(const ArrayGA *a, const ArrayGA *b, bool with_sync_before = false, bool with_sync_after = false);
 
   /*!
    * \brief this[i] = a[i]/(b[i]+shift)
    * \param append Whether to do += or =
    * \param negative Whether -shift or +shift
    */
-  void divide(const Array *a, const Array *b, double shift = 0, bool append = false, bool negative = false,
+  void divide(const ArrayGA *a, const ArrayGA *b, double shift = 0, bool append = false, bool negative = false,
               bool with_sync_before = false, bool with_sync_after = false);
 }; // class Array
 
-double operator*(const Array &w1, const Array &w2);    ///< inner product of two wavefunctions. Collective communication
-Array operator+(const Array &w1, const Array &w2);     ///< add two wavefunctions. Collective communication
-Array operator-(const Array &w1, const Array &w2);     ///< subtract two wavefunctions. Collective communication
-Array operator/(const Array &w1, const Array &w2);     ///< element-by-element division. Collective communication
-Array operator*(const Array &w1, const double &value); ///< multiply by a scalar. Collective communication
-Array operator*(const double &value, const Array &w1); ///< multiply by a scalar. Collective communication
+double operator*(const ArrayGA &w1,
+                 const ArrayGA &w2); ///< inner product of two wavefunctions. Collective communication
+ArrayGA operator+(const ArrayGA &w1, const ArrayGA &w2);   ///< add two wavefunctions. Collective communication
+ArrayGA operator-(const ArrayGA &w1, const ArrayGA &w2);   ///< subtract two wavefunctions. Collective communication
+ArrayGA operator/(const ArrayGA &w1, const ArrayGA &w2);   ///< element-by-element division. Collective communication
+ArrayGA operator*(const ArrayGA &w1, const double &value); ///< multiply by a scalar. Collective communication
+ArrayGA operator*(const double &value, const ArrayGA &w1); ///< multiply by a scalar. Collective communication
 
 } // namespace molpro::gci::array
-#endif // GCI_TENSOR_H
+#endif // GCI_SRC_MOLPRO_GCI_ARRAY_ARRAYGA_H

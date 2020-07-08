@@ -1,10 +1,14 @@
 #ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYMPI3_H
 #define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYMPI3_H
 #include "molpro/gci/array/DistrArray.h"
+#include <mpi.h>
 
 namespace molpro {
 namespace gci {
 namespace array {
+namespace util {
+class Distribution;
+}
 
 /*!
  * @brief Implementation of distributed array using MPI3 RMA operations
@@ -14,7 +18,36 @@ namespace array {
  * @warning Care must be taken that overlapping put and get operations or linear algebra
  * do not cause undefined behaviour.
  */
-class DistrArrayMPI3 : public DistrArray {};
+class DistrArrayMPI3 : public DistrArray {
+protected:
+protected:
+  MPI_Win *m_win = nullptr;     //!< window object
+  value_type *m_base = nullptr; //!< base pointer to the window buffer
+  //! distribution of array buffer among processes. Stores start index and size for each
+  std::unique_ptr<util::Distribution> m_distribution;
+  bool m_allocated = false; //!< whether the window has been created
+
+public:
+  DistrArrayMPI3() = delete;
+  DistrArrayMPI3(DistrArrayMPI3 &&other) = delete;
+  DistrArrayMPI3 &operator=(const DistrArrayMPI3 &&) = delete;
+
+  DistrArrayMPI3(size_t dimension, MPI_Comm commun, std::shared_ptr<Profiler> prof = nullptr);
+  //! Copy constructor allocates the buffer if source is not empty
+  DistrArrayMPI3(const DistrArray &source);
+  DistrArrayMPI3 &operator=(const DistrArray &source);
+  ~DistrArrayMPI3() override;
+
+  void allocate_buffer() override;
+  bool empty() const override;
+
+  //! Returns distribution of array buffer among processes with start index and size for each process.
+  const util::Distribution &distribution() { return *m_distribution; };
+
+protected:
+  //! Free the window
+  void free_buffer();
+};
 
 } // namespace array
 } // namespace gci

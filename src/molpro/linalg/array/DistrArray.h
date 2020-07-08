@@ -58,6 +58,7 @@ class DistrArray {
 public:
   using value_type = double;
   using index_type = unsigned long int;
+  using SparseArray = std::map<unsigned long int, double>;
 
 protected:
   index_type m_dimension;  //! number of elements in the array
@@ -160,6 +161,109 @@ public:
   [[nodiscard]] virtual std::vector<value_type> vec() const = 0;
   //! @}
 
+  /*! @name Asynchronous linear algebra. No synchronisation on entry or exit.
+   */
+  //! @{
+  //! Set all local elements to val. @note each process has its own val, there is no communication
+  virtual DistrArray &fill(value_type val);
+  //! Copies all elements of y. If both arrays are empty than does nothing. If only one is empty, throws an
+  //! error.
+  virtual DistrArray &copy(const DistrArray &y);
+  /*!
+   * @brief Copies elements in a patch of y. If both arrays are empty than does nothing. If only one is empty,
+   * throws an error.
+   * @param y array to copy
+   * @param start index of first element to copy
+   * @param end index of last element to copy
+   */
+  virtual DistrArray &copy_patch(const DistrArray &y, index_type start, index_type end);
+  /*!
+   * \brief this[:] += a * y[:]. Throws an error if any array is empty.
+   * Add a multiple of another array to this one. Blocking, collective.
+   */
+  virtual DistrArray &axpy(value_type a, const DistrArray &y);
+  virtual DistrArray &axpy(value_type a, const SparseArray &y);
+  //! Scale by a constant. Local.
+  virtual DistrArray &scal(value_type a);
+  //! Add another array to this. Local. Throws error if any array is empty.
+  virtual DistrArray &add(const DistrArray &y);
+  //! Add a constant. Local.
+  virtual DistrArray &add(value_type a);
+  //! Subtract another array from this. Local. Throws error if any array is empty.
+  virtual DistrArray &sub(const DistrArray &y);
+  //! Subtract a constant. Local.
+  virtual DistrArray &sub(value_type a);
+  //! Take element-wise reciprocal of this. Local. No checks are made for zero values
+  virtual DistrArray &recip();
+  //! this[i] *= y[i]. Throws error if any array is empty.
+  virtual DistrArray &times(const DistrArray &y);
+  //! this[i] = y[i]*z[i]. Throws error if any array is empty.
+  virtual DistrArray &times(const DistrArray &y, const DistrArray &z);
+  //! @}
+
+  /*! @name Collective linear algebra operations, synchronisation on exit
+   */
+  //! @{
+  /*!
+   * @brief Scalar product of two arrays. Collective. Throws error if any array is empty.
+   * Both arrays should be part of the same processor group (same communicator).
+   * The result is broadcast to each process.
+   */
+  [[nodiscard]] virtual value_type dot(const DistrArray &y) const;
+  [[nodiscard]] virtual value_type dot(const SparseArray &y) const;
+
+  /*!
+   * @brief this[i] = y[i]/(z[i]+shift). Collective. Throws error if any array is empty.
+   * @code{.cpp}
+   * negative? (append? this -=... : this =-...) : (append? this +=... : this =...)
+   * @endcode
+   * @param y array in the numerator
+   * @param z array in the denominator
+   * @param shift denominator shift
+   * @param append Whether to += or =
+   * @param negative Whether to scale  right hand side by -1
+   */
+  DistrArray &divide(const DistrArray &y, const DistrArray &z, value_type shift = 0, bool append = false,
+                     bool negative = false) {
+    return _divide(y, z, shift, append, negative);
+  }
+
+  /*!
+   * @brief returns n smallest elements in array x
+   * Collective operation, must be called by all processes in the group.
+   * @return list of index and value pairs, or empty list if array is empty.
+   */
+  [[nodiscard]] std::list<std::pair<index_type, value_type>> min_n(int n) const;
+
+  /*!
+   * \brief returns n largest elements in array x
+   * Collective operation, must be called by all processes in the group.
+   * @return list of index and value pairs, or empty list if array is empty.
+   */
+  [[nodiscard]] std::list<std::pair<index_type, value_type>> max_n(int n) const;
+
+  /*!
+   * \brief returns n elements that are largest by absolute value in array x
+   * Collective operation, must be called by all processes in the group.
+   * @return list of index and value pairs, or empty list if array is empty.
+   */
+  [[nodiscard]] std::list<std::pair<index_type, value_type>> min_abs_n(int n) const;
+
+  /*!
+   * \brief returns n elements that are largest by absolute value in array x
+   * Collective operation, must be called by all processes in the group.
+   * @return list of index and value pairs, or empty list if array is empty.
+   */
+  [[nodiscard]] std::list<std::pair<index_type, value_type>> max_abs_n(int n) const;
+
+  /*!
+   * \brief find the index of n smallest components in array x
+   * Collective operation, must be called by all processes in the group.
+   * @return list of indices for smallest n values, or empty list if array is empty.
+   */
+  [[nodiscard]] std::vector<index_type> min_loc_n(int n) const;
+  //! @}
+
   //! Set all local elements to zero.
   virtual void zero();
 
@@ -168,112 +272,16 @@ public:
 
 protected:
   virtual void _acc(index_type lo, index_type hi, const value_type *data, value_type scaling_constant) = 0;
+  virtual DistrArray &_divide(const DistrArray &y, const DistrArray &z, value_type shift, bool append, bool negative);
 };
 
-//! Set all local elements of array x to val. @note each process has its own val, there is no communication
-void fill(DistrArray &x, DistrArray::value_type val);
-//! Copies all elements of y into x. If both arrays are empty than does nothing. If only one is empty, throws an error.
-void copy(DistrArray &x, const DistrArray &y);
-/*!
- * @brief Copies elements in a patch of y into x. If both arrays are empty than does nothing. If only one is empty,
- * throws an error.
- * @param x array to be copied into
- * @param y array to copy
- * @param start index of first element to copy
- * @param end index of last element to copy
- */
-void copy_patch(DistrArray &x, const DistrArray &y, DistrArray::index_type start, DistrArray::index_type end);
-/*!
- * \brief x[:] += a * y[:]. Throws error if any array is empty.
- * Add a multiple of another array to this one. Blocking, collective.
- */
-void axpy(DistrArray &x, DistrArray::value_type a, const DistrArray &y);
-//! Scale by a constant. Local.
-void scal(DistrArray &x, DistrArray::value_type a);
-//! Add another array to this. Local. Throws error if any array is empty.
-void add(DistrArray &x, const DistrArray &y);
-//! Add a constant. Local.
-void add(DistrArray &x, DistrArray::value_type a);
-//! Subtract another array from this. Local. Throws error if any array is empty.
-void sub(DistrArray &x, const DistrArray &y);
-//! Subtract a constant. Local.
-void sub(DistrArray &x, DistrArray::value_type a);
-//! Take element-wise reciprocal of this. Local. No checks are made for zero values
-void recip(DistrArray &x);
-//! x[i] *= y[i]. Throws error if any array is empty.
-void times(DistrArray &x, const DistrArray &y);
-//! x[i] = y[i]*z[i]. Throws error if any array is empty.
-void times(DistrArray &x, const DistrArray &y, const DistrArray &z);
-
-/*!
- * @brief Scalar product of two arrays. Collective. Throws error if any array is empty.
- * Both arrays should be part of the same processor group (same communicator).
- * The result is broadcast to each process.
- */
-[[nodiscard]] DistrArray::value_type dot(const DistrArray &x, const DistrArray &y);
-
-/*!
- * @brief x[i] = y[i]/(z[i]+shift). Collective. Throws error if any array is empty.
- * @code{.cpp}
- * negative? (append? this -=... : this =-...) : (append? this +=... : this =...)
- * @endcode
- * @param x result array
- * @param y array in the numerator
- * @param z array in the denominator
- * @param shift denominator shift
- * @param append Whether to += or =
- * @param negative Whether to scale  right hand side by -1
- */
-void divide(DistrArray &x, const DistrArray &y, const DistrArray &z, DistrArray::value_type shift = 0,
-            bool append = false, bool negative = false);
-
-/*!
- * @brief returns n smallest elements in array x
- * Collective operation, must be called by all processes in the group.
- * @return list of index and value pairs, or empty list if array is empty.
- */
-[[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> min_n(const DistrArray &x, int n);
-
-/*!
- * \brief returns n largest elements in array x
- * Collective operation, must be called by all processes in the group.
- * @return list of index and value pairs, or empty list if array is empty.
- */
-[[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> max_n(const DistrArray &x, int n);
-
-/*!
- * \brief returns n elements that are largest by absolute value in array x
- * Collective operation, must be called by all processes in the group.
- * @return list of index and value pairs, or empty list if array is empty.
- */
-[[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> min_abs_n(const DistrArray &x,
-                                                                                             int n);
-
-/*!
- * \brief returns n elements that are largest by absolute value in array x
- * Collective operation, must be called by all processes in the group.
- * @return list of index and value pairs, or empty list if array is empty.
- */
-[[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> max_abs_n(const DistrArray &x,
-                                                                                             int n);
-
-/*!
- * \brief find the index of n smallest components in array x
- * Collective operation, must be called by all processes in the group.
- * @return list of indices for smallest n values, or empty list if array is empty.
- */
-[[nodiscard]] std::vector<DistrArray::index_type> min_loc_n(const DistrArray &x, int n);
-
 namespace util {
+template <typename T, class Compare> struct CompareAbs {
+  constexpr bool operator()(const T &lhs, const T &rhs) const { return Compare()(std::abs(lhs), std::abs(rhs)); }
+};
 template <class Compare>
 [[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> extrema(const DistrArray &x, int n);
-}
-
-using SparseArray = std::map<unsigned long int, double>;
-
-double dot(const DistrArray &x, const SparseArray &y);
-void axpy(DistrArray &x, double a, const SparseArray &y);
-
+} // namespace util
 } // namespace molpro::gci::array
 
 #endif // GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H

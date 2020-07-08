@@ -43,7 +43,7 @@ DistrArrayGA &DistrArrayGA::operator=(const DistrArrayGA &source) {
   m_prof = source.m_prof;
   if (empty() && !source.empty())
     allocate_buffer();
-  copy(*this, source);
+  copy(source);
   return *this;
 }
 

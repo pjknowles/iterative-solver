@@ -20,10 +20,6 @@ struct ScopeProfiler {
   ScopeProfiler &operator=(const ScopeProfiler &) = delete;
 };
 
-template <typename T, class Compare> struct CompareAbs {
-  constexpr bool operator()(const T &lhs, const T &rhs) const { return Compare()(std::abs(lhs), std::abs(rhs)); }
-};
-
 } // namespace util
 } // namespace array
 } // namespace gci

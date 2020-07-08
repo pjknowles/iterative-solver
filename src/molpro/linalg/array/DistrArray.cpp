@@ -24,27 +24,28 @@ bool DistrArray::compatible(const DistrArray& other) const {
 
 bool DistrArray::empty() const { return true; }
 
-void DistrArray::zero() { fill(*this, 0); }
+void DistrArray::zero() { fill(0); }
 
-void fill(DistrArray& x, DistrArray::value_type val) {
-  auto p = util::ScopeProfiler(x.m_prof, "Array::fill");
-  for (auto& el : *x.local_buffer())
+DistrArray& DistrArray::fill(DistrArray::value_type val) {
+  auto p = util::ScopeProfiler(m_prof, "Array::fill");
+  for (auto& el : *local_buffer())
     el = val;
+  return *this;
 }
 
-void axpy(DistrArray& x, DistrArray::value_type a, const DistrArray& y) {
+DistrArray& DistrArray::axpy(value_type a, const DistrArray& y) {
   auto name = std::string{"Array::axpy"};
-  if (!x.compatible(y))
-    x.error(name + " incompatible arrays");
-  if (x.empty() || y.empty())
-    x.error(name + " cannot use empty arrays");
+  if (!compatible(y))
+    error(name + " incompatible arrays");
+  if (empty() || y.empty())
+    error(name + " cannot use empty arrays");
   if (a == 0)
-    return;
-  auto p = util::ScopeProfiler(x.m_prof, name);
-  auto loc_x = x.local_buffer();
+    return *this;
+  auto p = util::ScopeProfiler(m_prof, name);
+  auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   if (!loc_x->compatible(*loc_y))
-    x.error(name + " incompatible local buffers");
+    error(name + " incompatible local buffers");
   if (a == 1)
     for (size_t i = 0; i < loc_x->size(); ++i)
       loc_x->at(i) += loc_y->at(i);
@@ -54,98 +55,102 @@ void axpy(DistrArray& x, DistrArray::value_type a, const DistrArray& y) {
   else
     for (size_t i = 0; i < loc_x->size(); ++i)
       loc_x->at(i) += a * loc_y->at(i);
+  return *this;
 }
 
-void scal(DistrArray& x, DistrArray::value_type a) {
-  auto p = util::ScopeProfiler(x.m_prof, "Array::scal");
-  for (auto& el : *x.local_buffer())
+DistrArray& DistrArray::scal(DistrArray::value_type a) {
+  auto p = util::ScopeProfiler(m_prof, "Array::scal");
+  for (auto& el : *local_buffer())
     el *= a;
+  return *this;
 }
 
-void add(DistrArray& x, const DistrArray& y) { axpy(x, 1, y); }
+DistrArray& DistrArray::add(const DistrArray& y) { return axpy(1, y); }
 
-void add(DistrArray& x, DistrArray::value_type a);
-
-void add(DistrArray& x, DistrArray::value_type a) {
-  auto p = util::ScopeProfiler(x.m_prof, "Array::add");
-  for (auto& el : *x.local_buffer())
+DistrArray& DistrArray::add(DistrArray::value_type a) {
+  auto p = util::ScopeProfiler(m_prof, "Array::add");
+  for (auto& el : *local_buffer())
     el += a;
+  return *this;
 }
 
-void sub(DistrArray& x, const DistrArray& y) { axpy(x, -1, y); }
+DistrArray& DistrArray::sub(const DistrArray& y) { return axpy(-1, y); }
 
-void sub(DistrArray& x, DistrArray::value_type a) { add(x, -a); }
+DistrArray& DistrArray::sub(DistrArray::value_type a) { return add(-a); }
 
-void recip(DistrArray& x) {
-  auto p = util::ScopeProfiler(x.m_prof, "Array::recip");
-  for (auto& el : *x.local_buffer())
+DistrArray& DistrArray::recip() {
+  auto p = util::ScopeProfiler(m_prof, "Array::recip");
+  for (auto& el : *local_buffer())
     el = 1. / el;
+  return *this;
 }
 
-void times(DistrArray& x, const DistrArray& y) {
+DistrArray& DistrArray::times(const DistrArray& y) {
   auto name = std::string{"Array::times"};
-  if (!x.compatible(y))
-    x.error(name + " incompatible arrays");
-  if (x.empty() || y.empty())
-    x.error(name + " cannot use empty arrays");
-  auto p = util::ScopeProfiler(x.m_prof, name);
-  auto loc_x = x.local_buffer();
+  if (!compatible(y))
+    error(name + " incompatible arrays");
+  if (empty() || y.empty())
+    error(name + " cannot use empty arrays");
+  auto p = util::ScopeProfiler(m_prof, name);
+  auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   if (!loc_x->compatible(*loc_y))
-    x.error(name + " incompatible local buffers");
+    error(name + " incompatible local buffers");
   for (size_t i = 0; i < loc_x->size(); ++i)
     loc_x->at(i) *= loc_y->at(i);
+  return *this;
 }
 
-void times(DistrArray& x, const DistrArray& y, const DistrArray& z) {
+DistrArray& DistrArray::times(const DistrArray& y, const DistrArray& z) {
   auto name = std::string{"Array::times"};
-  if (!x.compatible(y))
-    x.error(name + " array y is incompatible");
-  if (!x.compatible(z))
-    x.error(name + " array z is incompatible");
-  if (x.empty() || y.empty() || z.empty())
-    x.error(name + " cannot use empty arrays");
-  auto p = util::ScopeProfiler(x.m_prof, name);
-  auto loc_x = x.local_buffer();
+  if (!compatible(y))
+    error(name + " array y is incompatible");
+  if (!compatible(z))
+    error(name + " array z is incompatible");
+  if (empty() || y.empty() || z.empty())
+    error(name + " cannot use empty arrays");
+  auto p = util::ScopeProfiler(m_prof, name);
+  auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   auto loc_z = z.local_buffer();
   if (!loc_x->compatible(*loc_y) || !loc_x->compatible(*loc_z))
-    x.error(name + " incompatible local buffers");
+    error(name + " incompatible local buffers");
   for (size_t i = 0; i < loc_x->size(); ++i)
     loc_x->at(i) = loc_y->at(i) * loc_z->at(i);
+  return *this;
 }
 
-DistrArray::value_type dot(const DistrArray& x, const DistrArray& y) {
+DistrArray::value_type DistrArray::dot(const DistrArray& y) const {
   auto name = std::string{"Array::dot"};
-  if (!x.compatible(y))
-    x.error(name + " array x is incompatible");
-  if (x.empty() || y.empty())
-    x.error(name + " calling dot on empty arrays");
-  auto p = util::ScopeProfiler(x.m_prof, name);
-  auto loc_x = x.local_buffer();
+  if (!compatible(y))
+    error(name + " array x is incompatible");
+  if (empty() || y.empty())
+    error(name + " calling dot on empty arrays");
+  auto p = util::ScopeProfiler(m_prof, name);
+  auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   if (!loc_x->compatible(*loc_y))
-    x.error(name + " incompatible local buffers");
-  DistrArray::value_type a = std::inner_product(loc_x->begin(), loc_x->end(), loc_y->begin(), 0.);
-  MPI_Allreduce(MPI_IN_PLACE, &a, 1, MPI_DOUBLE, MPI_SUM, x.communicator());
+    error(name + " incompatible local buffers");
+  auto a = std::inner_product(loc_x->begin(), loc_x->end(), loc_y->begin(), 0.);
+  MPI_Allreduce(MPI_IN_PLACE, &a, 1, MPI_DOUBLE, MPI_SUM, communicator());
   return a;
 }
 
-void divide(DistrArray& x, const DistrArray& y, const DistrArray& z, DistrArray::value_type shift, bool append,
-            bool negative) {
+DistrArray& DistrArray::_divide(const DistrArray& y, const DistrArray& z, DistrArray::value_type shift, bool append,
+                                bool negative) {
   auto name = std::string{"Array::divide"};
-  if (!x.compatible(y))
-    x.error(name + " array y is incompatible");
-  if (!x.compatible(z))
-    x.error(name + " array z is incompatible");
-  if (x.empty() || y.empty() || z.empty())
-    x.error(name + " calling divide with an empty array");
-  auto p = util::ScopeProfiler(x.m_prof, name);
-  auto loc_x = x.local_buffer();
+  if (!compatible(y))
+    error(name + " array y is incompatible");
+  if (!compatible(z))
+    error(name + " array z is incompatible");
+  if (empty() || y.empty() || z.empty())
+    error(name + " calling divide with an empty array");
+  auto p = util::ScopeProfiler(m_prof, name);
+  auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   auto loc_z = z.local_buffer();
   if (!loc_x->compatible(*loc_y) || !loc_x->compatible(*loc_z))
-    x.error(name + " incompatible local buffers");
+    error(name + " incompatible local buffers");
   if (append) {
     if (negative)
       for (size_t i = 0; i < loc_x->size(); ++i)
@@ -161,6 +166,7 @@ void divide(DistrArray& x, const DistrArray& y, const DistrArray& z, DistrArray:
       for (size_t i = 0; i < loc_x->size(); ++i)
         loc_x->at(i) = loc_y->at(i) / (loc_z->at(i) + shift);
   }
+  return *this;
 }
 
 namespace util {
@@ -249,101 +255,104 @@ template <class Compare> std::list<std::pair<unsigned long, double>> extrema(con
 }
 } // namespace util
 
-std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> min_n(const DistrArray& x, int n) {
-  if (x.empty())
+std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> DistrArray::min_n(int n) const {
+  if (empty())
     return {};
-  return util::extrema<std::less<DistrArray::value_type>>(x, n);
+  return util::extrema<std::less<DistrArray::value_type>>(*this, n);
 }
 
-std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> max_n(const DistrArray& x, int n) {
-  if (x.empty())
+std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> DistrArray::max_n(int n) const {
+  if (empty())
     return {};
-  return util::extrema<std::greater<DistrArray::value_type>>(x, n);
+  return util::extrema<std::greater<DistrArray::value_type>>(*this, n);
 }
 
-std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> min_abs_n(const DistrArray& x, int n) {
-  if (x.empty())
+std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> DistrArray::min_abs_n(int n) const {
+  if (empty())
     return {};
-  return util::extrema<util::CompareAbs<DistrArray::value_type, std::less<>>>(x, n);
+  return util::extrema<util::CompareAbs<DistrArray::value_type, std::less<>>>(*this, n);
 }
 
-std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> max_abs_n(const DistrArray& x, int n) {
-  if (x.empty())
+std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> DistrArray::max_abs_n(int n) const {
+  if (empty())
     return {};
-  return util::extrema<util::CompareAbs<DistrArray::value_type, std::greater<>>>(x, n);
+  return util::extrema<util::CompareAbs<DistrArray::value_type, std::greater<>>>(*this, n);
 }
 
-std::vector<DistrArray::index_type> min_loc_n(const DistrArray& x, int n) {
-  if (x.empty())
+std::vector<DistrArray::index_type> DistrArray::min_loc_n(int n) const {
+  if (empty())
     return {};
-  auto min_list = min_abs_n(x, n);
-  auto min_vec = std::vector<DistrArray::index_type>(n);
+  auto min_list = min_abs_n(n);
+  auto min_vec = std::vector<index_type>(n);
   std::transform(min_list.cbegin(), min_list.cend(), min_vec.begin(), [](const auto& p) { return p.first; });
   return min_vec;
 }
 
-void copy(DistrArray& x, const DistrArray& y) {
+DistrArray& DistrArray::copy(const DistrArray& y) {
   auto name = std::string{"Array::copy"};
-  if (!x.compatible(y))
-    x.error(name + " incompatible arrays");
-  if (x.empty() != y.empty())
-    x.error(name + " one of the arrays is empty");
-  auto p = util::ScopeProfiler(x.m_prof, name);
-  auto loc_x = x.local_buffer();
+  if (!compatible(y))
+    error(name + " incompatible arrays");
+  if (empty() != y.empty())
+    error(name + " one of the arrays is empty");
+  auto p = util::ScopeProfiler(m_prof, name);
+  auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   if (!loc_x->compatible(*loc_y))
-    x.error(name + " incompatible local buffers");
+    error(name + " incompatible local buffers");
   for (size_t i = 0; i < loc_x->size(); ++i)
     loc_x->at(i) = loc_y->at(i);
+  return *this;
 }
-void copy_patch(DistrArray& x, const DistrArray& y, DistrArray::index_type start, DistrArray::index_type end) {
+
+DistrArray& DistrArray::copy_patch(const DistrArray& y, DistrArray::index_type start, DistrArray::index_type end) {
   auto name = std::string{"Array::copy_patch"};
-  if (!x.compatible(y))
-    x.error(name + " incompatible arrays");
-  if (x.empty() != y.empty())
-    x.error(name + " one of the arrays is empty");
-  auto p = util::ScopeProfiler(x.m_prof, name);
-  auto loc_x = x.local_buffer();
+  if (!compatible(y))
+    error(name + " incompatible arrays");
+  if (empty() != y.empty())
+    error(name + " one of the arrays is empty");
+  auto p = util::ScopeProfiler(m_prof, name);
+  auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   if (!loc_x->compatible(*loc_y))
-    x.error(name + " incompatible local buffers");
+    error(name + " incompatible local buffers");
   if (start > end)
-    return;
+    return *this;
   auto s = start <= loc_x->lo ? 0 : start - loc_x->lo;
   auto e = end - start + 1 >= loc_x->size() ? loc_x->size() : end - start + 1;
   for (auto i = s; i < e; ++i)
     loc_x->at(i) = loc_y->at(i);
+  return *this;
 }
 
-double dot(const DistrArray& x, const SparseArray& y) {
+DistrArray::value_type DistrArray::dot(const SparseArray& y) const {
   auto name = std::string{"Array::dot SparseArray "};
   if (y.empty())
     return 0;
-  if (x.empty())
-    x.error(name + " calling dot on empty arrays");
-  if (x.size() < y.rbegin()->first + 1)
-    x.error(name + " sparse array x is incompatible");
-  auto p = util::ScopeProfiler(x.m_prof, name);
-  auto loc_x = x.local_buffer();
+  if (empty())
+    error(name + " calling dot on empty arrays");
+  if (size() < y.rbegin()->first + 1)
+    error(name + " sparse array x is incompatible");
+  auto p = util::ScopeProfiler(m_prof, name);
+  auto loc_x = local_buffer();
   double res = 0;
   for (auto it = y.lower_bound(loc_x->lo); it != y.upper_bound(loc_x->hi); ++it) {
     auto [i, v] = *it;
     res += loc_x->at(i - loc_x->lo) * v;
   }
-  MPI_Allreduce(MPI_IN_PLACE, &res, 1, MPI_DOUBLE, MPI_SUM, x.communicator());
+  MPI_Allreduce(MPI_IN_PLACE, &res, 1, MPI_DOUBLE, MPI_SUM, communicator());
   return res;
 }
 
-void axpy(DistrArray& x, double a, const SparseArray& y) {
+DistrArray& DistrArray::axpy(value_type a, const SparseArray& y) {
   auto name = std::string{"Array::axpy SparseArray"};
   if (a == 0 || y.empty())
-    return;
-  if (x.empty())
-    x.error(name + " calling dot on empty arrays");
-  if (x.size() < y.rbegin()->first + 1)
-    x.error(name + " sparse array x is incompatible");
-  auto p = util::ScopeProfiler(x.m_prof, name);
-  auto loc_x = x.local_buffer();
+    return *this;
+  if (empty())
+    error(name + " calling dot on empty arrays");
+  if (size() < y.rbegin()->first + 1)
+    error(name + " sparse array x is incompatible");
+  auto p = util::ScopeProfiler(m_prof, name);
+  auto loc_x = local_buffer();
   if (a == 1)
     for (auto it = y.lower_bound(loc_x->lo); it != y.upper_bound(loc_x->hi); ++it) {
       auto [i, v] = *it;
@@ -359,5 +368,6 @@ void axpy(DistrArray& x, double a, const SparseArray& y) {
       auto [i, v] = *it;
       loc_x->at(i - loc_x->lo) += a * v;
     }
+  return *this;
 }
 } // namespace molpro::gci::array

@@ -112,7 +112,7 @@ protected:
 public:
   //! Access the buffer local to this process
   [[nodiscard]] virtual std::shared_ptr<LocalBuffer> local_buffer() = 0;
-  [[nodiscard]] virtual std::shared_ptr<LocalBuffer> local_buffer() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<const LocalBuffer> local_buffer() const = 0;
   //! @}
 
   /*! @name One-sided RMA

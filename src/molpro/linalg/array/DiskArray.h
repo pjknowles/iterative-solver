@@ -1,7 +1,7 @@
 #ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISKARRAY_H
 #define GCI_SRC_MOLPRO_GCI_ARRAY_DISKARRAY_H
 
-#include "molpro/gci/array/ArrayBase.h"
+#include "molpro/gci/array/DistrArray.h"
 
 #include <hdf5>
 

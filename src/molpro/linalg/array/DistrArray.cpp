@@ -1,4 +1,4 @@
-#include "ArrayBase.h"
+#include "DistrArray.h"
 #include "util.h"
 #include <functional>
 #include <molpro/Profiler.h>
@@ -6,35 +6,35 @@
 
 namespace molpro::gci::array {
 
-ArrayBase::ArrayBase(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof)
+DistrArray::DistrArray(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof)
     : m_dimension(dimension), m_communicator(commun), m_prof(std::move(prof)) {}
 
-void ArrayBase::sync() const { MPI_Barrier(m_communicator); }
+void DistrArray::sync() const { MPI_Barrier(m_communicator); }
 
-void ArrayBase::error(const std::string& message) const {
+void DistrArray::error(const std::string& message) const {
   std::cout << message << std::endl;
   MPI_Abort(m_communicator, 1);
 }
 
-size_t ArrayBase::size() const { return m_dimension; }
+size_t DistrArray::size() const { return m_dimension; }
 
-bool ArrayBase::compatible(const ArrayBase& other) const {
+bool DistrArray::compatible(const DistrArray& other) const {
   int comp;
   MPI_Comm_compare(m_communicator, other.m_communicator, &comp);
   return (m_dimension == other.m_dimension) && (MPI_IDENT || MPI_CONGRUENT);
 }
 
-bool ArrayBase::empty() const { return true; }
+bool DistrArray::empty() const { return true; }
 
-void ArrayBase::zero() { set(0); }
+void DistrArray::zero() { set(0); }
 
-void ArrayBase::set(ArrayBase::value_type val) {
+void DistrArray::set(DistrArray::value_type val) {
   auto p = util::ScopeProfiler(m_prof, "Array::set");
   for (auto& el : *local_buffer())
     el = val;
 }
 
-void ArrayBase::axpy(ArrayBase::value_type a, const ArrayBase& x) {
+void DistrArray::axpy(DistrArray::value_type a, const DistrArray& x) {
   auto name = std::string{"Array::axpy"};
   if (!compatible(x))
     error(name + " incompatible arrays");
@@ -56,30 +56,30 @@ void ArrayBase::axpy(ArrayBase::value_type a, const ArrayBase& x) {
       loc->at(i) += a * loc_x->at(i);
 }
 
-void ArrayBase::scal(ArrayBase::value_type a) {
+void DistrArray::scal(DistrArray::value_type a) {
   auto p = util::ScopeProfiler(m_prof, "Array::scal");
   for (auto& el : *local_buffer())
     el *= a;
 }
-void ArrayBase::add(const ArrayBase& x) { axpy(1, x); }
+void DistrArray::add(const DistrArray& x) { axpy(1, x); }
 
-void ArrayBase::add(ArrayBase::value_type a) {
+void DistrArray::add(DistrArray::value_type a) {
   auto p = util::ScopeProfiler(m_prof, "Array::add");
   for (auto& el : *local_buffer())
     el += a;
 }
 
-void ArrayBase::sub(const ArrayBase& x) { axpy(-1, x); }
+void DistrArray::sub(const DistrArray& x) { axpy(-1, x); }
 
-void ArrayBase::sub(ArrayBase::value_type a) { add(-a); }
+void DistrArray::sub(DistrArray::value_type a) { add(-a); }
 
-void ArrayBase::recip() {
+void DistrArray::recip() {
   auto p = util::ScopeProfiler(m_prof, "Array::recip");
   for (auto& el : *local_buffer())
     el = 1. / el;
 }
 
-void ArrayBase::times(const ArrayBase& x) {
+void DistrArray::times(const DistrArray& x) {
   auto name = std::string{"Array::times"};
   if (!compatible(x))
     error(name + " incompatible arrays");
@@ -91,7 +91,7 @@ void ArrayBase::times(const ArrayBase& x) {
   for (size_t i = 0; i < loc->size(); ++i)
     loc->at(i) *= loc_x->at(i);
 }
-void ArrayBase::times(const ArrayBase& x, const ArrayBase& y) {
+void DistrArray::times(const DistrArray& x, const DistrArray& y) {
   auto name = std::string{"Array::times"};
   if (!compatible(x))
     error(name + " array x is incompatible");
@@ -107,7 +107,7 @@ void ArrayBase::times(const ArrayBase& x, const ArrayBase& y) {
     loc->at(i) = loc_x->at(i) * loc_y->at(i);
 }
 
-ArrayBase::value_type ArrayBase::dot(const ArrayBase& x) const {
+DistrArray::value_type DistrArray::dot(const DistrArray& x) const {
   auto name = std::string{"Array::dot"};
   if (!compatible(x))
     error(name + " array x is incompatible");
@@ -123,7 +123,7 @@ ArrayBase::value_type ArrayBase::dot(const ArrayBase& x) const {
   return a;
 }
 
-void ArrayBase::_divide(const ArrayBase& x, const ArrayBase& y, ArrayBase::value_type shift, bool append,
+void DistrArray::_divide(const DistrArray& x, const DistrArray& y, DistrArray::value_type shift, bool append,
                         bool negative) {
   auto name = std::string{"Array::divide"};
   if (!compatible(x))
@@ -153,20 +153,20 @@ void ArrayBase::_divide(const ArrayBase& x, const ArrayBase& y, ArrayBase::value
   }
 }
 
-std::list<std::pair<size_t, ArrayBase::value_type>> ArrayBase::min_n(size_t n) const {
+std::list<std::pair<size_t, DistrArray::value_type>> DistrArray::min_n(size_t n) const {
   return extrema<std::less<double>>(n);
 }
 
-std::list<std::pair<size_t, ArrayBase::value_type>> ArrayBase::max_n(size_t n) const {
+std::list<std::pair<size_t, DistrArray::value_type>> DistrArray::max_n(size_t n) const {
   return extrema<std::greater<double>>(n);
 }
-std::list<std::pair<size_t, ArrayBase::value_type>> ArrayBase::min_abs_n(size_t n) const {
+std::list<std::pair<size_t, DistrArray::value_type>> DistrArray::min_abs_n(size_t n) const {
   return extrema<util::CompareAbs<double, std::less<>>>(n);
 }
-std::list<std::pair<size_t, ArrayBase::value_type>> ArrayBase::max_abs_n(size_t n) const {
+std::list<std::pair<size_t, DistrArray::value_type>> DistrArray::max_abs_n(size_t n) const {
   return extrema<util::CompareAbs<double, std::greater<>>>(n);
 }
-std::vector<size_t> ArrayBase::min_loc_n(size_t n) const {
+std::vector<size_t> DistrArray::min_loc_n(size_t n) const {
   auto min_list = min_abs_n(n);
   auto min_vec = std::vector<size_t>(n);
   std::transform(min_list.cbegin(), min_list.cend(), min_vec.begin(), [](const auto& p) { return p.first; });
@@ -174,14 +174,14 @@ std::vector<size_t> ArrayBase::min_loc_n(size_t n) const {
 }
 
 template <class Compare>
-std::list<std::pair<ArrayBase::index_type, ArrayBase::value_type>> ArrayBase::extrema(int n) const {
+std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> DistrArray::extrema(int n) const {
   if (empty())
     return {};
   auto prof = util::ScopeProfiler(m_prof, "Array::extrema");
   auto buffer = local_buffer();
   auto length = buffer->size();
   auto nmin = length > n ? n : length;
-  auto loc_extrema = std::list<std::pair<ArrayBase::index_type, double>>();
+  auto loc_extrema = std::list<std::pair<DistrArray::index_type, double>>();
   for (size_t i = 0; i < nmin; ++i)
     loc_extrema.emplace_back(buffer->lo + i, buffer->at(i));
   auto compare = Compare();
@@ -191,8 +191,8 @@ std::list<std::pair<ArrayBase::index_type, ArrayBase::value_type>> ArrayBase::ex
     loc_extrema.sort(compare_pair);
     loc_extrema.pop_back();
   }
-  auto indices_loc = std::vector<ArrayBase::index_type>(n, size() + 1);
-  auto indices_glob = std::vector<ArrayBase::index_type>(n);
+  auto indices_loc = std::vector<DistrArray::index_type>(n, size() + 1);
+  auto indices_glob = std::vector<DistrArray::index_type>(n);
   auto values_loc = std::vector<double>(n);
   auto values_glob = std::vector<double>(n);
   size_t ind = 0;
@@ -251,7 +251,7 @@ std::list<std::pair<ArrayBase::index_type, ArrayBase::value_type>> ArrayBase::ex
   MPI_Ibcast(indices_glob.data(), n, MPI_UNSIGNED_LONG, 0, m_communicator, &requests[0]);
   MPI_Ibcast(values_glob.data(), n, MPI_DOUBLE, 0, m_communicator, &requests[1]);
   MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
-  auto map_extrema = std::list<std::pair<ArrayBase::index_type, ArrayBase::value_type>>();
+  auto map_extrema = std::list<std::pair<DistrArray::index_type, DistrArray::value_type>>();
   for (size_t i = 0; i < n; ++i)
     map_extrema.emplace_back(indices_glob[i], values_glob[i]);
   return map_extrema;

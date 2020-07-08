@@ -1,5 +1,5 @@
-#ifndef GCI_SRC_MOLPRO_GCI_ARRAY_ARRAYBASE_H
-#define GCI_SRC_MOLPRO_GCI_ARRAY_ARRAYBASE_H
+#ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H
+#define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H
 #include <list>
 #include <memory>
 #include <mpi.h>
@@ -11,7 +11,7 @@ class Profiler;
 
 namespace molpro::gci::array {
 /*!
- * @brief Declaration of an array distributed across many processes with small set of linear algebra operations
+ * @brief Array distributed across many processes with small set of linear algebra operations
  *
  * This class implements one-sided remote-memory-access operations for getting or putting a copy of any section of the
  * array, provides access to the array data local to the current process, and implements simple linear algebra
@@ -53,32 +53,32 @@ namespace molpro::gci::array {
  * \endcode
  *
  */
-class ArrayBase {
+class DistrArray {
 public:
   using value_type = double;
   using index_type = unsigned long int;
   index_type m_dimension;                             //! number of elements in the array
   MPI_Comm m_communicator;                            //!< Outer communicator
   std::shared_ptr<molpro::Profiler> m_prof = nullptr; //!< optional profiler
-  ArrayBase() = delete;
+  DistrArray() = delete;
   //! Initializes array without allocating any memory
-  ArrayBase(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof);
-  ArrayBase(const ArrayBase &source) = delete;
-  ArrayBase(ArrayBase &&source) = delete;
-  ArrayBase &operator=(const ArrayBase &source) = delete;
-  ArrayBase &operator=(ArrayBase &&source) = delete;
-  virtual ~ArrayBase() = default;
+  DistrArray(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof);
+  DistrArray(const DistrArray &source) = delete;
+  DistrArray(DistrArray &&source) = delete;
+  DistrArray &operator=(const DistrArray &source) = delete;
+  DistrArray &operator=(DistrArray &&source) = delete;
+  virtual ~DistrArray() = default;
 
   //! Synchronizes all process in this group and ensures any outstanding operations on the array have completed
   virtual void sync() const;
   //! total number of elements, same as overall dimension of array
   virtual size_t size() const;
   //! Checks that arrays are of the same dimensionality
-  virtual bool compatible(const ArrayBase &other) const;
+  virtual bool compatible(const DistrArray &other) const;
   //! allocates memory to the array without initializing it with any value. Blocking, collective operation.
   virtual void allocate_buffer() = 0;
   //! Duplicates GA buffer. Requires communicators to be the same. Blocking, collective operation
-  virtual void copy_buffer(const ArrayBase &source) = 0;
+  virtual void copy_buffer(const DistrArray &source) = 0;
   //! checks if array has been allocated
   virtual bool empty() const;
 
@@ -91,18 +91,18 @@ public:
     //! Size of the local buffer
     size_t size() { return 1 + hi - lo; };
     //! Pointer to the start of the buffer
-    ArrayBase::value_type *begin() { return buffer; };
+    DistrArray::value_type *begin() { return buffer; };
     //! Pointer to the end of the buffer (element just after the last one)
-    ArrayBase::value_type *end() { return buffer + size(); };
+    DistrArray::value_type *end() { return buffer + size(); };
     //! Checks that the current and the other buffers correspond to the same section of their respective arrays
     bool compatible(const LocalBuffer &other) { return lo == other.lo && hi == other.hi; };
     //! Access element at position i relative to begin() without bounds checking
-    ArrayBase::value_type &at(size_t i) { return buffer[i]; };
-    ArrayBase::value_type const &at(size_t i) const { return buffer[i]; };
-    const ArrayBase::index_type lo; //!< first element of local buffer in the array
-    const ArrayBase::index_type hi; //!< last element of local buffer in the array (the one before end())
+    DistrArray::value_type &at(size_t i) { return buffer[i]; };
+    DistrArray::value_type const &at(size_t i) const { return buffer[i]; };
+    const DistrArray::index_type lo; //!< first element of local buffer in the array
+    const DistrArray::index_type hi; //!< last element of local buffer in the array (the one before end())
   protected:
-    ArrayBase::value_type *buffer; //!< pointer to the start of the local array buffer
+    DistrArray::value_type *buffer; //!< pointer to the start of the local array buffer
   };
   //! Access the buffer local to this process
   [[nodiscard]] virtual std::shared_ptr<LocalBuffer> local_buffer() = 0;
@@ -163,23 +163,23 @@ public:
    * \param a the pre-factor
    * \param x the other array
    */
-  virtual void axpy(value_type a, const ArrayBase &x);
+  virtual void axpy(value_type a, const DistrArray &x);
   //! Scale by a constant. Local.
   virtual void scal(value_type a);
   //! Add another array to this. Local
-  virtual void add(const ArrayBase &x);
+  virtual void add(const DistrArray &x);
   //! Add a constant. Local.
   virtual void add(value_type a);
   //! Subtract another array from this. Local.
-  virtual void sub(const ArrayBase &x);
+  virtual void sub(const DistrArray &x);
   //! Subtract a constant. Local.
   virtual void sub(value_type a);
   //! Take element-wise reciprocal of this. Local. No checks are made for zero values
   virtual void recip();
   //! this[i] *= x[i].
-  virtual void times(const ArrayBase &x);
+  virtual void times(const DistrArray &x);
   //! this[i] = x[i]*y[i].
-  virtual void times(const ArrayBase &x, const ArrayBase &y);
+  virtual void times(const DistrArray &x, const DistrArray &y);
   //! @}
 
   /*! @name Collective
@@ -222,7 +222,7 @@ public:
    * Both arrays should be part of the same processor group (same communicator).
    * The result is broadcast to each process.
    */
-  [[nodiscard]] virtual value_type dot(const ArrayBase &x) const;
+  [[nodiscard]] virtual value_type dot(const DistrArray &x) const;
   /*!
    * \brief this[i] = x[i]/(y[i]+shift). Collective
    * negative? (append? this -=... : this =-...) : (append? this +=... : this =...)
@@ -231,7 +231,7 @@ public:
    * \param append Whether to += or =
    * \param negative Whether to scale  right hand side by -1
    */
-  void divide(const ArrayBase &x, const ArrayBase &y, value_type shift = 0, bool append = false,
+  void divide(const DistrArray &x, const DistrArray &y, value_type shift = 0, bool append = false,
               bool negative = false) {
     _divide(x, y, shift, append, negative);
   };
@@ -239,7 +239,7 @@ public:
 
 protected:
   virtual void _acc(index_type lo, index_type hi, const value_type *data, value_type scaling_constant) = 0;
-  virtual void _divide(const ArrayBase &x, const ArrayBase &y, value_type shift, bool append, bool negative);
+  virtual void _divide(const DistrArray &x, const DistrArray &y, value_type shift, bool append, bool negative);
   //! stops application with an error
   virtual void error(const std::string &message) const;
   template <class Compare>[[nodiscard]] std::list<std::pair<index_type, value_type>> extrema(int n) const;
@@ -247,4 +247,4 @@ protected:
 
 } // namespace molpro::gci::array
 
-#endif // GCI_SRC_MOLPRO_GCI_ARRAY_ARRAYBASE_H
+#endif // GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H

@@ -3,22 +3,46 @@
 
 namespace molpro::gci::array {
 /*!
- * @brief A pure abstract class defining the interface of ArrayBases used in gci
+ * @brief Declaration of an array distributed across many processes with small set of linear algebra operations
  *
- * This is a fixed size array distributed over multiple processes.
+ * This class implements one-sided remote-memory-access operations for getting or putting a copy of any section of the
+ * array, provides access to the array data local to the current process, and implements simple linear algebra
+ * operations. It also exposes synchronization of processes.
  *
- * There are a few types of operations:
- *   Local - each process only works on local section of the array
- *   Blocking - the process does not return until the operation completes
- *   Non-blocking - the process returns immediately
- *   Collective - must be called by all processes
+ * This class is designed for the following usage:
+ *   - to do simple linear algebra on whole arrays
+ *   - getting sections of the array to transform and  accumulate the result into a different array
+ *   - initializing the array using put operations
+ *   - backing up to and from HDF5 files
  *
- * Some operations take optional arguments:
- *    with_sync_before - synchronize all processes before doing the operation
- *    with_sync_after - synchronize all processes after doing the operation
+ * All RMA operations are blocking, meaning that if putting data into the array the process returns as soon as the data
+ * is in the network buffer (not necessarily in the array) and if getting data the process returns when the data
+ * is copied into the supplied buffer.
  *
- * There is potential for ill-defined code if there are intertwined read and write operations.
- * @todo I have to decide how I want to expose fencing.
+ * The LocalBuffer nested class gives access to the section of distributed array that exists on the current process.
+ * There is no locking mechanism and the buffer can still be modified by the RMA operations.
+ *
+ * The linear algebra operations can be collective or non-collective. In the former, all processes have to participate
+ * in the function call, for example dot which requires a collective broadcast. In case of the latter, each process
+ * only needs to operate on the local section of the array and no communication is required, for example scaling
+ * array by a constant. Collective operations are naturally synchronised.
+ *
+ * @warning The distributed array is always open for modification without any locking. We only provide synchronization mechanism
+ * to ensure that the RMA calls have completed.
+ *
+ * Example:
+ * \code{.cpp}
+ *   auto x = Array(n, comm);
+ *   // Initialze x
+ *   x.allocate();
+ *   x.zero(); // non-collective operation. Each process sets local buffer to zero
+ *   x.sync(); // Synchronize to make sure all elements are zero
+ *   if (rank == 0) { // Simple initialization
+ *     x.put(lo, hi, values);
+ *     x.scatter(indices, values2);
+ *   }
+ *   x.sync();
+ * \endcode
  *
  */
 class ArrayBase {
@@ -41,17 +65,14 @@ public:
   ArrayBase(const ArrayBase &source, int) : ArrayBase(source){};
   [[nodiscard]] ArrayBase &operator=(const ArrayBase &source) = default;
   virtual ~ArrayBase() = default;
+  //! Synchronizes all process in this group and ensures any outstanding operations on the array have completed
+  virtual void sync() const = 0;
   //! checks if array has been allocated
   virtual bool empty() const = 0;
   //! allocates memory to the array without initializing it with any value. Blocking, collective operation.
   virtual void allocate_buffer() = 0;
-
-  /*!
-   * @brief Duplicates GA buffer
-   * Requires communicators to be the same. Blocking, collective operation
-   */
+  //! Duplicates GA buffer. Requires communicators to be the same. Blocking, collective operation
   virtual void copy_buffer(const ArrayBase &source) = 0;
-
   //! Provides access to the local portion of the array locking that portion for all other process.
   struct LocalBuffer {
     //! Access local portion of the array
@@ -75,8 +96,6 @@ public:
   };
   //! Access the buffer local to this process
   [[nodiscard]] virtual LocalBuffer local_buffer() = 0;
-  //! Synchronizes all process in this group and ensures any outstanding operations on the array have completed
-  virtual void sync() const = 0;
   //! get element at the offset. Blocking.
   [[nodiscard]] virtual ArrayBase::value_type at(size_t offset) const = 0;
   //! Set all local elements to zero.

@@ -6,7 +6,9 @@
 #include <ga-mpi.h>
 #include <ga.h>
 
-namespace molpro::gci::array {
+namespace molpro {
+namespace linalg {
+namespace array {
 
 namespace {
 int get_communicator_size(MPI_Comm comm) {
@@ -60,7 +62,7 @@ void DistrArrayGA::allocate_buffer() {
   if (!empty())
     return;
   auto name = std::string{"DistrArrayGA::allocate_buffer"};
-  auto p = util::ScopeProfiler(m_prof, name);
+  util::ScopeProfiler p{m_prof, name};
   if (_ga_pgroups.find(m_communicator) == _ga_pgroups.end()) {
     //  global processor ranks
     int loc_size, glob_size, glob_rank;
@@ -89,7 +91,7 @@ void DistrArrayGA::allocate_buffer() {
 
 void DistrArrayGA::sync() const {
   auto name = std::string{"DistrArrayGA::sync"};
-  auto p = util::ScopeProfiler(m_prof, name);
+  util::ScopeProfiler p{m_prof, name};
   GA_Pgroup_sync(m_ga_pgroup);
 }
 
@@ -126,7 +128,7 @@ DistrArrayGA::value_type DistrArrayGA::at(index_type ind) const {
   if (empty())
     error(name + " called on empty array");
   check_ga_ind_overlow(ind);
-  auto p = util::ScopeProfiler(m_prof, name);
+  util::ScopeProfiler p{m_prof, name};
   double buffer;
   int lo = ind, high = ind, ld = 1;
   NGA_Get(m_ga_handle, &lo, &high, &buffer, &ld);
@@ -139,7 +141,7 @@ void DistrArrayGA::get(index_type lo, index_type hi, value_type *buf) const {
   if (empty())
     return;
   auto name = std::string{"DistrArrayGA::get"};
-  auto p = util::ScopeProfiler(m_prof, name);
+  util::ScopeProfiler p{m_prof, name};
   check_ga_ind_overlow(lo);
   check_ga_ind_overlow(hi);
   int ld, ilo = lo, ihi = hi;
@@ -158,7 +160,7 @@ void DistrArrayGA::put(index_type lo, index_type hi, const value_type *data) {
     error(name + " attempting to put data into an empty array");
   check_ga_ind_overlow(lo);
   check_ga_ind_overlow(hi);
-  auto p = util::ScopeProfiler(m_prof, name);
+  util::ScopeProfiler p{m_prof, name};
   int ld, ilo = lo, ihi = hi;
   NGA_Put(m_ga_handle, &ilo, &ihi, const_cast<value_type *>(data), &ld);
 }
@@ -169,7 +171,7 @@ std::vector<DistrArrayGA::value_type> DistrArrayGA::gather(const std::vector<ind
     return {};
   for (auto el : indices)
     check_ga_ind_overlow(el);
-  auto p = util::ScopeProfiler(m_prof, name);
+  util::ScopeProfiler p{m_prof, name};
   int n = indices.size();
   auto data = std::vector<double>(n);
   auto iind = std::vector<int>(indices.begin(), indices.end());
@@ -184,7 +186,7 @@ void DistrArrayGA::scatter(const std::vector<index_type> &indices, const std::ve
     error(name + " attempting to scatter into an empty array");
   for (auto el : indices)
     check_ga_ind_overlow(el);
-  auto p = util::ScopeProfiler(m_prof, name);
+  util::ScopeProfiler p{m_prof, name};
   int n = indices.size();
   auto iind = std::vector<int>(indices.begin(), indices.end());
   int *start = iind.data();
@@ -197,7 +199,7 @@ void DistrArrayGA::scatter_acc(std::vector<index_type> &indices, const std::vect
     error(name + " attempting to scatter_acc into an empty array");
   for (auto el : indices)
     check_ga_ind_overlow(el);
-  auto p = util::ScopeProfiler(m_prof, name);
+  util::ScopeProfiler p{m_prof, name};
   int n = indices.size();
   auto iind = std::vector<int>(indices.begin(), indices.end());
   int **subsarray = new int *[n];
@@ -214,7 +216,7 @@ std::vector<DistrArrayGA::value_type> DistrArrayGA::vec() const {
     return {};
   check_ga_ind_overlow(m_dimension);
   auto name = std::string{"DistrArrayGA::vec"};
-  auto p = util::ScopeProfiler(m_prof, name);
+  util::ScopeProfiler p{m_prof, name};
   std::vector<double> vec(m_dimension);
   double *buffer = vec.data();
   int lo = 0, hi = m_dimension - 1, ld;
@@ -228,7 +230,7 @@ void DistrArrayGA::acc(index_type lo, index_type hi, const value_type *data) {
     error(name + " attempting to accumulate an empty array");
   check_ga_ind_overlow(lo);
   check_ga_ind_overlow(hi);
-  auto p = util::ScopeProfiler(m_prof, name);
+  util::ScopeProfiler p{m_prof, name};
   double scaling_constant = 1;
   int ld, ilo = lo, ihi = hi;
   NGA_Acc(m_ga_handle, &ilo, &ihi, const_cast<double *>(data), &ld, &scaling_constant);
@@ -261,4 +263,6 @@ std::pair<DistrArrayGA::index_type, size_t> DistrArrayGA::DistributionGA::range(
   return {lo, size};
 }
 
-} // namespace molpro::gci::array
+} // namespace array
+} // namespace linalg
+} // namespace molpro

@@ -11,7 +11,7 @@ class Profiler;
 }
 
 namespace molpro {
-namespace gci {
+namespace linalg {
 namespace array {
 /*!
  * @brief Array distributed across many processes supporting remote-memory-access, access to process local buffer, and
@@ -93,8 +93,8 @@ public:
 
 protected:
   class Distribution;
-  index_type m_dimension;                       //!< number of elements in the array
-  MPI_Comm m_communicator;                      //!< Outer communicator
+  index_type m_dimension;  //!< number of elements in the array
+  MPI_Comm m_communicator; //!< Outer communicator
 public:
   std::shared_ptr<molpro::Profiler> m_prof = nullptr; //!< optional profiler
   DistrArray() = delete;
@@ -322,7 +322,7 @@ template <class Compare>
 [[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> extrema(const DistrArray &x, int n);
 } // namespace util
 } // namespace array
-} // namespace gci
+} // namespace linalg
 } // namespace molpro
 
 #endif // GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H

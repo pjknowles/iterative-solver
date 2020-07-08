@@ -6,7 +6,7 @@
 namespace molpro {
 class Profiler;
 
-namespace gci {
+namespace linalg {
 namespace array {
 namespace util {
 
@@ -23,7 +23,7 @@ struct ScopeProfiler {
 
 } // namespace util
 } // namespace array
-} // namespace gci
+} // namespace linalg
 } // namespace molpro
 
 #endif // GCI_SRC_MOLPRO_GCI_ARRAY_UTIL_H

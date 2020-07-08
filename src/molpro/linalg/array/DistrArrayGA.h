@@ -2,10 +2,10 @@
 #define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYGA_H
 #include <map>
 
-#include "molpro/gci/array/DistrArray.h"
+#include "molpro/linalg/array/DistrArray.h"
 
 namespace molpro {
-namespace gci {
+namespace linalg {
 namespace array {
 
 /*!
@@ -78,7 +78,7 @@ protected:
 };
 
 } // namespace array
-} // namespace gci
+} // namespace linalg
 } // namespace molpro
 
 #endif // GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYGA_H

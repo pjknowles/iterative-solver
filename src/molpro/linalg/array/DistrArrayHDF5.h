@@ -1,10 +1,10 @@
 #ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYHDF5_H
 #define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYHDF5_H
-#include "molpro/gci/array/DistrArray.h"
+#include "molpro/linalg/array/DistrArray.h"
 #include <hdf5.h>
 
 namespace molpro {
-namespace gci {
+namespace linalg {
 namespace array {
 
 /*!
@@ -26,7 +26,8 @@ public:
   DistrArrayHDF5 &operator=(const DistrArrayHDF5 &&) = delete;
 
   //! Save the buffer to file fname, overwriting it if it exists and overwrite is true
-  DistrArrayHDF5(const std::string &fname, size_t dimension, MPI_Comm commun, bool overwrite=false, std::shared_ptr<Profiler> prof = nullptr);
+  DistrArrayHDF5(const std::string &fname, size_t dimension, MPI_Comm commun, bool overwrite = false,
+                 std::shared_ptr<Profiler> prof = nullptr);
   //! Assume that
   DistrArrayHDF5(hid_t hid, size_t dimension, MPI_Comm commun, std::shared_ptr<Profiler> prof = nullptr);
   //! Copy constructor allocates the buffer if source is not empty
@@ -38,6 +39,6 @@ public:
 };
 
 } // namespace array
-} // namespace gci
+} // namespace linalg
 } // namespace molpro
 #endif // GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYHDF5_H

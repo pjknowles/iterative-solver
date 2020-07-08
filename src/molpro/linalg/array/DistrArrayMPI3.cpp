@@ -2,7 +2,9 @@
 #include "util.h"
 #include <algorithm>
 #include <tuple>
-namespace molpro::gci::array {
+namespace molpro {
+namespace linalg {
+namespace array {
 
 namespace {
 int comm_size(MPI_Comm comm) {
@@ -117,12 +119,15 @@ void DistrArrayMPI3::_get_put(index_type lo, index_type hi, const value_type* bu
     error(name + " out of bounds");
   if (empty())
     error(name + " called on an empty array");
-  auto prof = util::ScopeProfiler(m_prof, name);
-  auto [p_lo, p_hi] = m_distribution->locate_process(lo, hi);
+  util::ScopeProfiler prof{m_prof, name};
+  index_type p_lo, p_hi;
+  std::tie(p_lo, p_hi) = m_distribution->locate_process(lo, hi);
   auto* curr_buf = const_cast<value_type*>(buf);
   auto requests = std::vector<MPI_Request>(p_hi - p_lo + 1);
   for (size_t i = p_lo; i < p_hi + 1; ++i) {
-    auto [bound_lo, bound_size] = m_distribution->range(i);
+    index_type bound_lo;
+    size_t bound_size;
+    std::tie(bound_lo, bound_size) = m_distribution->range(i);
     auto local_lo = std::max(lo, bound_lo);
     auto local_hi = std::min(hi, bound_lo + bound_size - 1);
     MPI_Aint offset = (local_lo - bound_lo);
@@ -177,7 +182,7 @@ void DistrArrayMPI3::_gather_scatter(const std::vector<index_type>& indices, std
     error(name + " data buffer is too small");
   if (empty())
     error(name + " called on an empty array");
-  auto prof = util::ScopeProfiler(m_prof, name);
+  util::ScopeProfiler prof{m_prof, name};
   auto requests = std::vector<MPI_Request>(indices.size());
   for (size_t i = 0; i < indices.size(); ++i) {
     int p;
@@ -205,7 +210,9 @@ const DistrArray::Distribution& DistrArrayMPI3::distribution() const { return *m
 DistrArrayMPI3::LocalBufferMPI3::LocalBufferMPI3(DistrArrayMPI3& source) {
   int rank;
   MPI_Comm_rank(source.communicator(), &rank);
-  auto [_lo, sz] = source.distribution().range(rank);
+  index_type _lo;
+  size_t sz;
+  std::tie(_lo, sz) = source.distribution().range(rank);
   lo = _lo;
   hi = lo + sz;
   int flag;
@@ -282,4 +289,6 @@ std::pair<int, int> DistrArrayMPI3::DistributionMPI3::locate_process(index_type 
 std::pair<DistrArrayMPI3::index_type, size_t> DistrArrayMPI3::DistributionMPI3::range(int process_rank) const {
   return m_proc_range[process_rank];
 }
-} // namespace molpro::gci::array
+} // namespace array
+} // namespace linalg
+} // namespace molpro

@@ -1,10 +1,10 @@
 #ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYMPI3_H
 #define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYMPI3_H
-#include "molpro/gci/array/DistrArray.h"
+#include "molpro/linalg/array/DistrArray.h"
 #include <mpi.h>
 
 namespace molpro {
-namespace gci {
+namespace linalg {
 namespace array {
 
 /*!
@@ -133,7 +133,7 @@ public:
 };
 } // namespace util
 } // namespace array
-} // namespace gci
+} // namespace linalg
 } // namespace molpro
 
 #endif // GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYMPI3_H

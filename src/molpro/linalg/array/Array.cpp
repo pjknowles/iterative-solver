@@ -1,4 +1,4 @@
-#include "gciArray.h"
+#include "Array.h"
 
 #include "molpro/gci/gci.h"
 

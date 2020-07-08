@@ -1,4 +1,4 @@
 LibraryManager_Append(${PROJECT_NAME}
-        SOURCES gciArray.cpp
-        PUBLIC_HEADER gciArray.h
+        SOURCES Array.cpp
+        PUBLIC_HEADER Array.h
         )

@@ -1,7 +1,9 @@
 add_executable(test-${PROJECT_NAME}-parallel
         main.cpp
         testutil.cpp
-        testDistrArray.cpp
+        testDistrArray.h
+        testDistrArrayMPI3.cpp
+        testDistrArrayGA.cpp
         )
 target_link_libraries(test-${PROJECT_NAME}-parallel PUBLIC molpro::${PROJECT_NAME} gmock_main)
 

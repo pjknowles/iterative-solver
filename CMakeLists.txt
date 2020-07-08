@@ -15,7 +15,8 @@ LibraryManager_Project(FORTRAN_OPTION MPI_OPTION)
 ### Options
 
 option(PPIDD "Whether to build on PPIDD" OFF)
-option(LINEAR_ALGEBRA_GAArray "Build with GAArray" OFF)
+option(LINEARALGEBRA_ARRAY_MPI3 "Build with MPI3 implementation of distributed array" ON)
+option(LINEARALGEBRA_ARRAY_GA "Build with GA implementation of distributed array" ON)
 ##############################
 
 

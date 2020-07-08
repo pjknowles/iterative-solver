@@ -147,11 +147,11 @@ public:
    */
   virtual void scatter(const std::vector<index_type> &indices, const std::vector<value_type> &data) = 0;
   /*!
-   * @brief array[indices[i]] += alpha * vals[i]
+   * @brief array[indices[i]] += vals[i]
    * Accumulates vals of elements into discontinuous indices of array.
    * Atomic, blocking, with on-sided communication
    */
-  virtual void scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data, value_type alpha) = 0;
+  virtual void scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data) = 0;
   /*!
    * @brief Copies the whole buffer into a vector. Blocking.
    * @note This is only meant for debugging small arrays!

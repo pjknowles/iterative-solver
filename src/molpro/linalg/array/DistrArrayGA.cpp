@@ -190,8 +190,7 @@ void DistrArrayGA::scatter(const std::vector<index_type> &indices, const std::ve
   NGA_Scatter(m_ga_handle, const_cast<double *>(data.data()), &start, n);
 }
 
-void DistrArrayGA::scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data,
-                               value_type alpha) {
+void DistrArrayGA::scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data) {
   auto name = std::string{"DistrArrayGA::scatter_acc"};
   if (empty())
     error(name + " attempting to scatter_acc into an empty array");
@@ -204,6 +203,7 @@ void DistrArrayGA::scatter_acc(std::vector<index_type> &indices, const std::vect
   for (int i = 0; i < n; ++i) {
     subsarray[i] = &(iind.at(i));
   }
+  value_type alpha = 1;
   NGA_Scatter_acc(m_ga_handle, const_cast<double *>(data.data()), subsarray, n, &alpha);
   delete[] subsarray;
 }

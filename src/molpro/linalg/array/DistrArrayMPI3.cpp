@@ -154,23 +154,20 @@ void DistrArrayMPI3::put(index_type lo, index_type hi, const value_type* data) {
 
 std::vector<DistrArrayMPI3::value_type> DistrArrayMPI3::gather(const std::vector<index_type>& indices) const {
   auto data = std::vector<value_type>(indices.size());
-  const_cast<DistrArrayMPI3*>(this)->_gather_scatter(indices, data, 0, RMAType::gather);
+  const_cast<DistrArrayMPI3*>(this)->_gather_scatter(indices, data, RMAType::gather);
   return data;
 }
 
 void DistrArrayMPI3::scatter(const std::vector<index_type>& indices, const std::vector<value_type>& data) {
-  _gather_scatter(indices, const_cast<std::vector<value_type>&>(data), 0, RMAType::scatter);
+  _gather_scatter(indices, const_cast<std::vector<value_type>&>(data), RMAType::scatter);
 }
 
-void DistrArrayMPI3::scatter_acc(std::vector<index_type>& indices, const std::vector<value_type>& data,
-                                 DistrArray::value_type alpha) {
-  if (alpha == 0)
-    return;
-  _gather_scatter(indices, const_cast<std::vector<value_type>&>(data), alpha, RMAType::scatter_acc);
+void DistrArrayMPI3::scatter_acc(std::vector<index_type>& indices, const std::vector<value_type>& data) {
+  _gather_scatter(indices, const_cast<std::vector<value_type>&>(data), RMAType::scatter_acc);
 }
 
 void DistrArrayMPI3::_gather_scatter(const std::vector<index_type>& indices, std::vector<value_type>& data,
-                                     value_type alpha, RMAType option) {
+                                     RMAType option) {
   if (indices.empty())
     return;
   auto name = std::string{"DistrArrayMPI3::_gather_scatter"};
@@ -181,11 +178,12 @@ void DistrArrayMPI3::_gather_scatter(const std::vector<index_type>& indices, std
   if (empty())
     error(name + " called on an empty array");
   auto prof = util::ScopeProfiler(m_prof, name);
-  if (option == RMAType::acc)
-    std::transform(data.begin(), data.end(), data.begin(), [alpha](auto el) { return el * alpha; });
   auto requests = std::vector<MPI_Request>(indices.size());
   for (size_t i = 0; i < indices.size(); ++i) {
-    auto [lo, p] = m_distribution->process_map(indices[i], indices[i]);
+    int p;
+    index_type lo;
+    std::tie(p, std::ignore) = m_distribution->process_map(indices[i], indices[i]);
+    std::tie(lo, std::ignore) = m_distribution->proc_buffer[p];
     MPI_Aint offset = indices[i] - lo;
     if (option == RMAType::gather)
       MPI_Rget(&data[i], 1, MPI_DOUBLE, p, offset, 1, MPI_DOUBLE, m_win, &requests[i]);

@@ -52,7 +52,7 @@ public:
   void acc(index_type lo, index_type hi, const value_type *data) override;
   [[nodiscard]] std::vector<value_type> gather(const std::vector<index_type> &indices) const override;
   void scatter(const std::vector<index_type> &indices, const std::vector<value_type> &data) override;
-  void scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data, value_type alpha) override;
+  void scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data) override;
   [[nodiscard]] std::vector<value_type> vec() const override;
   void error(const std::string &message) const override;
 

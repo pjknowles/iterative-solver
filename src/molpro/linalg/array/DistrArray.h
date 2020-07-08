@@ -149,101 +149,104 @@ public:
   [[nodiscard]] virtual std::vector<value_type> vec() const = 0;
   //! @}
 
-  /*! @name Non-collective
-   * Simple linear algebra operations that work on local elements. They are non-collective.
-   */
-  //! @{
   //! Set all local elements to zero.
   virtual void zero();
-  //! Set all local elements to val. @note each process has its own val, there is no communication
-  virtual void set(value_type val);
-  /*!
-   * \brief this_array[:] += a * x[:]
-   * Add a multiple of another array to this one. Blocking, collective.
-   * \param a the pre-factor
-   * \param x the other array
-   */
-  virtual void axpy(value_type a, const DistrArray &x);
-  //! Scale by a constant. Local.
-  virtual void scal(value_type a);
-  //! Add another array to this. Local
-  virtual void add(const DistrArray &x);
-  //! Add a constant. Local.
-  virtual void add(value_type a);
-  //! Subtract another array from this. Local.
-  virtual void sub(const DistrArray &x);
-  //! Subtract a constant. Local.
-  virtual void sub(value_type a);
-  //! Take element-wise reciprocal of this. Local. No checks are made for zero values
-  virtual void recip();
-  //! this[i] *= x[i].
-  virtual void times(const DistrArray &x);
-  //! this[i] = x[i]*y[i].
-  virtual void times(const DistrArray &x, const DistrArray &y);
-  //! @}
 
-  /*! @name Collective
-   * Collective operations that are blocking and require all processes to call them.
-   */
-  //!@{
-  /*!
-   * \brief returns n smallest elements
-   * Collective operation, must be called by all processes in the group.
-   * \param n number of values to be found
-   */
-  [[nodiscard]] virtual std::list<std::pair<size_t, value_type>> min_n(size_t n) const;
-  /*!
-   * \brief returns n largest elements
-   * Collective operation, must be called by all processes in the group.
-   * \param n number of values to be found
-   */
-  [[nodiscard]] virtual std::list<std::pair<size_t, value_type>> max_n(size_t n) const;
-  /*!
-   * \brief returns n elements that are largest by absolute value
-   * Collective operation, must be called by all processes in the group.
-   * \param n number of smallest values to be found
-   */
-  [[nodiscard]] virtual std::list<std::pair<size_t, value_type>> min_abs_n(size_t n) const;
-  /*!
-   * \brief returns n elements that are largest by absolute value
-   * Collective operation, must be called by all processes in the group.
-   * \param n number of values to be found
-   */
-  [[nodiscard]] virtual std::list<std::pair<size_t, value_type>> max_abs_n(size_t n) const;
-  /*!
-   * \brief find the index of n smallest components
-   * Collective operation, must be called by all processes in the group.
-   * \param n number of values to be found
-   * \return offsets in buffer
-   */
-  [[nodiscard]] virtual std::vector<size_t> min_loc_n(size_t n) const;
-  /*!
-   * @brief Scalar product with another array. Collective.
-   * Both arrays should be part of the same processor group (same communicator).
-   * The result is broadcast to each process.
-   */
-  [[nodiscard]] virtual value_type dot(const DistrArray &x) const;
-  /*!
-   * \brief this[i] = x[i]/(y[i]+shift). Collective
-   * negative? (append? this -=... : this =-...) : (append? this +=... : this =...)
-   * \param x array in the numerator
-   * \param y array in the denominator
-   * \param append Whether to += or =
-   * \param negative Whether to scale  right hand side by -1
-   */
-  void divide(const DistrArray &x, const DistrArray &y, value_type shift = 0, bool append = false,
-              bool negative = false) {
-    _divide(x, y, shift, append, negative);
-  };
-  /*! @} */
+  //! stops application with an error
+  virtual void error(const std::string &message) const;
 
 protected:
   virtual void _acc(index_type lo, index_type hi, const value_type *data, value_type scaling_constant) = 0;
-  virtual void _divide(const DistrArray &x, const DistrArray &y, value_type shift, bool append, bool negative);
-  //! stops application with an error
-  virtual void error(const std::string &message) const;
-  template <class Compare>[[nodiscard]] std::list<std::pair<index_type, value_type>> extrema(int n) const;
 };
+
+
+//! Set all local elements of array x to val. @note each process has its own val, there is no communication
+void fill(DistrArray &x, DistrArray::value_type val);
+/*!
+ * \brief x[:] += a * y[:]
+ * Add a multiple of another array to this one. Blocking, collective.
+ */
+void axpy(DistrArray &x, DistrArray::value_type a, const DistrArray &y);
+//! Scale by a constant. Local.
+void scal(DistrArray &x, DistrArray::value_type a);
+//! Add another array to this. Local
+void add(DistrArray &x, const DistrArray &y);
+//! Add a constant. Local.
+void add(DistrArray &x, DistrArray::value_type a);
+//! Subtract another array from this. Local.
+void sub(DistrArray &x, const DistrArray &y);
+//! Subtract a constant. Local.
+void sub(DistrArray &x, DistrArray::value_type a);
+//! Take element-wise reciprocal of this. Local. No checks are made for zero values
+void recip(DistrArray &x);
+//! x[i] *= y[i].
+void times(DistrArray &x, const DistrArray &y);
+//! x[i] = y[i]*z[i].
+void times(DistrArray &x, const DistrArray &y, const DistrArray &z);
+
+/*!
+ * @brief Scalar product of two arrays. Collective.
+ * Both arrays should be part of the same processor group (same communicator).
+ * The result is broadcast to each process.
+ */
+[[nodiscard]] DistrArray::value_type dot(const DistrArray &x, const DistrArray &y);
+
+/*!
+ * @brief x[i] = y[i]/(z[i]+shift). Collective
+ * @code{.cpp}
+ * negative? (append? this -=... : this =-...) : (append? this +=... : this =...)
+ * @endcode
+ * @param x result array
+ * @param y array in the numerator
+ * @param z array in the denominator
+ * @param shift denominator shift
+ * @param append Whether to += or =
+ * @param negative Whether to scale  right hand side by -1
+ */
+void divide(DistrArray &x, const DistrArray &y, const DistrArray &z, DistrArray::value_type shift = 0,
+            bool append = false, bool negative = false);
+
+/*!
+ * @brief returns n smallest elements in array x
+ * Collective operation, must be called by all processes in the group.
+ * @return list of index and value pairs
+ */
+[[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> min_n(const DistrArray &x, int n);
+
+/*!
+ * \brief returns n largest elements in array x
+ * Collective operation, must be called by all processes in the group.
+ * @return list of index and value pairs
+ */
+[[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> max_n(const DistrArray &x, int n);
+
+/*!
+ * \brief returns n elements that are largest by absolute value in array x
+ * Collective operation, must be called by all processes in the group.
+ * @return list of index and value pairs
+ */
+[[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> min_abs_n(const DistrArray &x,
+                                                                                             int n);
+
+/*!
+ * \brief returns n elements that are largest by absolute value in array x
+ * Collective operation, must be called by all processes in the group.
+ * @return list of index and value pairs
+ */
+[[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> max_abs_n(const DistrArray &x,
+                                                                                             int n);
+
+/*!
+ * \brief find the index of n smallest components in array x
+ * Collective operation, must be called by all processes in the group.
+ * @return
+ */
+[[nodiscard]] std::vector<DistrArray::index_type> min_loc_n(const DistrArray &x, int n);
+
+namespace util {
+template <class Compare>
+[[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> extrema(const DistrArray &x, int n);
+}
 
 } // namespace molpro::gci::array
 

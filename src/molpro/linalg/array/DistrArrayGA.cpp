@@ -27,6 +27,8 @@ DistrArrayGA::DistrArrayGA(size_t dimension, MPI_Comm comm, std::shared_ptr<Prof
     : DistrArray(dimension, comm, std::move(prof)), m_comm_rank(get_communicator_rank(comm)),
       m_comm_size(get_communicator_size(comm)), m_ga_handle(0), m_ga_chunk(1), m_ga_pgroup(0), m_ga_allocated(false) {}
 
+std::map<MPI_Comm, int> DistrArrayGA::_ga_pgroups{};
+
 DistrArrayGA::DistrArrayGA(const DistrArrayGA &source)
     : DistrArray(source.m_dimension, source.m_communicator, source.m_prof), m_comm_rank(source.m_comm_rank),
       m_comm_size(source.m_comm_size), m_ga_handle(0), m_ga_chunk(source.m_ga_chunk), m_ga_pgroup(0),

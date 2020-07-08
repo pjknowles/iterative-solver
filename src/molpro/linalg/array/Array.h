@@ -12,8 +12,12 @@
 #include "molpro/gci/array/ArrayMPI3.h"
 #endif
 
-namespace molpro::gci::array {
+namespace molpro {
+namespace gci {
+namespace array {
 using Array = GCI_ARRAY_ARRAY_TYPE;
-}
+} // namespace array
+} // namespace gci
+} // namespace molpro
 #undef GCI_ARRAY_ARRAY_TYPE
 #endif // GCI_SRC_MOLPRO_GCI_ARRAY_ARRAY_H

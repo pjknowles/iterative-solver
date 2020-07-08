@@ -2,8 +2,9 @@
 #define GCI_SRC_MOLPRO_GCI_ARRAY_ARRAY_H
 
 #ifdef GCI_ARRAY_ArrayGA
-#define GCI_ARRAY_ARRAY_TYPE ArrayGA
-#include "molpro/gci/array/ArrayGA.h"
+#define GCI_ARRAY_ARRAY_TYPE DistrArrayGA
+//#include "molpro/gci/array/ArrayGA.h"
+#include "molpro/gci/array/DistrArrayGA.h"
 #elif GCI_ARRAY_ArrayMPI3
 #define GCI_ARRAY_ARRAY_TYPE ArrayMPI3
 #include "molpro/gci/array/ArrayMPI3.h"
@@ -15,7 +16,6 @@
 namespace molpro {
 namespace gci {
 namespace array {
-//using Array = GCI_ARRAY_ARRAY_TYPE;
 struct Array : public GCI_ARRAY_ARRAY_TYPE {
   using GCI_ARRAY_ARRAY_TYPE::GCI_ARRAY_ARRAY_TYPE;
 };

@@ -118,9 +118,12 @@ void DistrArrayMPI3::_get_put(index_type lo, index_type hi, const value_type* bu
   for (size_t i = p_lo; i < p_hi + 1; ++i) {
     MPI_Aint offset = 0;
     int count = m_distribution->proc_buffer[i].second;
-    if (i == p_hi)
+    if (i == p_hi && i == p_lo) {
+      offset = lo - m_distribution->proc_buffer[i].first;
+      count = int(hi - lo) + 1;
+    } else if (i == p_hi)
       count = (1 + hi - m_distribution->proc_buffer[i].first);
-    else if (i == p_lo) {
+    else {
       offset = lo - m_distribution->proc_buffer[i].first;
       count -= offset;
     }

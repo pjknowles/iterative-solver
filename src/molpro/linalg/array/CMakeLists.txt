@@ -1,6 +1,6 @@
 LibraryManager_Append(${PROJECT_NAME}
-        SOURCES ArrayGA.cpp DistrArray.cpp util.cpp
-        PUBLIC_HEADER Array.h DistrArray.h ArrayGA.h util.h
+        SOURCES ArrayGA.cpp DistrArray.cpp DistrArrayGA.cpp util.cpp
+        PUBLIC_HEADER Array.h DistrArray.h ArrayGA.h DistrArrayGA.h util.h
         )
 
 if (GCI_ARRAY_MPI3)

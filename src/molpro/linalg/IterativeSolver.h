@@ -177,7 +177,7 @@ public:
     //    molpro::cout << "m_working_set size " << m_working_set.size() << std::endl;
     if (m_working_set.size() == 0)
       return 0;
-    assert(parameters.size() <= m_working_set.size());
+    assert(parameters.size() >= m_working_set.size());
     assert(parameters.size() == action.size());
     m_iterations++;
     m_current_r.clear();
@@ -276,8 +276,8 @@ public:
     for (auto root = 0; root < m_roots; root++)
       if (m_errors[root] < m_thresh and m_q_solutions.count(root) == 0 and m_working_set.size() < parameters.size()) {
         m_working_set.push_back(root);
-        //          molpro::cout << "selecting root " << root << " for adding converged solution to Q space" <<
-        //          std::endl;
+        if (m_verbosity > 1)
+          molpro::cout << "selecting root " << root << " for adding converged solution to Q space" << std::endl;
       }
     doInterpolation(parameters, action, parametersP, other, true);
     for (auto k = 0; k < m_working_set.size(); k++) {
@@ -286,52 +286,66 @@ public:
     }
 
     revise_working_set(parameters.size());
-//          molpro::cout << "after revise_working_set m_working_set:";
-//          for (const auto& w : m_working_set)
-//            molpro::cout << " " << w;
-//          molpro::cout << std::endl;
-//          molpro::cout << "after revise_working_set m_errors:";
-//          for (const auto& w : m_errors)
-//            molpro::cout << " " << w;
-//          molpro::cout << std::endl;
+    if (m_verbosity > 1) {
+      molpro::cout << "after revise_working_set m_working_set:";
+      for (const auto& w : m_working_set)
+        molpro::cout << " " << w;
+      molpro::cout << std::endl;
+      molpro::cout << "after revise_working_set m_errors:";
+      for (const auto& w : m_errors)
+        molpro::cout << " " << w;
+      molpro::cout << std::endl;
+    }
     doInterpolation(parameters, action, parametersP, other);
     for (int k = m_working_set.size() - 1; k >= 0; k--) {
-      if (m_errors[m_working_set[k]] <= m_threshold_residual_recalculate * 1.0000000001) {
-        m_errors[m_working_set[k]] = std::sqrt(action[k].get().dot(action[k]));
-        if (m_errors[m_working_set[k]] < m_thresh) {
+      auto root = m_working_set[k];
+      if (m_errors[root] <= m_threshold_residual_recalculate * 1.0000000001) {
+        m_errors[root] = std::sqrt(action[k].get().dot(action[k]));
+        if (m_errors[root] < m_thresh) {
           // second bite of the cherry on retiring a root
+          if (m_verbosity > 1)
+            molpro::cout << "retire root " << root << " on basis of revaluated residual " << m_errors[root]
+                         << "; new working set size " << k << std::endl;
           m_working_set.pop_back();
-          auto save_working_set=m_working_set;
-          auto root = m_working_set[k];
+          assert(k == m_working_set.size());
+          auto save_working_set = m_working_set;
           m_working_set.clear();
           m_working_set.push_back(root);
-          auto oth=nullVectorRefSet<T>;
-          doInterpolation(vectorRefSet(1,parameters[k]), vectorRefSet(1,action[k]), vectorRefSetP(1,parametersP[k]), oth, true);
+          auto oth = nullVectorRefSet<T>;
+          auto othP = nullVectorRefSetP<T>;
+          if (parametersP.size() > k)
+            doInterpolation(vectorRefSet(1, parameters[k]), vectorRefSet(1, action[k]),
+                            vectorRefSetP(1, parametersP[k]), oth, true);
+          else
+            doInterpolation(vectorRefSet(1, parameters[k]), vectorRefSet(1, action[k]), parametersP, oth, true);
           m_qspace.add(parameters[k], action[k], m_rhs);
           m_q_solutions[root] = m_qspace.keys().back();
-          m_working_set=save_working_set;
-        }
-        else
+          m_working_set = save_working_set;
+        } else
           break;
       }
     }
-//      molpro::cout << "after refinement m_working_set:";
-//      for (const auto& w : m_working_set)
-//        molpro::cout << " " << w;
-//      molpro::cout << std::endl;
-//      molpro::cout << "after refinement m_errors:";
-//      for (const auto& w : m_errors)
-//        molpro::cout << " " << w;
-//      molpro::cout << std::endl;
+    if (m_verbosity > 1) {
+      molpro::cout << "after refinement m_working_set:";
+      for (const auto& w : m_working_set)
+        molpro::cout << " " << w;
+      molpro::cout << std::endl;
+      molpro::cout << "after refinement m_errors:";
+      for (const auto& w : m_errors)
+        molpro::cout << " " << w;
+      molpro::cout << std::endl;
+    }
 #ifdef TIMING
     endTiming = std::chrono::steady_clock::now();
     std::cout << " addVector doInterpolation():  seconds="
               << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
               << std::endl;
 #endif
+    while (m_working_set.size() > m_current_r.size()) m_working_set.pop_back();
     for (size_t k = 0; k < m_working_set.size(); k++) {
       //      m_last_d.emplace_back(parameters[k]);
       //      m_last_hd.emplace_back(action[k]);
+//      molpro::cout << "emplacing m_current_r (size="<<m_current_r[k].size()<<") in m_last_d"<<std::endl;
       m_last_d.emplace_back(m_current_r[k]);
       m_last_hd.emplace_back(m_current_v[k]);
     }
@@ -517,20 +531,23 @@ public:
   std::vector<bool> active() { return m_active.empty() ? std::vector<bool>(1000, true) : m_active; }
 
   void solution(const std::vector<int>& roots, vectorRefSet parameters, vectorRefSet residual,
-                vectorRefSetP parametersP = nullVectorRefSetP<T>) const {
+                vectorRefSetP parametersP = nullVectorRefSetP<T>) {
     auto working_set_save = m_working_set;
     m_working_set = roots;
     auto other = nullVectorRefSet<T>;
+    m_s_rr.clear();
+    buildSubspace();
+    solveReducedProblem();
     doInterpolation(parameters, residual, parametersP, other);
     m_working_set = working_set_save;
   }
   void solution(const std::vector<int>& roots, std::vector<T>& parameters, std::vector<T>& residual,
-                vectorSetP& parametersP = nullVectorSetP<T>) const {
+                vectorSetP& parametersP = nullVectorSetP<T>) {
     return solution(roots, vectorRefSet(parameters.begin(), parameters.end()),
                     vectorRefSet(residual.begin(), residual.end()),
                     vectorRefSetP(parametersP.begin(), parametersP.end()));
   }
-  void solution(int root, T& parameters, T& residual, vectorP& parametersP = nullVectorP<T>) const {
+  void solution(int root, T& parameters, T& residual, vectorP& parametersP = nullVectorP<T>) {
     return solution(std::vector<int>(1, root), vectorRefSet(1, parameters), vectorRefSet(1, residual),
                     vectorRefSetP(1, parametersP));
   }
@@ -781,6 +798,7 @@ protected:
         if (m_verbosity > 2)
           molpro::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
         m_qspace.remove(del - oQ);
+        m_errors.assign(m_roots,1e20);
         for (auto m = 0; m < nR; m++)
           for (auto a = del - oQ; a < nQ - 1; a++) {
             m_h_rq[a][m] = m_h_rq[a + 1][m];
@@ -1078,7 +1096,7 @@ protected:
     const auto oQ = nP;
     const auto nR = m_linear ? m_s_rr.size() : 0;
     const auto oR = oQ + nQ;
-//    molpro::cout << "nQ=" << nQ << " nR=" << nR << std::endl;
+    //    molpro::cout << "nQ=" << nQ << " nR=" << nR << std::endl;
     assert(nP + nR + nQ == m_subspaceEigenvectors.rows());
     m_errors.resize(m_roots);
     for (auto root = 0; root < m_roots; root++) {

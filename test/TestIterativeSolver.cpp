@@ -29,10 +29,12 @@ TEST(TestIterativeSolver, small_eigenproblem) {
       molpro::linalg::SimpleArray<double> mm(n);
       std::vector<molpro::linalg::SimpleArray<double>> x, g;
       molpro::linalg::LinearEigensystem<molpro::linalg::SimpleArray<double>> solver;
-      solver.m_verbosity = -1;
+      solver.m_verbosity = 3;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0)
         std::cout << "Test n=" << n << ", nroot=" << nroot << std::endl;
+      if (solver.m_verbosity > 1)
+        std::cout <<"Matrix\n"<<m<<std::endl;
       for (size_t root = 0; root < nroot; root++) {
         x.emplace_back(n);
         x.back().scal(0);
@@ -40,7 +42,8 @@ TEST(TestIterativeSolver, small_eigenproblem) {
         g.emplace_back(n);
       }
       size_t nwork=nroot;
-      for (size_t iter = 0; iter < n + 1; iter++) {
+      for (size_t iter = 0; iter < n + 100; iter++) {
+        std::cout << "start iteration "<<iter<<", nwork="<<nwork<<std::endl;
         for (size_t root = 0; root < nwork; root++) {
             g[root].scal(0);
             for (size_t i = 0; i < n; i++)

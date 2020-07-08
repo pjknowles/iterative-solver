@@ -1,7 +1,7 @@
 #ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYHDF5_H
 #define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYHDF5_H
 #include "molpro/linalg/array/DistrArray.h"
-#include <hdf5.h>
+#include "molpro/linalg/array/HDF5Handle.h"
 
 namespace molpro {
 namespace linalg {
@@ -15,11 +15,12 @@ namespace array {
  */
 class DistrArrayHDF5 : public DistrArray {
 protected:
+  class DistributionHDF5;
   //! distribution of array buffer among processes. Stores start index and size for each
-  std::unique_ptr<util::Distribution> m_distribution;
-  bool m_allocated = false; //!< whether file has been opened and storage reserved
-  bool m_open = false;      //!< whether the file has been opened
-  hid_t m_hid;              //!< hdf5 file handle
+  std::unique_ptr<Distribution> m_distribution;
+  bool m_allocated = false;       //!< whether file has been opened and storage reserved
+  bool m_open = false;            //!< whether the file has been opened
+  util::HDF5Handle m_file_handle; //!< hdf5 file handle
 public:
   DistrArrayHDF5() = delete;
   DistrArrayHDF5(DistrArrayHDF5 &&other) = delete;

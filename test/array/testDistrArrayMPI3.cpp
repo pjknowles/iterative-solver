@@ -1,5 +1,7 @@
 #include "testDistrArray.h"
 
+#include <molpro/linalg/array/DistrArrayMPI3.h>
+
 using molpro::linalg::array::DistrArrayMPI3;
 
 using ArrayTypes = ::testing::Types<DistrArrayMPI3>;

@@ -219,48 +219,6 @@ DistrArrayMPI3::LocalBufferMPI3::LocalBufferMPI3(DistrArrayMPI3& source) {
   MPI_Win_get_attr(source.m_win, MPI_WIN_BASE, &buffer, &flag);
 }
 
-util::LockMPI3::LockMPI3(MPI_Comm comm) : m_comm{comm} {
-  char* base = nullptr;
-  MPI_Win_allocate(0, 1, MPI_INFO_NULL, m_comm, &base, &m_win);
-}
-
-util::LockMPI3::~LockMPI3() {
-  if (!m_proxy.expired())
-    m_proxy.lock()->m_deleted = true;
-  unlock();
-  MPI_Win_free(&m_win);
-}
-
-void util::LockMPI3::lock() {
-  if (!m_locked) {
-    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, m_win);
-    m_locked = true;
-  }
-}
-
-void util::LockMPI3::unlock() {
-  if (m_locked) {
-    MPI_Win_unlock(0, m_win);
-    m_locked = false;
-  }
-}
-
-std::shared_ptr<util::LockMPI3::Proxy> util::LockMPI3::scope() {
-  auto p = std::shared_ptr<util::LockMPI3::Proxy>{};
-  if (m_proxy.expired()) {
-    p = std::make_shared<Proxy>(*this);
-    m_proxy = p;
-  }
-  return m_proxy.lock();
-}
-
-util::LockMPI3::Proxy::Proxy(util::LockMPI3& source) : m_lock(source) { m_lock.lock(); }
-
-util::LockMPI3::Proxy::~Proxy() {
-  if (!m_deleted)
-    m_lock.unlock();
-}
-
 DistrArrayMPI3::DistributionMPI3::DistributionMPI3(int n_proc, size_t dimension) : m_dim(dimension) {
   m_proc_range.reserve(n_proc);
   // First get even distribution

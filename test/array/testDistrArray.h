@@ -12,8 +12,7 @@
 #include <thread>
 
 #include "parallel_util.h"
-
-#include <molpro/linalg/array/DistrArrayMPI3.h>
+#include <molpro/linalg/array/util.h>
 
 using ::testing::ContainerEq;
 using ::testing::DoubleEq;

@@ -28,7 +28,8 @@ void DistrArray::zero() { fill(0); }
 
 DistrArray& DistrArray::fill(DistrArray::value_type val) {
   auto p = util::ScopeProfiler(m_prof, "Array::fill");
-  for (auto& el : *local_buffer())
+  auto lb = local_buffer();
+  for (auto& el : *lb)
     el = val;
   return *this;
 }

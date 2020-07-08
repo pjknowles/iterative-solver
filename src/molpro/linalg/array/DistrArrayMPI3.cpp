@@ -122,17 +122,11 @@ void DistrArrayMPI3::_get_put(index_type lo, index_type hi, const value_type* bu
   auto* curr_buf = const_cast<value_type*>(buf);
   auto requests = std::vector<MPI_Request>(p_hi - p_lo + 1);
   for (size_t i = p_lo; i < p_hi + 1; ++i) {
-    MPI_Aint offset = 0;
-    int count = m_distribution->proc_buffer[i].second;
-    if (i == p_hi && i == p_lo) {
-      offset = lo - m_distribution->proc_buffer[i].first;
-      count = int(hi - lo) + 1;
-    } else if (i == p_hi)
-      count = (1 + hi - m_distribution->proc_buffer[i].first);
-    else {
-      offset = lo - m_distribution->proc_buffer[i].first;
-      count -= offset;
-    }
+    auto [bound_lo, bound_size] = m_distribution->proc_buffer[i];
+    auto local_lo = std::max(lo, bound_lo);
+    auto local_hi = std::min(hi, bound_lo + bound_size - 1);
+    MPI_Aint offset = (local_lo - bound_lo);
+    int count = (local_hi - local_lo + 1);
     if (option == RMAType::get)
       MPI_Rget(curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, m_win, &requests[i - p_lo]);
     else if (option == RMAType::put)
@@ -213,7 +207,7 @@ DistrArrayMPI3::LocalBufferMPI3::LocalBufferMPI3(DistrArrayMPI3& source) {
   MPI_Comm_rank(source.communicator(), &rank);
   auto [_lo, sz] = source.distribution().proc_buffer[rank];
   lo = _lo;
-  hi = lo + sz - 1;
+  hi = lo + sz;
   int flag;
   MPI_Win_get_attr(source.m_win, MPI_WIN_BASE, &buffer, &flag);
 }

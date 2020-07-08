@@ -1,6 +1,13 @@
 #ifndef GCI_SRC_MOLPRO_GCI_ARRAY_ARRAYBASE_H
 #define GCI_SRC_MOLPRO_GCI_ARRAY_ARRAYBASE_H
+#include <list>
+#include <memory>
 #include <mpi.h>
+#include <vector>
+
+namespace molpro {
+class Profiler;
+}
 
 namespace molpro::gci::array {
 /*!
@@ -50,31 +57,30 @@ class ArrayBase {
 public:
   using value_type = double;
   using index_type = unsigned long int;
+  index_type m_dimension;                             //! number of elements in the array
   MPI_Comm m_communicator;                            //!< Outer communicator
   std::shared_ptr<molpro::Profiler> m_prof = nullptr; //!< optional profiler
-  int m_comm_rank = 0;                                //!< rank in process group
-  int m_comm_size = 0;                                //!< size of process group
   ArrayBase() = delete;
   //! Initializes array without allocating any memory
-  ArrayBase(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof)
-      : m_communicator(commun), m_dimension(dimension), m_prof(prof) {}
-  ArrayBase(const ArrayBase &source) = default;
-  //! Special constructor required by IterativeSolver
-  ArrayBase(const ArrayBase &source, int) : ArrayBase(source){};
-  [[nodiscard]] ArrayBase &operator=(const ArrayBase &source) = default;
+  ArrayBase(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof);
+  ArrayBase(const ArrayBase &source) = delete;
+  ArrayBase(ArrayBase &&source) = delete;
+  ArrayBase &operator=(const ArrayBase &source) = delete;
+  ArrayBase &operator=(ArrayBase &&source) = delete;
   virtual ~ArrayBase() = default;
+
   //! Synchronizes all process in this group and ensures any outstanding operations on the array have completed
-  virtual void sync() const = 0;
+  virtual void sync() const;
   //! total number of elements, same as overall dimension of array
-  virtual size_t size() const = 0;
+  virtual size_t size() const;
   //! Checks that arrays are of the same dimensionality
-  virtual bool compatible(const ArrayBase &other) const = 0;
+  virtual bool compatible(const ArrayBase &other) const;
   //! allocates memory to the array without initializing it with any value. Blocking, collective operation.
   virtual void allocate_buffer() = 0;
   //! Duplicates GA buffer. Requires communicators to be the same. Blocking, collective operation
   virtual void copy_buffer(const ArrayBase &source) = 0;
   //! checks if array has been allocated
-  virtual bool empty() const = 0;
+  virtual bool empty() const;
 
   /*! @name Local buffer
    * Access the section of the array local to this process
@@ -82,26 +88,25 @@ public:
   //! @{
   //! Provides access to the local portion of the array locking that portion for all other process.
   struct LocalBuffer {
-    //! Access local portion of the array
-    explicit LocalBuffer(const ArrayBase &source) = 0;
-    //! Unlock the buffer for other processes
-    virtual ~LocalBuffer() = 0;
     //! Size of the local buffer
-    virtual size_t size() const = 0;
+    size_t size() { return 1 + hi - lo; };
     //! Pointer to the start of the buffer
-    virtual ArrayBase::value_type *begin() = 0;
+    ArrayBase::value_type *begin() { return buffer; };
     //! Pointer to the end of the buffer (element just after the last one)
-    virtual ArrayBase::value_type *end() = 0;
+    ArrayBase::value_type *end() { return buffer + size(); };
     //! Checks that the current and the other buffers correspond to the same section of their respective arrays
-    virtual bool compatible(const LocalBuffer &other) = 0;
+    bool compatible(const LocalBuffer &other) { return lo == other.lo && hi == other.hi; };
     //! Access element at position i relative to begin() without bounds checking
-    virtual ArrayBase::value_type &operator[](size_t i) = 0;
-    ArrayBase::index_type lo;      //!< first element of local buffer in the array
-    ArrayBase::index_type hi;      //!< last element of local buffer in the array (the one before end())
+    ArrayBase::value_type &at(size_t i) { return buffer[i]; };
+    ArrayBase::value_type const &at(size_t i) const { return buffer[i]; };
+    const ArrayBase::index_type lo; //!< first element of local buffer in the array
+    const ArrayBase::index_type hi; //!< last element of local buffer in the array (the one before end())
+  protected:
     ArrayBase::value_type *buffer; //!< pointer to the start of the local array buffer
   };
   //! Access the buffer local to this process
-  [[nodiscard]] virtual LocalBuffer local_buffer() = 0;
+  [[nodiscard]] virtual std::shared_ptr<LocalBuffer> local_buffer() = 0;
+  [[nodiscard]] virtual std::shared_ptr<LocalBuffer> local_buffer() const = 0;
   //! @}
 
   /*! @name One-sided RMA
@@ -109,45 +114,39 @@ public:
    */
   //! @{
   //! get element at the offset. Blocking.
-  [[nodiscard]] virtual ArrayBase::value_type at(size_t offset) const = 0;
+  [[nodiscard]] virtual value_type at(size_t offset) const = 0;
   //! Set one element to a scalar. Global operation. @todo rename to put
-  virutal void set(size_t ind, ArrayBase::value_type val) = 0;
+  virtual void set(size_t ind, value_type val) = 0;
   //! Gets buffer[lo:hi] from global array (hi inclusive, i.e. not pythonic). Blocking.
-  virtual void get(ArrayBase::index_type lo, ArrayBase::index_type hi,
-                   std::vector<ArrayBase::value_type> &buf) const = 0;
-  [[nodiscard]] virtual std::vector<ArrayBase::value_type> get(ArrayBase::index_type lo,
-                                                               ArrayBase::index_type hi) const = 0;
+  virtual void get(index_type lo, index_type hi, std::vector<value_type> &buf) const = 0;
+  [[nodiscard]] virtual std::vector<value_type> get(index_type lo, index_type hi) const = 0;
   //! array[lo:hi] = data[:] (hi inclusive, i.e. not pythonic). Blocking
-  virtual void put(ArrayBase::index_type lo, ArrayBase::index_type hi, const ArrayBase::value_type *data) = 0;
+  virtual void put(index_type lo, index_type hi, const value_type *data) = 0;
   //!  array[lo:hi] += scaling_constant * data[:] (hi inclusive, i.e. not pythonic). Blocking
-  void acc(ArrayBase::index_type lo, ArrayBase::index_type hi, const ArrayBase::value_type *data,
-           ArrayBase::value_type scaling_constant = 1.) {
+  void acc(index_type lo, index_type hi, const value_type *data, value_type scaling_constant = 1.) {
     _acc(lo, hi, data, scaling_constant);
   };
   /*!
    * @brief gets elements with discontinuous indices from array. Blocking
    * @return res[i] = array[indices[i]]
    */
-  [[nodiscard]] virtual std::vector<ArrayBase::value_type>
-  gather(const std::vector<ArrayBase::index_type> &indices) const = 0;
+  [[nodiscard]] virtual std::vector<value_type> gather(const std::vector<index_type> &indices) const = 0;
   /*!
    * @brief array[indices[i]] = data[i]
    * Puts vals of elements with discontinuous indices of array. Blocking.
    */
-  [[nodiscard]] virtual void scatter(const std::vector<ArrayBase::index_type> &indices,
-                                     const std::vector<ArrayBase::value_type> &data) = 0;
+  virtual void scatter(const std::vector<index_type> &indices, const std::vector<value_type> &data) = 0;
   /*!
    * @brief array[indices[i]] += alpha * vals[i]
    * Accumulates vals of elements into discontinuous indices of array.
    * Atomic, blocking, with on-sided communication
    */
-  virtual void scatter_acc(std::vector<ArrayBase::index_type> &indices, const std::vector<ArrayBase::value_type> &data,
-                           ArrayBase::value_type alpha) = 0;
+  virtual void scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data, value_type alpha) = 0;
   /*!
    * @brief Copies the whole buffer into a vector. Blocking.
    * @note This is only meant for debugging small arrays!
    */
-  [[nodiscard]] virtual std::vector<ArrayBase::value_type> vec() const = 0;
+  [[nodiscard]] virtual std::vector<value_type> vec() const = 0;
   //! @}
 
   /*! @name Non-collective
@@ -155,30 +154,32 @@ public:
    */
   //! @{
   //! Set all local elements to zero.
-  virtual void zero() = 0;
-  //! Set all local elements to val.
-  virtual void set(ArrayBase::value_type val) = 0;
+  virtual void zero();
+  //! Set all local elements to val. @note each process has its own val, there is no communication
+  virtual void set(value_type val);
   /*!
    * \brief this_array[:] += a * x[:]
    * Add a multiple of another array to this one. Blocking, collective.
    * \param a the pre-factor
    * \param x the other array
    */
-  virtual void axpy(ArrayBase::value_type a, const ArrayBase &x) = 0;
+  virtual void axpy(value_type a, const ArrayBase &x);
   //! Scale by a constant. Local.
-  virtual void scal(ArrayBase::value_type a) = 0;
+  virtual void scal(value_type a);
   //! Add another array to this. Local
-  virtual void add(const ArrayBase &other) = 0;
+  virtual void add(const ArrayBase &x);
   //! Add a constant. Local.
-  virtual void add(ArrayBase::value_type a) = 0;
+  virtual void add(value_type a);
   //! Subtract another array from this. Local.
-  virtual void sub(const ArrayBase &other) = 0;
+  virtual void sub(const ArrayBase &x);
   //! Subtract a constant. Local.
-  virtual void sub(ArrayBase::value_type a) = 0;
+  virtual void sub(value_type a);
   //! Take element-wise reciprocal of this. Local. No checks are made for zero values
-  virtual void recip() = 0;
-  //! this[i] = a[i]*b[i]. Collective.
-  virtual void times(const ArrayBase &a, const ArrayBase &b) = 0;
+  virtual void recip();
+  //! this[i] *= x[i].
+  virtual void times(const ArrayBase &x);
+  //! this[i] = x[i]*y[i].
+  virtual void times(const ArrayBase &x, const ArrayBase &y);
   //! @}
 
   /*! @name Collective
@@ -188,58 +189,60 @@ public:
   /*!
    * \brief returns n smallest elements
    * Collective operation, must be called by all processes in the group.
-   * \param n number of smallest values to be found
+   * \param n number of values to be found
    */
-  [[nodiscard]] virtual std::list<std::pair<size_t, ArrayBase::value_type>> min_n(size_t n) const = 0;
+  [[nodiscard]] virtual std::list<std::pair<size_t, value_type>> min_n(size_t n) const;
   /*!
    * \brief returns n largest elements
    * Collective operation, must be called by all processes in the group.
-   * \param n number of smallest values to be found
+   * \param n number of values to be found
    */
-  [[nodiscard]] virtual std::list<std::pair<size_t, ArrayBase::value_type>> max_n(size_t n) const = 0;
+  [[nodiscard]] virtual std::list<std::pair<size_t, value_type>> max_n(size_t n) const;
   /*!
    * \brief returns n elements that are largest by absolute value
    * Collective operation, must be called by all processes in the group.
    * \param n number of smallest values to be found
    */
-  [[nodiscard]] virtual std::list<std::pair<size_t, ArrayBase::value_type>> min_abs_n(size_t n) const = 0;
+  [[nodiscard]] virtual std::list<std::pair<size_t, value_type>> min_abs_n(size_t n) const;
   /*!
    * \brief returns n elements that are largest by absolute value
    * Collective operation, must be called by all processes in the group.
-   * \param n number of smallest values to be found
+   * \param n number of values to be found
    */
-  [[nodiscard]] virtual std::list<std::pair<size_t, ArrayBase::value_type>> max_abs_n(size_t n) const = 0;
+  [[nodiscard]] virtual std::list<std::pair<size_t, value_type>> max_abs_n(size_t n) const;
   /*!
    * \brief find the index of n smallest components
    * Collective operation, must be called by all processes in the group.
-   * \param n number of smallest values to be found
+   * \param n number of values to be found
    * \return offsets in buffer
    */
-  [[nodiscard]] virtual std::vector<size_t> minlocN(size_t n) const = 0;
+  [[nodiscard]] virtual std::vector<size_t> min_loc_n(size_t n) const;
   /*!
    * @brief Scalar product with another array. Collective.
    * Both arrays should be part of the same processor group (same communicator).
    * The result is broadcast to each process.
    */
-  virtual ArrayBase::value_type dot(const ArrayBase &other) const = 0;
+  [[nodiscard]] virtual value_type dot(const ArrayBase &x) const;
   /*!
-   * \brief this[i] = a[i]/(b[i]+shift). Collective
+   * \brief this[i] = x[i]/(y[i]+shift). Collective
    * negative? (append? this -=... : this =-...) : (append? this +=... : this =...)
-   * \param a array in the numerator
-   * \param b array in the denominator
+   * \param x array in the numerator
+   * \param y array in the denominator
    * \param append Whether to += or =
    * \param negative Whether to scale  right hand side by -1
    */
-  void divide(const ArrayBase &a, const ArrayBase &b, ArrayBase::value_type shift = 0, bool append = false,
+  void divide(const ArrayBase &x, const ArrayBase &y, value_type shift = 0, bool append = false,
               bool negative = false) {
-    _divide(a, b, shift, append, negative);
+    _divide(x, y, shift, append, negative);
   };
   /*! @} */
 
 protected:
-  virtual void _acc(ArrayBase::index_type lo, ArrayBase::index_type hi, const ArrayBase::value_type *data,
-                    ArrayBase::value_type scaling_constant) = 0;
-  virtual void _divide(const ArrayBase &a, const ArrayBase *b, ArrayBase::value_type shift, bool append, bool negative);
+  virtual void _acc(index_type lo, index_type hi, const value_type *data, value_type scaling_constant) = 0;
+  virtual void _divide(const ArrayBase &x, const ArrayBase &y, value_type shift, bool append, bool negative);
+  //! stops application with an error
+  virtual void error(const std::string &message) const;
+  template <class Compare>[[nodiscard]] std::list<std::pair<index_type, value_type>> extrema(int n) const;
 };
 
 } // namespace molpro::gci::array

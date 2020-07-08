@@ -49,6 +49,7 @@ public:
   void get(index_type lo, index_type hi, value_type *buf) const override;
   [[nodiscard]] std::vector<value_type> get(index_type lo, index_type hi) const override;
   void put(index_type lo, index_type hi, const value_type *data) override;
+  void acc(index_type lo, index_type hi, const value_type *data) override;
   [[nodiscard]] std::vector<value_type> gather(const std::vector<index_type> &indices) const override;
   void scatter(const std::vector<index_type> &indices, const std::vector<value_type> &data) override;
   void scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data, value_type alpha) override;
@@ -56,7 +57,6 @@ public:
   void error(const std::string &message) const override;
 
 protected:
-  void _acc(index_type lo, index_type hi, const value_type *data, value_type scaling_constant) override;
   //! Checks if index will overflow when converted to int. Calls error() if it does.
   void check_ga_ind_overlow(index_type ind) const;
 };

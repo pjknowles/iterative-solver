@@ -180,9 +180,7 @@ void DistrArrayMPI3::_gather_scatter(const std::vector<index_type>& indices, std
 }
 std::vector<DistrArrayMPI3::value_type> DistrArrayMPI3::vec() const { return get(0, m_dimension - 1); }
 
-void DistrArrayMPI3::_acc(index_type lo, index_type hi, const value_type* data, value_type scaling_constant) {
-  _get_put(lo, hi, data, RMAType::acc);
-}
+void DistrArrayMPI3::acc(index_type lo, index_type hi, const value_type* data) { _get_put(lo, hi, data, RMAType::acc); }
 
 void DistrArrayMPI3::error(const std::string& message) const { MPI_Abort(m_communicator, 1); }
 

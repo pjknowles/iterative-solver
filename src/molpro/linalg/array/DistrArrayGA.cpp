@@ -221,15 +221,14 @@ std::vector<DistrArrayGA::value_type> DistrArrayGA::vec() const {
   return vec;
 }
 
-void DistrArrayGA::_acc(index_type lo, index_type hi, const value_type *data, value_type scaling_constant) {
+void DistrArrayGA::acc(index_type lo, index_type hi, const value_type *data) {
   auto name = std::string{"DistrArrayGA::acc"};
   if (empty())
     error(name + " attempting to accumulate an empty array");
   check_ga_ind_overlow(lo);
   check_ga_ind_overlow(hi);
   auto p = util::ScopeProfiler(m_prof, name);
-  if (scaling_constant == 0)
-    return;
+  double scaling_constant = 1;
   int ld, ilo = lo, ihi = hi;
   NGA_Acc(m_ga_handle, &ilo, &ihi, const_cast<double *>(data), &ld, &scaling_constant);
 }

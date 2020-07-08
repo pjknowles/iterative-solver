@@ -135,9 +135,7 @@ public:
   //! array[lo:hi] = data[:] (hi inclusive, i.e. not pythonic). Blocking
   virtual void put(index_type lo, index_type hi, const value_type *data) = 0;
   //!  array[lo:hi] += scaling_constant * data[:] (hi inclusive, i.e. not pythonic). Blocking
-  void acc(index_type lo, index_type hi, const value_type *data, value_type scaling_constant = 1.) {
-    _acc(lo, hi, data, scaling_constant);
-  };
+  virtual void acc(index_type lo, index_type hi, const value_type *data) = 0;
   /*!
    * @brief gets elements with discontinuous indices from array. Blocking
    * @return res[i] = array[indices[i]]
@@ -271,7 +269,6 @@ public:
   virtual void error(const std::string &message) const;
 
 protected:
-  virtual void _acc(index_type lo, index_type hi, const value_type *data, value_type scaling_constant) = 0;
   virtual DistrArray &_divide(const DistrArray &y, const DistrArray &z, value_type shift, bool append, bool negative);
 };
 

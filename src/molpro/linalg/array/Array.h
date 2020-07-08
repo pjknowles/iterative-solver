@@ -6,8 +6,8 @@
 //#include "molpro/gci/array/ArrayGA.h"
 #include "molpro/gci/array/DistrArrayGA.h"
 #elif GCI_ARRAY_ArrayMPI3
-#define GCI_ARRAY_ARRAY_TYPE ArrayMPI3
-#include "molpro/gci/array/ArrayMPI3.h"
+#define GCI_ARRAY_ARRAY_TYPE DistrArrayMPI3
+#include "molpro/gci/array/DistrArrayMPI3.h"
 #else
 #define GCI_ARRAY_ARRAY_TYPE ArrayMPI3
 #include "molpro/gci/array/ArrayMPI3.h"

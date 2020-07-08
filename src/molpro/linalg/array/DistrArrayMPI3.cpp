@@ -80,8 +80,11 @@ void DistrArrayMPI3::free_buffer() {
 }
 
 void DistrArrayMPI3::sync() const {
-  MPI_Win_flush_all(m_win);
-  MPI_Win_sync(m_win);
+  if (!empty()) {
+    MPI_Win_flush_all(m_win);
+    MPI_Win_sync(m_win);
+  } else
+    MPI_Barrier(m_communicator);
 }
 
 std::shared_ptr<const DistrArray::LocalBuffer> DistrArrayMPI3::local_buffer() const {

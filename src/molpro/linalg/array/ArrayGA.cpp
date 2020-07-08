@@ -9,6 +9,7 @@
 
 namespace molpro::gci::array {
 
+namespace {
 int get_communicator_size(MPI_Comm comm) {
   int size;
   MPI_Comm_size(comm, &size);
@@ -20,6 +21,7 @@ int get_communicator_rank(MPI_Comm comm) {
   MPI_Comm_rank(comm, &rank);
   return rank;
 }
+} // namespace
 
 ArrayGA::ArrayGA(MPI_Comm comm)
     : m_communicator(comm), m_comm_rank(get_communicator_rank(comm)), m_comm_size(get_communicator_size(comm)),
@@ -643,8 +645,8 @@ void ArrayGA::times(const ArrayGA *a, const ArrayGA *b, bool with_sync_before, b
 }
 
 // this[i] = a[i]/(b[i]+shift)
-void ArrayGA::divide(const ArrayGA *a, const ArrayGA *b, double shift, bool append, bool negative, bool with_sync_before,
-                   bool with_sync_after) {
+void ArrayGA::divide(const ArrayGA *a, const ArrayGA *b, double shift, bool append, bool negative,
+                     bool with_sync_before, bool with_sync_after) {
   if (a == nullptr || b == nullptr)
     GA_Error((char *)"Vectors cannot be null", 1);
   if (!compatible(*a) || !compatible(*b))

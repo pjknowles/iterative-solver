@@ -21,7 +21,7 @@ class Distribution;
 class DistrArrayMPI3 : public DistrArray {
 protected:
 protected:
-  MPI_Win *m_win = nullptr; //!< window object
+  MPI_Win m_win; //!< window object
   //! distribution of array buffer among processes. Stores start index and size for each
   std::unique_ptr<util::Distribution> m_distribution;
   bool m_allocated = false; //!< whether the window has been created

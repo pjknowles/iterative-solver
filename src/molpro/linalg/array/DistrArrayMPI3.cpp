@@ -29,8 +29,11 @@ void DistrArrayMPI3::allocate_buffer() {
   MPI_Comm_rank(m_communicator, &rank);
   std::tie(std::ignore, n) = m_distribution->proc_buffer[rank];
   double* base = nullptr;
-  MPI_Win_allocate(n, sizeof(value_type), MPI_INFO_NULL, m_communicator, base, m_win);
-  MPI_Win_lock_all(MPI_MODE_NOCHECK, *m_win);
+  int size_of_type = sizeof(value_type);
+  n *= size_of_type;
+  MPI_Win_allocate(n, size_of_type, MPI_INFO_NULL, m_communicator, &base, &m_win);
+  MPI_Win_lock_all(0, m_win);
+  m_allocated = true;
 }
 
 bool DistrArrayMPI3::empty() const { return !m_allocated; }
@@ -71,14 +74,14 @@ DistrArrayMPI3& DistrArrayMPI3::operator=(const DistrArrayMPI3& source) {
 void DistrArrayMPI3::free_buffer() {
   if (!m_allocated)
     error("Attempting to free a buffer that was not allocated");
-  MPI_Win_unlock_all(*m_win);
-  MPI_Win_free(m_win);
+  MPI_Win_unlock_all(m_win);
+  MPI_Win_free(&m_win);
   m_allocated = false;
 }
 
 void DistrArrayMPI3::sync() const {
-  MPI_Win_flush_all(*m_win);
-  MPI_Win_sync(*m_win);
+  MPI_Win_flush_all(m_win);
+  MPI_Win_sync(m_win);
 }
 
 std::shared_ptr<const DistrArray::LocalBuffer> DistrArrayMPI3::local_buffer() const {
@@ -111,17 +114,19 @@ void DistrArrayMPI3::_get_put(index_type lo, index_type hi, const value_type* bu
   auto requests = std::vector<MPI_Request>(p_hi - p_lo + 1);
   for (size_t i = p_lo; i < p_hi + 1; ++i) {
     MPI_Aint offset = 0;
-    if (i == p_lo)
+    int count = m_distribution->proc_buffer[i].second;
+    if (i == p_hi)
+      count = (1 + hi - m_distribution->proc_buffer[i].first);
+    else if (i == p_lo) {
       offset = lo - m_distribution->proc_buffer[i].first;
-    else if (i == p_hi)
-      offset = hi - m_distribution->proc_buffer[i].first;
-    int count = m_distribution->proc_buffer[i].second - offset;
+      count -= offset;
+    }
     if (option == RMAType::get)
-      MPI_Rget(&curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, *m_win, &requests[i - p_lo]);
+      MPI_Rget(&curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, m_win, &requests[i - p_lo]);
     else if (option == RMAType::put)
-      MPI_Rput(&curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, *m_win, &requests[i - p_lo]);
+      MPI_Rput(&curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, m_win, &requests[i - p_lo]);
     else if (option == RMAType::acc)
-      MPI_Raccumulate(&curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, MPI_SUM, *m_win, &requests[i - p_lo]);
+      MPI_Raccumulate(&curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, MPI_SUM, m_win, &requests[i - p_lo]);
     curr_buf = &curr_buf[count];
   }
   MPI_Waitall(requests.size(), requests.data(), MPI_STATUSES_IGNORE);
@@ -177,11 +182,11 @@ void DistrArrayMPI3::_gather_scatter(const std::vector<index_type>& indices, std
     auto [lo, p] = m_distribution->process_map(indices[i], indices[i]);
     MPI_Aint offset = indices[i] - lo;
     if (option == RMAType::gather)
-      MPI_Rget(&data[i], 1, MPI_DOUBLE, p, offset, 1, MPI_DOUBLE, *m_win, &requests[i]);
+      MPI_Rget(&data[i], 1, MPI_DOUBLE, p, offset, 1, MPI_DOUBLE, m_win, &requests[i]);
     else if (option == RMAType::scatter)
-      MPI_Rput(&data[i], 1, MPI_DOUBLE, p, offset, 1, MPI_DOUBLE, *m_win, &requests[i]);
+      MPI_Rput(&data[i], 1, MPI_DOUBLE, p, offset, 1, MPI_DOUBLE, m_win, &requests[i]);
     else if (option == RMAType::scatter_acc)
-      MPI_Raccumulate(&data[i], 1, MPI_DOUBLE, p, offset, 1, MPI_DOUBLE, MPI_SUM, *m_win, &requests[i]);
+      MPI_Raccumulate(&data[i], 1, MPI_DOUBLE, p, offset, 1, MPI_DOUBLE, MPI_SUM, m_win, &requests[i]);
   }
   MPI_Waitall(requests.size(), requests.data(), MPI_STATUSES_IGNORE);
 }
@@ -198,7 +203,7 @@ DistrArrayMPI3::LocalBufferMPI3::LocalBufferMPI3(DistrArrayMPI3& source) {
   lo = _lo;
   hi = lo + sz - 1;
   int flag;
-  MPI_Win_get_attr(*source.m_win, MPI_WIN_BASE, &buffer, &flag);
+  MPI_Win_get_attr(source.m_win, MPI_WIN_BASE, &buffer, &flag);
 }
 
 } // namespace molpro::gci::array

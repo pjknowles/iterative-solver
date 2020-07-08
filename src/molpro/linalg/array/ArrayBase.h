@@ -65,12 +65,21 @@ public:
   virtual ~ArrayBase() = default;
   //! Synchronizes all process in this group and ensures any outstanding operations on the array have completed
   virtual void sync() const = 0;
-  //! checks if array has been allocated
-  virtual bool empty() const = 0;
+  //! total number of elements, same as overall dimension of array
+  virtual size_t size() const = 0;
+  //! Checks that arrays are of the same dimensionality
+  virtual bool compatible(const ArrayBase &other) const = 0;
   //! allocates memory to the array without initializing it with any value. Blocking, collective operation.
   virtual void allocate_buffer() = 0;
   //! Duplicates GA buffer. Requires communicators to be the same. Blocking, collective operation
   virtual void copy_buffer(const ArrayBase &source) = 0;
+  //! checks if array has been allocated
+  virtual bool empty() const = 0;
+
+  /*! @name Local buffer
+   * Access the section of the array local to this process
+   */
+  //! @{
   //! Provides access to the local portion of the array locking that portion for all other process.
   struct LocalBuffer {
     //! Access local portion of the array
@@ -93,12 +102,14 @@ public:
   };
   //! Access the buffer local to this process
   [[nodiscard]] virtual LocalBuffer local_buffer() = 0;
+  //! @}
+
+  /*! @name One-sided RMA
+   * One-sided remote-memory-access operations. They are non-collective
+   */
+  //! @{
   //! get element at the offset. Blocking.
   [[nodiscard]] virtual ArrayBase::value_type at(size_t offset) const = 0;
-  //! Set all local elements to zero.
-  virtual void zero() = 0;
-  //! Set all local elements to val.
-  virtual void set(ArrayBase::value_type val) = 0;
   //! Set one element to a scalar. Global operation. @todo rename to put
   virutal void set(size_t ind, ArrayBase::value_type val) = 0;
   //! Gets buffer[lo:hi] from global array (hi inclusive, i.e. not pythonic). Blocking.
@@ -133,6 +144,48 @@ public:
   virtual void scatter_acc(std::vector<ArrayBase::index_type> &indices, const std::vector<ArrayBase::value_type> &data,
                            ArrayBase::value_type alpha) = 0;
   /*!
+   * @brief Copies the whole buffer into a vector. Blocking.
+   * @note This is only meant for debugging small arrays!
+   */
+  [[nodiscard]] virtual std::vector<ArrayBase::value_type> vec() const = 0;
+  //! @}
+
+  /*! @name Non-collective
+   * Simple linear algebra operations that work on local elements. They are non-collective.
+   */
+  //! @{
+  //! Set all local elements to zero.
+  virtual void zero() = 0;
+  //! Set all local elements to val.
+  virtual void set(ArrayBase::value_type val) = 0;
+  /*!
+   * \brief this_array[:] += a * x[:]
+   * Add a multiple of another array to this one. Blocking, collective.
+   * \param a the pre-factor
+   * \param x the other array
+   */
+  virtual void axpy(ArrayBase::value_type a, const ArrayBase &x) = 0;
+  //! Scale by a constant. Local.
+  virtual void scal(ArrayBase::value_type a) = 0;
+  //! Add another array to this. Local
+  virtual void add(const ArrayBase &other) = 0;
+  //! Add a constant. Local.
+  virtual void add(ArrayBase::value_type a) = 0;
+  //! Subtract another array from this. Local.
+  virtual void sub(const ArrayBase &other) = 0;
+  //! Subtract a constant. Local.
+  virtual void sub(ArrayBase::value_type a) = 0;
+  //! Take element-wise reciprocal of this. Local. No checks are made for zero values
+  virtual void recip() = 0;
+  //! this[i] = a[i]*b[i]. Collective.
+  virtual void times(const ArrayBase &a, const ArrayBase &b) = 0;
+  //! @}
+
+  /*! @name Collective
+   * Collective operations that are blocking and require all processes to call them.
+   */
+  //!@{
+  /*!
    * \brief returns n smallest elements
    * Collective operation, must be called by all processes in the group.
    * \param n number of smallest values to be found
@@ -164,52 +217,24 @@ public:
    */
   [[nodiscard]] virtual std::vector<size_t> minlocN(size_t n) const = 0;
   /*!
-   * @brief Copies the whole buffer into a vector. Blocking.
-   * @note This is only meant for debugging small arrays!
-   */
-  [[nodiscard]] virtual std::vector<ArrayBase::value_type> vec() const = 0;
-  //! total number of elements, same as overall dimension of array
-  virtual size_t size() const = 0;
-  //! Checks that arrays are of the same dimensionality
-  virtual bool compatible(const ArrayBase &other) const = 0;
-  /*!
-   * \brief this_array[:] += a * x[:]
-   * Add a multiple of another array to this one. Blocking, collective.
-   * \param a the pre-factor
-   * \param x the other array
-   */
-  virtual void axpy(ArrayBase::value_type a, const ArrayBase &x) = 0;
-  //! Scale by a constant. Local.
-  virtual void scal(ArrayBase::value_type a) = 0;
-  //! Add another array to this. Local
-  virtual void add(const ArrayBase &other) = 0;
-  //! Add a constant. Local.
-  virtual void add(ArrayBase::value_type a) = 0;
-  //! Subtract another array from this. Local.
-  virtual void sub(const ArrayBase &other) = 0;
-  //! Subtract a constant. Local.
-  virtual void sub(ArrayBase::value_type a) = 0;
-  //! Take element-wise reciprocal of this. Local. No checks are made for zero values
-  virtual void recip() = 0;
-  /*!
    * @brief Scalar product with another array. Collective.
    * Both arrays should be part of the same processor group (same communicator).
    * The result is broadcast to each process.
    */
   virtual ArrayBase::value_type dot(const ArrayBase &other) const = 0;
-  virtual ArrayBase::value_type dot(const ArrayBase *other) const = 0;
-  //! this[i] = a[i]*b[i]. Collective.
-  virtual void times(const ArrayBase &a, const ArrayBase &b) = 0;
   /*!
    * \brief this[i] = a[i]/(b[i]+shift). Collective
    * negative? (append? this -=... : this =-...) : (append? this +=... : this =...)
+   * \param a array in the numerator
+   * \param b array in the denominator
    * \param append Whether to += or =
    * \param negative Whether to scale  right hand side by -1
    */
-  void divide(const ArrayBase &a, const ArrayBase *b, ArrayBase::value_type shift = 0, bool append = false,
+  void divide(const ArrayBase &a, const ArrayBase &b, ArrayBase::value_type shift = 0, bool append = false,
               bool negative = false) {
     _divide(a, b, shift, append, negative);
   };
+  /*! @} */
 
 protected:
   virtual void _acc(ArrayBase::index_type lo, ArrayBase::index_type hi, const ArrayBase::value_type *data,

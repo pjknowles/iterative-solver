@@ -16,8 +16,6 @@ void DistrArray::error(const std::string& message) const {
   MPI_Abort(m_communicator, 1);
 }
 
-size_t DistrArray::size() const { return m_dimension; }
-
 bool DistrArray::compatible(const DistrArray& other) const {
   int comp;
   MPI_Comm_compare(m_communicator, other.m_communicator, &comp);
@@ -123,7 +121,7 @@ DistrArray::value_type dot(const DistrArray& x, const DistrArray& y) {
   if (!loc_x->compatible(*loc_y))
     x.error(name + " incompatible local buffers");
   DistrArray::value_type a = std::inner_product(loc_x->begin(), loc_x->end(), loc_y->begin(), 0.);
-  MPI_Allreduce(MPI_IN_PLACE, &a, 1, MPI_DOUBLE, MPI_SUM, x.m_communicator);
+  MPI_Allreduce(MPI_IN_PLACE, &a, 1, MPI_DOUBLE, MPI_SUM, x.communicator());
   return a;
 }
 
@@ -189,8 +187,8 @@ template <class Compare> std::list<std::pair<unsigned long, double>> extrema(con
   }
   MPI_Request requests[3];
   int comm_rank, comm_size;
-  MPI_Comm_rank(x.m_communicator, &comm_rank);
-  MPI_Comm_size(x.m_communicator, &comm_size);
+  MPI_Comm_rank(x.communicator(), &comm_rank);
+  MPI_Comm_size(x.communicator(), &comm_size);
   // root collects values, does the final sort and sends the result back
   if (comm_rank == 0) {
     auto ntot = n * comm_size;
@@ -198,10 +196,10 @@ template <class Compare> std::list<std::pair<unsigned long, double>> extrema(con
     values_loc.resize(ntot);
     auto ndummy = std::vector<int>(comm_size);
     auto d = int(n - nmin);
-    MPI_Igather(&d, 1, MPI_INT, ndummy.data(), 1, MPI_INT, 0, x.m_communicator, &requests[0]);
-    MPI_Igather(MPI_IN_PLACE, n, MPI_UNSIGNED_LONG, indices_loc.data(), n, MPI_UNSIGNED_LONG, 0, x.m_communicator,
+    MPI_Igather(&d, 1, MPI_INT, ndummy.data(), 1, MPI_INT, 0, x.communicator(), &requests[0]);
+    MPI_Igather(MPI_IN_PLACE, n, MPI_UNSIGNED_LONG, indices_loc.data(), n, MPI_UNSIGNED_LONG, 0, x.communicator(),
                 &requests[1]);
-    MPI_Igather(MPI_IN_PLACE, n, MPI_DOUBLE, values_loc.data(), n, MPI_UNSIGNED_LONG, 0, x.m_communicator,
+    MPI_Igather(MPI_IN_PLACE, n, MPI_DOUBLE, values_loc.data(), n, MPI_UNSIGNED_LONG, 0, x.communicator(),
                 &requests[2]);
     MPI_Waitall(3, requests, MPI_STATUSES_IGNORE);
     auto tot_dummy = std::accumulate(ndummy.cbegin(), ndummy.cend(), 0);
@@ -229,14 +227,14 @@ template <class Compare> std::list<std::pair<unsigned long, double>> extrema(con
     }
   } else {
     auto d = int(n - nmin);
-    MPI_Igather(&d, 1, MPI_INT, nullptr, 1, MPI_INT, 0, x.m_communicator, &requests[0]);
-    MPI_Igather(indices_loc.data(), n, MPI_UNSIGNED_LONG, nullptr, n, MPI_UNSIGNED_LONG, 0, x.m_communicator,
+    MPI_Igather(&d, 1, MPI_INT, nullptr, 1, MPI_INT, 0, x.communicator(), &requests[0]);
+    MPI_Igather(indices_loc.data(), n, MPI_UNSIGNED_LONG, nullptr, n, MPI_UNSIGNED_LONG, 0, x.communicator(),
                 &requests[1]);
-    MPI_Igather(values_loc.data(), n, MPI_DOUBLE, nullptr, n, MPI_DOUBLE, 0, x.m_communicator, &requests[2]);
+    MPI_Igather(values_loc.data(), n, MPI_DOUBLE, nullptr, n, MPI_DOUBLE, 0, x.communicator(), &requests[2]);
     MPI_Waitall(3, requests, MPI_STATUSES_IGNORE);
   }
-  MPI_Ibcast(indices_glob.data(), n, MPI_UNSIGNED_LONG, 0, x.m_communicator, &requests[0]);
-  MPI_Ibcast(values_glob.data(), n, MPI_DOUBLE, 0, x.m_communicator, &requests[1]);
+  MPI_Ibcast(indices_glob.data(), n, MPI_UNSIGNED_LONG, 0, x.communicator(), &requests[0]);
+  MPI_Ibcast(values_glob.data(), n, MPI_DOUBLE, 0, x.communicator(), &requests[1]);
   MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
   auto map_extrema = std::list<std::pair<unsigned long, double>>();
   for (size_t i = 0; i < n; ++i)

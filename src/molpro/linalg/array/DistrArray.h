@@ -57,8 +57,11 @@ class DistrArray {
 public:
   using value_type = double;
   using index_type = unsigned long int;
-  index_type m_dimension;                             //! number of elements in the array
-  MPI_Comm m_communicator;                            //!< Outer communicator
+
+protected:
+  index_type m_dimension;  //! number of elements in the array
+  MPI_Comm m_communicator; //!< Outer communicator
+public:
   std::shared_ptr<molpro::Profiler> m_prof = nullptr; //!< optional profiler
   DistrArray() = delete;
   //! Initializes array without allocating any memory
@@ -69,10 +72,12 @@ public:
   DistrArray &operator=(DistrArray &&source) = delete;
   virtual ~DistrArray() = default;
 
+  //! return a copy of the communicator
+  MPI_Comm communicator() const { return m_communicator; }
   //! Synchronizes all process in this group and ensures any outstanding operations on the array have completed
   virtual void sync() const;
   //! total number of elements, same as overall dimension of array
-  virtual size_t size() const;
+  size_t size() const { return m_dimension; };
   //! Checks that arrays are of the same dimensionality
   virtual bool compatible(const DistrArray &other) const;
   //! allocates memory to the array without initializing it with any value. Blocking, collective operation.
@@ -158,7 +163,6 @@ public:
 protected:
   virtual void _acc(index_type lo, index_type hi, const value_type *data, value_type scaling_constant) = 0;
 };
-
 
 //! Set all local elements of array x to val. @note each process has its own val, there is no communication
 void fill(DistrArray &x, DistrArray::value_type val);

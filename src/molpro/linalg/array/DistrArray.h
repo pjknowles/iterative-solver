@@ -94,18 +94,22 @@ protected:
   class LocalBuffer {
   public:
     //! Size of the local buffer
-    size_t size() { return hi - lo; };
+    size_t size() const { return hi - lo; };
     //! Pointer to the start of the buffer
     DistrArray::value_type *begin() { return buffer; };
+    const DistrArray::value_type *begin() const { return buffer; };
+    const DistrArray::value_type *cbegin() const { return begin(); };
     //! Pointer to the end of the buffer (element just after the last one)
     DistrArray::value_type *end() { return buffer + size(); };
+    const DistrArray::value_type *end() const { return buffer + size(); };
+    const DistrArray::value_type *cend() const { return end(); };
     //! Checks that the current and the other buffers correspond to the same section of their respective arrays
-    bool compatible(const LocalBuffer &other) { return lo == other.lo && hi == other.hi; };
+    bool compatible(const LocalBuffer &other) const { return lo == other.lo && hi == other.hi; };
     //! Access element at position i relative to begin() without bounds checking
     DistrArray::value_type &at(size_t i) { return buffer[i]; };
     DistrArray::value_type const &at(size_t i) const { return buffer[i]; };
-    DistrArray::index_type lo; //!< index of first element of local buffer in the array
-    DistrArray::index_type hi; //!< index of one past the last element in the buffer (same as end())
+    DistrArray::index_type lo;      //!< index of first element of local buffer in the array
+    DistrArray::index_type hi;      //!< index of one past the last element in the buffer (same as end())
     DistrArray::value_type *buffer; //!< pointer to the start of the local array buffer
   };
 

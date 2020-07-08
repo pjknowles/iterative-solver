@@ -89,8 +89,10 @@ public:
    * Access the section of the array local to this process
    */
   //! @{
+protected:
   //! Provides access to the local portion of the array locking that portion for all other process.
-  struct LocalBuffer {
+  class LocalBuffer {
+  public:
     //! Size of the local buffer
     size_t size() { return hi - lo; };
     //! Pointer to the start of the buffer
@@ -102,11 +104,12 @@ public:
     //! Access element at position i relative to begin() without bounds checking
     DistrArray::value_type &at(size_t i) { return buffer[i]; };
     DistrArray::value_type const &at(size_t i) const { return buffer[i]; };
-    const DistrArray::index_type lo; //!< index of first element of local buffer in the array
-    const DistrArray::index_type hi; //!< index of one past the last element in the buffer (same as end())
-  protected:
+    DistrArray::index_type lo; //!< index of first element of local buffer in the array
+    DistrArray::index_type hi; //!< index of one past the last element in the buffer (same as end())
     DistrArray::value_type *buffer; //!< pointer to the start of the local array buffer
   };
+
+public:
   //! Access the buffer local to this process
   [[nodiscard]] virtual std::shared_ptr<LocalBuffer> local_buffer() = 0;
   [[nodiscard]] virtual std::shared_ptr<LocalBuffer> local_buffer() const = 0;

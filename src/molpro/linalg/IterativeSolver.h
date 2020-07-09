@@ -349,13 +349,17 @@ public:
 #endif
     while (m_working_set.size() > m_current_r.size())
       m_working_set.pop_back();
+//    std::vector<slowvector> save_action;
+//    for (const auto& a : action) save_action.push_back(action.get());
+    doInterpolation(parameters,action,parametersP,other,true);
     for (size_t k = 0; k < m_working_set.size(); k++) {
-      //      m_last_d.emplace_back(parameters[k]);
-      //      m_last_hd.emplace_back(action[k]);
+            m_last_d.emplace_back(parameters[k]);
+            m_last_hd.emplace_back(action[k]);
       //      molpro::cout << "emplacing m_current_r (size="<<m_current_r[k].size()<<") in m_last_d"<<std::endl;
-      m_last_d.emplace_back(m_current_r[k]);
-      m_last_hd.emplace_back(m_current_v[k]);
+//      m_last_d.emplace_back(m_current_r[k]);
+//      m_last_hd.emplace_back(m_current_v[k]);
     }
+    doInterpolation(parameters,action,parametersP,other,false);
     //    m_last_d = m_current_c;
     //    m_last_hd = m_current_g;
     m_current_r.clear();

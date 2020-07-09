@@ -85,11 +85,11 @@ void update(std::vector<pv>& psc, const std::vector<pv>& psg, std::vector<scalar
 }
 
 int main(int argc, char* argv[]) {
-//  for (const auto& nn : std::vector<int>{1, 2, 4, 10, 100}) {
-      for (const auto& nn : std::vector<int>{10}) {
+  for (const auto& nn : std::vector<int>{1, 2, 4, 10, 100}) {
+//      for (const auto& nn : std::vector<int>{10}) {
     n = nn;
-//    for (const auto& nroot : std::vector<int>{1, 2, 4}) {
-          for (const auto& nroot : std::vector<int>{2}) {
+    for (const auto& nroot : std::vector<int>{1, 2, 4}) {
+//          for (const auto& nroot : std::vector<int>{2}) {
       if (nroot > n)
         break;
       std::cout << "\nMatrix dimension=" << n << ", looking for " << nroot << " roots" << std::endl;

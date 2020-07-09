@@ -18,6 +18,9 @@ option(PPIDD "Whether to build on PPIDD" OFF)
 option(LINEARALGEBRA_ARRAY_MPI3 "Build with MPI3 implementation of distributed array" ON)
 option(LINEARALGEBRA_ARRAY_GA "Build with GA implementation of distributed array" ON)
 option(LINEARALGEBRA_ARRAY_HDF5 "Build with HDF5 implementation of distributed array" ON)
+if (PPIDD)
+    set(LINEARALGEBRA_ARRAY_GA OFF)
+endif ()
 ##############################
 
 

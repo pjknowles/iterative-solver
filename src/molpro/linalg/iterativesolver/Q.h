@@ -38,6 +38,8 @@ public:
   const scalar_type& action(int i, int j) const { return m_action.at(m_keys[i]).at(m_keys[j]); }
   const scalar_type& action_action(int i, int j) const { return m_action_action.at(m_keys[i]).at(m_keys[j]); }
 
+  const std::vector<scalar_type>& rhs(int i) const { return m_rhs.at(m_keys[i]);}
+
   const std::vector<scalar_type>& metric_pspace(int i) const { return m_metric_pspace.at(m_keys[i]); }
   const std::vector<scalar_type>& action_pspace(int i) const { return m_action_pspace.at(m_keys[i]); }
 

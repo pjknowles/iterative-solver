@@ -235,10 +235,14 @@ public:
     m_s_rr.clear();
     m_h_rr.clear();
     m_hh_rr.clear();
+    m_rhs_r.clear();
     for (auto m = 0; m < m_working_set.size(); m++) {
+      m_rhs_r.push_back(std::vector<scalar_type>(m_rhs.size()));
       m_s_rr.push_back(std::vector<scalar_type>(m_working_set.size()));
       m_h_rr.push_back(std::vector<scalar_type>(m_working_set.size()));
       m_hh_rr.push_back(std::vector<scalar_type>(m_working_set.size()));
+      for (size_t rhs = 0; rhs < m_working_set.size(); rhs++)
+        m_rhs_r[m][rhs] = parameters[m].get().dot(m_rhs[rhs]);
       for (size_t n = 0; n < m_working_set.size(); n++) {
         m_s_rr[m][n] = parameters[n].get().dot(parameters[m].get());
         m_h_rr[m][n] = action[n].get().dot(parameters[m].get());
@@ -277,7 +281,7 @@ public:
     if (m_roots > parameters.size()) // TODO remove this restriction
       throw std::runtime_error("Cannot yet work with buffer smaller than number of roots");
     m_working_set.clear();
-    m_errors.assign(m_roots,1e10);
+    m_errors.assign(m_roots, 1e10);
     for (auto root = 0; root < m_roots; root++)
       m_working_set.push_back(root);
     doInterpolation(parameters, action, parametersP, other, false);
@@ -288,35 +292,34 @@ public:
     doInterpolation(parameters, action, parametersP, other, true);
     m_last_d.clear();
     m_last_hd.clear();
-//    molpro::cout << "working set size "<<m_working_set.size()<<std::endl;
-//    molpro::cout << "m_thresh "<<m_thresh<<std::endl;
+    //    molpro::cout << "working set size "<<m_working_set.size()<<std::endl;
+    //    molpro::cout << "m_thresh "<<m_thresh<<std::endl;
     for (auto k = 0; k < m_working_set.size(); k++) {
       auto root = m_working_set[k];
-//      molpro::cout << "k="<<k<<", root="<<root<<", error="<<m_errors[root]<<std::endl;
+      //      molpro::cout << "k="<<k<<", root="<<root<<", error="<<m_errors[root]<<std::endl;
       if (m_errors[root] < m_thresh and m_q_solutions.count(root) == 0) { // converged just now
         if (m_verbosity > 1)
           molpro::cout << "selecting root " << root << " for adding converged solution to Q space at position"
                        << m_qspace.size() << std::endl;
         m_qspace.add(parameters[k], action[k], m_rhs);
         m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
-        }
-        if (m_errors[root] < m_thresh) { // converged
+      }
+      if (m_errors[root] < m_thresh) { // converged
         //  remove this vector from the working set
-        for (auto kp=k+1; kp < m_working_set.size(); kp++) {
-          parameters[kp-1] = parameters[kp];
-          action[kp-1] = action[kp];
-          m_working_set[kp-1] = m_working_set[kp];
+        for (auto kp = k + 1; kp < m_working_set.size(); kp++) {
+          parameters[kp - 1] = parameters[kp];
+          action[kp - 1] = action[kp];
+          m_working_set[kp - 1] = m_working_set[kp];
         }
         m_working_set.pop_back();
         k--;
-      }
-      else { // unconverged
-          m_last_d.emplace_back(parameters[k]);
-          m_last_hd.emplace_back(action[k]);
+      } else { // unconverged
+        m_last_d.emplace_back(parameters[k]);
+        m_last_hd.emplace_back(action[k]);
       }
     }
-//    molpro::cout << "working set size "<<m_working_set.size()<<std::endl;
-//    molpro::cout << "m_last_d size "<<m_last_d.size()<<std::endl;
+    //    molpro::cout << "working set size "<<m_working_set.size()<<std::endl;
+    //    molpro::cout << "m_last_d size "<<m_last_d.size()<<std::endl;
     assert(m_last_d.size() == m_working_set.size());
 
     // re-establish the residual
@@ -645,7 +648,7 @@ protected:
   std::vector<slowvector> m_current_r; ///< current working space TODO can probably eliminate using m_last_d
   std::vector<slowvector> m_current_v; ///< action vector corresponding to current working space
   std::vector<std::vector<scalar_type>> m_q_scale_factors;
-  std::vector<std::vector<scalar_type>> m_s_rr, m_h_rr, m_hh_rr;           ///< interactions within R space
+  std::vector<std::vector<scalar_type>> m_s_rr, m_h_rr, m_hh_rr,m_rhs_r;           ///< interactions within R space
   std::map<int, std::vector<scalar_type>> m_s_qr, m_h_qr, m_h_rq, m_hh_qr; ///< interactions between R and Q spaces
   std::vector<std::vector<scalar_type>> m_s_pr, m_h_pr, m_h_rp;            ///< interactions between R and P spaces
   mutable std::vector<int> m_working_set; ///< which roots are being tracked in the working set
@@ -686,27 +689,27 @@ protected:
     Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester(m, n, n);
     Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester,
                                                                                      Eigen::ComputeThinV);
-//    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
-//    molpro::cout << "matrix:\n" << singularTester << std::endl;
-//    molpro::cout << "singular values:\n" << svd.singularValues().transpose() << std::endl;
-//    molpro::cout << "V:\n" << svd.matrixV() << std::endl;
-//    molpro::cout << "candidates:";
-//    for (const auto& c : candidates)
-//      molpro::cout << " " << c;
-//    molpro::cout << std::endl;
+    //    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
+    //    molpro::cout << "matrix:\n" << singularTester << std::endl;
+    //    molpro::cout << "singular values:\n" << svd.singularValues().transpose() << std::endl;
+    //    molpro::cout << "V:\n" << svd.matrixV() << std::endl;
+    //    molpro::cout << "candidates:";
+    //    for (const auto& c : candidates)
+    //      molpro::cout << " " << c;
+    //    molpro::cout << std::endl;
     auto sv = svd.singularValues();
     std::vector<scalar_type> svv;
     for (auto k = 0; k < n; k++)
       svv.push_back(sv(k));
     auto most_singular = std::min_element(svv.begin(), svv.end()) - svv.begin();
-//    molpro::cout << "most_singular " << most_singular << std::endl;
+    //    molpro::cout << "most_singular " << most_singular << std::endl;
     if (svv[most_singular] > threshold)
       return -1;
     for (const auto& k : candidates) {
       if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
-//        molpro::cout << "taking candidate " << k << ": " << svd.matrixV()(k, most_singular) << std::endl;
-      if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
-        return k;
+        //        molpro::cout << "taking candidate " << k << ": " << svd.matrixV()(k, most_singular) << std::endl;
+        if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
+          return k;
     }
     return -1;
   }
@@ -719,10 +722,13 @@ protected:
     const auto oP = 0;
     const auto oQ = oP + nP;
     const auto oR = oQ + nQ;
-//    molpro::cout << "buildSubspace nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
+    //    molpro::cout << "buildSubspace nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
     m_subspaceMatrix.conservativeResize(nX, nX);
     m_subspaceOverlap.conservativeResize(nX, nX);
+    m_subspaceRHS.resize(nX, m_rhs.size());
     for (size_t a = 0; a < nQ; a++) {
+      for (size_t rhs=0; rhs<m_rhs.size(); rhs++)
+        m_subspaceRHS(oQ+a, rhs) = m_qspace.rhs(a)[rhs];
       for (size_t b = 0; b < nQ; b++) {
         m_subspaceMatrix(oQ + b, oQ + a) = m_qspace.action(b, a);
         m_subspaceOverlap(oQ + b, oQ + a) = m_qspace.metric(b, a);
@@ -749,6 +755,8 @@ protected:
       }
     }
     for (size_t n = 0; n < nR; n++) {
+      for (size_t rhs=0; rhs<m_rhs.size(); rhs++)
+        m_subspaceRHS(oR+n, rhs) = m_rhs_r[n][rhs];
       for (size_t m = 0; m < nR; m++) {
         m_subspaceMatrix(oR + m, oR + n) = m_h_rr[m][n];
         m_subspaceOverlap(oR + m, oR + n) = m_s_rr[m][n];
@@ -1507,23 +1515,27 @@ public:
 
 protected:
   bool solveReducedProblem() override {
-    const auto nP = this->m_Pvectors.size();
-    const auto nQ = this->m_QQMatrix.rows();
-    const Eigen::Index n = nP + nQ;
+    const size_t nP = this->m_pspace.size();
+    const size_t nQ = this->m_qspace.size();
+    const size_t nR = this->m_s_rr.size();
+    const Eigen::Index nX = nP + nQ + nR;
+    const auto oP = 0;
+    const auto oQ = oP + nP;
+    const auto oR = oQ + nQ;
     //   molpro::cout << "solveReducedProblem initial subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
     //   molpro::cout << "solveReducedProblem subspaceRHS\n"<<this->m_subspaceRHS<<std::endl;
-    this->m_interpolation.conservativeResize(n, this->m_rhs.size());
+    this->m_interpolation.conservativeResize(nX, this->m_rhs.size());
     for (size_t root = 0; root < this->m_rhs.size(); root++) {
       if (this->m_augmented_hessian > 0) { // Augmented hessian
-        this->m_subspaceMatrix.conservativeResize(n + 1, n + 1);
-        this->m_subspaceOverlap.conservativeResize(n + 1, n + 1);
-        for (Eigen::Index i = 0; i < n; i++) {
-          this->m_subspaceMatrix(i, n) = this->m_subspaceMatrix(n, i) =
+        this->m_subspaceMatrix.conservativeResize(nX + 1, nX + 1);
+        this->m_subspaceOverlap.conservativeResize(nX + 1, nX + 1);
+        for (Eigen::Index i = 0; i < nX; i++) {
+          this->m_subspaceMatrix(i, nX) = this->m_subspaceMatrix(nX, i) =
               -this->m_augmented_hessian * this->m_subspaceRHS(i, root);
-          this->m_subspaceOverlap(i, n) = this->m_subspaceOverlap(n, i) = 0;
+          this->m_subspaceOverlap(i, nX) = this->m_subspaceOverlap(nX, i) = 0;
         }
-        this->m_subspaceMatrix(n, n) = 0;
-        this->m_subspaceOverlap(n, n) = 1;
+        this->m_subspaceMatrix(nX, nX) = 0;
+        this->m_subspaceOverlap(nX, nX) = 1;
         //     molpro::cout << "solveReducedProblem augmented subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
         //     molpro::cout << "solveReducedProblem augmented subspace metric\n"<<this->m_subspaceOverlap<<std::endl;
         Eigen::GeneralizedEigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> s(
@@ -1531,7 +1543,7 @@ protected:
         auto eval = s.eigenvalues();
         auto evec = s.eigenvectors();
         Eigen::Index imax = 0;
-        for (Eigen::Index i = 0; i < n + 1; i++)
+        for (Eigen::Index i = 0; i < nX + 1; i++)
           if (eval(i).real() < eval(imax).real())
             imax = i;
         this->m_subspaceEigenvalues.conservativeResize(root + 1);
@@ -1544,20 +1556,24 @@ protected:
         //     molpro::cout <<evec.col(imax).real().head(n)<<std::endl;
         //     molpro::cout <<this->m_interpolation.col(root)<<std::endl;
         this->m_interpolation.col(root) =
-            evec.col(imax).real().head(n) / (this->m_augmented_hessian * evec.real()(n, imax));
+            evec.col(imax).real().head(nX) / (this->m_augmented_hessian * evec.real()(nX, imax));
       } else { // straight solution of linear equations
-               //        molpro::cout << "m_subspaceMatrix dimensions:
-        //        "<<this->m_subspaceMatrix.rows()<<","<<this->m_subspaceMatrix.cols()<<std::endl; molpro::cout <<
-        //        "m_subspaceRHS dimensions: "<<this->m_subspaceRHS.rows()<<","<<this->m_subspaceRHS.cols()<<std::endl;
+        molpro::cout << "m_subspaceMatrix dimensions: " << this->m_subspaceMatrix.rows() << ", "
+                     << this->m_subspaceMatrix.cols() << std::endl;
+        molpro::cout << "m_subspaceRHS dimensions: " << this->m_subspaceRHS.rows() << "," << this->m_subspaceRHS.cols()
+                     << std::endl;
         // use QR decomposition so that also matrices that are not positive/negative semidefinite
         // can be used with IterativeSolver
         // this->m_interpolation = this->m_subspaceMatrix.ldlt().solve(this->m_subspaceRHS);
+        molpro::cout << "m_subspaceMatrix\n" << this->m_subspaceMatrix << std::endl;
+        molpro::cout << "m_subspaceRHS\n" << this->m_subspaceRHS << std::endl;
         this->m_interpolation = this->m_subspaceMatrix.householderQr().solve(this->m_subspaceRHS);
+        molpro::cout << "m_interpolation\n" << this->m_interpolation << std::endl;
       }
     }
     //   molpro::cout << "m_interpolation\n"<<this->m_interpolation<<std::endl;
-    this->m_subspaceMatrix.conservativeResize(n, n);
-    this->m_subspaceOverlap.conservativeResize(n, n);
+    this->m_subspaceMatrix.conservativeResize(nX, nX);
+    this->m_subspaceOverlap.conservativeResize(nX, nX);
     //   molpro::cout << "solveReducedProblem final subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
     //   molpro::cout << "solveReducedProblem subspaceRHS\n"<<this->m_subspaceRHS<<std::endl;
     return true;

@@ -124,8 +124,8 @@ TEST(TestIterativeSolver, small_eigenproblem) {
 }
 
 TEST(TestIterativeSolver, small_nonhermitian_eigenproblem) {
-  for (size_t n = 2; n < 30; n++) {
-    for (size_t nroot = 1; nroot <= n && nroot < 10; nroot++) {
+  for (size_t n = 2; n < 8; n++) {
+    for (size_t nroot = 1; nroot <= n && nroot < 6; nroot++) {
       Eigen::MatrixXd m(n, n);
       for (size_t i = 0; i < n; i++) {
         for (size_t j = 0; j < n; j++)
@@ -137,7 +137,7 @@ TEST(TestIterativeSolver, small_nonhermitian_eigenproblem) {
       molpro::linalg::SimpleArray<double> mm(n);
       std::vector<molpro::linalg::SimpleArray<double>> x, g;
       molpro::linalg::LinearEigensystem<molpro::linalg::SimpleArray<double>> solver;
-      solver.m_verbosity = -1;
+      solver.m_verbosity = 1;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0)
         std::cout << "Test n=" << n << ", nroot=" << nroot << std::endl;
@@ -147,7 +147,7 @@ TEST(TestIterativeSolver, small_nonhermitian_eigenproblem) {
         x.back()[root] = 1;
         g.emplace_back(n);
       }
-      for (size_t iter = 0; iter < n + 1; iter++) {
+      for (size_t iter = 0; iter < n + 10; iter++) {
         for (size_t root = 0; root < x.size(); root++) {
           g[root].scal(0);
           if (solver.active()[root])

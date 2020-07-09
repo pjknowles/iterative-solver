@@ -266,102 +266,62 @@ public:
     startTiming = endTiming;
 #endif
     //    molpro::cout << "update=" << update << std::endl;
-    calculateResidualConvergence();
+    //    calculateResidualConvergence();
     // move any newly-converged solutions into the q space
     //      molpro::cout << "errors after calculateResidualConvergence()";
     //      for (const auto& e : m_errors)
     //        molpro::cout << " " << e;
     //      molpro::cout << std::endl;
+    // evaluate all residuals
+    // TODO make this more efficient by doing action just once, and not, maybe, for converged roots
+    if (m_roots > parameters.size()) // TODO remove this restriction
+      throw std::runtime_error("Cannot yet work with buffer smaller than number of roots");
     m_working_set.clear();
+    m_errors.assign(m_roots,1e10);
     for (auto root = 0; root < m_roots; root++)
-      if (m_errors[root] < m_thresh and m_q_solutions.count(root) == 0 and m_working_set.size() < parameters.size()) {
-        m_working_set.push_back(root);
-        if (m_verbosity > -1)
+      m_working_set.push_back(root);
+    doInterpolation(parameters, action, parametersP, other, false);
+    for (auto k = 0; k < m_working_set.size(); k++) {
+      auto root = m_working_set[k];
+      m_errors[root] = std::sqrt(action[k].get().dot(action[k]));
+    }
+    doInterpolation(parameters, action, parametersP, other, true);
+    m_last_d.clear();
+    m_last_hd.clear();
+//    molpro::cout << "working set size "<<m_working_set.size()<<std::endl;
+//    molpro::cout << "m_thresh "<<m_thresh<<std::endl;
+    for (auto k = 0; k < m_working_set.size(); k++) {
+      auto root = m_working_set[k];
+//      molpro::cout << "k="<<k<<", root="<<root<<", error="<<m_errors[root]<<std::endl;
+      if (m_errors[root] < m_thresh and m_q_solutions.count(root) == 0) { // converged just now
+        if (m_verbosity > 1)
           molpro::cout << "selecting root " << root << " for adding converged solution to Q space at position"
                        << m_qspace.size() << std::endl;
+        m_qspace.add(parameters[k], action[k], m_rhs);
+        m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
+        }
+        if (m_errors[root] < m_thresh) { // converged
+        //  remove this vector from the working set
+        for (auto kp=k+1; kp < m_working_set.size(); kp++) {
+          parameters[kp-1] = parameters[kp];
+          action[kp-1] = action[kp];
+          m_working_set[kp-1] = m_working_set[kp];
+        }
+        m_working_set.pop_back();
+        k--;
       }
-    doInterpolation(parameters, action, parametersP, other, true);
-    for (auto k = 0; k < m_working_set.size(); k++) {
-      m_qspace.add(parameters[k], action[k], m_rhs);
-      m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
+      else { // unconverged
+          m_last_d.emplace_back(parameters[k]);
+          m_last_hd.emplace_back(action[k]);
+      }
     }
+//    molpro::cout << "working set size "<<m_working_set.size()<<std::endl;
+//    molpro::cout << "m_last_d size "<<m_last_d.size()<<std::endl;
+    assert(m_last_d.size() == m_working_set.size());
 
-    revise_working_set(parameters.size());
-    if (m_verbosity > -1) {
-      molpro::cout << "after revise_working_set m_working_set:";
-      for (const auto& w : m_working_set)
-        molpro::cout << " " << w;
-      molpro::cout << std::endl;
-      molpro::cout << "after revise_working_set m_errors:";
-      for (const auto& w : m_errors)
-        molpro::cout << " " << w;
-      molpro::cout << std::endl;
-    }
-    doInterpolation(parameters, action, parametersP, other);
-    std::cout << "after doInterpolation for residual m_working_set.size() = " << m_working_set.size() << std::endl;
-    for (int k = 0; k < m_working_set.size(); k++) {
-      m_errors[m_working_set[k]] = std::sqrt(action[k].get().dot(action[k]));
-      std::cout << "reevaluated error " << m_working_set[k] << " " << m_errors[m_working_set[k]] << std::endl;
-    }
-    for (int k = m_working_set.size() - 1; k >= 0; k--) {
-      auto root = m_working_set[k];
-      if (m_errors[root] <= m_threshold_residual_recalculate * 1.0000000001) {
-        if (m_errors[root] < m_thresh) {
-          // second bite of the cherry on retiring a root
-          if (m_verbosity > -1)
-            molpro::cout << "retire root " << root << " on basis of revaluated residual " << m_errors[root]
-                         << "; new working set size " << k << std::endl;
-          m_working_set.pop_back();
-          assert(k == m_working_set.size());
-          auto save_working_set = m_working_set;
-          m_working_set.clear();
-          m_working_set.push_back(root);
-          auto oth = nullVectorRefSet<T>;
-          auto othP = nullVectorRefSetP<T>;
-          if (parametersP.size() > k)
-            doInterpolation(vectorRefSet(1, parameters[k]), vectorRefSet(1, action[k]),
-                            vectorRefSetP(1, parametersP[k]), oth, true);
-          else
-            doInterpolation(vectorRefSet(1, parameters[k]), vectorRefSet(1, action[k]), parametersP, oth, true);
-          std::cout << "residual " << action[k].get().dot(action[k]) << std::endl;
-          m_qspace.add(parameters[k], action[k], m_rhs);
-          m_q_solutions[root] = m_qspace.keys().back();
-          m_working_set = save_working_set;
-        } else
-          break;
-      }
-    }
-    if (m_verbosity > -1) {
-      molpro::cout << "after refinement m_working_set:";
-      for (const auto& w : m_working_set)
-        molpro::cout << " " << w;
-      molpro::cout << std::endl;
-      molpro::cout << "after refinement m_errors:";
-      for (const auto& w : m_errors)
-        molpro::cout << " " << w;
-      molpro::cout << std::endl;
-    }
-#ifdef TIMING
-    endTiming = std::chrono::steady_clock::now();
-    std::cout << " addVector doInterpolation():  seconds="
-              << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
-              << std::endl;
-#endif
-    while (m_working_set.size() > m_current_r.size())
-      m_working_set.pop_back();
-//    std::vector<slowvector> save_action;
-//    for (const auto& a : action) save_action.push_back(action.get());
-    doInterpolation(parameters,action,parametersP,other,true);
-    for (size_t k = 0; k < m_working_set.size(); k++) {
-            m_last_d.emplace_back(parameters[k]);
-            m_last_hd.emplace_back(action[k]);
-      //      molpro::cout << "emplacing m_current_r (size="<<m_current_r[k].size()<<") in m_last_d"<<std::endl;
-//      m_last_d.emplace_back(m_current_r[k]);
-//      m_last_hd.emplace_back(m_current_v[k]);
-    }
-    doInterpolation(parameters,action,parametersP,other,false);
-    //    m_last_d = m_current_c;
-    //    m_last_hd = m_current_g;
+    // re-establish the residual
+    // TODO make more efficient
+    doInterpolation(parameters, action, parametersP, other, false);
     m_current_r.clear();
     m_current_v.clear();
     return m_working_set.size();
@@ -726,25 +686,25 @@ protected:
     Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester(m, n, n);
     Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester,
                                                                                      Eigen::ComputeThinV);
-    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
-    molpro::cout << "matrix:\n" << singularTester << std::endl;
-    molpro::cout << "singular values:\n" << svd.singularValues().transpose() << std::endl;
-    molpro::cout << "V:\n" << svd.matrixV() << std::endl;
-    molpro::cout << "candidates:";
-    for (const auto& c : candidates)
-      molpro::cout << " " << c;
-    molpro::cout << std::endl;
+//    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
+//    molpro::cout << "matrix:\n" << singularTester << std::endl;
+//    molpro::cout << "singular values:\n" << svd.singularValues().transpose() << std::endl;
+//    molpro::cout << "V:\n" << svd.matrixV() << std::endl;
+//    molpro::cout << "candidates:";
+//    for (const auto& c : candidates)
+//      molpro::cout << " " << c;
+//    molpro::cout << std::endl;
     auto sv = svd.singularValues();
     std::vector<scalar_type> svv;
     for (auto k = 0; k < n; k++)
       svv.push_back(sv(k));
     auto most_singular = std::min_element(svv.begin(), svv.end()) - svv.begin();
-    molpro::cout << "most_singular " << most_singular << std::endl;
+//    molpro::cout << "most_singular " << most_singular << std::endl;
     if (svv[most_singular] > threshold)
       return -1;
     for (const auto& k : candidates) {
       if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
-        molpro::cout << "taking candidate " << k << ": " << svd.matrixV()(k, most_singular) << std::endl;
+//        molpro::cout << "taking candidate " << k << ": " << svd.matrixV()(k, most_singular) << std::endl;
       if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
         return k;
     }
@@ -759,7 +719,7 @@ protected:
     const auto oP = 0;
     const auto oQ = oP + nP;
     const auto oR = oQ + nQ;
-    molpro::cout << "buildSubspace nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
+//    molpro::cout << "buildSubspace nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
     m_subspaceMatrix.conservativeResize(nX, nX);
     m_subspaceOverlap.conservativeResize(nX, nX);
     for (size_t a = 0; a < nQ; a++) {
@@ -814,7 +774,7 @@ protected:
       auto del = propose_singularity_deletion(nX, &singularTester(0, 0), candidates,
                                               nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
-        if (m_verbosity > -2)
+        if (m_verbosity > 2)
           molpro::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
         m_qspace.remove(del - oQ);
         m_errors.assign(m_roots, 1e20);
@@ -856,7 +816,7 @@ protected:
     svd.setThreshold(m_svdThreshold);
     //    molpro::cout << "singular values of overlap " << svd.singularValues().transpose() << std::endl;
     //   auto Hbar = svd.solve(H);
-    if (m_verbosity > -11 && svd.rank() < S.cols())
+    if (m_verbosity > 1 && svd.rank() < S.cols())
       molpro::cout << "SVD rank " << svd.rank() << " in subspace of dimension " << S.cols() << std::endl;
     if (m_verbosity > 2 && svd.rank() < S.cols())
       molpro::cout << "singular values " << svd.singularValues().transpose() << std::endl;

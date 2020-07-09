@@ -14,9 +14,8 @@
 #include <vector>
 
 TEST(TestIterativeSolver, small_eigenproblem) {
-  std::cerr << "hello" << std::endl;
-  for (size_t n = 1; n < 14; n++) {
-    for (size_t nroot = 1; nroot <= n && nroot < 10; nroot++) {
+  for (size_t n = 1; n < 12; n++) {
+    for (size_t nroot = 1; nroot <= n && nroot < 3; nroot++) {
       Eigen::MatrixXd m(n, n);
       for (size_t i = 0; i < n; i++) {
         for (size_t j = 0; j < n; j++)
@@ -29,32 +28,33 @@ TEST(TestIterativeSolver, small_eigenproblem) {
       molpro::linalg::SimpleArray<double> mm(n);
       std::vector<molpro::linalg::SimpleArray<double>> x, g;
       molpro::linalg::LinearEigensystem<molpro::linalg::SimpleArray<double>> solver;
-      solver.m_verbosity = 3;
-      solver.setThresholds(1e-13);
+      solver.m_verbosity = 1;
+      solver.setThresholds(1e-12);
       if (solver.m_verbosity > 0)
         std::cout << "Test n=" << n << ", nroot=" << nroot << std::endl;
       if (solver.m_verbosity > 1)
-        std::cout <<"Matrix\n"<<m<<std::endl;
+        std::cout << "Matrix\n" << m << std::endl;
       for (size_t root = 0; root < nroot; root++) {
         x.emplace_back(n);
         x.back().scal(0);
         x.back()[root] = 1;
         g.emplace_back(n);
       }
-      size_t nwork=nroot;
+      size_t nwork = nroot;
       for (size_t iter = 0; iter < n + 10; iter++) {
-        std::cout << "start iteration "<<iter<<", nwork="<<nwork<<std::endl;
+        if (solver.m_verbosity > 1)
+          std::cout << "start iteration " << iter << ", nwork=" << nwork << std::endl;
         for (size_t root = 0; root < nwork; root++) {
-            g[root].scal(0);
-            for (size_t i = 0; i < n; i++)
-              for (size_t j = 0; j < n; j++)
-                g[root][j] += m(j, i) * x[root][i];
+          g[root].scal(0);
+          for (size_t i = 0; i < n; i++)
+            for (size_t j = 0; j < n; j++)
+              g[root][j] += m(j, i) * x[root][i];
         }
 
         //        std::cout << "eigenvector "<<0<<active[0]<<" before addVector"; for (size_t i = 0; i < n; i++)
         //        std::cout << " " << x[0][i]; std::cout << std::endl;
         auto nwork = solver.addVector(x, g);
-        if (nwork==0)
+        if (nwork == 0)
           break;
         for (size_t root = 0; root < nwork; root++) {
           if (solver.m_verbosity > 1) {
@@ -80,12 +80,13 @@ TEST(TestIterativeSolver, small_eigenproblem) {
             }
           }
         }
-                std::cout << "eigenvector "<<0<<" before endIteration"; for (size_t i = 0; i < n; i++)
-                std::cout << " " << x[0][i]; std::cout << std::endl;
-//                auto conv = (solver.endIteration(x, g, active));
+        //                std::cout << "eigenvector "<<0<<" before endIteration"; for (size_t i = 0; i < n; i++)
+        //                std::cout << " " << x[0][i]; std::cout << std::endl;
+        //                auto conv = (solver.endIteration(x, g, active));
         //        std::cout << "eigenvector "<<0<<active[0]<<" after endIteration"; for (size_t i = 0; i < n; i++)
         //        std::cout << " " << x[0][i]; std::cout << std::endl; if (conv) break;
-//        if (*std::max_element(solver.errors().begin(),solver.errors().end()) < solver.m_thresh and solver.endIteration(x, g))
+        //        if (*std::max_element(solver.errors().begin(),solver.errors().end()) < solver.m_thresh and
+        //        solver.endIteration(x, g))
       }
       //  std::cout << "Error={ "; for (const auto& e : solver.errors()) std::cout << e << " "; std::cout << "} after "
       //  << solver.iterations() << " iterations" << std::endl; std::cout << "Actual eigenvalues\n"<<val<<std::endl;
@@ -96,8 +97,9 @@ TEST(TestIterativeSolver, small_eigenproblem) {
       EXPECT_THAT(solver.eigenvalues(), ::testing::Pointwise(::testing::DoubleNear(1e-10),
                                                              std::vector<double>(val.data(), val.data() + nroot)));
       std::vector<int> roots;
-      for (size_t root = 0; root < solver.m_roots; root++) roots.push_back(root);
-      solver.solution(roots,x,g);
+      for (size_t root = 0; root < solver.m_roots; root++)
+        roots.push_back(root);
+      solver.solution(roots, x, g);
       for (size_t root = 0; root < solver.m_roots; root++) {
         if (solver.m_verbosity > 2) {
           std::cout << "eigenvector " << root << " eigenvalue=" << solver.eigenvalues()[root]

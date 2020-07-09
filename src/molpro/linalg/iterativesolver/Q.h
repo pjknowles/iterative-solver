@@ -133,9 +133,9 @@ public:
       alpha = 1/std::sqrt(rr * (-1+rr*dd/(rd*rd)));
       beta = -alpha * rr / rd;
     }
-    molpro::cout << "Q.add difference, alpha=" << alpha << ", beta=" << beta << std::endl;
-    molpro::cout << "dd=" << dd << ", rr=" << rr
-                 << ", rd=" << rd << std::endl;
+//    molpro::cout << "Q.add difference, alpha=" << alpha << ", beta=" << beta << std::endl;
+//    molpro::cout << "dd=" << dd << ", rr=" << rr
+//                 << ", rd=" << rd << std::endl;
     auto& v = const_cast<fastvector&>(vector);
     auto& a = const_cast<fastvector&>(action);
     v.scal(alpha);

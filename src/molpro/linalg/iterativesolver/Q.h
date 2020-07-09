@@ -4,6 +4,7 @@
 #include <cmath>
 #include <map>
 #include <memory>
+#include <molpro/iostream.h>
 #include <vector>
 
 /*!
@@ -121,21 +122,32 @@ public:
    */
   scalar_type add(const fastvector& vector, const fastvector& action, const slowvector& oldvector,
                   const slowvector& oldaction, const std::vector<slowvector>& rhs) {
-    auto norm = vector.dot(vector) + oldvector.dot(oldvector) - 2 * vector.dot(oldvector);
-    if (norm <= 0) norm=1; // let linear dependence code deal with this exceptional case later
-    auto scale = 1 / std::sqrt(norm);
+    auto rr = vector.dot(vector);
+    auto dd = oldvector.dot(oldvector);
+    auto rd = vector.dot(oldvector);
+    decltype(rr) alpha, beta;
+    if (rd * rd >= rr * dd) { // let linear dependence code deal with this exceptional case later
+      alpha = 1;
+      beta = -1;
+    } else {
+      alpha = 1/std::sqrt(rr * (-1+rr*dd/(rd*rd)));
+      beta = -alpha * rr / rd;
+    }
+    molpro::cout << "Q.add difference, alpha=" << alpha << ", beta=" << beta << std::endl;
+    molpro::cout << "dd=" << dd << ", rr=" << rr
+                 << ", rd=" << rd << std::endl;
     auto& v = const_cast<fastvector&>(vector);
     auto& a = const_cast<fastvector&>(action);
-    v.scal(scale);
-    v.axpy(-scale, oldvector);
-    a.scal(scale);
-    a.axpy(-scale, oldaction);
+    v.scal(alpha);
+    v.axpy(beta, oldvector);
+    a.scal(alpha);
+    a.axpy(beta, oldaction);
     add(v, a, rhs);
-    v.axpy(scale, oldvector);
-    v.scal(1 / scale);
-    a.axpy(scale, oldaction);
-    a.scal(1 / scale);
-    return scale;
+    v.axpy(-beta, oldvector);
+    v.scal(1 / alpha);
+    a.axpy(-beta, oldaction);
+    a.scal(1 / alpha);
+    return alpha;
   }
 
   /*!

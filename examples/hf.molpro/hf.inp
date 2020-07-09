@@ -1,0 +1,5 @@
+geometry={f;h,f,1.732}
+basis,minao
+rhf
+fci
+{fci;state,11;all}

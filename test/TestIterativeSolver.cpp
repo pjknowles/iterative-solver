@@ -42,7 +42,7 @@ TEST(TestIterativeSolver, small_eigenproblem) {
         g.emplace_back(n);
       }
       size_t nwork=nroot;
-      for (size_t iter = 0; iter < n + 100; iter++) {
+      for (size_t iter = 0; iter < n + 10; iter++) {
         std::cout << "start iteration "<<iter<<", nwork="<<nwork<<std::endl;
         for (size_t root = 0; root < nwork; root++) {
             g[root].scal(0);

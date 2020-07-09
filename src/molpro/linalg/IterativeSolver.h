@@ -123,7 +123,7 @@ public:
       m_dimension(0),
       m_value_print_name("value"),
       m_iterations(0),
-      m_singularity_threshold(1e-12),
+      m_singularity_threshold(1e-5),
       m_added_vectors(0),
       m_augmented_hessian(0),
       m_svdThreshold(1e-15),
@@ -131,7 +131,7 @@ public:
       m_profiler(profiler),
       m_pspace(),
       m_qspace(m_pspace, m_hermitian),
-      m_threshold_residual_recalculate(1e-6)
+      m_threshold_residual_recalculate(1e-16)
 {
 }
   // clang-format on
@@ -276,8 +276,9 @@ public:
     for (auto root = 0; root < m_roots; root++)
       if (m_errors[root] < m_thresh and m_q_solutions.count(root) == 0 and m_working_set.size() < parameters.size()) {
         m_working_set.push_back(root);
-        if (m_verbosity > 1)
-          molpro::cout << "selecting root " << root << " for adding converged solution to Q space" << std::endl;
+        if (m_verbosity > -1)
+          molpro::cout << "selecting root " << root << " for adding converged solution to Q space at position"
+                       << m_qspace.size() << std::endl;
       }
     doInterpolation(parameters, action, parametersP, other, true);
     for (auto k = 0; k < m_working_set.size(); k++) {
@@ -286,7 +287,7 @@ public:
     }
 
     revise_working_set(parameters.size());
-    if (m_verbosity > 1) {
+    if (m_verbosity > -1) {
       molpro::cout << "after revise_working_set m_working_set:";
       for (const auto& w : m_working_set)
         molpro::cout << " " << w;
@@ -297,13 +298,17 @@ public:
       molpro::cout << std::endl;
     }
     doInterpolation(parameters, action, parametersP, other);
+    std::cout << "after doInterpolation for residual m_working_set.size() = " << m_working_set.size() << std::endl;
+    for (int k = 0; k < m_working_set.size(); k++) {
+      m_errors[m_working_set[k]] = std::sqrt(action[k].get().dot(action[k]));
+      std::cout << "reevaluated error " << m_working_set[k] << " " << m_errors[m_working_set[k]] << std::endl;
+    }
     for (int k = m_working_set.size() - 1; k >= 0; k--) {
       auto root = m_working_set[k];
       if (m_errors[root] <= m_threshold_residual_recalculate * 1.0000000001) {
-        m_errors[root] = std::sqrt(action[k].get().dot(action[k]));
         if (m_errors[root] < m_thresh) {
           // second bite of the cherry on retiring a root
-          if (m_verbosity > 1)
+          if (m_verbosity > -1)
             molpro::cout << "retire root " << root << " on basis of revaluated residual " << m_errors[root]
                          << "; new working set size " << k << std::endl;
           m_working_set.pop_back();
@@ -318,6 +323,7 @@ public:
                             vectorRefSetP(1, parametersP[k]), oth, true);
           else
             doInterpolation(vectorRefSet(1, parameters[k]), vectorRefSet(1, action[k]), parametersP, oth, true);
+          std::cout << "residual " << action[k].get().dot(action[k]) << std::endl;
           m_qspace.add(parameters[k], action[k], m_rhs);
           m_q_solutions[root] = m_qspace.keys().back();
           m_working_set = save_working_set;
@@ -325,7 +331,7 @@ public:
           break;
       }
     }
-    if (m_verbosity > 1) {
+    if (m_verbosity > -1) {
       molpro::cout << "after refinement m_working_set:";
       for (const auto& w : m_working_set)
         molpro::cout << " " << w;
@@ -341,11 +347,12 @@ public:
               << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
               << std::endl;
 #endif
-    while (m_working_set.size() > m_current_r.size()) m_working_set.pop_back();
+    while (m_working_set.size() > m_current_r.size())
+      m_working_set.pop_back();
     for (size_t k = 0; k < m_working_set.size(); k++) {
       //      m_last_d.emplace_back(parameters[k]);
       //      m_last_hd.emplace_back(action[k]);
-//      molpro::cout << "emplacing m_current_r (size="<<m_current_r[k].size()<<") in m_last_d"<<std::endl;
+      //      molpro::cout << "emplacing m_current_r (size="<<m_current_r[k].size()<<") in m_last_d"<<std::endl;
       m_last_d.emplace_back(m_current_r[k]);
       m_last_hd.emplace_back(m_current_v[k]);
     }
@@ -715,17 +722,25 @@ protected:
     Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester(m, n, n);
     Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester,
                                                                                      Eigen::ComputeThinV);
-    //    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
-    //    molpro::cout << "singular values: " << svd.singularValues().transpose() << std::endl;
-    //    molpro::cout << "V: " << svd.matrixV() << std::endl;
+    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
+    molpro::cout << "matrix:\n" << singularTester << std::endl;
+    molpro::cout << "singular values:\n" << svd.singularValues().transpose() << std::endl;
+    molpro::cout << "V:\n" << svd.matrixV() << std::endl;
+    molpro::cout << "candidates:";
+    for (const auto& c : candidates)
+      molpro::cout << " " << c;
+    molpro::cout << std::endl;
     auto sv = svd.singularValues();
     std::vector<scalar_type> svv;
     for (auto k = 0; k < n; k++)
       svv.push_back(sv(k));
     auto most_singular = std::min_element(svv.begin(), svv.end()) - svv.begin();
+    molpro::cout << "most_singular " << most_singular << std::endl;
     if (svv[most_singular] > threshold)
       return -1;
     for (const auto& k : candidates) {
+      if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
+        molpro::cout << "taking candidate " << k << ": " << svd.matrixV()(k, most_singular) << std::endl;
       if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
         return k;
     }
@@ -740,7 +755,7 @@ protected:
     const auto oP = 0;
     const auto oQ = oP + nP;
     const auto oR = oQ + nQ;
-    //   molpro::cout << "buildSubspace nP="<<nP<<", nQ="<<nQ<<std::endl;
+    molpro::cout << "buildSubspace nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
     m_subspaceMatrix.conservativeResize(nX, nX);
     m_subspaceOverlap.conservativeResize(nX, nX);
     for (size_t a = 0; a < nQ; a++) {
@@ -795,10 +810,10 @@ protected:
       auto del = propose_singularity_deletion(nX, &singularTester(0, 0), candidates,
                                               nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
-        if (m_verbosity > 2)
+        if (m_verbosity > -2)
           molpro::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
         m_qspace.remove(del - oQ);
-        m_errors.assign(m_roots,1e20);
+        m_errors.assign(m_roots, 1e20);
         for (auto m = 0; m < nR; m++)
           for (auto a = del - oQ; a < nQ - 1; a++) {
             m_h_rq[a][m] = m_h_rq[a + 1][m];

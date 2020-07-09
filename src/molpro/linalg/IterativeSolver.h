@@ -241,7 +241,7 @@ public:
       m_s_rr.push_back(std::vector<scalar_type>(m_working_set.size()));
       m_h_rr.push_back(std::vector<scalar_type>(m_working_set.size()));
       m_hh_rr.push_back(std::vector<scalar_type>(m_working_set.size()));
-      for (size_t rhs = 0; rhs < m_working_set.size(); rhs++)
+      for (size_t rhs = 0; rhs < m_rhs.size(); rhs++)
         m_rhs_r[m][rhs] = parameters[m].get().dot(m_rhs[rhs]);
       for (size_t n = 0; n < m_working_set.size(); n++) {
         m_s_rr[m][n] = parameters[n].get().dot(parameters[m].get());

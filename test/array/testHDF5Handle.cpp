@@ -336,3 +336,45 @@ TEST_F(HDF5HandleUsingExistingObjectF, construct_from_group_hid_transfer_ownersh
   EXPECT_FALSE(handle.file_is_open());
   EXPECT_EQ(handle.file_id(), HDF5Handle::hid_default);
 }
+
+TEST_F(HDF5HandleUsingExistingObjectF, open_and_close_file) {
+  auto handle = HDF5Handle(fid);
+  ASSERT_TRUE(handle.file_is_open());
+  ASSERT_FALSE(handle.file_owner());
+  auto id = handle.open_file(HDF5Handle::Access::read_only);
+  ASSERT_TRUE(handle.file_is_open());
+  ASSERT_FALSE(handle.file_owner());
+  EXPECT_EQ(id, fid) << "file is already open, should return the same id back";
+  handle.close_file();
+  ASSERT_TRUE(handle.file_is_open()) << "close_file() does nothing without ownership";
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, open_file_wrong_access_type) {
+  auto handle = HDF5Handle(fid);
+  ASSERT_TRUE(handle.file_is_open());
+  ASSERT_FALSE(handle.file_owner());
+  auto id = handle.open_file(HDF5Handle::Access::read_write);
+  ASSERT_TRUE(handle.file_is_open());
+  ASSERT_FALSE(handle.file_owner());
+  EXPECT_EQ(id, HDF5Handle::hid_default)
+      << "attempt to open with different access type, returns default id to indicate an error";
+  EXPECT_EQ(handle.file_id(), fid) << "stored id should not be modified";
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, open_file_no_ownership_and_was_closed_outside) {
+  auto handle = HDF5Handle(fid);
+  ASSERT_TRUE(handle.file_is_open());
+  ASSERT_FALSE(handle.file_owner());
+  transferred_ownership_file = true;
+  H5Fclose(fid);
+  ASSERT_FALSE(handle.file_is_open());
+  auto id = handle.open_file(HDF5Handle::Access::read_only);
+  ASSERT_FALSE(handle.file_is_open());
+  ASSERT_FALSE(handle.file_owner());
+  EXPECT_EQ(id, HDF5Handle::hid_default) << "handle is not owning and file was closed outside";
+  EXPECT_EQ(handle.file_id(), fid) << "stored id should not be modified";
+  id = handle.open_file(file_name, HDF5Handle::Access::read_only);
+  ASSERT_FALSE(handle.file_is_open());
+  ASSERT_FALSE(handle.file_owner());
+  EXPECT_EQ(id, HDF5Handle::hid_default) << "handle is not owning so cannot reopen the file";
+}

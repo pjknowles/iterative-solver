@@ -91,7 +91,7 @@ public:
    * The operation fails under the following conditions:
    *   - the named file does not exist and access type is read_only
    *   - the file is already open but with a different access type
-   *   - file was assigned without ownership TODO unit test
+   *   - file was assigned without ownership, and was closed on the outside
    *
    * @param type access type
    * @return id of opened hdf5 object or hid_default if operation fails
@@ -100,10 +100,8 @@ public:
   /*!
    * @brief Open the file passed as input and take ownership of it. Only if a file was not assigned yet.
    *
-   * The operation fails under the following conditions:
-   *   - the file is already open but with a different access type
-   *   - a file with a different name was already assigned
-   *   - the named file does not exist and access type is read_only
+   * The operation fails under the conditions specified in open_file(Access) and the following:
+   *   - a file with a different name was already assigned (reassignment if forbidden, create a new handle)
    *   - a group corresponding to a different file is open TODO unit test
    *
    * @param file name of the file to take ownership of

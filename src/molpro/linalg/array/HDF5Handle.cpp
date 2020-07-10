@@ -68,10 +68,13 @@ hid_t HDF5Handle::open_file(HDF5Handle::Access type) {
   return m_file_hid;
 }
 hid_t HDF5Handle::open_file(const std::string &file, HDF5Handle::Access type) {
-  if (!m_file_name.empty() && m_file_name != file)
-    return hid_default;
-  m_file_name = file;
-  m_file_owner = true;
+  if (!m_file_name.empty()) { // file has been assigned
+    if (m_file_name != file)  // attempting to reassign
+      return hid_default;
+  } else {
+    m_file_name = file;  // first assignment
+    m_file_owner = true; // takes ownership
+  }
   return open_file(type);
 }
 void HDF5Handle::close_file() {

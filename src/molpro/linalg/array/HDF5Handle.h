@@ -10,28 +10,56 @@ namespace array {
 namespace util {
 
 /*!
- * @brief Manages opening/closing HDF5 files and groups in serial and parallel modes.
+ * @brief Manages opening/closing HDF5 files and groups.
+ *
+ * A file and/or group can be assigned to the handle by passing corresponding file path or group path as a string,
+ * or directly providing the relevant hdf5 object.
+ *
+ * If the assignment is done by passing strings than the handle takes ownership of the hdf5 objects and
+ * can open and close the file and/or group.
+ * Opening is done by calling open_file()/open_group(), and closing can be done either through
+ * close_file()/close_group() or by the destructor.
+ *
+ * The assignment can be done by passing the hid in which case the user can transfer ownership of the underlying
+ * hdf5 object allowing handle to close it, or they can keep ownership to themselves thus keeping responsibility
+ * for closing the object when it is not needed.
+ *
+ * Concepts
+ * --------
+ *   - assignment: handle stores the information about the object
+ *   - ownership: handle can open and close the hdf5 objects
+ *
  */
 class HDF5Handle {
 public:
   /*!
-   * @brief Create a dummy handle taking on default values.
+   * @brief Create a dummy handle taking on default values, with no underlying assigned objects.
    *
    * It should be populated by using open_file() and/or open_group()
    */
   HDF5Handle() = default;
-  //! Take ownership of the file
+  //! Create a handle with file assigned to it with ownership
   HDF5Handle(std::string file);
-  //! Take ownership of the file and the specified group
+  //! Create a handle with file and group assigned to it with ownership
   HDF5Handle(std::string file, std::string group);
   /*!
-   * @brief Create a handle from an already open hdf5 file or group.
+   * @brief Create a handle from an already open hdf5 file or group with option to transfer ownership
+   *
+   * Only one hdf5 object can be assigned. If it is a file object, than later calls to open_group() can assign
+   * a group with ownership making sure that it can be closed.
+   * Assigning a group object implies assignment of the overlying file with the same ownership.
+   * If the ownership is not transferred than the overlying hdf5 file object must remain open.
+   * Furthermore, opening a file that does not contain a group object is erroneous.
+   *
+   * File name containing the hdf5 object is always stored, and if it is a group object than group name is also stored.
    *
    * The handle will be in a dummy state in the following cases:
    *   - hid object is not valid (see H5Iis_valid)
    *   - hid object does not correspond to a file or a group
    *
-   * @warning It is the user's responsibility to close the file after the handle is no longer used.
+   * @warning If the ownership is not transferred than it is the user's responsibility to close the file after the
+   * handle is no longer used.
+   *
    * @param hid hdf5 id to an open object.
    * @param transfer_ownership whether to take ownership of the object
    */
@@ -48,16 +76,17 @@ public:
   //! Close any owned resources and transfer ownership from source
   HDF5Handle &operator=(HDF5Handle &&source);
 
-  //! Options for access type when opening files
+  //! Options for access type when opening files.
   enum class Access { read_only, read_write };
   /*!
-   * @brief Open the file specified on construction.
+   * @brief Open the assigned file.
    *
-   * If the file is already open from a previous call, than it returns the stored hid if the access type matches.
+   * If the file is already open and the access type matches, than it returns the stored hid.
    *
    * The operation fails under the following conditions:
    *   - the named file does not exist and access type is read_only
    *   - the file is already open but with a different access type
+   *   - file was assigned without ownership TODO unit test
    *
    * @param type access type
    * @return id of opened hdf5 object or hid_default if operation fails
@@ -67,9 +96,10 @@ public:
    * @brief Open the file passed as input and take ownership of it. Only if a file was not assigned yet.
    *
    * The operation fails under the following conditions:
-   *   - a file was already assigned
-   *   - the named file does not exist and access type is read_only
    *   - the file is already open but with a different access type
+   *   - a file with a different name was already assigned TODO unit test
+   *   - the named file does not exist and access type is read_only TODO unit test
+   *   - a group corresponding to a different file is open TODO unit test
    *
    * @param file name of the file to take ownership of
    * @return id of hdf5 object. Returns hid_default if the operation fails or the file was assigned on construction.

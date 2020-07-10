@@ -81,6 +81,12 @@ TEST_F(HDF5HandleDummyF, default_constructor) {
 }
 
 TEST_F(HDF5HandleDummyF, open_file) {
+  auto id = h->open_file(HDF5Handle::Access::read_only);
+  ASSERT_EQ(id, HDF5Handle::hid_default) << "dummy handle has no file assigned to it";
+  EXPECT_TRUE(h->empty());
+}
+
+TEST_F(HDF5HandleDummyF, open_file_with_name) {
   auto id = h->open_file(name_single_dataset, HDF5Handle::Access::read_only);
   ASSERT_NE(id, HDF5Handle::hid_default);
   ASSERT_FALSE(h->empty());

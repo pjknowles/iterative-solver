@@ -198,12 +198,46 @@ TEST_F(HDF5HandleDummyF, file_is_open) {
   ASSERT_NE(h->file_id(), HDF5Handle::hid_default) << "if file was closed outside, it can be opened by the handle";
 }
 
-TEST(HDF5Handle, construct_from_file) {
+TEST(HDF5Handle, construct_from_file_name) {
   auto h = HDF5Handle(name_single_dataset);
   ASSERT_EQ(h.file_name(), name_single_dataset);
   EXPECT_TRUE(h.empty());
   EXPECT_FALSE(h.file_is_open());
   EXPECT_TRUE(h.file_owner());
+  auto fid = h.open_file(HDF5Handle::Access::read_only);
+  ASSERT_TRUE(h.file_is_open());
+  ASSERT_EQ(h.file_id(), fid);
+  EXPECT_TRUE(h.file_owner());
+  EXPECT_FALSE(h.empty());
+  EXPECT_NE(fid, HDF5Handle::hid_default);
+  h.close_file();
+  ASSERT_FALSE(h.file_is_open());
+  EXPECT_TRUE(h.file_owner());
+  EXPECT_TRUE(h.empty());
+  EXPECT_TRUE(H5Iis_valid(fid) == 0) << "file should have been closed";
+}
+
+TEST(HDF5Handle, construct_from_file_and_group_name) {
+  std::string group_name = "/group1/group2";
+  auto h = HDF5Handle(name_inner_group_dataset, group_name);
+  ASSERT_EQ(h.file_name(), name_inner_group_dataset);
+  ASSERT_EQ(h.group_name(), group_name);
+  ASSERT_TRUE(h.empty());
+  EXPECT_FALSE(h.file_is_open());
+  EXPECT_TRUE(h.file_owner());
+  EXPECT_TRUE(h.group_owner());
+  auto gid = h.open_group();
+  ASSERT_TRUE(h.group_is_open());
+  ASSERT_TRUE(h.file_is_open());
+  EXPECT_FALSE(h.empty());
+  EXPECT_EQ(h.group_id(), gid);
+  EXPECT_TRUE(H5Iis_valid(gid) > 0);
+  EXPECT_TRUE(H5Iis_valid(h.file_id()) > 0);
+  EXPECT_TRUE(h.file_owner());
+  EXPECT_TRUE(h.group_owner());
+  h.close_file();
+  EXPECT_FALSE(h.file_is_open());
+  EXPECT_FALSE(h.group_is_open()) << "closing the file should have closed the group as well";
 }
 
 TEST(HDF5Handle, construct_from_file_and_open_close) {

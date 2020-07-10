@@ -157,7 +157,7 @@ TEST_F(HDF5HandleDummyF, open_close_group_reassignment) {
 }
 
 struct HDF5HandleOpenFileCreatF : public HDF5HandleDummyF {
-  HDF5HandleOpenFileCreatF() : file_name{name_inner_group_dataset + "-does-not-exist"} { remove_file(); }
+  HDF5HandleOpenFileCreatF() : file_name{"test_new_file.hdf5"} { remove_file(); }
   ~HDF5HandleOpenFileCreatF() { remove_file(); }
   void remove_file() {
     if (file_exists(file_name))
@@ -173,19 +173,28 @@ TEST_F(HDF5HandleOpenFileCreatF, wrong_access) {
   EXPECT_TRUE(h->empty());
 }
 
-TEST_F(HDF5HandleOpenFileCreatF, create) {
+TEST_F(HDF5HandleOpenFileCreatF, create_file) {
   auto id = h->open_file(file_name, HDF5Handle::Access::read_write);
   EXPECT_TRUE(h->file_is_open());
   EXPECT_FALSE(h->empty());
   EXPECT_NE(id, HDF5Handle::hid_default);
 }
 
-TEST_F(HDF5HandleOpenFileCreatF, open_group) {}
+TEST_F(HDF5HandleOpenFileCreatF, create_group) {
+  auto group_name = std::string{"/test-group1/test-group2"};
+  h->open_file(file_name, HDF5Handle::Access::read_write);
+  ASSERT_TRUE(h->file_is_open());
+  auto gid = h->open_group(group_name);
+  ASSERT_TRUE(h->group_is_open());
+  ASSERT_EQ(h->group_id(), gid);
+  ASSERT_NE(h->group_id(), HDF5Handle::hid_default);
+  EXPECT_EQ(h->group_name(), group_name);
+}
 
 TEST_F(HDF5HandleDummyF, open_file_diff_name) {
   auto id_does_not_exist = h->open_file(name_inner_group_dataset + "-does-not-exist", HDF5Handle::Access::read_only);
   EXPECT_EQ(id_does_not_exist, HDF5Handle::hid_default)
-      << "file does not exist and cannot be crated with access type read_only";
+      << "file does not exist and cannot be created with access type read_only";
 }
 
 TEST_F(HDF5HandleDummyF, file_is_open) {

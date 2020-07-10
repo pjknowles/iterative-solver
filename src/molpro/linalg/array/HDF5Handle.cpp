@@ -106,7 +106,10 @@ hid_t HDF5Handle::open_group() {
       return hid_default;
 
   if (hdf5_link_exists(m_file_hid, m_group_name) < 1) {
-    m_group_hid = H5Gcreate(m_file_hid, m_group_name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    auto lcpl = H5Pcreate(H5P_LINK_CREATE);
+    H5Pset_create_intermediate_group(lcpl, 1);
+    m_group_hid = H5Gcreate(m_file_hid, m_group_name.c_str(), lcpl, H5P_DEFAULT, H5P_DEFAULT);
+    H5Pclose(lcpl);
   } else {
     m_group_hid = H5Gopen(m_file_hid, m_group_name.c_str(), H5P_DEFAULT);
   }

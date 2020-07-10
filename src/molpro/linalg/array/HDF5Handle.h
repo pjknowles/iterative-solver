@@ -170,8 +170,6 @@ protected:
   std::string m_group_name;        //!< path to the group in hdf5 file
   bool m_file_owner = false;       //!< flags that the file was open by this instance and should be closed by it
   bool m_group_owner = false;      //!< flags that the group was open by this instance and should be closed by it
-  bool m_file_is_open = false;     //!< flags that the file was opened by the class
-  bool m_group_is_open = false;    //!< flags that the group was opened by the class
 };
 
 /*!

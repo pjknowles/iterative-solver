@@ -21,13 +21,11 @@ HDF5Handle::HDF5Handle(hid_t hid, bool transfer_ownership) {
     if (type == H5I_FILE) {
       m_file_hid = hid;
       m_file_owner = transfer_ownership;
-      m_file_is_open = transfer_ownership;
       m_file_name = hdf5_get_file_name(hid);
     } else if (type == H5I_GROUP) {
       m_group_hid = hid;
       m_group_owner = transfer_ownership;
       m_file_owner = transfer_ownership;
-      m_group_is_open = transfer_ownership;
       m_group_name = hdf5_get_object_name(m_group_hid);
     }
   }
@@ -65,10 +63,8 @@ hid_t HDF5Handle::open_file(HDF5Handle::Access type) {
     else
       m_file_hid = H5Fcreate(m_file_name.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT);
   }
-  m_file_is_open = true;
   if (m_file_hid < 0) {
     m_file_hid = hid_default;
-    m_file_is_open = false;
   }
   return m_file_hid;
 }
@@ -113,10 +109,8 @@ hid_t HDF5Handle::open_group() {
   } else {
     m_group_hid = H5Gopen(m_file_hid, m_group_name.c_str(), H5P_DEFAULT);
   }
-  m_group_is_open = true;
   if (m_group_hid < 0) {
     m_group_hid = hid_default;
-    m_group_is_open = false;
   }
   return m_group_hid;
 }

@@ -97,8 +97,8 @@ public:
    *
    * The operation fails under the following conditions:
    *   - the file is already open but with a different access type
-   *   - a file with a different name was already assigned TODO unit test
-   *   - the named file does not exist and access type is read_only TODO unit test
+   *   - a file with a different name was already assigned
+   *   - the named file does not exist and access type is read_only
    *   - a group corresponding to a different file is open TODO unit test
    *
    * @param file name of the file to take ownership of

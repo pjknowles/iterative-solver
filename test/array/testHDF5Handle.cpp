@@ -95,12 +95,50 @@ TEST_F(HDF5HandleDummyF, open_file_with_name) {
   EXPECT_EQ(h->file_id(), id);
   EXPECT_FALSE(h->group_owner());
   EXPECT_EQ(h->group_id(), HDF5Handle::hid_default);
-  auto id_prev = id;
+}
+
+TEST_F(HDF5HandleDummyF, open_file_repeat) {
+  auto id_first = h->open_file(name_single_dataset, HDF5Handle::Access::read_only);
+  ASSERT_NE(id_first, HDF5Handle::hid_default);
+  ASSERT_FALSE(h->empty());
   auto id2 = h->open_file(HDF5Handle::Access::read_only);
-  EXPECT_EQ(id2, id_prev) << "opening an open file with the same access should return previous id";
+  EXPECT_EQ(id2, id_first) << "opening an open file with the same access should return previous id";
   auto id3 = h->open_file(HDF5Handle::Access::read_write);
-  EXPECT_NE(id3, id_prev) << "opening an opened file with different access should return hid_default";
+  EXPECT_NE(id3, id_first) << "opening an opened file with different access should return hid_default";
   EXPECT_EQ(id3, HDF5Handle::hid_default) << "opening an opened file with different access should return hid_default";
+  auto id_diff_file = h->open_file(name_inner_group_dataset, HDF5Handle::Access::read_only);
+  EXPECT_EQ(id_diff_file, HDF5Handle::hid_default)
+      << "a file with different name was already assigned, should return hid_default";
+}
+
+struct HDF5HandleOpenFileCreatF : public HDF5HandleDummyF {
+  HDF5HandleOpenFileCreatF() : file_name{name_inner_group_dataset + "-does-not-exist"} { remove_file(); }
+  ~HDF5HandleOpenFileCreatF() { remove_file(); }
+  void remove_file() {
+    if (file_exists(file_name))
+      std::remove(file_name.c_str());
+  }
+  const std::string file_name;
+};
+
+TEST_F(HDF5HandleOpenFileCreatF, wrong_access) {
+  auto id = h->open_file(file_name, HDF5Handle::Access::read_only);
+  EXPECT_EQ(id, HDF5Handle::hid_default) << "file does not exist and cannot be crated with access type read_only";
+  EXPECT_FALSE(h->file_is_open());
+  EXPECT_TRUE(h->empty());
+}
+
+TEST_F(HDF5HandleOpenFileCreatF, create) {
+  auto id = h->open_file(file_name, HDF5Handle::Access::read_write);
+  EXPECT_TRUE(h->file_is_open());
+  EXPECT_FALSE(h->empty());
+  EXPECT_NE(id, HDF5Handle::hid_default);
+}
+
+TEST_F(HDF5HandleDummyF, open_file_diff_name) {
+  auto id_does_not_exist = h->open_file(name_inner_group_dataset + "-does-not-exist", HDF5Handle::Access::read_only);
+  EXPECT_EQ(id_does_not_exist, HDF5Handle::hid_default)
+      << "file does not exist and cannot be crated with access type read_only";
 }
 
 TEST_F(HDF5HandleDummyF, file_is_open) {

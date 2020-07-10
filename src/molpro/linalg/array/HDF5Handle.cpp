@@ -60,7 +60,10 @@ hid_t HDF5Handle::open_file(HDF5Handle::Access type) {
     else
       m_file_hid = H5Fopen(m_file_name.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
   } else {
-    m_file_hid = H5Fcreate(m_file_name.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT);
+    if (type == Access::read_only)
+      m_file_hid = hid_default;
+    else
+      m_file_hid = H5Fcreate(m_file_name.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT);
   }
   m_file_is_open = true;
   if (m_file_hid < 0) {

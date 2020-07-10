@@ -124,7 +124,7 @@ public:
    * @return id of hdf5 object. Returns hid_default if a group was already assigned on construction.
    */
   virtual hid_t open_group(const std::string &group);
-  //! Closes the file if it is open and is owned by this handle
+  //! Closes the file if it is open and is owned by this handle. Also closes the group.
   virtual void close_file();
   //! Closes the group if it is open and is owned by this handle
   virtual void close_group();

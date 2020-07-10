@@ -78,6 +78,7 @@ hid_t HDF5Handle::open_file(const std::string &file, HDF5Handle::Access type) {
 void HDF5Handle::close_file() {
   if (!m_file_owner || !file_is_open())
     return;
+  close_group();
   if (H5Iis_valid(m_file_hid) > 0) {
     H5Fclose(m_file_hid);
   }

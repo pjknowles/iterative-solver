@@ -198,7 +198,7 @@ public:
       assert(m_last_d.size() == m_working_set.size());
       assert(m_last_hd.size() == m_working_set.size());
       for (size_t k = 0; k < m_working_set.size(); k++) {
-        m_qspace.add(parameters[k], action[k], m_last_d[k], m_last_hd[k], m_rhs);
+        m_qspace.add(parameters[k], action[k], m_last_d[k], m_last_hd[k], m_rhs, m_subspaceMatrixResRes);
       }
       m_last_d.clear();
       m_last_hd.clear();
@@ -289,6 +289,7 @@ public:
       auto root = m_working_set[k];
       m_errors[root] = std::sqrt(action[k].get().dot(action[k]));
     }
+    molpro::cout << "m_interpolation:\n" << m_interpolation << std::endl;
     doInterpolation(parameters, action, parametersP, other, true);
     m_last_d.clear();
     m_last_hd.clear();
@@ -301,7 +302,7 @@ public:
         if (m_verbosity > 1)
           molpro::cout << "selecting root " << root << " for adding converged solution to Q space at position"
                        << m_qspace.size() << std::endl;
-        m_qspace.add(parameters[k], action[k], m_rhs);
+        m_qspace.add(parameters[k], action[k], m_rhs, m_subspaceMatrixResRes);
         m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
       }
       if (m_errors[root] < m_thresh) { // converged
@@ -648,7 +649,7 @@ protected:
   std::vector<slowvector> m_current_r; ///< current working space TODO can probably eliminate using m_last_d
   std::vector<slowvector> m_current_v; ///< action vector corresponding to current working space
   std::vector<std::vector<scalar_type>> m_q_scale_factors;
-  std::vector<std::vector<scalar_type>> m_s_rr, m_h_rr, m_hh_rr,m_rhs_r;           ///< interactions within R space
+  std::vector<std::vector<scalar_type>> m_s_rr, m_h_rr, m_hh_rr, m_rhs_r;  ///< interactions within R space
   std::map<int, std::vector<scalar_type>> m_s_qr, m_h_qr, m_h_rq, m_hh_qr; ///< interactions between R and Q spaces
   std::vector<std::vector<scalar_type>> m_s_pr, m_h_pr, m_h_rp;            ///< interactions between R and P spaces
   mutable std::vector<int> m_working_set; ///< which roots are being tracked in the working set
@@ -717,7 +718,7 @@ protected:
   void buildSubspace() {
     const size_t nP = m_pspace.size();
     const size_t nQ = m_qspace.size();
-    const size_t nR = m_linear ? m_s_rr.size() : 0;
+    const size_t nR = m_s_rr.size();
     const size_t nX = nP + nQ + nR;
     const auto oP = 0;
     const auto oQ = oP + nP;
@@ -727,8 +728,8 @@ protected:
     m_subspaceOverlap.conservativeResize(nX, nX);
     m_subspaceRHS.resize(nX, m_rhs.size());
     for (size_t a = 0; a < nQ; a++) {
-      for (size_t rhs=0; rhs<m_rhs.size(); rhs++)
-        m_subspaceRHS(oQ+a, rhs) = m_qspace.rhs(a)[rhs];
+      for (size_t rhs = 0; rhs < m_rhs.size(); rhs++)
+        m_subspaceRHS(oQ + a, rhs) = m_qspace.rhs(a)[rhs];
       for (size_t b = 0; b < nQ; b++) {
         m_subspaceMatrix(oQ + b, oQ + a) = m_qspace.action(b, a);
         m_subspaceOverlap(oQ + b, oQ + a) = m_qspace.metric(b, a);
@@ -755,13 +756,15 @@ protected:
       }
     }
     for (size_t n = 0; n < nR; n++) {
-      for (size_t rhs=0; rhs<m_rhs.size(); rhs++)
-        m_subspaceRHS(oR+n, rhs) = m_rhs_r[n][rhs];
+      for (size_t rhs = 0; rhs < m_rhs.size(); rhs++)
+        m_subspaceRHS(oR + n, rhs) = m_rhs_r[n][rhs];
       for (size_t m = 0; m < nR; m++) {
         m_subspaceMatrix(oR + m, oR + n) = m_h_rr[m][n];
         m_subspaceOverlap(oR + m, oR + n) = m_s_rr[m][n];
       }
     }
+    if (m_subspaceMatrixResRes)
+      m_subspaceOverlap = m_subspaceMatrix;
     if (nQ > 0) {
       const auto& singularTester = m_residual_eigen ? m_subspaceOverlap : m_subspaceMatrix;
       std::vector<int> candidates;
@@ -1027,7 +1030,7 @@ protected:
         solution[kkk].get().axpy(this->m_interpolation(l, root), m_qspace[q]);
         residual[kkk].get().axpy(this->m_interpolation(l, root), m_qspace.action(q));
       }
-      if (m_linear) {
+      if (true) {
         for (int c = 0; c < nR; c++) {
           auto l = oR + c;
           solution[kkk].get().axpy(this->m_interpolation(l, root), m_current_r[c]);
@@ -1921,11 +1924,11 @@ protected:
 
     // make Lagrange/constraint lines.
     for (size_t i = 0; i < nDim; ++i)
-      B(i, nDim) = B(nDim, i) = -m_Weights[i];
+      B(i, nDim) = B(nDim, i) = -1;
     B(nDim, nDim) = 0.0;
     Rhs[nDim] = -1;
-    //      molpro::cout << "B:"<<std::endl<<B<<std::endl;
-    //      molpro::cout << "Rhs:"<<std::endl<<Rhs<<std::endl;
+    molpro::cout << "B:" << std::endl << B << std::endl;
+    molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
 
     // invert the system, determine extrapolation coefficients.
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(B, Eigen::ComputeThinU | Eigen::ComputeThinV);

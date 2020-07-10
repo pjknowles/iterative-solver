@@ -38,7 +38,7 @@ public:
   const scalar_type& action(int i, int j) const { return m_action.at(m_keys[i]).at(m_keys[j]); }
   const scalar_type& action_action(int i, int j) const { return m_action_action.at(m_keys[i]).at(m_keys[j]); }
 
-  const std::vector<scalar_type>& rhs(int i) const { return m_rhs.at(m_keys[i]);}
+  const std::vector<scalar_type>& rhs(int i) const { return m_rhs.at(m_keys[i]); }
 
   const std::vector<scalar_type>& metric_pspace(int i) const { return m_metric_pspace.at(m_keys[i]); }
   const std::vector<scalar_type>& action_pspace(int i) const { return m_action_pspace.at(m_keys[i]); }
@@ -79,8 +79,10 @@ public:
    * @param vector
    * @param action
    * @param rhs
+   * @param resres If true, action matrix will be action.action instead of vector.action
    */
-  void add(const fastvector& vector, const fastvector& action, const std::vector<slowvector>& rhs) {
+  void add(const fastvector& vector, const fastvector& action, const std::vector<slowvector>& rhs,
+           bool resres = false) {
     for (const auto& vi : m_vectors) {
       m_metric[m_index][vi.first] = m_metric[vi.first][m_index] = vector.dot(vi.second);
       m_action[vi.first][m_index] = action.dot(vi.second);
@@ -93,11 +95,11 @@ public:
       if (m_hermitian)
         m_action[m_index][i] = m_action[i][m_index];
       else
-        m_action[m_index][i] = vector.dot(vi.second);
+        m_action[m_index][i] = resres ? action.dot(vi.second) : vector.dot(vi.second);
     }
     m_metric[m_index][m_index] = vector.dot(vector);
-    m_action[m_index][m_index] = vector.dot(action);
-    m_action_action[m_index][m_index] = action.dot(action);
+    m_action[m_index][m_index] = resres ? action.dot(action) : vector.dot(action);
+    m_action_action[m_index][m_index] = action.dot(action); // TODO retire this
     m_metric_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
     m_action_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
     for (auto i = 0; i < m_pspace.size(); i++) {
@@ -120,10 +122,11 @@ public:
    * @param oldvector
    * @param oldaction
    * @param rhs
+   * @param resres If true, action matrix will be action.action instead of vector.action
    * @return The scale factor applied to make the new vector length 1
    */
   scalar_type add(const fastvector& vector, const fastvector& action, const slowvector& oldvector,
-                  const slowvector& oldaction, const std::vector<slowvector>& rhs) {
+                  const slowvector& oldaction, const std::vector<slowvector>& rhs, bool resres = false) {
     auto rr = vector.dot(vector);
     auto dd = oldvector.dot(oldvector);
     auto rd = vector.dot(oldvector);
@@ -132,19 +135,19 @@ public:
       alpha = 1;
       beta = -1;
     } else {
-      alpha = 1/std::sqrt(rr * (-1+rr*dd/(rd*rd)));
+      alpha = 1 / std::sqrt(rr * (-1 + rr * dd / (rd * rd)));
       beta = -alpha * rr / rd;
     }
-//    molpro::cout << "Q.add difference, alpha=" << alpha << ", beta=" << beta << std::endl;
-//    molpro::cout << "dd=" << dd << ", rr=" << rr
-//                 << ", rd=" << rd << std::endl;
+    //    molpro::cout << "Q.add difference, alpha=" << alpha << ", beta=" << beta << std::endl;
+    //    molpro::cout << "dd=" << dd << ", rr=" << rr
+    //                 << ", rd=" << rd << std::endl;
     auto& v = const_cast<fastvector&>(vector);
     auto& a = const_cast<fastvector&>(action);
     v.scal(alpha);
     v.axpy(beta, oldvector);
     a.scal(alpha);
     a.axpy(beta, oldaction);
-    add(v, a, rhs);
+    add(v, a, rhs, resres);
     v.axpy(-beta, oldvector);
     v.scal(1 / alpha);
     a.axpy(-beta, oldaction);

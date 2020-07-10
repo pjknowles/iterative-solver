@@ -8,10 +8,14 @@ if (MPI)
             main.cpp
             testutil.cpp
             testDistrArray.h
-            testDistrArrayMPI3.cpp
-            testDistrArrayGA.cpp
             testHDF5Handle.cpp
             )
+    if (LINEARALGEBRA_ARRAY_MPI3)
+        target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayMPI3.cpp)
+    endif ()
+    if (LINEARALGEBRA_ARRAY_GA)
+        target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayGA.cpp)
+    endif ()
     target_link_libraries(test-${PROJECT_NAME}-parallel PUBLIC molpro::${PROJECT_NAME} gmock_main)
     target_compile_definitions(test-${PROJECT_NAME}-parallel PUBLIC "ARRAY_DATA=\"${CMAKE_CURRENT_BINARY_DIR}/data\"")
     gtest_discover_tests(test-${PROJECT_NAME}-parallel)

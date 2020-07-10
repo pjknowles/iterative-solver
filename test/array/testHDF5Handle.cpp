@@ -378,3 +378,18 @@ TEST_F(HDF5HandleUsingExistingObjectF, open_file_no_ownership_and_was_closed_out
   ASSERT_FALSE(handle.file_owner());
   EXPECT_EQ(id, HDF5Handle::hid_default) << "handle is not owning so cannot reopen the file";
 }
+
+TEST_F(HDF5HandleUsingExistingObjectF, open_and_close_file_with_ownership) {
+  transferred_ownership_file = true;
+  auto handle = HDF5Handle(fid, transferred_ownership_file);
+  ASSERT_TRUE(handle.file_is_open());
+  ASSERT_TRUE(handle.file_owner());
+  ASSERT_EQ(handle.file_id(), fid);
+  auto id = handle.open_file(HDF5Handle::Access::read_only);
+  ASSERT_TRUE(handle.file_is_open());
+  ASSERT_TRUE(handle.file_owner());
+  ASSERT_EQ(id, fid) << "file was already open";
+  handle.close_file();
+  ASSERT_FALSE(handle.file_is_open()) << "with ownership should be able to close the file";
+  ASSERT_TRUE(handle.file_owner());
+}

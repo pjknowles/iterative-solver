@@ -114,7 +114,9 @@ public:
   /*!
    * @brief Open the group passed as input and take ownership of it.
    *
-   * A file must have been assigned already. If the file is not yet open, than it will be opened with read_only access.
+   * A file must have been already assigned. If the file is not yet open, than it will be opened with read_only access.
+   * This will also give the handle ownership of the file object. Since the file is open in read_only state, the
+   * handle does not allow modification of the underlying file and there should be no unexpected side-effects.
    *
    * If a group has already been assigned than it will be closed and this handle will be reassigned the new group.
    *
@@ -122,9 +124,9 @@ public:
    * @return id of hdf5 object. Returns hid_default if a group was already assigned on construction.
    */
   virtual hid_t open_group(const std::string &group);
-  //! Closes the file if it is open and is owned by this handle. Also closes the group.
+  //! Closes the file if it is open, also closes the group. If handle is not owning, the underlying object is not closed
   virtual void close_file();
-  //! Closes the group if it is open and is owned by this handle
+  //! Closes the group if it is open. If handle is not owning, the underlying object is not closed.
   virtual void close_group();
 
   //! Returns a copy of hid to the file. The hid is only meaningful if the file is open.

@@ -285,6 +285,7 @@ public:
   bool transferred_ownership_group = false;
   const std::string file_name = name_inner_group_dataset;
   const std::string group_name = "group1";
+  const std::string group_name2 = "group1/group2";
 };
 
 TEST_F(HDF5HandleUsingExistingObjectF, construct_from_file_hid) {
@@ -346,7 +347,9 @@ TEST_F(HDF5HandleUsingExistingObjectF, open_and_close_file) {
   ASSERT_FALSE(handle.file_owner());
   EXPECT_EQ(id, fid) << "file is already open, should return the same id back";
   handle.close_file();
-  ASSERT_TRUE(handle.file_is_open()) << "close_file() does nothing without ownership";
+  ASSERT_FALSE(handle.file_is_open());
+  ASSERT_EQ(handle.file_id(), HDF5Handle::hid_default) << "without ownership close_file() resets to default id";
+  EXPECT_GT(H5Iis_valid(fid), 0) << "without ownership close_file() does nothing to the original object";
 }
 
 TEST_F(HDF5HandleUsingExistingObjectF, open_file_wrong_access_type) {
@@ -406,4 +409,32 @@ TEST_F(HDF5HandleUsingExistingObjectF, construct_from_file_no_own__open_and_clos
   ASSERT_NE(gid, HDF5Handle::hid_default);
   handle.close_group();
   ASSERT_FALSE(handle.group_is_open()) << "opening group gave it ownership of the group, can close the file";
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, construct_from_group_no_own__open_and_close_group) {
+  auto handle = HDF5Handle(gid);
+  ASSERT_FALSE(handle.file_is_open());
+  ASSERT_FALSE(handle.file_owner());
+  ASSERT_TRUE(handle.group_is_open());
+  ASSERT_FALSE(handle.group_owner());
+  auto id = handle.open_group();
+  EXPECT_EQ(id, gid) << "group is already open, just return the id";
+  handle.close_group();
+  ASSERT_FALSE(handle.group_is_open());
+  ASSERT_EQ(handle.group_id(), HDF5Handle::hid_default) << "without ownership close_group() resets to default id";
+  EXPECT_GT(H5Iis_valid(gid), 0) << "without ownership close_group() does nothing to the original object";
+  id = handle.open_group(group_name2);
+  EXPECT_TRUE(handle.group_is_open());
+  EXPECT_TRUE(handle.group_owner());
+  EXPECT_NE(id, HDF5Handle::hid_default) << "can reassign the group even without ownership";
+  EXPECT_NE(id, gid);
+  EXPECT_GT(H5Iis_valid(gid), 0) << "without ownership reassignment does not close the original group";
+  EXPECT_TRUE(handle.file_is_open()) << "opens the file";
+  EXPECT_TRUE(handle.file_owner()) << "gives ownership to the file";
+  unsigned intent = 0;
+  auto err = H5Fget_intent(handle.file_id(), &intent);
+  EXPECT_EQ(intent, H5F_ACC_RDONLY) << "the file should be read-only";
+  handle.close_group();
+  EXPECT_FALSE(handle.group_is_open());
+  EXPECT_GT(H5Iis_valid(gid), 0) << "without ownership reassignment does not close the original group";
 }

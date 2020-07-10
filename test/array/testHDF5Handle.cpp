@@ -55,34 +55,56 @@ TEST_F(HDF5utilF, hdf5_link_exists) {
   EXPECT_LE(hdf5_link_exists(id_nested, "/group1/does_not_exist"), 0);
 }
 
-TEST(HDF5HandleDefault, default_constructor) {
-  auto h = HDF5Handle();
-  ASSERT_TRUE(h.empty());
-  EXPECT_FALSE(h.file_owner());
-  EXPECT_FALSE(h.group_owner());
-  EXPECT_FALSE(h.file_is_open());
-  EXPECT_FALSE(h.group_is_open());
-  EXPECT_EQ(h.file_id(), HDF5Handle::hid_default);
-  EXPECT_EQ(h.group_id(), HDF5Handle::hid_default);
-  EXPECT_NO_THROW(h.close_file());
-  EXPECT_NO_THROW(h.close_group());
-  EXPECT_EQ(h.open_file(HDF5Handle::Access::read_only), HDF5Handle::hid_default);
-  EXPECT_EQ(h.open_file(HDF5Handle::Access::read_write), HDF5Handle::hid_default);
-  EXPECT_EQ(h.open_group(), HDF5Handle::hid_default);
-  EXPECT_EQ(h.file_name(), std::string{});
-  EXPECT_EQ(h.group_name(), std::string{});
+class HDF5HandleDummyF : public ::testing::Test {
+public:
+  HDF5HandleDummyF() = default;
+  void SetUp() override { h = std::make_unique<HDF5Handle>(); }
+  void TearDown() override { h.reset(); }
+  std::unique_ptr<HDF5Handle> h;
+};
+
+TEST_F(HDF5HandleDummyF, default_constructor) {
+  ASSERT_TRUE(h->empty());
+  EXPECT_FALSE(h->file_owner());
+  EXPECT_FALSE(h->group_owner());
+  EXPECT_FALSE(h->file_is_open());
+  EXPECT_FALSE(h->group_is_open());
+  EXPECT_EQ(h->file_id(), HDF5Handle::hid_default);
+  EXPECT_EQ(h->group_id(), HDF5Handle::hid_default);
+  EXPECT_NO_THROW(h->close_file());
+  EXPECT_NO_THROW(h->close_group());
+  EXPECT_EQ(h->open_file(HDF5Handle::Access::read_only), HDF5Handle::hid_default);
+  EXPECT_EQ(h->open_file(HDF5Handle::Access::read_write), HDF5Handle::hid_default);
+  EXPECT_EQ(h->open_group(), HDF5Handle::hid_default);
+  EXPECT_EQ(h->file_name(), std::string{});
+  EXPECT_EQ(h->group_name(), std::string{});
 }
 
-TEST(HDF5HandleDefault, open_file) {
-  auto h = HDF5Handle();
-  auto id = h.open_file(name_single_dataset, HDF5Handle::Access::read_only);
+TEST_F(HDF5HandleDummyF, open_file) {
+  auto id = h->open_file(name_single_dataset, HDF5Handle::Access::read_only);
   ASSERT_NE(id, HDF5Handle::hid_default);
-  ASSERT_FALSE(h.empty());
-  EXPECT_EQ(h.file_name(), name_single_dataset);
-  EXPECT_TRUE(h.file_owner());
-  EXPECT_EQ(h.file_id(), id);
-  EXPECT_FALSE(h.group_owner());
-  EXPECT_EQ(h.group_id(), HDF5Handle::hid_default);
+  ASSERT_FALSE(h->empty());
+  EXPECT_EQ(h->file_name(), name_single_dataset);
+  EXPECT_TRUE(h->file_owner());
+  EXPECT_EQ(h->file_id(), id);
+  EXPECT_FALSE(h->group_owner());
+  EXPECT_EQ(h->group_id(), HDF5Handle::hid_default);
+  auto id_prev = id;
+  auto id2 = h->open_file(HDF5Handle::Access::read_only);
+  EXPECT_EQ(id2, id_prev) << "opening an open file with the same access should return previous id";
+  auto id3 = h->open_file(HDF5Handle::Access::read_write);
+  EXPECT_NE(id3, id_prev) << "opening an opened file with different access should return hid_default";
+  EXPECT_EQ(id3, HDF5Handle::hid_default) << "opening an opened file with different access should return hid_default";
+}
+
+TEST_F(HDF5HandleDummyF, file_is_open) {
+  ASSERT_FALSE(h->file_is_open());
+  auto id = h->open_file(name_single_dataset, HDF5Handle::Access::read_only);
+  ASSERT_TRUE(h->file_is_open());
+  H5Fclose(id);
+  ASSERT_FALSE(h->file_is_open()) << "handle should check if the file has been closed outside";
+  EXPECT_NO_THROW(h->open_file(name_single_dataset, HDF5Handle::Access::read_only));
+  ASSERT_NE(h->file_id(), HDF5Handle::hid_default) << "if file was closed outside, it can be opened by the handle";
 }
 
 TEST(HDF5Handle, construct_from_file) {

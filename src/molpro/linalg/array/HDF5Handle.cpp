@@ -36,7 +36,22 @@ HDF5Handle::~HDF5Handle() {
   HDF5Handle::close_group();
 }
 hid_t HDF5Handle::open_file(HDF5Handle::Access type) {
-  if (!m_file_owner || m_file_name.empty() || m_file_hid != hid_default)
+  if (file_is_open()) {
+    unsigned intent = 0;
+    auto err = H5Fget_intent(m_file_hid, &intent);
+    if (err < 0)
+      return hid_default;
+    unsigned curr_intent = 0;
+    if (type == Access::read_only)
+      curr_intent = H5F_ACC_RDONLY;
+    else if (type == Access::read_write)
+      curr_intent = H5F_ACC_RDWR;
+    if (intent == curr_intent || intent & curr_intent)
+      return m_file_hid;
+    else
+      return hid_default;
+  }
+  if (!m_file_owner || m_file_name.empty())
     return hid_default;
   if (file_exists(m_file_name)) {
     if (type == Access::read_only)
@@ -52,22 +67,22 @@ hid_t HDF5Handle::open_file(HDF5Handle::Access type) {
   return m_file_hid;
 }
 hid_t HDF5Handle::open_file(const std::string &file, HDF5Handle::Access type) {
-  if (!m_file_name.empty() || m_file_hid != hid_default)
+  if (!m_file_name.empty())
     return hid_default;
   m_file_name = file;
   m_file_owner = true;
   return open_file(type);
 }
 void HDF5Handle::close_file() {
-  if (!m_file_owner || m_file_hid == hid_default)
+  if (!m_file_owner || !file_is_open())
     return;
   if (H5Iis_valid(m_file_hid) > 0) {
     H5Fclose(m_file_hid);
   }
   m_file_hid = hid_default;
 }
-bool HDF5Handle::file_is_open() const { return m_file_owner && m_file_is_open; }
-bool HDF5Handle::group_is_open() const { return m_group_owner && m_group_is_open; }
+bool HDF5Handle::file_is_open() const { return H5Iis_valid(m_file_hid) > 0; }
+bool HDF5Handle::group_is_open() const { return H5Iis_valid(m_group_hid) > 0; }
 std::string HDF5Handle::file_name() const { return m_file_name; }
 std::string HDF5Handle::group_name() const { return m_group_name; }
 void HDF5Handle::close_group() {
@@ -79,9 +94,11 @@ void HDF5Handle::close_group() {
   m_group_hid = hid_default;
 }
 hid_t HDF5Handle::open_group() {
-  if (!m_group_owner || m_group_hid != hid_default || m_group_name.empty())
+  if (group_is_open())
+    return m_group_hid;
+  if (!m_group_owner || m_group_name.empty())
     return hid_default;
-  if (!m_file_is_open && m_file_owner)
+  if (!file_is_open() && m_file_owner)
     if (open_file(Access::read_only) == hid_default)
       return hid_default;
 

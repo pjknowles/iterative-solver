@@ -51,10 +51,13 @@ public:
   //! Options for access type when opening files
   enum class Access { read_only, read_write };
   /*!
-   * @brief Open the file specified on construction, if it is not already open
+   * @brief Open the file specified on construction.
+   *
+   * If the file is already open from a previous call, than it returns the stored hid if the access type matches.
    *
    * The operation fails under the following conditions:
    *   - the named file does not exist and access type is read_only
+   *   - the file is already open but with a different access type
    *
    * @param type access type
    * @return id of opened hdf5 object or hid_default if operation fails
@@ -62,6 +65,12 @@ public:
   virtual hid_t open_file(Access type);
   /*!
    * @brief Open the file passed as input and take ownership of it. Only if a file was not assigned yet.
+   *
+   * The operation fails under the following conditions:
+   *   - a file was already assigned
+   *   - the named file does not exist and access type is read_only
+   *   - the file is already open but with a different access type
+   *
    * @param file name of the file to take ownership of
    * @return id of hdf5 object. Returns hid_default if the operation fails or the file was assigned on construction.
    */
@@ -92,9 +101,21 @@ public:
   std::string file_name() const;
   //! Returns the group name of an object assigned to the handle, even if it is not owned by it.
   std::string group_name() const;
-  //! Returns true if the file is owned by the handle and is open, false otherwise.
+  /*!
+   * @brief Checks that the file handle is open, even if it is not owned.
+   *
+   * File is considered open if the underlying hdf5 object is valid (see H5Iis_valid)
+   *
+   * @return true if the file is open and can be used with hdf5 operations, false otherwise
+   */
   bool file_is_open() const;
-  //! Returns true if the group is owned by the handle and is open, false otherwise.
+  /*!
+   * @brief Checks that the group handle is open, even if it is not owned.
+   *
+   * Group is considered open if the underlying hdf5 object is valid (see H5Iis_valid)
+   *
+   * @return true if the group is open and can be used with hdf5 operations, false otherwise
+   */
   bool group_is_open() const;
   //! Returns true if the handle owns the file
   bool file_owner() const { return m_file_owner; }

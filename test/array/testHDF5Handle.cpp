@@ -262,3 +262,77 @@ TEST(HDF5Handle, construct_from_file_and_open_close) {
   EXPECT_EQ(h.file_id(), HDF5Handle::hid_default);
   EXPECT_TRUE(h.file_owner());
 }
+
+class HDF5HandleUsingExistingObjectF : public ::testing::Test {
+public:
+  void SetUp() override {
+    fid = H5Fopen(file_name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    gid = H5Gopen(fid, group_name.c_str(), H5P_DEFAULT);
+    EXPECT_GT(H5Iis_valid(gid), 0);
+    ASSERT_GT(H5Iis_valid(fid), 0);
+  }
+  void TearDown() override {
+    if (!transferred_ownership_group)
+      H5Gclose(gid);
+    if (!transferred_ownership_file)
+      H5Fclose(fid);
+    EXPECT_EQ(H5Iis_valid(gid), 0);
+    ASSERT_EQ(H5Iis_valid(fid), 0);
+  }
+  hid_t fid = -1;
+  hid_t gid = -1;
+  bool transferred_ownership_file = false;
+  bool transferred_ownership_group = false;
+  const std::string file_name = name_inner_group_dataset;
+  const std::string group_name = "group1";
+};
+
+TEST_F(HDF5HandleUsingExistingObjectF, construct_from_file_hid) {
+  auto handle = HDF5Handle(fid);
+  EXPECT_EQ(handle.file_name(), file_name);
+  EXPECT_EQ(handle.file_id(), fid);
+  EXPECT_TRUE(handle.file_is_open());
+  EXPECT_FALSE(handle.file_owner());
+  EXPECT_FALSE(handle.group_owner());
+  EXPECT_FALSE(handle.group_is_open());
+  EXPECT_TRUE(handle.group_name().empty());
+  EXPECT_EQ(handle.group_id(), HDF5Handle::hid_default);
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, construct_from_file_hid_transfer_ownership) {
+  transferred_ownership_file = true;
+  auto handle = HDF5Handle(fid, transferred_ownership_file);
+  EXPECT_EQ(handle.file_id(), fid);
+  EXPECT_EQ(handle.file_name(), file_name);
+  EXPECT_TRUE(handle.file_is_open());
+  EXPECT_TRUE(handle.file_owner());
+  EXPECT_FALSE(handle.group_owner());
+  EXPECT_FALSE(handle.group_is_open());
+  EXPECT_TRUE(handle.group_name().empty());
+  EXPECT_EQ(handle.group_id(), HDF5Handle::hid_default);
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, construct_from_group_hid) {
+  auto handle = HDF5Handle(gid);
+  EXPECT_EQ(handle.group_id(), gid);
+  EXPECT_EQ(handle.file_name(), file_name);
+  EXPECT_TRUE(handle.group_name().find(group_name) != std::string::npos) << "handle stores absolute path";
+  EXPECT_TRUE(handle.group_is_open());
+  EXPECT_FALSE(handle.file_owner());
+  EXPECT_FALSE(handle.group_owner());
+  EXPECT_FALSE(handle.file_is_open());
+  EXPECT_EQ(handle.file_id(), HDF5Handle::hid_default);
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, construct_from_group_hid_transfer_ownership) {
+  transferred_ownership_group = true;
+  auto handle = HDF5Handle(gid, transferred_ownership_group);
+  EXPECT_EQ(handle.group_id(), gid);
+  EXPECT_EQ(handle.file_name(), file_name);
+  EXPECT_TRUE(handle.group_name().find(group_name) != std::string::npos) << "handle stores absolute path";
+  EXPECT_TRUE(handle.group_is_open());
+  EXPECT_TRUE(handle.file_owner());
+  EXPECT_TRUE(handle.group_owner());
+  EXPECT_FALSE(handle.file_is_open());
+  EXPECT_EQ(handle.file_id(), HDF5Handle::hid_default);
+}

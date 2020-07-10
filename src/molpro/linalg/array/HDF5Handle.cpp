@@ -18,14 +18,13 @@ HDF5Handle::HDF5Handle(std::string file, std::string group)
 HDF5Handle::HDF5Handle(hid_t hid, bool transfer_ownership) {
   if (H5Iis_valid(hid) > 0) {
     auto type = H5Iget_type(hid);
+    m_file_name = hdf5_get_file_name(hid);
+    m_file_owner = transfer_ownership;
     if (type == H5I_FILE) {
       m_file_hid = hid;
-      m_file_owner = transfer_ownership;
-      m_file_name = hdf5_get_file_name(hid);
     } else if (type == H5I_GROUP) {
       m_group_hid = hid;
       m_group_owner = transfer_ownership;
-      m_file_owner = transfer_ownership;
       m_group_name = hdf5_get_object_name(m_group_hid);
     }
   }
@@ -171,6 +170,7 @@ std::string hdf5_get_object_name(hid_t id) {
   std::string result;
   result.resize(size + 1);
   H5Iget_name(id, &result[0], size + 1);
+  result.resize(size);
   return result;
 }
 std::string hdf5_get_file_name(hid_t id) {
@@ -178,6 +178,7 @@ std::string hdf5_get_file_name(hid_t id) {
   std::string result;
   result.resize(size + 1);
   H5Fget_name(id, &result[0], size + 1);
+  result.resize(size); // get rid of the null terminator
   return result;
 }
 //  "/group1/group2/dataset/does_not_exist"

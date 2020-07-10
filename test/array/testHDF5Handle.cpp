@@ -393,3 +393,17 @@ TEST_F(HDF5HandleUsingExistingObjectF, open_and_close_file_with_ownership) {
   ASSERT_FALSE(handle.file_is_open()) << "with ownership should be able to close the file";
   ASSERT_TRUE(handle.file_owner());
 }
+
+TEST_F(HDF5HandleUsingExistingObjectF, construct_from_file_no_own__open_and_close_group) {
+  auto handle = HDF5Handle(fid);
+  ASSERT_TRUE(handle.file_is_open());
+  ASSERT_FALSE(handle.file_owner());
+  auto gid = handle.open_group();
+  ASSERT_FALSE(handle.group_is_open()) << "no group was assigned";
+  ASSERT_EQ(gid, HDF5Handle::hid_default);
+  gid = handle.open_group(group_name);
+  ASSERT_TRUE(handle.group_is_open()) << "can open the group even without owning the file";
+  ASSERT_NE(gid, HDF5Handle::hid_default);
+  handle.close_group();
+  ASSERT_FALSE(handle.group_is_open()) << "opening group gave it ownership of the group, can close the file";
+}

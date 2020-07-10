@@ -101,8 +101,8 @@ public:
    * @brief Open the file passed as input and take ownership of it. Only if a file was not assigned yet.
    *
    * The operation fails under the conditions specified in open_file(Access) and the following:
-   *   - a file with a different name was already assigned (reassignment if forbidden, create a new handle)
-   *   - a group corresponding to a different file is open TODO unit test
+   *   - a file with a different name was already assigned (reassignment is forbidden, create a new handle)
+   *   - a group corresponding to a different file is open (effectively reassignment)
    *
    * @param file name of the file to take ownership of
    * @return id of hdf5 object. Returns hid_default if the operation fails or the file was assigned on construction.

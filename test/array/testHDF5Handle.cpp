@@ -438,3 +438,29 @@ TEST_F(HDF5HandleUsingExistingObjectF, construct_from_group_no_own__open_and_clo
   EXPECT_FALSE(handle.group_is_open());
   EXPECT_GT(H5Iis_valid(gid), 0) << "without ownership reassignment does not close the original group";
 }
+
+TEST_F(HDF5HandleUsingExistingObjectF, construct_from_group_no_own__open_file) {
+  auto handle = HDF5Handle(gid);
+  ASSERT_FALSE(handle.file_owner());
+  auto id = handle.open_file(HDF5Handle::Access::read_only);
+  ASSERT_FALSE(handle.file_is_open()) << "without ownership should not be able to open the file";
+  EXPECT_EQ(id, HDF5Handle::hid_default);
+  id = handle.open_file(file_name + "-does-not-exist-2", HDF5Handle::Access::read_write);
+  ASSERT_FALSE(handle.file_is_open()) << "a different file is already assigned";
+  EXPECT_EQ(id, HDF5Handle::hid_default);
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, construct_from_group_with_own__open_file) {
+  transferred_ownership_group = true;
+  auto handle = HDF5Handle(gid, transferred_ownership_group);
+  ASSERT_TRUE(handle.file_owner());
+  ASSERT_FALSE(handle.file_is_open());
+  auto id = handle.open_file(HDF5Handle::Access::read_only);
+  ASSERT_TRUE(handle.file_is_open()) << "with ownership can open the underlying file";
+  EXPECT_NE(id, HDF5Handle::hid_default);
+  handle.close_file();
+  ASSERT_FALSE(handle.file_is_open());
+  id = handle.open_file(file_name + "-does-not-exist-2", HDF5Handle::Access::read_write);
+  ASSERT_FALSE(handle.file_is_open()) << "reassignment of files is forbidden";
+  EXPECT_EQ(id, HDF5Handle::hid_default);
+}

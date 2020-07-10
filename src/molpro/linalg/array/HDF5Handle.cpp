@@ -113,14 +113,16 @@ hid_t HDF5Handle::open_group() {
   } else {
     m_group_hid = H5Gopen(m_file_hid, m_group_name.c_str(), H5P_DEFAULT);
   }
-  m_group_is_open = m_group_hid > 0;
-  if (!m_group_is_open)
+  m_group_is_open = true;
+  if (m_group_hid < 0) {
     m_group_hid = hid_default;
+    m_group_is_open = false;
+  }
   return m_group_hid;
 }
-hid_t HDF5Handle::open_group(std::string &group) {
-  if (!m_group_name.empty() || m_group_hid != hid_default)
-    return hid_default;
+hid_t HDF5Handle::open_group(const std::string &group) {
+  if (m_group_name != group)
+    close_group();
   m_group_name = group;
   m_group_owner = true;
   return open_group();

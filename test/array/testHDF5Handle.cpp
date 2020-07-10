@@ -111,6 +111,51 @@ TEST_F(HDF5HandleDummyF, open_file_repeat) {
       << "a file with different name was already assigned, should return hid_default";
 }
 
+TEST_F(HDF5HandleDummyF, open_close_group) {
+  h->open_file(name_inner_group_dataset, HDF5Handle::Access::read_only);
+  ASSERT_TRUE(h->file_is_open());
+  auto gid = h->open_group("group1");
+  EXPECT_NE(gid, HDF5Handle::hid_default);
+  ASSERT_TRUE(h->group_is_open());
+  EXPECT_EQ(h->group_name(), "group1");
+  EXPECT_TRUE(h->group_owner());
+  h->close_group();
+  ASSERT_FALSE(h->group_is_open());
+  EXPECT_EQ(h->group_name(), "group1");
+  EXPECT_TRUE(h->group_owner());
+  h->open_group("group1");
+  ASSERT_TRUE(h->group_is_open());
+}
+
+TEST_F(HDF5HandleDummyF, open_close_group_nested) {
+  h->open_file(name_inner_group_dataset, HDF5Handle::Access::read_only);
+  ASSERT_TRUE(h->file_is_open());
+  auto gid = h->open_group("group1/group2");
+  EXPECT_NE(gid, HDF5Handle::hid_default);
+  ASSERT_TRUE(h->group_is_open());
+  EXPECT_EQ(h->group_name(), "group1/group2");
+  EXPECT_TRUE(h->group_owner());
+  h->close_group();
+  ASSERT_FALSE(h->group_is_open());
+  EXPECT_EQ(h->group_name(), "group1/group2");
+  EXPECT_TRUE(h->group_owner());
+}
+
+TEST_F(HDF5HandleDummyF, open_close_group_reassignment) {
+  h->open_file(name_inner_group_dataset, HDF5Handle::Access::read_only);
+  ASSERT_TRUE(h->file_is_open());
+  auto gid_first = h->open_group("group1");
+  EXPECT_NE(gid_first, HDF5Handle::hid_default);
+  ASSERT_TRUE(h->group_is_open());
+  ASSERT_TRUE(h->group_owner());
+  auto gid = h->open_group("group1/group2");
+  ASSERT_TRUE(h->group_is_open());
+  EXPECT_NE(gid, HDF5Handle::hid_default);
+  EXPECT_EQ(h->group_name(), "group1/group2");
+  EXPECT_TRUE(h->group_owner());
+  EXPECT_TRUE(H5Iis_valid(gid_first) == 0) << "previous group should have been closed";
+}
+
 struct HDF5HandleOpenFileCreatF : public HDF5HandleDummyF {
   HDF5HandleOpenFileCreatF() : file_name{name_inner_group_dataset + "-does-not-exist"} { remove_file(); }
   ~HDF5HandleOpenFileCreatF() { remove_file(); }
@@ -134,6 +179,8 @@ TEST_F(HDF5HandleOpenFileCreatF, create) {
   EXPECT_FALSE(h->empty());
   EXPECT_NE(id, HDF5Handle::hid_default);
 }
+
+TEST_F(HDF5HandleOpenFileCreatF, open_group) {}
 
 TEST_F(HDF5HandleDummyF, open_file_diff_name) {
   auto id_does_not_exist = h->open_file(name_inner_group_dataset + "-does-not-exist", HDF5Handle::Access::read_only);

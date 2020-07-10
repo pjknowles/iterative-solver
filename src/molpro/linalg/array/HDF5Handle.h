@@ -12,8 +12,17 @@ namespace util {
 /*!
  * @brief Manages opening/closing HDF5 files and groups.
  *
+ * Concepts
+ * --------
+ *   - assignment: handle stores the information about the object
+ *   - ownership: handle can open and close the hdf5 objects
+ *
  * A file and/or group can be assigned to the handle by passing corresponding file path or group path as a string,
  * or directly providing the relevant hdf5 object.
+ * There can only be one file and group assigned to the handle at any one time.
+ *
+ * Assignment of a file is permanent for each handle, however groups can be re-assigned. Assigning a new
+ * group automatically closes the old one, since there can only be one file and group per handle.
  *
  * If the assignment is done by passing strings than the handle takes ownership of the hdf5 objects and
  * can open and close the file and/or group.
@@ -24,10 +33,6 @@ namespace util {
  * hdf5 object allowing handle to close it, or they can keep ownership to themselves thus keeping responsibility
  * for closing the object when it is not needed.
  *
- * Concepts
- * --------
- *   - assignment: handle stores the information about the object
- *   - ownership: handle can open and close the hdf5 objects
  *
  */
 class HDF5Handle {
@@ -111,13 +116,14 @@ public:
   /*!
    * @brief Open the group passed as input and take ownership of it.
    *
-   * A file must have been assigned already, but not a group. Opens the file with read_only access, if it was not open
-   * yet.
+   * A file must have been assigned already. If the file is not yet open, than it will be opened with read_only access.
    *
-   * @param group name of the group to take ownership of. Should be a full
+   * If a group has already been assigned than it will be closed and this handle will be reassigned the new group.
+   *
+   * @param group name of the group to take ownership of. Should be a full path.
    * @return id of hdf5 object. Returns hid_default if a group was already assigned on construction.
    */
-  virtual hid_t open_group(std::string &group);
+  virtual hid_t open_group(const std::string &group);
   //! Closes the file if it is open and is owned by this handle
   virtual void close_file();
   //! Closes the group if it is open and is owned by this handle

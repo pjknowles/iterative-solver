@@ -147,6 +147,11 @@ HDF5Handle::Access HDF5Handle::access_type() const {
     return Access::read_write;
   return Access::unknown;
 }
+hid_t HDF5Handle::file_id() const { return m_file_hid; }
+hid_t HDF5Handle::group_id() const { return m_group_hid; }
+bool HDF5Handle::file_owner() const { return m_file_owner; }
+bool HDF5Handle::group_owner() const { return m_group_owner; }
+bool HDF5Handle::empty() const { return m_file_hid == hid_default && m_group_hid == hid_default; }
 
 bool file_exists(const std::string &fname) { return !std::ifstream{fname}.fail(); }
 

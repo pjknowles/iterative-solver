@@ -141,9 +141,9 @@ public:
   virtual void close_group();
 
   //! Returns a copy of hid to the file. The hid is only meaningful if the file is open.
-  hid_t file_id() const { return m_file_hid; }
+  hid_t file_id() const;
   //! Returns a copy of hid to the group. The hid is only meaningful if the file is open.
-  hid_t group_id() const { return m_group_hid; }
+  hid_t group_id() const;
   //! Returns the file name of an object assigned to the handle, even if it is not owned by it.
   std::string file_name() const;
   //! Returns the group name of an object assigned to the handle, even if it is not owned by it.
@@ -165,11 +165,11 @@ public:
    */
   bool group_is_open() const;
   //! Returns true if the handle owns the file
-  bool file_owner() const { return m_file_owner; }
+  bool file_owner() const;
   //! Returns true if the handle owns the group
-  bool group_owner() const { return m_group_owner; }
+  bool group_owner() const;
   //! Returns true if the handle does not have an hdf5 object assigned to it
-  bool empty() const { return m_file_hid == hid_default && m_group_hid == hid_default; }
+  bool empty() const;
 
   //! Default value of hid used by the handle. It is always used if the hid is not related to a valid hdf5 object.
   static const hid_t hid_default = -1;

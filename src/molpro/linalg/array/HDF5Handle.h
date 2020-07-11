@@ -12,6 +12,17 @@ namespace util {
 /*!
  * @brief Manages opening/closing HDF5 files and groups.
  *
+ * Motivation
+ * ----------
+ * When writing functions or classes that need to write to an hdf5 file there are many ways to pass that information.
+ * The user might only have the file name and group name and pass them as strings. Or they could have an hdf5 file
+ * object and a group string, or and hdf5 group object, but was the file open with a correct access type or does the
+ * group object correspond to a valid file? Does the user want the hdf5 objects to be closed after use?
+ *
+ * One needs to make multiple constructors and function overloads to ensure the users are kept happy and the procedure
+ * might need to be repeated for different classes. The purpose of HDF5Handle is to implement this in one place and let
+ * the handle manage opening and closing of hdf5 objects, checking access type and more.
+ *
  * Concepts
  * --------
  *   - assignment: handle stores the information about the object
@@ -33,9 +44,30 @@ namespace util {
  * hdf5 object allowing handle to close it, or they can keep ownership to themselves thus keeping responsibility
  * for closing the object when it is not needed.
  *
- * Use cases
+ * Examples
  * ---------
- * @todo write clear use cases to demonstrate the logic
+ * Use a file handle to store arrays in different groups:
+ * @code{.cpp}
+ * auto h = HDF5Handle(file_name);
+ * h.open_file(HDF5Handle::Access::read_write);
+ * for (auto & a: arrays){
+ *   h.open_group(get_new_group_name()); // reassigning closes the previous group
+ *   store_in_new_group(h.group_id(), a);
+ * }
+ * h.close_file(); // Or let the destructor do it
+ * @endcode
+ *
+ * Use as an argument in a function that needs a group id
+ * @code{.cpp}
+ * // Without a handle we might need multiple overloads, and perform many checks for validity of the object
+ * void write_to_group(std::string file_name, std::string group_name);
+ * void write_to_group(hid_t group_id);
+ *
+ * // Instead we can just take a handle
+ * void write_to_group(HDF5Handle& handle){
+ *   write_to_group(handle.open_group());
+ * }
+ * @endcode
  *
  *
  */

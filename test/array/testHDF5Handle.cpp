@@ -525,6 +525,15 @@ TEST(HDF5Handle, copy_constructor_source_from_file_and_group_name) {
   EXPECT_EQ(h.group_id(), hsource.group_id());
 }
 
+TEST(HDF5Handle, copy_assignment_source_from_file_and_group_name_to_diff_file_name) {
+  auto hsource = HDF5Handle(name_inner_group_dataset, "group1");
+  auto h = HDF5Handle(name_single_dataset);
+  hsource = h;
+  copy_constructor_same_state(h, hsource);
+  EXPECT_EQ(h.file_id(), hsource.file_id());
+  EXPECT_EQ(h.group_id(), hsource.group_id());
+}
+
 TEST_F(HDF5HandleUsingExistingObjectF, copy_constructor_source_from_file_obj) {
   auto hsource = HDF5Handle(fid);
   auto h = HDF5Handle(hsource);
@@ -550,10 +559,7 @@ TEST_F(HDF5HandleUsingExistingObjectF, copy_constructor_source_from_group_obj) {
   EXPECT_EQ(h.group_id(), hsource.group_id());
 }
 
-TEST_F(HDF5HandleUsingExistingObjectF, copy_constructor_source_from_group_obj_with_own) {
-  transferred_ownership_group = true;
-  auto hsource = HDF5Handle(gid, transferred_ownership_group);
-  auto h = HDF5Handle(hsource);
+inline void copy_constructor_same_state_grom_group_obj(const HDF5Handle& h, const HDF5Handle& hsource) {
   EXPECT_EQ(h.access_type(), HDF5Handle::Access::read_only)
       << "even though source had a closed file, opening a group automatically opens the file";
   EXPECT_EQ(h.file_name(), hsource.file_name());
@@ -565,4 +571,23 @@ TEST_F(HDF5HandleUsingExistingObjectF, copy_constructor_source_from_group_obj_wi
   EXPECT_EQ(h.empty(), hsource.empty());
   EXPECT_NE(h.file_id(), hsource.file_id());
   EXPECT_NE(h.group_id(), hsource.group_id());
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, copy_constructor_source_from_group_obj_with_own) {
+  transferred_ownership_group = true;
+  auto hsource = HDF5Handle(gid, transferred_ownership_group);
+  auto h = HDF5Handle(hsource);
+  copy_constructor_same_state_grom_group_obj(h, hsource);
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, assignment_operator_from_file_name_open_to_group_obj_with_own) {
+  transferred_ownership_group = true;
+  auto hsource = HDF5Handle(gid, transferred_ownership_group);
+  ASSERT_NE(file_name, name_single_dataset);
+  auto h = HDF5Handle(name_single_dataset);
+  auto id = h.open_file(HDF5Handle::Access::read_only);
+  h = hsource;
+  copy_constructor_same_state_grom_group_obj(h, hsource);
+  EXPECT_NE(h.file_id(), id);
+  EXPECT_NE(h.file_name(), name_single_dataset);
 }

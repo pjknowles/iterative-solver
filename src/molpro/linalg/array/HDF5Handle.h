@@ -33,6 +33,10 @@ namespace util {
  * hdf5 object allowing handle to close it, or they can keep ownership to themselves thus keeping responsibility
  * for closing the object when it is not needed.
  *
+ * Use cases
+ * ---------
+ * @todo write clear use cases to demonstrate the logic
+ *
  *
  */
 class HDF5Handle {
@@ -62,8 +66,8 @@ public:
    *   - hid object is not valid (see H5Iis_valid)
    *   - hid object does not correspond to a file or a group
    *
-   * @warning If the ownership is not transferred than it is the user's responsibility to close the file after the
-   * handle is no longer used.
+   * @warning If the ownership is not transferred than it is the user's responsibility to close the hdf5 object after
+   * the handle is no longer used.
    *
    * @param hid hdf5 id to an open object.
    * @param transfer_ownership whether to take ownership of the object
@@ -72,6 +76,7 @@ public:
 
   virtual ~HDF5Handle();
 
+  // TODO implement!
   //! Creates a new handle from source. If source is an owner of file or group, than they are opened again.
   HDF5Handle(const HDF5Handle &source);
   //! Copies source, closing any owned resources and opening a copy of resources owned by source
@@ -82,7 +87,13 @@ public:
   HDF5Handle &operator=(HDF5Handle &&source);
 
   //! Options for access type when opening files.
-  enum class Access { read_only, read_write };
+  enum class Access { read_only, read_write, none, unknown };
+  //!
+  /*!
+   * @brief Returns access type of the file if it is open or Access::none if it is closed. Can return Access::unknown if
+   * there was an error or the access type is not recognised.
+   */
+  Access access_type() const;
   /*!
    * @brief Open the assigned file.
    *

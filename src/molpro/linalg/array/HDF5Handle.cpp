@@ -35,16 +35,7 @@ HDF5Handle::~HDF5Handle() {
 }
 hid_t HDF5Handle::open_file(HDF5Handle::Access type) {
   if (file_is_open()) {
-    unsigned intent = 0;
-    auto err = H5Fget_intent(m_file_hid, &intent);
-    if (err < 0)
-      return hid_default;
-    unsigned curr_intent = 0;
-    if (type == Access::read_only)
-      curr_intent = H5F_ACC_RDONLY;
-    else if (type == Access::read_write)
-      curr_intent = H5F_ACC_RDWR;
-    if (intent == curr_intent || intent & curr_intent)
+    if (access_type() == type)
       return m_file_hid;
     else
       return hid_default;
@@ -142,6 +133,19 @@ hid_t HDF5Handle::open_group(const std::string &group) {
   m_group_name = group;
   m_group_owner = true;
   return open_group();
+}
+HDF5Handle::Access HDF5Handle::access_type() const {
+  if (!file_is_open())
+    return Access::none;
+  unsigned int intent;
+  auto err = H5Fget_intent(m_file_hid, &intent);
+  if (err < 0)
+    return Access::unknown;
+  if (H5F_ACC_RDONLY == intent)
+    return Access::read_only;
+  else if (H5F_ACC_RDWR & intent)
+    return Access::read_write;
+  return Access::unknown;
 }
 
 bool file_exists(const std::string &fname) { return !std::ifstream{fname}.fail(); }

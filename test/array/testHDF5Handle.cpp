@@ -97,6 +97,12 @@ TEST_F(HDF5HandleDummyF, open_file_with_name) {
   EXPECT_EQ(h->group_id(), HDF5Handle::hid_default);
 }
 
+TEST_F(HDF5HandleDummyF, open_file_with_name_check_access_type) {
+  auto id = h->open_file(name_single_dataset, HDF5Handle::Access::read_only);
+  ASSERT_TRUE(h->file_is_open());
+  ASSERT_EQ(h->access_type(), HDF5Handle::Access::read_only);
+}
+
 TEST_F(HDF5HandleDummyF, open_file_repeat) {
   auto id_first = h->open_file(name_single_dataset, HDF5Handle::Access::read_only);
   ASSERT_NE(id_first, HDF5Handle::hid_default);
@@ -178,6 +184,13 @@ TEST_F(HDF5HandleOpenFileCreatF, create_file) {
   EXPECT_TRUE(h->file_is_open());
   EXPECT_FALSE(h->empty());
   EXPECT_NE(id, HDF5Handle::hid_default);
+}
+
+TEST_F(HDF5HandleOpenFileCreatF, access_type) {
+  EXPECT_EQ(h->access_type(), HDF5Handle::Access::none);
+  auto id = h->open_file(file_name, HDF5Handle::Access::read_write);
+  ASSERT_TRUE(h->file_is_open());
+  EXPECT_EQ(h->access_type(), HDF5Handle::Access::read_write);
 }
 
 TEST_F(HDF5HandleOpenFileCreatF, create_group) {

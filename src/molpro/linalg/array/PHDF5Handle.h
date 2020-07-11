@@ -26,19 +26,19 @@ public:
   //! @param comm assign a different communicator
   PHDF5Handle(const PHDF5Handle &source, MPI_Comm comm);
   //! @copydoc HDF5Handle::HDF5Handle(const HDF5Handle&)
-  //! Uses the communicator from source
+  //! @note Uses the communicator from source
   PHDF5Handle(const PHDF5Handle &source);
   //! @copydoc HDF5Handle::operator=(const HDF5Handle&)
-  //! The communicator is not copied.
+  //! @note The communicator is not copied.
   PHDF5Handle &operator=(const PHDF5Handle &source);
   //! @copydoc HDF5Handle::HDF5Handle(HDF5Handle&&)
   //! @param comm assigns a new communicator
   PHDF5Handle(PHDF5Handle &&source, MPI_Comm comm) noexcept;
   //! @copydoc HDF5Handle::HDF5Handle(HDF5Handle&&)
-  //! Takes on communicator from source
+  //! @note Takes on communicator from source
   PHDF5Handle(PHDF5Handle &&source) noexcept;
   //! @copydoc HDF5Handle::operator=(HDF5Handle&&)
-  //! Takes on communicator from source
+  //! @note Takes on communicator from source
   PHDF5Handle &operator=(PHDF5Handle &&source) noexcept;
 
   //! Communicator belonging to the handle. Communicator is bound on construction and cannot be changed.

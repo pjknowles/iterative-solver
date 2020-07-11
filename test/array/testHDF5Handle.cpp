@@ -1,19 +1,14 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "data_util.h"
+
 #include <molpro/linalg/array/HDF5Handle.h>
 
 using molpro::linalg::array::util::file_exists;
 using molpro::linalg::array::util::hdf5_link_exists;
 using molpro::linalg::array::util::hdf5_open_file;
 using molpro::linalg::array::util::HDF5Handle;
-
-namespace {
-// File contents: "/dataset" where dataset is a float64 arange(0,30)
-const std::string name_single_dataset{std::string(ARRAY_DATA) + "/single_dataset.hdf5"};
-// File contents: "/group1/group2/dataset" where dataset is a float64 arange(0,30)
-const std::string name_inner_group_dataset{std::string(ARRAY_DATA) + "/inner_group_dataset.hdf5"};
-} // namespace
 
 TEST(HDF5util, file_exists) { EXPECT_TRUE(file_exists(ARRAY_DATA)); }
 

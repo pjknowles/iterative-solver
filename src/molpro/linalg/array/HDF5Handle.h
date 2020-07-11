@@ -82,13 +82,12 @@ public:
    * @param source handle to be copied.
    */
   HDF5Handle(const HDF5Handle &source);
-  // TODO implement!
   //! Copies source, closing any owned resources and opening a copy of resources owned by source
   HDF5Handle &operator=(const HDF5Handle &source);
-  //! Create a handle by transferring ownership from source
-  HDF5Handle(HDF5Handle &&source);
+  //! Create a handle by transferring ownership from source. Nothing is closed or opened.
+  HDF5Handle(HDF5Handle &&source) noexcept;
   //! Close any owned resources and transfer ownership from source
-  HDF5Handle &operator=(HDF5Handle &&source);
+  HDF5Handle &operator=(HDF5Handle &&source) noexcept;
 
   //! Options for access type when opening files.
   enum class Access { read_only, read_write, none, unknown };

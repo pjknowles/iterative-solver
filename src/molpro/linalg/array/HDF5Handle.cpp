@@ -54,6 +54,24 @@ HDF5Handle &HDF5Handle::operator=(const HDF5Handle &source) {
   return *this;
 }
 
+HDF5Handle::HDF5Handle(HDF5Handle &&source) noexcept : HDF5Handle{} { *this = std::forward<HDF5Handle>(source); }
+
+HDF5Handle &HDF5Handle::operator=(HDF5Handle &&source) noexcept {
+  if (file_is_open())
+    close_file();
+  m_file_hid = source.m_file_hid;
+  m_group_hid = source.m_group_hid;
+  m_file_name = source.m_file_name;
+  m_group_name = source.m_group_name;
+  m_file_owner = source.m_file_owner;
+  m_group_owner = source.m_group_owner;
+  source.m_file_owner = false;
+  source.m_group_owner = false;
+  auto dummy = HDF5Handle{};
+  source = dummy;
+  return *this;
+}
+
 HDF5Handle::~HDF5Handle() {
   HDF5Handle::close_file();
   HDF5Handle::close_group();

@@ -63,21 +63,25 @@ public:
   std::unique_ptr<HDF5Handle> h;
 };
 
+void check_dummy_state(const HDF5Handle& h) {
+  EXPECT_TRUE(h.empty());
+  EXPECT_FALSE(h.file_owner());
+  EXPECT_FALSE(h.group_owner());
+  EXPECT_FALSE(h.file_is_open());
+  EXPECT_FALSE(h.group_is_open());
+  EXPECT_EQ(h.file_id(), HDF5Handle::hid_default);
+  EXPECT_EQ(h.group_id(), HDF5Handle::hid_default);
+  EXPECT_TRUE(h.file_name().empty());
+  EXPECT_TRUE(h.group_name().empty());
+}
+
 TEST_F(HDF5HandleDummyF, default_constructor) {
-  ASSERT_TRUE(h->empty());
-  EXPECT_FALSE(h->file_owner());
-  EXPECT_FALSE(h->group_owner());
-  EXPECT_FALSE(h->file_is_open());
-  EXPECT_FALSE(h->group_is_open());
-  EXPECT_EQ(h->file_id(), HDF5Handle::hid_default);
-  EXPECT_EQ(h->group_id(), HDF5Handle::hid_default);
+  check_dummy_state(*h);
   EXPECT_NO_THROW(h->close_file());
   EXPECT_NO_THROW(h->close_group());
   EXPECT_EQ(h->open_file(HDF5Handle::Access::read_only), HDF5Handle::hid_default);
   EXPECT_EQ(h->open_file(HDF5Handle::Access::read_write), HDF5Handle::hid_default);
   EXPECT_EQ(h->open_group(), HDF5Handle::hid_default);
-  EXPECT_EQ(h->file_name(), std::string{});
-  EXPECT_EQ(h->group_name(), std::string{});
 }
 
 TEST_F(HDF5HandleDummyF, open_file) {
@@ -297,8 +301,8 @@ public:
   bool transferred_ownership_file = false;
   bool transferred_ownership_group = false;
   const std::string file_name = name_inner_group_dataset;
-  const std::string group_name = "group1";
-  const std::string group_name2 = "group1/group2";
+  const std::string group_name = "/group1";
+  const std::string group_name2 = "/group1/group2";
 };
 
 TEST_F(HDF5HandleUsingExistingObjectF, construct_from_file_hid) {
@@ -492,6 +496,7 @@ inline void copy_constructor_same_state(const HDF5Handle& h, const HDF5Handle& h
 TEST(HDF5Handle, copy_constructor_source_from_dummy) {
   auto hsource = HDF5Handle();
   auto h = HDF5Handle(hsource);
+  check_dummy_state(h);
   copy_constructor_same_state(h, hsource);
   EXPECT_EQ(h.file_id(), hsource.file_id());
   EXPECT_EQ(h.group_id(), hsource.group_id());
@@ -590,4 +595,106 @@ TEST_F(HDF5HandleUsingExistingObjectF, assignment_operator_from_file_name_open_t
   copy_constructor_same_state_grom_group_obj(h, hsource);
   EXPECT_NE(h.file_id(), id);
   EXPECT_NE(h.file_name(), name_single_dataset);
+}
+
+TEST(HDF5Handle, move_assignment_source_from_dummy) {
+  HDF5Handle&& hsource = HDF5Handle();
+  auto h = HDF5Handle();
+  h = std::forward<HDF5Handle>(hsource);
+  check_dummy_state(h);
+  check_dummy_state(hsource);
+}
+
+TEST(HDF5Handle, move_assignment_source_from_file_group_name_open) {
+  HDF5Handle&& hsource = HDF5Handle(name_single_dataset, "/");
+  hsource.open_group();
+  ASSERT_TRUE(hsource.file_is_open());
+  ASSERT_TRUE(hsource.group_is_open());
+  auto fid_source = hsource.file_id();
+  auto gid_source = hsource.group_id();
+  auto h = HDF5Handle(name_inner_group_dataset, "group1");
+  h.open_group();
+  ASSERT_TRUE(h.file_is_open());
+  ASSERT_TRUE(h.group_is_open());
+  auto fid = h.file_id();
+  auto gid = h.group_id();
+  h = std::forward<HDF5Handle>(hsource);
+  check_dummy_state(hsource);
+  EXPECT_TRUE(H5Iis_valid(fid) == 0) << "previous file should have been closed";
+  EXPECT_TRUE(H5Iis_valid(gid) == 0) << "previous group should have been closed";
+  EXPECT_EQ(h.file_id(), fid_source) << "take ownership of the previous id";
+  EXPECT_EQ(h.group_id(), gid_source) << "take ownership of the previous id";
+  EXPECT_TRUE(h.file_is_open());
+  EXPECT_TRUE(h.group_is_open());
+  EXPECT_TRUE(h.file_owner());
+  EXPECT_TRUE(h.group_owner());
+  EXPECT_EQ(h.file_name(), name_single_dataset);
+  EXPECT_EQ(h.group_name(), "/");
+}
+
+TEST(HDF5Handle, move_constructor_from_file_group_name_open) {
+  auto file_name = name_inner_group_dataset;
+  auto group_name = "/group1";
+  HDF5Handle&& hsource = HDF5Handle(file_name, group_name);
+  hsource.open_group();
+  ASSERT_TRUE(hsource.file_is_open());
+  ASSERT_TRUE(hsource.group_is_open());
+  auto fid_source = hsource.file_id();
+  auto gid_source = hsource.group_id();
+  auto h = HDF5Handle(std::forward<HDF5Handle>(hsource));
+  check_dummy_state(hsource);
+  EXPECT_TRUE(h.file_is_open());
+  EXPECT_TRUE(h.group_is_open());
+  EXPECT_EQ(h.file_id(), fid_source) << "take ownership of the previous id";
+  EXPECT_EQ(h.group_id(), gid_source) << "take ownership of the previous id";
+  EXPECT_TRUE(h.file_owner());
+  EXPECT_TRUE(h.group_owner());
+  EXPECT_EQ(h.file_name(), file_name);
+  EXPECT_EQ(h.group_name(), group_name);
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, move_assignment_operator_from_group_obj_with_own_to_file_name) {
+  transferred_ownership_group = true;
+  HDF5Handle&& hsource = HDF5Handle(gid, transferred_ownership_group);
+  hsource.open_group();
+  ASSERT_FALSE(hsource.file_is_open());
+  ASSERT_TRUE(hsource.group_is_open());
+  auto fid_source = hsource.file_id();
+  auto gid_source = hsource.group_id();
+  auto h = HDF5Handle(name_single_dataset);
+  h.open_file(HDF5Handle::Access::read_only);
+  ASSERT_TRUE(h.file_is_open());
+  ASSERT_FALSE(h.group_is_open());
+  auto fid_target = h.file_id();
+  h = std::forward<HDF5Handle>(hsource);
+  check_dummy_state(hsource);
+  EXPECT_TRUE(H5Iis_valid(fid_target) == 0) << "previous file should have been closed";
+  EXPECT_EQ(h.file_id(), fid_source) << "take ownership of the previous id";
+  EXPECT_EQ(h.group_id(), gid_source) << "take ownership of the previous id";
+  EXPECT_FALSE(h.file_is_open());
+  EXPECT_TRUE(h.group_is_open());
+  EXPECT_TRUE(h.file_owner());
+  EXPECT_TRUE(h.group_owner());
+  EXPECT_EQ(h.file_name(), file_name);
+  EXPECT_EQ(h.group_name(), group_name);
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, move_constructor_operator_from_group_obj_with_own) {
+  transferred_ownership_group = true;
+  HDF5Handle&& hsource = HDF5Handle(gid, transferred_ownership_group);
+  hsource.open_group();
+  ASSERT_FALSE(hsource.file_is_open());
+  ASSERT_TRUE(hsource.group_is_open());
+  auto fid_source = hsource.file_id();
+  auto gid_source = hsource.group_id();
+  auto h = HDF5Handle(std::forward<HDF5Handle>(hsource));
+  check_dummy_state(hsource);
+  EXPECT_FALSE(h.file_is_open());
+  EXPECT_TRUE(h.group_is_open());
+  EXPECT_EQ(h.file_id(), fid_source) << "take ownership of the previous id";
+  EXPECT_EQ(h.group_id(), gid_source) << "take ownership of the previous id";
+  EXPECT_TRUE(h.file_owner());
+  EXPECT_TRUE(h.group_owner());
+  EXPECT_EQ(h.file_name(), file_name);
+  EXPECT_EQ(h.group_name(), group_name);
 }

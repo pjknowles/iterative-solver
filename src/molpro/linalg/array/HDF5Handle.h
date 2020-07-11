@@ -76,9 +76,13 @@ public:
 
   virtual ~HDF5Handle();
 
-  // TODO implement!
-  //! Creates a new handle from source. If source is an owner of file or group, than they are opened again.
+  /*!
+   * @brief Creates a new handle from source. Assignment and ownership of any group or file is copied. Any open and
+   * owned objects in source are also opened in the copy.
+   * @param source handle to be copied.
+   */
   HDF5Handle(const HDF5Handle &source);
+  // TODO implement!
   //! Copies source, closing any owned resources and opening a copy of resources owned by source
   HDF5Handle &operator=(const HDF5Handle &source);
   //! Create a handle by transferring ownership from source

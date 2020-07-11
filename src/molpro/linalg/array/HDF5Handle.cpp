@@ -29,6 +29,21 @@ HDF5Handle::HDF5Handle(hid_t hid, bool transfer_ownership) {
     }
   }
 }
+HDF5Handle::HDF5Handle(const HDF5Handle &source)
+    : m_file_hid{source.m_file_hid}, m_group_hid{source.m_group_hid}, m_file_name{source.m_file_name},
+      m_group_name{source.m_group_name}, m_file_owner{source.m_file_owner}, m_group_owner{source.m_group_owner} {
+  if (m_file_owner) {
+    m_file_hid = hid_default;
+    if (source.file_is_open())
+      HDF5Handle::open_file(source.access_type());
+  }
+  if (m_group_owner) {
+    m_group_hid = hid_default;
+    if (source.group_is_open())
+      HDF5Handle::open_group();
+  }
+}
+
 HDF5Handle::~HDF5Handle() {
   HDF5Handle::close_file();
   HDF5Handle::close_group();

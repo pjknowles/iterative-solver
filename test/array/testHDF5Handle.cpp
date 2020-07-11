@@ -477,3 +477,92 @@ TEST_F(HDF5HandleUsingExistingObjectF, construct_from_group_with_own__open_file)
   ASSERT_FALSE(handle.file_is_open()) << "reassignment of files is forbidden";
   EXPECT_EQ(id, HDF5Handle::hid_default);
 }
+
+inline void copy_constructor_same_state(const HDF5Handle& h, const HDF5Handle& hsource) {
+  EXPECT_EQ(h.access_type(), hsource.access_type());
+  EXPECT_EQ(h.file_name(), hsource.file_name());
+  EXPECT_EQ(h.group_name(), hsource.group_name());
+  EXPECT_EQ(h.file_is_open(), hsource.file_is_open());
+  EXPECT_EQ(h.group_is_open(), hsource.group_is_open());
+  EXPECT_EQ(h.file_owner(), hsource.file_owner());
+  EXPECT_EQ(h.group_owner(), hsource.group_owner());
+  EXPECT_EQ(h.empty(), hsource.empty());
+}
+
+TEST(HDF5Handle, copy_constructor_source_from_dummy) {
+  auto hsource = HDF5Handle();
+  auto h = HDF5Handle(hsource);
+  copy_constructor_same_state(h, hsource);
+  EXPECT_EQ(h.file_id(), hsource.file_id());
+  EXPECT_EQ(h.group_id(), hsource.group_id());
+}
+
+TEST(HDF5Handle, copy_constructor_source_from_file_name_file_closed) {
+  auto hsource = HDF5Handle(name_inner_group_dataset);
+  auto h = HDF5Handle(hsource);
+  copy_constructor_same_state(h, hsource);
+  EXPECT_EQ(h.file_id(), hsource.file_id());
+  EXPECT_EQ(h.group_id(), hsource.group_id());
+}
+
+TEST(HDF5Handle, copy_constructor_source_from_file_name_file_open) {
+  auto hsource = HDF5Handle(name_inner_group_dataset);
+  hsource.open_file(HDF5Handle::Access::read_only);
+  hsource.open_group("group1");
+  ASSERT_TRUE(hsource.file_is_open());
+  ASSERT_TRUE(hsource.group_is_open());
+  auto h = HDF5Handle(hsource);
+  copy_constructor_same_state(h, hsource);
+  EXPECT_NE(h.file_id(), hsource.file_id());
+  EXPECT_NE(h.group_id(), hsource.group_id());
+}
+
+TEST(HDF5Handle, copy_constructor_source_from_file_and_group_name) {
+  auto hsource = HDF5Handle(name_inner_group_dataset, "group1");
+  auto h = HDF5Handle(hsource);
+  copy_constructor_same_state(h, hsource);
+  EXPECT_EQ(h.file_id(), hsource.file_id());
+  EXPECT_EQ(h.group_id(), hsource.group_id());
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, copy_constructor_source_from_file_obj) {
+  auto hsource = HDF5Handle(fid);
+  auto h = HDF5Handle(hsource);
+  copy_constructor_same_state(h, hsource);
+  EXPECT_EQ(h.file_id(), hsource.file_id());
+  EXPECT_EQ(h.group_id(), hsource.group_id());
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, copy_constructor_source_from_file_obj_with_own) {
+  transferred_ownership_file = true;
+  auto hsource = HDF5Handle(fid, transferred_ownership_file);
+  auto h = HDF5Handle(hsource);
+  copy_constructor_same_state(h, hsource);
+  EXPECT_NE(h.file_id(), hsource.file_id());
+  EXPECT_EQ(h.group_id(), hsource.group_id());
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, copy_constructor_source_from_group_obj) {
+  auto hsource = HDF5Handle(gid);
+  auto h = HDF5Handle(hsource);
+  copy_constructor_same_state(h, hsource);
+  EXPECT_EQ(h.file_id(), hsource.file_id());
+  EXPECT_EQ(h.group_id(), hsource.group_id());
+}
+
+TEST_F(HDF5HandleUsingExistingObjectF, copy_constructor_source_from_group_obj_with_own) {
+  transferred_ownership_group = true;
+  auto hsource = HDF5Handle(gid, transferred_ownership_group);
+  auto h = HDF5Handle(hsource);
+  EXPECT_EQ(h.access_type(), HDF5Handle::Access::read_only)
+      << "even though source had a closed file, opening a group automatically opens the file";
+  EXPECT_EQ(h.file_name(), hsource.file_name());
+  EXPECT_EQ(h.group_name(), hsource.group_name());
+  EXPECT_TRUE(h.file_is_open()) << "even though source had a closed file, opening a group automatically opens the file";
+  EXPECT_EQ(h.group_is_open(), hsource.group_is_open());
+  EXPECT_EQ(h.file_owner(), hsource.file_owner());
+  EXPECT_EQ(h.group_owner(), hsource.group_owner());
+  EXPECT_EQ(h.empty(), hsource.empty());
+  EXPECT_NE(h.file_id(), hsource.file_id());
+  EXPECT_NE(h.group_id(), hsource.group_id());
+}

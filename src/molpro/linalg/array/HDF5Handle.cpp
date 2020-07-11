@@ -85,17 +85,20 @@ hid_t HDF5Handle::open_file(HDF5Handle::Access type) {
   }
   if (!m_file_owner || m_file_name.empty())
     return hid_default;
+  auto plist = _open_plist();
   if (file_exists(m_file_name)) {
     if (type == Access::read_only)
-      m_file_hid = H5Fopen(m_file_name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+      m_file_hid = H5Fopen(m_file_name.c_str(), H5F_ACC_RDONLY, plist);
     else
-      m_file_hid = H5Fopen(m_file_name.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+      m_file_hid = H5Fopen(m_file_name.c_str(), H5F_ACC_RDWR, plist);
   } else {
     if (type == Access::read_only)
       m_file_hid = hid_default;
     else
-      m_file_hid = H5Fcreate(m_file_name.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT);
+      m_file_hid = H5Fcreate(m_file_name.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, plist);
   }
+  if (plist != H5P_DEFAULT)
+    H5Pclose(plist);
   if (m_file_hid < 0) {
     m_file_hid = hid_default;
   }
@@ -195,6 +198,7 @@ hid_t HDF5Handle::group_id() const { return m_group_hid; }
 bool HDF5Handle::file_owner() const { return m_file_owner; }
 bool HDF5Handle::group_owner() const { return m_group_owner; }
 bool HDF5Handle::empty() const { return m_file_hid == hid_default && m_group_hid == hid_default; }
+hid_t HDF5Handle::_open_plist() { return H5P_DEFAULT; }
 
 bool file_exists(const std::string &fname) { return !std::ifstream{fname}.fail(); }
 

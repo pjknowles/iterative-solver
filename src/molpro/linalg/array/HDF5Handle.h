@@ -216,12 +216,8 @@ protected:
   std::string m_group_name;        //!< path to the group in hdf5 file
   bool m_file_owner = false;       //!< flags that the file was open by this instance and should be closed by it
   bool m_group_owner = false;      //!< flags that the group was open by this instance and should be closed by it
+  virtual hid_t _open_plist();     //!< returns property list for opening the file
 };
-
-/*!
- * @brief Parallel version of HDF5Handle
- */
-class PHDF5Handle : public HDF5Handle {};
 
 //! Returns true if the file exists
 bool file_exists(const std::string &fname);

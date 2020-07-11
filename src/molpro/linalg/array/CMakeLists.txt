@@ -26,7 +26,7 @@ if (MPI)
         target_compile_definitions(${PROJECT_NAME} PUBLIC ${HDF5_DEFINITIONS})
         target_compile_definitions(${PROJECT_NAME} PUBLIC LINEARALGEBRA_ARRAY_HDF5)
         LibraryManager_Append(${PROJECT_NAME}
-                SOURCES HDF5Handle.cpp DistrArrayHDF5.cpp
-                PUBLIC_HEADER HDF5Handle.h DistrArrayHDF5.h)
+                SOURCES HDF5Handle.cpp PHDF5Handle.cpp DistrArrayHDF5.cpp
+                PUBLIC_HEADER HDF5Handle.h PHDF5Handle.h DistrArrayHDF5.h)
     endif ()
 endif ()

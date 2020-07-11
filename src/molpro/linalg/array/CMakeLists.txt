@@ -1,7 +1,20 @@
 if (MPI)
+    set(HDF5_PREFER_PARALLEL ON)
+endif ()
+find_package(HDF5 REQUIRED COMPONENTS C)
+
+LibraryManager_Append(${PROJECT_NAME}
+        SOURCES HDF5Handle.cpp
+        PUBLIC_HEADER HDF5Handle.h
+        )
+target_link_libraries(${PROJECT_NAME} PUBLIC ${HDF5_LIBRARIES})
+target_include_directories(${PROJECT_NAME} PUBLIC ${HDF5_INCLUDE_DIRS})
+target_compile_definitions(${PROJECT_NAME} PUBLIC ${HDF5_DEFINITIONS})
+
+if (MPI)
     LibraryManager_Append(${PROJECT_NAME}
-            SOURCES DistrArray.cpp util.cpp
-            PUBLIC_HEADER DistrArray.h util.h
+            SOURCES DistrArray.cpp util.cpp PHDF5Handle.cpp
+            PUBLIC_HEADER DistrArray.h util.h PHDF5Handle.h
             )
 
     if (LINEARALGEBRA_ARRAY_MPI3)
@@ -18,15 +31,12 @@ if (MPI)
     endif ()
 
     if (LINEARALGEBRA_ARRAY_HDF5)
-        message(STATUS "Building ${PROJECT_NAME} with MPI3 Array")
+        message(STATUS "Building ${PROJECT_NAME} with HDF5 Array")
         set(HDF5_PREFER_PARALLEL ON)
         find_package(HDF5 REQUIRED COMPONENTS C)
-        target_link_libraries(${PROJECT_NAME} PUBLIC ${HDF5_LIBRARIES})
-        target_include_directories(${PROJECT_NAME} PUBLIC ${HDF5_INCLUDE_DIRS})
-        target_compile_definitions(${PROJECT_NAME} PUBLIC ${HDF5_DEFINITIONS})
         target_compile_definitions(${PROJECT_NAME} PUBLIC LINEARALGEBRA_ARRAY_HDF5)
         LibraryManager_Append(${PROJECT_NAME}
-                SOURCES HDF5Handle.cpp PHDF5Handle.cpp DistrArrayHDF5.cpp
-                PUBLIC_HEADER HDF5Handle.h PHDF5Handle.h DistrArrayHDF5.h)
+                SOURCES DistrArrayHDF5.cpp
+                PUBLIC_HEADER DistrArrayHDF5.h)
     endif ()
 endif ()

@@ -6,8 +6,6 @@
 #include <algorithm>
 #include <chrono>
 #include <functional>
-#include <ga-mpi.h>
-#include <ga.h>
 #include <numeric>
 #include <thread>
 
@@ -165,7 +163,7 @@ public:
   //! Stores a range in the buffer {1, 2, 3, 4, 5, .., dim}
   DistrArrayRangeF() : Array((size_t)dim, mpi_comm), lock(mpi_comm), p_rank(0), p_size(0) {
     MPI_Comm_rank(mpi_comm, &p_rank);
-    MPI_Comm_rank(mpi_comm, &p_size);
+    MPI_Comm_size(mpi_comm, &p_size);
     Array::allocate_buffer();
     values.resize(dim);
     std::iota(values.begin(), values.end(), 1.);
@@ -382,7 +380,9 @@ REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeF, gather, scatter, scatter_acc, at, 
 template <typename Array> class DistrArrayCollectiveOpF : public ::testing::Test {
 public:
   DistrArrayCollectiveOpF()
-      : lock(mpi_comm), p_rank(GA_Nodeid()), p_size(GA_Nnodes()), a(dim, mpi_comm), b(dim, mpi_comm) {
+      : lock(mpi_comm), p_rank(0), p_size(0), a(dim, mpi_comm), b(dim, mpi_comm) {
+    MPI_Comm_rank(mpi_comm, &p_rank);
+    MPI_Comm_size(mpi_comm, &p_size);
     a.allocate_buffer();
     b.allocate_buffer();
     range_alpha.resize(dim);

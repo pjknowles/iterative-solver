@@ -16,7 +16,7 @@ DependencyManager_Declare(Profiler https://gitlab.com/molpro/profiler.git)
 
 DependencyManager_Declare(utilities https://gitlab+deploy-token-181030:whWoM4qkenzjGjWsFTxj@gitlab.com/molpro/utilities.git)
 
-if (MPI AND LINEARALGEBRA_ARRAY_GA)
+if (NOT PPIDD AND (MPI AND LINEARALGEBRA_ARRAY_GA))
     set(GA_RUNTIME "MPI_RMA" CACHE STRING "overwriting default for GA runtime protocol")
     if (NOT TARGET ga::ga)
         find_program(ga-config ga-config)

@@ -83,7 +83,7 @@ public:
    */
   void add(const fastvector& vector, const fastvector& action, const std::vector<slowvector>& rhs,
            bool resres = false) {
-    for (const auto& vi : m_vectors) {
+    for (const auto& vi : (resres ? m_actions : m_vectors)) {
       m_metric[m_index][vi.first] = m_metric[vi.first][m_index] = vector.dot(vi.second);
       m_action[vi.first][m_index] = action.dot(vi.second);
     }
@@ -128,15 +128,23 @@ public:
   scalar_type add(const fastvector& vector, const fastvector& action, const slowvector& oldvector,
                   const slowvector& oldaction, const std::vector<slowvector>& rhs, bool resres = false) {
     auto rr = vector.dot(vector);
-    auto dd = oldvector.dot(oldvector);
-    auto rd = vector.dot(oldvector);
     decltype(rr) alpha, beta;
-    if (rd * rd >= rr * dd) { // let linear dependence code deal with this exceptional case later
-      alpha = 1;
-      beta = -1;
+    if (resres) {
+      rr = action.dot(action);
+      auto dd = oldaction.dot(oldaction);
+      auto rd = action.dot(oldaction);
+      alpha = 1 / std::sqrt(rr + dd - 2 * rd);
+      beta = -alpha;
     } else {
-      alpha = 1 / std::sqrt(rr * (-1 + rr * dd / (rd * rd)));
-      beta = -alpha * rr / rd;
+      auto dd = oldvector.dot(oldvector);
+      auto rd = vector.dot(oldvector);
+      if (rd * rd >= rr * dd) { // let linear dependence code deal with this exceptional case later
+        alpha = 1;
+        beta = -1;
+      } else {
+        alpha = 1 / std::sqrt(rr * (-1 + rr * dd / (rd * rd)));
+        beta = -alpha * rr / rd;
+      }
     }
     //    molpro::cout << "Q.add difference, alpha=" << alpha << ", beta=" << beta << std::endl;
     //    molpro::cout << "dd=" << dd << ", rr=" << rr

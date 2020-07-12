@@ -33,8 +33,8 @@ void update(pv& psc, const pv& psg) {
 
 int main(int argc, char* argv[]) {
   alpha = 1;
-  n = 100;
-  anharmonicity = .5;
+  n = 2;//100;
+  anharmonicity = 0*.5;
   molpro::linalg::DIIS<pv> solver;
   solver.m_verbosity = 3;
   solver.m_maxIterations = 100;
@@ -45,14 +45,14 @@ int main(int argc, char* argv[]) {
   x.put(&one, 1, 0); // initial guess
   for (size_t iter = 0; iter < solver.m_maxIterations; ++iter) {
     anharmonic_residual(x, g);
-    std::cout << "Before addVector x: "<<x[0]<<std::endl;
-    std::cout << "Before addVector g: "<<g[0]<<std::endl;
+    std::cout << "Before addVector x: "<<x[0]<<" "<<x[n-1] <<std::endl;
+    std::cout << "Before addVector g: "<<g[0]<<" "<<g[n-1] <<std::endl;
     solver.addVector(x, g);
-    std::cout << "After  addVector x: "<<x[0]<<std::endl;
-    std::cout << "After  addVector g: "<<g[0]<<std::endl;
+    std::cout << "After  addVector x: "<<x[0]<<" "<<x[n-1] <<std::endl;
+    std::cout << "After  addVector g: "<<g[0]<<" "<<g[n-1] <<std::endl;
     update(x, g);
-    std::cout << "After  update x: "<<x[0]<<std::endl;
-    std::cout << "After  update g: "<<g[0]<<std::endl;
+    std::cout << "After  update x: "<<x[0]<<" "<<x[n-1] <<std::endl;
+    std::cout << "After  update g: "<<g[0]<<" "<<g[n-1] <<std::endl;
     if (solver.endIteration(x, g))
       break;
   }

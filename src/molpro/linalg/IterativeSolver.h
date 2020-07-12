@@ -213,9 +213,10 @@ public:
       const auto& qha = m_qspace.action(a);
       for (size_t m = 0; m < m_working_set.size(); m++) {
         m_s_qr[a][m] = parameters[m].get().dot(m_qspace[a]);
-        m_h_qr[a][m] = action[m].get().dot(m_qspace[a]);
+        m_h_qr[a][m] = action[m].get().dot(m_subspaceMatrixResRes ? m_qspace.action(a) : m_qspace[a]);
         m_hh_qr[a][m] = action[m].get().dot(m_qspace.action(a));
-        m_h_rq[a][m] = m_hermitian ? m_h_qr[a][m] : parameters[m].get().dot(m_qspace.action(a));
+        m_h_rq[a][m] = m_hermitian ? m_h_qr[a][m]
+                                   : (m_subspaceMatrixResRes ? action : parameters)[m].get().dot(m_qspace.action(a));
         //        molpro::cout << "a=" << a << ", m=" << m << ", m_s_qr " << m_s_qr[a][m] << ", m_h_qr " << m_h_qr[a][m]
         //                     << ", m_h_rq " << m_h_rq[a][m] << std::endl;
       }
@@ -245,7 +246,7 @@ public:
         m_rhs_r[m][rhs] = parameters[m].get().dot(m_rhs[rhs]);
       for (size_t n = 0; n < m_working_set.size(); n++) {
         m_s_rr[m][n] = parameters[n].get().dot(parameters[m].get());
-        m_h_rr[m][n] = action[n].get().dot(parameters[m].get());
+        m_h_rr[m][n] = action[n].get().dot((m_subspaceMatrixResRes ? action[m] : parameters[m]).get());
         m_hh_rr[m][n] = action[n].get().dot(action[m].get());
       }
     }
@@ -1888,6 +1889,7 @@ protected:
         best = i;
     }
     scalar_type fBaseScale = std::sqrt(d(worst) * d(best));
+    fBaseScale=1;
 
     //   while (nDim > this->m_maxDim) { // prune away the worst/oldest vector. Algorithm to be done properly yet
     //    size_t prune = worst;
@@ -1924,7 +1926,8 @@ protected:
 
     // make Lagrange/constraint lines.
     for (size_t i = 0; i < nDim; ++i)
-      B(i, nDim) = B(nDim, i) = -1;
+      B(i, nDim) = B(nDim, i) = 0;
+    B(nDim, nDim-1) =B(nDim-1, nDim) = -1;
     B(nDim, nDim) = 0.0;
     Rhs[nDim] = -1;
     molpro::cout << "B:" << std::endl << B << std::endl;

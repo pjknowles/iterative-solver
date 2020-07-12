@@ -131,7 +131,8 @@ public:
       m_profiler(profiler),
       m_pspace(),
       m_qspace(m_pspace, m_hermitian),
-      m_threshold_residual_recalculate(1e-16)
+      m_threshold_residual_recalculate(1e-16),
+      m_exclude_r_from_redundancy_test(false)
 {
 }
   // clang-format on
@@ -657,7 +658,8 @@ protected:
   std::map<int, int> m_q_solutions;       ///< key of q space vector of a converged solution
   double
       m_threshold_residual_recalculate; ///< if the length of a residual comes in lower than this in the subspace-based
-                                        ///< calculation, it will be recalculated with the full residual
+  ///< calculation, it will be recalculated with the full residual
+  bool m_exclude_r_from_redundancy_test;
 
 public:
   /*!
@@ -683,12 +685,13 @@ public:
 protected:
   virtual bool solveReducedProblem() = 0;
 
-  int propose_singularity_deletion(size_t n, const scalar_type* m,
+  int propose_singularity_deletion(size_t n, size_t ndim, const scalar_type* m,
                                    const std::vector<int>& candidates = std::vector<int>(),
                                    scalar_type threshold = 1e-10) {
     //    Eigen::EigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> > ss(m_subspaceMatrix);
     //    molpro::cout << "eigenvalues "<<ss.eigenvalues()<<std::endl;
-    Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester(m, n, n);
+    Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester_(m, ndim, ndim);
+    auto singularTester = singularTester_.block(0, 0, n, n);
     Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester,
                                                                                      Eigen::ComputeThinV);
     //    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
@@ -783,8 +786,9 @@ protected:
       //      for (const auto& c : candidates)
       //        molpro::cout << " " << c;
       //      molpro::cout << std::endl;
-      auto del = propose_singularity_deletion(nX, &singularTester(0, 0), candidates,
-                                              nQ > m_maxQ ? 1e6 : m_singularity_threshold);
+      auto del =
+          propose_singularity_deletion(m_exclude_r_from_redundancy_test ? nX - nR : nX, nX, &singularTester(0, 0),
+                                       candidates, nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
         if (m_verbosity > 2)
           molpro::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
@@ -1827,6 +1831,7 @@ public:
     this->m_roots = 1;
     this->m_maxQ = m_maxDim;
     setMode(DIISmode);
+    this->m_exclude_r_from_redundancy_test = true;
     Reset();
   }
 
@@ -1889,7 +1894,7 @@ protected:
         best = i;
     }
     scalar_type fBaseScale = std::sqrt(d(worst) * d(best));
-    fBaseScale=1;
+    fBaseScale = 1;
 
     //   while (nDim > this->m_maxDim) { // prune away the worst/oldest vector. Algorithm to be done properly yet
     //    size_t prune = worst;
@@ -1927,7 +1932,7 @@ protected:
     // make Lagrange/constraint lines.
     for (size_t i = 0; i < nDim; ++i)
       B(i, nDim) = B(nDim, i) = 0;
-    B(nDim, nDim-1) =B(nDim-1, nDim) = -1;
+    B(nDim, nDim - 1) = B(nDim - 1, nDim) = -1;
     B(nDim, nDim) = 0.0;
     Rhs[nDim] = -1;
     molpro::cout << "B:" << std::endl << B << std::endl;

@@ -10,7 +10,7 @@ namespace array {
 namespace util {
 
 //! Places a new operation in the register, so that high priority arrays that are equal are grouped together
-template <typename Op, int N> static void register_op(std::list<Op> &reg, Op &&new_op) {
+template <typename Op, int N> static void register_operation(std::list<Op> &reg, Op &&new_op) {
   auto end_of_group = reg.end();
   if (N >= 0) {
     auto ref = std::get<N>(new_op);
@@ -22,6 +22,46 @@ template <typename Op, int N> static void register_op(std::list<Op> &reg, Op &&n
   if (end_of_group == reg.rbegin())
     end_of_group = reg.end();
   reg.insert(end_of_group, std::forward<Op>(new_op));
+}
+
+/*!
+ * @brief Find duplicates references to x and y arrays and store unique elements in a separate vector.
+ *
+ * Vector of scalars is returned complete without truncation.
+ * The register becomes a vector of pairs, first element of a pair containing index of x array in the vector of unique x
+ * arrays, the second is for y arrays.
+ *
+ * @return Returns the new register in terms of x and y indices, vectors of unique x and y arrays, and vector of all
+ * scalars.
+ */
+//!
+template <typename X, typename Y, typename S>
+std::tuple<std::vector<std::pair<size_t, size_t>>, std::vector<X>, std::vector<Y>, std::vector<S>>
+remove_duplicates(const std::list<std::tuple<X, Y, S>> &reg) {
+  auto n_op = reg.size();
+  std::vector<S> scalar;
+  scalar.reserve(n_op);
+  std::transform(cbegin(reg), cend(reg), std::back_inserter(scalar), [](const auto &el) { return std::get<2>(el); });
+  std::vector<std::pair<size_t, size_t>> op_register;
+  op_register.resize(n_op);
+  std::vector<X> xx;
+  std::vector<Y> yy;
+  for (size_t i = 0; i < n_op; ++i) {
+    auto x = std::get<0>(reg[i]);
+    auto y = std::get<1>(reg[i]);
+    auto it_x = std::find_if(cbegin(xx), cend(xx),
+                             [&x](const auto &el) { return std::addressof(x.get()) == std::addressof(el.get()); });
+    auto it_y = std::find_if(cbegin(yy), cend(yy),
+                             [&y](const auto &el) { return std::addressof(y.get()) == std::addressof(el.get()); });
+    auto ix = distance(cbegin(xx), it_x);
+    auto iy = distance(cbegin(yy), it_y);
+    if (it_x == cend(xx))
+      xx.push_back(x);
+    if (it_y == cend(yy))
+      yy.push_back(y);
+    op_register.emplace_back(ix, iy);
+  }
+  return {op_register, xx, yy, scalar};
 }
 
 } // namespace util
@@ -57,8 +97,6 @@ template <typename Op, int N> static void register_op(std::list<Op> &reg, Op &&n
  * AR slow;
  * ArrayHandler<AL,AR> handler;
  * AR copy_of_fast = handler.copy(fast);
- * //OR could use a proxy
- * copy_of_fast = handler(fast);
  * @endcode
  *
  * Lazy evaluation of axpy
@@ -84,7 +122,7 @@ template <typename Op, int N> static void register_op(std::list<Op> &reg, Op &&n
  * LazyHandle h = handle.lazy_handle();
  * for (auto i = 0ul; i < a1.size(); ++i)
  *   for (auto j = 0ul; j < a2.size(); ++j)
- *     h.dot(a1[i], alpha[i,j], a2[j]);
+ *     h.dot(a1[i], a2[j], result[i,j]);
  * h.eval(); // or let the destructor handle it
  * @endcode
  *
@@ -101,6 +139,7 @@ template <typename Op, int N> static void register_op(std::list<Op> &reg, Op &&n
  */
 template <class AL, class AR> class ArrayHandler {
 public:
+  using value_type = typename AR::value_type;
   ArrayHandler(const ArrayHandler &) = delete;
   virtual ~ArrayHandler() {
     std::transform(m_lazy_handles.begin(), m_lazy_handles.end(), [](auto el) {
@@ -112,8 +151,8 @@ public:
   virtual AL copy(const AR &source) = 0;
   virtual AR copy(const AL &source) = 0;
 
-  virtual AL &axpy(typename AR::value_type alpha, const AR &y) = 0;
-  virtual AL &dot(typename AR::value_type alpha, const AR &y) = 0;
+  virtual AL &axpy(value_type alpha, const AR &y) = 0;
+  virtual AL &dot(value_type alpha, const AR &y) = 0;
 
 protected:
   /*!
@@ -124,13 +163,14 @@ protected:
    * @param alphas full list of alphas
    * @param yy references to unique y arrays
    */
-  virtual void fused_axpy(const std::vector<std::tuple<size_t, size_t>> &reg,
-                          std::vector<std::reference_wrapper<AL>> &xx, std::vector<typename AR::value_type> alphas,
-                          std::vector<std::reference_wrapper<const AR>> &yy) = 0;
+  virtual void fused_axpy(const std::vector<std::pair<size_t, size_t>> &reg,
+                          std::vector<std::reference_wrapper<AL>> &xx,
+                          std::vector<std::reference_wrapper<const AR>> &yy, std::vector<value_type> alphas) = 0;
 
-  virtual void fused_dot(const std::vector<std::tuple<size_t, size_t>> &reg,
-                         std::vector<std::reference_wrapper<AL>> &xx, std::vector<std::reference_wrapper<const AR>> &yy,
-                         std::vector<std::reference_wrapper<typename AR::value_type>> &out) = 0;
+  virtual void fused_dot(const std::vector<std::pair<size_t, size_t>> &reg,
+                         std::vector<std::reference_wrapper<const AL>> &xx,
+                         std::vector<std::reference_wrapper<const AR>> &yy,
+                         std::vector<std::reference_wrapper<value_type>> &out) = 0;
 
   //! Assigns highest priority for accessing local buffer to either left or right array, or non to keep the original
   //! order of registered operations
@@ -144,90 +184,67 @@ protected:
     virtual ~LazyHandle() { LazyHandle::eval(); }
 
     //! Registers an axpy() operation
-    virtual void axpy(AL &x, typename AR::value_type alpha, const AR &y) {
+    virtual void axpy(AL &x, value_type alpha, const AR &y) {
       if (m_invalid)
         return;
       if (!m_dot_register.empty())
         m_handler.raise_error("Trying to register axpy when dot is already assigned. LazyHandle can only register "
                               "operations of the same type.");
       if (m_priority == Priority::left)
-        util::register_op<decltype(m_axpy_register.front()), 0>(m_axpy_register, {x, y, alpha});
+        util::register_operation<decltype(m_axpy_register.front()), 0>(m_axpy_register, {x, y, alpha});
       else if (m_priority == Priority::right)
-        util::register_op<decltype(m_axpy_register.front()), 1>(m_axpy_register, {x, y, alpha});
+        util::register_operation<decltype(m_axpy_register.front()), 1>(m_axpy_register, {x, y, alpha});
       else
-        util::register_op<decltype(m_axpy_register.front()), -1>(m_axpy_register, {x, y, alpha});
+        util::register_operation<decltype(m_axpy_register.front()), -1>(m_axpy_register, {x, y, alpha});
     }
 
     //! Registers a dot() operation
-    virtual void dot(const AL &x, const AR &y, typename AR::value_type &out) {
+    virtual void dot(const AL &x, const AR &y, value_type &out) {
       if (m_invalid)
         return;
       if (!m_axpy_register.empty())
         m_handler.raise_error("Trying to register dot when axpy is already assigned. LazyHandle can only register "
                               "operations of the same type.");
       if (m_priority == Priority::left)
-        util::register_op<decltype(m_dot_register.front()), 0>(m_dot_register, {x, y, std::ref(out)});
+        util::register_operation<decltype(m_dot_register.front()), 0>(m_dot_register, {x, y, std::ref(out)});
       else if (m_priority == Priority::right)
-        util::register_op<decltype(m_dot_register.front()), 1>(m_dot_register, {x, y, std::ref(out)});
+        util::register_operation<decltype(m_dot_register.front()), 1>(m_dot_register, {x, y, std::ref(out)});
       else
-        util::register_op<decltype(m_dot_register.front()), -1>(m_dot_register, {x, y, std::ref(out)});
+        util::register_operation<decltype(m_dot_register.front()), -1>(m_dot_register, {x, y, std::ref(out)});
     }
 
-    //! Sorts the registered operations to prioritize access to the left or right array, or keep in the original order,
-    //! merges operations if possible (e.g. same x, y, different alpha) and calls handler to evaluate
+    //! Calls handler to evaluate the registered operations
     virtual void eval() {
       if (m_invalid)
         return;
       if (!m_axpy_register.empty()) {
-        // Find duplicates and store unique elements in a separate vector
-        std::vector<std::reference_wrapper<typename AR::value_type>> scalar;
-        scalar.reserve(m_axpy_register.size());
-        std::copy(m_axpy_register.cbegin(), m_axpy_register.cend(), std::back_inserter(scalar),
-                  [](const auto &el) { return std::get<2>(el); });
-        std::vector<std::pair<size_t, size_t>> op_register; // pair of x and y array indices for each operation
-        op_register.resize(m_axpy_register.size());
-        std::vector<std::reference_wrapper<AL>> xx;
-        std::vector<std::reference_wrapper<const AR>> yy;
-        for (size_t i = 0; i < m_axpy_register.size(); ++i) {
-          auto x = std::get<0>(m_axpy_register[i]);
-          auto y = std::get<1>(m_axpy_register[i]);
-          auto it_x = std::find_if(cbegin(xx), cend(xx), [&x](const auto &el) {
-            return std::addressof(x.get()) == std::addressof(el.get());
-          });
-          auto it_y = std::find_if(cbegin(yy), cend(yy), [&y](const auto &el) {
-            return std::addressof(y.get()) == std::addressof(el.get());
-          });
-          auto ix = distance(cbegin(xx), it_x);
-          auto iy = distance(cbegin(yy), it_y);
-          if (it_x == cend(xx))
-            xx.push_back(x);
-          if (it_y == cend(yy))
-            yy.push_back(y);
-          op_register.emplace_back(ix, iy);
-        }
-        m_handler.fused_axpy(op_register, xx, yy, scalar);
+        auto reg = util::remove_duplicates(m_axpy_register);
+        m_handler.fused_axpy(std::get<0>(reg), std::get<1>(reg), std::get<2>(reg), std::get<3>(reg));
       }
-      if (!m_dot_register.empty())
-        m_handler.fused_dot();
+      if (!m_dot_register.empty()) {
+        auto reg = util::remove_duplicates(m_dot_register);
+        m_handler.fused_dot(std::get<0>(reg), std::get<1>(reg), std::get<2>(reg), std::get<3>(reg));
+      }
     }
 
-    //! Invalidate the handler so that registered operations do not get evaluated
+    //! Flag the handler as invalid so that no new operations are registered operations eval() does nothing
     void invalidate() { m_invalid = true; }
-    //! Returns true if the handle is invalid. LazyHandle becomes invalid when the overlying ArrayHandler is destroyed,
-    //! or invalidate() is called
+    //! Returns true if the handle is marked as invalid. LazyHandle becomes invalid when the overlying ArrayHandler is
+    //! destroyed, or invalidate() is called
     bool invalid() { return m_invalid; }
 
   protected:
-    ArrayHandler<AL, AR> &m_handler;      //! all operations are still done through the handler
-    bool m_invalid = false;               //! flags if the handler has been destroyed and LazyHandle is now invalid
-    Priority m_priority = Priority::none; //! how to prioritise evaluation when fusing a loop
-    std::list<std::tuple<std::reference_wrapper<AL>, std::reference_wrapper<const AR>, typename AR::value_type>>
-        m_axpy_register; //! register of axpy operations
+    ArrayHandler<AL, AR> &m_handler;      //!< all operations are still done through the handler
+    bool m_invalid = false;               //!< flags if the handler has been destroyed and LazyHandle is now invalid
+    Priority m_priority = Priority::none; //!< how to prioritise evaluation when fusing a loop
+    std::list<std::tuple<std::reference_wrapper<AL>, std::reference_wrapper<const AR>, value_type>>
+        m_axpy_register; //!< register of axpy operations
     std::list<std::tuple<std::reference_wrapper<const AL>, std::reference_wrapper<const AR>,
-                         std::reference_wrapper<typename AR::value_type>>>
-        m_dot_register; //! register of dot operations
+                         std::reference_wrapper<value_type>>>
+        m_dot_register; //!< register of dot operations
   };
 
+  //! A convenience wrapper around a pointer to the LazyHandle
   class ProxyHandle {
   protected:
     ProxyHandle(std::shared_ptr<LazyHandle> handle) : m_lazy_handle{std::move(handle)} {}

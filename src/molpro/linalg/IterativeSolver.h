@@ -88,10 +88,10 @@ static std::vector<std::vector<std::reference_wrapper<typename T::value_type>>> 
  * @tparam slowvector Used internally as a class for storing vectors on backing store
  */
 template <class T, class slowvector = T>
-class Base {
+class IterativeSolver {
 public:
   // clang-format off
-  Base(std::shared_ptr<molpro::Profiler> profiler = nullptr
+  IterativeSolver(std::shared_ptr<molpro::Profiler> profiler = nullptr
   ) :
       m_Pvectors(0),
       m_verbosity(0),
@@ -132,7 +132,7 @@ public:
 }
   // clang-format on
 
-  virtual ~Base() = default;
+  virtual ~IterativeSolver() = default;
 
 protected:
   using value_type = typename T::value_type;                            ///< The underlying type of elements of vectors
@@ -1269,7 +1269,7 @@ protected:
 };
 
 template <class T>
-typename T::scalar_type inline operator*(const typename Base<T>::Pvector& a, const typename Base<T>::Pvector& b) {
+typename T::scalar_type inline operator*(const typename IterativeSolver<T>::Pvector& a, const typename IterativeSolver<T>::Pvector& b) {
   typename T::scalar_type result = 0;
   for (const auto& aa : a)
     if (b.find(aa.first))
@@ -1295,16 +1295,16 @@ namespace linalg {
  * \tparam scalar Type of matrix elements
  */
 template <class T>
-class LinearEigensystem : public Base<T> {
+class LinearEigensystem : public IterativeSolver<T> {
 public:
-  using typename Base<T>::scalar_type;
-  using typename Base<T>::value_type;
-  using Base<T>::m_verbosity;
+  using typename IterativeSolver<T>::scalar_type;
+  using typename IterativeSolver<T>::value_type;
+  using IterativeSolver<T>::m_verbosity;
 
   /*!
    * \brief LinearEigensystem
    */
-  explicit LinearEigensystem(std::shared_ptr<molpro::Profiler> profiler = nullptr) : Base<T>(profiler) {
+  explicit LinearEigensystem(std::shared_ptr<molpro::Profiler> profiler = nullptr) : IterativeSolver<T>(profiler) {
     this->m_residual_rhs = false;
     this->m_residual_eigen = true;
     this->m_linear = true;
@@ -1371,15 +1371,15 @@ public:
  *
  */
 template <class T>
-class LinearEquations : public Base<T> {
-  using typename Base<T>::scalar_type;
-  using typename Base<T>::value_type;
+class LinearEquations : public IterativeSolver<T> {
+  using typename IterativeSolver<T>::scalar_type;
+  using typename IterativeSolver<T>::value_type;
 
 public:
   using vectorSet = typename std::vector<T>;                                       ///< Container of vectors
   using vectorRefSet = typename std::vector<std::reference_wrapper<T>>;            ///< Container of vectors
   using constVectorRefSet = typename std::vector<std::reference_wrapper<const T>>; ///< Container of vectors
-  using Base<T>::m_verbosity;
+  using IterativeSolver<T>::m_verbosity;
 
   /*!
    * \brief Constructor
@@ -1504,15 +1504,15 @@ protected:
  *
  */
 template <class T>
-class Optimize : public Base<T> {
+class Optimize : public IterativeSolver<T> {
 public:
-  using typename Base<T>::scalar_type;
-  using typename Base<T>::value_type;
+  using typename IterativeSolver<T>::scalar_type;
+  using typename IterativeSolver<T>::value_type;
   using vectorSet = typename std::vector<T>;                                       ///< Container of vectors
   using vectorRefSet = typename std::vector<std::reference_wrapper<T>>;            ///< Container of vectors
   using constVectorRefSet = typename std::vector<std::reference_wrapper<const T>>; ///< Container of vectors
-  using Base<T>::m_verbosity;
-  using Base<T>::m_values;
+  using IterativeSolver<T>::m_verbosity;
+  using IterativeSolver<T>::m_values;
 
   /*!
    * \brief Constructor
@@ -1675,7 +1675,7 @@ public:
       }
     }
     //    molpro::cout << "*exit endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
-    return Base<T>::endIteration(solution, residual);
+    return IterativeSolver<T>::endIteration(solution, residual);
   }
 
   virtual bool endIteration(std::vector<T>& solution, const std::vector<T>& residual) override {
@@ -1708,16 +1708,16 @@ public:
  *
  */
 template <class T>
-class DIIS : public Base<T> {
-  using Base<T>::m_residuals;
-  using Base<T>::m_solutions;
-  using Base<T>::m_others;
+class DIIS : public IterativeSolver<T> {
+  using IterativeSolver<T>::m_residuals;
+  using IterativeSolver<T>::m_solutions;
+  using IterativeSolver<T>::m_others;
 
 public:
-  using typename Base<T>::scalar_type;
-  using typename Base<T>::value_type;
-  using Base<T>::m_verbosity;
-  using Base<T>::m_Weights;
+  using typename IterativeSolver<T>::scalar_type;
+  using typename IterativeSolver<T>::value_type;
+  using IterativeSolver<T>::m_verbosity;
+  using IterativeSolver<T>::m_Weights;
   enum DIISmode_type {
     disabled ///< No extrapolation is performed
     ,

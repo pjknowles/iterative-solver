@@ -434,7 +434,7 @@ CONTAINS
   !> \param solution On input, the current solution.
   !> \param residual On input, the residual for solution.
   !> \param indices On exit, the most important base vectors
-  !> \param threshold Base vectors whose predicted contribution is less than
+  !> \param threshold IterativeSolver vectors whose predicted contribution is less than
   !> than this are not considered
   !> \return The number of vectors suggested.
   FUNCTION Iterative_Solver_Suggest_P(solution, residual, indices, threshold, lmppx)

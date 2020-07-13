@@ -16,7 +16,7 @@
 // using v = LinearAlgebra::PagedVector<double>;
 using v = molpro::linalg::OutOfCoreArray<double>;
 
-static std::stack<std::unique_ptr<molpro::linalg::Base<v>>> instances;
+static std::stack<std::unique_ptr<molpro::linalg::IterativeSolver<v>>> instances;
 
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, double thresh,
                                                            unsigned int maxIterations, int verbosity, int orthogonalize,

@@ -33,8 +33,8 @@ void update(pv& psc, const pv& psg) {
 
 int main(int argc, char* argv[]) {
   alpha = 1;
-  n = 2;//100;
-  anharmonicity = 0*.5;
+  n = 100;
+  anharmonicity = .1;
   molpro::linalg::DIIS<pv> solver;
   solver.m_verbosity = 3;
   solver.m_maxIterations = 100;

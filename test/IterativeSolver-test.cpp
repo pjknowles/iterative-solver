@@ -102,7 +102,15 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
 
   for (size_t iteration = 0; iteration < dimension + 1; iteration++) {
     action(x, g);
-    d.addVector(x, g);
+    auto nwork = d.addVector(x, g);
+    d.report();
+//    for (auto root=0; root < nwork; root++) {
+//      std::vector<double> xxx(dimension);
+//      x[root].get(xxx.data(),dimension,0);
+//      std::cout << "New working vector";
+//      for (const auto& e : xxx) std::cout << " "<<e;std::cout<<std::endl;
+//    }
+
     for (size_t root = 0; root < (size_t)d.m_roots; root++) {
       syncr(x[root], std::is_same<ptype, linalg::PagedArray<double>>{});
       syncr(g[root], std::is_same<ptype, linalg::PagedArray<double>>{});
@@ -113,12 +121,12 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
     update(x, g, shift);
     //    auto newp = d.suggestP(x, g, 3);
     // if (d.endIteration(x, g)) break;
-    bool upd = d.endIteration(x, g);
+//    bool upd = d.endIteration(x, g);
     for (size_t root = 0; root < (size_t)d.m_roots; root++) {
       syncr(x[root], std::is_same<ptype, linalg::PagedArray<double>>{});
       syncr(g[root], std::is_same<ptype, linalg::PagedArray<double>>{});
     }
-    if (upd)
+    if (nwork==0)
       break;
   }
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>> es(testmatrix);
@@ -136,6 +144,9 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
     molpro::cout << " " << e;
   molpro::cout << std::endl;
 
+  std::vector<int> rootlist;
+  for (size_t root = 0; root < (size_t)d.m_roots; root++) rootlist.push_back(root);
+  d.solution(rootlist,x,g);
   action(x, g);
   std::vector<scalar> errors;
   for (size_t root = 0; root < (size_t)d.m_roots; root++) {
@@ -202,13 +213,12 @@ void DIISTest(int verbosity = 0, size_t maxDim = 6, double svdThreshold = 1e-10,
   ptype x(2);
   ptype g(2);
   DIIS<ptype> d;
-  d.m_maxDim = maxDim;
+  d.m_maxQ = maxDim;
   d.m_svdThreshold = svdThreshold;
   d.setMode(mode);
 
   if (verbosity >= 0)
     molpro::cout << "Test DIIS::iterate, difficulty=" << difficulty << std::endl;
-  d.Reset();
   d.m_verbosity = verbosity - 1;
   //  d.m_options["weight"]=2;
   return;
@@ -230,7 +240,8 @@ void DIISTest(int verbosity = 0, size_t maxDim = 6, double svdThreshold = 1e-10,
     //    if (verbosity > 2)
     //      molpro::cout << "new x after iterate " << x.front() << std::endl;
     if (verbosity >= 0)
-      molpro::cout << "iteration " << iteration << ", Residual norm = " << std::sqrt(d.fLastResidual())
+      molpro::cout << "iteration " << iteration
+//                   << ", Residual norm = " << std::sqrt(d.fLastResidual())
                    << ", Distance from solution = "
                    << std::sqrt((xxx[0] - 1) * (xxx[0] - 1) + (xxx[1] - 1) * (xxx[1] - 1))
                    << ", error = " << d.errors().front() << ", converged? " << converged << std::endl;

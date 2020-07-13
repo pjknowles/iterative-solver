@@ -250,7 +250,7 @@ TEST(TestIterativeSolver, linear_equations) {
         rhs.back()[root] = 1 / trueSolution(root);
       }
       molpro::linalg::LinearEquations<molpro::linalg::SimpleArray<double>> solver(rhs);
-      solver.m_verbosity = 2;
+      solver.m_verbosity = 1;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0)
         std::cout << "Test n=" << n << ", nroot=" << nroot << std::endl;
@@ -434,8 +434,8 @@ public:
   }
 };
 
-TEST(Rosenbrock_BFGS, Optimize) { ASSERT_TRUE(RosenbrockTest().run("L-BFGS")); }
-TEST(Rosenbrock_null, Optimize) { ASSERT_TRUE(RosenbrockTest().run("null")); }
+TEST(Rosenbrock_BFGS, DISABLED_Optimize) { ASSERT_TRUE(RosenbrockTest().run("L-BFGS")); }
+TEST(Rosenbrock_null, DISABLED_Optimize) { ASSERT_TRUE(RosenbrockTest().run("null")); }
 class MonomialTest {
 public:
   using ptype = molpro::linalg::SimpleArray<double>;
@@ -514,9 +514,9 @@ public:
   }
 };
 
-TEST(Monomial_22, Optimize) { ASSERT_TRUE(MonomialTest().run(2, 2)); }
-TEST(Monomial_44, Optimize) { ASSERT_TRUE(MonomialTest().run(4, 4)); }
-TEST(Monomial_42, Optimize) { ASSERT_TRUE(MonomialTest().run(4, 2)); }
+TEST(Monomial_22, DISABLED_Optimize) { ASSERT_TRUE(MonomialTest().run(2, 2)); }
+TEST(Monomial_44, DISABLED_Optimize) { ASSERT_TRUE(MonomialTest().run(4, 4)); }
+TEST(Monomial_42, DISABLED_Optimize) { ASSERT_TRUE(MonomialTest().run(4, 2)); }
 
 class trigTest {
 
@@ -596,9 +596,9 @@ public:
   }
 };
 
-TEST(Trig_BFGS1, Optimize) { ASSERT_TRUE(trigTest("L-BFGS", 1, 1, 1).run()); }
-TEST(Trig_BFGS2, Optimize) { ASSERT_TRUE(trigTest("L-BFGS", 1, 2, 1).run()); }
-TEST(Trig_BFGS3, Optimize) { ASSERT_TRUE(trigTest("L-BFGS", 1, 2, 3).run()); }
+TEST(Trig_BFGS1, DISABLED_Optimize) { ASSERT_TRUE(trigTest("L-BFGS", 1, 1, 1).run()); }
+TEST(Trig_BFGS2, DISABLED_Optimize) { ASSERT_TRUE(trigTest("L-BFGS", 1, 2, 1).run()); }
+TEST(Trig_BFGS3, DISABLED_Optimize) { ASSERT_TRUE(trigTest("L-BFGS", 1, 2, 3).run()); }
 
 class optTest {
 
@@ -705,7 +705,7 @@ public:
   }
 };
 
-TEST(trigonometric, Optimize) {
+TEST(trigonometric, DISABLED_Optimize) {
   class Test : public optTest {
   public:
     Test(std::string method = "L-BFGS", double hessian = 1, double initial = 1) : optTest(method, hessian, initial) {
@@ -727,7 +727,7 @@ TEST(trigonometric, Optimize) {
   ASSERT_LE(Test().run(), 5);
 }
 
-TEST(Rosenbrock, Optimize) {
+TEST(Rosenbrock, DISABLED_Optimize) {
   class Test : public optTest {
   public:
     Test(double initial = 2, double hessian = 100) : optTest("L-BFGS", hessian, initial) {

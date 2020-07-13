@@ -106,8 +106,8 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   x.reserve(d.m_roots); // avoid copy-constructor below
   g.reserve(d.m_roots);
   for (size_t root = 0; root < (size_t)d.m_roots; root++) {
-    xvec[root].reserve(dimension); // x.back()?
-    gvec[root].reserve(dimension);
+    xvec[root].resize(dimension); // x.back()?
+    gvec[root].resize(dimension);
     for (size_t i = 0; i < dimension; ++i)
       xvec[root][i] = 0;
     for (size_t i = 0; i < dimension; ++i)
@@ -120,27 +120,27 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   }
   for (size_t iteration = 0; iteration < dimension + 1; iteration++) {
     action(xvec, gvec);
-    d.addVector(x, g);
-    for (size_t root = 0; root < (size_t)d.m_roots; root++) {
-      syncr(x[root], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
-      syncr(g[root], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
-      syncr(x[root], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
-      syncr(g[root], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
+    auto nwork=d.addVector(x, g);
+    for (size_t work = 0; work < (size_t)nwork; work++) {
+      syncr(x[work], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
+      syncr(g[work], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
+      syncr(x[work], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
+      syncr(g[work], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
     }
     std::vector<scalar> shift;
-    for (size_t root = 0; root < (size_t)d.m_roots; root++)
-      shift.push_back(-d.eigenvalues()[root] + 1e-14);
+    for (const auto& e : d.working_set_eigenvalues())
+      shift.push_back(-e + 1e-14);
     update(xvec, gvec, shift);
     //    auto newp = d.suggestP(x, g, 3);
     // if (d.endIteration(x, g)) break;
-    bool upd = d.endIteration(x, g);
+    d.report();
     for (size_t root = 0; root < (size_t)d.m_roots; root++) {
       syncr(x[root], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
       syncr(g[root], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
       syncr(x[root], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
       syncr(g[root], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
     }
-    if (upd)
+    if (nwork==0)
       break;
   }
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>> es(testmatrix);
@@ -158,6 +158,9 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
     molpro::cout << " " << e;
   molpro::cout << std::endl;
 
+  std::vector<int> rootlist;
+  for (size_t root = 0; root < (size_t)d.m_roots; root++) rootlist.push_back(root);
+  d.solution(rootlist,x,g);
   action(xvec, gvec);
   std::vector<scalar> errors;
   for (size_t root = 0; root < (size_t)d.m_roots; root++) {
@@ -495,7 +498,7 @@ void IterativeSolverFTest();
 }
 #endif
 static std::unique_ptr<std::ofstream> out;
-TEST(IterativeSolver_test, old) {
+TEST(IterativeSolver_test, DISABLED_OOCA) {
   if (true) {
     using namespace molpro::linalg;
     //  IterativeSolver::DIIS::randomTest(100,100,0.1,0.0);

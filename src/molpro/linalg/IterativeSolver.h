@@ -192,8 +192,8 @@ public:
           action[k].get().scal(1 / std::sqrt(s));
         }
       }
-      m_current_r.push_back(parameters[k]);
-      m_current_v.push_back(action[k]);
+      m_current_r.emplace_back(parameters[k].get());
+      m_current_v.emplace_back(action[k].get());
     }
     if (not m_last_d.empty()) {
       assert(m_last_d.size() == m_working_set.size());
@@ -291,15 +291,15 @@ public:
       auto root = m_working_set[k];
       m_errors[root] = std::sqrt(action[k].get().dot(action[k]));
     }
-    molpro::cout << "m_interpolation:\n" << m_interpolation << std::endl;
+//    molpro::cout << "m_interpolation:\n" << m_interpolation << std::endl;
     doInterpolation(parameters, action, parametersP, other, true);
     m_last_d.clear();
     m_last_hd.clear();
     //    molpro::cout << "working set size "<<m_working_set.size()<<std::endl;
     //    molpro::cout << "m_thresh "<<m_thresh<<std::endl;
-    for (auto k = 0; k < m_working_set.size(); k++) {
+    for (int k = 0; k < m_working_set.size(); k++) {
       auto root = m_working_set[k];
-      //      molpro::cout << "k="<<k<<", root="<<root<<", error="<<m_errors[root]<<std::endl;
+//      molpro::cout << "k=" << k << ", root=" << root << ", error=" << m_errors[root] << std::endl;
       if (m_errors[root] < m_thresh and m_q_solutions.count(root) == 0) { // converged just now
         if (m_verbosity > 1)
           molpro::cout << "selecting root " << root << " for adding converged solution to Q space at position"
@@ -308,15 +308,19 @@ public:
         m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
       }
       if (m_errors[root] < m_thresh) { // converged
+//        molpro::cout << "  remove this vector from the working set"<<std::endl;
         //  remove this vector from the working set
         for (auto kp = k + 1; kp < m_working_set.size(); kp++) {
-          parameters[kp - 1] = parameters[kp];
-          action[kp - 1] = action[kp];
+          parameters[kp - 1].get() = parameters[kp].get();
+          action[kp - 1].get() = action[kp].get();
           m_working_set[kp - 1] = m_working_set[kp];
         }
         m_working_set.pop_back();
         k--;
+//        molpro::cout << "k now = "<<k<<std::endl;
+//        molpro::cout << "m_working_set revised to ";for (const auto& w : m_working_set) molpro::cout <<" "<<w;molpro::cout <<std::endl;
       } else { // unconverged
+//        molpro::cout << "unconverged"<<std::endl;
         m_last_d.emplace_back(parameters[k]);
         m_last_hd.emplace_back(action[k]);
       }
@@ -695,23 +699,23 @@ protected:
     Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester,
                                                                                      Eigen::ComputeThinV);
     //    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
-    //    molpro::cout << "matrix:\n" << singularTester << std::endl;
-    //    molpro::cout << "singular values:\n" << svd.singularValues().transpose() << std::endl;
-    //    molpro::cout << "V:\n" << svd.matrixV() << std::endl;
-    //    molpro::cout << "candidates:";
-    //    for (const auto& c : candidates)
-    //      molpro::cout << " " << c;
-    //    molpro::cout << std::endl;
+//        molpro::cout << "matrix:\n" << singularTester << std::endl;
+//        molpro::cout << "singular values:\n" << svd.singularValues().transpose() << std::endl;
+//        molpro::cout << "V:\n" << svd.matrixV() << std::endl;
+//        molpro::cout << "candidates:";
+//        for (const auto& c : candidates)
+//          molpro::cout << " " << c;
+//        molpro::cout << std::endl;
     auto sv = svd.singularValues();
     std::vector<scalar_type> svv;
     for (auto k = 0; k < n; k++)
       svv.push_back(sv(k));
     auto most_singular = std::min_element(svv.begin(), svv.end()) - svv.begin();
-    //    molpro::cout << "most_singular " << most_singular << std::endl;
+//        molpro::cout << "most_singular " << most_singular << std::endl;
     if (svv[most_singular] > threshold)
       return -1;
     for (const auto& k : candidates) {
-      if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
+//      if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
         //        molpro::cout << "taking candidate " << k << ": " << svd.matrixV()(k, most_singular) << std::endl;
         if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
           return k;
@@ -1086,6 +1090,7 @@ protected:
    * @brief calculate lengths of residuals arising from the Q+R part of the current solution
    */
   void calculateResidualConvergence() {
+    throw std::runtime_error("unexpected entry into obsolete code");
     const auto nP = m_pspace.size();
     const auto nQ = m_qspace.size();
     const auto oQ = nP;
@@ -1352,9 +1357,9 @@ protected:
                                    //!< - 1: standard augmented hessian
 public:
   scalar_type m_svdThreshold; ///< Threshold for singular-value truncation in linear equation solver.
-protected:
   std::vector<scalar_type> m_Weights; //!< weighting of error vectors in DIIS
   size_t m_maxQ;                      //!< maximum size of Q space when !m_orthogonalize
+protected:
 };
 
 template <class T>
@@ -1566,17 +1571,17 @@ protected:
         this->m_interpolation.col(root) =
             evec.col(imax).real().head(nX) / (this->m_augmented_hessian * evec.real()(nX, imax));
       } else { // straight solution of linear equations
-        molpro::cout << "m_subspaceMatrix dimensions: " << this->m_subspaceMatrix.rows() << ", "
-                     << this->m_subspaceMatrix.cols() << std::endl;
-        molpro::cout << "m_subspaceRHS dimensions: " << this->m_subspaceRHS.rows() << "," << this->m_subspaceRHS.cols()
-                     << std::endl;
+//        molpro::cout << "m_subspaceMatrix dimensions: " << this->m_subspaceMatrix.rows() << ", "
+//                     << this->m_subspaceMatrix.cols() << std::endl;
+//        molpro::cout << "m_subspaceRHS dimensions: " << this->m_subspaceRHS.rows() << "," << this->m_subspaceRHS.cols()
+//                     << std::endl;
         // use QR decomposition so that also matrices that are not positive/negative semidefinite
         // can be used with IterativeSolver
         // this->m_interpolation = this->m_subspaceMatrix.ldlt().solve(this->m_subspaceRHS);
-        molpro::cout << "m_subspaceMatrix\n" << this->m_subspaceMatrix << std::endl;
-        molpro::cout << "m_subspaceRHS\n" << this->m_subspaceRHS << std::endl;
+//        molpro::cout << "m_subspaceMatrix\n" << this->m_subspaceMatrix << std::endl;
+//        molpro::cout << "m_subspaceRHS\n" << this->m_subspaceRHS << std::endl;
         this->m_interpolation = this->m_subspaceMatrix.householderQr().solve(this->m_subspaceRHS);
-        molpro::cout << "m_interpolation\n" << this->m_interpolation << std::endl;
+//        molpro::cout << "m_interpolation\n" << this->m_interpolation << std::endl;
       }
     }
     //   molpro::cout << "m_interpolation\n"<<this->m_interpolation<<std::endl;
@@ -1823,16 +1828,15 @@ public:
   /*!
    * \brief DIIS
    */
-  DIIS() : m_maxDim(6), m_LastResidualNormSq(0), m_LastAmplitudeCoeff(1) {
+  DIIS() {
     this->m_residual_rhs = false;
-    this->m_difference_vectors = false;
     this->m_residual_eigen = false;
     this->m_orthogonalize = false;
     this->m_roots = 1;
-    this->m_maxQ = m_maxDim;
     setMode(DIISmode);
     this->m_exclude_r_from_redundancy_test = true;
-    Reset();
+    this->m_singularity_threshold =
+        this->m_svdThreshold; // It does not matter if the submatrix goes a bit singular in DIIS
   }
 
   /*!
@@ -1844,24 +1848,8 @@ public:
     this->m_subspaceMatrixResRes = mode != KAINmode;
     //     this->m_preconditionResiduals = mode==KAINmode; // FIXME
 
-    Reset();
     if (m_verbosity > 1)
       molpro::cout << "m_DIISmode set to " << m_DIISmode << std::endl;
-  }
-
-  /*!
-   * \brief discards previous iteration vectors, but does not clear records
-   */
-  void Reset() {
-    m_LastResidualNormSq = 1e99; // so it can be tested even before extrapolation is done
-    this->m_lastVectorIndex = 0;
-    while (this->m_QQMatrix.rows() > 0)
-      this->deleteVector(0);
-    ;
-    this->m_residuals.clear();
-    this->m_solutions.clear();
-    this->m_others.clear();
-    this->m_Weights.clear();
   }
 
 protected:
@@ -1871,8 +1859,6 @@ protected:
     //	  molpro::cout << "solution : "<<solution<<std::endl;
     this->m_updateShift.clear();
     this->m_updateShift.push_back(-(1 + std::numeric_limits<double>::epsilon()) * this->m_subspaceMatrix(0, 0));
-    if (this->m_maxDim <= 1 || this->m_DIISmode == disabled)
-      return true;
 
     if (this->m_roots > 1)
       throw std::logic_error("DIIS does not handle multiple solutions");
@@ -1881,103 +1867,44 @@ protected:
     //      molpro::cout << "m_subspaceMatrix on entry to
     //      DIIS::solveReducedProblem"<<std::endl<<m_subspaceMatrix<<std::endl;
     //  }
-    size_t nDim = this->m_subspaceMatrix.rows();
-    this->m_LastResidualNormSq = std::fabs(this->m_subspaceMatrix(nDim - 1, nDim - 1));
-    //  molpro::cout << "this->m_LastResidualNormSq "<<this->m_LastResidualNormSq<<std::endl;
+    size_t nDim = this->m_subspaceMatrix.rows() - 1;
+    this->m_interpolation.resize(nDim + 1, 1);
+    if (nDim > 0) {
+      Eigen::VectorXd Rhs(nDim), Coeffs(nDim);
+      Eigen::MatrixXd B(nDim, nDim);
 
-    Eigen::Array<scalar_type, Eigen::Dynamic, Eigen::Dynamic> d = this->m_subspaceMatrix.diagonal().array().abs();
-    int worst = 0, best = 0;
-    for (size_t i = 0; i < nDim; i++) {
-      if (d(i) > d(worst))
-        worst = i;
-      if (d(i) < d(best))
-        best = i;
-    }
-    scalar_type fBaseScale = std::sqrt(d(worst) * d(best));
-    fBaseScale = 1;
+      B.block(0, 0, nDim, nDim) = this->m_subspaceMatrix.block(0, 0, nDim, nDim);
+      Rhs = -this->m_subspaceMatrix.block(0, nDim, nDim, 1);
 
-    //   while (nDim > this->m_maxDim) { // prune away the worst/oldest vector. Algorithm to be done properly yet
-    //    size_t prune = worst;
-    //    if (true || prune == nDim - 1) { // the current vector is the worst, so delete the oldest
-    //     //          molpro::cout << "this->m_dateOfBirth: "; for (auto b=this->m_dateOfBirth.begin();
-    //     b!=this->m_dateOfBirth.end(); b++) molpro::cout <<(*b); molpro::cout<<std::endl; prune =
-    //     std::min_element(this->m_dateOfBirth.begin(), this->m_dateOfBirth.end()) - this->m_dateOfBirth.begin();
-    //    }
-    //    //      molpro::cout << "prune="<<prune<<std::endl;
-    //    //  molpro::cout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
-    //    this->deleteVector(prune);
-    //    nDim--;
-    //    //  molpro::cout << "nDim="<<nDim<<", m_Weights.size()="<<m_Weights.size()<<std::endl;
-    //   }
-    //   if (nDim != (size_t) this->m_subspaceMatrix.rows()) throw std::logic_error("problem in pruning");
-    //   if (m_Weights.size() != (size_t) this->m_subspaceMatrix.rows()) {
-    //    molpro::cout << "nDim=" << nDim << ", m_Weights.size()=" << m_Weights.size() << std::endl;
-    //    throw std::logic_error("problem after pruning weights");
-    //   }
+      molpro::cout << "B:" << std::endl << B << std::endl;
+      molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
 
-    //  if (m_subspaceMatrix.rows() < 9) {
-    //      molpro::cout << "m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
-    //  }
-
-    // build actual DIIS system for the subspace used.
-    Eigen::VectorXd Rhs(nDim + 1), Coeffs(nDim + 1);
-    Eigen::MatrixXd B(nDim + 1, nDim + 1);
-
-    // Factor out common size scales from the residual dots.
-    // This is done to increase numerical stability for the case when _all_
-    // residuals are very small.
-    B.block(0, 0, nDim, nDim) = this->m_subspaceMatrix / fBaseScale;
-    Rhs.head(nDim) = Eigen::VectorXd::Zero(nDim);
-
-    // make Lagrange/constraint lines.
-    for (size_t i = 0; i < nDim; ++i)
-      B(i, nDim) = B(nDim, i) = 0;
-    B(nDim, nDim - 1) = B(nDim - 1, nDim) = -1;
-    B(nDim, nDim) = 0.0;
-    Rhs[nDim] = -1;
-    molpro::cout << "B:" << std::endl << B << std::endl;
-    molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
-
-    // invert the system, determine extrapolation coefficients.
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd(B, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    svd.setThreshold(this->m_svdThreshold);
-    //    molpro::cout << "svdThreshold "<<this->m_svdThreshold<<std::endl;
-    //    molpro::cout << "U\n"<<svd.matrixU()<<std::endl;
-    //    molpro::cout << "V\n"<<svd.matrixV()<<std::endl;
-    //    molpro::cout << "singularValues\n"<<svd.singularValues()<<std::endl;
-    Coeffs = svd.solve(Rhs).head(nDim);
-    m_LastAmplitudeCoeff = Coeffs[nDim - 1];
-    if (m_verbosity > 1)
-      molpro::cout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
-    for (size_t k = 0; k < (size_t)Coeffs.rows(); k++)
-      if (std::isnan(Coeffs(k))) {
-        molpro::cout << "B:" << std::endl << B << std::endl;
-        molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
+      // invert the system, determine extrapolation coefficients.
+      Eigen::JacobiSVD<Eigen::MatrixXd> svd(B, Eigen::ComputeThinU | Eigen::ComputeThinV);
+      svd.setThreshold(this->m_svdThreshold);
+      //    molpro::cout << "svdThreshold "<<this->m_svdThreshold<<std::endl;
+      //    molpro::cout << "U\n"<<svd.matrixU()<<std::endl;
+      //    molpro::cout << "V\n"<<svd.matrixV()<<std::endl;
+      //    molpro::cout << "singularValues\n"<<svd.singularValues()<<std::endl;
+      Coeffs = svd.solve(Rhs).head(nDim);
+      if (m_verbosity > 1)
         molpro::cout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
-        throw std::overflow_error("NaN detected in DIIS submatrix solution");
-      }
-    this->m_interpolation = Coeffs.head(nDim);
+      for (size_t k = 0; k < (size_t)Coeffs.rows(); k++)
+        if (std::isnan(Coeffs(k))) {
+          molpro::cout << "B:" << std::endl << B << std::endl;
+          molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
+          molpro::cout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
+          throw std::overflow_error("NaN detected in DIIS submatrix solution");
+        }
+      this->m_interpolation.block(0, 0, nDim, 1) = Coeffs;
+    }
+    molpro::cout << "m_interpolation rows=" << this->m_interpolation.rows() << ", cols=" << this->m_interpolation.cols()
+                 << std::endl;
+    this->m_interpolation(nDim, 0) = 1;
     return true;
   }
 
-  /*!
-   * \brief Return the square L2 norm of the extrapolated residual from the last call to solveReducedProblem().
-   * \return
-   */
 public:
-  scalar_type fLastResidual() const { return m_LastResidualNormSq; }
-
-  /*!
-   * \brief Return the coefficient of the last residual vector in the extrapolated residual from the last call to
-   * solveReducedProblem(). \return
-   */
-  scalar_type fLastCoeff() const { return m_LastAmplitudeCoeff; }
-
-  unsigned int nLastDim() const { return m_residuals.size(); }
-
-  unsigned int nMaxDim() const { return m_maxDim; }
-
-  size_t m_maxDim; ///< Maximum DIIS dimension allowed.
   static void randomTest(size_t sample, size_t n = 100, double alpha = 0.1, double gamma = 0.0,
                          DIISmode_type mode = DIISmode);
 

@@ -485,9 +485,8 @@ public:
    * \return Whether convergence has been reached
    */
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) {
-    //    calculateErrors(solution, residual);
     report();
-    return *std::max_element(m_errors.cbegin(), m_errors.cend()) < m_thresh;
+    return m_errors.empty() ? 0 : *std::max_element(m_errors.cbegin(), m_errors.cend()) < m_thresh;
   }
   virtual bool endIteration(std::vector<T>& solution, const std::vector<T>& residual) {
     return endIteration(vectorRefSet(solution.begin(), solution.end()),

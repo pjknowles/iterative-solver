@@ -10,19 +10,23 @@ namespace array {
 namespace util {
 
 //! Places a new operation in the register, so that high priority arrays that are equal are grouped together
-template <typename Op, int N> static void register_operation(std::list<Op> &reg, Op &&new_op) {
-  auto end_of_group = reg.end();
-  if (N >= 0) {
+template <typename Op, int N> struct RegisterOperation {
+  void operator()(std::list<Op> &reg, Op &&new_op) {
     auto ref = std::get<N>(new_op);
-    end_of_group = std::find_if(reg.rbegin(), reg.rend(), [&ref](const auto &el) {
+    auto rend = std::find_if(reg.rbegin(), reg.rend(), [&ref](const auto &el) {
       auto xx = std::get<N>(el);
       return std::addressof(ref.get()) == std::addressof(xx.get());
     });
+    auto end_of_group = reg.end();
+    if (rend != reg.rend())
+      end_of_group = rend.base();
+    reg.insert(end_of_group, std::forward<Op>(new_op));
   }
-  if (end_of_group == reg.rbegin())
-    end_of_group = reg.end();
-  reg.insert(end_of_group, std::forward<Op>(new_op));
-}
+};
+
+template <typename Op> struct RegisterOperation<Op, -1> {
+  void operator()(std::list<Op> &reg, Op &&new_op) { reg.insert(reg.end(), std::forward<Op>(new_op)); }
+};
 
 /*!
  * @brief Find duplicates references to x and y arrays and store unique elements in a separate vector.
@@ -139,7 +143,7 @@ remove_duplicates(const std::list<std::tuple<X, Y, S>> &reg) {
  */
 template <class AL, class AR> class ArrayHandler {
 public:
-  using value_type = typename AR::value_type;
+  using value_type = typename AL::value_type;
   ArrayHandler(const ArrayHandler &) = delete;
   virtual ~ArrayHandler() {
     std::transform(m_lazy_handles.begin(), m_lazy_handles.end(), [](auto el) {
@@ -191,11 +195,11 @@ protected:
         m_handler.raise_error("Trying to register axpy when dot is already assigned. LazyHandle can only register "
                               "operations of the same type.");
       if (m_priority == Priority::left)
-        util::register_operation<decltype(m_axpy_register.front()), 0>(m_axpy_register, {x, y, alpha});
+        util::RegisterOperation<decltype(m_axpy_register.front()), 0>()(m_axpy_register, {x, y, alpha});
       else if (m_priority == Priority::right)
-        util::register_operation<decltype(m_axpy_register.front()), 1>(m_axpy_register, {x, y, alpha});
+        util::RegisterOperation<decltype(m_axpy_register.front()), 1>()(m_axpy_register, {x, y, alpha});
       else
-        util::register_operation<decltype(m_axpy_register.front()), -1>(m_axpy_register, {x, y, alpha});
+        util::RegisterOperation<decltype(m_axpy_register.front()), -1>()(m_axpy_register, {x, y, alpha});
     }
 
     //! Registers a dot() operation
@@ -206,11 +210,11 @@ protected:
         m_handler.raise_error("Trying to register dot when axpy is already assigned. LazyHandle can only register "
                               "operations of the same type.");
       if (m_priority == Priority::left)
-        util::register_operation<decltype(m_dot_register.front()), 0>(m_dot_register, {x, y, std::ref(out)});
+        util::RegisterOperation<decltype(m_dot_register.front()), 0>()(m_dot_register, {x, y, std::ref(out)});
       else if (m_priority == Priority::right)
-        util::register_operation<decltype(m_dot_register.front()), 1>(m_dot_register, {x, y, std::ref(out)});
+        util::RegisterOperation<decltype(m_dot_register.front()), 1>()(m_dot_register, {x, y, std::ref(out)});
       else
-        util::register_operation<decltype(m_dot_register.front()), -1>(m_dot_register, {x, y, std::ref(out)});
+        util::RegisterOperation<decltype(m_dot_register.front()), -1>()(m_dot_register, {x, y, std::ref(out)});
     }
 
     //! Calls handler to evaluate the registered operations

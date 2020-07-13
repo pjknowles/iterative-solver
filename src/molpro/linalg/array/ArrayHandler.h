@@ -141,22 +141,27 @@ remove_duplicates(const std::list<std::tuple<X, Y, S>> &reg) {
  * @tparam AL left array type
  * @tparam AR right array type
  */
-template <class AL, class AR> class ArrayHandler {
+template <class AL, class AR = AL> class ArrayHandler {
+
 public:
   using value_type = typename AL::value_type;
   ArrayHandler(const ArrayHandler &) = delete;
+
+protected:
+  ArrayHandler() = default;
+
+public:
   virtual ~ArrayHandler() {
-    std::transform(m_lazy_handles.begin(), m_lazy_handles.end(), [](auto el) {
+    std::for_each(m_lazy_handles.begin(), m_lazy_handles.end(), [](auto &el) {
       if (auto handle = el.lock())
         handle->invalidate();
     });
   }
 
   virtual AL copy(const AR &source) = 0;
-  virtual AR copy(const AL &source) = 0;
 
-  virtual AL &axpy(value_type alpha, const AR &y) = 0;
-  virtual AL &dot(value_type alpha, const AR &y) = 0;
+  virtual AL &axpy(AL &x, value_type alpha, const AR &y) = 0;
+  virtual value_type dot(const AL &x, const AR &y) = 0;
 
 protected:
   /*!
@@ -176,6 +181,12 @@ protected:
                          std::vector<std::reference_wrapper<const AR>> &yy,
                          std::vector<std::reference_wrapper<value_type>> &out) = 0;
 
+  /*!
+   * @brief Throws an error
+   * @param message error message
+   */
+  virtual void error(std::string message) = 0;
+
   //! Assigns highest priority for accessing local buffer to either left or right array, or non to keep the original
   //! order of registered operations
   enum class Priority { left, right, none };
@@ -183,8 +194,13 @@ protected:
   //! Registers operations for lazy evaluation. Evaluation is triggered by calling eval() or on destruction.
   //! @warning The evaluation is performed by the handler, so it must be valid when eval() is called.
   class LazyHandle {
+  protected:
+    using OPaxpy = std::tuple<std::reference_wrapper<AL>, std::reference_wrapper<const AR>, value_type>;
+    using OPdot = std::tuple<std::reference_wrapper<const AL>, std::reference_wrapper<const AR>,
+                             std::reference_wrapper<value_type>>;
+
   public:
-    LazyHandle(const ArrayHandler<AL, AR> &handler, Priority priority) : m_handler{handler}, m_priority{priority} {}
+    LazyHandle(ArrayHandler<AL, AR> &handler, Priority priority) : m_handler{handler}, m_priority{priority} {}
     virtual ~LazyHandle() { LazyHandle::eval(); }
 
     //! Registers an axpy() operation
@@ -192,14 +208,14 @@ protected:
       if (m_invalid)
         return;
       if (!m_dot_register.empty())
-        m_handler.raise_error("Trying to register axpy when dot is already assigned. LazyHandle can only register "
-                              "operations of the same type.");
+        m_handler.error("Trying to register axpy when dot is already assigned. LazyHandle can only register "
+                        "operations of the same type.");
       if (m_priority == Priority::left)
-        util::RegisterOperation<decltype(m_axpy_register.front()), 0>()(m_axpy_register, {x, y, alpha});
+        util::RegisterOperation<OPaxpy, 0>()(m_axpy_register, {x, y, alpha});
       else if (m_priority == Priority::right)
-        util::RegisterOperation<decltype(m_axpy_register.front()), 1>()(m_axpy_register, {x, y, alpha});
+        util::RegisterOperation<OPaxpy, 1>()(m_axpy_register, {x, y, alpha});
       else
-        util::RegisterOperation<decltype(m_axpy_register.front()), -1>()(m_axpy_register, {x, y, alpha});
+        util::RegisterOperation<OPaxpy, -1>()(m_axpy_register, {x, y, alpha});
     }
 
     //! Registers a dot() operation
@@ -207,14 +223,14 @@ protected:
       if (m_invalid)
         return;
       if (!m_axpy_register.empty())
-        m_handler.raise_error("Trying to register dot when axpy is already assigned. LazyHandle can only register "
-                              "operations of the same type.");
+        m_handler.error("Trying to register dot when axpy is already assigned. LazyHandle can only register "
+                        "operations of the same type.");
       if (m_priority == Priority::left)
-        util::RegisterOperation<decltype(m_dot_register.front()), 0>()(m_dot_register, {x, y, std::ref(out)});
+        util::RegisterOperation<OPdot, 0>()(m_dot_register, {x, y, std::ref(out)});
       else if (m_priority == Priority::right)
-        util::RegisterOperation<decltype(m_dot_register.front()), 1>()(m_dot_register, {x, y, std::ref(out)});
+        util::RegisterOperation<OPdot, 1>()(m_dot_register, {x, y, std::ref(out)});
       else
-        util::RegisterOperation<decltype(m_dot_register.front()), -1>()(m_dot_register, {x, y, std::ref(out)});
+        util::RegisterOperation<OPdot, -1>()(m_dot_register, {x, y, std::ref(out)});
     }
 
     //! Calls handler to evaluate the registered operations
@@ -241,19 +257,15 @@ protected:
     ArrayHandler<AL, AR> &m_handler;      //!< all operations are still done through the handler
     bool m_invalid = false;               //!< flags if the handler has been destroyed and LazyHandle is now invalid
     Priority m_priority = Priority::none; //!< how to prioritise evaluation when fusing a loop
-    std::list<std::tuple<std::reference_wrapper<AL>, std::reference_wrapper<const AR>, value_type>>
-        m_axpy_register; //!< register of axpy operations
-    std::list<std::tuple<std::reference_wrapper<const AL>, std::reference_wrapper<const AR>,
-                         std::reference_wrapper<value_type>>>
-        m_dot_register; //!< register of dot operations
+    std::list<OPaxpy> m_axpy_register;    //!< register of axpy operations
+    std::list<OPdot> m_dot_register;      //!< register of dot operations
   };
 
   //! A convenience wrapper around a pointer to the LazyHandle
   class ProxyHandle {
-  protected:
+  public:
     ProxyHandle(std::shared_ptr<LazyHandle> handle) : m_lazy_handle{std::move(handle)} {}
 
-  public:
     template <typename... Args> void axpy(Args &&... args) { m_lazy_handle->axpy(std::forward<Args>(args)...); }
     template <typename... Args> void dot(Args &&... args) { m_lazy_handle->dot(std::forward<Args>(args)...); }
     void eval() { m_lazy_handle->eval(); }

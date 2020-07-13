@@ -14,12 +14,6 @@ public:
   using typename ArrayHandler<AL, AR>::value_type;
   ArrayHandlerIterable() = default;
 
-  AL copy(const AR &source) override {
-    AL result{};
-    std::copy(source.cbegin(), source.cend(), std::back_inserter(result));
-    return result;
-  }
-
   value_type dot(const AL &x, const AL &y) override {
     if (x.size() > y.size())
       error("ArrayHandlerIterable::dot() incompatible x and y arrays, x.size() > y.size()");
@@ -38,6 +32,14 @@ public:
   void error(std::string message) override { throw std::runtime_error(message); }
 
 protected:
+  template <typename T, typename S> T copyAny(const S &source) {
+    T result{};
+    std::copy(source.cbegin(), source.cend(), std::back_inserter(result));
+    return result;
+  }
+  AL copyL(const AR &source) override { return copyAny<AL, AR>(source); }
+  AR copyR(const AR &source) override { return copyAny<AR, AL>(source); }
+
   void fused_axpy(const std::vector<std::pair<size_t, size_t>> &reg, std::vector<std::reference_wrapper<AL>> &xx,
                   std::vector<std::reference_wrapper<const AR>> &yy, std::vector<value_type> alphas) override {
     for (size_t i = 0; i < reg.size(); ++i) {
@@ -45,7 +47,7 @@ protected:
       std::tie(xi, yi) = reg[i];
       axpy(xx[xi].get(), alphas[i], yy[yi].get());
     }
-  }
+  } // namespace array
 
   void fused_dot(const std::vector<std::pair<size_t, size_t>> &reg, std::vector<std::reference_wrapper<const AL>> &xx,
                  std::vector<std::reference_wrapper<const AR>> &yy,
@@ -56,7 +58,7 @@ protected:
       out[i].get() = dot(xx[xi].get(), yy[yi].get());
     }
   }
-};
+}; // namespace linalg
 
 } // namespace array
 } // namespace linalg

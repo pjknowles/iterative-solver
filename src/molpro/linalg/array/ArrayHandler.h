@@ -158,12 +158,17 @@ public:
     });
   }
 
-  virtual AL copy(const AR &source) = 0;
+  AL copy(const AR &source) { return copyR(source); }
+  template <typename T = AR> typename std::enable_if_t<!std::is_same<T, AR>::value, T> copy(const AL &source) {
+    return copyL(source);
+  }
 
   virtual AL &axpy(AL &x, value_type alpha, const AR &y) = 0;
   virtual value_type dot(const AL &x, const AR &y) = 0;
 
 protected:
+  virtual AL copyR(const AR &source) = 0;
+  virtual AR copyL(const AL &source) = 0;
   /*!
    * @brief
    * @param reg register of unique operations. For each element first is the index to x in xx, second is index to y in

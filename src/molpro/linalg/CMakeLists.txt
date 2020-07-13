@@ -68,3 +68,5 @@ include(LibraryManagerUtils)
 print_target_properties(LAPACK::LAPACK DEBUG)
 print_target_properties(Eigen3::Eigen DEBUG)
 print_target_properties(${PROJECT_NAME} DEBUG)
+
+add_subdirectory(array)

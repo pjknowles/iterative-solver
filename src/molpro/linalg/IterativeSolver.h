@@ -105,18 +105,13 @@ public:
       m_roots(0),
       m_rspt(false),
       m_options(optionMap()),
-      m_error(0),
-      m_worst(0),
-      m_date(0),
       m_subspaceMatrixResRes(false),
       m_residual_eigen(false),
       m_residual_rhs(false),
-      m_difference_vectors(false),
       m_residuals(),
       m_solutions(),
       m_others(),
       m_rhs(),
-      m_dateOfBirth(),
       m_lastVectorIndex(0),
       m_updateShift(0),
       m_interpolation(),
@@ -1125,90 +1120,6 @@ protected:
     }
   }
 
-  //  void calculateErrors(const vectorRefSet solution, constVectorRefSet residual) {
-  //    auto errortype = 0; // step . residual
-  //    if (this->m_options.count("convergence") && this->m_options.find("convergence")->second == "step")
-  //      errortype = 1;
-  //    if (this->m_options.count("convergence") && this->m_options.find("convergence")->second == "residual")
-  //      errortype = 2;
-  //    if (m_verbosity > 5) {
-  //      molpro::cout << "IterativeSolverBase::calculateErrors m_linear" << m_linear << std::endl;
-  //      molpro::cout << "IterativeSolverBase::calculateErrors active";
-  //      for (size_t root = 0; root < solution.size(); root++)
-  //        molpro::cout << " " << m_active[root];
-  //      molpro::cout << std::endl;
-  //      //      molpro::cout << "IterativeSolverBase::calculateErrors solution " << solution << std::endl;
-  //      molpro::cout << std::endl;
-  //      //      molpro::cout << "IterativeSolverBase::calculateErrors residual " << residual << std::endl;
-  //    }
-  //    m_errors.clear();
-  //    if (m_linear && errortype != 1) { // we can use the extrapolated residual if the problem is linear
-  //      //      molpro::cout << "calculateErrors solution.size=" << solution.size() << std::endl;
-  //      for (size_t k = 0; k < solution.size(); k++) {
-  //        m_errors.push_back(
-  //            m_active[k] ? std::fabs(residual[k].get().dot(errortype == 2 ? residual[k].get() : solution[k].get()) /
-  //                                    solution[k].get().dot(solution[k].get()))
-  //                        : 0);
-  //        //        molpro::cout << "solution . solution " << solution[k].get().dot(solution[k].get()) << std::endl;
-  //        //        molpro::cout << "residual . solution " << residual[k].get().dot(solution[k].get()) << std::endl;
-  //        //        molpro::cout << "residual . residual " << residual[k].get().dot(residual[k].get()) << std::endl;
-  //      }
-  //    } else {
-  //      vectorSet step;
-  //      step.reserve(solution.size());
-  //      for (size_t k = 0; k < solution.size();
-  //           k++) { // contorted logic because we cannot do arithmetic on step once it is created
-  //        if (m_difference_vectors)
-  //          solution[k].get().axpy(
-  //              -1, m_last_solution[k]); // we won't synchronize this because the action gets undone just below
-  //        else
-  //          solution[k].get().axpy(
-  //              -1,
-  //              m_solutions[m_lastVectorIndex][k]); // we won't synchronize this because the action gets undone just
-  //              below
-  //        step.emplace_back(solution[k].get(),
-  //                          LINEARALGEBRA_DISTRIBUTED | LINEARALGEBRA_OFFLINE // TODO template-ise these options
-  //        );
-  //        if (m_difference_vectors)
-  //          solution[k].get().axpy(1, m_last_solution[k]);
-  //        else
-  //          solution[k].get().axpy(1, m_solutions[m_lastVectorIndex][k]);
-  //        m_errors.push_back(
-  //            m_difference_vectors
-  //                ? std::abs(m_last_residual[k].dot(step[k])) // TODO: too pessismistic, as should used estimated
-  //                gradient : (m_vector_active[m_lastVectorIndex][k]
-  //                       ? std::fabs((errortype == 1 ? step : m_residuals[m_lastVectorIndex])[k].dot(
-  //                             (errortype == 2 ? m_residuals[m_lastVectorIndex][k] : step[k])))
-  //                       : 1));
-  //        //        molpro::cout << "errortype="<<errortype<<std::endl;
-  //        //        molpro::cout << "m_difference_vectors="<<m_difference_vectors<<std::endl;
-  //        //        molpro::cout << "step . step " << step[k].dot(step[k]) << std::endl;
-  //        //        molpro::cout << "step . m_last_residual " << step[k].dot(m_last_residual[k]) << std::endl;
-  //        //        molpro::cout << "m_last_residual . m_last_residual " << m_last_residual[k].dot(m_last_residual[k])
-  //        <<
-  //        //        std::endl; molpro::cout << "m_last_solution . m_last_solution " <<
-  //        //        m_last_solution[k].dot(m_last_solution[k]) << std::endl; molpro::cout << "solution . solution " <<
-  //        //        solution[k].get().dot(solution[k].get()) << std::endl; molpro::cout << "residual . solution " <<
-  //        //        residual[k].get().dot(solution[k].get()) << std::endl; molpro::cout << "residual . residual " <<
-  //        //        residual[k].get().dot(residual[k].get()) << std::endl;
-  //      }
-  //    }
-  //    for (const auto& e : m_errors)
-  //      if (std::isnan(e))
-  //        throw std::overflow_error("NaN detected in error measure");
-  //    if (errortype != 0)
-  //      for (auto& e : m_errors)
-  //        e = std::sqrt(e);
-  //    m_error = *max_element(m_errors.begin(), m_errors.end());
-  //    m_worst = max_element(m_errors.begin(), m_errors.end()) - m_errors.begin();
-  //    if (m_verbosity > 5) {
-  //      molpro::cout << "IterativeSolverBase::calculateErrors m_errors";
-  //      for (size_t root = 0; root < solution.size(); root++)
-  //        molpro::cout << " " << m_errors[root];
-  //      molpro::cout << std::endl;
-  //    }
-  //  }
-
 protected:
   static void copyvec(std::vector<vectorSet>& history, const vectorRefSet newvec,
                       const vectorSet& subtract = vectorSet()) {
@@ -1262,7 +1173,7 @@ public:
             // 2019-05-15 TODO ymd consider actually deleting the vector here
             if (m_Weights.size() > l)
               m_Weights.erase(m_Weights.begin() + l);
-            m_dateOfBirth.erase(m_dateOfBirth.begin() + l);
+//            m_dateOfBirth.erase(m_dateOfBirth.begin() + l);
             m_vector_active[ll][lll] = false;
             //                    m_others[ll].m_vector_active[lll] = false;
             for (Eigen::Index l2 = l + 1; l2 < m_QQMatrix.cols(); l2++) {
@@ -1313,14 +1224,10 @@ public:
   }
 
   std::vector<scalar_type> m_errors; //!< Error at last iteration
-  scalar_type m_error;               //!< worst error at last iteration
-  size_t m_worst;                    //!< worst-converged solution, ie m_error = m_errors[m_worst]
-  int m_date;
   bool m_subspaceMatrixResRes; // whether m_subspaceMatrix is Residual.Residual (true) or Solution.Residual (false)
   bool m_residual_eigen;       // whether to subtract eigenvalue*solution when constructing residual
   bool m_residual_rhs;         // whether to subtract rhs when constructing residual
   // whether to use RSPT to construct solution instead of diagonalisation
-  bool m_difference_vectors; // whether to make expansion vectors from iteration differences or raw
   std::vector<vectorSet> m_residuals;
   std::vector<vectorSet> m_solutions;
   std::vector<vectorSet> m_others;
@@ -1329,7 +1236,6 @@ public:
   vectorSet m_last_other;
   std::vector<std::vector<bool>> m_vector_active;
   vectorSet m_rhs;
-  std::vector<int> m_dateOfBirth;
   size_t m_lastVectorIndex;
   std::vector<scalar_type> m_updateShift;
   Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>
@@ -1400,7 +1306,6 @@ public:
    */
   explicit LinearEigensystem(std::shared_ptr<molpro::Profiler> profiler = nullptr) : Base<T>(profiler) {
     this->m_residual_rhs = false;
-    this->m_difference_vectors = false;
     this->m_residual_eigen = true;
     this->m_linear = true;
   }
@@ -1487,7 +1392,6 @@ public:
     this->m_linear = true;
     this->m_residual_eigen = true;
     this->m_residual_rhs = true;
-    this->m_difference_vectors = false;
     this->m_augmented_hessian = augmented_hessian;
     addEquations(rhs);
   }
@@ -1496,7 +1400,6 @@ public:
     auto rhsr = constVectorRefSet(rhs.begin(), rhs.end());
     this->m_linear = true;
     this->m_residual_rhs = true;
-    this->m_difference_vectors = false;
     this->m_augmented_hessian = augmented_hessian;
     addEquations(rhsr);
   }
@@ -1505,7 +1408,6 @@ public:
     auto rhsr = constVectorRefSet(1, rhs);
     this->m_linear = true;
     this->m_residual_rhs = true;
-    this->m_difference_vectors = false;
     this->m_augmented_hessian = augmented_hessian;
     addEquations(rhsr);
   }
@@ -1624,7 +1526,6 @@ public:
     this->m_linear = false;
     this->m_orthogonalize = false;
     this->m_residual_rhs = false;
-    this->m_difference_vectors = true;
     this->m_residual_eigen = false;
     this->m_orthogonalize = false;
     this->m_roots = 1;

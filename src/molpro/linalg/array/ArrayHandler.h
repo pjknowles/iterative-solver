@@ -47,12 +47,12 @@ remove_duplicates(const std::list<std::tuple<X, Y, S>> &reg) {
   scalar.reserve(n_op);
   std::transform(cbegin(reg), cend(reg), std::back_inserter(scalar), [](const auto &el) { return std::get<2>(el); });
   std::vector<std::pair<size_t, size_t>> op_register;
-  op_register.resize(n_op);
+  op_register.reserve(n_op);
   std::vector<X> xx;
   std::vector<Y> yy;
-  for (size_t i = 0; i < n_op; ++i) {
-    auto x = std::get<0>(reg[i]);
-    auto y = std::get<1>(reg[i]);
+  for (const auto &op : reg) {
+    auto x = std::get<0>(op);
+    auto y = std::get<1>(op);
     auto it_x = std::find_if(cbegin(xx), cend(xx),
                              [&x](const auto &el) { return std::addressof(x.get()) == std::addressof(el.get()); });
     auto it_y = std::find_if(cbegin(yy), cend(yy),

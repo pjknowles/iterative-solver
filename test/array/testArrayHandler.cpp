@@ -6,6 +6,9 @@
 #include <random>
 
 using molpro::linalg::array::util::RegisterOperation;
+using molpro::linalg::array::util::remove_duplicates;
+
+using ::testing::ContainerEq;
 
 // template this based on number of arrays
 class ArrayHandlerInputF : public ::testing::Test {
@@ -145,4 +148,38 @@ TEST_F(RegisterOperationRight, random_order) {
   test_op_registers(op_register, op_register_ref);
 }
 
-// TODO test remove_duplicates
+// TODO a larger test is probably in order
+TEST(ArrayHandlerUtil, remove_duplicates_small) {
+  using X = double;
+  using Y = int;
+  using S = size_t;
+  std::vector<X> x{0, 1};
+  std::vector<Y> y{0, 1};
+  std::vector<S> s{0, 1, 2, 3, 4};
+  std::list<std::tuple<std::reference_wrapper<X>, std::reference_wrapper<Y>, std::reference_wrapper<S>>> op_register{
+      {x[0], y[0], s[0]}, {x[0], y[1], s[1]}, {x[1], y[1], s[2]}, {x[0], y[0], s[3]}, {x[1], y[0], s[4]}};
+  std::vector<std::reference_wrapper<X>> ref_unique_x{x[0], x[1]};
+  std::vector<std::reference_wrapper<Y>> ref_unique_y{y[0], y[1]};
+  std::vector<std::reference_wrapper<S>> ref_scalar{s[0], s[1], s[2], s[3], s[4]};
+  std::vector<std::pair<size_t, size_t>> ref_op_register_ind{{0, 0}, {0, 1}, {1, 1}, {0, 0}, {1, 0}};
+  std::vector<void*> ref_addr_x;
+  std::vector<void*> ref_addr_y;
+  std::transform(begin(ref_unique_x), end(ref_unique_x), std::back_inserter(ref_addr_x),
+                 [](auto& el) { return std::addressof(el.get()); });
+  std::transform(begin(ref_unique_y), end(ref_unique_y), std::back_inserter(ref_addr_y),
+                 [](auto& el) { return std::addressof(el.get()); });
+  auto res =
+      remove_duplicates<std::reference_wrapper<X>, std::reference_wrapper<Y>, std::reference_wrapper<S>>(op_register);
+  auto unique_x = std::get<1>(res);
+  auto unique_y = std::get<2>(res);
+  std::vector<void*> addr_x;
+  std::vector<void*> addr_y;
+  std::transform(begin(unique_x), end(unique_x), std::back_inserter(addr_x),
+                 [](auto& el) { return std::addressof(el.get()); });
+  std::transform(begin(unique_y), end(unique_y), std::back_inserter(addr_y),
+                 [](auto& el) { return std::addressof(el.get()); });
+  EXPECT_THAT(std::get<0>(res), ContainerEq(ref_op_register_ind));
+  EXPECT_THAT(addr_x, ContainerEq(ref_addr_x));
+  EXPECT_THAT(addr_y, ContainerEq(ref_addr_y));
+  EXPECT_THAT(std::get<3>(res), ContainerEq(ref_scalar));
+}

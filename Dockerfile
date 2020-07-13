@@ -9,4 +9,5 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y cmake mpich
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y cmake libblas-dev
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y cmake liblapack-dev
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y cmake libeigen3-dev
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y cmake libhdf5-dev libhdf5-mpich-dev
 

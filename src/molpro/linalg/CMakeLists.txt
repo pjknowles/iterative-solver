@@ -32,6 +32,7 @@ DependencyManager_Populate(utilities)
 target_link_libraries(${PROJECT_NAME} PUBLIC molpro::Profiler molpro::utilities)
 
 LibraryManager_LAPACK(${PROJECT_NAME} PUBLIC Intel10_64lp_seq Intel10_64lp)
+message("MKL_TYPE=${MKL_TYPE}")
 if (MKL_TYPE STREQUAL "lp64")
     message(STATUS "Eigen will use MKL")
     target_compile_definitions(${PROJECT_NAME} PUBLIC EIGEN_USE_MKL_ALL)

@@ -142,15 +142,12 @@ remove_duplicates(const std::list<std::tuple<X, Y, S>> &reg) {
  * @tparam AR right array type
  */
 template <class AL, class AR = AL> class ArrayHandler {
+protected:
+  ArrayHandler() = default;
+  ArrayHandler(const ArrayHandler &) = default;
 
 public:
   using value_type = typename AL::value_type;
-  ArrayHandler(const ArrayHandler &) = delete;
-
-protected:
-  ArrayHandler() = default;
-
-public:
   virtual ~ArrayHandler() {
     std::for_each(m_lazy_handles.begin(), m_lazy_handles.end(), [](auto &el) {
       if (auto handle = el.lock())

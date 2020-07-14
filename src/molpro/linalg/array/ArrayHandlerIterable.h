@@ -13,6 +13,7 @@ template <typename AL, typename AR = AL> class ArrayHandlerIterable : public Arr
 public:
   using typename ArrayHandler<AL, AR>::value_type;
   ArrayHandlerIterable() = default;
+  ArrayHandlerIterable(const ArrayHandlerIterable<AL, AR> &) = default;
 
   value_type dot(const AL &x, const AR &y) override {
     if (x.size() > y.size())

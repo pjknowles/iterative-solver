@@ -5,7 +5,7 @@ find_package(HDF5 REQUIRED COMPONENTS C)
 
 LibraryManager_Append(${PROJECT_NAME}
         SOURCES HDF5Handle.cpp
-        PUBLIC_HEADER HDF5Handle.h ArrayHandler.h ArrayHandlerIterable.h
+        PUBLIC_HEADER HDF5Handle.h ArrayHandler.h ArrayHandlerIterable.h ArrayHandlerFactory.h
         )
 target_link_libraries(${PROJECT_NAME} PUBLIC ${HDF5_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${HDF5_INCLUDE_DIRS})

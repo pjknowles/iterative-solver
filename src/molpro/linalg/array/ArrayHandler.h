@@ -158,8 +158,19 @@ public:
     });
   }
 
-  AL copy(const AR &source) { return copyR(source); }
-  template <typename T = AR> typename std::enable_if_t<!std::is_same<T, AR>::value, T> copy(const AL &source) {
+  //! Return a copy of right array. This function is only one when AL and AR are the same.
+  template <bool flag = std::is_same<AL, AR>::value, typename = typename std::enable_if_t<flag>>
+  AR copy(const AR &source) {
+    return copySame(source);
+  }
+  //! Return a copy of right array as a left array. This function is only one when AL and AR are different.
+  template <bool flag = std::is_same<AL, AR>::value, typename std::enable_if_t<!flag, nullptr_t> = nullptr>
+  AL copy(const AR &source) {
+    return copyR(source);
+  }
+  //! Return a copy of left array as a right array. This function is only one when AL and AR are different.
+  template <bool flag = !std::is_same<AL, AR>::value, typename std::enable_if_t<flag, nullptr_t> = nullptr>
+  AR copy(const AL &source) {
     return copyL(source);
   }
 
@@ -167,6 +178,7 @@ public:
   virtual value_type dot(const AL &x, const AR &y) = 0;
 
 protected:
+  virtual AR copySame(const AR &source) = 0;
   virtual AL copyR(const AR &source) = 0;
   virtual AR copyL(const AL &source) = 0;
   /*!

@@ -14,7 +14,7 @@ public:
   using typename ArrayHandler<AL, AR>::value_type;
   ArrayHandlerIterable() = default;
 
-  value_type dot(const AL &x, const AL &y) override {
+  value_type dot(const AL &x, const AR &y) override {
     if (x.size() > y.size())
       error("ArrayHandlerIterable::dot() incompatible x and y arrays, x.size() > y.size()");
     return std::inner_product(x.cbegin(), x.cend(), y.cbegin(), 0);
@@ -32,13 +32,21 @@ public:
   void error(std::string message) override { throw std::runtime_error(message); }
 
 protected:
+  template <typename T = AL> typename std::enable_if_t<std::is_same<T, AR>::value, AR> copySameT(const AR &source) {
+    return {source};
+  }
+  template <typename T = AL> typename std::enable_if_t<!std::is_same<T, AR>::value, AR> copySameT(const AR &source) {
+    return source;
+  }
+  AR copySame(const AR &source) override { return copySameT(source); };
+
   template <typename T, typename S> T copyAny(const S &source) {
     T result{};
     std::copy(source.cbegin(), source.cend(), std::back_inserter(result));
     return result;
   }
-  AL copyL(const AR &source) override { return copyAny<AL, AR>(source); }
-  AR copyR(const AR &source) override { return copyAny<AR, AL>(source); }
+  AL copyR(const AR &source) override { return copyAny<AL, AR>(source); }
+  AR copyL(const AL &source) override { return copyAny<AR, AL>(source); }
 
   void fused_axpy(const std::vector<std::pair<size_t, size_t>> &reg, std::vector<std::reference_wrapper<AL>> &xx,
                   std::vector<std::reference_wrapper<const AR>> &yy, std::vector<value_type> alphas) override {

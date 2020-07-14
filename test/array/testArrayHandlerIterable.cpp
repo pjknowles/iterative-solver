@@ -1,6 +1,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <deque>
 #include <molpro/linalg/array/ArrayHandlerIterable.h>
 
 using molpro::linalg::array::ArrayHandlerIterable;
@@ -61,4 +62,28 @@ TEST(ArrayHandlerIterable, lazy_axpy) {
   }
   for (size_t i = 0; i < xx.size(); ++i)
     EXPECT_THAT(xx[i], ContainerEq(ref_axpy[i]));
+}
+
+TEST(ArrayHandlerIterable, copy_same) {
+  using X = std::vector<double>;
+  using Y = X;
+  ArrayHandlerIterable<X, Y> handler{};
+  auto x = X{1, 2, 3, 4};
+  auto y = handler.copy(x);
+}
+
+TEST(ArrayHandlerIterable, copyL) {
+  using X = std::vector<double>;
+  using Y = std::deque<int>;
+  ArrayHandlerIterable<X, Y> handler{};
+  auto x = X{1, 2, 3, 4};
+  auto y = handler.copy(x);
+}
+
+TEST(ArrayHandlerIterable, copyR) {
+  using X = std::vector<double>;
+  using Y = std::deque<int>;
+  ArrayHandlerIterable<X, Y> handler{};
+  auto y = Y{1, 2, 3, 4};
+  auto x = handler.copy(y);
 }

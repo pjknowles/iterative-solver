@@ -6,6 +6,7 @@
 using molpro::linalg::array::ArrayHandlerIterable;
 
 using ::testing::ContainerEq;
+using ::testing::Each;
 
 TEST(ArrayHandlerIterable, constructor) { ArrayHandlerIterable<std::vector<int>> handler{}; }
 
@@ -32,9 +33,32 @@ TEST(ArrayHandlerIterable, lazy_dot) {
         h.dot(xx[i], yy[j], result[ij]);
       }
     }
+    EXPECT_FALSE(h.invalid());
+    EXPECT_THAT(result, Each(0));
   }
   EXPECT_THAT(result, ContainerEq(ref_dot));
 }
 
-//TODO test axpy
-
+TEST(ArrayHandlerIterable, lazy_axpy) {
+  using value_type = int;
+  static const int N = 2;
+  static const int dim = 5;
+  static const value_type alpha = 3;
+  static const value_type xval = 2;
+  static const value_type yval = 5;
+  ArrayHandlerIterable<std::vector<value_type>> handler{};
+  auto xx = std::vector<std::vector<value_type>>(N, std::vector<value_type>(dim, xval));
+  auto yy = std::vector<std::vector<value_type>>(N, std::vector<value_type>(dim, yval));
+  auto ref_axpy = std::vector<std::vector<value_type>>(N, std::vector<value_type>(dim, xval + alpha * yval));
+  {
+    auto h = handler.lazy_handle();
+    for (size_t i = 0; i < N; ++i) {
+      h.axpy(xx[i], alpha, yy[i]);
+    }
+    EXPECT_FALSE(h.invalid());
+    for (const auto& x : xx)
+      EXPECT_THAT(x, Each(xval));
+  }
+  for (size_t i = 0; i < xx.size(); ++i)
+    EXPECT_THAT(xx[i], ContainerEq(ref_axpy[i]));
+}

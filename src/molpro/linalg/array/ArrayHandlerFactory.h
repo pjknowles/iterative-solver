@@ -3,9 +3,7 @@
 #include "molpro/linalg/array/ArrayHandler.h"
 #include "molpro/linalg/array/ArrayHandlerIterable.h"
 #include "molpro/linalg/array/DistrArray.h"
-#include "molpro/linalg/array/DistrArrayGA.h"
 #include "molpro/linalg/array/DistrArrayHDF5.h"
-#include "molpro/linalg/array/DistrArrayMPI3.h"
 
 namespace molpro {
 namespace linalg {

@@ -5,6 +5,7 @@
 #include <memory>
 #include <mpi.h>
 #include <vector>
+#include <cmath>
 
 namespace molpro {
 class Profiler;

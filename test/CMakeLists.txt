@@ -14,13 +14,13 @@ foreach (t IterativeSolver-test IterativeSolver-OOCA-test TestIterativeSolver Pa
     gtest_discover_tests(${t}.exe)
     include(LibraryManagerUtils)
     if (MPI)
-        # in principle this should be done at runtime but it seems cmake/ctest support is not yet there to do it simply
+        # in principle this should be configured at runtime but it seems cmake/ctest support is not yet there to do it simply
         if (NOT DEFINED ENV{MPIPROCS})
             set(ENV{MPIPROCS} 1)
         endif ()
-        message(STATUS "MPIPROCS: $ENV{MPIPROCS}")
-        message(STATUS "add_test(${t} ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} $ENV{MPIPROCS} ${MPIEXEC_PREFLAGS} ${t}.exe ${MPIEXEC_POSTFLAGS})")
-        add_test(${t} ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} $ENV{MPIPROCS} ${MPIEXEC_PREFLAGS} ${t}.exe ${MPIEXEC_POSTFLAGS})
+#        message(STATUS "MPIPROCS: $ENV{MPIPROCS}")
+#        message(STATUS "add_test(${t} ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} $ENV{MPIPROCS} ${MPIEXEC_PREFLAGS} "${CMAKE_CURRENT_BINARY_DIR}/${t}.exe" ${MPIEXEC_POSTFLAGS})")
+        add_test(${t} ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} $ENV{MPIPROCS} ${MPIEXEC_PREFLAGS} "${CMAKE_CURRENT_BINARY_DIR}/${t}.exe" ${MPIEXEC_POSTFLAGS})
     else ()
         add_test(${t} ${t}.exe)
     endif ()

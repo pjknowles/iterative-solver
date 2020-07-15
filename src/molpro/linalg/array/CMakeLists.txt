@@ -26,8 +26,8 @@ endif ()
 
 if (MPI)
     LibraryManager_Append(${PROJECT_NAME}
-            SOURCES DistrArray.cpp util.cpp PHDF5Handle.cpp
-            PUBLIC_HEADER DistrArray.h util.h PHDF5Handle.h
+            SOURCES DistrArray.cpp DistrArrayDisk.cpp util.cpp PHDF5Handle.cpp
+            PUBLIC_HEADER DistrArray.h DistrArrayDisk.h util.h PHDF5Handle.h
             )
 
     if (LINEARALGEBRA_ARRAY_MPI3)

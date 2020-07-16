@@ -70,6 +70,71 @@ remove_duplicates(const std::list<std::tuple<X, Y, S>> &reg) {
 
 } // namespace util
 
+namespace handler {
+
+template <typename AL, typename AR, bool = !std::is_same<AL, AR>::value> class ArrayHandlerBase {
+public:
+  using value_type_L = typename AL::value_type;
+  using value_type_R = typename AR::value_type;
+  using value_type = decltype(value_type_L{} * value_type_R{});
+  //! Return a copy of right array. This function is only one when AL and AR are the same.
+  AL copySame(const AL &source) { return copyLL(source); }
+  AL copy(const AR &source) { return copyRL(source); }
+  AR copy(const AL &source) { return copyLR(source); }
+  AR copySame(const AR &source) { return copyRR(source); }
+
+  AL &axpy(value_type alpha, const AL &x, AL &y) { return axpyLL(alpha, x, y); }
+  AL &axpy(value_type alpha, const AR &x, AL &y) { return axpyRL(alpha, x, y); }
+  AR &axpy(value_type alpha, const AL &x, AR &y) { return axpyLR(alpha, x, y); }
+  AR &axpy(value_type alpha, const AR &x, AR &y) { return axpyRR(alpha, x, y); }
+  value_type dot(const AL &x, const AL &y) { return dotLL(x, y); }
+  value_type dot(const AL &x, const AR &y) { return dotLR(x, y); }
+  value_type dot(const AR &x, const AL &y) { return dotRL(x, y); }
+  value_type dot(const AR &x, const AR &y) { return dotRR(x, y); }
+
+protected:
+  virtual AL copyLL(const AL &source) = 0;
+  virtual AL copyRL(const AR &source) = 0;
+  virtual AR copyLR(const AL &source) = 0;
+  virtual AR copyRR(const AR &source) = 0;
+  virtual AL &axpyLL(value_type alpha, const AL &x, AL &y) = 0;
+  virtual AL &axpyRL(value_type alpha, const AR &x, AL &y) = 0;
+  virtual AR &axpyLR(value_type alpha, const AL &x, AR &y) = 0;
+  virtual AR &axpyRR(value_type alpha, const AR &x, AR &y) = 0;
+  virtual value_type dotLL(const AL &x, const AL &y) = 0;
+  virtual value_type dotLR(const AL &x, const AR &y) = 0;
+  virtual value_type dotRL(const AR &x, const AL &y) = 0;
+  virtual value_type dotRR(const AR &x, const AR &y) = 0;
+};
+
+template <typename AL, typename AR> class ArrayHandlerBase<AL, AR, false> {
+public:
+  using value_type_L = typename AL::value_type;
+  using value_type_R = typename AR::value_type;
+  using value_type = decltype(value_type_L{} * value_type_R{});
+  //! Return a copy of right array. This function is only one when AL and AR are the same.
+  AL copySame(const AL &source) { return copyLL(source); }
+  AL copy(const AR &source) { return copyRL(source); }
+
+  AL &axpy(value_type alpha, const AL &x, AL &y) { return axpyLL(alpha, x, y); }
+  value_type dot(const AL &x, const AL &y) { return dotLL(x, y); }
+
+protected:
+  virtual AL copyLL(const AL &source) = 0;
+  virtual AL copyRL(const AR &source) = 0;
+  virtual AR copyLR(const AL &source) = 0;
+  virtual AR copyRR(const AR &source) = 0;
+  virtual AL &axpyLL(value_type alpha, const AL &x, AL &y) = 0;
+  virtual AL &axpyRL(value_type alpha, const AR &x, AL &y) = 0;
+  virtual AR &axpyLR(value_type alpha, const AL &x, AR &y) = 0;
+  virtual AR &axpyRR(value_type alpha, const AR &x, AR &y) = 0;
+  virtual value_type dotLL(const AL &x, const AL &y) = 0;
+  virtual value_type dotLR(const AL &x, const AR &y) = 0;
+  virtual value_type dotRL(const AR &x, const AL &y) = 0;
+  virtual value_type dotRR(const AR &x, const AR &y) = 0;
+};
+
+} // namespace handler
 /*!
  * @brief Enhances various operations between pairs of arrays and allows dynamic code injection with uniform interface.
  *
@@ -141,13 +206,20 @@ remove_duplicates(const std::list<std::tuple<X, Y, S>> &reg) {
  * @tparam AL left array type
  * @tparam AR right array type
  */
-template <class AL, class AR = AL> class ArrayHandler {
+template <class AL, class AR = AL> class ArrayHandler : public handler::ArrayHandlerBase<AL, AR> {
 protected:
   ArrayHandler() = default;
   ArrayHandler(const ArrayHandler &) = default;
 
 public:
-  using value_type = typename AL::value_type;
+  using typename handler::ArrayHandlerBase<AL, AR>::value_type_L;
+  using typename handler::ArrayHandlerBase<AL, AR>::value_type_R;
+  using typename handler::ArrayHandlerBase<AL, AR>::value_type;
+  using handler::ArrayHandlerBase<AL, AR>::copySame;
+  using handler::ArrayHandlerBase<AL, AR>::copy;
+  using handler::ArrayHandlerBase<AL, AR>::axpy;
+  using handler::ArrayHandlerBase<AL, AR>::dot;
+
   virtual ~ArrayHandler() {
     std::for_each(m_lazy_handles.begin(), m_lazy_handles.end(), [](auto &el) {
       if (auto handle = el.lock())
@@ -155,29 +227,20 @@ public:
     });
   }
 
-  //! Return a copy of right array. This function is only one when AL and AR are the same.
-  template <bool flag = std::is_same<AL, AR>::value, typename = typename std::enable_if_t<flag>>
-  AR copy(const AR &source) {
-    return copySame(source);
-  }
-  //! Return a copy of right array as a left array. This function is only one when AL and AR are different.
-  template <bool flag = std::is_same<AL, AR>::value, typename std::enable_if_t<!flag, nullptr_t> = nullptr>
-  AL copy(const AR &source) {
-    return copyR(source);
-  }
-  //! Return a copy of left array as a right array. This function is only one when AL and AR are different.
-  template <bool flag = !std::is_same<AL, AR>::value, typename std::enable_if_t<flag, nullptr_t> = nullptr>
-  AR copy(const AL &source) {
-    return copyL(source);
-  }
-
-  virtual AL &axpy(AL &x, value_type alpha, const AR &y) = 0;
-  virtual value_type dot(const AL &x, const AR &y) = 0;
-
 protected:
-  virtual AR copySame(const AR &source) = 0;
-  virtual AL copyR(const AR &source) = 0;
-  virtual AR copyL(const AL &source) = 0;
+  using handler::ArrayHandlerBase<AL, AR>::copyLL;
+  using handler::ArrayHandlerBase<AL, AR>::copyRL;
+  using handler::ArrayHandlerBase<AL, AR>::copyLR;
+  using handler::ArrayHandlerBase<AL, AR>::copyRR;
+  using handler::ArrayHandlerBase<AL, AR>::axpyLL;
+  using handler::ArrayHandlerBase<AL, AR>::axpyRL;
+  using handler::ArrayHandlerBase<AL, AR>::axpyLR;
+  using handler::ArrayHandlerBase<AL, AR>::axpyRR;
+  using handler::ArrayHandlerBase<AL, AR>::dotLL;
+  using handler::ArrayHandlerBase<AL, AR>::dotLR;
+  using handler::ArrayHandlerBase<AL, AR>::dotRL;
+  using handler::ArrayHandlerBase<AL, AR>::dotRR;
+
   /*!
    * @brief
    * @param reg register of unique operations. For each element first is the index to x in xx, second is index to y in

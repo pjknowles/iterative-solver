@@ -705,7 +705,7 @@ public:
   }
 };
 
-TEST(trigonometric, Optimize) {
+TEST(trigonometric, DISABLED_Optimize) {
   class Test : public optTest {
   public:
     Test(std::string method = "L-BFGS", double hessian = 1, double initial = 1) : optTest(method, hessian, initial) {

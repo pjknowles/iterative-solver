@@ -1056,172 +1056,7 @@ protected:
     }
   }
 
-  /*!
-   * @brief Select the least-converged roots to work on.
-   * @param max_size
-   */
-  void revise_working_set(size_t max_size = INT_MAX) {
-    m_working_set.clear();
-    //    molpro::cout << "revise_working_set max_size=" << max_size << std::endl;
-    const size_t nR = m_linear ? m_s_rr.size() : 0;
-    if (max_size == INT_MAX)
-      max_size = nR;
-    //    molpro::cout << "revise_working_set max_size=" << max_size << std::endl;
-    std::vector<std::pair<int, scalar_type>> errors;
-    for (auto i = 0; i < m_errors.size(); i++)
-      errors.push_back({i, m_errors[i]});
-    std::sort(errors.begin(), errors.end(), [&](const auto& a, const auto& b) { return (a.second > b.second); });
-    for (const auto& e : errors) {
-      //      molpro::cout << "error in revise_working_set " << e.second << " (thresh=" << m_thresh << ")" << std::endl;
-      if (m_working_set.size() >= max_size or e.second < m_thresh)
-        break;
-      //      molpro::cout << "create working_set " << e.first << " " << e.second << std::endl;
-      m_working_set.push_back(e.first);
-    }
-    //    molpro::cout << "revise_working_set new size=" << m_working_set.size() << std::endl;
-  }
-
-  /*!
-   * @brief calculate lengths of residuals arising from the Q+R part of the current solution
-   */
-  void calculateResidualConvergence() {
-    throw std::runtime_error("unexpected entry into obsolete code");
-    const auto nP = m_pspace.size();
-    const auto nQ = m_qspace.size();
-    const auto oQ = nP;
-    const auto nR = m_linear ? m_s_rr.size() : 0;
-    const auto oR = oQ + nQ;
-    //    molpro::cout << "nQ=" << nQ << " nR=" << nR << std::endl;
-    assert(nP + nR + nQ == m_subspaceEigenvectors.rows());
-    m_errors.resize(m_roots);
-    for (auto root = 0; root < m_roots; root++) {
-      auto eval = m_residual_eigen ? eigenvalues()[root] : 0;
-      scalar_type l2 = 0;
-      for (auto a = 0; a < nQ; a++)
-        for (auto b = 0; b < nQ; b++)
-          l2 = l2 + ((m_qspace.action_action(a, b) - eval * (m_qspace.action(a, b) + m_qspace.action(b, a)) +
-                      eval * eval * m_qspace.metric(a, b)) *
-                     std::conj(m_subspaceEigenvectors(oQ + a, root)) * m_subspaceEigenvectors(oQ + b, root))
-                        .real();
-      for (auto a = 0; a < nQ; a++)
-        for (auto m = 0; m < nR; m++)
-          l2 = l2 + 2 * ((m_hh_qr[a][m] - eval * (m_h_qr[a][m] + m_h_rq[a][m]) + eval * eval * m_s_qr[a][m]) *
-                         std::conj(m_subspaceEigenvectors(oQ + a, root)) * m_subspaceEigenvectors(oR + m, root))
-                            .real();
-      for (auto m = 0; m < nR; m++)
-        for (auto n = 0; n < nR; n++)
-          l2 = l2 + ((m_hh_rr[m][n] - eval * (m_h_rr[m][n] + m_h_rr[n][m]) + eval * eval * m_s_rr[m][n]) *
-                     std::conj(m_subspaceEigenvectors(oR + m, root)) * m_subspaceEigenvectors(oR + n, root))
-                        .real();
-      if (not m_linear or m_errors[root] == 0)
-        m_errors[root] = 1e20;
-      m_errors[root] = std::min(m_errors[root], std::sqrt(std::max(l2, std::pow(m_threshold_residual_recalculate, 2))));
-      //      molpro::cout << "square error " << root << " " << l2 << std::endl;
-    }
-  }
-
-protected:
-  static void copyvec(std::vector<vectorSet>& history, const vectorRefSet newvec,
-                      const vectorSet& subtract = vectorSet()) {
-    vectorSet newcopy;
-    history.emplace_back(newcopy);
-    history.back().reserve(newvec.size());
-    if (subtract.empty()) {
-      for (auto& v : newvec)
-        history.back().emplace_back(v,
-                                    LINEARALGEBRA_DISTRIBUTED | LINEARALGEBRA_OFFLINE // TODO template-ise these options
-        );
-    } else {
-      for (size_t k = 0; k < newvec.size(); k++) {
-        auto& v = newvec[k].get();
-        v.axpy(-1, subtract[k]); // we won't synchronize this because the action gets undone just below
-        history.back().emplace_back(v,
-                                    LINEARALGEBRA_DISTRIBUTED | LINEARALGEBRA_OFFLINE // TODO template-ise these options
-        );
-        v.axpy(1, subtract[k]);
-      }
-    }
-  }
-  static void copyvec(vectorSet& copy, const vectorRefSet source) {
-    copy.clear();
-    // copy.reserve(source.size());
-    for (auto& v : source)
-      copy.emplace_back(v,
-                        LINEARALGEBRA_DISTRIBUTED | LINEARALGEBRA_OFFLINE // TODO template-ise these options
-      );
-  }
-
-  static void copyvec(std::vector<T>& history, std::reference_wrapper<const T> newvec) {
-    history.emplace_back(newvec,
-                         LINEARALGEBRA_DISTRIBUTED | LINEARALGEBRA_OFFLINE); // TODO template-ise these options
-  }
-
 public:
-  void deleteVector(size_t index) {
-    //    molpro::cout << "deleteVector "<<index<<std::endl;
-    //    molpro::cout << "old m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
-    //    molpro::cout << "old m_subspaceOverlap"<<std::endl<<m_subspaceOverlap<<std::endl;
-    size_t old_size = m_QQMatrix.rows();
-    if (index >= old_size)
-      throw std::logic_error("invalid index");
-    auto new_size = old_size;
-    size_t l = 0;
-    for (size_t ll = 0; ll < m_solutions.size(); ll++) {
-      for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
-        if (m_vector_active[ll][lll]) {
-          if (l == index) { // this is the one to delete
-            // 2019-05-15 TODO ymd consider actually deleting the vector here
-            if (m_Weights.size() > l)
-              m_Weights.erase(m_Weights.begin() + l);
-            //            m_dateOfBirth.erase(m_dateOfBirth.begin() + l);
-            m_vector_active[ll][lll] = false;
-            //                    m_others[ll].m_vector_active[lll] = false;
-            for (Eigen::Index l2 = l + 1; l2 < m_QQMatrix.cols(); l2++) {
-              for (Eigen::Index k = 0; k < m_QQMatrix.rows(); k++) {
-                m_QQMatrix(k, l2 - 1) = m_QQMatrix(k, l2);
-                m_QQOverlap(k, l2 - 1) = m_QQOverlap(k, l2);
-              }
-              for (Eigen::Index k = 0; k < m_PQMatrix.rows(); k++) {
-                m_PQMatrix(k, l2 - 1) = m_PQMatrix(k, l2);
-                m_PQOverlap(k, l2 - 1) = m_PQOverlap(k, l2);
-              }
-              for (size_t k = 0; k < m_rhs.size(); k++) {
-                m_subspaceRHS(m_PQMatrix.rows() + l2 - 1, k) = m_subspaceRHS(m_PQMatrix.rows() + l2, k);
-              }
-            }
-            for (Eigen::Index l2 = l + 1; l2 < m_QQMatrix.rows(); l2++) {
-              for (Eigen::Index k = 0; k < m_QQMatrix.rows(); k++) {
-                m_QQMatrix(l2 - 1, k) = m_QQMatrix(l2, k);
-                m_QQOverlap(l2 - 1, k) = m_QQOverlap(l2, k);
-              }
-            }
-            //            molpro::cout << "compress over m_subspaceGradient(" << l << ",*)" << std::endl;
-            for (Eigen::Index l2 = l + 1; l2 < m_QQMatrix.cols(); l2++) {
-              for (Eigen::Index k = 0; k < m_subspaceGradient.cols(); k++)
-                m_subspaceGradient(l2 - 1, k) = m_subspaceGradient(l2, k);
-            }
-            new_size--;
-          }
-          l++;
-        }
-        size_t siz = 0;
-        for (const auto& s : m_vector_active[ll])
-          if (s)
-            ++siz;
-        if (siz == 0) { // can delete the whole thing
-          // TODO implement, and also individual element deletions to get rid of m_vector_active
-        }
-      }
-    }
-    m_subspaceRHS.conservativeResize(m_PQMatrix.rows() + new_size, m_rhs.size());
-    m_QQMatrix.conservativeResize(new_size, new_size);
-    m_QQOverlap.conservativeResize(new_size, new_size);
-    if (m_subspaceGradient.cols() > 0)
-      m_subspaceGradient.conservativeResize(new_size, m_subspaceGradient.cols());
-    //    molpro::cout << "new m_subspaceMatrix"<<std::endl<<m_subspaceMatrix<<std::endl;
-    //    molpro::cout << "new m_subspaceOverlap"<<std::endl<<m_subspaceOverlap<<std::endl;
-    buildSubspace();
-  }
 
   std::vector<scalar_type> m_errors; //!< Error at last iteration
   bool m_subspaceMatrixResRes; // whether m_subspaceMatrix is Residual.Residual (true) or Solution.Residual (false)
@@ -1231,9 +1066,6 @@ public:
   std::vector<vectorSet> m_residuals;
   std::vector<vectorSet> m_solutions;
   std::vector<vectorSet> m_others;
-  vectorSet m_last_residual;
-  vectorSet m_last_solution;
-  vectorSet m_last_other;
   std::vector<std::vector<bool>> m_vector_active;
   vectorSet m_rhs;
   size_t m_lastVectorIndex;
@@ -1244,8 +1076,6 @@ public:
   Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_subspaceOverlap;
   Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_subspaceRHS;
   Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_subspaceGradient;
-  Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_QQMatrix;
-  Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_QQOverlap;
   Eigen::MatrixXcd m_subspaceSolution;     // FIXME templating
   Eigen::MatrixXcd m_subspaceEigenvectors; // FIXME templating
   Eigen::VectorXcd m_subspaceEigenvalues;  // FIXME templating
@@ -1263,7 +1093,6 @@ protected:
                                    //!< - 1: standard augmented hessian
 public:
   scalar_type m_svdThreshold;         ///< Threshold for singular-value truncation in linear equation solver.
-  std::vector<scalar_type> m_Weights; //!< weighting of error vectors in DIIS
   size_t m_maxQ;                      //!< maximum size of Q space when !m_orthogonalize
 protected:
 };
@@ -1655,8 +1484,6 @@ public:
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
     if (m_linesearch_steplength != 0) { // line search
       //      molpro::cout << "*enter endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
-      //      molpro::cout << "m_last_solution " << this->m_last_solution.front() << std::endl;
-      //      molpro::cout << "m_last_residual " << this->m_last_residual.front() << std::endl;
       //      molpro::cout << "solution " << solution.front().get() << std::endl;
       solution.front().get() = *m_best_r;
       solution.front().get().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size()-1]);
@@ -1717,7 +1544,6 @@ public:
   using typename IterativeSolver<T>::scalar_type;
   using typename IterativeSolver<T>::value_type;
   using IterativeSolver<T>::m_verbosity;
-  using IterativeSolver<T>::m_Weights;
   enum DIISmode_type {
     disabled ///< No extrapolation is performed
     ,

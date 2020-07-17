@@ -26,13 +26,11 @@ void syncr(T& x, std::false_type) {}
  * \param roots How many eigensolutions to find
  * \param verbosity How much to report
  * \param problem Selects which test matrix to use
- * \param orthogonalize Whether to orthogonalize expansion vectors
  * \tparam ptype Concrete class template that implements LinearAlgebra::vectorSet
  * \tparam scalar Type of matrix elements
  */
 template <class ptype>
-static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, int problem = 0,
-                         bool orthogonalize = true) {
+static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, int problem = 0) {
 
   using scalar = typename LinearEigensystem<ptype>::scalar_type;
   using element = typename LinearEigensystem<ptype>::value_type;
@@ -68,7 +66,7 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   } update;
 
   molpro::cout << "Test IterativeSolver::LinearEigensystem dimension=" << dimension << ", roots=" << roots
-               << ", problem=" << problem << ", orthogonalize=" << orthogonalize << std::endl;
+               << ", problem=" << problem << std::endl;
   testmatrix.resize(dimension, dimension);
   for (size_t k = 0; k < dimension; k++)
     for (size_t l = 0; l < dimension; l++)
@@ -89,7 +87,6 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   d.m_roots = roots;
   d.m_verbosity = verbosity;
   d.m_maxIterations = dimension;
-  d.m_orthogonalize = orthogonalize;
   vectorSet x;
   vectorSet g;
   for (size_t root = 0; root < (size_t)d.m_roots; root++) {
@@ -500,21 +497,21 @@ TEST(IterativeSolver_test, old) {
     //   DavidsonTest<LinearAlgebra::PagedVector<double> >(2,2,2,2,false);
     if (true) {
 
-      DavidsonTest<SimpleArray<double>>(3, 3, 1, 2, true);
-      DavidsonTest<PagedArray<double>>(3, 3, 1, 2, true);
-      DavidsonTest<PagedArray<double>>(3, 2, 1, 2, true);
-      DavidsonTest<PagedArray<double>>(9, 1, 1, 2, true);
+      DavidsonTest<SimpleArray<double>>(3, 3, 1, 2);
+      DavidsonTest<PagedArray<double>>(3, 3, 1, 2);
+      DavidsonTest<PagedArray<double>>(3, 2, 1, 2);
+      DavidsonTest<PagedArray<double>>(9, 1, 1, 2);
       //      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 2, false);
-      DavidsonTest<PagedArray<double>>(9, 9, 1, 1, true);
+      DavidsonTest<PagedArray<double>>(9, 9, 1, 1);
       //      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 1, false);
-      DavidsonTest<PagedArray<double>>(9, 1, 1, 1, true);
+      DavidsonTest<PagedArray<double>>(9, 1, 1, 1);
       DavidsonTest<PagedArray<double>>(9, 1, 1, 2);
       DavidsonTest<PagedArray<double>>(9, 2, 1, 2);
       DavidsonTest<PagedArray<double>>(100, 1, 1, 2);
       //      DavidsonTest<LinearAlgebra::PagedVector<double> >(100, 3, 1, 2, false);
-      DavidsonTest<PagedArray<double>>(100, 3, 1, 2, true);
-      DavidsonTest<SimpleArray<double>>(100, 3, 1, 2, true);
-      DavidsonTest<OpaqueArray<double>>(100, 3, 1, 2, true);
+      DavidsonTest<PagedArray<double>>(100, 3, 1, 2);
+      DavidsonTest<SimpleArray<double>>(100, 3, 1, 2);
+      DavidsonTest<OpaqueArray<double>>(100, 3, 1, 2);
     }
 //  DavidsonTest<LinearAlgebra::PagedVector<double> >(600,3,1,2,true);
 //  RSPTTest<LinearAlgebra::PagedVector<double> ,double>(100,2e0);

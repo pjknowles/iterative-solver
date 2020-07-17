@@ -23,13 +23,11 @@ void syncr(T& x, std::false_type) {}
  * \param roots How many eigensolutions to find
  * \param verbosity How much to report
  * \param problem Selects which test matrix to use
- * \param orthogonalize Whether to orthogonalize expansion vectors
  * \tparam ptype Concrete class template that implements LinearAlgebra::vectorSet
  * \tparam scalar Type of matrix elements
  */
 template <class ptype>
-static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, int problem = 0,
-                         bool orthogonalize = true) {
+static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, int problem = 0) {
 
   using scalar = typename LinearEigensystem<ptype>::scalar_type;
   using element = typename LinearEigensystem<ptype>::value_type;
@@ -77,7 +75,7 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   } update;
 
   molpro::cout << "Test IterativeSolver::LinearEigensystem dimension=" << dimension << ", roots=" << roots
-               << ", problem=" << problem << ", orthogonalize=" << orthogonalize << std::endl;
+               << ", problem=" << problem << std::endl;
   testmatrix.resize(dimension, dimension);
   for (size_t k = 0; k < dimension; k++)
     for (size_t l = 0; l < dimension; l++)
@@ -98,7 +96,6 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   d.m_roots = roots;
   d.m_verbosity = verbosity;
   d.m_maxIterations = dimension;
-  d.m_orthogonalize = orthogonalize;
   vec2d xvec(d.m_roots);
   vec2d gvec(d.m_roots);
   vectorSet x;
@@ -516,18 +513,18 @@ TEST(IterativeSolver_test, DISABLED_OOCA) {
     //  >(1,6,1e-3,IterativeSolver::DIIS<LinearAlgebra::OutOfCoreArray<double> >::disabled,0.0002);
     //   DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(2,2,2,2,false);
     if (true) {
-      DavidsonTest<OutOfCoreArray<double>>(3, 3, 1, 2, true);
-      DavidsonTest<OutOfCoreArray<double>>(3, 2, 1, 2, true);
-      DavidsonTest<OutOfCoreArray<double>>(9, 1, 1, 2, true);
+      DavidsonTest<OutOfCoreArray<double>>(3, 3, 1, 2);
+      DavidsonTest<OutOfCoreArray<double>>(3, 2, 1, 2);
+      DavidsonTest<OutOfCoreArray<double>>(9, 1, 1, 2);
       //      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(9, 1, 1, 2, false);
-      DavidsonTest<OutOfCoreArray<double>>(9, 9, 1, 1, true);
+      DavidsonTest<OutOfCoreArray<double>>(9, 9, 1, 1);
       //      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(9, 1, 1, 1, false);
-      DavidsonTest<OutOfCoreArray<double>>(9, 1, 1, 1, true);
+      DavidsonTest<OutOfCoreArray<double>>(9, 1, 1, 1);
       DavidsonTest<OutOfCoreArray<double>>(9, 1, 1, 2);
       DavidsonTest<OutOfCoreArray<double>>(9, 2, 1, 2);
       DavidsonTest<OutOfCoreArray<double>>(100, 1, 1, 2);
       //      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(100, 3, 1, 2, false);
-      DavidsonTest<OutOfCoreArray<double>>(100, 3, 1, 2, true);
+      DavidsonTest<OutOfCoreArray<double>>(100, 3, 1, 2);
     }
 //  DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(600,3,1,2,true);
 //  RSPTTest<LinearAlgebra::OutOfCoreArray<double> ,double>(100,2e0);

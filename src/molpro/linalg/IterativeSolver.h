@@ -99,7 +99,6 @@ public:
       m_actions(0),
       m_maxIterations(1000),
       m_minIterations(0),
-      m_orthogonalize(true),
       m_linear(false),
       m_hermitian(false),
       m_roots(0),
@@ -169,7 +168,6 @@ public:
     if (m_qspace.size() == 0 and m_working_set.empty()) // initial
       for (auto i = 0; i < parameters.size(); i++)
         m_working_set.push_back(i);
-    //    if (!m_orthogonalize && m_roots > m_maxQ) m_maxQ = m_roots;
     //    molpro::cout << "m_working_set size " << m_working_set.size() << std::endl;
     if (m_working_set.size() == 0)
       return 0;
@@ -477,9 +475,8 @@ public:
   }
 
   /*!
-   * \brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
-   * be used in the next iteration; this is done only in the case of linear solvers where the orthogonalize option is
-   * set. Also calculate the degree of convergence, and write progress to molpro::cout.
+   * \brief For most solvers, this function does nothing but report, but the exception is Optimize.
+   * Also write progress to molpro::cout.
    * \param solution The current
    * solution, after interpolation and updating with the preconditioned residual.
    * \param residual The residual after interpolation.
@@ -627,8 +624,6 @@ protected:
 public:
   unsigned int m_maxIterations; //!< Maximum number of iterations
   unsigned int m_minIterations; //!< Minimum number of iterations
-  bool m_orthogonalize; ///< Whether or not to orthogonalize the result of update() to all previous expansion vectors
-                        ///< (appropriate only for linear methods).
   bool m_linear;        ///< Whether residuals are linear functions of the corresponding expansion vectors.
   bool m_hermitian;     ///< Whether residuals can be assumed to be the action of an underlying self-adjoint operator.
   size_t
@@ -1093,7 +1088,7 @@ protected:
                                    //!< - 1: standard augmented hessian
 public:
   scalar_type m_svdThreshold;         ///< Threshold for singular-value truncation in linear equation solver.
-  size_t m_maxQ;                      //!< maximum size of Q space when !m_orthogonalize
+  size_t m_maxQ;                      //!< maximum size of Q space
 protected:
 };
 
@@ -1218,7 +1213,6 @@ public:
    * instead the augmented hessian problem. Other values scale the augmented hessian damping.
    */
   explicit LinearEquations(constVectorRefSet rhs, scalar_type augmented_hessian = 0) {
-    this->m_orthogonalize = true;
     this->m_linear = true;
     this->m_residual_eigen = true;
     this->m_residual_rhs = true;
@@ -1355,10 +1349,8 @@ public:
         m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
         m_linesearch_tolerance(0.2), m_linesearch_grow_factor(2), m_linesearch_steplength(0) {
     this->m_linear = false;
-    this->m_orthogonalize = false;
     this->m_residual_rhs = false;
     this->m_residual_eigen = false;
-    this->m_orthogonalize = false;
     this->m_roots = 1;
     this->m_subspaceMatrixResRes = false;
     this->m_singularity_threshold = 0;
@@ -1558,7 +1550,6 @@ public:
   DIIS() {
     this->m_residual_rhs = false;
     this->m_residual_eigen = false;
-    this->m_orthogonalize = false;
     this->m_roots = 1;
     setMode(DIISmode);
     this->m_exclude_r_from_redundancy_test = true;
@@ -1659,12 +1650,11 @@ private:
 
 // C interface
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh,
-                                                           unsigned int maxIterations, int verbosity, int orthogonalize,
+                                                           unsigned int maxIterations, int verbosity,
                                                            const char* fname, int64_t fcomm, int lmppx);
 
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes,
-                                                         double thresh, unsigned int maxIterations, int verbosity,
-                                                         int orthogonalize);
+                                                         double thresh, unsigned int maxIterations, int verbosity);
 
 extern "C" void IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity);
 

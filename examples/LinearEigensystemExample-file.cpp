@@ -1,8 +1,8 @@
 #include "molpro/linalg/IterativeSolver.h"
-// Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
+// Find lowest eigensolutions of a matrix obtained from an external file
 // Storage of vectors in-memory via class pv
 using scalar = double;
-size_t n;                     // dimension of problem
+size_t n = 100;               // dimension of problem
 constexpr scalar alpha = 100; // separation of diagonal elements
 std::vector<double> hmat;
 
@@ -60,7 +60,10 @@ public:
   scalar& operator[](size_t i) { return buffer[i]; }
 };
 
-scalar matrix(const size_t i, const size_t j) { return (i == j ? alpha * (i + 1) : 0) + i + j; }
+scalar matrix(const size_t i, const size_t j) {
+  return hmat[i * n + j];
+  return (i == j ? alpha * (i + 1) : 0) + i + j;
+}
 
 void action(const std::vector<pv>& psx, std::vector<pv>& outputs) {
   for (size_t k = 0; k < psx.size(); k++) {
@@ -74,10 +77,10 @@ void action(const std::vector<pv>& psx, std::vector<pv>& outputs) {
 
 void update(std::vector<pv>& psc, const std::vector<pv>& psg, std::vector<scalar> shift = std::vector<scalar>()) {
   //  for (size_t k = 0; k < psc.size(); k++) {
-  //   std::cout << "update root "<<k<<", shift="<<shift[k]<<": ";
+  //   molpro::cout << "update root "<<k<<", shift="<<shift[k]<<": ";
   //    for (size_t i = 0; i < n; i++)
-  //      std::cout <<" "<< -psg[k][i] / (1e-12-shift[k] + matrix(i,i));
-  //    std::cout<<std::endl;
+  //      molpro::cout <<" "<< -psg[k][i] / (1e-12-shift[k] + matrix(i,i));
+  //    molpro::cout<<std::endl;
   //  }
   for (size_t k = 0; k < psc.size(); k++)
     for (size_t i = 0; i < n; i++)
@@ -85,26 +88,21 @@ void update(std::vector<pv>& psc, const std::vector<pv>& psg, std::vector<scalar
 }
 
 int main(int argc, char* argv[]) {
-  for (const auto& nn : std::vector<int>{1, 2, 4, 10, 100}) {
-//      for (const auto& nn : std::vector<int>{10}) {
-    n = nn;
+  for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
     for (const auto& nroot : std::vector<int>{1, 2, 4}) {
-//          for (const auto& nroot : std::vector<int>{2}) {
-      if (nroot > n)
-        break;
-      std::cout << "\nMatrix dimension=" << n << ", looking for " << nroot << " roots" << std::endl;
-      //      std::cout << "diagonal elements";
-      //      for (auto i = 0; i < n; i++)
-      //        std::cout << " " << matrix(i, i);
-      //      for (auto i = 0; i < n; i++) {
-      //        for (auto j = 0; j < n; j++)
-      //          std::cout << " " << matrix(i, j);
-      //        std::cout << std::endl;
-      //      }
+      molpro::cout << "\n\n*** " << file << ", " << nroot << " roots" << std::endl;
+      std::ifstream f(std::string{"examples/"} + file + ".hamiltonian");
+      f >> n;
+      hmat.resize(n * n);
+      for (auto i = 0; i < n * n; i++)
+        f >> hmat[i];
+      molpro::cout << "diagonal elements";
+      for (auto i = 0; i < n; i++)
+        molpro::cout << " " << matrix(i, i);
       std::vector<double> diagonals;
       for (auto i = 0; i < n; i++)
         diagonals.push_back(matrix(i, i));
-      std::cout << std::endl;
+      molpro::cout << std::endl;
       molpro::linalg::LinearEigensystem<pv> solver;
       solver.m_verbosity = 1;
       solver.m_roots = nroot;
@@ -120,54 +118,48 @@ int main(int argc, char* argv[]) {
       }
       std::vector<std::vector<scalar>> Pcoeff(solver.m_roots);
       int nwork = solver.m_roots;
-      for (auto iter = 0; iter < 10; iter++) {
+      for (auto iter = 0; iter < 100; iter++) {
         action(x, g);
-        if (true) {
-          for (auto root = 0; root < nwork; root++) {
-            std::cout << "before addVector() x:";
-            for (auto i = 0; i < n; i++)
-              std::cout << " " << x[root][i];
-            std::cout << std::endl;
-            std::cout << "before addVector() g:";
-            for (auto i = 0; i < n; i++)
-              std::cout << " " << g[root][i];
-            std::cout << std::endl;
-          }
-        }
+        //        for (auto root = 0; root < nwork; root++) {
+        //          std::cout << "before addVector() x:";
+        //          for (auto i = 0; i < n; i++)
+        //            std::cout << " " << x[root][i];
+        //          std::cout << std::endl;
+        //          std::cout << "before addVector() g:";
+        //          for (auto i = 0; i < n; i++)
+        //            std::cout << " " << g[root][i];
+        //          std::cout << std::endl;
+        //        }
         nwork = solver.addVector(x, g, Pcoeff);
-        //        std::cout << "nwork after addVector: " << nwork << std::endl;
         solver.report();
         if (nwork == 0)
           break;
-        for (auto root = 0; root < nwork; root++) {
-          std::cout << "after addVector()"
-                    << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" << solver.errors()[root]
-                    << " x:";
-          for (auto i = 0; i < n; i++)
-            std::cout << " " << x[root][i];
-          std::cout << std::endl;
-          std::cout << "after addVector() g:";
-          for (auto i = 0; i < n; i++)
-            std::cout << " " << g[root][i];
-          std::cout << std::endl;
-        }
+        //                for (auto root = 0; root < nwork; root++) {
+        //                  std::cout << "after addVector()"
+        //                            << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" <<
+        //                            solver.errors()[root]
+        //                            << " x:";
+        //                  for (auto i = 0; i < n; i++)
+        //                    std::cout << " " << x[root][i];
+        //                  std::cout << std::endl;
+        //                  std::cout << "after addVector() g:";
+        //                  for (auto i = 0; i < n; i++)
+        //                    std::cout << " " << g[root][i];
+        //                  std::cout << std::endl;
+        //                }
         x.resize(nwork);
         g.resize(nwork);
-        std::cout << "residual lengths:";
-        for (const auto& gg : g)
-          std::cout << " " << std::sqrt(gg.dot(gg)) << " (square=" << gg.dot(gg) << ")";
-        std::cout << std::endl;
         update(x, g, solver.working_set_eigenvalues());
-        for (auto root = 0; root < nwork; root++) {
-          std::cout << "after update() x:";
-          for (auto i = 0; i < n; i++)
-            std::cout << " " << x[root][i];
-          std::cout << std::endl;
-          std::cout << "after update() g:";
-          for (auto i = 0; i < n; i++)
-            std::cout << " " << g[root][i];
-          std::cout << std::endl;
-        }
+        //            for (auto root = 0; root < nwork; root++) {
+        //              std::cout << "after update() x:";
+        //              for (auto i = 0; i < n; i++)
+        //                std::cout << " " << x[root][i];
+        //              std::cout << std::endl;
+        //              std::cout << "after update() g:";
+        //              for (auto i = 0; i < n; i++)
+        //                std::cout << " " << g[root][i];
+        //              std::cout << std::endl;
+        //            }
       }
       std::cout << "Error={ ";
       for (const auto& e : solver.errors())

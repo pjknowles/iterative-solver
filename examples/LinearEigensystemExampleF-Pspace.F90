@@ -5,7 +5,7 @@
 PROGRAM Linear_Eigensystem_Example
   USE Iterative_Solver
 
-  INTEGER, PARAMETER :: n = 1000, nroot = 3, nP = 10
+  INTEGER, PARAMETER :: n = 20, nroot = 3, nP = 10
   DOUBLE PRECISION, DIMENSION (n, n) :: m
   DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g
   DOUBLE PRECISION, DIMENSION(nP, nroot) :: p

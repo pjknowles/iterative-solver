@@ -34,20 +34,27 @@ void update(pv& psc, const pv& psg) {
 int main(int argc, char* argv[]) {
   alpha = 1;
   n = 100;
-  anharmonicity = .5;
+  anharmonicity = .1;
   molpro::linalg::DIIS<pv> solver;
-  solver.m_verbosity = 1;
+  solver.m_verbosity = 3;
   solver.m_maxIterations = 100;
   pv g(n);
   pv x(n);
   x.scal(0);
   scalar one = 1;
-  x.put(&one, 1, 0);  // initial guess
+  x.put(&one, 1, 0); // initial guess
   for (size_t iter = 0; iter < solver.m_maxIterations; ++iter) {
     anharmonic_residual(x, g);
+    std::cout << "Before addVector x: "<<x[0]<<" "<<x[n-1] <<std::endl;
+    std::cout << "Before addVector g: "<<g[0]<<" "<<g[n-1] <<std::endl;
     solver.addVector(x, g);
+    std::cout << "After  addVector x: "<<x[0]<<" "<<x[n-1] <<std::endl;
+    std::cout << "After  addVector g: "<<g[0]<<" "<<g[n-1] <<std::endl;
     update(x, g);
-    if (solver.endIteration(x, g)) break;
+    std::cout << "After  update x: "<<x[0]<<" "<<x[n-1] <<std::endl;
+    std::cout << "After  update g: "<<g[0]<<" "<<g[n-1] <<std::endl;
+    if (solver.endIteration(x, g))
+      break;
   }
   std::cout << "Distance of solution from origin: " << std::sqrt(x.dot(x)) << std::endl;
   std::cout << "Error=" << solver.errors().front() << " after " << solver.iterations() << " iterations" << std::endl;

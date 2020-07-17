@@ -28,6 +28,7 @@ class Q {
   std::map<int, std::vector<scalar_type>> m_metric_pspace;
   std::map<int, std::vector<scalar_type>> m_action_pspace;
   std::vector<int> m_keys;
+  std::map<int, typename fastvector::value_type> m_scale_factors, m_diff_factors;
 
 public:
   Q(const P<typename fastvector::value_type, scalar_type>& pspace, bool hermitian = false)
@@ -128,22 +129,22 @@ public:
   scalar_type add(const fastvector& vector, const fastvector& action, const slowvector& oldvector,
                   const slowvector& oldaction, const std::vector<slowvector>& rhs, bool resres = false) {
     auto rr = vector.dot(vector);
-    decltype(rr) alpha, beta;
+    typename fastvector::value_type scale_factor, diff_factor;
     if (resres) {
       rr = action.dot(action);
       auto dd = oldaction.dot(oldaction);
       auto rd = action.dot(oldaction);
-      alpha = 1 / std::sqrt(rr + dd - 2 * rd);
-      beta = -alpha;
+      scale_factor = 1 / std::sqrt(rr + dd - 2 * rd);
+      diff_factor = scale_factor;
     } else {
       auto dd = oldvector.dot(oldvector);
       auto rd = vector.dot(oldvector);
       if (rd * rd >= rr * dd) { // let linear dependence code deal with this exceptional case later
-        alpha = 1;
-        beta = -1;
+        scale_factor = 1;
+        diff_factor = 1;
       } else {
-        alpha = 1 / std::sqrt(rr * (-1 + rr * dd / (rd * rd)));
-        beta = -alpha * rr / rd;
+        scale_factor = 1 / std::sqrt(rr * (-1 + rr * dd / (rd * rd)));
+        diff_factor = rr / rd;
       }
     }
     //    molpro::cout << "Q.add difference, alpha=" << alpha << ", beta=" << beta << std::endl;
@@ -151,16 +152,18 @@ public:
     //                 << ", rd=" << rd << std::endl;
     auto& v = const_cast<fastvector&>(vector);
     auto& a = const_cast<fastvector&>(action);
-    v.scal(alpha);
-    v.axpy(beta, oldvector);
-    a.scal(alpha);
-    a.axpy(beta, oldaction);
+    v.scal(scale_factor);
+    v.axpy(-diff_factor * scale_factor, oldvector);
+    a.scal(scale_factor);
+    a.axpy(-diff_factor * scale_factor, oldaction);
+    m_scale_factors[m_index] = scale_factor;
+    m_diff_factors[m_index] = diff_factor;
     add(v, a, rhs, resres);
-    v.axpy(-beta, oldvector);
-    v.scal(1 / alpha);
-    a.axpy(-beta, oldaction);
-    a.scal(1 / alpha);
-    return alpha;
+    v.axpy(diff_factor * scale_factor, oldvector);
+    v.scal(1 / scale_factor);
+    a.axpy(diff_factor * scale_factor, oldaction);
+    a.scal(1 / scale_factor);
+    return scale_factor;
   }
 
   /*!

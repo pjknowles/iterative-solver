@@ -286,7 +286,7 @@ public:
       auto root = m_working_set[k];
       m_errors[root] = std::sqrt(action[k].get().dot(action[k]));
     }
-//    molpro::cout << "m_interpolation:\n" << m_interpolation << std::endl;
+    //    molpro::cout << "m_interpolation:\n" << m_interpolation << std::endl;
     doInterpolation(parameters, action, parametersP, other, true);
     m_last_d.clear();
     m_last_hd.clear();
@@ -294,7 +294,7 @@ public:
     //    molpro::cout << "m_thresh "<<m_thresh<<std::endl;
     for (int k = 0; k < m_working_set.size(); k++) {
       auto root = m_working_set[k];
-//      molpro::cout << "k=" << k << ", root=" << root << ", error=" << m_errors[root] << std::endl;
+      //      molpro::cout << "k=" << k << ", root=" << root << ", error=" << m_errors[root] << std::endl;
       if (m_errors[root] < m_thresh and m_q_solutions.count(root) == 0) { // converged just now
         if (m_verbosity > 1)
           molpro::cout << "selecting root " << root << " for adding converged solution to Q space at position"
@@ -303,7 +303,7 @@ public:
         m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
       }
       if (m_errors[root] < m_thresh) { // converged
-//        molpro::cout << "  remove this vector from the working set"<<std::endl;
+                                       //        molpro::cout << "  remove this vector from the working set"<<std::endl;
         //  remove this vector from the working set
         for (auto kp = k + 1; kp < m_working_set.size(); kp++) {
           parameters[kp - 1].get() = parameters[kp].get();
@@ -312,10 +312,11 @@ public:
         }
         m_working_set.pop_back();
         k--;
-//        molpro::cout << "k now = "<<k<<std::endl;
-//        molpro::cout << "m_working_set revised to ";for (const auto& w : m_working_set) molpro::cout <<" "<<w;molpro::cout <<std::endl;
+        //        molpro::cout << "k now = "<<k<<std::endl;
+        //        molpro::cout << "m_working_set revised to ";for (const auto& w : m_working_set) molpro::cout <<"
+        //        "<<w;molpro::cout <<std::endl;
       } else { // unconverged
-//        molpro::cout << "unconverged"<<std::endl;
+               //        molpro::cout << "unconverged"<<std::endl;
         m_last_d.emplace_back(parameters[k]);
         m_last_hd.emplace_back(action[k]);
       }
@@ -693,26 +694,26 @@ protected:
     Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester,
                                                                                      Eigen::ComputeThinV);
     //    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
-//        molpro::cout << "matrix:\n" << singularTester << std::endl;
-//        molpro::cout << "singular values:\n" << svd.singularValues().transpose() << std::endl;
-//        molpro::cout << "V:\n" << svd.matrixV() << std::endl;
-//        molpro::cout << "candidates:";
-//        for (const auto& c : candidates)
-//          molpro::cout << " " << c;
-//        molpro::cout << std::endl;
+    //        molpro::cout << "matrix:\n" << singularTester << std::endl;
+    //        molpro::cout << "singular values:\n" << svd.singularValues().transpose() << std::endl;
+    //        molpro::cout << "V:\n" << svd.matrixV() << std::endl;
+    //        molpro::cout << "candidates:";
+    //        for (const auto& c : candidates)
+    //          molpro::cout << " " << c;
+    //        molpro::cout << std::endl;
     auto sv = svd.singularValues();
     std::vector<scalar_type> svv;
     for (auto k = 0; k < n; k++)
       svv.push_back(sv(k));
     auto most_singular = std::min_element(svv.begin(), svv.end()) - svv.begin();
-//        molpro::cout << "most_singular " << most_singular << std::endl;
+    //        molpro::cout << "most_singular " << most_singular << std::endl;
     if (svv[most_singular] > threshold)
       return -1;
     for (const auto& k : candidates) {
-//      if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
-        //        molpro::cout << "taking candidate " << k << ": " << svd.matrixV()(k, most_singular) << std::endl;
-        if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
-          return k;
+      //      if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
+      //        molpro::cout << "taking candidate " << k << ": " << svd.matrixV()(k, most_singular) << std::endl;
+      if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
+        return k;
     }
     return -1;
   }
@@ -1172,7 +1173,7 @@ public:
             // 2019-05-15 TODO ymd consider actually deleting the vector here
             if (m_Weights.size() > l)
               m_Weights.erase(m_Weights.begin() + l);
-//            m_dateOfBirth.erase(m_dateOfBirth.begin() + l);
+            //            m_dateOfBirth.erase(m_dateOfBirth.begin() + l);
             m_vector_active[ll][lll] = false;
             //                    m_others[ll].m_vector_active[lll] = false;
             for (Eigen::Index l2 = l + 1; l2 < m_QQMatrix.cols(); l2++) {
@@ -1261,14 +1262,15 @@ protected:
                                    //!< - 0: unmodified linear equations
                                    //!< - 1: standard augmented hessian
 public:
-  scalar_type m_svdThreshold; ///< Threshold for singular-value truncation in linear equation solver.
+  scalar_type m_svdThreshold;         ///< Threshold for singular-value truncation in linear equation solver.
   std::vector<scalar_type> m_Weights; //!< weighting of error vectors in DIIS
   size_t m_maxQ;                      //!< maximum size of Q space when !m_orthogonalize
 protected:
 };
 
 template <class T>
-typename T::scalar_type inline operator*(const typename IterativeSolver<T>::Pvector& a, const typename IterativeSolver<T>::Pvector& b) {
+typename T::scalar_type inline operator*(const typename IterativeSolver<T>::Pvector& a,
+                                         const typename IterativeSolver<T>::Pvector& b) {
   typename T::scalar_type result = 0;
   for (const auto& aa : a)
     if (b.find(aa.first))
@@ -1293,8 +1295,8 @@ namespace linalg {
  *
  * \tparam scalar Type of matrix elements
  */
-template <class T>
-class LinearEigensystem : public IterativeSolver<T> {
+template <class T, class slowvector = T>
+class LinearEigensystem : public IterativeSolver<T, slowvector> {
 public:
   using typename IterativeSolver<T>::scalar_type;
   using typename IterativeSolver<T>::value_type;
@@ -1369,8 +1371,8 @@ public:
  * \tparam scalar Type of matrix elements
  *
  */
-template <class T>
-class LinearEquations : public IterativeSolver<T> {
+template <class T, class slowvector = T>
+class LinearEquations : public IterativeSolver<T, slowvector> {
   using typename IterativeSolver<T>::scalar_type;
   using typename IterativeSolver<T>::value_type;
 
@@ -1472,17 +1474,18 @@ protected:
         this->m_interpolation.col(root) =
             evec.col(imax).real().head(nX) / (this->m_augmented_hessian * evec.real()(nX, imax));
       } else { // straight solution of linear equations
-//        molpro::cout << "m_subspaceMatrix dimensions: " << this->m_subspaceMatrix.rows() << ", "
-//                     << this->m_subspaceMatrix.cols() << std::endl;
-//        molpro::cout << "m_subspaceRHS dimensions: " << this->m_subspaceRHS.rows() << "," << this->m_subspaceRHS.cols()
-//                     << std::endl;
+               //        molpro::cout << "m_subspaceMatrix dimensions: " << this->m_subspaceMatrix.rows() << ", "
+               //                     << this->m_subspaceMatrix.cols() << std::endl;
+               //        molpro::cout << "m_subspaceRHS dimensions: " << this->m_subspaceRHS.rows() << "," <<
+               //        this->m_subspaceRHS.cols()
+               //                     << std::endl;
         // use QR decomposition so that also matrices that are not positive/negative semidefinite
         // can be used with IterativeSolver
         // this->m_interpolation = this->m_subspaceMatrix.ldlt().solve(this->m_subspaceRHS);
-//        molpro::cout << "m_subspaceMatrix\n" << this->m_subspaceMatrix << std::endl;
-//        molpro::cout << "m_subspaceRHS\n" << this->m_subspaceRHS << std::endl;
+        //        molpro::cout << "m_subspaceMatrix\n" << this->m_subspaceMatrix << std::endl;
+        //        molpro::cout << "m_subspaceRHS\n" << this->m_subspaceRHS << std::endl;
         this->m_interpolation = this->m_subspaceMatrix.householderQr().solve(this->m_subspaceRHS);
-//        molpro::cout << "m_interpolation\n" << this->m_interpolation << std::endl;
+        //        molpro::cout << "m_interpolation\n" << this->m_interpolation << std::endl;
       }
     }
     //   molpro::cout << "m_interpolation\n"<<this->m_interpolation<<std::endl;
@@ -1502,8 +1505,8 @@ protected:
  * \tparam scalar Type of matrix elements
  *
  */
-template <class T>
-class Optimize : public IterativeSolver<T> {
+template <class T, class slowvector = T>
+class Optimize : public IterativeSolver<T, slowvector> {
 public:
   using typename IterativeSolver<T>::scalar_type;
   using typename IterativeSolver<T>::value_type;
@@ -1550,6 +1553,8 @@ protected:
   scalar_type m_linesearch_steplength; ///< the current line search step. Zero means continue with QN
   //  scalar_type m_linesearch_quasinewton_steplength; ///< what fraction of the Quasi-Newton step is the current line
   //  search step
+  std::unique_ptr<slowvector> m_best_r, m_best_v;
+  scalar_type m_best_f;
 
   bool interpolatedMinimum(value_type& x, scalar_type& f, value_type x0, value_type x1, scalar_type f0, scalar_type f1,
                            scalar_type g0, scalar_type g1) {
@@ -1566,21 +1571,21 @@ protected:
   }
 
   bool solveReducedProblem() override {
-    auto n = this->m_subspaceMatrix.rows();
+    auto n = this->m_qspace.size();
     //    molpro::cout << "solveReduced Problem n=" << n << std::endl;
     if (n > 0) {
 
       // first consider whether this point can be taken as the next iteration point, or whether further line-searching
       // is needed
       auto step = std::sqrt(this->m_subspaceOverlap(n - 1, n - 1));
-      auto f0 = m_values[n - 1];
-      auto f1 = m_values[n];
-      auto g1 = this->m_subspaceGradient(n - 1);
+      auto f0 = m_best_f;
+      auto f1 = m_values.back();
+      auto g1 = this->m_h_qr[n - 1][0];
       //      molpro::cout << "this->m_residuals[n-1][0] " << this->m_residuals[n - 1][0] << std::endl;
       //      molpro::cout << "this->m_solutions[n-1][0] " << this->m_solutions[n - 1][0] << std::endl;
       //      molpro::cout << "this->m_residuals.back()[0] " << this->m_residuals.back()[0] << std::endl;
       //      molpro::cout << "this->m_solutions.back()[0] " << this->m_solutions.back()[0] << std::endl;
-      auto g0 = g1 - this->m_residuals.back()[0].dot(this->m_solutions.back()[0]);
+      auto g0 = (*m_best_v).dot(this->m_qspace[this->m_qspace.size()-1]);
       bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
       bool Wolfe_2 = m_strong_Wolfe ? g1 >= m_Wolfe_2 * g0 : std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
       if (this->m_verbosity > 1) {
@@ -1617,6 +1622,11 @@ protected:
       }
       // when we arrive here, we need to do a new line-search step
       //      molpro::cout << "we need to do a new line-search step " << m_linesearch_steplength << std::endl;
+      if (f1 <= f0) {
+        m_best_r.reset(new slowvector(this->m_current_r.front()));
+        m_best_v.reset(new slowvector(this->m_current_v.front()));
+        m_best_f = m_values.back();
+      }
       return false;
     }
   accept:
@@ -1624,14 +1634,20 @@ protected:
     auto& minusAlpha = this->m_interpolation;
     minusAlpha.conservativeResize(n, 1);
     if (this->m_algorithm == "L-BFGS") {
-      for (Eigen::Index i = n - 1; i >= 0; i--) {
-        minusAlpha(i, 0) = -this->m_subspaceGradient(i, 0);
-        for (Eigen::Index j = i + 1; j < n; j++)
-          minusAlpha(i, 0) -= minusAlpha(j, 0) * this->m_subspaceMatrix(i, j);
-        minusAlpha(i, 0) /= this->m_subspaceMatrix(i, i);
+      for (int a = this->m_qspace.size() - 1; a >= 0; a--) {
+        minusAlpha(a, 0) = -this->m_h_qr[a][0];
+        for (auto b = a + 1; b < this->m_qspace.size(); b++)
+          minusAlpha(a, 0) -= minusAlpha(b, 0) * this->m_qspace.action(a, b);
+        minusAlpha(a, 0) /= this->m_qspace.action(a, a);
       }
     } else
       minusAlpha.setConstant(0);
+    this->m_interpolation.conservativeResize(this->m_qspace.size() + 1, 1);
+    this->m_interpolation.setZero();
+    this->m_interpolation(this->m_qspace.size(), 0) = 1;
+    m_best_r.reset(new slowvector(this->m_current_r.front()));
+    m_best_v.reset(new slowvector(this->m_current_v.front()));
+    m_best_f = m_values.back();
     return true;
   }
 
@@ -1642,35 +1658,20 @@ public:
       //      molpro::cout << "m_last_solution " << this->m_last_solution.front() << std::endl;
       //      molpro::cout << "m_last_residual " << this->m_last_residual.front() << std::endl;
       //      molpro::cout << "solution " << solution.front().get() << std::endl;
-      this->m_last_solution.front().axpy(-1, this->m_solutions.back().front());
-      this->m_last_residual.front().axpy(-1, this->m_residuals.back().front());
-      solution.front().get() = this->m_last_solution.front();
-      solution.front().get().axpy(m_linesearch_steplength, this->m_solutions.back().front());
-      //      molpro::cout << "m_last_solution " << this->m_last_solution.front() << std::endl;
-      //      molpro::cout << "m_last_residual " << this->m_last_residual.front() << std::endl;
-      //      molpro::cout << "solution " << solution.front().get() << std::endl;
-      //      molpro::cout << "dimension " << this->m_QQMatrix.rows() << std::endl;
-      //      molpro::cout << "m_solutions.size()=" << this->m_solutions.size() << std::endl;
+      solution.front().get() = *m_best_r;
+      solution.front().get().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size()-1]);
       m_values.pop_back();
-      this->deleteVector(this->m_QQMatrix.rows() - 1);
-      //      molpro::cout << "dimension " << this->m_QQMatrix.rows() << std::endl;
-      //      molpro::cout << "m_solutions.size()=" << this->m_solutions.size() << std::endl;
+      this->m_qspace.remove(this->m_qspace.size()-1);
     } else { // quasi-Newton
       if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
-        solution.back().get().axpy(-1, this->m_last_solution.back());
+        solution.back().get().axpy(-1, this->m_last_d.back());
         auto& minusAlpha = this->m_interpolation;
-        size_t l = 0;
-        for (size_t ll = 0; ll < this->m_residuals.size(); ll++) {
-          for (size_t lll = 0; lll < this->m_residuals[ll].size(); lll++) {
-            if (this->m_vector_active[ll][lll]) {
-              auto factor = minusAlpha(l, 0) -
-                            this->m_residuals[ll][lll].dot(solution.back().get()) / this->m_subspaceMatrix(l, l);
-              solution.back().get().axpy(factor, this->m_solutions[ll][lll]);
-              l++;
-            }
-          }
+        for (auto a = 0; a < this->m_qspace.size(); a++) {
+          auto factor =
+              minusAlpha(a, 0) - this->m_qspace.action(a).dot(solution.back().get()) / this->m_qspace.action(a, a);
+          solution.back().get().axpy(factor, this->m_qspace[a]);
         }
-        solution.back().get().axpy(1, this->m_last_solution.front());
+        solution.back().get().axpy(1, this->m_last_d.front());
       }
     }
     //    molpro::cout << "*exit endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
@@ -1706,8 +1707,8 @@ public:
  * Example of simplest use: @include DIISexample.cpp
  *
  */
-template <class T>
-class DIIS : public IterativeSolver<T> {
+template <class T, class slowvector = T>
+class DIIS : public IterativeSolver<T, slowvector> {
   using IterativeSolver<T>::m_residuals;
   using IterativeSolver<T>::m_solutions;
   using IterativeSolver<T>::m_others;

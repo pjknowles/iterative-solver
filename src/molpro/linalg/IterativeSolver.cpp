@@ -19,7 +19,7 @@ using v = molpro::linalg::OutOfCoreArray<double>;
 static std::stack<std::unique_ptr<molpro::linalg::IterativeSolver<v>>> instances;
 
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, double thresh,
-                                                           unsigned int maxIterations, int verbosity, int orthogonalize,
+                                                           unsigned int maxIterations, int verbosity,
                                                            const char* fname, int64_t fcomm, int lmppx) {
   std::shared_ptr<molpro::Profiler> profiler = nullptr;
 #ifdef HAVE_MPI_H
@@ -57,12 +57,10 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   instance->m_thresh = thresh;
   instance->m_maxIterations = maxIterations;
   instance->m_verbosity = verbosity;
-  instance->m_orthogonalize = orthogonalize;
 }
 
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes,
-                                                         double thresh, unsigned int maxIterations, int verbosity,
-                                                         int orthogonalize) {
+                                                         double thresh, unsigned int maxIterations, int verbosity) {
 #ifdef HAVE_MPI_H
   int flag;
   MPI_Initialized(&flag);
@@ -90,7 +88,6 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
   instance->m_thresh = thresh;
   instance->m_maxIterations = maxIterations;
   instance->m_verbosity = verbosity;
-  instance->m_orthogonalize = orthogonalize;
 }
 
 extern "C" void IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity) {

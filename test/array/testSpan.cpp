@@ -9,10 +9,55 @@ using molpro::linalg::array::Span;
 using ::testing::Eq;
 using ::testing::Pointwise;
 
-TEST(Span, constructor) {
+struct SpanF : ::testing::Test {
+public:
+  SpanF() = default;
+
   using T = int;
-  auto data = std::vector<T>{1, 2, 3, 4, 5};
+  std::vector<T> data = {1, 2, 3, 4, 5};
+};
+
+TEST_F(SpanF, default_constructor) {
+  auto s = Span<T>();
+  EXPECT_EQ(s.begin(), nullptr);
+  EXPECT_EQ(s.size(), 0);
+}
+
+TEST_F(SpanF, constructor) { auto s = Span<T>(data.data(), data.size()); }
+
+TEST_F(SpanF, copy_constructor) {
   auto s = Span<T>(data.data(), data.size());
+  auto t = Span<T>(s);
+  EXPECT_EQ(s.begin(), t.begin());
+  EXPECT_EQ(s.size(), t.size());
+}
+
+TEST_F(SpanF, move_constructor) {
+  auto&& s = Span<T>(data.data(), data.size());
+  auto t = Span<T>(std::forward<Span<T>>(s));
+  EXPECT_EQ(t.begin(), data.data());
+  EXPECT_EQ(t.size(), data.size());
+  EXPECT_EQ(s.begin(), nullptr);
+  EXPECT_EQ(s.size(), 0);
+}
+
+TEST_F(SpanF, copy_operator) {
+  auto s = Span<T>(data.data(), data.size());
+  auto t = Span<T>();
+  t = s;
+  EXPECT_EQ(s.begin(), t.begin());
+  EXPECT_EQ(s.size(), t.size());
+}
+
+TEST_F(SpanF, move_operator) {
+  auto&& s = Span<T>(data.data(), data.size());
+
+  auto t = Span<T>();
+  t = std::forward<Span<T>>(s);
+  EXPECT_EQ(t.begin(), data.data());
+  EXPECT_EQ(t.size(), data.size());
+  EXPECT_EQ(s.begin(), nullptr);
+  EXPECT_EQ(s.size(), 0);
 }
 
 TEST(Span, iterate) {

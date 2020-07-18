@@ -28,7 +28,22 @@ public:
   using iterator = T*;
   using const_iterator = T const*;
 
+  Span() = default;
+  ~Span() = default;
   Span(T* data, size_type size) : m_buffer{data}, m_size{size} {}
+  Span(const Span& source) = default;
+  Span(Span&& source) : m_buffer{source.m_buffer}, m_size{source.m_size} {
+    source.m_buffer = nullptr;
+    source.m_size = 0;
+  }
+  Span& operator=(const Span& source) = default;
+  Span& operator=(Span&& source) {
+    m_buffer = source.m_buffer;
+    m_size = source.m_size;
+    source.m_buffer = nullptr;
+    source.m_size = 0;
+    return *this;
+  }
 
   iterator data() const { return m_buffer; }
 
@@ -43,8 +58,8 @@ public:
   size_type size() const { return m_size; }
 
 protected:
-  iterator m_buffer;
-  size_type m_size;
+  iterator m_buffer = nullptr;
+  size_type m_size = 0;
 };
 
 #endif // C++20

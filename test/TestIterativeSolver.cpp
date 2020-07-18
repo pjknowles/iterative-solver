@@ -295,7 +295,7 @@ TEST(TestIterativeSolver, linear_equations) {
         //        std::cout << " " << x[0][i]; std::cout << std::endl; auto conv = (solver.endIteration(x, g, active));
         //        std::cout << "eigenvector "<<0<<active[0]<<" after endIteration"; for (size_t i = 0; i < n; i++)
         //        std::cout << " " << x[0][i]; std::cout << std::endl; if (conv) break;
-        if (nwork==0)
+        if (nwork == 0)
           break;
       }
       //      EXPECT_THAT(solver.active(),
@@ -436,6 +436,23 @@ public:
 
 TEST(Rosenbrock_BFGS, DISABLED_Optimize) { ASSERT_TRUE(RosenbrockTest().run("L-BFGS")); }
 TEST(Rosenbrock_null, DISABLED_Optimize) { ASSERT_TRUE(RosenbrockTest().run("null")); }
+
+template <class T>
+std::ostream& operator<<(std::ostream& o, const std::vector<T>& v) {
+  for (const auto& s : v)
+    o << " " << s;
+  return o;
+}
+
+template <class T>
+std::ostream& operator<<(std::ostream& o, const molpro::linalg::SimpleArray<T>& a) {
+  std::vector<T> v;
+  v.resize(a.size());
+  a.get(v.data(), v.size(), 0);
+  o << v;
+  return o;
+}
+
 class MonomialTest {
 public:
   using ptype = molpro::linalg::SimpleArray<double>;
@@ -479,11 +496,11 @@ public:
   bool run(double power, double normPower) {
     _Monomial_residual.power = power;
     _Monomial_residual.normPower = normPower;
-    constexpr size_t n = 5;
+    constexpr size_t n = 1;
     ptype x(n);
     ptype g(n);
     ptype hg(n);
-    const int verbosity = 1;
+    const int verbosity = 3;
 
     molpro::linalg::Optimize<ptype> d("L-BFGS");
     //    IterativeSolver::DIIS<ptype> d;
@@ -491,12 +508,17 @@ public:
     d.m_options["convergence"] = "residual";
     std::vector<scalar> xxx(n, .1);
     x.put(&xxx[0], n, 0);
-    //    molpro::cout << "initial guess " << x << std::endl;
+    if (verbosity > 1)
+      molpro::cout << "initial guess " << x << std::endl;
     bool converged = false;
-    for (int iteration = 1; iteration < 100 && not converged; iteration++) {
+    for (int iteration = 1; iteration < 10 && not converged; iteration++) {
       auto value = _Monomial_residual(x, g);
       std::vector<scalar> shift;
       shift.push_back(1e-10);
+      if (verbosity > 1)
+        molpro::cout << "x" << x << std::endl;
+      if (verbosity > 1)
+      molpro::cout << "g" << g << std::endl;
       if (d.addValue(x, value, g))
         _Monomial_updater(x, g, shift);
       converged = d.endIteration(x, g);
@@ -514,9 +536,9 @@ public:
   }
 };
 
-TEST(Monomial_22, DISABLED_Optimize) { ASSERT_TRUE(MonomialTest().run(2, 2)); }
-TEST(Monomial_44, DISABLED_Optimize) { ASSERT_TRUE(MonomialTest().run(4, 4)); }
-TEST(Monomial_42, DISABLED_Optimize) { ASSERT_TRUE(MonomialTest().run(4, 2)); }
+TEST(Monomial_22, Optimize) { ASSERT_TRUE(MonomialTest().run(2, 2)); }
+TEST(Monomial_44, Optimize) { ASSERT_TRUE(MonomialTest().run(4, 4)); }
+TEST(Monomial_42, Optimize) { ASSERT_TRUE(MonomialTest().run(4, 2)); }
 
 class trigTest {
 

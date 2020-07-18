@@ -17,7 +17,7 @@ CONTAINS
   !> Example of simplest use: @include LinearEigensystemExampleF.F90
   !> Example including use of P space: @include LinearEigensystemExampleF-Pspace.F90
   SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, maxIterations, verbosity, &
-                                                            orthogonalize, pname, pcomm, lmppx)
+                                                            pname, pcomm, lmppx)
     INTEGER, INTENT(in) :: nq !< dimension of matrix
     INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
     CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
@@ -27,9 +27,8 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
     INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
     !< One gives a single progress-report line each iteration.
-    LOGICAL, INTENT(in), OPTIONAL :: orthogonalize !< whether to orthogonalize expansion vectors (default true)
     INTERFACE
-      SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, thresh, maxIterations, verbosity, orthogonalize, &
+      SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, thresh, maxIterations, verbosity,  &
                   pname, pcomm, lmppx) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
         USE iso_c_binding
         INTEGER(C_size_t), INTENT(in), VALUE :: nq
@@ -37,13 +36,12 @@ CONTAINS
         REAL(c_double), INTENT(in), VALUE :: thresh
         INTEGER(C_int), INTENT(in), VALUE :: maxIterations
         INTEGER(C_int), INTENT(in), VALUE :: verbosity
-        INTEGER(C_int), INTENT(in), VALUE :: orthogonalize
         CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
         INTEGER(C_int64_t), INTENT(in), VALUE :: pcomm
         INTEGER(C_int), INTENT(in), VALUE :: lmppx
       END SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC
     END INTERFACE
-    INTEGER(c_int) :: verbosityC = 0, maxIterationsC = 0, orthogonalizeC = 1
+    INTEGER(c_int) :: verbosityC = 0, maxIterationsC = 0
     REAL(c_double) :: threshC = 0d0
     CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
     INTEGER(c_int64_t) :: pcommC = 0 ! is this OK? In principle should be MPI_COMM_NULL?
@@ -66,17 +64,13 @@ CONTAINS
     IF (PRESENT(verbosity)) THEN
       verbosityC = INT(verbosity, kind = c_int)
     END IF
-    IF (PRESENT(orthogonalize)) THEN
-      IF (orthogonalize) orthogonalizeC = 1
-      IF (.NOT.orthogonalize) orthogonalizeC = 0
-    END IF
     IF (PRESENT(pcomm)) THEN
       pcommC = INT(pcomm,kind = c_int64_t)
     ENDIF
     IF (PRESENT(lmppx)) THEN
       IF (lmppx) lmppxC = 1
     ENDIF
-    CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, threshC, maxIterationsC, verbosityC, orthogonalizeC, &
+    CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, threshC, maxIterationsC, verbosityC,  &
                                                          pnameC, pcommC, lmppxC)
   END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize
 
@@ -84,7 +78,7 @@ CONTAINS
   !> Example of simplest use: @include LinearEquationsExampleF.F90
   !! Example including use of P space: include LinearEquationsExampleF-Pspace.F90
   SUBROUTINE Iterative_Solver_Linear_Equations_Initialize(nq, nroot, rhs, augmented_hessian, thresh, maxIterations, &
-      verbosity, orthogonalize)
+      verbosity)
     INTEGER, INTENT(in) :: nq !< dimension of matrix
     INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
     double precision, INTENT(in), DIMENSION(nq, nroot) :: rhs !< the constant right-hand-side of each equation system
@@ -95,10 +89,9 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
     INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
     !< One gives a single progress-report line each iteration.
-    LOGICAL, INTENT(in), OPTIONAL :: orthogonalize !< whether to orthogonalize expansion vectors (default true)
     INTERFACE
       SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC(nq, nroot, rhs, augmented_hessian, thresh, maxIterations, &
-          verbosity, orthogonalize) &
+          verbosity) &
           BIND(C, name = 'IterativeSolverLinearEquationsInitialize')
         USE iso_c_binding
         INTEGER(C_size_t), INTENT(in), VALUE :: nq
@@ -108,10 +101,9 @@ CONTAINS
         REAL(c_double), INTENT(in), VALUE :: thresh
         INTEGER(C_int), INTENT(in), VALUE :: maxIterations
         INTEGER(C_int), INTENT(in), VALUE :: verbosity
-        INTEGER(C_int), INTENT(in), VALUE :: orthogonalize
       END SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC
     END INTERFACE
-    INTEGER(c_int) :: verbosityC = 0, maxIterationsC = 0, orthogonalizeC = 1
+    INTEGER(c_int) :: verbosityC = 0, maxIterationsC = 0
     REAL(c_double) :: threshC = 0d0, augmented_hessianC = 0d0
     m_nq = INT(nq, kind = c_size_t)
     m_nroot = INT(nroot, kind = c_size_t)
@@ -127,12 +119,8 @@ CONTAINS
     IF (PRESENT(verbosity)) THEN
       verbosityC = INT(verbosity, kind = c_int)
     END IF
-    IF (PRESENT(orthogonalize)) THEN
-      IF (orthogonalize) orthogonalizeC = 1
-      IF (.NOT.orthogonalize) orthogonalizeC = 0
-    END IF
     CALL Iterative_Solver_Linear_Equations_InitializeC(m_nq, m_nroot, rhs, augmented_hessianC, threshC, maxIterationsC, &
-        verbosityC, orthogonalizeC)
+        verbosityC)
   END SUBROUTINE Iterative_Solver_Linear_Equations_Initialize
 
   !> \brief Optimization
@@ -343,9 +331,8 @@ CONTAINS
     END IF
   END FUNCTION Iterative_Solver_Add_Vector
 
-  !>@brief Take the updated solution vector set, and adjust it if necessary so that it becomes the vector to
-  !> be used in the next iteration; this is done only in the case of linear solvers where the orthogonalize option is set.
-  !> Also calculate the degree of convergence, and write progress to standard output
+  !>@brief For most methods, does nothing; for Optimize it is required.
+  !> Also write progress to standard output
   !> \param solution The current solution, after interpolation and updating with the preconditioned residual.
   !> \param residual The residual after interpolation.
   !> \param error Error indicator for each sought root.
@@ -434,7 +421,7 @@ CONTAINS
   !> \param solution On input, the current solution.
   !> \param residual On input, the residual for solution.
   !> \param indices On exit, the most important base vectors
-  !> \param threshold Base vectors whose predicted contribution is less than
+  !> \param threshold IterativeSolver vectors whose predicted contribution is less than
   !> than this are not considered
   !> \return The number of vectors suggested.
   FUNCTION Iterative_Solver_Suggest_P(solution, residual, indices, threshold, lmppx)
@@ -529,7 +516,7 @@ CONTAINS
     DOUBLE PRECISION, DIMENSION(:, :), ALLOCATABLE :: pp
     INTEGER :: i, j, root
     DOUBLE PRECISION :: alpha, anharmonicity, threshold
-    LOGICAL :: orthogonalize, update
+    LOGICAL ::  update
     PRINT *, 'Test Fortran binding of IterativeSolver'
     m = 1
     DO i = 1, n
@@ -537,11 +524,10 @@ CONTAINS
     END DO
 
     DO irep = 1, 1
-      orthogonalize = irep==1
-      WRITE (6, *) 'Without P-space, dimension=', n, ', roots=', nroot, ' orthogonalize=', orthogonalize
-      threshold = 1d-6; if (orthogonalize) threshold=1d-9
+      WRITE (6, *) 'Without P-space, dimension=', n, ', roots=', nroot
+      threshold = 1d-6;
       CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, &
-          thresh = threshold, verbosity = 1, orthogonalize = orthogonalize)
+          thresh = threshold, verbosity = 1)
       CALL Iterative_Solver_Option("convergence", "residual")
       c = 0; DO i = 1, nroot; c(i, i) = 1;
       ENDDO

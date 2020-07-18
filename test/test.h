@@ -1,7 +1,7 @@
 #ifndef ITERATIVESOLVER_TEST_H
 #define ITERATIVESOLVER_TEST_H
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
@@ -11,25 +11,25 @@
 static int mpi_rank = 0;
 static int mpi_size = 1;
 class MPIEnvironment : public ::testing::Environment {
- public:
+public:
   virtual void SetUp() {
 #ifdef HAVE_MPI_H
     int result;
     MPI_Initialized(&result);
 #ifdef HAVE_PPIDD_H
-    if (! result)
+    if (!result)
       PPIDD_Initialize(nullptr, nullptr, PPIDD_IMPL_DEFAULT);
     MPI_Initialized(&result);
-    int mpiError = ! result;
+    int mpiError = !result;
 #else
     int mpiError = result ? 0 : MPI_Init(nullptr, nullptr);
 #endif
     ASSERT_FALSE(mpiError);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    if (mpi_rank == 0) std::cout << mpi_size << " MPI process" << (mpi_size > 1 ? "es " : "") << std::endl;
-    ::testing::TestEventListeners& listeners =
-    ::testing::UnitTest::GetInstance()->listeners();
+    if (mpi_rank == 0)
+      std::cout << mpi_size << " MPI process" << (mpi_size > 1 ? "es " : "") << std::endl;
+    ::testing::TestEventListeners& listeners = ::testing::UnitTest::GetInstance()->listeners();
     if (mpi_rank != 0)
       delete listeners.Release(listeners.default_result_printer());
 #endif
@@ -52,4 +52,4 @@ int main(int argc, char* argv[]) {
   ::testing::AddGlobalTestEnvironment(new MPIEnvironment);
   return RUN_ALL_TESTS();
 }
-#endif //ITERATIVESOLVER_TEST_H
+#endif // ITERATIVESOLVER_TEST_H

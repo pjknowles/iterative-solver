@@ -1,6 +1,6 @@
 if (FORTRAN
-    AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL "Intel"  # avoid the challenge of linking C++ and Fortran with Intel
-)
+        AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL "Intel"  # avoid the challenge of linking C++ and Fortran with Intel
+        )
     set(ITERATIVESOLVER_FORTRAN_EXAMPLES
             OptimizeExampleF.F90
             DIISExampleF.F90
@@ -12,7 +12,7 @@ if (FORTRAN
 endif ()
 set(EXAMPLES DIISexample.cpp
         OptimizeExample.cpp
-        LinearEigensystemExample.cpp LinearEigensystemExample-paged.cpp
+        LinearEigensystemExample.cpp LinearEigensystemExample-file.cpp LinearEigensystemExample-paged.cpp
         LinearEquationsExample.cpp
         ${ITERATIVESOLVER_FORTRAN_EXAMPLES}
         )
@@ -28,7 +28,7 @@ foreach (fil ${EXAMPLES})
     target_link_libraries(${test_name} PUBLIC molpro::${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
     if (FORTRAN AND CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
         target_link_libraries(${test_name} PUBLIC ifcore)
-    endif()
+    endif ()
     add_test(${nam} ${PROJECT_BINARY_DIR}/${test_name})
 endforeach ()
 
@@ -44,3 +44,6 @@ if (BENCHMARK AND FORTRAN)
         target_link_libraries(LinearEigensystemBenchmarkF PUBLIC molpro::${PROJECT_NAME})# Profiler::serial)
     endif ()
 endif ()
+
+file(COPY bh.hamiltonian DESTINATION .)
+file(COPY hf.hamiltonian DESTINATION .)

@@ -50,18 +50,18 @@ TEST(ArrayHandlerIterable, lazy_axpy) {
   ArrayHandlerIterable<std::vector<value_type>> handler{};
   auto xx = std::vector<std::vector<value_type>>(N, std::vector<value_type>(dim, xval));
   auto yy = std::vector<std::vector<value_type>>(N, std::vector<value_type>(dim, yval));
-  auto ref_axpy = std::vector<std::vector<value_type>>(N, std::vector<value_type>(dim, xval + alpha * yval));
+  auto ref_axpy = std::vector<std::vector<value_type>>(N, std::vector<value_type>(dim, alpha * xval + yval));
   {
     auto h = handler.lazy_handle();
     for (size_t i = 0; i < N; ++i) {
-      h.axpy(xx[i], alpha, yy[i]);
+      h.axpy(alpha, xx[i], yy[i]);
     }
     EXPECT_FALSE(h.invalid());
-    for (const auto& x : xx)
-      EXPECT_THAT(x, Each(xval));
+    for (const auto& y : yy)
+      EXPECT_THAT(y, Each(yval));
   }
   for (size_t i = 0; i < xx.size(); ++i)
-    EXPECT_THAT(xx[i], ContainerEq(ref_axpy[i]));
+    EXPECT_THAT(yy[i], ContainerEq(ref_axpy[i]));
 }
 
 TEST(ArrayHandlerIterable, copy_same) {

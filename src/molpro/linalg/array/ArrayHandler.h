@@ -55,6 +55,7 @@ template <typename... Args> struct OperationRegister {
   void push(const Args &... args) { m_register.push_back({args...}); }
 
   bool empty() { return m_register.empty(); }
+  void clear() { m_register.clear(); }
 };
 
 /*!
@@ -124,8 +125,8 @@ protected:
   virtual AL copyRL(const AR &source) = 0;
   virtual AR copyLR(const AL &source) = 0;
   virtual AR copyRR(const AR &source) = 0;
-  virtual AL &scaleL(value_type alpha, AL &x) = 0;
-  virtual AR &scaleR(value_type alpha, AR &x) = 0;
+  virtual AL &scalL(value_type alpha, AL &x) = 0;
+  virtual AR &scalR(value_type alpha, AR &x) = 0;
   virtual AL &fillL(value_type alpha, AL &x) = 0;
   virtual AR &fillR(value_type alpha, AR &x) = 0;
   virtual AL &axpyLL(value_type alpha, const AL &x, AL &y) = 0;
@@ -137,33 +138,37 @@ protected:
   virtual value_type dotRL(const AR &x, const AL &y) = 0;
   virtual value_type dotRR(const AR &x, const AR &y) = 0;
   virtual void fused_axpyLL(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
-                            std::vector<std::reference_wrapper<const AL>> &xx,
-                            std::vector<std::reference_wrapper<AL>> &yy, std::vector<value_type> alphas) = 0;
+                            const std::vector<value_type> &alphas,
+                            const std::vector<std::reference_wrapper<const AL>> &xx,
+                            std::vector<std::reference_wrapper<AL>> &yy) = 0;
   virtual void fused_axpyLR(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
-                            std::vector<std::reference_wrapper<const AL>> &xx,
-                            std::vector<std::reference_wrapper<AR>> &yy, std::vector<value_type> alphas) = 0;
+                            const std::vector<value_type> &alphas,
+                            const std::vector<std::reference_wrapper<const AL>> &xx,
+                            std::vector<std::reference_wrapper<AR>> &yy) = 0;
   virtual void fused_axpyRL(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
-                            std::vector<std::reference_wrapper<const AR>> &xx,
-                            std::vector<std::reference_wrapper<AL>> &yy, std::vector<value_type> alphas) = 0;
+                            const std::vector<value_type> &alphas,
+                            const std::vector<std::reference_wrapper<const AR>> &xx,
+                            std::vector<std::reference_wrapper<AL>> &yy) = 0;
   virtual void fused_axpyRR(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
-                            std::vector<std::reference_wrapper<const AR>> &xx,
-                            std::vector<std::reference_wrapper<AR>> &yy, std::vector<value_type> alphas) = 0;
+                            const std::vector<value_type> &alphas,
+                            const std::vector<std::reference_wrapper<const AR>> &xx,
+                            std::vector<std::reference_wrapper<AR>> &yy) = 0;
 
-  virtual void fused_dotLL(const std::vector<std::tuple<size_t, size_t>> &reg,
-                           std::vector<std::reference_wrapper<const AL>> &xx,
-                           std::vector<std::reference_wrapper<const AL>> &yy,
+  virtual void fused_dotLL(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
+                           const std::vector<std::reference_wrapper<const AL>> &xx,
+                           const std::vector<std::reference_wrapper<const AL>> &yy,
                            std::vector<std::reference_wrapper<value_type>> &out) = 0;
-  virtual void fused_dotLR(const std::vector<std::tuple<size_t, size_t>> &reg,
-                           std::vector<std::reference_wrapper<const AL>> &xx,
-                           std::vector<std::reference_wrapper<const AR>> &yy,
+  virtual void fused_dotLR(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
+                           const std::vector<std::reference_wrapper<const AL>> &xx,
+                           const std::vector<std::reference_wrapper<const AR>> &yy,
                            std::vector<std::reference_wrapper<value_type>> &out) = 0;
-  virtual void fused_dotRL(const std::vector<std::tuple<size_t, size_t>> &reg,
-                           std::vector<std::reference_wrapper<const AR>> &xx,
-                           std::vector<std::reference_wrapper<const AL>> &yy,
+  virtual void fused_dotRL(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
+                           const std::vector<std::reference_wrapper<const AR>> &xx,
+                           const std::vector<std::reference_wrapper<const AL>> &yy,
                            std::vector<std::reference_wrapper<value_type>> &out) = 0;
-  virtual void fused_dotRR(const std::vector<std::tuple<size_t, size_t>> &reg,
-                           std::vector<std::reference_wrapper<const AR>> &xx,
-                           std::vector<std::reference_wrapper<const AR>> &yy,
+  virtual void fused_dotRR(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
+                           const std::vector<std::reference_wrapper<const AR>> &xx,
+                           const std::vector<std::reference_wrapper<const AR>> &yy,
                            std::vector<std::reference_wrapper<value_type>> &out) = 0;
 };
 
@@ -192,6 +197,24 @@ public:
   value_type dot(const AL &x, const AR &y) { return dotLR(x, y); }
   value_type dot(const AR &x, const AL &y) { return dotRL(x, y); }
   value_type dot(const AR &x, const AR &y) { return dotRR(x, y); }
+
+protected:
+  using ArrayHandlerBase<AL, AR>::scalL;
+  using ArrayHandlerBase<AL, AR>::scalR;
+  using ArrayHandlerBase<AL, AR>::fillL;
+  using ArrayHandlerBase<AL, AR>::fillR;
+  using ArrayHandlerBase<AL, AR>::copyLL;
+  using ArrayHandlerBase<AL, AR>::copyRL;
+  using ArrayHandlerBase<AL, AR>::copyLR;
+  using ArrayHandlerBase<AL, AR>::copyRR;
+  using ArrayHandlerBase<AL, AR>::axpyLL;
+  using ArrayHandlerBase<AL, AR>::axpyRL;
+  using ArrayHandlerBase<AL, AR>::axpyLR;
+  using ArrayHandlerBase<AL, AR>::axpyRR;
+  using ArrayHandlerBase<AL, AR>::dotLL;
+  using ArrayHandlerBase<AL, AR>::dotLR;
+  using ArrayHandlerBase<AL, AR>::dotRL;
+  using ArrayHandlerBase<AL, AR>::dotRR;
 };
 
 template <typename AL, typename AR> class ArrayHandlerInterface<AL, AR, false> : public ArrayHandlerBase<AL, AR> {
@@ -207,6 +230,13 @@ public:
   AL &fill(value_type alpha, AL &x) { return fillL(alpha, x); }
   AL &axpy(value_type alpha, const AL &x, AL &y) { return axpyLL(alpha, x, y); }
   value_type dot(const AL &x, const AL &y) { return dotLL(x, y); }
+
+protected:
+  using ArrayHandlerBase<AL, AR>::scalL;
+  using ArrayHandlerBase<AL, AR>::fillL;
+  using ArrayHandlerBase<AL, AR>::copyLL;
+  using ArrayHandlerBase<AL, AR>::axpyLL;
+  using ArrayHandlerBase<AL, AR>::dotLL;
 };
 
 template <typename AL, typename AR> class LazyHandleBase {
@@ -247,51 +277,121 @@ protected:
     if (m_op_types.count(type) == 0 && !m_op_types.empty())
       return false;
     m_op_types.insert(type);
+    return true;
   }
 
-  virtual void axpyLL(value_type alpha, const AL &x, AL &y) = 0;
-  virtual void axpyRL(value_type alpha, const AR &x, AL &y) = 0;
-  virtual void axpyLR(value_type alpha, const AL &x, AR &y) = 0;
-  virtual void axpyRR(value_type alpha, const AR &x, AR &y) = 0;
-  virtual void dotLL(const AL &x, const AL &y, value_type &out) = 0;
-  virtual void dotLR(const AL &x, const AR &y, value_type &out) = 0;
-  virtual void dotRL(const AR &x, const AL &y, value_type &out) = 0;
-  virtual void dotRR(const AR &x, const AR &y, value_type &out) = 0;
+  virtual void axpyLL(value_type alpha, const AL &x, AL &y) {
+    if (register_op_type("axpyLL"))
+      m_axpyLL.push(alpha, std::cref(x), std::ref(y));
+    else
+      error("Failed to register operation type axpyLL with the current state of the LazyHandle");
+  }
+  virtual void axpyRL(value_type alpha, const AR &x, AL &y) {
+    if (register_op_type("axpyRL"))
+      m_axpyRL.push(alpha, std::cref(x), std::ref(y));
+    else
+      error("Failed to register operation type axpyRL with the current state of the LazyHandle");
+  }
+  virtual void axpyLR(value_type alpha, const AL &x, AR &y) {
+    if (register_op_type("axpyLR"))
+      m_axpyLR.push(alpha, std::cref(x), std::ref(y));
+    else
+      error("Failed to register operation type axpyLR with the current state of the LazyHandle");
+  }
+  virtual void axpyRR(value_type alpha, const AR &x, AR &y) {
+    if (register_op_type("axpyRR"))
+      m_axpyRR.push(alpha, std::cref(x), std::ref(y));
+    else
+      error("Failed to register operation type axpyRR with the current state of the LazyHandle");
+  }
+  virtual void dotLL(const AL &x, const AL &y, value_type &out) {
+    if (register_op_type("dotLL"))
+      m_dotLL.push(std::cref(x), std::cref(y), std::ref(out));
+    else
+      error("Failed to register operation type dotLL with the current state of the LazyHandle");
+  }
+  virtual void dotLR(const AL &x, const AR &y, value_type &out) {
+    if (register_op_type("dotLR"))
+      m_dotLR.push(std::cref(x), std::cref(y), std::ref(out));
+    else
+      error("Failed to register operation type dotLR with the current state of the LazyHandle");
+  }
+  virtual void dotRL(const AR &x, const AL &y, value_type &out) {
+    if (register_op_type("dotRL"))
+      m_dotRL.push(std::cref(x), std::cref(y), std::ref(out));
+    else
+      error("Failed to register operation type dotRL with the current state of the LazyHandle");
+  }
+  virtual void dotRR(const AR &x, const AR &y, value_type &out) {
+    if (register_op_type("dotRR"))
+      m_dotRR.push(std::cref(x), std::cref(y), std::ref(out));
+    else
+      error("Failed to register operation type dotRR with the current state of the LazyHandle");
+  }
+
+  void clear() {
+    m_op_types.clear();
+    m_axpyLL.clear();
+    m_axpyLR.clear();
+    m_axpyRL.clear();
+    m_axpyRR.clear();
+    m_dotLL.clear();
+    m_dotLR.clear();
+    m_dotRL.clear();
+    m_dotRR.clear();
+  }
 
 public:
   virtual void eval(ArrayHandlerBase<AL, AR> &handler) {
     if (!m_axpyLL.empty()) {
-      auto reg = util::remove_duplicates(m_axpyLL);
+      auto reg = util::remove_duplicates<value_type, ref_wrap<const AL>, ref_wrap<AL>, std::equal_to<value_type>,
+                                         util::RefEqual<const AL>, util::RefEqual<AL>>(m_axpyLL.m_register, {}, {}, {});
       handler.fused_axpyLL(std::get<0>(reg), std::get<1>(reg), std::get<2>(reg), std::get<3>(reg));
     }
     if (!m_axpyLR.empty()) {
-      auto reg = util::remove_duplicates(m_axpyLR);
+      auto reg = util::remove_duplicates<value_type, ref_wrap<const AL>, ref_wrap<AR>, std::equal_to<value_type>,
+                                         util::RefEqual<const AL>, util::RefEqual<AR>>(m_axpyLR.m_register, {}, {}, {});
       handler.fused_axpyLR(std::get<0>(reg), std::get<1>(reg), std::get<2>(reg), std::get<3>(reg));
     }
     if (!m_axpyRL.empty()) {
-      auto reg = util::remove_duplicates(m_axpyRL);
+      auto reg = util::remove_duplicates<value_type, ref_wrap<const AR>, ref_wrap<AL>, std::equal_to<value_type>,
+                                         util::RefEqual<const AR>, util::RefEqual<AL>>(m_axpyRL.m_register, {}, {}, {});
       handler.fused_axpyRL(std::get<0>(reg), std::get<1>(reg), std::get<2>(reg), std::get<3>(reg));
     }
     if (!m_axpyRR.empty()) {
-      auto reg = util::remove_duplicates(m_axpyRR);
+      auto reg = util::remove_duplicates<value_type, ref_wrap<const AR>, ref_wrap<AR>, std::equal_to<value_type>,
+                                         util::RefEqual<const AR>, util::RefEqual<AR>>(m_axpyRR.m_register, {}, {}, {});
       handler.fused_axpyRR(std::get<0>(reg), std::get<1>(reg), std::get<2>(reg), std::get<3>(reg));
     }
     if (!m_dotLL.empty()) {
-      auto reg = util::remove_duplicates(m_dotLL);
+      auto reg =
+          util::remove_duplicates<ref_wrap<const AL>, ref_wrap<const AL>, ref_wrap<value_type>,
+                                  util::RefEqual<const AL>, util::RefEqual<const AL>, util::RefEqual<value_type>>(
+              m_dotLL.m_register, {}, {}, {});
       handler.fused_dotLL(std::get<0>(reg), std::get<1>(reg), std::get<2>(reg), std::get<3>(reg));
     }
     if (!m_dotLR.empty()) {
-      auto reg = util::remove_duplicates(m_dotLR);
+      auto reg =
+          util::remove_duplicates<ref_wrap<const AL>, ref_wrap<const AR>, ref_wrap<value_type>,
+                                  util::RefEqual<const AL>, util::RefEqual<const AR>, util::RefEqual<value_type>>(
+              m_dotLR.m_register, {}, {}, {});
       handler.fused_dotLR(std::get<0>(reg), std::get<1>(reg), std::get<2>(reg), std::get<3>(reg));
     }
     if (!m_dotRL.empty()) {
-      auto reg = util::remove_duplicates(m_dotRL);
+      auto reg =
+          util::remove_duplicates<ref_wrap<const AR>, ref_wrap<const AL>, ref_wrap<value_type>,
+                                  util::RefEqual<const AR>, util::RefEqual<const AL>, util::RefEqual<value_type>>(
+              m_dotRL.m_register, {}, {}, {});
       handler.fused_dotRL(std::get<0>(reg), std::get<1>(reg), std::get<2>(reg), std::get<3>(reg));
     }
     if (!m_dotRR.empty()) {
-      auto reg = util::remove_duplicates(m_dotRR);
+      auto reg =
+          util::remove_duplicates<ref_wrap<const AR>, ref_wrap<const AR>, ref_wrap<value_type>,
+                                  util::RefEqual<const AR>, util::RefEqual<const AR>, util::RefEqual<value_type>>(
+              m_dotRR.m_register, {}, {}, {});
       handler.fused_dotRR(std::get<0>(reg), std::get<1>(reg), std::get<2>(reg), std::get<3>(reg));
     }
+    clear();
   }
 };
 
@@ -326,8 +426,8 @@ public:
   template <typename T> using ref_wrap = typename LazyHandleBase<AL, AR>::template ref_wrap<T>;
 
   void axpy(value_type alpha, const AL &x, AL &y) { return axpyLL(alpha, x, y); }
-  void axpy(value_type alpha, const AR &x, AL &y) { return axpyRL(alpha, x, y); }
   void axpy(value_type alpha, const AL &x, AR &y) { return axpyLR(alpha, x, y); }
+  void axpy(value_type alpha, const AR &x, AL &y) { return axpyRL(alpha, x, y); }
   void axpy(value_type alpha, const AR &x, AR &y) { return axpyRR(alpha, x, y); }
   void dot(const AL &x, const AL &y, value_type &out) { return dotLL(x, y, out); }
   void dot(const AL &x, const AR &y, value_type &out) { return dotLR(x, y, out); }
@@ -514,7 +614,11 @@ protected:
     using handler::LazyHandleInterface<AL, AR>::register_op_type;
     using handler::LazyHandleInterface<AL, AR>::error;
 
+    void error(std::string message) override { m_handler.error(message); };
+
   public:
+    using handler::LazyHandleInterface<AL, AR>::axpy;
+    using handler::LazyHandleInterface<AL, AR>::dot;
     LazyHandle(ArrayHandler<AL, AR> &handler) : handler::LazyHandleInterface<AL, AR>(), m_handler{handler} {}
     virtual ~LazyHandle() { LazyHandle::eval(); }
 
@@ -564,7 +668,7 @@ protected:
 
   protected:
     std::shared_ptr<LazyHandle> m_lazy_handle;
-    bool m_off; //!< whether lazy evaluation is on or off
+    bool m_off = false; //!< whether lazy evaluation is on or off
   };
 
   std::vector<std::weak_ptr<LazyHandle>>
@@ -572,16 +676,7 @@ protected:
 
 public:
   //! Returns a lazy handle
-  virtual ProxyHandle lazy_handle() {
-    auto handle = std::make_shared<LazyHandle>(*this);
-    auto empty_handle =
-        std::find_if(m_lazy_handles.begin(), m_lazy_handles.end(), [](const auto &el) { return el.expired(); });
-    if (empty_handle == m_lazy_handles.end())
-      m_lazy_handles.push_back(handle);
-    else
-      *empty_handle = handle;
-    return handle;
-  };
+  virtual ProxyHandle lazy_handle() = 0;
 };
 
 } // namespace array

@@ -25,6 +25,15 @@ TEST_F(SpanF, default_constructor) {
 
 TEST_F(SpanF, constructor) { auto s = Span<T>(data.data(), data.size()); }
 
+TEST_F(SpanF, empty) {
+  auto s = Span<T>(data.data(), data.size());
+  EXPECT_FALSE(s.empty());
+  auto t = Span<T>();
+  EXPECT_TRUE(t.empty());
+  auto v = Span<T>(nullptr, 0);
+  EXPECT_TRUE(v.empty());
+}
+
 TEST_F(SpanF, copy_constructor) {
   auto s = Span<T>(data.data(), data.size());
   auto t = Span<T>(s);

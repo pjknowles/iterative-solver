@@ -45,7 +45,8 @@ public:
     return *this;
   }
 
-  iterator data() const { return m_buffer; }
+  iterator data() { return m_buffer; }
+  const_iterator data() const { return m_buffer; }
 
   iterator begin() { return m_buffer; }
   const_iterator begin() const { return m_buffer; }
@@ -56,6 +57,8 @@ public:
   const_iterator cend() const { return m_buffer + m_size; }
 
   size_type size() const { return m_size; }
+
+  bool empty() const { return m_buffer == nullptr && m_size == 0; }
 
 protected:
   iterator m_buffer = nullptr;

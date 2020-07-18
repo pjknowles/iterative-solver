@@ -9,25 +9,6 @@ namespace linalg {
 namespace array {
 namespace util {
 
-//! Places a new operation in the register, so that high priority arrays that are equal are grouped together
-template <typename Op, int N> struct RegisterOperation {
-  void operator()(std::list<Op> &reg, Op &&new_op) {
-    auto ref = std::get<N>(new_op);
-    auto rend = std::find_if(reg.rbegin(), reg.rend(), [&ref](const auto &el) {
-      auto xx = std::get<N>(el);
-      return std::addressof(ref.get()) == std::addressof(xx.get());
-    });
-    auto end_of_group = reg.end();
-    if (rend != reg.rend())
-      end_of_group = rend.base();
-    reg.insert(end_of_group, std::forward<Op>(new_op));
-  }
-};
-
-template <typename Op> struct RegisterOperation<Op, -1> {
-  void operator()(std::list<Op> &reg, Op &&new_op) { reg.insert(reg.end(), std::forward<Op>(new_op)); }
-};
-
 //! Registers operations identified by their Arguments
 //! @tparam Args arguments to the operation. Consider using reference_wrapper if arguments are references.
 template <typename... Args> struct OperationRegister {
@@ -108,6 +89,7 @@ template <typename T = int> struct RefEqual {
 
 } // namespace util
 
+//! Base- classes and intermediates for ArrayHandler
 namespace handler {
 template <typename AL, typename AR> class LazyHandleBase;
 
@@ -172,7 +154,7 @@ protected:
                            std::vector<std::reference_wrapper<value_type>> &out) = 0;
 };
 
-//! Interface methods for the ArrayHandler. They are different depending on whether AL==AR or not.
+//! Interface methods for the ArrayHandler when AL!=AR
 template <typename AL, typename AR, bool = !std::is_same<AL, AR>::value>
 class ArrayHandlerInterface : public ArrayHandlerBase<AL, AR> {
 public:
@@ -185,14 +167,18 @@ public:
   AR copy(const AL &source) { return copyLR(source); }
   AR copySame(const AR &source) { return copyRR(source); }
 
+  //! scale all elements of array x by constant value alpha
   AL &scal(value_type alpha, AL &x) { return scalL(alpha, x); }
   AR &scal(value_type alpha, AR &x) { return scalR(alpha, x); }
+  //! replace all elements of array x by constant value alpha
   AL &fill(value_type alpha, AL &x) { return fillL(alpha, x); }
   AR &fill(value_type alpha, AR &x) { return fillR(alpha, x); }
+  //! y[:] += alpha * x[:]
   AL &axpy(value_type alpha, const AL &x, AL &y) { return axpyLL(alpha, x, y); }
   AL &axpy(value_type alpha, const AR &x, AL &y) { return axpyRL(alpha, x, y); }
   AR &axpy(value_type alpha, const AL &x, AR &y) { return axpyLR(alpha, x, y); }
   AR &axpy(value_type alpha, const AR &x, AR &y) { return axpyRR(alpha, x, y); }
+  //! inner product: result = x.y
   value_type dot(const AL &x, const AL &y) { return dotLL(x, y); }
   value_type dot(const AL &x, const AR &y) { return dotLR(x, y); }
   value_type dot(const AR &x, const AL &y) { return dotRL(x, y); }
@@ -217,6 +203,7 @@ protected:
   using ArrayHandlerBase<AL, AR>::dotRR;
 };
 
+//! Interface methods for the ArrayHandler when AL==AR
 template <typename AL, typename AR> class ArrayHandlerInterface<AL, AR, false> : public ArrayHandlerBase<AL, AR> {
 public:
   using value_type_L = typename AL::value_type;
@@ -239,6 +226,7 @@ protected:
   using ArrayHandlerBase<AL, AR>::dotLL;
 };
 
+//! Base class for ArrayHandler::LazyHandle. It contains all the virtual functions and member variables.
 template <typename AL, typename AR> class LazyHandleBase {
 public:
   using value_type = decltype(typename AL::value_type{} * typename AR::value_type{});
@@ -395,19 +383,11 @@ public:
   }
 };
 
+//! Interface to ArrayHandler::LazyHandle when AL!=AR.
 template <typename AL, typename AR, bool = !std::is_same<AL, AR>::value>
 class LazyHandleInterface : public LazyHandleBase<AL, AR> {
 protected:
   LazyHandleInterface() = default;
-
-  using LazyHandleBase<AL, AR>::m_axpyLL;
-  using LazyHandleBase<AL, AR>::m_axpyLR;
-  using LazyHandleBase<AL, AR>::m_axpyRL;
-  using LazyHandleBase<AL, AR>::m_axpyRR;
-  using LazyHandleBase<AL, AR>::m_dotLL;
-  using LazyHandleBase<AL, AR>::m_dotLR;
-  using LazyHandleBase<AL, AR>::m_dotRL;
-  using LazyHandleBase<AL, AR>::m_dotRR;
 
   using LazyHandleBase<AL, AR>::axpyLL;
   using LazyHandleBase<AL, AR>::axpyLR;
@@ -418,12 +398,8 @@ protected:
   using LazyHandleBase<AL, AR>::dotRL;
   using LazyHandleBase<AL, AR>::dotRR;
 
-  using LazyHandleBase<AL, AR>::register_op_type;
-  using LazyHandleBase<AL, AR>::error;
-
 public:
   using typename LazyHandleBase<AL, AR>::value_type;
-  template <typename T> using ref_wrap = typename LazyHandleBase<AL, AR>::template ref_wrap<T>;
 
   void axpy(value_type alpha, const AL &x, AL &y) { return axpyLL(alpha, x, y); }
   void axpy(value_type alpha, const AL &x, AR &y) { return axpyLR(alpha, x, y); }
@@ -433,45 +409,23 @@ public:
   void dot(const AL &x, const AR &y, value_type &out) { return dotLR(x, y, out); }
   void dot(const AR &x, const AL &y, value_type &out) { return dotRL(x, y, out); }
   void dot(const AR &x, const AR &y, value_type &out) { return dotRR(x, y, out); }
-
-  using LazyHandleBase<AL, AR>::eval;
 };
 
+//! Interface to ArrayHandler::LazyHandle when AL==AR.
 template <typename AL, typename AR> class LazyHandleInterface<AL, AR, false> : public LazyHandleBase<AL, AR> {
 protected:
   LazyHandleInterface() = default;
-  using LazyHandleBase<AL, AR>::m_axpyLL;
-  using LazyHandleBase<AL, AR>::m_axpyLR;
-  using LazyHandleBase<AL, AR>::m_axpyRL;
-  using LazyHandleBase<AL, AR>::m_axpyRR;
-  using LazyHandleBase<AL, AR>::m_dotLL;
-  using LazyHandleBase<AL, AR>::m_dotLR;
-  using LazyHandleBase<AL, AR>::m_dotRL;
-  using LazyHandleBase<AL, AR>::m_dotRR;
-
   using LazyHandleBase<AL, AR>::axpyLL;
-  using LazyHandleBase<AL, AR>::axpyLR;
-  using LazyHandleBase<AL, AR>::axpyRL;
-  using LazyHandleBase<AL, AR>::axpyRR;
   using LazyHandleBase<AL, AR>::dotLL;
-  using LazyHandleBase<AL, AR>::dotLR;
-  using LazyHandleBase<AL, AR>::dotRL;
-  using LazyHandleBase<AL, AR>::dotRR;
-
-  using LazyHandleBase<AL, AR>::register_op_type;
-  using LazyHandleBase<AL, AR>::error;
 
 public:
   using typename LazyHandleBase<AL, AR>::value_type;
-  template <typename T> using ref_wrap = typename LazyHandleBase<AL, AR>::template ref_wrap<T>;
 
   void axpy(value_type alpha, const AL &x, AL &y) { return axpyLL(alpha, x, y); }
   void dot(const AL &x, const AL &y, value_type &out) { return dotLL(x, y, out); }
-
-  using LazyHandleBase<AL, AR>::eval;
 };
-
 } // namespace handler
+
 /*!
  * @brief Enhances various operations between pairs of arrays and allows dynamic code injection with uniform interface.
  *
@@ -482,15 +436,6 @@ public:
  * and loop fusing, or might require dynamic information, e.g. file name info for copy constructor of disk array.
  * This class is  not meant primarily to beautify the code, but to allow dynamic code injection without a bloated
  * interface.
- *
- *
- * For example:
- * @code{.cpp}
- * //  x[:] += a * y[:]
- * void axpy(LeftArray x, value_type a, RightArray y);
- * // copy constructor
- * LeftArray(const RightArray&);
- * @endcode
  *
  *
  * Use cases
@@ -510,10 +455,9 @@ public:
  * Matrix alpha;
  * // ... Assume initialization was done
  * LazyHandle h = handle.lazy_handle();
- * for (auto i = 0ul; i < a1.size(); ++i)
- *   for (auto j = 0ul; j < a2.size(); ++j)
- *     h.axpy(a1[i], alpha[i,j], a2[j]);
- * // h.dot(a1[0], a2[0], alpha[0]); // <- should throw an error, cannot mix operations. Just start a new handle!
+ * for (auto i = 0; i < a1.size(); ++i)
+ *   for (auto j = 0; j < a2.size(); ++j)
+ *     h.axpy(alpha[i,j], a1[i], a2[j]);
  * h.eval(); // or let destructor handle it
  * @endcode
  *
@@ -521,18 +465,14 @@ public:
  * @code{.cpp}
  * std::vector<AL> a1;
  * std::vector<AR> a2;
- * Matrix result;
+ * Matrix overlap;
  * // ... Assume initialization was done
  * LazyHandle h = handle.lazy_handle();
  * for (auto i = 0ul; i < a1.size(); ++i)
  *   for (auto j = 0ul; j < a2.size(); ++j)
- *     h.dot(a1[i], a2[j], result[i,j]);
+ *     h.dot(a1[i], a2[j], overlap[i,j]);
  * h.eval(); // or let the destructor handle it
  * @endcode
- *
- *
- * @tparam AL left array type
- * @tparam AR right array type
  */
 template <class AL, class AR = AL> class ArrayHandler : public handler::ArrayHandlerInterface<AL, AR> {
 protected:
@@ -550,6 +490,7 @@ public:
   using handler::ArrayHandlerInterface<AL, AR>::axpy;
   using handler::ArrayHandlerInterface<AL, AR>::dot;
 
+  //! Destroys ArrayHandler instance and invalidates any LazyHandler it created. Invalidated handler will not evaluate.
   virtual ~ArrayHandler() {
     std::for_each(m_lazy_handles.begin(), m_lazy_handles.end(), [](auto &el) {
       if (auto handle = el.lock())
@@ -558,60 +499,18 @@ public:
   }
 
 protected:
-  using handler::ArrayHandlerInterface<AL, AR>::scalL;
-  using handler::ArrayHandlerInterface<AL, AR>::scalR;
-  using handler::ArrayHandlerInterface<AL, AR>::fillL;
-  using handler::ArrayHandlerInterface<AL, AR>::fillR;
-  using handler::ArrayHandlerInterface<AL, AR>::copyLL;
-  using handler::ArrayHandlerInterface<AL, AR>::copyRL;
-  using handler::ArrayHandlerInterface<AL, AR>::copyLR;
-  using handler::ArrayHandlerInterface<AL, AR>::copyRR;
-  using handler::ArrayHandlerInterface<AL, AR>::axpyLL;
-  using handler::ArrayHandlerInterface<AL, AR>::axpyRL;
-  using handler::ArrayHandlerInterface<AL, AR>::axpyLR;
-  using handler::ArrayHandlerInterface<AL, AR>::axpyRR;
-  using handler::ArrayHandlerInterface<AL, AR>::dotLL;
-  using handler::ArrayHandlerInterface<AL, AR>::dotLR;
-  using handler::ArrayHandlerInterface<AL, AR>::dotRL;
-  using handler::ArrayHandlerInterface<AL, AR>::dotRR;
-  using handler::ArrayHandlerInterface<AL, AR>::fused_axpyLL;
-  using handler::ArrayHandlerInterface<AL, AR>::fused_axpyLR;
-  using handler::ArrayHandlerInterface<AL, AR>::fused_axpyRL;
-  using handler::ArrayHandlerInterface<AL, AR>::fused_axpyRR;
-  using handler::ArrayHandlerInterface<AL, AR>::fused_dotLL;
-  using handler::ArrayHandlerInterface<AL, AR>::fused_dotLR;
-  using handler::ArrayHandlerInterface<AL, AR>::fused_dotRL;
-  using handler::ArrayHandlerInterface<AL, AR>::fused_dotRR;
-
   /*!
    * @brief Throws an error
    * @param message error message
    */
   virtual void error(std::string message) = 0;
 
-  //! Registers operations for lazy evaluation. Evaluation is triggered by calling eval() or on destruction.
-  //! @warning The evaluation is performed by the handler, so it must be valid when eval() is called.
+  /*!
+   * @brief Registers operations for lazy evaluation. Evaluation is triggered by calling eval() or on destruction.
+   * @warning The evaluation is performed by the handler, so it must be valid when eval() is called.
+   */
   class LazyHandle : public handler::LazyHandleInterface<AL, AR> {
   protected:
-    using handler::LazyHandleInterface<AL, AR>::m_axpyLL;
-    using handler::LazyHandleInterface<AL, AR>::m_axpyLR;
-    using handler::LazyHandleInterface<AL, AR>::m_axpyRL;
-    using handler::LazyHandleInterface<AL, AR>::m_axpyRR;
-    using handler::LazyHandleInterface<AL, AR>::m_dotLL;
-    using handler::LazyHandleInterface<AL, AR>::m_dotLR;
-    using handler::LazyHandleInterface<AL, AR>::m_dotRL;
-    using handler::LazyHandleInterface<AL, AR>::m_dotRR;
-
-    using handler::LazyHandleInterface<AL, AR>::axpyLL;
-    using handler::LazyHandleInterface<AL, AR>::axpyLR;
-    using handler::LazyHandleInterface<AL, AR>::axpyRL;
-    using handler::LazyHandleInterface<AL, AR>::axpyRR;
-    using handler::LazyHandleInterface<AL, AR>::dotLL;
-    using handler::LazyHandleInterface<AL, AR>::dotLR;
-    using handler::LazyHandleInterface<AL, AR>::dotRL;
-    using handler::LazyHandleInterface<AL, AR>::dotRR;
-
-    using handler::LazyHandleInterface<AL, AR>::register_op_type;
     using handler::LazyHandleInterface<AL, AR>::error;
 
     void error(std::string message) override { m_handler.error(message); };
@@ -671,8 +570,17 @@ protected:
     bool m_off = false; //!< whether lazy evaluation is on or off
   };
 
-  std::vector<std::weak_ptr<LazyHandle>>
-      m_lazy_handles; //!< keeps track of all created lazy handles so they can be invalidated on destruction.
+  std::vector<std::weak_ptr<LazyHandle>> m_lazy_handles; //!< keeps track of all created lazy handles
+
+  //! Save  weak ptr to a lazy handle
+  void save_handle(const std::shared_ptr<LazyHandle> &handle) {
+    auto empty_handle =
+        std::find_if(m_lazy_handles.begin(), m_lazy_handles.end(), [](const auto &el) { return el.expired(); });
+    if (empty_handle == m_lazy_handles.end())
+      m_lazy_handles.push_back(handle);
+    else
+      *empty_handle = handle;
+  }
 
 public:
   //! Returns a lazy handle

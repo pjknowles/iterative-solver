@@ -9,7 +9,11 @@ namespace molpro {
 namespace linalg {
 namespace array {
 
-/*! I need to be able to generate correct ArrayHandler for any pair of arrays
+/*!
+ * @brief Factory for creating correct handler for any combination of LinearAlgebra arrays and iterable containers
+ *
+ *
+ * I need to be able to generate correct ArrayHandler for any pair of arrays
  * We will have the following types of arrays:
  *   * Iterable arrays - any container that has begin/cbegin(), end()/cend(), push_back and copy constructor Array(const
  *                       Array&)
@@ -33,7 +37,8 @@ namespace array {
  *         1 -> 2
  *           -> 3 -> 4
  *
- * How would a user call the factory?
+ * Example usage
+ * -------------
  * @code{.cpp}
  * auto array_handler = ArrayHandlerFactory<DistrArrayMPI3, DistrArrayHDF5>()::create();
  * @endcode

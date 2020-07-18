@@ -7,8 +7,10 @@ namespace molpro {
 namespace linalg {
 namespace array {
 
-//! Array handler for two containers both of which can be iterated through using begin() and end() member functions, and
-//! have a copy constructor.
+/*!
+ * @brief Array handler for two containers both of which can be iterated through using begin() and end() member
+ * functions, and have a copy constructor.
+ */
 template <typename AL, typename AR = AL> class ArrayHandlerIterable : public ArrayHandler<AL, AR> {
 public:
   using typename ArrayHandler<AL, AR>::value_type;
@@ -18,30 +20,21 @@ public:
   using ArrayHandler<AL, AR>::scal;
   using ArrayHandler<AL, AR>::axpy;
   using ArrayHandler<AL, AR>::dot;
-  using ArrayHandler<AL, AR>::lazy_handle;
 
   ArrayHandlerIterable() = default;
   ArrayHandlerIterable(const ArrayHandlerIterable<AL, AR> &) = default;
 
   void error(std::string message) override { throw std::runtime_error(message); }
 
-  virtual typename ArrayHandler<AL, AR>::ProxyHandle lazy_handle() {
+  typename ArrayHandler<AL, AR>::ProxyHandle lazy_handle() override {
     auto handle = std::make_shared<typename ArrayHandler<AL, AR>::LazyHandle>(*this);
-    auto empty_handle =
-        std::find_if(m_lazy_handles.begin(), m_lazy_handles.end(), [](const auto &el) { return el.expired(); });
-    if (empty_handle == m_lazy_handles.end())
-      m_lazy_handles.push_back(handle);
-    else
-      *empty_handle = handle;
+    save_handle(handle);
     return handle;
   };
 
 protected:
+  using ArrayHandler<AL, AR>::save_handle;
   using ArrayHandler<AL, AR>::m_lazy_handles;
-  using ArrayHandler<AL, AR>::axpyLL;
-  using ArrayHandler<AL, AR>::axpyRL;
-  using ArrayHandler<AL, AR>::axpyLR;
-  using ArrayHandler<AL, AR>::axpyRR;
   AR copyRR(const AR &source) override { return source; };
   AL copyLL(const AL &source) override { return source; };
 

@@ -14,7 +14,7 @@
 #include <vector>
 
 TEST(TestIterativeSolver, small_eigenproblem) {
-  for (size_t n = 1; n < 12; n++) {
+  for (size_t n = 1; n < 9; n++) {
     for (size_t nroot = 1; nroot <= n && nroot < 3; nroot++) {
       Eigen::MatrixXd m(n, n);
       for (size_t i = 0; i < n; i++) {

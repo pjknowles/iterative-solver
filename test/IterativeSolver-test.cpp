@@ -144,7 +144,14 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   std::vector<int> rootlist;
   for (size_t root = 0; root < (size_t)d.m_roots; root++) rootlist.push_back(root);
   d.solution(rootlist,x,g);
+  for (size_t root = 0; root < (size_t)d.m_roots; root++) {
+    syncr(x[root], std::is_same<ptype, linalg::PagedArray<double>>{});
+  }
   action(x, g);
+  for (size_t root = 0; root < (size_t)d.m_roots; root++) {
+    syncr(x[root], std::is_same<ptype, linalg::PagedArray<double>>{});
+    syncr(g[root], std::is_same<ptype, linalg::PagedArray<double>>{});
+  }
   std::vector<scalar> errors;
   for (size_t root = 0; root < (size_t)d.m_roots; root++) {
     g[root].axpy(-ev[root], x[root]);

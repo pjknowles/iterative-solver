@@ -5,11 +5,16 @@ find_package(HDF5 REQUIRED COMPONENTS C)
 
 LibraryManager_Append(${PROJECT_NAME}
         SOURCES HDF5Handle.cpp
-        PUBLIC_HEADER HDF5Handle.h
+        PUBLIC_HEADER HDF5Handle.h ArrayHandler.h ArrayHandlerIterable.h ArrayHandlerFactory.h Span.h
         )
 target_link_libraries(${PROJECT_NAME} PUBLIC ${HDF5_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${HDF5_INCLUDE_DIRS})
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${HDF5_DEFINITIONS})
+if (MPI AND LINEARALGEBRA_ARRAY_HDF5)
+    LibraryManager_Append(${PROJECT_NAME}
+            PUBLIC_HEADER ArrayHandlerFactory.h
+            )
+endif ()
 
 if (MPI)
     LibraryManager_Append(${PROJECT_NAME}

@@ -45,7 +45,8 @@ CONTAINS
     REAL(c_double) :: threshC = 0d0
     CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
     INTEGER(c_int64_t) :: pcommC = 0 ! is this OK? In principle should be MPI_COMM_NULL?
-    INTEGER(c_int) :: lmppxC = 0
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
     IF (PRESENT(pname)) THEN
       ALLOCATE(pnameC(LEN(pname)+1))
       CALL c_string_from_f(pname, pnameC)
@@ -272,7 +273,8 @@ CONTAINS
       END FUNCTION Iterative_Solver_Add_Value_C
     END INTERFACE
     INTEGER(c_int) :: sync
-    INTEGER(c_int) :: lmppxC = 0
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
     sync = 1
     IF (PRESENT(synchronize)) THEN
       IF (.NOT. synchronize) sync = 0
@@ -316,7 +318,8 @@ CONTAINS
     END INTERFACE
     DOUBLE PRECISION, DIMENSION(0) :: pdummy
     INTEGER(c_int) :: sync
-    INTEGER(c_int) :: lmppxC = 0
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
     sync = 1
     IF (PRESENT(synchronize)) THEN
       IF (.NOT. synchronize) sync = 0
@@ -353,7 +356,8 @@ CONTAINS
         INTEGER(c_int), INTENT(in), VALUE :: lmppx
       END FUNCTION Iterative_Solver_End_Iteration_C
     END INTERFACE
-    INTEGER(c_int) :: lmppxC = 0
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
     IF (PRESENT(lmppx)) THEN
       if (lmppx) lmppxC = 1
     ENDIF
@@ -399,7 +403,8 @@ CONTAINS
     END INTERFACE
     INTEGER(c_size_t), DIMENSION(0 : nP) :: offsetsC
     INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC
-    INTEGER(c_int) :: lmppxC = 0
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
     IF (PRESENT(lmppx)) THEN
       if(lmppx) lmppxC = 1
     ENDIF
@@ -447,7 +452,8 @@ CONTAINS
     REAL(C_double) :: thresholdC = 0
     INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC
     INTEGER(c_size_t) :: maximumNumber
-    INTEGER(c_int) :: lmppxC = 0
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
     IF (PRESENT(lmppx)) THEN
       if (lmppx) lmppxC = 1
     ENDIF

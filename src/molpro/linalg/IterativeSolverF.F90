@@ -43,11 +43,10 @@ CONTAINS
     END INTERFACE
     INTEGER(c_int) :: verbosityC = 0, maxIterationsC = 0
     REAL(c_double) :: threshC = 0d0
-    INTEGER(c_int) :: lmppxC
-    lmppxC = 0
     CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
     INTEGER(c_int64_t) :: pcommC = 0 ! is this OK? In principle should be MPI_COMM_NULL?
-    INTEGER(c_int) :: lmppxC = 0
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
     IF (PRESENT(pname)) THEN
       ALLOCATE(pnameC(LEN(pname)+1))
       CALL c_string_from_f(pname, pnameC)

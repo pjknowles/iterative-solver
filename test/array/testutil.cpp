@@ -38,7 +38,7 @@ TEST(LockMPI3, locking_mechanism_simulates_fetch_and_op) {
   LockMPI3 lock{comm};
   MPI_Win win = MPI_WIN_NULL;
   int *base = nullptr;
-  MPI_Win_allocate(1, sizeof(int), MPI_INFO_NULL, comm, &base, &win);
+  MPI_Win_allocate(1*sizeof(int), sizeof(int), MPI_INFO_NULL, comm, &base, &win);
   MPI_Win_fence(0, win);
   int zero = 0;
   MPI_Put(&zero, 1, MPI_INT, rank, 0, 1, MPI_INT, win);

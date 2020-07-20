@@ -3,6 +3,10 @@ if (MPI)
 endif ()
 find_package(HDF5 REQUIRED COMPONENTS C)
 
+if (MPI AND NOT HDF5_IS_PARALLEL)
+    message(FATAL_ERROR "Parallel HDF5 is required when building LinearAlgebra with MPI on")
+endif ()
+
 LibraryManager_Append(${PROJECT_NAME}
         SOURCES HDF5Handle.cpp
         PUBLIC_HEADER HDF5Handle.h ArrayHandler.h ArrayHandlerIterable.h ArrayHandlerFactory.h Span.h

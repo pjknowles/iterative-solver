@@ -49,6 +49,8 @@ public:
   const slowvector& operator[](int i) const { return m_vectors.at(m_keys[i]); }
   const slowvector& action(int i) const { return m_actions.at(m_keys[i]); }
 
+  const typename fastvector::value_type scale_factor(int i) const { return m_scale_factors.at(m_keys[i]); }
+
 public:
   /*!
    * @brief Obtain all of the keys that index vectors in the Q space.
@@ -124,10 +126,12 @@ public:
    * @param oldaction
    * @param rhs
    * @param resres If true, action matrix will be action.action instead of vector.action
+   * @param orthogonalise If true, the new vector will be orthogonal to vector
    * @return The scale factor applied to make the new vector length 1
    */
   scalar_type add(const fastvector& vector, const fastvector& action, const slowvector& oldvector,
-                  const slowvector& oldaction, const std::vector<slowvector>& rhs, bool resres = false) {
+                  const slowvector& oldaction, const std::vector<slowvector>& rhs, bool resres = false,
+                  bool orthogonalise = true) {
     auto rr = vector.dot(vector);
     typename fastvector::value_type scale_factor, diff_factor;
     if (resres) {
@@ -139,12 +143,15 @@ public:
     } else {
       auto dd = oldvector.dot(oldvector);
       auto rd = vector.dot(oldvector);
-      if (rd * rd >= rr * dd) { // let linear dependence code deal with this exceptional case later
+//      molpro::cout << "dd="<<dd<<std::endl;
+//      molpro::cout << "rd="<<rd<<std::endl;
+//      molpro::cout << "rr="<<rr<<std::endl;
+      diff_factor = orthogonalise ? rr / rd : 1;
+      auto norm= std::sqrt(rr -2*diff_factor*rd+diff_factor*diff_factor*dd);
+      if (norm==0) { // let linear dependence code deal with this exceptional case later
         scale_factor = 1;
-        diff_factor = 1;
       } else {
-        scale_factor = 1 / std::sqrt(rr * (-1 + rr * dd / (rd * rd)));
-        diff_factor = rr / rd;
+        scale_factor = 1 / norm;
       }
     }
     //    molpro::cout << "Q.add difference, alpha=" << alpha << ", beta=" << beta << std::endl;
@@ -163,6 +170,7 @@ public:
     v.scal(1 / scale_factor);
     a.axpy(diff_factor * scale_factor, oldaction);
     a.scal(1 / scale_factor);
+//    molpro::cout << "created Q, scale_factor="<<scale_factor<<std::endl;
     return scale_factor;
   }
 

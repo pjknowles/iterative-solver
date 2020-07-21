@@ -147,7 +147,7 @@ public:
 //      molpro::cout << "rd="<<rd<<std::endl;
 //      molpro::cout << "rr="<<rr<<std::endl;
       diff_factor = orthogonalise ? rr / rd : 1;
-      auto norm= std::sqrt(rr -2*diff_factor*rd+diff_factor*diff_factor*dd);
+      auto norm= std::sqrt(std::max(rr -2*diff_factor*rd+diff_factor*diff_factor*dd,(decltype(rr))0));
       if (norm==0) { // let linear dependence code deal with this exceptional case later
         scale_factor = 1;
       } else {

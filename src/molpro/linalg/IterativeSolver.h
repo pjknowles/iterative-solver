@@ -1445,32 +1445,37 @@ protected:
         goto accept;
       scalar_type finterp;
       //      molpro::cout << "before interpolatedMinimum" << std::endl;
-      auto interpolated = interpolatedMinimum(m_linesearch_steplength, finterp, 0, 1, f0, f1, g0, g1);
-      //      molpro::cout << "interpolated: " << interpolated << ", m_linesearch_steplength " <<
-      //      m_linesearch_steplength
+      scalar_type alpha;
+      auto interpolated = interpolatedMinimum(alpha, finterp, 0, 1, f0, f1, g0, g1);
+      //      molpro::cout << "interpolated: " << interpolated << ", alpha " <<
+      //      alpha
       //                   << ", finterp " << finterp << std::endl;
-      if (not interpolated or m_linesearch_steplength > m_linesearch_grow_factor) {
+      if (interpolated and ((g0 > 0 and g1 > 0 and alpha > 0) or (g0 < 0 and g1 < 0 and alpha < 1))) // not bracketed, interpolant goes the wrong way
+        interpolated = false;
+      if (not interpolated or alpha > m_linesearch_grow_factor) {
+        if (this->m_verbosity > 1) {
+          if (interpolated)
+            molpro::cout << "reject interpolated minimum value " << finterp << " at alpha=" << alpha << std::endl;
+          else
+            molpro::cout << "cubic interpolation did not find a valid minimum" << std::endl;
+          molpro::cout << "taking instead step=" << m_linesearch_grow_factor << std::endl;
+        }
+        alpha = m_linesearch_grow_factor; // expand the search range
+      } else if (std::abs(alpha - 1) < m_linesearch_tolerance) {
         if (this->m_verbosity > 1)
-          molpro::cout << "reject interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength
-                       << std::endl;
-        m_linesearch_steplength = m_linesearch_grow_factor; // expand the search range
-        if (this->m_verbosity > 1)
-          molpro::cout << "taking instead step=" << m_linesearch_steplength << std::endl;
-      } else if (std::abs(m_linesearch_steplength - 1) < m_linesearch_tolerance) {
-        if (this->m_verbosity > 1)
-          molpro::cout << "Don't bother with linesearch " << m_linesearch_steplength << std::endl;
+          molpro::cout << "Don't bother with linesearch " << alpha << std::endl;
         goto accept; // if we are within spitting distance already, don't bother to make a line step
       } else {
         if (this->m_verbosity > 1)
-          molpro::cout << "cubic linesearch interpolant has minimum " << finterp << " at " << m_linesearch_steplength
-                       << "(absolute step " << (m_linesearch_steplength - 1) * step << ")" << std::endl;
+          molpro::cout << "cubic linesearch interpolant has minimum " << finterp << " at " << alpha << "(absolute step "
+                       << (alpha - 1) * step << ")" << std::endl;
       }
       // when we arrive here, we need to do a new line-search step
-      //      molpro::cout << "we need to do a new line-search step " << m_linesearch_steplength << std::endl;
+      //      molpro::cout << "we need to do a new line-search step " << alpha << std::endl;
       this->m_interpolation.conservativeResize(this->m_qspace.size() + 1, 1);
       this->m_interpolation.setZero();
       this->m_interpolation(this->m_qspace.size(), 0) = 1;
-      //      this->m_interpolation(this->m_qspace.size() - 1, 0) = (m_linesearch_steplength - 1) * step;
+      m_linesearch_steplength = (alpha - 1) * step;
       if (f1 <= f0) {
         m_best_r.reset(new slowvector(this->m_current_r.front()));
         m_best_v.reset(new slowvector(this->m_current_v.front()));
@@ -1509,9 +1514,7 @@ public:
         //      molpro::cout << "*enter endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
         //      molpro::cout << "solution " << solution.front().get() << std::endl;
         solution.front().get() = *m_best_r;
-        solution.front().get().axpy((m_linesearch_steplength - 1) /
-                                        this->m_qspace.scale_factor(this->m_qspace.size() - 1),
-                                    this->m_qspace[this->m_qspace.size() - 1]);
+        solution.front().get().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size() - 1]);
         m_values.pop_back();
         this->m_qspace.remove(this->m_qspace.size() - 1);
       } else { // quasi-Newton
@@ -1544,8 +1547,7 @@ public:
     if (m_verbosity > 0) {
       molpro::cout << "iteration " << this->iterations();
       if (m_linesearch_steplength != 0)
-        molpro::cout << ", line search step = "
-                     << m_linesearch_steplength / this->m_qspace.scale_factor(this->m_qspace.size() - 1);
+        molpro::cout << ", line search step = " << m_linesearch_steplength;
       if (not m_values.empty())
         molpro::cout << ", " << this->m_value_print_name << " = " << m_values.back();
       molpro::cout << ", error = " << this->m_errors.front() << std::endl;

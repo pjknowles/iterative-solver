@@ -470,8 +470,9 @@ public:
       for (size_t i = 0; i < n; i++)
         fp += (i + 1) * std::pow(psxk[i], power);
       for (size_t i = 0; i < n; i++) {
-        output[i] =
-            power * (i + 1) * std::pow(psxk[i], power - 1) * (normPower / power) * pow(fp, normPower / power - 1);
+        output[i] = psxk[i] == 0 ? 0
+                                 : power * (i + 1) * std::pow(psxk[i], power - 1) * (normPower / power) *
+                                       pow(fp, normPower / power - 1);
       }
       outputs.put(&(output[0]), n, 0);
       return fp;
@@ -500,18 +501,20 @@ public:
     ptype x(n);
     ptype g(n);
     ptype hg(n);
-    const int verbosity = 3;
+    const int verbosity = 1;
 
     molpro::linalg::Optimize<ptype> d("L-BFGS");
     //    IterativeSolver::DIIS<ptype> d;
     d.m_verbosity = verbosity - 1;
     d.m_options["convergence"] = "residual";
+    d.m_Wolfe_1 = 1e20;
+    d.m_linesearch_tolerance = 0;
     std::vector<scalar> xxx(n, .1);
     x.put(&xxx[0], n, 0);
     if (verbosity > 1)
       molpro::cout << "initial guess " << x << std::endl;
     bool converged = false;
-    for (int iteration = 1; iteration < 10 && not converged; iteration++) {
+    for (int iteration = 1; iteration < 100 && not converged; iteration++) {
       auto value = _Monomial_residual(x, g);
       std::vector<scalar> shift;
       shift.push_back(1e-10);

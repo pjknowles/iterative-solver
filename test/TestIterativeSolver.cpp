@@ -295,7 +295,7 @@ TEST(TestIterativeSolver, linear_equations) {
         //        std::cout << " " << x[0][i]; std::cout << std::endl; auto conv = (solver.endIteration(x, g, active));
         //        std::cout << "eigenvector "<<0<<active[0]<<" after endIteration"; for (size_t i = 0; i < n; i++)
         //        std::cout << " " << x[0][i]; std::cout << std::endl; if (conv) break;
-        if (nwork==0)
+        if (nwork == 0)
           break;
       }
       //      EXPECT_THAT(solver.active(),
@@ -436,6 +436,23 @@ public:
 
 TEST(Rosenbrock_BFGS, DISABLED_Optimize) { ASSERT_TRUE(RosenbrockTest().run("L-BFGS")); }
 TEST(Rosenbrock_null, DISABLED_Optimize) { ASSERT_TRUE(RosenbrockTest().run("null")); }
+
+template <class T>
+std::ostream& operator<<(std::ostream& o, const std::vector<T>& v) {
+  for (const auto& s : v)
+    o << " " << s;
+  return o;
+}
+
+template <class T>
+std::ostream& operator<<(std::ostream& o, const molpro::linalg::SimpleArray<T>& a) {
+  std::vector<T> v;
+  v.resize(a.size());
+  a.get(v.data(), v.size(), 0);
+  o << v;
+  return o;
+}
+
 class MonomialTest {
 public:
   using ptype = molpro::linalg::SimpleArray<double>;
@@ -453,8 +470,9 @@ public:
       for (size_t i = 0; i < n; i++)
         fp += (i + 1) * std::pow(psxk[i], power);
       for (size_t i = 0; i < n; i++) {
-        output[i] =
-            power * (i + 1) * std::pow(psxk[i], power - 1) * (normPower / power) * pow(fp, normPower / power - 1);
+        output[i] = psxk[i] == 0 ? 0
+                                 : power * (i + 1) * std::pow(psxk[i], power - 1) * (normPower / power) *
+                                       pow(fp, normPower / power - 1);
       }
       outputs.put(&(output[0]), n, 0);
       return fp;
@@ -479,7 +497,7 @@ public:
   bool run(double power, double normPower) {
     _Monomial_residual.power = power;
     _Monomial_residual.normPower = normPower;
-    constexpr size_t n = 5;
+    constexpr size_t n = 1;
     ptype x(n);
     ptype g(n);
     ptype hg(n);
@@ -489,14 +507,21 @@ public:
     //    IterativeSolver::DIIS<ptype> d;
     d.m_verbosity = verbosity - 1;
     d.m_options["convergence"] = "residual";
+    d.m_Wolfe_1 = 1e20;
+    d.m_linesearch_tolerance = 0;
     std::vector<scalar> xxx(n, .1);
     x.put(&xxx[0], n, 0);
-    //    molpro::cout << "initial guess " << x << std::endl;
+    if (verbosity > 1)
+      molpro::cout << "initial guess " << x << std::endl;
     bool converged = false;
     for (int iteration = 1; iteration < 100 && not converged; iteration++) {
       auto value = _Monomial_residual(x, g);
       std::vector<scalar> shift;
       shift.push_back(1e-10);
+      if (verbosity > 1)
+        molpro::cout << "x" << x << std::endl;
+      if (verbosity > 1)
+        molpro::cout << "g" << g << std::endl;
       if (d.addValue(x, value, g))
         _Monomial_updater(x, g, shift);
       converged = d.endIteration(x, g);
@@ -514,9 +539,95 @@ public:
   }
 };
 
-TEST(Monomial_22, DISABLED_Optimize) { ASSERT_TRUE(MonomialTest().run(2, 2)); }
-TEST(Monomial_44, DISABLED_Optimize) { ASSERT_TRUE(MonomialTest().run(4, 4)); }
-TEST(Monomial_42, DISABLED_Optimize) { ASSERT_TRUE(MonomialTest().run(4, 2)); }
+TEST(Monomial_22, Optimize) { ASSERT_TRUE(MonomialTest().run(2, 2)); }
+TEST(Monomial_44, Optimize) { ASSERT_TRUE(MonomialTest().run(4, 4)); }
+TEST(Monomial_42, Optimize) { ASSERT_TRUE(MonomialTest().run(4, 2)); }
+
+class MorseTest {
+public:
+  using ptype = molpro::linalg::SimpleArray<double>;
+  using scalar = typename molpro::linalg::Optimize<ptype>::scalar_type;
+  struct {
+    double k;
+    double De;
+    scalar operator()(const ptype& psx, ptype& outputs) const {
+      size_t n = psx.size();
+      assert(n == 1);
+      std::vector<scalar> psxk(n);
+      std::vector<scalar> output(n);
+      psx.get(&(psxk[0]), n, 0);
+      auto x = psxk[0];
+      auto ex = std::exp(-k * x * 0.5 / std::sqrt(De));
+      double fp = De * ((1 - ex) * (1 - ex));
+      output[0] = std::sqrt(De) * k * ex * (1 - ex);
+      outputs.put(&(output[0]), n, 0);
+      return fp;
+    }
+  } _Morse_residual;
+
+  struct {
+    void operator()(ptype& psc, const ptype& psg, std::vector<scalar> shift, bool append = true) const {
+      size_t n = psc.size();
+      std::vector<scalar> psck(n);
+      std::vector<scalar> psgk(n);
+      psg.get(&psgk[0], n, 0);
+      if (append)
+        psc.get(&psck[0], n, 0);
+      else
+        psck.assign(0, 0);
+      for (size_t i = 0; i < n; i++)
+        psck[i] -= psgk[i];
+      psc.put(&psck[0], n, 0);
+    }
+  } _Morse_updater;
+  bool run(double start, double De) {
+    _Morse_residual.k = 1;
+    _Morse_residual.De = De;
+    constexpr size_t n = 1;
+    ptype x(n);
+    ptype g(n);
+    ptype hg(n);
+    const int verbosity = 1;
+
+    molpro::linalg::Optimize<ptype> d("L-BFGS");
+    //    IterativeSolver::DIIS<ptype> d;
+    d.m_verbosity = verbosity - 1;
+    d.m_options["convergence"] = "residual";
+    d.m_Wolfe_1 = 1e20;
+    d.m_linesearch_tolerance = 0;
+    std::vector<scalar> xxx(n, start);
+    x.put(&xxx[0], n, 0);
+    if (verbosity > 1)
+      molpro::cout << "initial guess " << x << std::endl;
+    bool converged = false;
+    for (int iteration = 1; iteration < 10 && not converged; iteration++) {
+      auto value = _Morse_residual(x, g);
+      std::vector<scalar> shift;
+      shift.push_back(1e-10);
+      if (verbosity > 1)
+        molpro::cout << "x" << x << std::endl;
+      if (verbosity > 1)
+        molpro::cout << "g" << g << std::endl;
+      if (d.addValue(x, value, g))
+        _Morse_updater(x, g, shift);
+      converged = d.endIteration(x, g);
+      x.get(&xxx[0], n, 0);
+      if (verbosity >= 0)
+        molpro::cout << "iteration " << iteration << ", error = " << d.errors().front() << ", converged? " << converged
+                     << ", value= " << value << std::endl;
+    }
+
+    //    x.get(&xxx[0], n, 0);
+    //    molpro::cout << "final solution:" ;
+    //    for (const auto& xxxx : xxx) molpro::cout << " "<<xxxx; molpro::cout <<std::endl;
+
+    return converged;
+  }
+};
+
+TEST(Morse_1inf, Optimize) { ASSERT_TRUE(MorseTest().run(1, 1e20)); }
+TEST(Morse_110, Optimize) { ASSERT_TRUE(MorseTest().run(1, 10)); }
+TEST(Morse_11, Optimize) { ASSERT_TRUE(MorseTest().run(1, 1)); }
 
 class trigTest {
 

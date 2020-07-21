@@ -126,7 +126,8 @@ public:
       m_pspace(),
       m_qspace(m_pspace, m_hermitian),
       m_threshold_residual_recalculate(1e-16),
-      m_exclude_r_from_redundancy_test(false)
+      m_exclude_r_from_redundancy_test(false),
+      m_orthogonalise_Q(true)
 {
 }
   // clang-format on
@@ -192,7 +193,8 @@ public:
       assert(m_last_d.size() == m_working_set.size());
       assert(m_last_hd.size() == m_working_set.size());
       for (size_t k = 0; k < m_working_set.size(); k++) {
-        m_qspace.add(parameters[k], action[k], m_last_d[k], m_last_hd[k], m_rhs, m_subspaceMatrixResRes);
+        m_qspace.add(parameters[k], action[k], m_last_d[k], m_last_hd[k], m_rhs, m_subspaceMatrixResRes,
+                     m_orthogonalise_Q);
       }
       m_last_d.clear();
       m_last_hd.clear();
@@ -293,15 +295,15 @@ public:
     for (int k = 0; k < m_working_set.size(); k++) {
       auto root = m_working_set[k];
       //      molpro::cout << "k=" << k << ", root=" << root << ", error=" << m_errors[root] << std::endl;
-      if (m_errors[root] < m_thresh and m_q_solutions.count(root) == 0) { // converged just now
+      if (m_linear and m_errors[root] < m_thresh and m_q_solutions.count(root) == 0) { // converged just now
         if (m_verbosity > 1)
           molpro::cout << "selecting root " << root << " for adding converged solution to Q space at position"
                        << m_qspace.size() << std::endl;
         m_qspace.add(parameters[k], action[k], m_rhs, m_subspaceMatrixResRes);
         m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
       }
-      if (m_errors[root] < m_thresh) { // converged
-                                       //        molpro::cout << "  remove this vector from the working set"<<std::endl;
+      if (m_linear and m_errors[root] < m_thresh) { // converged
+        //        molpro::cout << "  remove this vector from the working set"<<std::endl;
         //  remove this vector from the working set
         for (auto kp = k + 1; kp < m_working_set.size(); kp++) {
           parameters[kp - 1].get() = parameters[kp].get();
@@ -624,8 +626,8 @@ protected:
 public:
   unsigned int m_maxIterations; //!< Maximum number of iterations
   unsigned int m_minIterations; //!< Minimum number of iterations
-  bool m_linear;        ///< Whether residuals are linear functions of the corresponding expansion vectors.
-  bool m_hermitian;     ///< Whether residuals can be assumed to be the action of an underlying self-adjoint operator.
+  bool m_linear;                ///< Whether residuals are linear functions of the corresponding expansion vectors.
+  bool m_hermitian; ///< Whether residuals can be assumed to be the action of an underlying self-adjoint operator.
   size_t
       m_roots; ///< How many roots to calculate / equations to solve (defaults to size of solution and residual vectors)
   bool m_rspt;
@@ -654,6 +656,8 @@ protected:
       m_threshold_residual_recalculate; ///< if the length of a residual comes in lower than this in the subspace-based
   ///< calculation, it will be recalculated with the full residual
   bool m_exclude_r_from_redundancy_test;
+  bool m_orthogonalise_Q; //!< whether Q-space vectors constructed by difference should be orthogonal to the working
+                          //!< vector, or the pure difference with the previous vector
 
 public:
   /*!
@@ -1052,7 +1056,6 @@ protected:
   }
 
 public:
-
   std::vector<scalar_type> m_errors; //!< Error at last iteration
   bool m_subspaceMatrixResRes; // whether m_subspaceMatrix is Residual.Residual (true) or Solution.Residual (false)
   bool m_residual_eigen;       // whether to subtract eigenvalue*solution when constructing residual
@@ -1087,8 +1090,8 @@ protected:
                                    //!< - 0: unmodified linear equations
                                    //!< - 1: standard augmented hessian
 public:
-  scalar_type m_svdThreshold;         ///< Threshold for singular-value truncation in linear equation solver.
-  size_t m_maxQ;                      //!< maximum size of Q space
+  scalar_type m_svdThreshold; ///< Threshold for singular-value truncation in linear equation solver.
+  size_t m_maxQ;              //!< maximum size of Q space
 protected:
 };
 
@@ -1347,13 +1350,15 @@ public:
   explicit Optimize(const std::string& algorithm = "L-BFGS", bool minimize = true)
       : m_algorithm(algorithm), m_minimize(minimize), m_strong_Wolfe(true), m_Wolfe_1(0.0001),
         m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
-        m_linesearch_tolerance(0.2), m_linesearch_grow_factor(2), m_linesearch_steplength(0) {
+        m_linesearch_tolerance(0.2), m_linesearch_grow_factor(3), m_linesearch_steplength(0) {
     this->m_linear = false;
     this->m_residual_rhs = false;
     this->m_residual_eigen = false;
     this->m_roots = 1;
     this->m_subspaceMatrixResRes = false;
     this->m_singularity_threshold = 0;
+    this->m_orthogonalise_Q = false;
+    this->m_exclude_r_from_redundancy_test = true;
   }
 
 protected:
@@ -1379,11 +1384,25 @@ protected:
 
   bool interpolatedMinimum(value_type& x, scalar_type& f, value_type x0, value_type x1, scalar_type f0, scalar_type f1,
                            scalar_type g0, scalar_type g1) {
+    if (std::abs(2 * f1 - g1 - 2 * f0 - g0) < 1e-10) { // cubic coefficient is zero
+      auto c2 = (g1 - g0) / 2;
+      if (c2 < 0)
+        return false;
+      x = x0 + (-0.5 * g0 / c2) * (x1 - x0);
+      f = f0 + g0 * x + c2 * x * x;
+      return true;
+    }
     auto discriminant = (std::pow(3 * f0 - 3 * f1 + g0, 2) + (6 * f0 - 6 * f1 + g0) * g1 + std::pow(g1, 2));
+    //    molpro::cout << "discriminant " << discriminant << std::endl;
     if (discriminant < 0)
       return false; // cubic has no turning points
-    auto alpham = (3 * f0 - 3 * f1 + 2 * g0 + g1 - std::sqrt(discriminant)) / (3 * (2 * f0 - 2 * f1 + g0 + g1));
-    auto alphap = (3 * f0 - 3 * f1 + 2 * g0 + g1 + std::sqrt(discriminant)) / (3 * (2 * f0 - 2 * f1 + g0 + g1));
+
+    auto alpham = (2 * f0 - 2 * f1 + g0 + g1 == 0)
+                      ? (g0 / (2 * f1 - 2 * f0 - 2 * g1))
+                      : (3 * f0 - 3 * f1 + 2 * g0 + g1 - std::sqrt(discriminant)) / (3 * (2 * f0 - 2 * f1 + g0 + g1));
+    auto alphap = (2 * f0 - 2 * f1 + g0 + g1 == 0)
+                      ? (g0 / (2 * f1 - 2 * f0 - 2 * g1))
+                      : (3 * f0 - 3 * f1 + 2 * g0 + g1 + std::sqrt(discriminant)) / (3 * (2 * f0 - 2 * f1 + g0 + g1));
     auto fm = f0 + alpham * (g0 + alpham * (-3 * f0 + 3 * f1 - 2 * g0 - g1 + alpham * (2 * f0 - 2 * f1 + g0 + g1)));
     auto fp = f0 + alphap * (g0 + alphap * (-3 * f0 + 3 * f1 - 2 * g0 - g1 + alphap * (2 * f0 - 2 * f1 + g0 + g1)));
     f = std::min(fm, fp);
@@ -1393,20 +1412,21 @@ protected:
 
   bool solveReducedProblem() override {
     auto n = this->m_qspace.size();
-    //    molpro::cout << "solveReduced Problem n=" << n << std::endl;
+//    molpro::cout << "Optimize::solveReduced Problem n=" << n << std::endl;
     if (n > 0) {
 
       // first consider whether this point can be taken as the next iteration point, or whether further line-searching
       // is needed
-      auto step = std::sqrt(this->m_subspaceOverlap(n - 1, n - 1));
+      //      auto step = std::sqrt(this->m_subspaceOverlap(n - 1, n - 1));
+      double step = 1 / this->m_qspace.scale_factor(this->m_qspace.size() - 1);
       auto f0 = m_best_f;
       auto f1 = m_values.back();
-      auto g1 = this->m_h_qr[n - 1][0];
+      auto g1 = step * this->m_h_qr[n - 1][0];
       //      molpro::cout << "this->m_residuals[n-1][0] " << this->m_residuals[n - 1][0] << std::endl;
       //      molpro::cout << "this->m_solutions[n-1][0] " << this->m_solutions[n - 1][0] << std::endl;
       //      molpro::cout << "this->m_residuals.back()[0] " << this->m_residuals.back()[0] << std::endl;
       //      molpro::cout << "this->m_solutions.back()[0] " << this->m_solutions.back()[0] << std::endl;
-      auto g0 = (*m_best_v).dot(this->m_qspace[this->m_qspace.size()-1]);
+      auto g0 = step * (*m_best_v).dot(this->m_qspace[this->m_qspace.size() - 1]);
       bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
       bool Wolfe_2 = m_strong_Wolfe ? g1 >= m_Wolfe_2 * g0 : std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
       if (this->m_verbosity > 1) {
@@ -1418,36 +1438,53 @@ protected:
         molpro::cout << " m_Wolfe_1 =" << m_Wolfe_1 << std::endl;
         molpro::cout << " m_Wolfe_1 * g0=" << m_Wolfe_1 * g0 << std::endl;
         molpro::cout << "f0 + m_Wolfe_1 * g0=" << f0 + m_Wolfe_1 * g0 << std::endl;
-        molpro::cout << "g0=" << g0 << ", g0/step=" << g0 / step << std::endl;
-        molpro::cout << "g1=" << g1 << ", g1/step=" << g1 / step << std::endl;
+        molpro::cout << "g0=" << g0 << std::endl;
+        molpro::cout << "g1=" << g1 << std::endl;
         molpro::cout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
       }
       if (Wolfe_1 && Wolfe_2)
         goto accept;
       scalar_type finterp;
       //      molpro::cout << "before interpolatedMinimum" << std::endl;
-      auto interpolated = interpolatedMinimum(m_linesearch_steplength, finterp, 0, 1, f0, f1, g0, g1);
-      if (not interpolated or m_linesearch_steplength > m_linesearch_grow_factor) {
+      scalar_type alpha;
+      auto interpolated = interpolatedMinimum(alpha, finterp, 0, 1, f0, f1, g0, g1);
+      //      molpro::cout << "interpolated: " << interpolated << ", alpha " <<
+      //      alpha
+      //                   << ", finterp " << finterp << std::endl;
+      if (interpolated and ((g0 > 0 and g1 > 0 and alpha > 0) or
+                            (g0 < 0 and g1 < 0 and alpha < 1))) // not bracketed, interpolant goes the wrong way
+        interpolated = false;
+      if (not interpolated or alpha > m_linesearch_grow_factor) {
+        if (this->m_verbosity > 1) {
+          if (interpolated)
+            molpro::cout << "reject interpolated minimum value " << finterp << " at alpha=" << alpha << std::endl;
+          else
+            molpro::cout << "cubic interpolation did not find a valid minimum" << std::endl;
+          molpro::cout << "taking instead step=" << m_linesearch_grow_factor << std::endl;
+        }
+        alpha = m_linesearch_grow_factor; // expand the search range
+      } else if (std::abs(alpha - 1) < m_linesearch_tolerance) {
         if (this->m_verbosity > 1)
-          molpro::cout << "reject interpolated minimum value " << finterp << " at alpha=" << m_linesearch_steplength
-                       << std::endl;
-        m_linesearch_steplength = m_linesearch_grow_factor; // expand the search range
-      } else if (std::abs(m_linesearch_steplength - 1) < m_linesearch_tolerance) {
-        if (this->m_verbosity > 1)
-          molpro::cout << "Don't bother with linesearch " << m_linesearch_steplength << std::endl;
+          molpro::cout << "Don't bother with linesearch " << alpha << std::endl;
         goto accept; // if we are within spitting distance already, don't bother to make a line step
       } else {
         if (this->m_verbosity > 1)
-          molpro::cout << "cubic linesearch interpolant has minimum " << finterp << " at " << m_linesearch_steplength
-                       << "(absolute step " << m_linesearch_steplength * step << ")" << std::endl;
+          molpro::cout << "cubic linesearch interpolant has minimum " << finterp << " at " << alpha << "(absolute step "
+                       << (alpha - 1) * step << ")" << std::endl;
       }
       // when we arrive here, we need to do a new line-search step
-      //      molpro::cout << "we need to do a new line-search step " << m_linesearch_steplength << std::endl;
+      //      molpro::cout << "we need to do a new line-search step " << alpha << std::endl;
+      this->m_interpolation.conservativeResize(this->m_qspace.size() + 1, 1);
+      this->m_interpolation.setZero();
+      this->m_interpolation(this->m_qspace.size(), 0) = 1;
+      m_linesearch_steplength = (alpha - 1) * step;
       if (f1 <= f0) {
         m_best_r.reset(new slowvector(this->m_current_r.front()));
         m_best_v.reset(new slowvector(this->m_current_v.front()));
         m_best_f = m_values.back();
+        //        molpro::cout << "setting best to current, with f=" << m_best_f << std::endl;
       }
+      //      molpro::cout << "m_interpolation: " << this->m_interpolation << std::endl;
       return false;
     }
   accept:
@@ -1474,26 +1511,28 @@ protected:
 
 public:
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
-    if (m_linesearch_steplength != 0) { // line search
-      //      molpro::cout << "*enter endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
-      //      molpro::cout << "solution " << solution.front().get() << std::endl;
-      solution.front().get() = *m_best_r;
-      solution.front().get().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size()-1]);
-      m_values.pop_back();
-      this->m_qspace.remove(this->m_qspace.size()-1);
-    } else { // quasi-Newton
-      if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
-        solution.back().get().axpy(-1, this->m_last_d.back());
-        auto& minusAlpha = this->m_interpolation;
-        for (auto a = 0; a < this->m_qspace.size(); a++) {
-          auto factor =
-              minusAlpha(a, 0) - this->m_qspace.action(a).dot(solution.back().get()) / this->m_qspace.action(a, a);
-          solution.back().get().axpy(factor, this->m_qspace[a]);
+    if (this->m_q_solutions.count(0) == 0) {
+      if (m_linesearch_steplength != 0) { // line search
+        //      molpro::cout << "*enter endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
+        //      molpro::cout << "solution " << solution.front().get() << std::endl;
+        solution.front().get() = *m_best_r;
+        solution.front().get().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size() - 1]);
+        m_values.pop_back();
+        this->m_qspace.remove(this->m_qspace.size() - 1);
+      } else { // quasi-Newton
+        if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
+          solution.back().get().axpy(-1, this->m_last_d.back());
+          auto& minusAlpha = this->m_interpolation;
+          for (auto a = 0; a < this->m_qspace.size(); a++) {
+            auto factor =
+                minusAlpha(a, 0) - this->m_qspace.action(a).dot(solution.back().get()) / this->m_qspace.action(a, a);
+            solution.back().get().axpy(factor, this->m_qspace[a]);
+          }
+          solution.back().get().axpy(1, this->m_last_d.front());
         }
-        solution.back().get().axpy(1, this->m_last_d.front());
       }
+      //    molpro::cout << "*exit endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
     }
-    //    molpro::cout << "*exit endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
     return IterativeSolver<T>::endIteration(solution, residual);
   }
 
@@ -1555,6 +1594,7 @@ public:
     this->m_exclude_r_from_redundancy_test = true;
     this->m_singularity_threshold =
         this->m_svdThreshold; // It does not matter if the submatrix goes a bit singular in DIIS
+    this->m_orthogonalise_Q = false;
   }
 
   /*!
@@ -1650,8 +1690,8 @@ private:
 
 // C interface
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh,
-                                                           unsigned int maxIterations, int verbosity,
-                                                           const char* fname, int64_t fcomm, int lmppx);
+                                                           unsigned int maxIterations, int verbosity, const char* fname,
+                                                           int64_t fcomm, int lmppx);
 
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes,
                                                          double thresh, unsigned int maxIterations, int verbosity);

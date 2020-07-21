@@ -18,5 +18,5 @@ endif ()
 # Its source files are conventionally in directories named by C++ namespace
 add_subdirectory(molpro)
 
-LibraryManager_Install(${PROJECT_NAME})
+LibraryManager_Install(${PROJECT_NAME} PKG_CONFIG)
 LibraryManager_Export(${PROJECT_NAME})

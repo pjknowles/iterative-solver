@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_PHDF5HANDLE_H
 
 #include "molpro/linalg/array/HDF5Handle.h"
+#include <mpi.h>
 
 namespace molpro {
 namespace linalg {

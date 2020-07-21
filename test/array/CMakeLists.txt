@@ -7,6 +7,17 @@ target_link_libraries(test-${PROJECT_NAME}-HDF5Handle.exe PUBLIC molpro::${PROJE
 target_compile_definitions(test-${PROJECT_NAME}-HDF5Handle.exe PUBLIC "ARRAY_DATA=\"${CMAKE_CURRENT_BINARY_DIR}/data\"")
 gtest_discover_tests(test-${PROJECT_NAME}-HDF5Handle.exe)
 
+add_executable(test-${PROJECT_NAME}-Span.exe testSpan.cpp)
+target_link_libraries(test-${PROJECT_NAME}-Span.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
+gtest_discover_tests(test-${PROJECT_NAME}-Span.exe)
+
+add_executable(test-${PROJECT_NAME}-ArrayHandler.exe testArrayHandler.cpp testArrayHandlerIterable.cpp)
+if (MPI AND LINEARALGEBRA_ARRAY_HDF5)
+    target_sources(test-${PROJECT_NAME}-ArrayHandler.exe PRIVATE testArrayHandlerFactory.cpp)
+endif ()
+target_link_libraries(test-${PROJECT_NAME}-ArrayHandler.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
+gtest_discover_tests(test-${PROJECT_NAME}-ArrayHandler.exe)
+
 if (MPI)
     add_executable(test-${PROJECT_NAME}-parallel
             main.cpp

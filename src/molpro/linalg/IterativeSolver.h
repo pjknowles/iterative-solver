@@ -1358,6 +1358,7 @@ public:
     this->m_subspaceMatrixResRes = false;
     this->m_singularity_threshold = 0;
     this->m_orthogonalise_Q = false;
+    this->m_exclude_r_from_redundancy_test = true;
   }
 
 protected:
@@ -1411,7 +1412,7 @@ protected:
 
   bool solveReducedProblem() override {
     auto n = this->m_qspace.size();
-    //    molpro::cout << "solveReduced Problem n=" << n << std::endl;
+//    molpro::cout << "Optimize::solveReduced Problem n=" << n << std::endl;
     if (n > 0) {
 
       // first consider whether this point can be taken as the next iteration point, or whether further line-searching
@@ -1450,7 +1451,8 @@ protected:
       //      molpro::cout << "interpolated: " << interpolated << ", alpha " <<
       //      alpha
       //                   << ", finterp " << finterp << std::endl;
-      if (interpolated and ((g0 > 0 and g1 > 0 and alpha > 0) or (g0 < 0 and g1 < 0 and alpha < 1))) // not bracketed, interpolant goes the wrong way
+      if (interpolated and ((g0 > 0 and g1 > 0 and alpha > 0) or
+                            (g0 < 0 and g1 < 0 and alpha < 1))) // not bracketed, interpolant goes the wrong way
         interpolated = false;
       if (not interpolated or alpha > m_linesearch_grow_factor) {
         if (this->m_verbosity > 1) {

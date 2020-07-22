@@ -1368,6 +1368,7 @@ public:
     this->m_orthogonalise_Q = false;
     this->m_exclude_r_from_redundancy_test = true;
     this->m_hermitian=false;
+    this->m_qspace.hermitian(false);
   }
 
 protected:

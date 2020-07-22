@@ -127,7 +127,8 @@ public:
       m_qspace(m_pspace, m_hermitian),
       m_threshold_residual_recalculate(1e-16),
       m_exclude_r_from_redundancy_test(false),
-      m_orthogonalise_Q(true)
+      m_orthogonalise_Q(true),
+      m_nullify_solution_before_update(false)
 {
 }
   // clang-format on
@@ -277,16 +278,17 @@ public:
     // TODO make this more efficient by doing action just once, and not, maybe, for converged roots
     if (m_roots > parameters.size()) // TODO remove this restriction
       throw std::runtime_error("Cannot yet work with buffer smaller than number of roots");
+    m_errors.resize(m_roots);
     m_working_set.clear();
-    m_errors.assign(m_roots, 1e10);
     for (auto root = 0; root < m_roots; root++)
       m_working_set.push_back(root);
-    doInterpolation(parameters, action, parametersP, other, false);
-    for (auto k = 0; k < m_working_set.size(); k++) {
-      auto root = m_working_set[k];
-      m_errors[root] = std::sqrt(action[k].get().dot(action[k]));
-    }
+    if (m_linear)
+      doInterpolation(parameters, action, parametersP, other, false);
+    //    m_errors.assign(m_roots, 1e10); // TODO not right for retired roots
+    for (auto k = 0; k < m_working_set.size(); k++)
+      m_errors[m_working_set[k]] = std::sqrt(action[k].get().dot(action[k]));
     //    molpro::cout << "m_interpolation:\n" << m_interpolation << std::endl;
+
     doInterpolation(parameters, action, parametersP, other, true);
     m_last_d.clear();
     m_last_hd.clear();
@@ -328,6 +330,15 @@ public:
     // re-establish the residual
     // TODO make more efficient
     doInterpolation(parameters, action, parametersP, other, false);
+    if (m_nullify_solution_before_update) {
+      m_last_d.clear();
+      m_last_hd.clear();
+      for (auto k = 0; k < m_working_set.size(); k++) {
+        parameters[k].get().scal(0);
+        m_last_d.emplace_back(m_current_r[k]);
+        m_last_hd.emplace_back(m_current_v[k]);
+      }
+    }
     m_current_r.clear();
     m_current_v.clear();
     return m_working_set.size();
@@ -1089,6 +1100,9 @@ protected:
                                    //!< Special values:
                                    //!< - 0: unmodified linear equations
                                    //!< - 1: standard augmented hessian
+
+  bool m_nullify_solution_before_update;
+
 public:
   scalar_type m_svdThreshold; ///< Threshold for singular-value truncation in linear equation solver.
   size_t m_maxQ;              //!< maximum size of Q space
@@ -1359,6 +1373,7 @@ public:
     this->m_singularity_threshold = 0;
     this->m_orthogonalise_Q = false;
     this->m_exclude_r_from_redundancy_test = true;
+    this->m_hermitian=false;
   }
 
 protected:
@@ -1412,7 +1427,7 @@ protected:
 
   bool solveReducedProblem() override {
     auto n = this->m_qspace.size();
-//    molpro::cout << "Optimize::solveReduced Problem n=" << n << std::endl;
+    //    molpro::cout << "Optimize::solveReduced Problem n=" << n << std::endl;
     if (n > 0) {
 
       // first consider whether this point can be taken as the next iteration point, or whether further line-searching
@@ -1442,7 +1457,7 @@ protected:
         molpro::cout << "g1=" << g1 << std::endl;
         molpro::cout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
       }
-      if (Wolfe_1 && Wolfe_2)
+      if (g1 < this->m_thresh or (Wolfe_1 && Wolfe_2))
         goto accept;
       scalar_type finterp;
       //      molpro::cout << "before interpolatedMinimum" << std::endl;
@@ -1485,24 +1500,29 @@ protected:
         //        molpro::cout << "setting best to current, with f=" << m_best_f << std::endl;
       }
       //      molpro::cout << "m_interpolation: " << this->m_interpolation << std::endl;
+      this->m_nullify_solution_before_update = false;
       return false;
     }
   accept:
+//    molpro::cout << "accept reached" << std::endl;
     m_linesearch_steplength = 0;
     auto& minusAlpha = this->m_interpolation;
-    minusAlpha.conservativeResize(n, 1);
+    //    minusAlpha.conservativeResize(n, 1);
+    this->m_interpolation.conservativeResize(n + 1, 1);
+    this->m_interpolation.setZero();
+    this->m_interpolation(n, 0) = 1;
+    this->m_nullify_solution_before_update = true;
     if (this->m_algorithm == "L-BFGS") {
       for (int a = this->m_qspace.size() - 1; a >= 0; a--) {
+//        molpro::cout << "iterate q_" << a << std::endl;
         minusAlpha(a, 0) = -this->m_h_qr[a][0];
         for (auto b = a + 1; b < this->m_qspace.size(); b++)
           minusAlpha(a, 0) -= minusAlpha(b, 0) * this->m_qspace.action(a, b);
         minusAlpha(a, 0) /= this->m_qspace.action(a, a);
+//        molpro::cout << "minusAlpha(a,0) " << minusAlpha(a, 0) << std::endl;
+        //        this->m_interpolation(a, 0) = minusAlpha(a,0);
       }
-    } else
-      minusAlpha.setConstant(0);
-    this->m_interpolation.conservativeResize(this->m_qspace.size() + 1, 1);
-    this->m_interpolation.setZero();
-    this->m_interpolation(this->m_qspace.size(), 0) = 1;
+    }
     m_best_r.reset(new slowvector(this->m_current_r.front()));
     m_best_v.reset(new slowvector(this->m_current_v.front()));
     m_best_f = m_values.back();
@@ -1513,22 +1533,33 @@ public:
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
     if (this->m_q_solutions.count(0) == 0) {
       if (m_linesearch_steplength != 0) { // line search
-        //      molpro::cout << "*enter endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
-        //      molpro::cout << "solution " << solution.front().get() << std::endl;
+//        molpro::cout << "*enter endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
+        //              molpro::cout << "solution " << solution.front().get() << std::endl;
         solution.front().get() = *m_best_r;
         solution.front().get().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size() - 1]);
         m_values.pop_back();
         this->m_qspace.remove(this->m_qspace.size() - 1);
       } else { // quasi-Newton
         if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
-          solution.back().get().axpy(-1, this->m_last_d.back());
+//          molpro::cout << "L-BFGS stage 2" << std::endl;
+          //          molpro::cout << "before subtracting rk solution length="
+          //                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
+          //          solution.back().get().axpy(-1, this->m_last_d.back());
+          //          molpro::cout << "after subtracting rk solution length="
+          //                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
           auto& minusAlpha = this->m_interpolation;
           for (auto a = 0; a < this->m_qspace.size(); a++) {
+//            molpro::cout << "iterate q_" << a << std::endl;
             auto factor =
                 minusAlpha(a, 0) - this->m_qspace.action(a).dot(solution.back().get()) / this->m_qspace.action(a, a);
             solution.back().get().axpy(factor, this->m_qspace[a]);
+//            molpro::cout << "Q factor " << factor << std::endl;
           }
-          solution.back().get().axpy(1, this->m_last_d.front());
+//          molpro::cout << "after Q loop solution length=" << std::sqrt(solution.back().get().dot(solution.back().get()))
+//                       << std::endl;
+          solution.back().get().axpy(1, *(this->m_best_r));
+//          molpro::cout << "after adding rk solution length="
+//                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
         }
       }
       //    molpro::cout << "*exit endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;

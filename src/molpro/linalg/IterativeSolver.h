@@ -118,14 +118,12 @@ public:
       m_value_print_name("value"),
       m_iterations(0),
       m_singularity_threshold(1e-5),
-      m_added_vectors(0),
       m_augmented_hessian(0),
       m_svdThreshold(1e-15),
       m_maxQ(std::max(m_roots, size_t(16))),
       m_profiler(profiler),
       m_pspace(),
       m_qspace(m_pspace, m_hermitian),
-      m_threshold_residual_recalculate(1e-16),
       m_exclude_r_from_redundancy_test(false),
       m_orthogonalise_Q(true),
       m_nullify_solution_before_update(false)
@@ -663,9 +661,6 @@ protected:
   std::vector<std::vector<scalar_type>> m_s_pr, m_h_pr, m_h_rp;            ///< interactions between R and P spaces
   mutable std::vector<int> m_working_set; ///< which roots are being tracked in the working set
   std::map<int, int> m_q_solutions;       ///< key of q space vector of a converged solution
-  double
-      m_threshold_residual_recalculate; ///< if the length of a residual comes in lower than this in the subspace-based
-  ///< calculation, it will be recalculated with the full residual
   bool m_exclude_r_from_redundancy_test;
   bool m_orthogonalise_Q; //!< whether Q-space vectors constructed by difference should be orthogonal to the working
                           //!< vector, or the pure difference with the previous vector
@@ -1090,12 +1085,11 @@ public:
   Eigen::VectorXcd m_subspaceEigenvalues;  // FIXME templating
   std::vector<scalar_type> m_values;       //< function values
 public:
-  size_t m_dimension;
+  size_t m_dimension; //!< not used in the class, but a place for clients (eg C interface) to store a number representing the size of the underlying vector space.
   std::string m_value_print_name; //< the title report() will give to the function value
 protected:
   unsigned int m_iterations;
   scalar_type m_singularity_threshold;
-  size_t m_added_vectors;          //!< number of vectors recently added to subspace
   scalar_type m_augmented_hessian; //!< The scale factor for augmented hessian solution of linear inhomogeneous systems.
                                    //!< Special values:
                                    //!< - 0: unmodified linear equations
@@ -1374,6 +1368,7 @@ public:
     this->m_orthogonalise_Q = false;
     this->m_exclude_r_from_redundancy_test = true;
     this->m_hermitian=false;
+    this->m_qspace.hermitian(false);
   }
 
 protected:

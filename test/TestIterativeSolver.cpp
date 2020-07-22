@@ -647,12 +647,15 @@ public:
     std::vector<scalar> psxk(n);
     std::vector<scalar> output(n);
     psx.get(psxk.data(), n, 0);
+//    molpro::cout << "residual x: "<<psxk<<std::endl;
     scalar value = 0;
     for (size_t i = 0; i < n; i++) {
       value += 1 - std::cos(scalar(i + 1) * psxk[i]);
       output[i] = scalar(i + 1) * std::sin(scalar(i + 1) * psxk[i]);
     }
     outputs.put(output.data(), n, 0);
+//    molpro::cout << "residual g: "<<output<<std::endl;
+//    molpro::cout << "residual value: "<<value<<std::endl;
     return value;
   }
 
@@ -661,20 +664,23 @@ public:
     std::vector<scalar> psgk(n);
     psg.get(psgk.data(), n, 0);
     psc.get(psck.data(), n, 0);
+//    molpro::cout << "update old x: "<<psck<<std::endl;
+//    molpro::cout << "update old g: "<<psgk<<std::endl;
     for (size_t i = 0; i < n; i++)
       psck[i] -= psgk[i] / hessian;
+//    molpro::cout << "update new x: "<<psck<<std::endl;
     psc.put(psck.data(), n, 0);
   }
 
   bool run() {
-    std::cout << "optimize with " << method << std::endl;
+//    std::cout << "optimize with " << method << std::endl;
     molpro::linalg::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
-    solver.m_verbosity = 2;
+    solver.m_verbosity = 1;
     solver.m_maxIterations = 50;
     solver.m_thresh = 1e-12;
     //    solver.m_Wolfe_1=.8;
     //    solver.m_linesearch_tolerance = .0001;
-    std::cout << "Wolfe condition parameters: " << solver.m_Wolfe_1 << ", " << solver.m_Wolfe_2 << std::endl;
+//    std::cout << "Wolfe condition parameters: " << solver.m_Wolfe_1 << ", " << solver.m_Wolfe_2 << std::endl;
     pv g(n);
     pv x(n);
     for (auto i = 0; i < n; i++)
@@ -693,7 +699,11 @@ public:
       if (upd)
         update(x, g);
       // if (solver.endIteration(x, g)) break;
+//      molpro::cout << "before endIteration x "<<x<<std::endl;
+//      molpro::cout << "before endIteration g "<<g<<std::endl;
       upd = solver.endIteration(x, g);
+//      molpro::cout << "after endIteration x "<<x<<std::endl;
+//      molpro::cout << "after endIteration g "<<g<<std::endl;
       if (!x.synchronised())
         x.sync();
       if (!g.synchronised())
@@ -707,9 +717,9 @@ public:
   }
 };
 
-TEST(Trig_BFGS1, DISABLED_Optimize) { ASSERT_TRUE(trigTest("L-BFGS", 1, 1, 1).run()); }
-TEST(Trig_BFGS2, DISABLED_Optimize) { ASSERT_TRUE(trigTest("L-BFGS", 1, 2, 1).run()); }
-TEST(Trig_BFGS3, DISABLED_Optimize) { ASSERT_TRUE(trigTest("L-BFGS", 1, 2, 3).run()); }
+TEST(Trig_BFGS1, Optimize) { ASSERT_TRUE(trigTest("L-BFGS", 1, 1, 1).run()); }
+TEST(Trig_BFGS2, Optimize) { ASSERT_TRUE(trigTest("L-BFGS", 1, 2, 1).run()); }
+TEST(Trig_BFGS3, Optimize) { ASSERT_TRUE(trigTest("L-BFGS", 1, 3, 1).run()); }
 
 class optTest {
 

@@ -96,9 +96,8 @@ TEST(TestIterativeSolver, small_eigenproblem) {
                   ::testing::Pointwise(::testing::DoubleNear(1e-10), std::vector<double>(nroot, double(0))));
       EXPECT_THAT(solver.eigenvalues(), ::testing::Pointwise(::testing::DoubleNear(1e-10),
                                                              std::vector<double>(val.data(), val.data() + nroot)));
-      std::vector<int> roots;
-      for (size_t root = 0; root < solver.m_roots; root++)
-        roots.push_back(root);
+      std::vector<int> roots(solver.m_roots);
+      std::iota(roots.begin(),roots.end(),0);
       solver.solution(roots, x, g);
       for (size_t root = 0; root < solver.m_roots; root++) {
         if (solver.m_verbosity > 2) {

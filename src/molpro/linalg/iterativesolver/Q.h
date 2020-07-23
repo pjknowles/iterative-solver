@@ -24,14 +24,14 @@ class Q {
   int m_index = 0;
   std::map<int, slowvector> m_vectors;
   std::map<int, slowvector> m_actions;
-  const P<typename fastvector::value_type, scalar_type>& m_pspace;
+  const P<typename fastvector::value_type>& m_pspace;
   std::map<int, std::vector<scalar_type>> m_metric_pspace;
   std::map<int, std::vector<scalar_type>> m_action_pspace;
   std::vector<int> m_keys;
   std::map<int, typename fastvector::value_type> m_scale_factors, m_diff_factors;
 
 public:
-  Q(const P<typename fastvector::value_type, scalar_type>& pspace, bool hermitian = false)
+  Q(const P<typename fastvector::value_type>& pspace, bool hermitian = false)
       : m_hermitian(hermitian), m_pspace(pspace) {}
 
   const scalar_type& metric(int i, int j) const { return m_metric.at(m_keys[i]).at(m_keys[j]); }
@@ -185,11 +185,11 @@ public:
       m_action_pspace[i].resize(m_pspace.size());
       workspace = m_vectors[i];
       for (auto j = 0; j < m_pspace.size(); j++) {
-        m_metric_pspace[m_index][j] = workspace.dot(m_pspace[j]);
+        m_metric_pspace[i][j] = workspace.dot(m_pspace[j]);
       }
       workspace = m_actions[i];
       for (auto j = 0; j < m_pspace.size(); j++) {
-        m_action_pspace[m_index][j] = workspace.dot(m_pspace[j]);
+        m_action_pspace[i][j] = workspace.dot(m_pspace[j]);
       }
     }
   }

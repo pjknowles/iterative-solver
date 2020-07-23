@@ -437,13 +437,6 @@ TEST(Rosenbrock_BFGS, DISABLED_Optimize) { ASSERT_TRUE(RosenbrockTest().run("L-B
 TEST(Rosenbrock_null, DISABLED_Optimize) { ASSERT_TRUE(RosenbrockTest().run("null")); }
 
 template <class T>
-std::ostream& operator<<(std::ostream& o, const std::vector<T>& v) {
-  for (const auto& s : v)
-    o << " " << s;
-  return o;
-}
-
-template <class T>
 std::ostream& operator<<(std::ostream& o, const molpro::linalg::SimpleArray<T>& a) {
   std::vector<T> v;
   v.resize(a.size());

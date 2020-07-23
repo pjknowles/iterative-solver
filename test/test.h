@@ -52,4 +52,12 @@ int main(int argc, char* argv[]) {
   ::testing::AddGlobalTestEnvironment(new MPIEnvironment);
   return RUN_ALL_TESTS();
 }
+
+template <class T>
+std::ostream& operator<<(std::ostream& o, const std::vector<T>& v) {
+  for (const auto& s : v)
+    o << " " << s;
+  return o;
+}
+
 #endif // ITERATIVESOLVER_TEST_H

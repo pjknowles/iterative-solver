@@ -2,20 +2,22 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_P_H_
 #include <map>
 
-template <class value_type = double, class scalar_type = value_type>
+template <class value_type = double>
 class P {
-  using Pvector = std::map<size_t, value_type>;
-  std::vector<scalar_type> m_metric;
-  std::vector<scalar_type> m_action;
-  std::vector<scalar_type> m_rhs;
+public:
+  using Pvector = std::map<size_t, value_type>; //!< Sparse array defining a P vector
+protected:
+  std::vector<value_type> m_metric;
+  std::vector<value_type> m_action;
+  std::vector<value_type> m_rhs;
   std::vector<Pvector> m_vectors;
 
 public:
   P() {}
 
-  const scalar_type& metric(int i, int j) const { return m_metric[m_vectors.size() * j + i]; }
+  const value_type& metric(int i, int j) const { return m_metric[m_vectors.size() * j + i]; }
 
-  const scalar_type& action(int i, int j) const { return m_action[m_vectors.size() * j + i]; }
+  const value_type& action(int i, int j) const { return m_action[m_vectors.size() * j + i]; }
 
   size_t size() const { return m_vectors.size(); }
 
@@ -29,13 +31,13 @@ public:
    * 1-dimensional array, with the existing+new index running fastest.
    */
    template <class slowvector>
-  void add(const std::vector<Pvector>& Pvectors, const scalar_type* PP, const std::vector<slowvector>& rhs) {
+  void add(const std::vector<Pvector>& Pvectors, const value_type* PP, const std::vector<slowvector>& rhs) {
     auto old_size = m_vectors.size();
     auto new_size = m_vectors.size() + Pvectors.size();
     {
-      std::vector<scalar_type> new_metric(new_size * new_size);
-      std::vector<scalar_type> new_action(new_size * new_size);
-      std::vector<scalar_type> new_rhs(new_size * rhs.size());
+      std::vector<value_type> new_metric(new_size * new_size);
+      std::vector<value_type> new_action(new_size * new_size);
+      std::vector<value_type> new_rhs(new_size * rhs.size());
       for (int i = 0; i < old_size; i++) {
         for (int j = 0; j < old_size; j++) {
           new_metric[i * new_size + j] = m_metric[i * old_size + j];
@@ -50,7 +52,7 @@ public:
           new_action[j * new_size + (i + old_size)] = new_action[j + new_size * (i + old_size)] = PP[new_size * j + i];
         m_vectors.push_back(Pvectors[i]);
         for (int j = 0; j < m_vectors.size(); j++) {
-          scalar_type overlap = 0;
+          value_type overlap = 0;
           for (const auto& p : Pvectors[i]) {
             if (m_vectors[j].count(p.first))
               overlap += p.second * m_vectors[j][p.first];

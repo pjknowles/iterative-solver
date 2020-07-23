@@ -93,7 +93,6 @@ public:
       m_Pvectors(0),
       m_verbosity(0),
       m_thresh(1e-8),
-      m_actions(0),
       m_maxIterations(1000),
       m_minIterations(0),
       m_linear(false),
@@ -104,9 +103,6 @@ public:
       m_subspaceMatrixResRes(false),
       m_residual_eigen(false),
       m_residual_rhs(false),
-      m_residuals(),
-      m_solutions(),
-      m_others(),
       m_rhs(),
       m_lastVectorIndex(0),
       m_updateShift(0),
@@ -401,19 +397,6 @@ public:
   }
 
   /*!
-   * \brief Remove completely the whole P space
-   */
-  void clearP() {
-    throw std::logic_error("clearP no longer implemented");
-    //    m_subspaceMatrix.conservativeResize(m_QQMatrix.rows(), m_QQMatrix.rows());
-    //    m_subspaceOverlap.conservativeResize(m_QQMatrix.rows(), m_QQMatrix.rows());
-    //    m_PQMatrix.conservativeResize(0, m_QQMatrix.rows());
-    //    m_PQOverlap.conservativeResize(0, m_QQMatrix.rows());
-    //    m_subspaceRHS.conservativeResize(0, m_rhs.size());
-    //    m_Pvectors.clear();
-  }
-
-  /*!
    * \brief For most solvers, this function does nothing but report, but the exception is Optimize.
    * Also write progress to molpro::cout.
    * \param solution The current
@@ -548,10 +531,7 @@ public:
 
   std::vector<scalar_type> errors() const { return m_errors; } //!< Error at last iteration
 
-  size_t dimensionP() const { return (size_t)m_PQMatrix.rows(); } //!< Size of P space
-
 protected:
-  Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_PQMatrix, m_PQOverlap; //!< The PQ block of the matrix
   std::vector<Pvector> m_Pvectors;
   std::vector<bool> m_active; ///< whether each expansion vector is currently active
 public:
@@ -597,12 +577,6 @@ protected:
                           //!< vector, or the pure difference with the previous vector
 
 public:
-  /*!
-   * @brief Report the number of action vectors introduced so far.
-   * @return
-   */
-  int actions() { return m_actions; }
-
   virtual void report() const {
     if (m_verbosity > 0) {
       molpro::cout << "iteration " << iterations();
@@ -887,7 +861,7 @@ protected:
 
   /*!
    * @brief form the combination of P, Q and R vectors to give the interpolated solution and corresponding residual (and
-   * maybe other vectors). On entry, m_solution contains the interpolation
+   * maybe other vectors).
    *
    * @param solution On exit, the complete current solution (R, P and Q parts)
    * @param residual On exit, the R and Q contribution to the residual. The action of the matrix on the P solution is
@@ -959,9 +933,6 @@ public:
   bool m_residual_eigen;       // whether to subtract eigenvalue*solution when constructing residual
   bool m_residual_rhs;         // whether to subtract rhs when constructing residual
   // whether to use RSPT to construct solution instead of diagonalisation
-  std::vector<vectorSet> m_residuals;
-  std::vector<vectorSet> m_solutions;
-  std::vector<vectorSet> m_others;
   std::vector<std::vector<bool>> m_vector_active;
   vectorSet m_rhs;
   size_t m_lastVectorIndex;
@@ -1318,10 +1289,6 @@ protected:
       auto f0 = m_best_f;
       auto f1 = m_values.back();
       auto g1 = step * this->m_h_qr[n - 1][0];
-      //      molpro::cout << "this->m_residuals[n-1][0] " << this->m_residuals[n - 1][0] << std::endl;
-      //      molpro::cout << "this->m_solutions[n-1][0] " << this->m_solutions[n - 1][0] << std::endl;
-      //      molpro::cout << "this->m_residuals.back()[0] " << this->m_residuals.back()[0] << std::endl;
-      //      molpro::cout << "this->m_solutions.back()[0] " << this->m_solutions.back()[0] << std::endl;
       auto g0 = step * (*m_best_v).dot(this->m_qspace[this->m_qspace.size() - 1]);
       bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
       bool Wolfe_2 = m_strong_Wolfe ? g1 >= m_Wolfe_2 * g0 : std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
@@ -1481,9 +1448,6 @@ public:
  */
 template <class T, class slowvector = T>
 class DIIS : public IterativeSolver<T, slowvector> {
-  using IterativeSolver<T>::m_residuals;
-  using IterativeSolver<T>::m_solutions;
-  using IterativeSolver<T>::m_others;
 
 public:
   using typename IterativeSolver<T>::scalar_type;

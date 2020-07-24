@@ -1,13 +1,12 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_IMPLEMENTATION_H_
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_IMPLEMENTATION_H_
 #include <Eigen/Dense>
-#include <molpro/linalg/iterativesolver/helper.h>
 #include <cmath>
+#include <molpro/linalg/iterativesolver/helper.h>
 
 template <typename scalar_type>
 int molpro::linalg::iterativesolver::helper<scalar_type>::propose_singularity_deletion(
-    size_t n, size_t ndim, const scalar_type* m,
-    const std::vector<int>& candidates, double threshold) {
+    size_t n, size_t ndim, const scalar_type* m, const std::vector<int>& candidates, double threshold) {
   Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester_(m, ndim, ndim);
   auto singularTester = singularTester_.block(0, 0, n, n);
   Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester, Eigen::ComputeThinV);
@@ -34,6 +33,14 @@ int molpro::linalg::iterativesolver::helper<scalar_type>::propose_singularity_de
       return k;
   }
   return -1;
+}
+
+template <typename scalar_type>
+void molpro::linalg::iterativesolver::helper<scalar_type>::printMatrix(const std::vector<scalar_type> m, size_t rows,
+                                                                       size_t cols, std::string title,
+                                                                       std::ostream& s) {
+  s << title << "\n"
+    << Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), rows, cols) << std::endl;
 }
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_IMPLEMENTATION_H_

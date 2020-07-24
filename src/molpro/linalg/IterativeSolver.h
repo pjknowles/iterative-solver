@@ -589,9 +589,6 @@ protected:
     m_h_xx.resize(nX * nX);
     m_s_xx.resize(nX * nX);
     m_rhs_x.resize(nX * m_rhs.size());
-    m_subspaceMatrix.conservativeResize(nX, nX);
-    m_subspaceOverlap.conservativeResize(nX, nX);
-    m_subspaceRHS.resize(nX, m_rhs.size());
     for (size_t a = 0; a < nQ; a++) {
       for (size_t rhs = 0; rhs < m_rhs.size(); rhs++)
         m_rhs_x[oQ + a + nX * rhs] = m_qspace.rhs(a)[rhs];
@@ -634,6 +631,9 @@ protected:
     }
     if (m_subspaceMatrixResRes)
       m_s_xx = m_h_xx;
+    m_subspaceMatrix.conservativeResize(nX, nX);
+    m_subspaceOverlap.conservativeResize(nX, nX);
+    m_subspaceRHS.resize(nX, m_rhs.size());
     for (auto k = 0; k < nX; k++)
       for (auto l = 0; l < nX; l++) {
         m_subspaceOverlap(k, l) = m_s_xx[k + nX * l];
@@ -679,8 +679,8 @@ protected:
     if (m_verbosity > 1)
       molpro::cout << "nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
     if (m_verbosity > 2) {
-      molpro::cout << "Subspace matrix" << std::endl << this->m_subspaceMatrix << std::endl;
-      molpro::cout << "Subspace overlap" << std::endl << this->m_subspaceOverlap << std::endl;
+      molpro::linalg::iterativesolver::helper<scalar_type>::printMatrix(this->m_s_xx,nX,nX,"Subspace overlap");
+      molpro::linalg::iterativesolver::helper<scalar_type>::printMatrix(this->m_h_xx,nX,nX,"Subspace matrix");
     }
   }
 

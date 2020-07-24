@@ -96,9 +96,8 @@ TEST(TestIterativeSolver, small_eigenproblem) {
                   ::testing::Pointwise(::testing::DoubleNear(1e-10), std::vector<double>(nroot, double(0))));
       EXPECT_THAT(solver.eigenvalues(), ::testing::Pointwise(::testing::DoubleNear(1e-10),
                                                              std::vector<double>(val.data(), val.data() + nroot)));
-      std::vector<int> roots;
-      for (size_t root = 0; root < solver.m_roots; root++)
-        roots.push_back(root);
+      std::vector<int> roots(solver.m_roots);
+      std::iota(roots.begin(),roots.end(),0);
       solver.solution(roots, x, g);
       for (size_t root = 0; root < solver.m_roots; root++) {
         if (solver.m_verbosity > 2) {
@@ -436,13 +435,6 @@ public:
 
 TEST(Rosenbrock_BFGS, DISABLED_Optimize) { ASSERT_TRUE(RosenbrockTest().run("L-BFGS")); }
 TEST(Rosenbrock_null, DISABLED_Optimize) { ASSERT_TRUE(RosenbrockTest().run("null")); }
-
-template <class T>
-std::ostream& operator<<(std::ostream& o, const std::vector<T>& v) {
-  for (const auto& s : v)
-    o << " " << s;
-  return o;
-}
 
 template <class T>
 std::ostream& operator<<(std::ostream& o, const molpro::linalg::SimpleArray<T>& a) {

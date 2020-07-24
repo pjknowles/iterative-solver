@@ -2,9 +2,6 @@
 #define ITERATIVESOLVER_H
 #include "molpro/ProfilerSingle.h"
 #include "molpro/linalg/iterativesolver/Q.h"
-#ifdef TIMING
-#include <chrono>
-#endif
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
@@ -96,7 +93,6 @@ public:
       m_Pvectors(0),
       m_verbosity(0),
       m_thresh(1e-8),
-      m_actions(0),
       m_maxIterations(1000),
       m_minIterations(0),
       m_linear(false),
@@ -107,9 +103,6 @@ public:
       m_subspaceMatrixResRes(false),
       m_residual_eigen(false),
       m_residual_rhs(false),
-      m_residuals(),
-      m_solutions(),
-      m_others(),
       m_rhs(),
       m_lastVectorIndex(0),
       m_updateShift(0),
@@ -155,13 +148,11 @@ public:
    * solution and residual. \param parameters On input, the current solution or expansion vector. On exit, the
    * interpolated solution vector. \param action On input, the residual for parameters (non-linear), or action of matrix
    * on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated
-   * parameters. \param parametersP On exit, the interpolated solution projected onto the P space. \param other Optional
-   * additional vectors that should be interpolated like the residual. corresponding element of other contains data to
-   * be used. \return whether it is expected that the client should make an update, based on the returned parameters and
+   * parameters. \param parametersP On exit, the interpolated solution projected onto the P space.
+   * \return whether it is expected that the client should make an update, based on the returned parameters and
    * residual, before the subsequent call to endIteration()
    */
-  int addVector(vectorRefSet parameters, vectorRefSet action, vectorRefSetP parametersP = nullVectorRefSetP<T>,
-                vectorRefSet other = nullVectorRefSet<T>) {
+  int addVector(vectorRefSet parameters, vectorRefSet action, vectorRefSetP parametersP = nullVectorRefSetP<T>) {
     //    m_active.resize(parameters.size(), true);
     if (m_roots < 1)
       m_roots = parameters.size();                      // number of roots defaults to size of parameters
@@ -225,7 +216,8 @@ public:
       m_h_rp.push_back(std::vector<scalar_type>(m_working_set.size()));
       for (size_t k = 0; k < m_working_set.size(); k++) {
         m_s_pr[p][k] = parameters[k].get().dot(m_pspace[p]);
-        m_h_pr[p][k] = m_h_rp[p][k] = action[k].get().dot(m_pspace[p]);
+        m_h_pr[p][k] = m_h_rp[p][k] =
+            action[k].get().dot(m_pspace[p]); // TODO this works only for hermitian. Check that there is a check
       }
     }
     m_s_rr.clear();
@@ -246,25 +238,13 @@ public:
       }
     }
 
-#ifdef TIMING
-    auto startTiming = std::chrono::steady_clock::now();
-#endif
+    return solveAndGenerateWorkingSet(parameters, action, parametersP);
+  }
+  int solveAndGenerateWorkingSet(vectorRefSet parameters, vectorRefSet action,
+                                 vectorRefSetP parametersP = nullVectorRefSetP<T>,
+                                  bool calculateError = true) {
     buildSubspace();
-#ifdef TIMING
-    auto endTiming = std::chrono::steady_clock::now();
-    std::cout << " addVector buildSubspace():  seconds="
-              << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
-              << std::endl;
-    startTiming = endTiming;
-#endif
     solveReducedProblem();
-#ifdef TIMING
-    endTiming = std::chrono::steady_clock::now();
-    std::cout << " addVector solveReducedProblem():  seconds="
-              << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
-              << std::endl;
-    startTiming = endTiming;
-#endif
     //    molpro::cout << "update=" << update << std::endl;
     //    calculateResidualConvergence();
     // move any newly-converged solutions into the q space
@@ -280,14 +260,15 @@ public:
     m_working_set.clear();
     for (auto root = 0; root < m_roots; root++)
       m_working_set.push_back(root);
-    if (m_linear)
-      doInterpolation(parameters, action, parametersP, other, false);
-    //    m_errors.assign(m_roots, 1e10); // TODO not right for retired roots
-    for (auto k = 0; k < m_working_set.size(); k++)
-      m_errors[m_working_set[k]] = std::sqrt(action[k].get().dot(action[k]));
-    //    molpro::cout << "m_interpolation:\n" << m_interpolation << std::endl;
+    if (calculateError) {
+      if (m_linear)
+        doInterpolation(parameters, action, parametersP, false);
+      for (auto k = 0; k < m_working_set.size(); k++)
+        m_errors[m_working_set[k]] = std::sqrt(action[k].get().dot(action[k]));
+    } else
+      m_errors.assign(m_roots, 1); // TODO not right for retired roots
 
-    doInterpolation(parameters, action, parametersP, other, true);
+    doInterpolation(parameters, action, parametersP,  true);
     m_last_d.clear();
     m_last_hd.clear();
     //    molpro::cout << "working set size "<<m_working_set.size()<<std::endl;
@@ -327,7 +308,7 @@ public:
 
     // re-establish the residual
     // TODO make more efficient
-    doInterpolation(parameters, action, parametersP, other, false);
+    doInterpolation(parameters, action, parametersP,  false);
     if (m_nullify_solution_before_update) {
       m_last_d.clear();
       m_last_hd.clear();
@@ -341,19 +322,13 @@ public:
     m_current_v.clear();
     return m_working_set.size();
   }
-  int addVector(std::vector<T>& parameters, std::vector<T>& action, vectorSetP& parametersP = nullVectorSetP<T>,
-                std::vector<T>& other = nullStdVector<T>) {
+  int addVector(std::vector<T>& parameters, std::vector<T>& action, vectorSetP& parametersP = nullVectorSetP<T>
+                ) {
     return addVector(vectorRefSet(parameters.begin(), parameters.end()), vectorRefSet(action.begin(), action.end()),
-                     vectorRefSetP(parametersP.begin(), parametersP.end()), vectorRefSet(other.begin(), other.end()));
-  }
-  int addVector(T& parameters, T& action, vectorP& parametersP, T& other) {
-    return addVector(vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP),
-                     vectorRefSet(1, other));
+                     vectorRefSetP(parametersP.begin(), parametersP.end()));
   }
   int addVector(T& parameters, T& action, vectorP& parametersP = nullVectorP<T>) {
-    // T other;
     return addVector(vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP)
-                     //   vectorRefSet(1, other)
     );
   }
 
@@ -388,101 +363,29 @@ public:
    * \param action  On exit, the  residual of the interpolated Q parameters.
    * The contribution from the new, and any existing, P parameters is missing, and should be added in subsequently.
    * \param parametersP On exit, the interpolated solution projected onto the P space.
-   * \param other On exit, interpolation of the other vectors
-   * \return The number of vectors contained in parameters, action, parametersP, other
+   * \return The number of vectors contained in parameters, action, parametersP
    */
   int addP(std::vector<Pvector> Pvectors, const scalar_type* PP, vectorRefSet parameters, vectorRefSet action,
-           vectorRefSetP parametersP, vectorRefSet other = nullVectorRefSet<T>) {
+           vectorRefSetP parametersP) {
     m_pspace.add(Pvectors, PP, m_rhs);
     m_qspace.refreshP(action.front());
-    //    auto oldss = m_subspaceMatrix.rows();
-    m_active.resize(parameters.size(), true);
-    //        molpro::cout << "oldss " << oldss << ", Pvectors,size() " << Pvectors.size() << std::endl;
-    //    m_subspaceMatrix.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
-    //    m_subspaceOverlap.conservativeResize(oldss + Pvectors.size(), oldss + Pvectors.size());
-    //    Eigen::Index oldNP = m_PQMatrix.rows();
-    //    Eigen::Index newNP = oldNP + Pvectors.size();
-    //    assert(newNP + m_QQMatrix.rows() == m_subspaceOverlap.rows());
-    //    m_PQMatrix.conservativeResize(newNP, m_QQMatrix.rows());
-    //    m_PQOverlap.conservativeResize(newNP, m_QQMatrix.rows());
-    //    m_subspaceRHS.conservativeResize(newNP, m_rhs.size());
-    //    size_t offset = 0;
-    //    molpro::cout << "addP PP\n";
-    //    for (auto i = 0; i < Pvectors.size(); i++)
-    //      for (auto j = 0; j < newNP; j++)
-    //        molpro::cout << i << " " << j << " " << PP[offset++]<<std::endl;
-    //    offset = 0;
-    //    for (size_t n = 0; n < Pvectors.size(); n++)
-    //      m_Pvectors.push_back(Pvectors[n]);
-    //    for (size_t n = 0; n < Pvectors.size(); n++) {
-    //      for (Eigen::Index i = 0; i < newNP; i++) {
-    //        molpro::cout << "offset " << offset << std::endl;
-    //        molpro::cout << "PP " << PP[offset] << std::endl;
-    //        m_subspaceMatrix(oldNP + n, i) = m_subspaceMatrix(i, oldNP + n) = PP[offset++];
-    //        double overlap = 0;
-    //        molpro::cout << "n=" << n << ", i=" << i << std::endl;
-    //        for (const auto& p : Pvectors[n]) {
-    //          molpro::cout << "addP Pvector=" << p.first << " : " << p.second << " " <<
-    //          m_Pvectors[i].count(p.first) << std::endl;
-    //          if (m_Pvectors[i].count(p.first))
-    //            overlap += p.second * m_Pvectors[i][p.first];
-    //        }
-    //        molpro::cout << "overlap: " << overlap << std::endl;
-    //        molpro::cout << "oldNP+n=" << oldNP + n << ", i=" << i << ", dimensions: " << m_subspaceOverlap.rows()
-    //        << ", "
-    //             << m_subspaceOverlap.cols() << std::endl;
-    //        m_subspaceOverlap(oldNP + n, i) = m_subspaceOverlap(i, oldNP + n) = overlap;
-    //        molpro::cout << "stored " << m_subspaceOverlap(oldNP + n, i) << std::endl;
-    //      }
-    //    }
-    //    size_t l = 0;
-    //    for (size_t ll = 0; ll < m_solutions.size(); ll++) {
-    //      for (size_t lll = 0; lll < m_solutions[ll].size(); lll++) {
-    //        if (m_vector_active[ll][lll]) {
-    //          for (size_t n = 0; n < Pvectors.size(); n++) {
-    //            m_PQMatrix(oldNP + n, l) = m_residuals[ll][lll].dot(Pvectors[n]);
-    //            m_PQOverlap(oldNP + n, l) = m_solutions[ll][lll].dot(Pvectors[n]);
-    //          }
-    //          l++;
-    //        }
-    //      }
-    //    }
-    //    for (size_t n = 0; n < Pvectors.size(); n++) {
-    //      for (size_t l = 0; l < m_rhs.size(); l++) {
-    //        m_subspaceRHS(oldNP + n, l) = m_rhs[l].dot(Pvectors[n]);
-    //      }
-    //    }
-    buildSubspace();
-    solveReducedProblem();
-    doInterpolation(parameters, action, parametersP, other);
-    //    for (auto ll = 0; ll < parameters.size(); ll++)
-    //      molpro::cout << " after doInterpolation, parameters=" << parameters[ll]<< std::endl;
-    //      molpro::cout << " after doInterpolation, g.w=" << parameters[ll]->dot(*action[ll]) << std::endl;
-    return parameters.size(); // TODO temporary
+    //    return m_working_set.size();
+    m_working_set.clear();
+    auto result = solveAndGenerateWorkingSet(parameters, action, parametersP,  false);
+    m_last_d.clear(); // TODO more intelligent way needed
+    m_last_hd.clear();
+    return result;
   }
   int addP(std::vector<Pvector> Pvectors, const scalar_type* PP, std::vector<T>& parameters, std::vector<T>& action,
-           vectorSetP& parametersP, std::vector<T>& other = nullStdVector<T>) {
+           vectorSetP& parametersP) {
     return addP(Pvectors, PP, vectorRefSet(parameters.begin(), parameters.end()),
-                vectorRefSet(action.begin(), action.end()), vectorRefSetP(parametersP.begin(), parametersP.end()),
-                vectorRefSet(other.begin(), other.end()));
+                vectorRefSet(action.begin(), action.end()), vectorRefSetP(parametersP.begin(), parametersP.end())
+                );
   }
-  int addP(Pvector Pvectors, const scalar_type* PP, T& parameters, T& action, vectorP& parametersP,
-           T& other = nullStdVector<T>) {
-    return addP(Pvectors, PP, vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP),
-                vectorRefSet(1, other));
-  }
-
-  /*!
-   * \brief Remove completely the whole P space
-   */
-  void clearP() {
-    throw std::logic_error("clearP no longer implemented");
-    //    m_subspaceMatrix.conservativeResize(m_QQMatrix.rows(), m_QQMatrix.rows());
-    //    m_subspaceOverlap.conservativeResize(m_QQMatrix.rows(), m_QQMatrix.rows());
-    //    m_PQMatrix.conservativeResize(0, m_QQMatrix.rows());
-    //    m_PQOverlap.conservativeResize(0, m_QQMatrix.rows());
-    //    m_subspaceRHS.conservativeResize(0, m_rhs.size());
-    //    m_Pvectors.clear();
+  int addP(Pvector Pvectors, const scalar_type* PP, T& parameters, T& action, vectorP& parametersP
+           ) {
+    return addP(Pvectors, PP, vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP)
+                );
   }
 
   /*!
@@ -518,11 +421,9 @@ public:
                 vectorRefSetP parametersP = nullVectorRefSetP<T>) {
     auto working_set_save = m_working_set;
     m_working_set = roots;
-    auto other = nullVectorRefSet<T>;
-    m_s_rr.clear();
-    buildSubspace();
+    buildSubspace(true);
     solveReducedProblem();
-    doInterpolation(parameters, residual, parametersP, other);
+    doInterpolation(parameters, residual, parametersP);
     m_working_set = working_set_save;
   }
   void solution(const std::vector<int>& roots, std::vector<T>& parameters, std::vector<T>& residual,
@@ -551,13 +452,14 @@ public:
     std::map<size_t, scalar_type> result;
     for (size_t kkk = 0; kkk < solution.size(); kkk++) {
       //    molpro::cout << "suggestP kkk "<<kkk<<" active "<<solution.m_vector_active[kkk]<<maximumNumber<<std::endl;
-      if (m_active[kkk]) {
+      {
         std::vector<size_t> indices;
         std::vector<scalar_type> values;
-        std::tie(indices, values) = solution[kkk].get().select(residual[kkk], maximumNumber, threshold);
-        //     molpro::cout <<"indices.size()="<<indices.size()<<std::endl;
-        //     for (auto k=0; k<indices.size(); k++) molpro::cout << "select "<< indices[k] <<" :
-        //     "<<values[k]<<std::endl;
+        //        std::tie(indices, values) = solution[kkk].get().select(residual[kkk], maximumNumber, threshold);
+        std::tie(indices, values) = solution[kkk].get().select(solution[kkk], maximumNumber, threshold);
+        //             molpro::cout <<"indices.size()="<<indices.size()<<std::endl;
+        //             for (auto k=0; k<indices.size(); k++) molpro::cout << "select "<< indices[k] <<" :
+        //             "<<values[k]<<std::endl;
         for (size_t i = 0; i < indices.size(); i++)
           if (result.count(indices[i]))
             result[indices[i]] = std::max(result[indices[i]], values[i]);
@@ -618,12 +520,9 @@ public:
     return result;
   }
 
-  std::vector<scalar_type> errors() const { return m_errors; } //!< Error at last iteration
-
-  size_t dimensionP() const { return (size_t)m_PQMatrix.rows(); } //!< Size of P space
+  const std::vector<scalar_type>& errors() const { return m_errors; } //!< Error at last iteration
 
 protected:
-  Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_PQMatrix, m_PQOverlap; //!< The PQ block of the matrix
   std::vector<Pvector> m_Pvectors;
   std::vector<bool> m_active; ///< whether each expansion vector is currently active
 public:
@@ -650,7 +549,7 @@ public:
   ///< - m_options["convergence"]=="residual": m_errors() returns the norm of the residual vector
 protected:
   Q<T> m_qspace;
-  P<value_type, scalar_type> m_pspace;
+  P<value_type> m_pspace;
   std::vector<slowvector> m_last_d;    ///< optimum solution in last iteration
   std::vector<slowvector> m_last_hd;   ///< action vector corresponding to optimum solution in last iteration
   std::vector<slowvector> m_current_r; ///< current working space TODO can probably eliminate using m_last_d
@@ -666,12 +565,6 @@ protected:
                           //!< vector, or the pure difference with the previous vector
 
 public:
-  /*!
-   * @brief Report the number of action vectors introduced so far.
-   * @return
-   */
-  int actions() { return m_actions; }
-
   virtual void report() const {
     if (m_verbosity > 0) {
       molpro::cout << "iteration " << iterations();
@@ -723,10 +616,10 @@ protected:
     return -1;
   }
 
-  void buildSubspace() {
+  void buildSubspace(bool emptyR = false) {
     const size_t nP = m_pspace.size();
     const size_t nQ = m_qspace.size();
-    const size_t nR = m_s_rr.size();
+    const size_t nR = emptyR ? 0 : m_working_set.size();
     const size_t nX = nP + nQ + nR;
     const auto oP = 0;
     const auto oQ = oP + nP;
@@ -761,6 +654,10 @@ protected:
         m_subspaceMatrix(oP + i, oR + m) = m_h_pr[i][m];
         m_subspaceOverlap(oR + m, oP + i) = m_s_pr[i][m];
         m_subspaceOverlap(oP + i, oR + m) = m_s_pr[i][m];
+      }
+      for (size_t j = 0; j < nP; j++) {
+        m_subspaceMatrix(oP + i, oP + j) = m_pspace.action(i, j);
+        m_subspaceOverlap(oP + j, oP + i) = m_pspace.metric(i, j);
       }
     }
     for (size_t n = 0; n < nR; n++) {
@@ -805,7 +702,7 @@ protected:
             m_s_qr[a][m] = m_s_qr[a + 1][m];
             m_hh_qr[a][m] = m_hh_qr[a + 1][m];
           }
-        buildSubspace();
+        buildSubspace(emptyR);
         return;
       }
     }
@@ -823,12 +720,9 @@ protected:
 
     Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> H = m_subspaceMatrix.block(0, 0, kept, kept);
     Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> S = m_subspaceOverlap.block(0, 0, kept, kept);
-//    molpro::cout << "diagonalizeSubspaceMatrix H:\n" << H.format(Eigen::FullPrecision) << std::endl;
-//    molpro::cout << "diagonalizeSubspaceMatrix S:\n" << S.format(Eigen::FullPrecision) << std::endl;
-//   Eigen::GeneralizedEigenSolver<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
-#ifdef TIMING
-    auto startTiming = std::chrono::steady_clock::now();
-#endif
+    //    molpro::cout << "diagonalizeSubspaceMatrix H:\n" << H.format(Eigen::FullPrecision) << std::endl;
+    //    molpro::cout << "diagonalizeSubspaceMatrix S:\n" << S.format(Eigen::FullPrecision) << std::endl;
+    //   Eigen::GeneralizedEigenSolver<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
     for (auto k = 0; k < S.rows(); k++)
       if (std::abs(S(k, k) - 1) < 1e-15)
         S(k, k) = 1; // somehow avoid problems that eigen with Intel 18 get the SVD wrong if near-unit matrix
@@ -843,42 +737,18 @@ protected:
     auto svmh = svd.singularValues().head(svd.rank()).eval();
     for (auto k = 0; k < svd.rank(); k++)
       svmh(k) = 1 / std::sqrt(svmh(k));
-#ifdef TIMING
-    auto endTiming = std::chrono::steady_clock::now();
-    molpro::cout << " construct svd and svmh:  seconds="
-                 << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
-                 << std::endl;
-    startTiming = std::chrono::steady_clock::now();
-#endif
     auto Hbar = (svmh.asDiagonal()) * (svd.matrixU().leftCols(svd.rank()).adjoint()) * H *
                 svd.matrixV().leftCols(svd.rank()) * (svmh.asDiagonal());
-#ifdef TIMING
-    endTiming = std::chrono::steady_clock::now();
-    molpro::cout << " construct Hbar:  seconds="
-                 << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
-                 << std::endl;
-#endif
-//   molpro::cout << "S\n"<<S<<std::endl;
-//   molpro::cout << "S singular values"<<(Eigen::DiagonalMatrix<T, Eigen::Dynamic,
-//   Eigen::Dynamic>(svd.singularValues().head(svd.rank())))<<std::endl; molpro::cout << "S inverse singular
-//   values"<<Eigen::DiagonalMatrix<T, Eigen::Dynamic>(svd.singularValues().head(svd.rank())).inverse()<<std::endl;
-//   molpro::cout << "S singular values"<<sv<<std::endl;
-//   molpro::cout << "H\n"<<H<<std::endl;
-//   molpro::cout << "Hbar\n"<<Hbar<<std::endl;
-#ifdef TIMING
-    molpro::cout << "symmetric Hbar? " << (Hbar - Hbar.adjoint()).norm() << std::endl;
-    startTiming = std::chrono::steady_clock::now();
-#endif
+    //   molpro::cout << "S\n"<<S<<std::endl;
+    //   molpro::cout << "S singular values"<<(Eigen::DiagonalMatrix<T, Eigen::Dynamic,
+    //   Eigen::Dynamic>(svd.singularValues().head(svd.rank())))<<std::endl; molpro::cout << "S inverse singular
+    //   values"<<Eigen::DiagonalMatrix<T, Eigen::Dynamic>(svd.singularValues().head(svd.rank())).inverse()<<std::endl;
+    //   molpro::cout << "S singular values"<<sv<<std::endl;
+    //   molpro::cout << "H\n"<<H<<std::endl;
+    //   molpro::cout << "Hbar\n"<<Hbar<<std::endl;
     Eigen::EigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> s(Hbar);
     //    molpro::cout << "s.eigenvectors()\n"<<s.eigenvectors()<<std::endl;
     m_subspaceEigenvalues = s.eigenvalues();
-#ifdef TIMING
-    endTiming = std::chrono::steady_clock::now();
-    molpro::cout << " EigenSolver():  seconds="
-                 << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
-                 << std::endl;
-    startTiming = endTiming;
-#endif
     if (s.eigenvalues().imag().norm() < 1e-10 and s.eigenvectors().imag().norm() < 1e-10) { // real eigenvectors
       m_subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors().real();
 
@@ -895,9 +765,6 @@ protected:
     //   molpro::cout << "unsorted eigenvectors\n"<<m_subspaceEigenvectors<<std::endl;
 
     {
-#ifdef TIMING
-      auto startTiming = std::chrono::steady_clock::now();
-#endif
       // sort
       auto eigval = m_subspaceEigenvalues;
       auto eigvec = m_subspaceEigenvectors;
@@ -918,19 +785,10 @@ protected:
         //    molpro::cout << eigvec.col(ll)<<std::endl;
         m_subspaceEigenvectors.col(k) = eigvec.col(ll);
       }
-#ifdef TIMING
-      auto endTiming = std::chrono::steady_clock::now();
-      molpro::cout << " sort seconds="
-                   << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
-                   << std::endl;
-#endif
     }
-//   molpro::cout << "sorted eigenvalues\n"<<m_subspaceEigenvalues<<std::endl;
-//   molpro::cout << "sorted eigenvectors\n"<<m_subspaceEigenvectors<<std::endl;
-//   molpro::cout << m_subspaceOverlap<<std::endl;
-#ifdef TIMING
-    startTiming = std::chrono::steady_clock::now();
-#endif
+    //   molpro::cout << "sorted eigenvalues\n"<<m_subspaceEigenvalues<<std::endl;
+    //   molpro::cout << "sorted eigenvectors\n"<<m_subspaceEigenvectors<<std::endl;
+    //   molpro::cout << m_subspaceOverlap<<std::endl;
     Eigen::MatrixXcd ovlTimesVec(m_subspaceEigenvectors.cols(), m_subspaceEigenvectors.rows()); // FIXME templating
     for (auto repeat = 0; repeat < 3; ++repeat)
       for (Eigen::Index k = 0; k < m_subspaceEigenvectors.cols(); k++) {
@@ -985,34 +843,24 @@ protected:
         //                       (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap *
         //                       m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
       }
-#ifdef TIMING
-    endTiming = std::chrono::steady_clock::now();
-    molpro::cout << " repeat dimension=" << m_subspaceEigenvectors.cols() << ",  seconds="
-                 << std::chrono::duration_cast<std::chrono::nanoseconds>(endTiming - startTiming).count() * 1e-9
-                 << std::endl;
-#endif
     //     molpro::cout << "eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
     //     molpro::cout << "eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
   }
 
   /*!
-   * @brief form the combination of P, Q and R vectors to give the interpolated solution and corresponding residual (and
-   * maybe other vectors). On entry, m_solution contains the interpolation
+   * @brief form the combination of P, Q and R vectors to give the interpolated solution and corresponding residual
    *
    * @param solution On exit, the complete current solution (R, P and Q parts)
    * @param residual On exit, the R and Q contribution to the residual. The action of the matrix on the P solution is
    * missing, and has to be evaluated by the caller.
    * @param solutionP On exit, the solution projected to the P space
-   * @param other On exit, interpolation of the other vectors
    * @param actionOnly If true, omit P space contribution and calculate action vector, not full residual
    */
-  void doInterpolation(vectorRefSet solution, vectorRefSet residual, vectorRefSetP solutionP, vectorRefSet other,
+  void doInterpolation(vectorRefSet solution, vectorRefSet residual, vectorRefSetP solutionP,
                        bool actionOnly = false) const {
     for (auto& s : solution)
       s.get().scal(0);
     for (auto& s : residual)
-      s.get().scal(0);
-    for (auto& s : other)
       s.get().scal(0);
     auto nP = m_pspace.size();
     auto nR = m_current_r.size();
@@ -1020,7 +868,8 @@ protected:
     auto nQ = this->m_interpolation.rows() - nP -
               nR; // guard against using any vectors added to the Q space since the subspace solution was evaluated
     assert(nQ <= m_qspace.size());
-    auto oQ = nP;
+    size_t oP = 0;
+    auto oQ = oP + nP;
     auto oR = oQ + nQ;
     assert(m_working_set.size() <= solution.size());
     assert(nP == 0 || solutionP.size() == residual.size());
@@ -1029,9 +878,15 @@ protected:
       //      molpro::cout << "working set k=" << kkk << " root=" << root << std::endl;
       if (nP > 0)
         solutionP[kkk].get().resize(nP);
-      if (not actionOnly)
-        for (size_t l = 0; l < nP; l++)
-          solution[kkk].get().axpy((solutionP[kkk].get()[l] = this->m_interpolation(l, root)), m_pspace[l]);
+      if (not actionOnly) {
+        for (size_t i = 0; i < nP; i++) {
+          solution[kkk].get().axpy((solutionP[kkk].get()[i] = this->m_interpolation(oP + i, root)), m_pspace[i]);
+          //          double gp = 0;
+          //          for (auto j = 0; j < nP; j++)
+          //            gp += m_pspace.action(j, i) * this->m_interpolation(oP + j, root);
+          //          residual[kkk].get().axpy(gp, m_pspace[i]);
+        }
+      }
       //      molpro::cout << "square norm of solution after P contribution " << solution[kkk]->dot(*solution[kkk]) <<
       //      std::endl;
       for (int q = 0; q < nQ; q++) {
@@ -1047,10 +902,12 @@ protected:
         }
         if (m_residual_eigen) {
           auto norm = solution[kkk].get().dot(solution[kkk].get());
-          if (norm == 0)
-            throw std::runtime_error("new solution has zero norm");
-          solution[kkk].get().scal(1 / std::sqrt(norm));
-          residual[kkk].get().scal(1 / std::sqrt(norm));
+          //          if (norm == 0)
+          //            throw std::runtime_error("new solution has zero norm");
+          if (norm != 0) {
+            solution[kkk].get().scal(1 / std::sqrt(norm));
+            residual[kkk].get().scal(1 / std::sqrt(norm));
+          }
         }
         // TODO
       }
@@ -1067,9 +924,6 @@ public:
   bool m_residual_eigen;       // whether to subtract eigenvalue*solution when constructing residual
   bool m_residual_rhs;         // whether to subtract rhs when constructing residual
   // whether to use RSPT to construct solution instead of diagonalisation
-  std::vector<vectorSet> m_residuals;
-  std::vector<vectorSet> m_solutions;
-  std::vector<vectorSet> m_others;
   std::vector<std::vector<bool>> m_vector_active;
   vectorSet m_rhs;
   size_t m_lastVectorIndex;
@@ -1085,7 +939,8 @@ public:
   Eigen::VectorXcd m_subspaceEigenvalues;  // FIXME templating
   std::vector<scalar_type> m_values;       //< function values
 public:
-  size_t m_dimension; //!< not used in the class, but a place for clients (eg C interface) to store a number representing the size of the underlying vector space.
+  size_t m_dimension;             //!< not used in the class, but a place for clients (eg C interface) to store a number
+                                  //!< representing the size of the underlying vector space.
   std::string m_value_print_name; //< the title report() will give to the function value
 protected:
   unsigned int m_iterations;
@@ -1151,16 +1006,12 @@ private:
     if (this->m_rspt) {
       throw std::logic_error("RSPT not yet implemented");
     } else {
-#ifdef TIMING
-      auto start = std::chrono::steady_clock::now();
-#endif
+      //      molpro::cout << "solveReducedProblem subspaceMatrix\n" << this->m_subspaceMatrix << std::endl;
+      //      molpro::cout << "solveReducedProblem subspaceOverlap\n" << this->m_subspaceOverlap << std::endl;
       this->diagonalizeSubspaceMatrix();
-#ifdef TIMING
-      auto end = std::chrono::steady_clock::now();
-      std::cout << " diagonalizeSubspaceMatrix()"
-                << ", seconds=" << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9
-                << std::endl;
-#endif
+      //      molpro::cout << "solveReducedProblem subspaceEigenvectors\n"
+      //                   << this->m_subspaceEigenvectors.block(0, 0, this->m_subspaceMatrix.rows(), this->m_roots)
+      //                   << std::endl;
       this->m_interpolation = this->m_subspaceEigenvectors
                                   .block(0, 0, this->m_subspaceEigenvectors.rows(),
                                          std::min(int(this->m_roots), int(this->m_subspaceEigenvectors.rows())))
@@ -1367,7 +1218,7 @@ public:
     this->m_singularity_threshold = 0;
     this->m_orthogonalise_Q = false;
     this->m_exclude_r_from_redundancy_test = true;
-    this->m_hermitian=false;
+    this->m_hermitian = false;
     this->m_qspace.hermitian(false);
   }
 
@@ -1432,10 +1283,6 @@ protected:
       auto f0 = m_best_f;
       auto f1 = m_values.back();
       auto g1 = step * this->m_h_qr[n - 1][0];
-      //      molpro::cout << "this->m_residuals[n-1][0] " << this->m_residuals[n - 1][0] << std::endl;
-      //      molpro::cout << "this->m_solutions[n-1][0] " << this->m_solutions[n - 1][0] << std::endl;
-      //      molpro::cout << "this->m_residuals.back()[0] " << this->m_residuals.back()[0] << std::endl;
-      //      molpro::cout << "this->m_solutions.back()[0] " << this->m_solutions.back()[0] << std::endl;
       auto g0 = step * (*m_best_v).dot(this->m_qspace[this->m_qspace.size() - 1]);
       bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
       bool Wolfe_2 = m_strong_Wolfe ? g1 >= m_Wolfe_2 * g0 : std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
@@ -1499,7 +1346,7 @@ protected:
       return false;
     }
   accept:
-//    molpro::cout << "accept reached" << std::endl;
+    //    molpro::cout << "accept reached" << std::endl;
     m_linesearch_steplength = 0;
     auto& minusAlpha = this->m_interpolation;
     //    minusAlpha.conservativeResize(n, 1);
@@ -1509,12 +1356,12 @@ protected:
     this->m_nullify_solution_before_update = true;
     if (this->m_algorithm == "L-BFGS") {
       for (int a = this->m_qspace.size() - 1; a >= 0; a--) {
-//        molpro::cout << "iterate q_" << a << std::endl;
+        //        molpro::cout << "iterate q_" << a << std::endl;
         minusAlpha(a, 0) = -this->m_h_qr[a][0];
         for (auto b = a + 1; b < this->m_qspace.size(); b++)
           minusAlpha(a, 0) -= minusAlpha(b, 0) * this->m_qspace.action(a, b);
         minusAlpha(a, 0) /= this->m_qspace.action(a, a);
-//        molpro::cout << "minusAlpha(a,0) " << minusAlpha(a, 0) << std::endl;
+        //        molpro::cout << "minusAlpha(a,0) " << minusAlpha(a, 0) << std::endl;
         //        this->m_interpolation(a, 0) = minusAlpha(a,0);
       }
     }
@@ -1528,7 +1375,8 @@ public:
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) override {
     if (this->m_q_solutions.count(0) == 0) {
       if (m_linesearch_steplength != 0) { // line search
-//        molpro::cout << "*enter endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
+        //        molpro::cout << "*enter endIteration m_linesearch_steplength=" << m_linesearch_steplength <<
+        //        std::endl;
         //              molpro::cout << "solution " << solution.front().get() << std::endl;
         solution.front().get() = *m_best_r;
         solution.front().get().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size() - 1]);
@@ -1536,7 +1384,7 @@ public:
         this->m_qspace.remove(this->m_qspace.size() - 1);
       } else { // quasi-Newton
         if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
-//          molpro::cout << "L-BFGS stage 2" << std::endl;
+          //          molpro::cout << "L-BFGS stage 2" << std::endl;
           //          molpro::cout << "before subtracting rk solution length="
           //                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
           //          solution.back().get().axpy(-1, this->m_last_d.back());
@@ -1544,17 +1392,18 @@ public:
           //                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
           auto& minusAlpha = this->m_interpolation;
           for (auto a = 0; a < this->m_qspace.size(); a++) {
-//            molpro::cout << "iterate q_" << a << std::endl;
+            //            molpro::cout << "iterate q_" << a << std::endl;
             auto factor =
                 minusAlpha(a, 0) - this->m_qspace.action(a).dot(solution.back().get()) / this->m_qspace.action(a, a);
             solution.back().get().axpy(factor, this->m_qspace[a]);
-//            molpro::cout << "Q factor " << factor << std::endl;
+            //            molpro::cout << "Q factor " << factor << std::endl;
           }
-//          molpro::cout << "after Q loop solution length=" << std::sqrt(solution.back().get().dot(solution.back().get()))
-//                       << std::endl;
+          //          molpro::cout << "after Q loop solution length=" <<
+          //          std::sqrt(solution.back().get().dot(solution.back().get()))
+          //                       << std::endl;
           solution.back().get().axpy(1, *(this->m_best_r));
-//          molpro::cout << "after adding rk solution length="
-//                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
+          //          molpro::cout << "after adding rk solution length="
+          //                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
         }
       }
       //    molpro::cout << "*exit endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
@@ -1593,9 +1442,6 @@ public:
  */
 template <class T, class slowvector = T>
 class DIIS : public IterativeSolver<T, slowvector> {
-  using IterativeSolver<T>::m_residuals;
-  using IterativeSolver<T>::m_solutions;
-  using IterativeSolver<T>::m_others;
 
 public:
   using typename IterativeSolver<T>::scalar_type;

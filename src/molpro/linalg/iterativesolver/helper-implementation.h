@@ -1,11 +1,13 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_IMPLEMENTATION_H_
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_IMPLEMENTATION_H_
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_IMPLEMENTATION_H_
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_IMPLEMENTATION_H_
 #include <Eigen/Dense>
-#include <molpro/linalg/IterativeSolver.h>
-template <class T, class slowvector>
-int molpro::linalg::IterativeSolver<T, slowvector>::propose_singularity_deletion(
-    size_t n, size_t ndim, const typename molpro::linalg::IterativeSolver<T, slowvector>::scalar_type* m,
-    const std::vector<int>& candidates, typename molpro::linalg::IterativeSolver<T, slowvector>::scalar_type threshold) {
+#include <molpro/linalg/iterativesolver/helper.h>
+#include <cmath>
+
+template <typename scalar_type>
+int molpro::linalg::iterativesolver::helper<scalar_type>::propose_singularity_deletion(
+    size_t n, size_t ndim, const scalar_type* m,
+    const std::vector<int>& candidates, double threshold) {
   Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester_(m, ndim, ndim);
   auto singularTester = singularTester_.block(0, 0, n, n);
   Eigen::JacobiSVD<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester, Eigen::ComputeThinV);
@@ -18,7 +20,7 @@ int molpro::linalg::IterativeSolver<T, slowvector>::propose_singularity_deletion
   //          molpro::cout << " " << c;
   //        molpro::cout << std::endl;
   auto sv = svd.singularValues();
-  std::vector<scalar_type> svv;
+  std::vector<double> svv;
   for (auto k = 0; k < n; k++)
     svv.push_back(sv(k));
   auto most_singular = std::min_element(svv.begin(), svv.end()) - svv.begin();
@@ -28,10 +30,10 @@ int molpro::linalg::IterativeSolver<T, slowvector>::propose_singularity_deletion
   for (const auto& k : candidates) {
     //      if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
     //        molpro::cout << "taking candidate " << k << ": " << svd.matrixV()(k, most_singular) << std::endl;
-    if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
+    if (std::abs(svd.matrixV()(k, most_singular)) > 1e-3)
       return k;
   }
   return -1;
 }
 
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_IMPLEMENTATION_H_
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_IMPLEMENTATION_H_

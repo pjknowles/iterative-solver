@@ -2,6 +2,7 @@
 #define ITERATIVESOLVER_H
 #include "molpro/ProfilerSingle.h"
 #include "molpro/linalg/iterativesolver/Q.h"
+#include "molpro/linalg/iterativesolver/helper.h"
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
@@ -575,11 +576,6 @@ public:
 
 protected:
   virtual bool solveReducedProblem() = 0;
-  int propose_singularity_deletion(size_t n, size_t ndim, const scalar_type* m, const std::vector<int>& candidates,
-                                   scalar_type threshold);
-//  int propose_singularity_deletion(size_t n, size_t ndim, const scalar_type* m,
-//                                   const std::vector<int>& candidates = std::vector<int>(),
-//                                   scalar_type threshold = 1e-10) ;
 
   void buildSubspace(bool emptyR = false) {
     const size_t nP = m_pspace.size();
@@ -661,7 +657,7 @@ protected:
       //      for (const auto& c : candidates)
       //        molpro::cout << " " << c;
       //      molpro::cout << std::endl;
-      auto del = propose_singularity_deletion(m_exclude_r_from_redundancy_test ? nX - nR : nX, nX,
+      auto del = molpro::linalg::iterativesolver::helper<scalar_type>::propose_singularity_deletion(m_exclude_r_from_redundancy_test ? nX - nR : nX, nX,
                                               m_residual_eigen ? m_s_xx.data() : m_h_xx.data(), candidates,
                                               nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
@@ -1573,5 +1569,5 @@ extern "C" void IterativeSolverOption(const char* key, const char* val);
 extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* residual, size_t maximumNumber,
                                           double threshold, size_t* indices, int lmppx);
 
-#include <molpro/linalg/iterativesolver/implementation.h>
+//#include <molpro/linalg/iterativesolver/helper-implementation.h>
 #endif // ITERATIVESOLVER_H

@@ -575,10 +575,6 @@ public:
 
 protected:
   virtual bool solveReducedProblem() = 0;
-  int thingy();
-
-//  int propose_singularity_deletion(size_t n, size_t ndim, const scalar_type* m, const std::vector<int>& candidates,
-//                                   scalar_type threshold);
   int propose_singularity_deletion(size_t n, size_t ndim, const scalar_type* m, const std::vector<int>& candidates,
                                    scalar_type threshold);
 //  int propose_singularity_deletion(size_t n, size_t ndim, const scalar_type* m,
@@ -611,7 +607,7 @@ protected:
       const auto& action_pspace = m_qspace.action_pspace(a);
       for (size_t i = 0; i < nP; i++) {
         m_h_xx[oP + i + nX * (oQ + a)] = m_h_xx[oQ + a + nX * (oP + i)] = action_pspace[i];
-        m_s_xx[oP + i + nX * (oQ + a)] = m_s_xx[oQ + a + nX * (oP + i)] = action_pspace[i];
+        m_s_xx[oP + i + nX * (oQ + a)] = m_s_xx[oQ + a + nX * (oP + i)] = metric_pspace[i];
       }
       for (size_t m = 0; m < nR; m++) {
         m_h_xx[oR + m + nX * (oQ + a)] = m_h_rq[a][m];

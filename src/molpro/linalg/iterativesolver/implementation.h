@@ -3,11 +3,6 @@
 #include <Eigen/Dense>
 #include <molpro/linalg/IterativeSolver.h>
 template <class T, class slowvector>
-int molpro::linalg::IterativeSolver<T, slowvector>::thingy() {
-  return 0;
-}
-
-template <class T, class slowvector>
 int molpro::linalg::IterativeSolver<T, slowvector>::propose_singularity_deletion(
     size_t n, size_t ndim, const typename molpro::linalg::IterativeSolver<T, slowvector>::scalar_type* m,
     const std::vector<int>& candidates, typename molpro::linalg::IterativeSolver<T, slowvector>::scalar_type threshold) {

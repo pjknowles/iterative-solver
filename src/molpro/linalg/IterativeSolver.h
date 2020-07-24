@@ -148,13 +148,11 @@ public:
    * solution and residual. \param parameters On input, the current solution or expansion vector. On exit, the
    * interpolated solution vector. \param action On input, the residual for parameters (non-linear), or action of matrix
    * on parameters (linear). On exit, the expected (non-linear) or actual (linear) residual of the interpolated
-   * parameters. \param parametersP On exit, the interpolated solution projected onto the P space. \param other Optional
-   * additional vectors that should be interpolated like the residual. corresponding element of other contains data to
-   * be used. \return whether it is expected that the client should make an update, based on the returned parameters and
+   * parameters. \param parametersP On exit, the interpolated solution projected onto the P space.
+   * \return whether it is expected that the client should make an update, based on the returned parameters and
    * residual, before the subsequent call to endIteration()
    */
-  int addVector(vectorRefSet parameters, vectorRefSet action, vectorRefSetP parametersP = nullVectorRefSetP<T>,
-                vectorRefSet other = nullVectorRefSet<T>) {
+  int addVector(vectorRefSet parameters, vectorRefSet action, vectorRefSetP parametersP = nullVectorRefSetP<T>) {
     //    m_active.resize(parameters.size(), true);
     if (m_roots < 1)
       m_roots = parameters.size();                      // number of roots defaults to size of parameters
@@ -240,11 +238,11 @@ public:
       }
     }
 
-    return solveAndGenerateWorkingSet(parameters, action, parametersP, other);
+    return solveAndGenerateWorkingSet(parameters, action, parametersP);
   }
   int solveAndGenerateWorkingSet(vectorRefSet parameters, vectorRefSet action,
                                  vectorRefSetP parametersP = nullVectorRefSetP<T>,
-                                 vectorRefSet other = nullVectorRefSet<T>, bool calculateError = true) {
+                                  bool calculateError = true) {
     buildSubspace();
     solveReducedProblem();
     //    molpro::cout << "update=" << update << std::endl;
@@ -264,13 +262,13 @@ public:
       m_working_set.push_back(root);
     if (calculateError) {
       if (m_linear)
-        doInterpolation(parameters, action, parametersP, other, false);
+        doInterpolation(parameters, action, parametersP, false);
       for (auto k = 0; k < m_working_set.size(); k++)
         m_errors[m_working_set[k]] = std::sqrt(action[k].get().dot(action[k]));
     } else
       m_errors.assign(m_roots, 1); // TODO not right for retired roots
 
-    doInterpolation(parameters, action, parametersP, other, true);
+    doInterpolation(parameters, action, parametersP,  true);
     m_last_d.clear();
     m_last_hd.clear();
     //    molpro::cout << "working set size "<<m_working_set.size()<<std::endl;
@@ -310,7 +308,7 @@ public:
 
     // re-establish the residual
     // TODO make more efficient
-    doInterpolation(parameters, action, parametersP, other, false);
+    doInterpolation(parameters, action, parametersP,  false);
     if (m_nullify_solution_before_update) {
       m_last_d.clear();
       m_last_hd.clear();
@@ -324,19 +322,13 @@ public:
     m_current_v.clear();
     return m_working_set.size();
   }
-  int addVector(std::vector<T>& parameters, std::vector<T>& action, vectorSetP& parametersP = nullVectorSetP<T>,
-                std::vector<T>& other = nullStdVector<T>) {
+  int addVector(std::vector<T>& parameters, std::vector<T>& action, vectorSetP& parametersP = nullVectorSetP<T>
+                ) {
     return addVector(vectorRefSet(parameters.begin(), parameters.end()), vectorRefSet(action.begin(), action.end()),
-                     vectorRefSetP(parametersP.begin(), parametersP.end()), vectorRefSet(other.begin(), other.end()));
-  }
-  int addVector(T& parameters, T& action, vectorP& parametersP, T& other) {
-    return addVector(vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP),
-                     vectorRefSet(1, other));
+                     vectorRefSetP(parametersP.begin(), parametersP.end()));
   }
   int addVector(T& parameters, T& action, vectorP& parametersP = nullVectorP<T>) {
-    // T other;
     return addVector(vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP)
-                     //   vectorRefSet(1, other)
     );
   }
 
@@ -371,30 +363,29 @@ public:
    * \param action  On exit, the  residual of the interpolated Q parameters.
    * The contribution from the new, and any existing, P parameters is missing, and should be added in subsequently.
    * \param parametersP On exit, the interpolated solution projected onto the P space.
-   * \param other On exit, interpolation of the other vectors
-   * \return The number of vectors contained in parameters, action, parametersP, other
+   * \return The number of vectors contained in parameters, action, parametersP
    */
   int addP(std::vector<Pvector> Pvectors, const scalar_type* PP, vectorRefSet parameters, vectorRefSet action,
-           vectorRefSetP parametersP, vectorRefSet other = nullVectorRefSet<T>) {
+           vectorRefSetP parametersP) {
     m_pspace.add(Pvectors, PP, m_rhs);
     m_qspace.refreshP(action.front());
     //    return m_working_set.size();
     m_working_set.clear();
-    auto result = solveAndGenerateWorkingSet(parameters, action, parametersP, other, false);
+    auto result = solveAndGenerateWorkingSet(parameters, action, parametersP,  false);
     m_last_d.clear(); // TODO more intelligent way needed
     m_last_hd.clear();
     return result;
   }
   int addP(std::vector<Pvector> Pvectors, const scalar_type* PP, std::vector<T>& parameters, std::vector<T>& action,
-           vectorSetP& parametersP, std::vector<T>& other = nullStdVector<T>) {
+           vectorSetP& parametersP) {
     return addP(Pvectors, PP, vectorRefSet(parameters.begin(), parameters.end()),
-                vectorRefSet(action.begin(), action.end()), vectorRefSetP(parametersP.begin(), parametersP.end()),
-                vectorRefSet(other.begin(), other.end()));
+                vectorRefSet(action.begin(), action.end()), vectorRefSetP(parametersP.begin(), parametersP.end())
+                );
   }
-  int addP(Pvector Pvectors, const scalar_type* PP, T& parameters, T& action, vectorP& parametersP,
-           T& other = nullStdVector<T>) {
-    return addP(Pvectors, PP, vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP),
-                vectorRefSet(1, other));
+  int addP(Pvector Pvectors, const scalar_type* PP, T& parameters, T& action, vectorP& parametersP
+           ) {
+    return addP(Pvectors, PP, vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP)
+                );
   }
 
   /*!
@@ -430,10 +421,9 @@ public:
                 vectorRefSetP parametersP = nullVectorRefSetP<T>) {
     auto working_set_save = m_working_set;
     m_working_set = roots;
-    auto other = nullVectorRefSet<T>;
     buildSubspace(true);
     solveReducedProblem();
-    doInterpolation(parameters, residual, parametersP, other);
+    doInterpolation(parameters, residual, parametersP);
     m_working_set = working_set_save;
   }
   void solution(const std::vector<int>& roots, std::vector<T>& parameters, std::vector<T>& residual,
@@ -858,23 +848,19 @@ protected:
   }
 
   /*!
-   * @brief form the combination of P, Q and R vectors to give the interpolated solution and corresponding residual (and
-   * maybe other vectors).
+   * @brief form the combination of P, Q and R vectors to give the interpolated solution and corresponding residual
    *
    * @param solution On exit, the complete current solution (R, P and Q parts)
    * @param residual On exit, the R and Q contribution to the residual. The action of the matrix on the P solution is
    * missing, and has to be evaluated by the caller.
    * @param solutionP On exit, the solution projected to the P space
-   * @param other On exit, interpolation of the other vectors
    * @param actionOnly If true, omit P space contribution and calculate action vector, not full residual
    */
-  void doInterpolation(vectorRefSet solution, vectorRefSet residual, vectorRefSetP solutionP, vectorRefSet other,
+  void doInterpolation(vectorRefSet solution, vectorRefSet residual, vectorRefSetP solutionP,
                        bool actionOnly = false) const {
     for (auto& s : solution)
       s.get().scal(0);
     for (auto& s : residual)
-      s.get().scal(0);
-    for (auto& s : other)
       s.get().scal(0);
     auto nP = m_pspace.size();
     auto nR = m_current_r.size();

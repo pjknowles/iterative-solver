@@ -626,7 +626,7 @@ protected:
     return -1;
   }
 
-  void buildSubspace(bool emptyR=false) {
+  void buildSubspace(bool emptyR = false) {
     const size_t nP = m_pspace.size();
     const size_t nQ = m_qspace.size();
     const size_t nR = emptyR ? 0 : m_working_set.size();
@@ -953,7 +953,8 @@ public:
   Eigen::VectorXcd m_subspaceEigenvalues;  // FIXME templating
   std::vector<scalar_type> m_values;       //< function values
 public:
-  size_t m_dimension; //!< not used in the class, but a place for clients (eg C interface) to store a number representing the size of the underlying vector space.
+  size_t m_dimension;             //!< not used in the class, but a place for clients (eg C interface) to store a number
+                                  //!< representing the size of the underlying vector space.
   std::string m_value_print_name; //< the title report() will give to the function value
 protected:
   unsigned int m_iterations;
@@ -1022,9 +1023,9 @@ private:
       //      molpro::cout << "solveReducedProblem subspaceMatrix\n" << this->m_subspaceMatrix << std::endl;
       //      molpro::cout << "solveReducedProblem subspaceOverlap\n" << this->m_subspaceOverlap << std::endl;
       this->diagonalizeSubspaceMatrix();
-//      molpro::cout << "solveReducedProblem subspaceEigenvectors\n"
-//                   << this->m_subspaceEigenvectors.block(0, 0, this->m_subspaceMatrix.rows(), this->m_roots)
-//                   << std::endl;
+      //      molpro::cout << "solveReducedProblem subspaceEigenvectors\n"
+      //                   << this->m_subspaceEigenvectors.block(0, 0, this->m_subspaceMatrix.rows(), this->m_roots)
+      //                   << std::endl;
       this->m_interpolation = this->m_subspaceEigenvectors
                                   .block(0, 0, this->m_subspaceEigenvectors.rows(),
                                          std::min(int(this->m_roots), int(this->m_subspaceEigenvectors.rows())))
@@ -1232,7 +1233,6 @@ public:
     this->m_orthogonalise_Q = false;
     this->m_exclude_r_from_redundancy_test = true;
     this->m_hermitian = false;
-    this->m_hermitian=false;
     this->m_qspace.hermitian(false);
   }
 

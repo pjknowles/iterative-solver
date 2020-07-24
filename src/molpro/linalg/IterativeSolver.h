@@ -246,7 +246,7 @@ public:
   }
   int solveAndGenerateWorkingSet(vectorRefSet parameters, vectorRefSet action,
                                  vectorRefSetP parametersP = nullVectorRefSetP<T>,
-                                 vectorRefSet other = nullVectorRefSet<T>) {
+                                 vectorRefSet other = nullVectorRefSet<T>, bool calculateError = true) {
     buildSubspace();
     solveReducedProblem();
     //    molpro::cout << "update=" << update << std::endl;
@@ -264,12 +264,13 @@ public:
     m_working_set.clear();
     for (auto root = 0; root < m_roots; root++)
       m_working_set.push_back(root);
-    if (m_linear)
-      doInterpolation(parameters, action, parametersP, other, false);
-    //    m_errors.assign(m_roots, 1e10); // TODO not right for retired roots
-    for (auto k = 0; k < m_working_set.size(); k++)
-      m_errors[m_working_set[k]] = std::sqrt(action[k].get().dot(action[k]));
-    //    molpro::cout << "m_interpolation:\n" << m_interpolation << std::endl;
+    if (calculateError) {
+      if (m_linear)
+        doInterpolation(parameters, action, parametersP, other, false);
+      for (auto k = 0; k < m_working_set.size(); k++)
+        m_errors[m_working_set[k]] = std::sqrt(action[k].get().dot(action[k]));
+    } else
+      m_errors.assign(m_roots, 1); // TODO not right for retired roots
 
     doInterpolation(parameters, action, parametersP, other, true);
     m_last_d.clear();
@@ -379,8 +380,10 @@ public:
            vectorRefSetP parametersP, vectorRefSet other = nullVectorRefSet<T>) {
     m_pspace.add(Pvectors, PP, m_rhs);
     m_qspace.refreshP(action.front());
-    auto result = solveAndGenerateWorkingSet(parameters, action, parametersP, other);
-    m_last_d.clear();
+    //    return m_working_set.size();
+    m_working_set.clear();
+    auto result = solveAndGenerateWorkingSet(parameters, action, parametersP, other, false);
+    m_last_d.clear(); // TODO more intelligent way needed
     m_last_hd.clear();
     return result;
   }
@@ -430,8 +433,7 @@ public:
     auto working_set_save = m_working_set;
     m_working_set = roots;
     auto other = nullVectorRefSet<T>;
-    m_s_rr.clear();
-    buildSubspace();
+    buildSubspace(true);
     solveReducedProblem();
     doInterpolation(parameters, residual, parametersP, other);
     m_working_set = working_set_save;
@@ -465,7 +467,8 @@ public:
       {
         std::vector<size_t> indices;
         std::vector<scalar_type> values;
-        std::tie(indices, values) = solution[kkk].get().select(residual[kkk], maximumNumber, threshold);
+        //        std::tie(indices, values) = solution[kkk].get().select(residual[kkk], maximumNumber, threshold);
+        std::tie(indices, values) = solution[kkk].get().select(solution[kkk], maximumNumber, threshold);
         //             molpro::cout <<"indices.size()="<<indices.size()<<std::endl;
         //             for (auto k=0; k<indices.size(); k++) molpro::cout << "select "<< indices[k] <<" :
         //             "<<values[k]<<std::endl;
@@ -529,7 +532,7 @@ public:
     return result;
   }
 
-  std::vector<scalar_type> errors() const { return m_errors; } //!< Error at last iteration
+  const std::vector<scalar_type>& errors() const { return m_errors; } //!< Error at last iteration
 
 protected:
   std::vector<Pvector> m_Pvectors;
@@ -628,10 +631,10 @@ protected:
     return -1;
   }
 
-  void buildSubspace() {
+  void buildSubspace(bool emptyR=false) {
     const size_t nP = m_pspace.size();
     const size_t nQ = m_qspace.size();
-    const size_t nR = m_s_rr.size();
+    const size_t nR = emptyR ? 0 : m_working_set.size();
     const size_t nX = nP + nQ + nR;
     const auto oP = 0;
     const auto oQ = oP + nP;
@@ -714,7 +717,7 @@ protected:
             m_s_qr[a][m] = m_s_qr[a + 1][m];
             m_hh_qr[a][m] = m_hh_qr[a + 1][m];
           }
-        buildSubspace();
+        buildSubspace(emptyR);
         return;
       }
     }
@@ -884,7 +887,8 @@ protected:
     auto nQ = this->m_interpolation.rows() - nP -
               nR; // guard against using any vectors added to the Q space since the subspace solution was evaluated
     assert(nQ <= m_qspace.size());
-    auto oQ = nP;
+    size_t oP = 0;
+    auto oQ = oP + nP;
     auto oR = oQ + nQ;
     assert(m_working_set.size() <= solution.size());
     assert(nP == 0 || solutionP.size() == residual.size());
@@ -893,9 +897,15 @@ protected:
       //      molpro::cout << "working set k=" << kkk << " root=" << root << std::endl;
       if (nP > 0)
         solutionP[kkk].get().resize(nP);
-      if (not actionOnly)
-        for (size_t l = 0; l < nP; l++)
-          solution[kkk].get().axpy((solutionP[kkk].get()[l] = this->m_interpolation(l, root)), m_pspace[l]);
+      if (not actionOnly) {
+        for (size_t i = 0; i < nP; i++) {
+          solution[kkk].get().axpy((solutionP[kkk].get()[i] = this->m_interpolation(oP + i, root)), m_pspace[i]);
+          //          double gp = 0;
+          //          for (auto j = 0; j < nP; j++)
+          //            gp += m_pspace.action(j, i) * this->m_interpolation(oP + j, root);
+          //          residual[kkk].get().axpy(gp, m_pspace[i]);
+        }
+      }
       //      molpro::cout << "square norm of solution after P contribution " << solution[kkk]->dot(*solution[kkk]) <<
       //      std::endl;
       for (int q = 0; q < nQ; q++) {
@@ -1015,10 +1025,12 @@ private:
     if (this->m_rspt) {
       throw std::logic_error("RSPT not yet implemented");
     } else {
-      molpro::cout << "solveReducedProblem subspaceMatrix\n"<<this->m_subspaceMatrix<<std::endl;
-      molpro::cout << "solveReducedProblem subspaceOverlap\n"<<this->m_subspaceOverlap<<std::endl;
+      //      molpro::cout << "solveReducedProblem subspaceMatrix\n" << this->m_subspaceMatrix << std::endl;
+      //      molpro::cout << "solveReducedProblem subspaceOverlap\n" << this->m_subspaceOverlap << std::endl;
       this->diagonalizeSubspaceMatrix();
-      molpro::cout << "solveReducedProblem subspaceEigenvectors\n"<<this->m_subspaceEigenvectors<<std::endl;
+//      molpro::cout << "solveReducedProblem subspaceEigenvectors\n"
+//                   << this->m_subspaceEigenvectors.block(0, 0, this->m_subspaceMatrix.rows(), this->m_roots)
+//                   << std::endl;
       this->m_interpolation = this->m_subspaceEigenvectors
                                   .block(0, 0, this->m_subspaceEigenvectors.rows(),
                                          std::min(int(this->m_roots), int(this->m_subspaceEigenvectors.rows())))

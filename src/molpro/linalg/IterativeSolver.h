@@ -492,7 +492,7 @@ public:
 
   unsigned int iterations() const { return m_iterations; } //!< How many iterations have occurred
 
-  std::vector<scalar_type> eigenvalues() const ///< The calculated eigenvalues of m_subspaceMatrix
+  std::vector<scalar_type> eigenvalues() const ///< The calculated eigenvalues of the subspace matrix
   {
     std::vector<scalar_type> result;
     for (size_t root = 0; root < (size_t)m_roots && root < (size_t)m_subspaceEigenvalues.rows(); root++)
@@ -507,7 +507,7 @@ public:
   const std::vector<int>& working_set() const { return m_working_set; }
 
   std::vector<scalar_type>
-  working_set_eigenvalues() const ///< The calculated eigenvalues of m_subspaceMatrix belonging to the working set
+  working_set_eigenvalues() const ///< The calculated eigenvalues of the subspace matrix belonging to the working set
   {
     std::vector<scalar_type> result;
     for (const auto& root : m_working_set)
@@ -581,7 +581,8 @@ protected:
     const size_t nP = m_pspace.size();
     const size_t nQ = m_qspace.size();
     const size_t nR = emptyR ? 0 : m_working_set.size();
-    const size_t nX = nP + nQ + nR;
+    auto& nX = m_n_x;
+    nX = nP + nQ + nR;
     const auto oP = 0;
     const auto oQ = oP + nP;
     const auto oR = oQ + nQ;
@@ -631,17 +632,6 @@ protected:
     }
     if (m_subspaceMatrixResRes)
       m_s_xx = m_h_xx;
-    m_subspaceMatrix.conservativeResize(nX, nX);
-    m_subspaceOverlap.conservativeResize(nX, nX);
-    m_subspaceRHS.resize(nX, m_rhs.size());
-    for (auto k = 0; k < nX; k++)
-      for (auto l = 0; l < nX; l++) {
-        m_subspaceOverlap(k, l) = m_s_xx[k + nX * l];
-        m_subspaceMatrix(k, l) = m_h_xx[k + nX * l];
-      }
-    for (auto l = 0; l < m_rhs.size(); l++)
-      for (auto k = 0; k < nX; k++)
-        m_subspaceRHS(k, l) = m_rhs_x[k + nX * l];
     if (nQ > 0) {
       std::vector<int> candidates;
       std::map<int, int> solutions_q; // map from current q space to roots
@@ -657,9 +647,13 @@ protected:
       //      for (const auto& c : candidates)
       //        molpro::cout << " " << c;
       //      molpro::cout << std::endl;
-      auto del = molpro::linalg::iterativesolver::helper<scalar_type>::propose_singularity_deletion(m_exclude_r_from_redundancy_test ? nX - nR : nX, nX,
-                                              m_residual_eigen ? m_s_xx.data() : m_h_xx.data(), candidates,
-                                              nQ > m_maxQ ? 1e6 : m_singularity_threshold);
+      for (auto k = 0; k < nX; k++)
+        if (std::abs(m_s_xx[k * (nX + 1)] - 1) < 1e-15)
+          m_s_xx[k * (nX + 1)] =
+              1; // somehow avoid problems that eigen with Intel 18 get the SVD wrong if near-unit matrix
+      auto del = molpro::linalg::iterativesolver::helper<scalar_type>::propose_singularity_deletion(
+          m_exclude_r_from_redundancy_test ? nX - nR : nX, nX, m_residual_eigen ? m_s_xx.data() : m_h_xx.data(),
+          candidates, nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
         if (m_verbosity > 2)
           molpro::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
@@ -679,23 +673,18 @@ protected:
     if (m_verbosity > 1)
       molpro::cout << "nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
     if (m_verbosity > 2) {
-      molpro::linalg::iterativesolver::helper<scalar_type>::printMatrix(this->m_s_xx,nX,nX,"Subspace overlap");
-      molpro::linalg::iterativesolver::helper<scalar_type>::printMatrix(this->m_h_xx,nX,nX,"Subspace matrix");
+      molpro::linalg::iterativesolver::helper<scalar_type>::printMatrix(this->m_s_xx, nX, nX, "Subspace overlap");
+      molpro::linalg::iterativesolver::helper<scalar_type>::printMatrix(this->m_h_xx, nX, nX, "Subspace matrix");
     }
   }
 
 protected:
   void diagonalizeSubspaceMatrix() {
-    auto kept = m_subspaceMatrix.rows();
-
-    Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> H = m_subspaceMatrix.block(0, 0, kept, kept);
-    Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> S = m_subspaceOverlap.block(0, 0, kept, kept);
+    Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> H(m_h_xx.data(), m_n_x, m_n_x);
+    Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> S(m_s_xx.data(), m_n_x, m_n_x);
     //    molpro::cout << "diagonalizeSubspaceMatrix H:\n" << H.format(Eigen::FullPrecision) << std::endl;
     //    molpro::cout << "diagonalizeSubspaceMatrix S:\n" << S.format(Eigen::FullPrecision) << std::endl;
     //   Eigen::GeneralizedEigenSolver<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
-    for (auto k = 0; k < S.rows(); k++)
-      if (std::abs(S(k, k) - 1) < 1e-15)
-        S(k, k) = 1; // somehow avoid problems that eigen with Intel 18 get the SVD wrong if near-unit matrix
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV);
     svd.setThreshold(m_svdThreshold);
     //    molpro::cout << "singular values of overlap " << svd.singularValues().transpose() << std::endl;
@@ -793,9 +782,9 @@ protected:
         auto ovl =
             //          (m_subspaceEigenvectors.col(k).adjoint() * m_subspaceOverlap *
             //          m_subspaceEigenvectors.col(k))(0,0);
-            m_subspaceEigenvectors.col(k).adjoint().dot(m_subspaceOverlap * m_subspaceEigenvectors.col(k));
+            m_subspaceEigenvectors.col(k).adjoint().dot(S * m_subspaceEigenvectors.col(k));
         m_subspaceEigenvectors.col(k) /= std::sqrt(ovl.real());
-        ovlTimesVec.row(k) = m_subspaceEigenvectors.col(k).adjoint() * m_subspaceOverlap;
+        ovlTimesVec.row(k) = m_subspaceEigenvectors.col(k).adjoint() * S;
         //      for (Eigen::Index l = 0; l < k; l++)
         //      molpro::cout<<"after normalisation " << k<<l<<" "<< (m_subspaceEigenvectors.col(l).adjoint() *
         //      m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl; molpro::cout <<
@@ -901,14 +890,10 @@ public:
   // TODO begin obsolescence
   Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>
       m_interpolation; //!< The optimum combination of subspace vectors
-  Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_subspaceMatrix;
-  Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_subspaceOverlap;
-  Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_subspaceRHS;
-  Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> m_subspaceGradient;
-  Eigen::MatrixXcd m_subspaceSolution;     // FIXME templating
   Eigen::MatrixXcd m_subspaceEigenvectors; // FIXME templating
   Eigen::VectorXcd m_subspaceEigenvalues;  // FIXME templating
   // end obsolescence
+  size_t m_n_x;                       //!< size of full subspace
   std::vector<scalar_type> m_h_xx;    //!< full subspace
   std::vector<scalar_type> m_s_xx;    //!< full subspace
   std::vector<scalar_type> m_rhs_x;   //!< full subspace
@@ -983,11 +968,7 @@ private:
     if (this->m_rspt) {
       throw std::logic_error("RSPT not yet implemented");
     } else {
-      //      molpro::cout << "solveReducedProblem subspaceMatrix\n" << this->m_subspaceMatrix << std::endl;
-      //      molpro::cout << "solveReducedProblem subspaceOverlap\n" << this->m_subspaceOverlap << std::endl;
       this->diagonalizeSubspaceMatrix();
-      //      molpro::cout << "solveReducedProblem subspaceEigenvectors\n"
-      //                   << this->m_subspaceEigenvectors.block(0, 0, this->m_subspaceMatrix.rows(), this->m_roots)
       //                   << std::endl;
       this->m_interpolation = this->m_subspaceEigenvectors
                                   .block(0, 0, this->m_subspaceEigenvectors.rows(),
@@ -1093,31 +1074,27 @@ public:
 
 protected:
   bool solveReducedProblem() override {
-    const size_t nP = this->m_pspace.size();
-    const size_t nQ = this->m_qspace.size();
-    const size_t nR = this->m_s_rr.size();
-    const Eigen::Index nX = nP + nQ + nR;
-    const auto oP = 0;
-    const auto oQ = oP + nP;
-    const auto oR = oQ + nQ;
-    //   molpro::cout << "solveReducedProblem initial subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
-    //   molpro::cout << "solveReducedProblem subspaceRHS\n"<<this->m_subspaceRHS<<std::endl;
+    const Eigen::Index nX = this->m_n_x;
     this->m_interpolation.conservativeResize(nX, this->m_rhs.size());
-    for (size_t root = 0; root < this->m_rhs.size(); root++) {
-      if (this->m_augmented_hessian > 0) { // Augmented hessian
-        this->m_subspaceMatrix.conservativeResize(nX + 1, nX + 1);
-        this->m_subspaceOverlap.conservativeResize(nX + 1, nX + 1);
+    if (this->m_augmented_hessian > 0) { // Augmented hessian
+      Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> subspaceMatrix;
+      Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> subspaceOverlap;
+      subspaceMatrix.conservativeResize(nX + 1, nX + 1);
+      subspaceOverlap.conservativeResize(nX + 1, nX + 1);
+      subspaceMatrix.block(0,0,nX,nX)=
+          Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>(this->m_h_xx.data(), nX, nX);
+      subspaceOverlap.block(0,0,nX,nX)=
+          Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>(this->m_s_xx.data(), nX, nX);
+      for (size_t root = 0; root < this->m_rhs.size(); root++) {
         for (Eigen::Index i = 0; i < nX; i++) {
-          this->m_subspaceMatrix(i, nX) = this->m_subspaceMatrix(nX, i) =
-              -this->m_augmented_hessian * this->m_subspaceRHS(i, root);
-          this->m_subspaceOverlap(i, nX) = this->m_subspaceOverlap(nX, i) = 0;
+          subspaceMatrix(i, nX) = subspaceMatrix(nX, i) =
+              -this->m_augmented_hessian * this->m_rhs_x[i+nX* root];
+          subspaceOverlap(i, nX) = subspaceOverlap(nX, i) = 0;
         }
-        this->m_subspaceMatrix(nX, nX) = 0;
-        this->m_subspaceOverlap(nX, nX) = 1;
-        //     molpro::cout << "solveReducedProblem augmented subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
-        //     molpro::cout << "solveReducedProblem augmented subspace metric\n"<<this->m_subspaceOverlap<<std::endl;
+        subspaceMatrix(nX, nX) = 0;
+        subspaceOverlap(nX, nX) = 1;
         Eigen::GeneralizedEigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> s(
-            this->m_subspaceMatrix, this->m_subspaceOverlap);
+            subspaceMatrix, subspaceOverlap);
         auto eval = s.eigenvalues();
         auto evec = s.eigenvectors();
         Eigen::Index imax = 0;
@@ -1126,35 +1103,13 @@ protected:
             imax = i;
         this->m_subspaceEigenvalues.conservativeResize(root + 1);
         this->m_subspaceEigenvalues(root) = eval(imax);
-        //     molpro::cout << "eigenvectors\n"<<evec.real()<<std::endl;
-        //     molpro::cout << "eigenvalues\n"<<eval.real()<<std::endl;
-        //     molpro::cout << "imax="<<imax<<std::endl;
-        //     molpro::cout <<evec.col(imax)<<std::endl;
-        //     molpro::cout <<evec.col(imax).real()<<std::endl;
-        //     molpro::cout <<evec.col(imax).real().head(n)<<std::endl;
-        //     molpro::cout <<this->m_interpolation.col(root)<<std::endl;
         this->m_interpolation.col(root) =
             evec.col(imax).real().head(nX) / (this->m_augmented_hessian * evec.real()(nX, imax));
-      } else { // straight solution of linear equations
-               //        molpro::cout << "m_subspaceMatrix dimensions: " << this->m_subspaceMatrix.rows() << ", "
-               //                     << this->m_subspaceMatrix.cols() << std::endl;
-               //        molpro::cout << "m_subspaceRHS dimensions: " << this->m_subspaceRHS.rows() << "," <<
-               //        this->m_subspaceRHS.cols()
-               //                     << std::endl;
-        // use QR decomposition so that also matrices that are not positive/negative semidefinite
-        // can be used with IterativeSolver
-        // this->m_interpolation = this->m_subspaceMatrix.ldlt().solve(this->m_subspaceRHS);
-        //        molpro::cout << "m_subspaceMatrix\n" << this->m_subspaceMatrix << std::endl;
-        //        molpro::cout << "m_subspaceRHS\n" << this->m_subspaceRHS << std::endl;
-        this->m_interpolation = this->m_subspaceMatrix.householderQr().solve(this->m_subspaceRHS);
-        //        molpro::cout << "m_interpolation\n" << this->m_interpolation << std::endl;
       }
+    } else { // straight solution of linear equations
+      Eigen::Map<const Eigen::Matrix<scalar_type,Eigen::Dynamic,Eigen::Dynamic>> subspaceMatrix(this->m_h_xx.data(),nX,nX);
+      this->m_interpolation = subspaceMatrix.householderQr().solve(Eigen::Map<const Eigen::Matrix<scalar_type,Eigen::Dynamic,Eigen::Dynamic>>(this->m_rhs_x.data(),nX,this->m_roots));
     }
-    //   molpro::cout << "m_interpolation\n"<<this->m_interpolation<<std::endl;
-    this->m_subspaceMatrix.conservativeResize(nX, nX);
-    this->m_subspaceOverlap.conservativeResize(nX, nX);
-    //   molpro::cout << "solveReducedProblem final subspace matrix\n"<<this->m_subspaceMatrix<<std::endl;
-    //   molpro::cout << "solveReducedProblem subspaceRHS\n"<<this->m_subspaceRHS<<std::endl;
     return true;
   }
 };
@@ -1264,8 +1219,6 @@ protected:
       bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
       bool Wolfe_2 = m_strong_Wolfe ? g1 >= m_Wolfe_2 * g0 : std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
       if (this->m_verbosity > 1) {
-        //      molpro::cout << "subspace Matrix diagonal " << this->m_subspaceMatrix(n - 1, n - 1) << std::endl;
-        //      molpro::cout << "subspace Overlap diagonal " << this->m_subspaceOverlap(n - 1, n - 1) << std::endl;
         molpro::cout << "step=" << step << std::endl;
         molpro::cout << "f0=" << f0 << std::endl;
         molpro::cout << "f1=" << f1 << std::endl;
@@ -1465,23 +1418,20 @@ protected:
     //	  molpro::cout << "residual : "<<residual<<std::endl;
     //	  molpro::cout << "solution : "<<solution<<std::endl;
     this->m_updateShift.clear();
-    this->m_updateShift.push_back(-(1 + std::numeric_limits<double>::epsilon()) * this->m_subspaceMatrix(0, 0));
+    this->m_updateShift.push_back(-(1 + std::numeric_limits<double>::epsilon()) * this->m_h_xx[0]); // TODO check that this is what is really wanted
 
     if (this->m_roots > 1)
       throw std::logic_error("DIIS does not handle multiple solutions");
 
-    //  if (m_subspaceMatrix.rows() < 9) {
-    //      molpro::cout << "m_subspaceMatrix on entry to
-    //      DIIS::solveReducedProblem"<<std::endl<<m_subspaceMatrix<<std::endl;
-    //  }
-    size_t nDim = this->m_subspaceMatrix.rows() - 1;
+    size_t nDim = this->m_n_x - 1;
     this->m_interpolation.resize(nDim + 1, 1);
     if (nDim > 0) {
       Eigen::VectorXd Rhs(nDim), Coeffs(nDim);
       Eigen::MatrixXd B(nDim, nDim);
 
-      B.block(0, 0, nDim, nDim) = this->m_subspaceMatrix.block(0, 0, nDim, nDim);
-      Rhs = -this->m_subspaceMatrix.block(0, nDim, nDim, 1);
+      Eigen::Map<Eigen::Matrix<scalar_type,Eigen::Dynamic,Eigen::Dynamic>> subspaceMatrix(this->m_h_xx.data(),nDim+1,nDim+1);
+      B.block(0, 0, nDim, nDim) = subspaceMatrix.block(0, 0, nDim, nDim);
+      Rhs = -subspaceMatrix.block(0, nDim, nDim, 1);
 
       molpro::cout << "B:" << std::endl << B << std::endl;
       molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
@@ -1511,20 +1461,9 @@ protected:
     return true;
   }
 
-public:
-  static void randomTest(size_t sample, size_t n = 100, double alpha = 0.1, double gamma = 0.0,
-                         DIISmode_type mode = DIISmode);
-
 private:
   typedef unsigned int uint;
   enum DIISmode_type m_DIISmode;
-
-  // the following variables are kept for informative/displaying purposes
-  scalar_type
-      // dot(R,R) of last residual vector fed into this state.
-      m_LastResidualNormSq,
-      // coefficient the actual new vector got in the last DIIS step
-      m_LastAmplitudeCoeff;
 };
 
 // extern template

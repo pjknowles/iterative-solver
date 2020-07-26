@@ -495,8 +495,8 @@ public:
   std::vector<scalar_type> eigenvalues() const ///< The calculated eigenvalues of the subspace matrix
   {
     std::vector<scalar_type> result;
-    for (size_t root = 0; root < (size_t)m_roots && root < (size_t)m_subspaceEigenvalues.rows(); root++)
-      result.push_back(m_subspaceEigenvalues[root].real());
+    for (size_t root = 0; root < (size_t)m_roots && root < m_eval_xx.size(); root++)
+      result.push_back(m_eval_xx[root]);
     return result;
   }
 
@@ -511,7 +511,7 @@ public:
   {
     std::vector<scalar_type> result;
     for (const auto& root : m_working_set)
-      result.push_back(m_subspaceEigenvalues[root].real());
+      result.push_back(m_eval_xx[root]);
     return result;
   }
 
@@ -682,6 +682,8 @@ protected:
   void diagonalizeSubspaceMatrix() {
     Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> H(m_h_xx.data(), m_n_x, m_n_x);
     Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> S(m_s_xx.data(), m_n_x, m_n_x);
+    Eigen::MatrixXcd subspaceEigenvectors; // FIXME templating
+    Eigen::VectorXcd subspaceEigenvalues;  // FIXME templating
     //    molpro::cout << "diagonalizeSubspaceMatrix H:\n" << H.format(Eigen::FullPrecision) << std::endl;
     //    molpro::cout << "diagonalizeSubspaceMatrix S:\n" << S.format(Eigen::FullPrecision) << std::endl;
     //   Eigen::GeneralizedEigenSolver<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
@@ -707,9 +709,9 @@ protected:
     //   molpro::cout << "Hbar\n"<<Hbar<<std::endl;
     Eigen::EigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> s(Hbar);
     //    molpro::cout << "s.eigenvectors()\n"<<s.eigenvectors()<<std::endl;
-    m_subspaceEigenvalues = s.eigenvalues();
+    subspaceEigenvalues = s.eigenvalues();
     if (s.eigenvalues().imag().norm() < 1e-10 and s.eigenvectors().imag().norm() < 1e-10) { // real eigenvectors
-      m_subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors().real();
+      subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors().real();
 
     } else { // complex eigenvectors
 #ifdef __INTEL_COMPILER
@@ -718,15 +720,13 @@ protected:
       molpro::cout << "Eigenvectors\n" << s.eigenvectors() << std::endl;
       throw std::runtime_error("Intel compiler does not support working with complex eigen3 entities properly");
 #endif
-      m_subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors();
+      subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors();
     }
-    //   molpro::cout << "unsorted eigenvalues\n"<<m_subspaceEigenvalues<<std::endl;
-    //   molpro::cout << "unsorted eigenvectors\n"<<m_subspaceEigenvectors<<std::endl;
 
     {
       // sort
-      auto eigval = m_subspaceEigenvalues;
-      auto eigvec = m_subspaceEigenvectors;
+      auto eigval = subspaceEigenvalues;
+      auto eigvec = subspaceEigenvectors;
       std::vector<size_t> map;
       for (Eigen::Index k = 0; k < Hbar.cols(); k++) {
         Eigen::Index ll;
@@ -739,71 +739,86 @@ protected:
           }
         }
         map.push_back(ll);
-        m_subspaceEigenvalues[k] = eigval(ll);
+        subspaceEigenvalues[k] = eigval(ll);
         //    molpro::cout << "new sorted eigenvalue "<<k<<", "<<ll<<", "<<eigval(ll)<<std::endl;
         //    molpro::cout << eigvec.col(ll)<<std::endl;
-        m_subspaceEigenvectors.col(k) = eigvec.col(ll);
+        subspaceEigenvectors.col(k) = eigvec.col(ll);
       }
     }
-    //   molpro::cout << "sorted eigenvalues\n"<<m_subspaceEigenvalues<<std::endl;
-    //   molpro::cout << "sorted eigenvectors\n"<<m_subspaceEigenvectors<<std::endl;
-    //   molpro::cout << m_subspaceOverlap<<std::endl;
-    Eigen::MatrixXcd ovlTimesVec(m_subspaceEigenvectors.cols(), m_subspaceEigenvectors.rows()); // FIXME templating
+    //   molpro::cout << "sorted eigenvalues\n"<<subspaceEigenvalues<<std::endl;
+    //   molpro::cout << "sorted eigenvectors\n"<<subspaceEigenvectors<<std::endl;
+    Eigen::MatrixXcd ovlTimesVec(subspaceEigenvectors.cols(), subspaceEigenvectors.rows()); // FIXME templating
     for (auto repeat = 0; repeat < 3; ++repeat)
-      for (Eigen::Index k = 0; k < m_subspaceEigenvectors.cols(); k++) {
-        if (std::abs(m_subspaceEigenvalues(k)) <
+      for (Eigen::Index k = 0; k < subspaceEigenvectors.cols(); k++) {
+        if (std::abs(subspaceEigenvalues(k)) <
             1e-12) { // special case of zero eigenvalue -- make some real non-zero vector definitely in the null space
-          m_subspaceEigenvectors.col(k).real() += double(0.3256897) * m_subspaceEigenvectors.col(k).imag();
-          m_subspaceEigenvectors.col(k).imag().setZero();
+          subspaceEigenvectors.col(k).real() += double(0.3256897) * subspaceEigenvectors.col(k).imag();
+          subspaceEigenvectors.col(k).imag().setZero();
         }
         if (m_hermitian)
           for (Eigen::Index l = 0; l < k; l++) {
             //        auto ovl =
-            //            (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))(
-            //            0, 0); (ovlTimesVec.row(l) * m_subspaceEigenvectors.col(k))(0,0);
-            //            ovlTimesVec.row(l).dot(m_subspaceEigenvectors.col(k));
+            //            (subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * subspaceEigenvectors.col(k))(
+            //            0, 0); (ovlTimesVec.row(l) * subspaceEigenvectors.col(k))(0,0);
+            //            ovlTimesVec.row(l).dot(subspaceEigenvectors.col(k));
             //        auto norm =
-            //            (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(l))(
+            //            (subspaceEigenvectors.col(l).adjoint() * subspaceOverlap * subspaceEigenvectors.col(l))(
             //                0,
             //                0);
             //      molpro::cout << "k="<<k<<", l="<<l<<", ovl="<<ovl<<" norm="<<norm<<std::endl;
-            //      molpro::cout << m_subspaceEigenvectors.col(k).transpose()<<std::endl;
-            //      molpro::cout << m_subspaceEigenvectors.col(l).transpose()<<std::endl;
-            m_subspaceEigenvectors.col(k) -= m_subspaceEigenvectors.col(l) * // ovl;// / norm;
-                                             ovlTimesVec.row(l).dot(m_subspaceEigenvectors.col(k));
+            //      molpro::cout << subspaceEigenvectors.col(k).transpose()<<std::endl;
+            //      molpro::cout << subspaceEigenvectors.col(l).transpose()<<std::endl;
+            subspaceEigenvectors.col(k) -= subspaceEigenvectors.col(l) * // ovl;// / norm;
+                                           ovlTimesVec.row(l).dot(subspaceEigenvectors.col(k));
             //        molpro::cout<<"immediately after projection " << k<<l<<" "<<
-            //        (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0,
+            //        (subspaceEigenvectors.col(l).adjoint() * subspaceOverlap * subspaceEigenvectors.col(k))( 0,
             //        0)<<std::endl;
           }
         //      for (Eigen::Index l = 0; l < k; l++) molpro::cout<<"after projection loop " << k<<l<<" "<<
-        //      (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0,
+        //      (subspaceEigenvectors.col(l).adjoint() * subspaceOverlap * subspaceEigenvectors.col(k))( 0,
         //      0)<<std::endl; molpro::cout <<
-        //      "eigenvector"<<std::endl<<m_subspaceEigenvectors.col(k).adjoint()<<std::endl;
+        //      "eigenvector"<<std::endl<<subspaceEigenvectors.col(k).adjoint()<<std::endl;
         auto ovl =
-            //          (m_subspaceEigenvectors.col(k).adjoint() * m_subspaceOverlap *
-            //          m_subspaceEigenvectors.col(k))(0,0);
-            m_subspaceEigenvectors.col(k).adjoint().dot(S * m_subspaceEigenvectors.col(k));
-        m_subspaceEigenvectors.col(k) /= std::sqrt(ovl.real());
-        ovlTimesVec.row(k) = m_subspaceEigenvectors.col(k).adjoint() * S;
+            //          (subspaceEigenvectors.col(k).adjoint() * subspaceOverlap *
+            //          subspaceEigenvectors.col(k))(0,0);
+            subspaceEigenvectors.col(k).adjoint().dot(S * subspaceEigenvectors.col(k));
+        subspaceEigenvectors.col(k) /= std::sqrt(ovl.real());
+        ovlTimesVec.row(k) = subspaceEigenvectors.col(k).adjoint() * S;
         //      for (Eigen::Index l = 0; l < k; l++)
-        //      molpro::cout<<"after normalisation " << k<<l<<" "<< (m_subspaceEigenvectors.col(l).adjoint() *
-        //      m_subspaceOverlap * m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl; molpro::cout <<
-        //      "eigenvector"<<std::endl<<m_subspaceEigenvectors.col(k).adjoint()<<std::endl;
+        //      molpro::cout<<"after normalisation " << k<<l<<" "<< (subspaceEigenvectors.col(l).adjoint() *
+        //      subspaceOverlap * subspaceEigenvectors.col(k))( 0, 0)<<std::endl; molpro::cout <<
+        //      "eigenvector"<<std::endl<<subspaceEigenvectors.col(k).adjoint()<<std::endl;
         // phase
         Eigen::Index lmax = 0;
-        for (Eigen::Index l = 0; l < m_subspaceEigenvectors.rows(); l++) {
-          if (std::abs(m_subspaceEigenvectors(l, k)) > std::abs(m_subspaceEigenvectors(lmax, k)))
+        for (Eigen::Index l = 0; l < subspaceEigenvectors.rows(); l++) {
+          if (std::abs(subspaceEigenvectors(l, k)) > std::abs(subspaceEigenvectors(lmax, k)))
             lmax = l;
         }
-        if (m_subspaceEigenvectors(lmax, k).real() < 0)
-          m_subspaceEigenvectors.col(k) = -m_subspaceEigenvectors.col(k);
+        if (subspaceEigenvectors(lmax, k).real() < 0)
+          subspaceEigenvectors.col(k) = -subspaceEigenvectors.col(k);
         //      for (Eigen::Index l = 0; l < k; l++)
         //      molpro::cout << k<<l<<" "<<
-        //                       (m_subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap *
-        //                       m_subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
+        //                       (subspaceEigenvectors.col(l).adjoint() * subspaceOverlap *
+        //                       subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
       }
-    //     molpro::cout << "eigenvalues"<<std::endl<<m_subspaceEigenvalues<<std::endl;
-    //     molpro::cout << "eigenvectors"<<std::endl<<m_subspaceEigenvectors<<std::endl;
+    //     molpro::cout << "eigenvalues"<<std::endl<<subspaceEigenvalues<<std::endl;
+    //     molpro::cout << "eigenvectors"<<std::endl<<subspaceEigenvectors<<std::endl;
+    m_evec_xx.resize(m_n_x * m_n_x);
+    m_eval_xx.resize(m_n_x);
+    // TODO complex should be implemented with a specialised function
+    static_assert(not std::is_class_v<value_type>, "Complex not yet implemented");
+    // TODO real should be implemented with always-executed runtime assertion that eigensolution turns out to be real
+    assert(subspaceEigenvectors == subspaceEigenvectors.real());
+    assert(subspaceEigenvalues == subspaceEigenvalues.real());
+    //    if constexpr (std::is_class<value_type>::value) {
+    Eigen::Map<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>(m_evec_xx.data(), m_n_x, m_n_x) =
+        subspaceEigenvectors.real();
+    Eigen::Map<Eigen::Matrix<scalar_type, Eigen::Dynamic, 1>>(m_eval_xx.data(), m_n_x) = subspaceEigenvalues.real();
+    //    } else {
+    //      Eigen::Map<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>(m_evec_xx.data(), m_n_x, m_n_x) =
+    //          subspaceEigenvectors;
+    //      Eigen::Map<Eigen::Matrix<scalar_type, Eigen::Dynamic, 1>>(m_eval_xx.data(), m_n_x) = subspaceEigenvalues;
+    //    }
   }
 
   /*!
@@ -871,7 +886,8 @@ protected:
         // TODO
       }
       if (not actionOnly and (m_residual_eigen || (m_residual_rhs && m_augmented_hessian > 0)))
-        residual[kkk].get().axpy(-this->m_subspaceEigenvalues(root).real(), solution[kkk]);
+        // TODO check this is really right for multiroot augmented hessian. The eigenvalue depends on root?
+        residual[kkk].get().axpy(-this->m_eval_xx[root], solution[kkk]);
       if (not actionOnly and m_residual_rhs)
         residual[kkk].get().axpy(-1, this->m_rhs[root]);
     }
@@ -889,9 +905,7 @@ public:
   std::vector<scalar_type> m_updateShift;
   // TODO begin obsolescence
   Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>
-      m_interpolation; //!< The optimum combination of subspace vectors
-  Eigen::MatrixXcd m_subspaceEigenvectors; // FIXME templating
-  Eigen::VectorXcd m_subspaceEigenvalues;  // FIXME templating
+      m_interpolation;                     //!< The optimum combination of subspace vectors
   // end obsolescence
   size_t m_n_x;                       //!< size of full subspace
   std::vector<scalar_type> m_h_xx;    //!< full subspace
@@ -970,18 +984,14 @@ private:
     } else {
       this->diagonalizeSubspaceMatrix();
       //                   << std::endl;
-      this->m_interpolation = this->m_subspaceEigenvectors
-                                  .block(0, 0, this->m_subspaceEigenvectors.rows(),
-                                         std::min(int(this->m_roots), int(this->m_subspaceEigenvectors.rows())))
-                                  .real();
+      this->m_interpolation = Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(
+          this->m_evec_xx.data(), this->m_n_x, std::min(int(this->m_roots), int(this->m_n_x)));
     }
 
     this->m_updateShift.resize(this->m_roots);
     for (size_t root = 0; root < (size_t)this->m_roots; root++)
-      this->m_updateShift[root] = -(1 + std::numeric_limits<scalar_type>::epsilon()) *
-                                  (static_cast<Eigen::Index>(root) < this->m_subspaceEigenvectors.rows()
-                                       ? this->m_subspaceEigenvalues[root].real()
-                                       : 0);
+      this->m_updateShift[root] =
+          -(1 + std::numeric_limits<scalar_type>::epsilon()) * (root < this->m_n_x ? this->m_eval_xx[root] : 0);
     return true;
   }
 
@@ -1081,34 +1091,36 @@ protected:
       Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> subspaceOverlap;
       subspaceMatrix.conservativeResize(nX + 1, nX + 1);
       subspaceOverlap.conservativeResize(nX + 1, nX + 1);
-      subspaceMatrix.block(0,0,nX,nX)=
+      subspaceMatrix.block(0, 0, nX, nX) =
           Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>(this->m_h_xx.data(), nX, nX);
-      subspaceOverlap.block(0,0,nX,nX)=
+      subspaceOverlap.block(0, 0, nX, nX) =
           Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>(this->m_s_xx.data(), nX, nX);
+      this->m_eval_xx.resize(this->m_rhs.size());
       for (size_t root = 0; root < this->m_rhs.size(); root++) {
         for (Eigen::Index i = 0; i < nX; i++) {
-          subspaceMatrix(i, nX) = subspaceMatrix(nX, i) =
-              -this->m_augmented_hessian * this->m_rhs_x[i+nX* root];
+          subspaceMatrix(i, nX) = subspaceMatrix(nX, i) = -this->m_augmented_hessian * this->m_rhs_x[i + nX * root];
           subspaceOverlap(i, nX) = subspaceOverlap(nX, i) = 0;
         }
         subspaceMatrix(nX, nX) = 0;
         subspaceOverlap(nX, nX) = 1;
-        Eigen::GeneralizedEigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> s(
-            subspaceMatrix, subspaceOverlap);
+        Eigen::GeneralizedEigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> s(subspaceMatrix,
+                                                                                                    subspaceOverlap);
         auto eval = s.eigenvalues();
         auto evec = s.eigenvectors();
         Eigen::Index imax = 0;
         for (Eigen::Index i = 0; i < nX + 1; i++)
           if (eval(i).real() < eval(imax).real())
             imax = i;
-        this->m_subspaceEigenvalues.conservativeResize(root + 1);
-        this->m_subspaceEigenvalues(root) = eval(imax);
+        this->m_eval_xx[root] = eval(imax).real();
         this->m_interpolation.col(root) =
             evec.col(imax).real().head(nX) / (this->m_augmented_hessian * evec.real()(nX, imax));
       }
     } else { // straight solution of linear equations
-      Eigen::Map<const Eigen::Matrix<scalar_type,Eigen::Dynamic,Eigen::Dynamic>> subspaceMatrix(this->m_h_xx.data(),nX,nX);
-      this->m_interpolation = subspaceMatrix.householderQr().solve(Eigen::Map<const Eigen::Matrix<scalar_type,Eigen::Dynamic,Eigen::Dynamic>>(this->m_rhs_x.data(),nX,this->m_roots));
+      Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> subspaceMatrix(this->m_h_xx.data(),
+                                                                                                  nX, nX);
+      this->m_interpolation = subspaceMatrix.householderQr().solve(
+          Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>(this->m_rhs_x.data(), nX,
+                                                                                       this->m_roots));
     }
     return true;
   }
@@ -1418,7 +1430,8 @@ protected:
     //	  molpro::cout << "residual : "<<residual<<std::endl;
     //	  molpro::cout << "solution : "<<solution<<std::endl;
     this->m_updateShift.clear();
-    this->m_updateShift.push_back(-(1 + std::numeric_limits<double>::epsilon()) * this->m_h_xx[0]); // TODO check that this is what is really wanted
+    this->m_updateShift.push_back(-(1 + std::numeric_limits<double>::epsilon()) *
+                                  this->m_h_xx[0]); // TODO check that this is what is really wanted
 
     if (this->m_roots > 1)
       throw std::logic_error("DIIS does not handle multiple solutions");
@@ -1429,7 +1442,8 @@ protected:
       Eigen::VectorXd Rhs(nDim), Coeffs(nDim);
       Eigen::MatrixXd B(nDim, nDim);
 
-      Eigen::Map<Eigen::Matrix<scalar_type,Eigen::Dynamic,Eigen::Dynamic>> subspaceMatrix(this->m_h_xx.data(),nDim+1,nDim+1);
+      Eigen::Map<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> subspaceMatrix(this->m_h_xx.data(),
+                                                                                            nDim + 1, nDim + 1);
       B.block(0, 0, nDim, nDim) = subspaceMatrix.block(0, 0, nDim, nDim);
       Rhs = -subspaceMatrix.block(0, nDim, nDim, 1);
 

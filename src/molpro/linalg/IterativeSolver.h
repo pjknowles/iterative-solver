@@ -808,12 +808,13 @@ protected:
     // TODO complex should be implemented with a specialised function
     static_assert(not std::is_class_v<value_type>, "Complex not yet implemented");
     // TODO real should be implemented with always-executed runtime assertion that eigensolution turns out to be real
-    assert(subspaceEigenvectors == subspaceEigenvectors.real());
-    assert(subspaceEigenvalues == subspaceEigenvalues.real());
+    assert((subspaceEigenvectors - subspaceEigenvectors.real()).norm() < 1e-12);
+    assert((subspaceEigenvalues - subspaceEigenvalues.real()).norm() < 1e-12);
     //    if constexpr (std::is_class<value_type>::value) {
     Eigen::Map<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>(m_evec_xx.data(), m_n_x, m_n_x) =
         subspaceEigenvectors.real();
-    Eigen::Map<Eigen::Matrix<scalar_type, Eigen::Dynamic, 1>>(m_eval_xx.data(), m_n_x) = subspaceEigenvalues.real();
+    Eigen::Map<Eigen::Matrix<scalar_type, Eigen::Dynamic, 1>> ev(m_eval_xx.data(), m_n_x);
+    ev = subspaceEigenvalues.real();
     //    } else {
     //      Eigen::Map<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>(m_evec_xx.data(), m_n_x, m_n_x) =
     //          subspaceEigenvectors;
@@ -905,15 +906,16 @@ public:
   std::vector<scalar_type> m_updateShift;
   // TODO begin obsolescence
   Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>
-      m_interpolation;                     //!< The optimum combination of subspace vectors
+      m_interpolation; //!< The optimum combination of subspace vectors
   // end obsolescence
-  size_t m_n_x;                       //!< size of full subspace
-  std::vector<scalar_type> m_h_xx;    //!< full subspace
-  std::vector<scalar_type> m_s_xx;    //!< full subspace
-  std::vector<scalar_type> m_rhs_x;   //!< full subspace
-  std::vector<scalar_type> m_evec_xx; //!< full subspace
-  std::vector<scalar_type> m_eval_xx; //!< full subspace
-  std::vector<scalar_type> m_values;  //< function values
+  size_t m_n_x;                          //!< size of full subspace
+  std::vector<scalar_type> m_h_xx;       //!< full subspace
+  std::vector<scalar_type> m_s_xx;       //!< full subspace
+  std::vector<scalar_type> m_rhs_x;      //!< full subspace
+  std::vector<scalar_type> m_evec_xx;    //!< full subspace
+  std::vector<scalar_type> m_eval_xx;    //!< full subspace
+  std::vector<scalar_type> m_values;     //!< function values
+  std::vector<scalar_type> m_solution_x; //!< solution in x space
 public:
   size_t m_dimension;             //!< not used in the class, but a place for clients (eg C interface) to store a number
                                   //!< representing the size of the underlying vector space.
@@ -986,6 +988,8 @@ private:
       //                   << std::endl;
       this->m_interpolation = Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(
           this->m_evec_xx.data(), this->m_n_x, std::min(int(this->m_roots), int(this->m_n_x)));
+      this->m_solution_x.resize(this->m_n_x * std::min(int(this->m_roots), int(this->m_n_x)));
+      std::copy_n(this->m_evec_xx.begin(),this->m_solution_x.size(),this->m_solution_x.begin());
     }
 
     this->m_updateShift.resize(this->m_roots);
@@ -1086,6 +1090,7 @@ protected:
   bool solveReducedProblem() override {
     const Eigen::Index nX = this->m_n_x;
     this->m_interpolation.conservativeResize(nX, this->m_rhs.size());
+    this->m_solution_x.resize(nX* this->m_rhs.size());
     if (this->m_augmented_hessian > 0) { // Augmented hessian
       Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> subspaceMatrix;
       Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> subspaceOverlap;

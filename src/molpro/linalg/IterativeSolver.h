@@ -107,7 +107,6 @@ public:
       m_rhs(),
       m_lastVectorIndex(0),
       m_updateShift(0),
-      m_interpolation(),
       m_dimension(0),
       m_value_print_name("value"),
       m_iterations(0),
@@ -905,10 +904,6 @@ public:
   vectorSet m_rhs;
   size_t m_lastVectorIndex;
   std::vector<scalar_type> m_updateShift;
-  // TODO begin obsolescence
-  Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>
-      m_interpolation; //!< The optimum combination of subspace vectors
-  // end obsolescence
   size_t m_n_x;                          //!< size of full subspace
   std::vector<scalar_type> m_h_xx;       //!< full subspace
   std::vector<scalar_type> m_s_xx;       //!< full subspace
@@ -987,8 +982,6 @@ private:
     } else {
       this->diagonalizeSubspaceMatrix();
       //                   << std::endl;
-      this->m_interpolation = Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(
-          this->m_evec_xx.data(), this->m_n_x, std::min(int(this->m_roots), int(this->m_n_x)));
       this->m_solution_x.resize(this->m_n_x * std::min(int(this->m_roots), int(this->m_n_x)));
       std::copy_n(this->m_evec_xx.begin(), this->m_solution_x.size(), this->m_solution_x.begin());
     }
@@ -1090,7 +1083,6 @@ public:
 protected:
   bool solveReducedProblem() override {
     const Eigen::Index nX = this->m_n_x;
-    this->m_interpolation.conservativeResize(nX, this->m_rhs.size());
     this->m_solution_x.resize(nX * this->m_rhs.size());
     if (this->m_augmented_hessian > 0) { // Augmented hessian
       Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> subspaceMatrix;
@@ -1118,8 +1110,6 @@ protected:
           if (eval(i).real() < eval(imax).real())
             imax = i;
         this->m_eval_xx[root] = eval(imax).real();
-        this->m_interpolation.col(root) =
-            evec.col(imax).real().head(nX) / (this->m_augmented_hessian * evec.real()(nX, imax));
         auto solution = evec.col(imax).real().head(nX) / (this->m_augmented_hessian * evec.real()(nX, imax));
         for (auto k = 0; k < nX; k++)
           this->m_solution_x[k + nX * root] = solution[k];
@@ -1134,10 +1124,6 @@ protected:
       for (size_t root = 0; root < this->m_rhs.size(); root++)
         for (auto k = 0; k < nX; k++)
           this->m_solution_x[k + nX * root] = solution(k, root);
-      // TODO obsolescent
-      for (size_t root = 0; root < this->m_rhs.size(); root++)
-        for (auto k = 0; k < nX; k++)
-          this->m_interpolation(k, root) = solution(k, root);
     }
     return true;
   }
@@ -1293,9 +1279,6 @@ protected:
       }
       // when we arrive here, we need to do a new line-search step
       //      molpro::cout << "we need to do a new line-search step " << alpha << std::endl;
-      this->m_interpolation.conservativeResize(this->m_qspace.size() + 1, 1);
-      this->m_interpolation.setZero();
-      this->m_interpolation(this->m_qspace.size(), 0) = 1;
       m_linesearch_steplength = (alpha - 1) * step;
       if (f1 <= f0) {
         m_best_r.reset(new slowvector(this->m_current_r.front()));
@@ -1303,16 +1286,12 @@ protected:
         m_best_f = m_values.back();
         //        molpro::cout << "setting best to current, with f=" << m_best_f << std::endl;
       }
-      //      molpro::cout << "m_interpolation: " << this->m_interpolation << std::endl;
       this->m_nullify_solution_before_update = false;
       return false;
     }
   accept:
     //    molpro::cout << "accept reached" << std::endl;
     m_linesearch_steplength = 0;
-    this->m_interpolation.conservativeResize(n + 1, 1);
-    this->m_interpolation.setZero();
-    this->m_interpolation(n, 0) = 1;
     this->m_nullify_solution_before_update = true;
     if (this->m_algorithm == "L-BFGS") {
       for (int a = this->m_qspace.size() - 1; a >= 0; a--) {
@@ -1321,7 +1300,6 @@ protected:
         for (auto b = a + 1; b < this->m_qspace.size(); b++)
           this->m_solution_x[a] -= this->m_solution_x[b] * this->m_qspace.action(a, b);
         this->m_solution_x[a] /= this->m_qspace.action(a, a);
-        this->m_interpolation(a, 0) = this->m_solution_x[a];
       }
     }
     m_best_r.reset(new slowvector(this->m_current_r.front()));
@@ -1454,7 +1432,6 @@ protected:
       throw std::logic_error("DIIS does not handle multiple solutions");
 
     size_t nDim = this->m_n_x - 1;
-    this->m_interpolation.resize(nDim + 1, 1);
     this->m_solution_x.resize(nDim + 1);
     if (nDim > 0) {
       Eigen::VectorXd Rhs(nDim), Coeffs(nDim);
@@ -1487,14 +1464,8 @@ protected:
         }
         this->m_solution_x[k] = Coeffs(k);
       }
-      //      this->m_interpolation.block(0, 0, nDim, 1) = Coeffs;
     }
-    molpro::cout << "m_interpolation rows=" << this->m_interpolation.rows() << ", cols=" << this->m_interpolation.cols()
-                 << std::endl;
-    this->m_interpolation(nDim, 0) = 1;
     this->m_solution_x[nDim] = 1;
-    for (auto k = 0; k < this->m_n_x; k++)
-      this->m_interpolation(k, 0) = this->m_solution_x[k];
     return true;
   }
 

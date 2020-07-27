@@ -225,7 +225,7 @@ void DIISTest(int verbosity = 0, size_t maxDim = 6, double svdThreshold = 1e-10,
     molpro::cout << "Test DIIS::iterate, difficulty=" << difficulty << std::endl;
   d.m_verbosity = verbosity - 1;
   //  d.m_options["weight"]=2;
-  return;
+//  return;
   std::vector<scalar> xxx(2);
   xxx[0] = xxx[1] = 1 - difficulty; // initial guess
   x.put(&xxx[0], 2, 0);

@@ -837,15 +837,16 @@ protected:
       s.get().scal(0);
     for (auto& s : residual)
       s.get().scal(0);
-    auto nP = m_pspace.size();
-    auto nR = m_current_r.size();
+    const auto nP = m_pspace.size();
+    const auto nR = m_current_r.size();
     //    auto nQ = m_qspace.size();
-    auto nQ = this->m_interpolation.rows() - nP -
-              nR; // guard against using any vectors added to the Q space since the subspace solution was evaluated
+    const auto& nX = this->m_solution_x.size()/this->m_roots;
+    const auto nQ =
+        nX - nP - nR; // guard against using any vectors added to the Q space since the subspace solution was evaluated
     assert(nQ <= m_qspace.size());
-    size_t oP = 0;
-    auto oQ = oP + nP;
-    auto oR = oQ + nQ;
+    const size_t oP = 0;
+    const auto oQ = oP + nP;
+    const auto oR = oQ + nQ;
     assert(m_working_set.size() <= solution.size());
     assert(nP == 0 || solutionP.size() == residual.size());
     for (size_t kkk = 0; kkk < m_working_set.size(); kkk++) {
@@ -855,7 +856,7 @@ protected:
         solutionP[kkk].get().resize(nP);
       if (not actionOnly) {
         for (size_t i = 0; i < nP; i++) {
-          solution[kkk].get().axpy((solutionP[kkk].get()[i] = this->m_interpolation(oP + i, root)), m_pspace[i]);
+          solution[kkk].get().axpy((solutionP[kkk].get()[i] = this->m_solution_x[oP + i + nX * root]), m_pspace[i]);
           //          double gp = 0;
           //          for (auto j = 0; j < nP; j++)
           //            gp += m_pspace.action(j, i) * this->m_interpolation(oP + j, root);
@@ -866,14 +867,14 @@ protected:
       //      std::endl;
       for (int q = 0; q < nQ; q++) {
         auto l = oQ + q;
-        solution[kkk].get().axpy(this->m_interpolation(l, root), m_qspace[q]);
-        residual[kkk].get().axpy(this->m_interpolation(l, root), m_qspace.action(q));
+        solution[kkk].get().axpy(this->m_solution_x[l + nX * root], m_qspace[q]);
+        residual[kkk].get().axpy(this->m_solution_x[l + nX * root], m_qspace.action(q));
       }
       if (true) {
         for (int c = 0; c < nR; c++) {
           auto l = oR + c;
-          solution[kkk].get().axpy(this->m_interpolation(l, root), m_current_r[c]);
-          residual[kkk].get().axpy(this->m_interpolation(l, root), m_current_v[c]);
+          solution[kkk].get().axpy(this->m_solution_x[l+nX* root], m_current_r[c]);
+          residual[kkk].get().axpy(this->m_solution_x[l+nX* root], m_current_v[c]);
         }
         if (m_residual_eigen) {
           auto norm = solution[kkk].get().dot(solution[kkk].get());
@@ -1309,7 +1310,6 @@ protected:
   accept:
     //    molpro::cout << "accept reached" << std::endl;
     m_linesearch_steplength = 0;
-    auto& minusAlpha = this->m_interpolation;
     this->m_interpolation.conservativeResize(n + 1, 1);
     this->m_interpolation.setZero();
     this->m_interpolation(n, 0) = 1;
@@ -1321,7 +1321,7 @@ protected:
         for (auto b = a + 1; b < this->m_qspace.size(); b++)
           this->m_solution_x[a] -= this->m_solution_x[b] * this->m_qspace.action(a, b);
         this->m_solution_x[a] /= this->m_qspace.action(a, a);
-        this->m_interpolation(a,0) = this->m_solution_x[a];
+        this->m_interpolation(a, 0) = this->m_solution_x[a];
       }
     }
     m_best_r.reset(new slowvector(this->m_current_r.front()));
@@ -1343,18 +1343,17 @@ public:
         m_values.pop_back();
         this->m_qspace.remove(this->m_qspace.size() - 1);
       } else { // quasi-Newton
-        if (m_algorithm == "L-BFGS" and this->m_interpolation.size() > 0) {
+        if (m_algorithm == "L-BFGS" and this->m_solution_x.size() > 0) {
           //          molpro::cout << "L-BFGS stage 2" << std::endl;
           //          molpro::cout << "before subtracting rk solution length="
           //                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
           //          solution.back().get().axpy(-1, this->m_last_d.back());
           //          molpro::cout << "after subtracting rk solution length="
           //                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
-          auto& minusAlpha = this->m_interpolation;
           for (auto a = 0; a < this->m_qspace.size(); a++) {
             //            molpro::cout << "iterate q_" << a << std::endl;
-            auto factor =
-                minusAlpha(a, 0) - this->m_qspace.action(a).dot(solution.back().get()) / this->m_qspace.action(a, a);
+            auto factor = this->m_solution_x[a] -
+                          this->m_qspace.action(a).dot(solution.back().get()) / this->m_qspace.action(a, a);
             solution.back().get().axpy(factor, this->m_qspace[a]);
             //            molpro::cout << "Q factor " << factor << std::endl;
           }
@@ -1456,6 +1455,7 @@ protected:
 
     size_t nDim = this->m_n_x - 1;
     this->m_interpolation.resize(nDim + 1, 1);
+    this->m_solution_x.resize(nDim + 1);
     if (nDim > 0) {
       Eigen::VectorXd Rhs(nDim), Coeffs(nDim);
       Eigen::MatrixXd B(nDim, nDim);
@@ -1478,18 +1478,23 @@ protected:
       Coeffs = svd.solve(Rhs).head(nDim);
       if (m_verbosity > 1)
         molpro::cout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
-      for (size_t k = 0; k < (size_t)Coeffs.rows(); k++)
+      for (size_t k = 0; k < (size_t)Coeffs.rows(); k++) {
         if (std::isnan(Coeffs(k))) {
           molpro::cout << "B:" << std::endl << B << std::endl;
           molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
           molpro::cout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
           throw std::overflow_error("NaN detected in DIIS submatrix solution");
         }
-      this->m_interpolation.block(0, 0, nDim, 1) = Coeffs;
+        this->m_solution_x[k] = Coeffs(k);
+      }
+      //      this->m_interpolation.block(0, 0, nDim, 1) = Coeffs;
     }
     molpro::cout << "m_interpolation rows=" << this->m_interpolation.rows() << ", cols=" << this->m_interpolation.cols()
                  << std::endl;
     this->m_interpolation(nDim, 0) = 1;
+    this->m_solution_x[nDim] = 1;
+    for (auto k = 0; k < this->m_n_x; k++)
+      this->m_interpolation(k, 0) = this->m_solution_x[k];
     return true;
   }
 

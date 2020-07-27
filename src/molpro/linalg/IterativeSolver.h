@@ -1126,16 +1126,17 @@ protected:
     } else { // straight solution of linear equations
       Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> subspaceMatrix(this->m_h_xx.data(),
                                                                                                   nX, nX);
-      Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> rhs(this->m_rhs_x.data(), nX, this->m_roots);
-      Eigen::Matrix<value_type, Eigen::Dynamic,Eigen::Dynamic> solution;
-      solution = subspaceMatrix.householderQr().solve(
-          rhs);
+      Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> rhs(this->m_rhs_x.data(), nX,
+                                                                                       this->m_roots);
+      Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> solution;
+      solution = subspaceMatrix.householderQr().solve(rhs);
       for (size_t root = 0; root < this->m_rhs.size(); root++)
         for (auto k = 0; k < nX; k++)
           this->m_solution_x[k + nX * root] = solution(k, root);
+      // TODO obsolescent
       for (size_t root = 0; root < this->m_rhs.size(); root++)
         for (auto k = 0; k < nX; k++)
-          this->m_interpolation(k ,  root) = solution(k, root);
+          this->m_interpolation(k, root) = solution(k, root);
     }
     return true;
   }
@@ -1232,6 +1233,9 @@ protected:
 
   bool solveReducedProblem() override {
     auto n = this->m_qspace.size();
+    assert(this->m_n_x == n + 1);
+    this->m_solution_x.assign(n + 1, 0);
+    this->m_solution_x.back() = 1;
     //    molpro::cout << "Optimize::solveReduced Problem n=" << n << std::endl;
     if (n > 0) {
 
@@ -1289,8 +1293,6 @@ protected:
       // when we arrive here, we need to do a new line-search step
       //      molpro::cout << "we need to do a new line-search step " << alpha << std::endl;
       this->m_interpolation.conservativeResize(this->m_qspace.size() + 1, 1);
-      this->m_solution_x.assign(this->m_n_x,0);
-      this->m_solution_x.back()=1;
       this->m_interpolation.setZero();
       this->m_interpolation(this->m_qspace.size(), 0) = 1;
       m_linesearch_steplength = (alpha - 1) * step;
@@ -1308,7 +1310,6 @@ protected:
     //    molpro::cout << "accept reached" << std::endl;
     m_linesearch_steplength = 0;
     auto& minusAlpha = this->m_interpolation;
-    //    minusAlpha.conservativeResize(n, 1);
     this->m_interpolation.conservativeResize(n + 1, 1);
     this->m_interpolation.setZero();
     this->m_interpolation(n, 0) = 1;
@@ -1316,12 +1317,11 @@ protected:
     if (this->m_algorithm == "L-BFGS") {
       for (int a = this->m_qspace.size() - 1; a >= 0; a--) {
         //        molpro::cout << "iterate q_" << a << std::endl;
-        minusAlpha(a, 0) = -this->m_h_qr[a][0];
+        this->m_solution_x[a] = -this->m_h_qr[a][0];
         for (auto b = a + 1; b < this->m_qspace.size(); b++)
-          minusAlpha(a, 0) -= minusAlpha(b, 0) * this->m_qspace.action(a, b);
-        minusAlpha(a, 0) /= this->m_qspace.action(a, a);
-        //        molpro::cout << "minusAlpha(a,0) " << minusAlpha(a, 0) << std::endl;
-        //        this->m_interpolation(a, 0) = minusAlpha(a,0);
+          this->m_solution_x[a] -= this->m_solution_x[b] * this->m_qspace.action(a, b);
+        this->m_solution_x[a] /= this->m_qspace.action(a, a);
+        this->m_interpolation(a,0) = this->m_solution_x[a];
       }
     }
     m_best_r.reset(new slowvector(this->m_current_r.front()));

@@ -679,7 +679,8 @@ protected:
 
 protected:
   void diagonalizeSubspaceMatrix() {
-    molpro::linalg::iterativesolver::helper<value_type>::eigenproblem(m_evec_xx,m_eval_xx,m_h_xx,m_s_xx,m_n_x,m_hermitian,m_svdThreshold,m_verbosity);
+    molpro::linalg::iterativesolver::helper<value_type>::eigenproblem(m_evec_xx, m_eval_xx, m_h_xx, m_s_xx, m_n_x,
+                                                                      m_hermitian, m_svdThreshold, m_verbosity);
     return;
   }
 
@@ -701,7 +702,7 @@ protected:
     const auto nP = m_pspace.size();
     const auto nR = m_current_r.size();
     //    auto nQ = m_qspace.size();
-    const auto& nX = this->m_solution_x.size()/this->m_roots;
+    const auto& nX = this->m_solution_x.size() / this->m_roots;
     const auto nQ =
         nX - nP - nR; // guard against using any vectors added to the Q space since the subspace solution was evaluated
     assert(nQ <= m_qspace.size());
@@ -734,8 +735,8 @@ protected:
       if (true) {
         for (int c = 0; c < nR; c++) {
           auto l = oR + c;
-          solution[kkk].get().axpy(this->m_solution_x[l+nX* root], m_current_r[c]);
-          residual[kkk].get().axpy(this->m_solution_x[l+nX* root], m_current_v[c]);
+          solution[kkk].get().axpy(this->m_solution_x[l + nX * root], m_current_r[c]);
+          residual[kkk].get().axpy(this->m_solution_x[l + nX * root], m_current_v[c]);
         }
         if (m_residual_eigen) {
           auto norm = solution[kkk].get().dot(solution[kkk].get());
@@ -1283,9 +1284,6 @@ public:
 
 protected:
   bool solveReducedProblem() override {
-    //	  molpro::cout << "Enter DIIS::solveReducedProblem"<<std::endl;
-    //	  molpro::cout << "residual : "<<residual<<std::endl;
-    //	  molpro::cout << "solution : "<<solution<<std::endl;
     this->m_updateShift.clear();
     this->m_updateShift.push_back(-(1 + std::numeric_limits<double>::epsilon()) *
                                   this->m_h_xx[0]); // TODO check that this is what is really wanted
@@ -1293,41 +1291,8 @@ protected:
     if (this->m_roots > 1)
       throw std::logic_error("DIIS does not handle multiple solutions");
 
-    size_t nDim = this->m_n_x - 1;
-    this->m_solution_x.resize(nDim + 1);
-    if (nDim > 0) {
-      Eigen::VectorXd Rhs(nDim), Coeffs(nDim);
-      Eigen::MatrixXd B(nDim, nDim);
-
-      Eigen::Map<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> subspaceMatrix(this->m_h_xx.data(),
-                                                                                            nDim + 1, nDim + 1);
-      B.block(0, 0, nDim, nDim) = subspaceMatrix.block(0, 0, nDim, nDim);
-      Rhs = -subspaceMatrix.block(0, nDim, nDim, 1);
-
-      molpro::cout << "B:" << std::endl << B << std::endl;
-      molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
-
-      // invert the system, determine extrapolation coefficients.
-      Eigen::JacobiSVD<Eigen::MatrixXd> svd(B, Eigen::ComputeThinU | Eigen::ComputeThinV);
-      svd.setThreshold(this->m_svdThreshold);
-      //    molpro::cout << "svdThreshold "<<this->m_svdThreshold<<std::endl;
-      //    molpro::cout << "U\n"<<svd.matrixU()<<std::endl;
-      //    molpro::cout << "V\n"<<svd.matrixV()<<std::endl;
-      //    molpro::cout << "singularValues\n"<<svd.singularValues()<<std::endl;
-      Coeffs = svd.solve(Rhs).head(nDim);
-      if (m_verbosity > 1)
-        molpro::cout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
-      for (size_t k = 0; k < (size_t)Coeffs.rows(); k++) {
-        if (std::isnan(Coeffs(k))) {
-          molpro::cout << "B:" << std::endl << B << std::endl;
-          molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
-          molpro::cout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
-          throw std::overflow_error("NaN detected in DIIS submatrix solution");
-        }
-        this->m_solution_x[k] = Coeffs(k);
-      }
-    }
-    this->m_solution_x[nDim] = 1;
+    molpro::linalg::iterativesolver::helper<value_type>::solve_DIIS(this->m_solution_x, this->m_h_xx, this->m_n_x,
+                                                                    this->m_svdThreshold, this->m_verbosity);
     return true;
   }
 

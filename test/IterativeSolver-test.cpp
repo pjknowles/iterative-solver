@@ -7,6 +7,7 @@
 #include <ctime>
 #include <memory>
 #include <type_traits>
+#include <Eigen/Dense>
 
 namespace molpro {
 namespace linalg {

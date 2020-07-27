@@ -195,6 +195,59 @@ void molpro::linalg::iterativesolver::helper<value_type>::eigenproblem(
 }
 
 template <typename value_type>
+void molpro::linalg::iterativesolver::helper<value_type>::solve_LinearEquations(
+    std::vector<value_type>& solution, std::vector<value_type>& eigenvalues, const std::vector<value_type>& matrix,
+    const std::vector<value_type>& metric, const std::vector<value_type> rhs, const size_t dimension, int nroot,
+    double augmented_hessian, double svdThreshold, int verbosity) {
+  const Eigen::Index nX = dimension;
+  solution.resize(nX * nroot);
+  if (augmented_hessian > 0) { // Augmented hessian
+    Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> subspaceMatrix;
+    Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> subspaceOverlap;
+    subspaceMatrix.conservativeResize(nX + 1, nX + 1);
+    subspaceOverlap.conservativeResize(nX + 1, nX + 1);
+    subspaceMatrix.block(0, 0, nX, nX) =
+        Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(matrix.data(), nX, nX);
+    subspaceOverlap.block(0, 0, nX, nX) =
+        Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(metric.data(), nX, nX);
+    eigenvalues.resize(nroot);
+    for (size_t root = 0; root < nroot; root++) {
+      for (Eigen::Index i = 0; i < nX; i++) {
+        subspaceMatrix(i, nX) = subspaceMatrix(nX, i) = -augmented_hessian * rhs[i + nX * root];
+        subspaceOverlap(i, nX) = subspaceOverlap(nX, i) = 0;
+      }
+      subspaceMatrix(nX, nX) = 0;
+      subspaceOverlap(nX, nX) = 1;
+      if constexpr (not std::is_same<value_type, double>::value) {
+        throw std::runtime_error("Cannot do augmented hessian with complex arithmetic");
+      } else {
+
+        Eigen::GeneralizedEigenSolver<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> s(subspaceMatrix,
+                                                                                                   subspaceOverlap);
+        auto eval = s.eigenvalues();
+        auto evec = s.eigenvectors();
+        Eigen::Index imax = 0;
+        for (Eigen::Index i = 0; i < nX + 1; i++)
+          if (eval(i).real() < eval(imax).real())
+            imax = i;
+        eigenvalues[root] = eval(imax).real();
+        auto Solution = evec.col(imax).real().head(nX) / (augmented_hessian * evec.real()(nX, imax));
+        for (auto k = 0; k < nX; k++)
+          solution[k + nX * root] = Solution[k];
+      }
+    }
+  } else { // straight solution of linear equations
+    Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> subspaceMatrix(matrix.data(), nX, nX);
+    Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> RHS(rhs.data(), nX, nroot);
+    Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> Solution;
+    Solution = subspaceMatrix.householderQr().solve(RHS);
+    for (size_t root = 0; root < nroot; root++)
+      for (auto k = 0; k < nX; k++)
+        solution[k + nX * root] = Solution(k, root);
+  }
+}
+
+template <typename value_type>
 void molpro::linalg::iterativesolver::helper<value_type>::solve_DIIS(std::vector<value_type>& solution,
                                                                      const std::vector<value_type>& matrix,
                                                                      const size_t dimension, double svdThreshold,

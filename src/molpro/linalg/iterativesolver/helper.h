@@ -18,8 +18,13 @@ public:
                            const std::vector<value_type>& matrix, const std::vector<value_type>& metric,
                            const size_t dimension, bool hermitian, double svdThreshold, int verbosity = 0);
 
+  static void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_type>& eigenvalues,
+                                    const std::vector<value_type>& matrix, const std::vector<value_type>& metric,
+                                    const std::vector<value_type> rhs, const size_t dimension, int nroot,
+                                    double augmented_hessian, double svdThreshold, int verbosity);
+
   static void solve_DIIS(std::vector<value_type>& solution, const std::vector<value_type>& matrix,
-                         const size_t nQ, double svdThreshold, int verbosity=0);
+                         const size_t dimension, double svdThreshold, int verbosity = 0);
 };
 
 } // namespace iterativesolver

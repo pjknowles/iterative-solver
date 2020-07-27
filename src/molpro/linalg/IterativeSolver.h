@@ -7,7 +7,6 @@
 #define _GNU_SOURCE 1
 #endif
 
-#include <Eigen/Dense>
 #include <algorithm>
 #include <climits>
 #include <cmath>
@@ -781,8 +780,8 @@ public:
   std::string m_value_print_name; //< the title report() will give to the function value
 protected:
   unsigned int m_iterations;
-  scalar_type m_singularity_threshold;
-  scalar_type m_augmented_hessian; //!< The scale factor for augmented hessian solution of linear inhomogeneous systems.
+  double m_singularity_threshold;
+  double m_augmented_hessian; //!< The scale factor for augmented hessian solution of linear inhomogeneous systems.
                                    //!< Special values:
                                    //!< - 0: unmodified linear equations
                                    //!< - 1: standard augmented hessian
@@ -945,49 +944,7 @@ public:
 
 protected:
   bool solveReducedProblem() override {
-    const Eigen::Index nX = this->m_n_x;
-    this->m_solution_x.resize(nX * this->m_rhs.size());
-    if (this->m_augmented_hessian > 0) { // Augmented hessian
-      Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> subspaceMatrix;
-      Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> subspaceOverlap;
-      subspaceMatrix.conservativeResize(nX + 1, nX + 1);
-      subspaceOverlap.conservativeResize(nX + 1, nX + 1);
-      subspaceMatrix.block(0, 0, nX, nX) =
-          Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>(this->m_h_xx.data(), nX, nX);
-      subspaceOverlap.block(0, 0, nX, nX) =
-          Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>(this->m_s_xx.data(), nX, nX);
-      this->m_eval_xx.resize(this->m_rhs.size());
-      for (size_t root = 0; root < this->m_rhs.size(); root++) {
-        for (Eigen::Index i = 0; i < nX; i++) {
-          subspaceMatrix(i, nX) = subspaceMatrix(nX, i) = -this->m_augmented_hessian * this->m_rhs_x[i + nX * root];
-          subspaceOverlap(i, nX) = subspaceOverlap(nX, i) = 0;
-        }
-        subspaceMatrix(nX, nX) = 0;
-        subspaceOverlap(nX, nX) = 1;
-        Eigen::GeneralizedEigenSolver<Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> s(subspaceMatrix,
-                                                                                                    subspaceOverlap);
-        auto eval = s.eigenvalues();
-        auto evec = s.eigenvectors();
-        Eigen::Index imax = 0;
-        for (Eigen::Index i = 0; i < nX + 1; i++)
-          if (eval(i).real() < eval(imax).real())
-            imax = i;
-        this->m_eval_xx[root] = eval(imax).real();
-        auto solution = evec.col(imax).real().head(nX) / (this->m_augmented_hessian * evec.real()(nX, imax));
-        for (auto k = 0; k < nX; k++)
-          this->m_solution_x[k + nX * root] = solution[k];
-      }
-    } else { // straight solution of linear equations
-      Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> subspaceMatrix(this->m_h_xx.data(),
-                                                                                                  nX, nX);
-      Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> rhs(this->m_rhs_x.data(), nX,
-                                                                                       this->m_roots);
-      Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> solution;
-      solution = subspaceMatrix.householderQr().solve(rhs);
-      for (size_t root = 0; root < this->m_rhs.size(); root++)
-        for (auto k = 0; k < nX; k++)
-          this->m_solution_x[k + nX * root] = solution(k, root);
-    }
+    molpro::linalg::iterativesolver::helper<value_type>::solve_LinearEquations(this->m_solution_x,this->m_eval_xx,this->m_h_xx,this->m_s_xx,this->m_rhs_x,this->m_n_x,this->m_roots,this->m_augmented_hessian,this->m_svdThreshold,this->m_verbosity);
     return true;
   }
 };

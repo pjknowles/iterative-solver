@@ -12,6 +12,8 @@ public:
   static int propose_singularity_deletion(size_t n, size_t ndim, const scalar_type* m, const std::vector<int>& candidates,
                                    double threshold);
   static void printMatrix(const std::vector<scalar_type>, size_t rows, size_t cols, std::string title="", std::ostream& s=molpro::cout);
+
+  static void eigenproblem(std::vector<scalar_type>& eigenvectors, std::vector<scalar_type>& eigenvalues,const std::vector<scalar_type> matrix, const std::vector<scalar_type> metric, const size_t dimension,  bool hermitian, double svdThreshold, int verbosity=0);
 };
 
 } // namespace iterativesolver

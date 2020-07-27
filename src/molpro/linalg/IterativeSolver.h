@@ -989,7 +989,7 @@ private:
       this->m_interpolation = Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(
           this->m_evec_xx.data(), this->m_n_x, std::min(int(this->m_roots), int(this->m_n_x)));
       this->m_solution_x.resize(this->m_n_x * std::min(int(this->m_roots), int(this->m_n_x)));
-      std::copy_n(this->m_evec_xx.begin(),this->m_solution_x.size(),this->m_solution_x.begin());
+      std::copy_n(this->m_evec_xx.begin(), this->m_solution_x.size(), this->m_solution_x.begin());
     }
 
     this->m_updateShift.resize(this->m_roots);
@@ -1090,7 +1090,7 @@ protected:
   bool solveReducedProblem() override {
     const Eigen::Index nX = this->m_n_x;
     this->m_interpolation.conservativeResize(nX, this->m_rhs.size());
-    this->m_solution_x.resize(nX* this->m_rhs.size());
+    this->m_solution_x.resize(nX * this->m_rhs.size());
     if (this->m_augmented_hessian > 0) { // Augmented hessian
       Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> subspaceMatrix;
       Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic> subspaceOverlap;
@@ -1119,13 +1119,23 @@ protected:
         this->m_eval_xx[root] = eval(imax).real();
         this->m_interpolation.col(root) =
             evec.col(imax).real().head(nX) / (this->m_augmented_hessian * evec.real()(nX, imax));
+        auto solution = evec.col(imax).real().head(nX) / (this->m_augmented_hessian * evec.real()(nX, imax));
+        for (auto k = 0; k < nX; k++)
+          this->m_solution_x[k + nX * root] = solution[k];
       }
     } else { // straight solution of linear equations
       Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> subspaceMatrix(this->m_h_xx.data(),
                                                                                                   nX, nX);
-      this->m_interpolation = subspaceMatrix.householderQr().solve(
-          Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>>(this->m_rhs_x.data(), nX,
-                                                                                       this->m_roots));
+      Eigen::Map<const Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic>> rhs(this->m_rhs_x.data(), nX, this->m_roots);
+      Eigen::Matrix<value_type, Eigen::Dynamic,Eigen::Dynamic> solution;
+      solution = subspaceMatrix.householderQr().solve(
+          rhs);
+      for (size_t root = 0; root < this->m_rhs.size(); root++)
+        for (auto k = 0; k < nX; k++)
+          this->m_solution_x[k + nX * root] = solution(k, root);
+      for (size_t root = 0; root < this->m_rhs.size(); root++)
+        for (auto k = 0; k < nX; k++)
+          this->m_interpolation(k ,  root) = solution(k, root);
     }
     return true;
   }
@@ -1279,6 +1289,8 @@ protected:
       // when we arrive here, we need to do a new line-search step
       //      molpro::cout << "we need to do a new line-search step " << alpha << std::endl;
       this->m_interpolation.conservativeResize(this->m_qspace.size() + 1, 1);
+      this->m_solution_x.assign(this->m_n_x,0);
+      this->m_solution_x.back()=1;
       this->m_interpolation.setZero();
       this->m_interpolation(this->m_qspace.size(), 0) = 1;
       m_linesearch_steplength = (alpha - 1) * step;
@@ -1315,6 +1327,7 @@ protected:
     m_best_r.reset(new slowvector(this->m_current_r.front()));
     m_best_v.reset(new slowvector(this->m_current_v.front()));
     m_best_f = m_values.back();
+
     return true;
   }
 

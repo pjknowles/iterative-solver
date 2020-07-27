@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <cassert>
 
 #ifndef LINEARALGEBRA_OFFLINE
 #define LINEARALGEBRA_OFFLINE 0x01

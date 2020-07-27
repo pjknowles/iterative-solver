@@ -265,8 +265,8 @@ void molpro::linalg::iterativesolver::helper<value_type>::solve_DIIS(std::vector
     B.block(0, 0, nQ, nQ) = subspaceMatrix.block(0, 0, nQ, nQ);
     Rhs = -subspaceMatrix.block(0, nQ, nQ, 1);
 
-    molpro::cout << "B:" << std::endl << B << std::endl;
-    molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
+//    molpro::cout << "B:" << std::endl << B << std::endl;
+//    molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
 
     // invert the system, determine extrapolation coefficients.
     Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> svd(B, Eigen::ComputeThinU |

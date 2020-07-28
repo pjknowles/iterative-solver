@@ -42,13 +42,9 @@ namespace molpro {
 namespace linalg {
 typedef std::map<std::string, std::string> optionMap;
 template <class T>
-static std::vector<T> nullStdVector;
-template <class T>
 static std::vector<typename T::value_type> nullVectorP;
 template <class T>
 static std::vector<std::vector<typename T::value_type>> nullVectorSetP;
-template <class T>
-static std::vector<std::reference_wrapper<T>> nullVectorRefSet;
 template <class T>
 static std::vector<std::reference_wrapper<std::vector<typename T::value_type>>> nullVectorRefSetP;
 

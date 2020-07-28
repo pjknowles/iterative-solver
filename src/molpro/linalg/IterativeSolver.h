@@ -378,7 +378,7 @@ public:
                 vectorRefSet(action.begin(), action.end()), vectorRefSetP(parametersP.begin(), parametersP.end()));
   }
   int addP(Pvector Pvectors, const scalar_type* PP, T& parameters, T& action, vectorP& parametersP) {
-    return addP(Pvectors, PP, vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP));
+    return addP(std::vector<Pvector>{Pvectors}, PP, vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP));
   }
 
   /*!
@@ -391,7 +391,7 @@ public:
    */
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) {
     report();
-    return m_errors.empty() ? 0 : *std::max_element(m_errors.cbegin(), m_errors.cend()) < m_thresh;
+    return m_errors.empty() ? false : *std::max_element(m_errors.cbegin(), m_errors.cend()) < m_thresh;
   }
   virtual bool endIteration(std::vector<T>& solution, const std::vector<T>& residual) {
     return endIteration(vectorRefSet(solution.begin(), solution.end()),
@@ -435,7 +435,6 @@ public:
                                const size_t maximumNumber = 1000, const scalar_type threshold = 0) {
     std::map<size_t, scalar_type> result;
     for (size_t kkk = 0; kkk < solution.size(); kkk++) {
-      //    molpro::cout << "suggestP kkk "<<kkk<<" active "<<solution.m_vector_active[kkk]<<maximumNumber<<std::endl;
       {
         std::vector<size_t> indices;
         std::vector<scalar_type> values;
@@ -512,9 +511,6 @@ public:
   int m_verbosity; //!< How much to print. Zero means nothing; One results in a single progress-report line printed each
                    //!< iteration.
   scalar_type m_thresh; //!< If residual . residual is less than this, converged.
-protected:
-  unsigned int m_actions; //!< number of action vectors provided
-public:
   unsigned int m_maxIterations; //!< Maximum number of iterations
   unsigned int m_minIterations; //!< Minimum number of iterations
   bool m_linear;                ///< Whether residuals are linear functions of the corresponding expansion vectors.
@@ -537,7 +533,6 @@ protected:
   std::vector<slowvector> m_last_hd;   ///< action vector corresponding to optimum solution in last iteration
   std::vector<slowvector> m_current_r; ///< current working space TODO can probably eliminate using m_last_d
   std::vector<slowvector> m_current_v; ///< action vector corresponding to current working space
-  std::vector<std::vector<scalar_type>> m_q_scale_factors;
   std::vector<std::vector<scalar_type>> m_s_rr, m_h_rr, m_hh_rr, m_rhs_r;  ///< interactions within R space
   std::map<int, std::vector<scalar_type>> m_s_qr, m_h_qr, m_h_rq, m_hh_qr; ///< interactions between R and Q spaces
   std::vector<std::vector<scalar_type>> m_s_pr, m_h_pr, m_h_rp;            ///< interactions between R and P spaces
@@ -752,7 +747,6 @@ public:
   bool m_residual_eigen;       // whether to subtract eigenvalue*solution when constructing residual
   bool m_residual_rhs;         // whether to subtract rhs when constructing residual
   // whether to use RSPT to construct solution instead of diagonalisation
-  std::vector<std::vector<bool>> m_vector_active;
   vectorSet m_rhs;
   size_t m_lastVectorIndex;
   std::vector<scalar_type> m_updateShift;
@@ -990,10 +984,6 @@ public:
   scalar_type m_linesearch_grow_factor; ///< If the predicted line search step is extrapolation, limit the step to this
                                         ///< factor times the current step
 protected:
-  std::vector<scalar_type> m_linesearch_steps;
-  std::vector<scalar_type> m_linesearch_values;
-  std::vector<scalar_type> m_linesearch_gradients; ///< the actual gradient projected onto the unit step
-  //  bool m_linesearching; ///< Whether we are currently line-searching
   scalar_type m_linesearch_steplength; ///< the current line search step. Zero means continue with QN
   //  scalar_type m_linesearch_quasinewton_steplength; ///< what fraction of the Quasi-Newton step is the current line
   //  search step

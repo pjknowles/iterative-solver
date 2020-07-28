@@ -6,7 +6,7 @@
 
 template <typename value_type>
 int molpro::linalg::iterativesolver::helper<value_type>::propose_singularity_deletion(
-    size_t n, size_t ndim, const value_type* m, const std::vector<int>& candidates, double threshold) {
+    size_t n, size_t ndim, const value_type* m, const std::vector<size_t>& candidates, double threshold) {
   Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester_(m, ndim, ndim);
   auto singularTester = singularTester_.block(0, 0, n, n);
   Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester, Eigen::ComputeThinV);
@@ -30,7 +30,7 @@ int molpro::linalg::iterativesolver::helper<value_type>::propose_singularity_del
     //      if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
     //        molpro::cout << "taking candidate " << k << ": " << svd.matrixV()(k, most_singular) << std::endl;
     if (std::abs(svd.matrixV()(k, most_singular)) > 1e-3)
-      return k;
+      return (int)k;
   }
   return -1;
 }
@@ -98,7 +98,7 @@ void molpro::linalg::iterativesolver::helper<value_type>::eigenproblem(
     // sort
     auto eigval = subspaceEigenvalues;
     auto eigvec = subspaceEigenvectors;
-    std::vector<size_t> map;
+    std::vector<Eigen::Index> map;
     for (Eigen::Index k = 0; k < Hbar.cols(); k++) {
       Eigen::Index ll;
       for (ll = 0; std::count(map.begin(), map.end(), ll) != 0; ll++)
@@ -110,7 +110,7 @@ void molpro::linalg::iterativesolver::helper<value_type>::eigenproblem(
         }
       }
       map.push_back(ll);
-      subspaceEigenvalues[k] = eigval(ll);
+      subspaceEigenvalues(k) = eigval(ll);
       //    molpro::cout << "new sorted eigenvalue "<<k<<", "<<ll<<", "<<eigval(ll)<<std::endl;
       //    molpro::cout << eigvec.col(ll)<<std::endl;
       subspaceEigenvectors.col(k) = eigvec.col(ll);
@@ -197,7 +197,7 @@ void molpro::linalg::iterativesolver::helper<value_type>::eigenproblem(
 template <typename value_type>
 void molpro::linalg::iterativesolver::helper<value_type>::solve_LinearEquations(
     std::vector<value_type>& solution, std::vector<value_type>& eigenvalues, const std::vector<value_type>& matrix,
-    const std::vector<value_type>& metric, const std::vector<value_type> rhs, const size_t dimension, int nroot,
+    const std::vector<value_type>& metric, const std::vector<value_type> rhs, const size_t dimension, size_t nroot,
     double augmented_hessian, double svdThreshold, int verbosity) {
   const Eigen::Index nX = dimension;
   solution.resize(nX * nroot);
@@ -233,7 +233,7 @@ void molpro::linalg::iterativesolver::helper<value_type>::solve_LinearEquations(
         eigenvalues[root] = eval(imax).real();
         auto Solution = evec.col(imax).real().head(nX) / (augmented_hessian * evec.real()(nX, imax));
         for (auto k = 0; k < nX; k++)
-          solution[k + nX * root] = Solution[k];
+          solution[k + nX * root] = Solution(k);
       }
     }
   } else { // straight solution of linear equations

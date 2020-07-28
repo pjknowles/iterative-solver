@@ -148,7 +148,7 @@ public:
    * \return whether it is expected that the client should make an update, based on the returned parameters and
    * residual, before the subsequent call to endIteration()
    */
-  int addVector(vectorRefSet parameters, vectorRefSet action, vectorRefSetP parametersP = nullVectorRefSetP<T>) {
+  size_t addVector(vectorRefSet parameters, vectorRefSet action, vectorRefSetP parametersP = nullVectorRefSetP<T>) {
     if (m_roots < 1)
       m_roots = parameters.size();                      // number of roots defaults to size of parameters
     if (m_qspace.size() == 0 and m_working_set.empty()) // initial
@@ -185,7 +185,7 @@ public:
       m_last_hd.clear();
     }
     // TODO this generates another read for the q space which could perhaps be avoided
-    for (auto a = 0; a < m_qspace.size(); a++) {
+    for (size_t a = 0; a < m_qspace.size(); a++) {
       m_s_qr[a] = std::vector<value_type>(m_working_set.size());
       m_h_qr[a] = std::vector<value_type>(m_working_set.size());
       m_hh_qr[a] = std::vector<value_type>(m_working_set.size());
@@ -235,7 +235,7 @@ public:
 
     return solveAndGenerateWorkingSet(parameters, action, parametersP);
   }
-  int solveAndGenerateWorkingSet(vectorRefSet parameters, vectorRefSet action,
+  size_t solveAndGenerateWorkingSet(vectorRefSet parameters, vectorRefSet action,
                                  vectorRefSetP parametersP = nullVectorRefSetP<T>, bool calculateError = true) {
     buildSubspace();
     solveReducedProblem();
@@ -318,11 +318,11 @@ public:
     m_current_v.clear();
     return m_working_set.size();
   }
-  int addVector(std::vector<T>& parameters, std::vector<T>& action, vectorSetP& parametersP = nullVectorSetP<T>) {
+  size_t addVector(std::vector<T>& parameters, std::vector<T>& action, vectorSetP& parametersP = nullVectorSetP<T>) {
     return addVector(vectorRefSet(parameters.begin(), parameters.end()), vectorRefSet(action.begin(), action.end()),
                      vectorRefSetP(parametersP.begin(), parametersP.end()));
   }
-  int addVector(T& parameters, T& action, vectorP& parametersP = nullVectorP<T>) {
+  size_t addVector(T& parameters, T& action, vectorP& parametersP = nullVectorP<T>) {
     return addVector(vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP));
   }
 
@@ -334,7 +334,7 @@ public:
    * interpolated parameters. \return whether it is expected that the client should make an update, based on the
    * returned parameters and residual, before the subsequent call to endIteration()
    */
-  int addValue(T& parameters, value_type value, T& action) {
+  size_t addValue(T& parameters, value_type value, T& action) {
     m_values.push_back(value);
     //    std::cout << "m_values resized to " << m_values.size() << " and filled with " << value
     //              << std::endl;
@@ -359,7 +359,7 @@ public:
    * \param parametersP On exit, the interpolated solution projected onto the P space.
    * \return The number of vectors contained in parameters, action, parametersP
    */
-  int addP(std::vector<Pvector> Pvectors, const value_type* PP, vectorRefSet parameters, vectorRefSet action,
+  size_t addP(std::vector<Pvector> Pvectors, const value_type* PP, vectorRefSet parameters, vectorRefSet action,
            vectorRefSetP parametersP) {
     m_pspace.add(Pvectors, PP, m_rhs);
     m_qspace.refreshP(action.front());
@@ -370,12 +370,12 @@ public:
     m_last_hd.clear();
     return result;
   }
-  int addP(std::vector<Pvector> Pvectors, const value_type* PP, std::vector<T>& parameters, std::vector<T>& action,
+  size_t addP(std::vector<Pvector> Pvectors, const value_type* PP, std::vector<T>& parameters, std::vector<T>& action,
            vectorSetP& parametersP) {
     return addP(Pvectors, PP, vectorRefSet(parameters.begin(), parameters.end()),
                 vectorRefSet(action.begin(), action.end()), vectorRefSetP(parametersP.begin(), parametersP.end()));
   }
-  int addP(Pvector Pvectors, const value_type* PP, T& parameters, T& action, vectorP& parametersP) {
+  size_t addP(Pvector Pvectors, const value_type* PP, T& parameters, T& action, vectorP& parametersP) {
     return addP(std::vector<Pvector>{Pvectors}, PP, vectorRefSet(1, parameters), vectorRefSet(1, action),
                 vectorRefSetP(1, parametersP));
   }
@@ -616,7 +616,7 @@ protected:
     if (m_subspaceMatrixResRes)
       m_s_xx = m_h_xx;
     if (nQ > 0) {
-      std::vector<int> candidates;
+      std::vector<size_t> candidates;
       std::map<int, int> solutions_q; // map from current q space to roots
       for (const auto& x :
            m_q_solutions) // loop over all roots that are associated with a q vector. x.first=root, x.second=qindex
@@ -711,7 +711,7 @@ protected:
       }
       //      molpro::cout << "square norm of solution after P contribution " << solution[kkk]->dot(*solution[kkk]) <<
       //      std::endl;
-      for (int q = 0; q < nQ; q++) {
+      for (size_t q = 0; q < nQ; q++) {
         auto l = oQ + q;
         solution[kkk].get().axpy(this->m_solution_x[l + nX * root], m_qspace[q]);
         residual[kkk].get().axpy(this->m_solution_x[l + nX * root], m_qspace.action(q));
@@ -1096,7 +1096,8 @@ protected:
     m_linesearch_steplength = 0;
     this->m_nullify_solution_before_update = true;
     if (this->m_algorithm == "L-BFGS") {
-      for (int a = this->m_qspace.size() - 1; a >= 0; a--) {
+      for (int aint = this->m_qspace.size() - 1; aint >= 0; aint--) {
+        size_t a = std::abs(aint);
         //        molpro::cout << "iterate q_" << a << std::endl;
         this->m_solution_x[a] = -this->m_h_qr[a][0];
         for (auto b = a + 1; b < this->m_qspace.size(); b++)
@@ -1130,7 +1131,7 @@ public:
           //          solution.back().get().axpy(-1, this->m_last_d.back());
           //          molpro::cout << "after subtracting rk solution length="
           //                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
-          for (auto a = 0; a < this->m_qspace.size(); a++) {
+          for (size_t a = 0; a < this->m_qspace.size(); a++) {
             //            molpro::cout << "iterate q_" << a << std::endl;
             auto factor = this->m_solution_x[a] -
                           this->m_qspace.action(a).dot(solution.back().get()) / this->m_qspace.action(a, a);

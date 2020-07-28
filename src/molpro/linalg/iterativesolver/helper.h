@@ -10,7 +10,7 @@ template <typename value_type>
 class helper {
 public:
   static int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m,
-                                          const std::vector<int>& candidates, double threshold);
+                                          const std::vector<size_t>& candidates, double threshold);
   static void printMatrix(const std::vector<value_type>, size_t rows, size_t cols, std::string title = "",
                           std::ostream& s = molpro::cout);
 
@@ -20,7 +20,7 @@ public:
 
   static void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_type>& eigenvalues,
                                     const std::vector<value_type>& matrix, const std::vector<value_type>& metric,
-                                    const std::vector<value_type> rhs, const size_t dimension, int nroot,
+                                    const std::vector<value_type> rhs, const size_t dimension, size_t nroot,
                                     double augmented_hessian, double svdThreshold, int verbosity);
 
   static void solve_DIIS(std::vector<value_type>& solution, const std::vector<value_type>& matrix,

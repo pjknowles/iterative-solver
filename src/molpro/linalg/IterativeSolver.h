@@ -153,7 +153,6 @@ public:
    * residual, before the subsequent call to endIteration()
    */
   int addVector(vectorRefSet parameters, vectorRefSet action, vectorRefSetP parametersP = nullVectorRefSetP<T>) {
-    //    m_active.resize(parameters.size(), true);
     if (m_roots < 1)
       m_roots = parameters.size();                      // number of roots defaults to size of parameters
     if (m_qspace.size() == 0 and m_working_set.empty()) // initial
@@ -402,15 +401,6 @@ public:
     return endIteration(vectorRefSet(1, solution), constVectorRefSet(1, residual));
   }
 
-  /*!
-   * @brief Whether the expansion vector for a particular root is still active, ie not yet converged, and residual has
-   * meaning
-   * @param root
-   * @return
-   */
-  bool active(int root) { return m_active[root]; }
-  std::vector<bool> active() { return m_active.empty() ? std::vector<bool>(1000, true) : m_active; }
-
   void solution(const std::vector<int>& roots, vectorRefSet parameters, vectorRefSet residual,
                 vectorRefSetP parametersP = nullVectorRefSetP<T>) {
     auto working_set_save = m_working_set;
@@ -518,7 +508,6 @@ public:
 
 protected:
   std::vector<Pvector> m_Pvectors;
-  std::vector<bool> m_active; ///< whether each expansion vector is currently active
 public:
   int m_verbosity; //!< How much to print. Zero means nothing; One results in a single progress-report line printed each
                    //!< iteration.
@@ -1205,13 +1194,6 @@ public:
   using typename IterativeSolver<T>::scalar_type;
   using typename IterativeSolver<T>::value_type;
   using IterativeSolver<T>::m_verbosity;
-  enum DIISmode_type {
-    disabled ///< No extrapolation is performed
-    ,
-    DIISmode ///< Direct Inversion in the Iterative Subspace
-    ,
-    KAINmode ///< Krylov Accelerated Inexact Newton
-  };
 
   /*!
    * \brief DIIS
@@ -1220,24 +1202,10 @@ public:
     this->m_residual_rhs = false;
     this->m_residual_eigen = false;
     this->m_roots = 1;
-    setMode(DIISmode);
     this->m_exclude_r_from_redundancy_test = true;
     this->m_singularity_threshold =
         this->m_svdThreshold; // It does not matter if the submatrix goes a bit singular in DIIS
     this->m_orthogonalise_Q = false;
-  }
-
-  /*!
-   * \brief Set options for DIIS.
-   * \param mode Whether to perform DIIS, KAIN, or nothing.
-   */
-  virtual void setMode(enum DIISmode_type mode = DIISmode) {
-    m_DIISmode = mode;
-    this->m_subspaceMatrixResRes = mode != KAINmode;
-    //     this->m_preconditionResiduals = mode==KAINmode; // FIXME
-
-    if (m_verbosity > 1)
-      molpro::cout << "m_DIISmode set to " << m_DIISmode << std::endl;
   }
 
 protected:
@@ -1254,17 +1222,7 @@ protected:
     return true;
   }
 
-private:
-  typedef unsigned int uint;
-  enum DIISmode_type m_DIISmode;
 };
-
-// extern template
-// class LinearEigensystem<double>;
-// extern template
-// class LinearEquations<double>;
-// extern template
-// class DIIS<double>;
 
 } // namespace linalg
 } // namespace molpro

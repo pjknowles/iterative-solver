@@ -8,6 +8,7 @@
 #endif
 
 #include <algorithm>
+#include <cassert>
 #include <climits>
 #include <cmath>
 #include <complex>
@@ -18,7 +19,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <cassert>
 
 #ifndef LINEARALGEBRA_OFFLINE
 #define LINEARALGEBRA_OFFLINE 0x01
@@ -50,7 +50,7 @@ static std::vector<std::vector<typename T::value_type>> nullVectorSetP;
 template <class T>
 static std::vector<std::reference_wrapper<T>> nullVectorRefSet;
 template <class T>
-static std::vector<std::vector<std::reference_wrapper<typename T::value_type>>> nullVectorRefSetP;
+static std::vector<std::reference_wrapper<std::vector<typename T::value_type>>> nullVectorRefSetP;
 
 /*!
  * \brief A base class for iterative solvers for linear and non-linear equations, and linear eigensystems.
@@ -261,8 +261,10 @@ public:
     if (calculateError) {
       if (m_linear)
         doInterpolation(parameters, action, parametersP, false);
-      for (auto k = 0; k < m_working_set.size(); k++)
-        m_errors[m_working_set[k]] = std::sqrt(action[k].get().dot(action[k]));
+      for (auto k = 0; k < m_working_set.size(); k++) {
+        double a = std::abs(action[k].get().dot(action[k]));
+        m_errors[m_working_set[k]] = std::sqrt(a);
+      }
     } else
       m_errors.assign(m_roots, 1); // TODO not right for retired roots
 
@@ -378,7 +380,8 @@ public:
                 vectorRefSet(action.begin(), action.end()), vectorRefSetP(parametersP.begin(), parametersP.end()));
   }
   int addP(Pvector Pvectors, const value_type* PP, T& parameters, T& action, vectorP& parametersP) {
-    return addP(std::vector<Pvector>{Pvectors}, PP, vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP));
+    return addP(std::vector<Pvector>{Pvectors}, PP, vectorRefSet(1, parameters), vectorRefSet(1, action),
+                vectorRefSetP(1, parametersP));
   }
 
   /*!
@@ -507,6 +510,7 @@ public:
 
 protected:
   std::vector<Pvector> m_Pvectors;
+
 public:
   int m_verbosity; //!< How much to print. Zero means nothing; One results in a single progress-report line printed each
                    //!< iteration.
@@ -743,14 +747,14 @@ protected:
 
 public:
   std::vector<double> m_errors; //!< Error at last iteration
-  bool m_subspaceMatrixResRes; // whether m_subspaceMatrix is Residual.Residual (true) or Solution.Residual (false)
-  bool m_residual_eigen;       // whether to subtract eigenvalue*solution when constructing residual
-  bool m_residual_rhs;         // whether to subtract rhs when constructing residual
+  bool m_subspaceMatrixResRes;  // whether m_subspaceMatrix is Residual.Residual (true) or Solution.Residual (false)
+  bool m_residual_eigen;        // whether to subtract eigenvalue*solution when constructing residual
+  bool m_residual_rhs;          // whether to subtract rhs when constructing residual
   // whether to use RSPT to construct solution instead of diagonalisation
   vectorSet m_rhs;
   size_t m_lastVectorIndex;
   std::vector<scalar_type> m_updateShift;
-  size_t m_n_x;                          //!< size of full subspace
+  size_t m_n_x;                         //!< size of full subspace
   std::vector<value_type> m_h_xx;       //!< full subspace
   std::vector<value_type> m_s_xx;       //!< full subspace
   std::vector<value_type> m_rhs_x;      //!< full subspace
@@ -766,21 +770,21 @@ protected:
   unsigned int m_iterations;
   double m_singularity_threshold;
   double m_augmented_hessian; //!< The scale factor for augmented hessian solution of linear inhomogeneous systems.
-                                   //!< Special values:
-                                   //!< - 0: unmodified linear equations
-                                   //!< - 1: standard augmented hessian
+                              //!< Special values:
+                              //!< - 0: unmodified linear equations
+                              //!< - 1: standard augmented hessian
 
   bool m_nullify_solution_before_update;
 
 public:
   double m_svdThreshold; ///< Threshold for singular-value truncation in linear equation solver.
-  size_t m_maxQ;              //!< maximum size of Q space
+  size_t m_maxQ;         //!< maximum size of Q space
 protected:
 };
 
 template <class T>
 typename T::value_type inline operator*(const typename IterativeSolver<T>::Pvector& a,
-                                         const typename IterativeSolver<T>::Pvector& b) {
+                                        const typename IterativeSolver<T>::Pvector& b) {
   typename T::value_type result = 0;
   for (const auto& aa : a)
     if (b.find(aa.first))
@@ -842,7 +846,7 @@ private:
 public:
   void report() const override {
     std::vector<value_type> ev = this->eigenvalues();
-    if (m_verbosity > 0) {
+    if (this->m_verbosity > 0) {
       molpro::cout << "iteration " << this->iterations() << "[" << this->m_working_set.size() << "]";
       if (!this->m_Pvectors.empty())
         molpro::cout << ", P=" << this->m_Pvectors.size();
@@ -928,7 +932,9 @@ public:
 
 protected:
   bool solveReducedProblem() override {
-    molpro::linalg::iterativesolver::helper<value_type>::solve_LinearEquations(this->m_solution_x,this->m_eval_xx,this->m_h_xx,this->m_s_xx,this->m_rhs_x,this->m_n_x,this->m_roots,this->m_augmented_hessian,this->m_svdThreshold,this->m_verbosity);
+    molpro::linalg::iterativesolver::helper<value_type>::solve_LinearEquations(
+        this->m_solution_x, this->m_eval_xx, this->m_h_xx, this->m_s_xx, this->m_rhs_x, this->m_n_x, this->m_roots,
+        this->m_augmented_hessian, this->m_svdThreshold, this->m_verbosity);
     return true;
   }
 };
@@ -977,12 +983,12 @@ protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
   bool m_minimize;         ///< whether to minimize or maximize
 public:
-  bool m_strong_Wolfe;                /// Whether to use strong or weak Wolfe conditions
-  double m_Wolfe_1;              ///< Acceptance parameter for function value
-  double m_Wolfe_2;              ///< Acceptance parameter for function gradient
-  double m_linesearch_tolerance; ///< If the predicted line search is within tolerance of 1, don't bother taking it
+  bool m_strong_Wolfe;             /// Whether to use strong or weak Wolfe conditions
+  double m_Wolfe_1;                ///< Acceptance parameter for function value
+  double m_Wolfe_2;                ///< Acceptance parameter for function gradient
+  double m_linesearch_tolerance;   ///< If the predicted line search is within tolerance of 1, don't bother taking it
   double m_linesearch_grow_factor; ///< If the predicted line search step is extrapolation, limit the step to this
-                                        ///< factor times the current step
+                                   ///< factor times the current step
 protected:
   double m_linesearch_steplength; ///< the current line search step. Zero means continue with QN
   //  double m_linesearch_quasinewton_steplength; ///< what fraction of the Quasi-Newton step is the current line
@@ -990,8 +996,8 @@ protected:
   std::unique_ptr<slowvector> m_best_r, m_best_v;
   double m_best_f;
 
-  bool interpolatedMinimum(value_type& x, double& f, value_type x0, value_type x1, double f0, double f1,
-                           value_type g0, value_type g1) {
+  bool interpolatedMinimum(value_type& x, double& f, value_type x0, value_type x1, double f0, double f1, value_type g0,
+                           value_type g1) {
     if (std::abs(2 * f1 - g1 - 2 * f0 - g0) < 1e-10) { // cubic coefficient is zero
       auto c2 = (g1 - g0) / 2;
       if (c2 < 0)
@@ -1031,7 +1037,7 @@ protected:
       //      auto step = std::sqrt(this->m_subspaceOverlap(n - 1, n - 1));
       double step = 1 / this->m_qspace.scale_factor(this->m_qspace.size() - 1);
       auto f0 = m_best_f;
-      auto f1 = m_values.back();
+      auto f1 = this->m_values.back();
       auto g1 = step * this->m_h_qr[n - 1][0];
       auto g0 = step * (*m_best_v).dot(this->m_qspace[this->m_qspace.size() - 1]);
       bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
@@ -1083,7 +1089,7 @@ protected:
       if (f1 <= f0) {
         m_best_r.reset(new slowvector(this->m_current_r.front()));
         m_best_v.reset(new slowvector(this->m_current_v.front()));
-        m_best_f = m_values.back();
+        m_best_f = this->m_values.back();
         //        molpro::cout << "setting best to current, with f=" << m_best_f << std::endl;
       }
       this->m_nullify_solution_before_update = false;
@@ -1104,7 +1110,7 @@ protected:
     }
     m_best_r.reset(new slowvector(this->m_current_r.front()));
     m_best_v.reset(new slowvector(this->m_current_v.front()));
-    m_best_f = m_values.back();
+    m_best_f = this->m_values.back();
 
     return true;
   }
@@ -1118,7 +1124,7 @@ public:
         //              molpro::cout << "solution " << solution.front().get() << std::endl;
         solution.front().get() = *m_best_r;
         solution.front().get().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size() - 1]);
-        m_values.pop_back();
+        this->m_values.pop_back();
         this->m_qspace.remove(this->m_qspace.size() - 1);
       } else { // quasi-Newton
         if (m_algorithm == "L-BFGS" and this->m_solution_x.size() > 0) {
@@ -1158,12 +1164,12 @@ public:
 
 public:
   virtual void report() const override {
-    if (m_verbosity > 0) {
+    if (this->m_verbosity > 0) {
       molpro::cout << "iteration " << this->iterations();
       if (m_linesearch_steplength != 0)
         molpro::cout << ", line search step = " << m_linesearch_steplength;
-      if (not m_values.empty())
-        molpro::cout << ", " << this->m_value_print_name << " = " << m_values.back();
+      if (not this->m_values.empty())
+        molpro::cout << ", " << this->m_value_print_name << " = " << this->m_values.back();
       molpro::cout << ", error = " << this->m_errors.front() << std::endl;
     }
   }
@@ -1211,7 +1217,6 @@ protected:
                                                                     this->m_svdThreshold, this->m_verbosity);
     return true;
   }
-
 };
 
 } // namespace linalg

@@ -190,10 +190,10 @@ public:
     }
     // TODO this generates another read for the q space which could perhaps be avoided
     for (auto a = 0; a < m_qspace.size(); a++) {
-      m_s_qr[a] = std::vector<scalar_type>(m_working_set.size());
-      m_h_qr[a] = std::vector<scalar_type>(m_working_set.size());
-      m_hh_qr[a] = std::vector<scalar_type>(m_working_set.size());
-      m_h_rq[a] = std::vector<scalar_type>(m_working_set.size());
+      m_s_qr[a] = std::vector<value_type>(m_working_set.size());
+      m_h_qr[a] = std::vector<value_type>(m_working_set.size());
+      m_hh_qr[a] = std::vector<value_type>(m_working_set.size());
+      m_h_rq[a] = std::vector<value_type>(m_working_set.size());
       const auto& qa = m_qspace[a];
       const auto& qha = m_qspace.action(a);
       for (size_t m = 0; m < m_working_set.size(); m++) {
@@ -210,9 +210,9 @@ public:
     m_h_pr.clear();
     m_h_rp.clear();
     for (auto p = 0; p < m_pspace.size(); p++) {
-      m_s_pr.push_back(std::vector<scalar_type>(m_working_set.size()));
-      m_h_pr.push_back(std::vector<scalar_type>(m_working_set.size()));
-      m_h_rp.push_back(std::vector<scalar_type>(m_working_set.size()));
+      m_s_pr.push_back(std::vector<value_type>(m_working_set.size()));
+      m_h_pr.push_back(std::vector<value_type>(m_working_set.size()));
+      m_h_rp.push_back(std::vector<value_type>(m_working_set.size()));
       for (size_t k = 0; k < m_working_set.size(); k++) {
         m_s_pr[p][k] = parameters[k].get().dot(m_pspace[p]);
         m_h_pr[p][k] = m_h_rp[p][k] =
@@ -224,10 +224,10 @@ public:
     m_hh_rr.clear();
     m_rhs_r.clear();
     for (auto m = 0; m < m_working_set.size(); m++) {
-      m_rhs_r.push_back(std::vector<scalar_type>(m_rhs.size()));
-      m_s_rr.push_back(std::vector<scalar_type>(m_working_set.size()));
-      m_h_rr.push_back(std::vector<scalar_type>(m_working_set.size()));
-      m_hh_rr.push_back(std::vector<scalar_type>(m_working_set.size()));
+      m_rhs_r.push_back(std::vector<value_type>(m_rhs.size()));
+      m_s_rr.push_back(std::vector<value_type>(m_working_set.size()));
+      m_h_rr.push_back(std::vector<value_type>(m_working_set.size()));
+      m_hh_rr.push_back(std::vector<value_type>(m_working_set.size()));
       for (size_t rhs = 0; rhs < m_rhs.size(); rhs++)
         m_rhs_r[m][rhs] = parameters[m].get().dot(m_rhs[rhs]);
       for (size_t n = 0; n < m_working_set.size(); n++) {
@@ -336,7 +336,7 @@ public:
    * interpolated parameters. \return whether it is expected that the client should make an update, based on the
    * returned parameters and residual, before the subsequent call to endIteration()
    */
-  int addValue(T& parameters, scalar_type value, T& action) {
+  int addValue(T& parameters, value_type value, T& action) {
     m_values.push_back(value);
     //    std::cout << "m_values resized to " << m_values.size() << " and filled with " << value
     //              << std::endl;
@@ -348,7 +348,7 @@ public:
    * \brief Specify a P-space vector as a sparse combination of parameters. The container holds a number of segments,
    * each characterised by an offset in the full space, and a vector of coefficients starting at that offset.
    */
-  using Pvector = std::map<size_t, scalar_type>;
+  using Pvector = std::map<size_t, value_type>;
 
   /*!
    * \brief Add P-space vectors to the expansion set for linear methods.
@@ -361,7 +361,7 @@ public:
    * \param parametersP On exit, the interpolated solution projected onto the P space.
    * \return The number of vectors contained in parameters, action, parametersP
    */
-  int addP(std::vector<Pvector> Pvectors, const scalar_type* PP, vectorRefSet parameters, vectorRefSet action,
+  int addP(std::vector<Pvector> Pvectors, const value_type* PP, vectorRefSet parameters, vectorRefSet action,
            vectorRefSetP parametersP) {
     m_pspace.add(Pvectors, PP, m_rhs);
     m_qspace.refreshP(action.front());
@@ -372,12 +372,12 @@ public:
     m_last_hd.clear();
     return result;
   }
-  int addP(std::vector<Pvector> Pvectors, const scalar_type* PP, std::vector<T>& parameters, std::vector<T>& action,
+  int addP(std::vector<Pvector> Pvectors, const value_type* PP, std::vector<T>& parameters, std::vector<T>& action,
            vectorSetP& parametersP) {
     return addP(Pvectors, PP, vectorRefSet(parameters.begin(), parameters.end()),
                 vectorRefSet(action.begin(), action.end()), vectorRefSetP(parametersP.begin(), parametersP.end()));
   }
-  int addP(Pvector Pvectors, const scalar_type* PP, T& parameters, T& action, vectorP& parametersP) {
+  int addP(Pvector Pvectors, const value_type* PP, T& parameters, T& action, vectorP& parametersP) {
     return addP(std::vector<Pvector>{Pvectors}, PP, vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP));
   }
 
@@ -432,7 +432,7 @@ public:
    * \return
    */
   std::vector<size_t> suggestP(constVectorRefSet solution, constVectorRefSet residual,
-                               const size_t maximumNumber = 1000, const scalar_type threshold = 0) {
+                               const size_t maximumNumber = 1000, const double threshold = 0) {
     std::map<size_t, scalar_type> result;
     for (size_t kkk = 0; kkk < solution.size(); kkk++) {
       {
@@ -468,7 +468,7 @@ public:
     return indices;
   }
   std::vector<size_t> suggestP(const std::vector<T>& solution, const std::vector<T>& residual,
-                               const size_t maximumNumber = 1000, const scalar_type threshold = 0) {
+                               const size_t maximumNumber = 1000, const double threshold = 0) {
     return suggestP(constVectorRefSet(solution.begin(), solution.end()),
                     constVectorRefSet(residual.begin(), residual.end()), maximumNumber, threshold);
   }
@@ -476,7 +476,7 @@ public:
   /*!
    * \brief Set convergence threshold
    */
-  void setThresholds(scalar_type thresh) { m_thresh = thresh; }
+  void setThresholds(double thresh) { m_thresh = thresh; }
 
   unsigned int iterations() const { return m_iterations; } //!< How many iterations have occurred
 
@@ -510,7 +510,7 @@ protected:
 public:
   int m_verbosity; //!< How much to print. Zero means nothing; One results in a single progress-report line printed each
                    //!< iteration.
-  scalar_type m_thresh; //!< If residual . residual is less than this, converged.
+  double m_thresh; //!< If residual . residual is less than this, converged.
   unsigned int m_maxIterations; //!< Maximum number of iterations
   unsigned int m_minIterations; //!< Minimum number of iterations
   bool m_linear;                ///< Whether residuals are linear functions of the corresponding expansion vectors.
@@ -533,9 +533,9 @@ protected:
   std::vector<slowvector> m_last_hd;   ///< action vector corresponding to optimum solution in last iteration
   std::vector<slowvector> m_current_r; ///< current working space TODO can probably eliminate using m_last_d
   std::vector<slowvector> m_current_v; ///< action vector corresponding to current working space
-  std::vector<std::vector<scalar_type>> m_s_rr, m_h_rr, m_hh_rr, m_rhs_r;  ///< interactions within R space
-  std::map<int, std::vector<scalar_type>> m_s_qr, m_h_qr, m_h_rq, m_hh_qr; ///< interactions between R and Q spaces
-  std::vector<std::vector<scalar_type>> m_s_pr, m_h_pr, m_h_rp;            ///< interactions between R and P spaces
+  std::vector<std::vector<value_type>> m_s_rr, m_h_rr, m_hh_rr, m_rhs_r;  ///< interactions within R space
+  std::map<int, std::vector<value_type>> m_s_qr, m_h_qr, m_h_rq, m_hh_qr; ///< interactions between R and Q spaces
+  std::vector<std::vector<value_type>> m_s_pr, m_h_pr, m_h_rp;            ///< interactions between R and P spaces
   mutable std::vector<int> m_working_set; ///< which roots are being tracked in the working set
   std::map<int, int> m_q_solutions;       ///< key of q space vector of a converged solution
   bool m_exclude_r_from_redundancy_test;
@@ -634,7 +634,7 @@ protected:
         if (std::abs(m_s_xx[k * (nX + 1)] - 1) < 1e-15)
           m_s_xx[k * (nX + 1)] =
               1; // somehow avoid problems that eigen with Intel 18 get the SVD wrong if near-unit matrix
-      auto del = molpro::linalg::iterativesolver::helper<scalar_type>::propose_singularity_deletion(
+      auto del = molpro::linalg::iterativesolver::helper<value_type>::propose_singularity_deletion(
           m_exclude_r_from_redundancy_test ? nX - nR : nX, nX, m_residual_eigen ? m_s_xx.data() : m_h_xx.data(),
           candidates, nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
@@ -656,8 +656,8 @@ protected:
     if (m_verbosity > 1)
       molpro::cout << "nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
     if (m_verbosity > 2) {
-      molpro::linalg::iterativesolver::helper<scalar_type>::printMatrix(this->m_s_xx, nX, nX, "Subspace overlap");
-      molpro::linalg::iterativesolver::helper<scalar_type>::printMatrix(this->m_h_xx, nX, nX, "Subspace matrix");
+      molpro::linalg::iterativesolver::helper<value_type>::printMatrix(this->m_s_xx, nX, nX, "Subspace overlap");
+      molpro::linalg::iterativesolver::helper<value_type>::printMatrix(this->m_h_xx, nX, nX, "Subspace matrix");
     }
   }
 
@@ -742,7 +742,7 @@ protected:
   }
 
 public:
-  std::vector<scalar_type> m_errors; //!< Error at last iteration
+  std::vector<double> m_errors; //!< Error at last iteration
   bool m_subspaceMatrixResRes; // whether m_subspaceMatrix is Residual.Residual (true) or Solution.Residual (false)
   bool m_residual_eigen;       // whether to subtract eigenvalue*solution when constructing residual
   bool m_residual_rhs;         // whether to subtract rhs when constructing residual
@@ -751,13 +751,13 @@ public:
   size_t m_lastVectorIndex;
   std::vector<scalar_type> m_updateShift;
   size_t m_n_x;                          //!< size of full subspace
-  std::vector<scalar_type> m_h_xx;       //!< full subspace
-  std::vector<scalar_type> m_s_xx;       //!< full subspace
-  std::vector<scalar_type> m_rhs_x;      //!< full subspace
-  std::vector<scalar_type> m_evec_xx;    //!< full subspace
-  std::vector<scalar_type> m_eval_xx;    //!< full subspace
-  std::vector<scalar_type> m_values;     //!< function values
-  std::vector<scalar_type> m_solution_x; //!< solution in x space
+  std::vector<value_type> m_h_xx;       //!< full subspace
+  std::vector<value_type> m_s_xx;       //!< full subspace
+  std::vector<value_type> m_rhs_x;      //!< full subspace
+  std::vector<value_type> m_evec_xx;    //!< full subspace
+  std::vector<value_type> m_eval_xx;    //!< full subspace
+  std::vector<value_type> m_values;     //!< function values
+  std::vector<value_type> m_solution_x; //!< solution in x space
 public:
   size_t m_dimension;             //!< not used in the class, but a place for clients (eg C interface) to store a number
                                   //!< representing the size of the underlying vector space.
@@ -773,15 +773,15 @@ protected:
   bool m_nullify_solution_before_update;
 
 public:
-  scalar_type m_svdThreshold; ///< Threshold for singular-value truncation in linear equation solver.
+  double m_svdThreshold; ///< Threshold for singular-value truncation in linear equation solver.
   size_t m_maxQ;              //!< maximum size of Q space
 protected:
 };
 
 template <class T>
-typename T::scalar_type inline operator*(const typename IterativeSolver<T>::Pvector& a,
+typename T::value_type inline operator*(const typename IterativeSolver<T>::Pvector& a,
                                          const typename IterativeSolver<T>::Pvector& b) {
-  typename T::scalar_type result = 0;
+  typename T::value_type result = 0;
   for (const auto& aa : a)
     if (b.find(aa.first))
       result += aa.second * b[aa.first];
@@ -841,7 +841,7 @@ private:
 
 public:
   void report() const override {
-    std::vector<scalar_type> ev = this->eigenvalues();
+    std::vector<value_type> ev = this->eigenvalues();
     if (m_verbosity > 0) {
       molpro::cout << "iteration " << this->iterations() << "[" << this->m_working_set.size() << "]";
       if (!this->m_Pvectors.empty())
@@ -886,7 +886,7 @@ public:
    * not yet started. \param augmented_hessian If zero, solve the inhomogeneous equations unmodified. If 1, solve
    * instead the augmented hessian problem. Other values scale the augmented hessian damping.
    */
-  explicit LinearEquations(constVectorRefSet rhs, scalar_type augmented_hessian = 0) {
+  explicit LinearEquations(constVectorRefSet rhs, double augmented_hessian = 0) {
     this->m_linear = true;
     this->m_residual_eigen = true;
     this->m_residual_rhs = true;
@@ -894,7 +894,7 @@ public:
     addEquations(rhs);
   }
 
-  explicit LinearEquations(const vectorSet& rhs, scalar_type augmented_hessian = 0) {
+  explicit LinearEquations(const vectorSet& rhs, double augmented_hessian = 0) {
     auto rhsr = constVectorRefSet(rhs.begin(), rhs.end());
     this->m_linear = true;
     this->m_residual_rhs = true;
@@ -902,7 +902,7 @@ public:
     addEquations(rhsr);
   }
 
-  explicit LinearEquations(const T& rhs, scalar_type augmented_hessian = 0) {
+  explicit LinearEquations(const T& rhs, double augmented_hessian = 0) {
     auto rhsr = constVectorRefSet(1, rhs);
     this->m_linear = true;
     this->m_residual_rhs = true;
@@ -978,20 +978,20 @@ protected:
   bool m_minimize;         ///< whether to minimize or maximize
 public:
   bool m_strong_Wolfe;                /// Whether to use strong or weak Wolfe conditions
-  scalar_type m_Wolfe_1;              ///< Acceptance parameter for function value
-  scalar_type m_Wolfe_2;              ///< Acceptance parameter for function gradient
-  scalar_type m_linesearch_tolerance; ///< If the predicted line search is within tolerance of 1, don't bother taking it
-  scalar_type m_linesearch_grow_factor; ///< If the predicted line search step is extrapolation, limit the step to this
+  double m_Wolfe_1;              ///< Acceptance parameter for function value
+  double m_Wolfe_2;              ///< Acceptance parameter for function gradient
+  double m_linesearch_tolerance; ///< If the predicted line search is within tolerance of 1, don't bother taking it
+  double m_linesearch_grow_factor; ///< If the predicted line search step is extrapolation, limit the step to this
                                         ///< factor times the current step
 protected:
-  scalar_type m_linesearch_steplength; ///< the current line search step. Zero means continue with QN
-  //  scalar_type m_linesearch_quasinewton_steplength; ///< what fraction of the Quasi-Newton step is the current line
+  double m_linesearch_steplength; ///< the current line search step. Zero means continue with QN
+  //  double m_linesearch_quasinewton_steplength; ///< what fraction of the Quasi-Newton step is the current line
   //  search step
   std::unique_ptr<slowvector> m_best_r, m_best_v;
-  scalar_type m_best_f;
+  double m_best_f;
 
-  bool interpolatedMinimum(value_type& x, scalar_type& f, value_type x0, value_type x1, scalar_type f0, scalar_type f1,
-                           scalar_type g0, scalar_type g1) {
+  bool interpolatedMinimum(value_type& x, double& f, value_type x0, value_type x1, double f0, double f1,
+                           value_type g0, value_type g1) {
     if (std::abs(2 * f1 - g1 - 2 * f0 - g0) < 1e-10) { // cubic coefficient is zero
       auto c2 = (g1 - g0) / 2;
       if (c2 < 0)
@@ -1049,9 +1049,9 @@ protected:
       }
       if (g1 < this->m_thresh or (Wolfe_1 && Wolfe_2))
         goto accept;
-      scalar_type finterp;
+      double finterp;
       //      molpro::cout << "before interpolatedMinimum" << std::endl;
-      scalar_type alpha;
+      value_type alpha;
       auto interpolated = interpolatedMinimum(alpha, finterp, 0, 1, f0, f1, g0, g1);
       //      molpro::cout << "interpolated: " << interpolated << ", alpha " <<
       //      alpha

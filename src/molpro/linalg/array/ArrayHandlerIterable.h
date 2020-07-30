@@ -77,7 +77,7 @@ protected:
   template <typename T, typename S> value_type dotAny(const T &x, const S &y) {
     if (x.size() > y.size())
       error("ArrayHandlerIterable::dot() incompatible x and y arrays, x.size() > y.size()");
-    return std::inner_product(x.begin(), x.end(), y.begin(), 0);
+    return std::inner_product(x.begin(), x.end(), y.begin(), (value_type)0);
   }
 
   value_type dotLL(const AL &x, const AL &y) { return dotAny(x, y); }

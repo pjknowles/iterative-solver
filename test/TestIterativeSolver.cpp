@@ -5,6 +5,7 @@
 #include "molpro/linalg/IterativeSolver.h"
 #include "molpro/linalg/PagedArray.h"
 #include "molpro/linalg/SimpleArray.h"
+#include "molpro/linalg/array/ArrayHandlerIterable.h"
 #include <Eigen/Dense>
 #include <cmath>
 #include <limits>
@@ -27,6 +28,7 @@ TEST(TestIterativeSolver, small_eigenproblem) {
 
       molpro::linalg::SimpleArray<double> mm(n);
       std::vector<molpro::linalg::SimpleArray<double>> x, g;
+      molpro::linalg::array::ArrayHandlerIterable<molpro::linalg::SimpleArray<double>> handler{};
       molpro::linalg::LinearEigensystem<molpro::linalg::SimpleArray<double>> solver;
       solver.m_verbosity = 1;
       solver.setThresholds(1e-12);
@@ -112,11 +114,11 @@ TEST(TestIterativeSolver, small_eigenproblem) {
         EXPECT_THAT(r, ::testing::Pointwise(::testing::DoubleNear(1e-5), std::vector<double>(n, double(0))));
         if (solver.m_verbosity > 1)
           for (size_t soot = 0; soot <= root; soot++)
-            std::cout << "Eigenvector overlap " << root << " " << soot << " " << x[root].dot(x[soot]) << std::endl;
+            std::cout << "Eigenvector overlap " << root << " " << soot << " " << handler.dot(x[root],x[soot]) << std::endl;
         for (size_t soot = 0; soot < root; soot++)
-          EXPECT_LE(std::abs(x[root].dot(x[soot])),
+          EXPECT_LE(std::abs(handler.dot(x[root],x[soot])),
                     1e-8); // can't expect exact orthogonality when last thing might have been an update
-        EXPECT_THAT(std::abs(x[root].dot(x[root])), ::testing::DoubleNear(1, 1e-10));
+        EXPECT_THAT(std::abs(handler.dot(x[root],x[root])), ::testing::DoubleNear(1, 1e-10));
       }
     }
   }
@@ -663,6 +665,7 @@ public:
 
   bool run() {
     //    std::cout << "optimize with " << method << std::endl;
+    molpro::linalg::array::ArrayHandlerIterable<molpro::linalg::SimpleArray<scalar>> handler{};
     molpro::linalg::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_verbosity = 1;
     solver.m_maxIterations = 50;
@@ -700,9 +703,9 @@ public:
       if (upd)
         break;
     }
-    std::cout << "Distance of solution from exact solution: " << std::sqrt(x.dot(x)) << std::endl;
+    std::cout << "Distance of solution from exact solution: " << std::sqrt(handler.dot(x, x)) << std::endl;
     std::cout << "Error=" << solver.errors().front() << " after " << solver.iterations() << " iterations" << std::endl;
-    return std::sqrt(x.dot(x)) < 1e-5 && solver.errors().front() < 1e-5;
+    return std::sqrt(handler.dot(x, x)) < 1e-5 && solver.errors().front() < 1e-5;
   }
 };
 

@@ -1,13 +1,13 @@
 # Extra checking for HDF5 and global arrays will go here
 LibraryManager_Append(${PROJECT_NAME}
-        SOURCES IterativeSolver.cpp
-        PUBLIC_HEADER IterativeSolver.h OpaqueArray.h OutOfCoreArray.h PagedArray.h SimpleArray.h iterativesolver/P.h iterativesolver/Q.h
+        SOURCES IterativeSolver.cpp iterativesolver/IterativeSolver-double.cpp iterativesolver/IterativeSolver-complex-double.cpp iterativesolver/helper-implementation.h
+        PUBLIC_HEADER IterativeSolver.h OpaqueArray.h OutOfCoreArray.h PagedArray.h SimpleArray.h iterativesolver/P.h iterativesolver/Q.h iterativesolver/helper.h
         )
 if (FORTRAN)
     LibraryManager_Append(${PROJECT_NAME} SOURCES IterativeSolverF.F90)
 endif ()
 
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_14)
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
 
 if (MPI)

@@ -15,13 +15,13 @@ protected:
 public:
   P() {}
 
-  const value_type& metric(int i, int j) const { return m_metric[m_vectors.size() * j + i]; }
+  const value_type& metric(size_t i, size_t j) const { return m_metric[m_vectors.size() * j + i]; }
 
-  const value_type& action(int i, int j) const { return m_action[m_vectors.size() * j + i]; }
+  const value_type& action(size_t i, size_t j) const { return m_action[m_vectors.size() * j + i]; }
 
   size_t size() const { return m_vectors.size(); }
 
-  const Pvector& operator[](int i) const { return m_vectors[i]; }
+  const Pvector& operator[](size_t i) const { return m_vectors[i]; }
 
   /*!
    * @brief Add a new vector to the space. Also compute and store the new elements of the overlap and action
@@ -38,20 +38,20 @@ public:
       std::vector<value_type> new_metric(new_size * new_size);
       std::vector<value_type> new_action(new_size * new_size);
       std::vector<value_type> new_rhs(new_size * rhs.size());
-      for (int i = 0; i < old_size; i++) {
-        for (int j = 0; j < old_size; j++) {
+      for (size_t i = 0; i < old_size; i++) {
+        for (size_t j = 0; j < old_size; j++) {
           new_metric[i * new_size + j] = m_metric[i * old_size + j];
           new_action[i * new_size + j] = m_action[i * old_size + j];
         }
-        for (int j = 0; j < rhs.size() ; j++) {
+        for (size_t j = 0; j < rhs.size() ; j++) {
           new_rhs[i + new_size * j] = m_action[i + old_size * j];
         }
       }
-      for (int i = 0; i < Pvectors.size(); i++) {
-        for (int j = 0; j < new_size; j++)
+      for (size_t i = 0; i < Pvectors.size(); i++) {
+        for (size_t j = 0; j < new_size; j++)
           new_action[j * new_size + (i + old_size)] = new_action[j + new_size * (i + old_size)] = PP[new_size * j + i];
         m_vectors.push_back(Pvectors[i]);
-        for (int j = 0; j < m_vectors.size(); j++) {
+        for (size_t j = 0; j < m_vectors.size(); j++) {
           value_type overlap = 0;
           for (const auto& p : Pvectors[i]) {
             if (m_vectors[j].count(p.first))
@@ -59,7 +59,7 @@ public:
           }
           new_metric[j * new_size + (i + old_size)] = new_metric[j + new_size * (i + old_size)] = overlap;
         }
-        for (int j = 0; j < rhs.size() ; j++) {
+        for (size_t j = 0; j < rhs.size() ; j++) {
           new_rhs[i+old_size + new_size * j] = rhs[j].dot(m_vectors[i]);
         }
       }

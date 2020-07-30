@@ -621,7 +621,8 @@ class trigTest {
 
 public:
   using scalar = double;
-  using pv = molpro::linalg::PagedArray<scalar>;
+  //using pv = molpro::linalg::PagedArray<scalar>;
+  using pv = molpro::linalg::SimpleArray<scalar>;
 
   size_t n;
   std::string method;
@@ -680,10 +681,10 @@ public:
       // if (solver.addValue(x, value, g))
       //  update(x, g);
       bool upd = solver.addValue(x, value, g);
-      if (!x.synchronised())
-        x.sync();
-      if (!g.synchronised())
-        g.sync();
+      //if (!x.synchronised())
+      //  x.sync();
+      //if (!g.synchronised())
+      //  g.sync();
       if (upd)
         update(x, g);
       // if (solver.endIteration(x, g)) break;
@@ -692,10 +693,10 @@ public:
       upd = solver.endIteration(x, g);
       //      molpro::cout << "after endIteration x "<<x<<std::endl;
       //      molpro::cout << "after endIteration g "<<g<<std::endl;
-      if (!x.synchronised())
-        x.sync();
-      if (!g.synchronised())
-        g.sync();
+      //if (!x.synchronised())
+      //  x.sync();
+      //if (!g.synchronised())
+      //  g.sync();
       if (upd)
         break;
     }
@@ -713,7 +714,8 @@ class optTest {
 
 public:
   using scalar = double;
-  using pv = molpro::linalg::PagedArray<scalar>;
+  //using pv = molpro::linalg::PagedArray<scalar>;
+  using pv = molpro::linalg::SimpleArray<scalar>;
 
 protected:
   std::string method;
@@ -784,18 +786,18 @@ public:
       // if (solver.addValue(x, value, g))
       //  update(x, g);
       bool upd = solver.addValue(x, value, g);
-      if (!x.synchronised())
-        x.sync();
-      if (!g.synchronised())
-        g.sync();
+      //if (!x.synchronised())
+      //  x.sync();
+      //if (!g.synchronised())
+      //  g.sync();
       if (upd)
         update(x, g);
       // if (solver.endIteration(x, g)) break;
       upd = solver.endIteration(x, g);
-      if (!x.synchronised())
-        x.sync();
-      if (!g.synchronised())
-        g.sync();
+      //if (!x.synchronised())
+      //  x.sync();
+      //if (!g.synchronised())
+      //  g.sync();
       if (upd)
         break;
     }

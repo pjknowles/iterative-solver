@@ -1067,9 +1067,9 @@ protected:
             molpro::cout << "reject interpolated minimum value " << finterp << " at alpha=" << alpha << std::endl;
           else
             molpro::cout << "cubic interpolation did not find a valid minimum" << std::endl;
-          molpro::cout << "taking instead step=" << (g0 > 0 ? -1 : 1) * m_linesearch_grow_factor << std::endl;
+          molpro::cout << "taking instead step=" << (g0 > 0 ? 1 : -1) * m_linesearch_grow_factor << std::endl;
         }
-        alpha = (g0 > 0 ? -1 : 1) * m_linesearch_grow_factor; // expand the search range
+        alpha = (g0 > 0 ? 1 : -1) * m_linesearch_grow_factor; // expand the search range
       } else if (std::abs(alpha - 1) < m_linesearch_tolerance) {
         if (this->m_verbosity > 1)
           molpro::cout << "Don't bother with linesearch " << alpha << std::endl;

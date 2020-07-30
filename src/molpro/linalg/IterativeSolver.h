@@ -236,7 +236,7 @@ public:
     return solveAndGenerateWorkingSet(parameters, action, parametersP);
   }
   size_t solveAndGenerateWorkingSet(vectorRefSet parameters, vectorRefSet action,
-                                 vectorRefSetP parametersP = nullVectorRefSetP<T>, bool calculateError = true) {
+                                    vectorRefSetP parametersP = nullVectorRefSetP<T>, bool calculateError = true) {
     buildSubspace();
     solveReducedProblem();
     //    molpro::cout << "update=" << update << std::endl;
@@ -360,7 +360,7 @@ public:
    * \return The number of vectors contained in parameters, action, parametersP
    */
   size_t addP(std::vector<Pvector> Pvectors, const value_type* PP, vectorRefSet parameters, vectorRefSet action,
-           vectorRefSetP parametersP) {
+              vectorRefSetP parametersP) {
     m_pspace.add(Pvectors, PP, m_rhs);
     m_qspace.refreshP(action.front());
     //    return m_working_set.size();
@@ -371,7 +371,7 @@ public:
     return result;
   }
   size_t addP(std::vector<Pvector> Pvectors, const value_type* PP, std::vector<T>& parameters, std::vector<T>& action,
-           vectorSetP& parametersP) {
+              vectorSetP& parametersP) {
     return addP(Pvectors, PP, vectorRefSet(parameters.begin(), parameters.end()),
                 vectorRefSet(action.begin(), action.end()), vectorRefSetP(parametersP.begin(), parametersP.end()));
   }
@@ -1067,9 +1067,9 @@ protected:
             molpro::cout << "reject interpolated minimum value " << finterp << " at alpha=" << alpha << std::endl;
           else
             molpro::cout << "cubic interpolation did not find a valid minimum" << std::endl;
-          molpro::cout << "taking instead step=" << m_linesearch_grow_factor << std::endl;
+          molpro::cout << "taking instead step=" << (g0 > 0 ? -1 : 1) * m_linesearch_grow_factor << std::endl;
         }
-        alpha = m_linesearch_grow_factor; // expand the search range
+        alpha = (g0 > 0 ? -1 : 1) * m_linesearch_grow_factor; // expand the search range
       } else if (std::abs(alpha - 1) < m_linesearch_tolerance) {
         if (this->m_verbosity > 1)
           molpro::cout << "Don't bother with linesearch " << alpha << std::endl;

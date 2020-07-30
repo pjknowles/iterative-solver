@@ -16,40 +16,41 @@ template <class fastvector, class slowvector = fastvector>
 class Q {
   using scalar_type = decltype(
       std::declval<fastvector>().dot(std::declval<const fastvector&>())); ///< The type of scalar products of vectors
+  using key_type = int;
   bool m_hermitian;
-  std::map<int, std::map<int, scalar_type>> m_metric;
-  std::map<int, std::map<int, scalar_type>> m_action;
-  std::map<int, std::map<int, scalar_type>> m_action_action;
-  std::map<int, std::vector<scalar_type>> m_rhs;
-  int m_index = 0;
-  std::map<int, slowvector> m_vectors;
-  std::map<int, slowvector> m_actions;
+  std::map<key_type, std::map<key_type, scalar_type>> m_metric;
+  std::map<key_type, std::map<key_type, scalar_type>> m_action;
+  std::map<key_type, std::map<key_type, scalar_type>> m_action_action;
+  std::map<key_type, std::vector<scalar_type>> m_rhs;
+  key_type m_index = 0;
+  std::map<key_type, slowvector> m_vectors;
+  std::map<key_type, slowvector> m_actions;
   const P<typename fastvector::value_type>& m_pspace;
-  std::map<int, std::vector<scalar_type>> m_metric_pspace;
-  std::map<int, std::vector<scalar_type>> m_action_pspace;
-  std::vector<int> m_keys;
-  std::map<int, typename fastvector::value_type> m_scale_factors, m_diff_factors;
+  std::map<key_type, std::vector<scalar_type>> m_metric_pspace;
+  std::map<key_type, std::vector<scalar_type>> m_action_pspace;
+  std::vector<key_type> m_keys;
+  std::map<key_type, typename fastvector::value_type> m_scale_factors, m_diff_factors;
 
 public:
   Q(const P<typename fastvector::value_type>& pspace, bool hermitian = false)
       : m_hermitian(hermitian), m_pspace(pspace) {}
 
-  const scalar_type& metric(int i, int j) const { return m_metric.at(m_keys[i]).at(m_keys[j]); }
+  const scalar_type& metric(size_t i, size_t j) const { return m_metric.at(m_keys[i]).at(m_keys[j]); }
 
-  const scalar_type& action(int i, int j) const { return m_action.at(m_keys[i]).at(m_keys[j]); }
-  const scalar_type& action_action(int i, int j) const { return m_action_action.at(m_keys[i]).at(m_keys[j]); }
+  const scalar_type& action(size_t i, size_t j) const { return m_action.at(m_keys[i]).at(m_keys[j]); }
+  const scalar_type& action_action(size_t i, size_t j) const { return m_action_action.at(m_keys[i]).at(m_keys[j]); }
 
-  const std::vector<scalar_type>& rhs(int i) const { return m_rhs.at(m_keys[i]); }
+  const std::vector<scalar_type>& rhs(size_t i) const { return m_rhs.at(m_keys[i]); }
 
-  const std::vector<scalar_type>& metric_pspace(int i) const { return m_metric_pspace.at(m_keys[i]); }
-  const std::vector<scalar_type>& action_pspace(int i) const { return m_action_pspace.at(m_keys[i]); }
+  const std::vector<scalar_type>& metric_pspace(size_t i) const { return m_metric_pspace.at(m_keys[i]); }
+  const std::vector<scalar_type>& action_pspace(size_t i) const { return m_action_pspace.at(m_keys[i]); }
 
   size_t size() const { return m_vectors.size(); }
 
-  const slowvector& operator[](int i) const { return m_vectors.at(m_keys[i]); }
-  const slowvector& action(int i) const { return m_actions.at(m_keys[i]); }
+  const slowvector& operator[](size_t i) const { return m_vectors.at(m_keys[i]); }
+  const slowvector& action(size_t i) const { return m_actions.at(m_keys[i]); }
 
-  const typename fastvector::value_type scale_factor(int i) const { return m_scale_factors.at(m_keys[i]); }
+  const typename fastvector::value_type scale_factor(size_t i) const { return m_scale_factors.at(m_keys[i]); }
 
 public:
   /*!
@@ -57,8 +58,8 @@ public:
    * If the Q space is modified such that vectors change their position, the key of the vector will never change.
    * @return
    */
-  std::vector<int> keys() const {
-    std::vector<int> result;
+  std::vector<key_type> keys() const {
+    std::vector<key_type> result;
     for (const auto& vi : m_vectors)
       result.push_back(vi.first);
     return result;
@@ -143,12 +144,12 @@ public:
     } else {
       auto dd = oldvector.dot(oldvector);
       auto rd = vector.dot(oldvector);
-//      molpro::cout << "dd="<<dd<<std::endl;
-//      molpro::cout << "rd="<<rd<<std::endl;
-//      molpro::cout << "rr="<<rr<<std::endl;
+      //      molpro::cout << "dd="<<dd<<std::endl;
+      //      molpro::cout << "rd="<<rd<<std::endl;
+      //      molpro::cout << "rr="<<rr<<std::endl;
       diff_factor = orthogonalise ? rr / rd : 1;
-      auto norm= std::sqrt(std::max(rr -2*diff_factor*rd+diff_factor*diff_factor*dd,(decltype(rr))0));
-      if (norm==0) { // let linear dependence code deal with this exceptional case later
+      auto norm = std::sqrt(std::max(rr - 2 * diff_factor * rd + diff_factor * diff_factor * dd, (decltype(rr))0));
+      if (norm == 0) { // let linear dependence code deal with this exceptional case later
         scale_factor = 1;
       } else {
         scale_factor = 1 / norm;
@@ -170,7 +171,7 @@ public:
     v.scal(1 / scale_factor);
     a.axpy(diff_factor * scale_factor, oldaction);
     a.scal(1 / scale_factor);
-//    molpro::cout << "created Q, scale_factor="<<scale_factor<<std::endl;
+    //    molpro::cout << "created Q, scale_factor="<<scale_factor<<std::endl;
     return scale_factor;
   }
 
@@ -198,7 +199,7 @@ public:
    * @brief Remove a vector from the Q space
    * @param index
    */
-  void remove(const int seq) {
+  void remove(const size_t seq) {
     if (m_keys.size() <= seq)
       throw std::runtime_error("non-existent vector to erase");
     auto index = m_keys[seq];

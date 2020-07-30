@@ -45,19 +45,24 @@ public:
    */
   OpaqueArray<T, Allocator>(const OpaqueArray& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
 
-   /*!
-    * @return Pointer to the start of the buffer
-    */
-   const T *begin() const { return m_buffer.begin(); }
+  /*!
+   * @return Iterator at the start of the buffer
+   */
+  typename std::vector<T>::const_iterator begin() const { return m_buffer.begin(); }
 
-   T *begin() { return m_buffer.begin(); }
+  typename std::vector<T>::iterator begin() { return m_buffer.begin(); }
 
-   /*!
-    * @return Pointer to the end of the buffer
-    */
-   const T *end() const { return m_buffer.end(); }
+  /*!
+   * @return Iterator at the end of the buffer
+   */
+  typename std::vector<T>::const_iterator end() const { return m_buffer.end(); }
 
-   T *end() { return m_buffer.end(); }
+  typename std::vector<T>::iterator end() { return m_buffer.end(); }
+
+  /*!
+   * @brief Implements a simple push_back operation
+   */
+  void push_back(const T& elem) {m_buffer.push_back(elem);}
 
   /*!
    * \brief Add a constant times a sparse vector to this object

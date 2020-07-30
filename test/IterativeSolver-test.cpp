@@ -3,6 +3,7 @@
 #include "molpro/linalg/OpaqueArray.h"
 #include "molpro/linalg/PagedArray.h"
 #include "molpro/linalg/SimpleArray.h"
+#include "molpro/linalg/array/ArrayHandlerIterable.h"
 #include "test.h"
 #include <Eigen/Dense>
 #include <ctime>
@@ -85,6 +86,7 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
     testmatrix(0, 1) = testmatrix(1, 0) = 1;
 
   LinearEigensystem<ptype> d;
+  molpro::linalg::array::ArrayHandlerIterable<ptype> handler{};
   d.m_roots = roots;
   d.m_verbosity = verbosity;
   d.m_maxIterations = dimension;
@@ -156,8 +158,10 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   }
   std::vector<scalar> errors;
   for (size_t root = 0; root < (size_t)d.m_roots; root++) {
-    g[root].axpy(-ev[root], x[root]);
-    errors.push_back(g[root].dot(g[root]));
+    //g[root].axpy(-ev[root], x[root]);
+    handler.axpy(-ev[root], x[root], g[root]);
+    //errors.push_back(g[root].dot(g[root]));
+    errors.push_back(handler.dot(g[root], g[root]));
   }
   //   molpro::cout << "Square residual norms: "; for (typename std::vector<T>::const_iterator e=errors.begin();
   //   e!=errors.end(); e++) molpro::cout<<" "<<*e;molpro::cout<<std::endl;

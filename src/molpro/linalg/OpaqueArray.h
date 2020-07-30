@@ -45,6 +45,20 @@ public:
    */
   OpaqueArray<T, Allocator>(const OpaqueArray& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
 
+   /*!
+    * @return Pointer to the start of the buffer
+    */
+   const T *begin() const { return m_buffer.begin(); }
+
+   T *begin() { return m_buffer.begin(); }
+
+   /*!
+    * @return Pointer to the end of the buffer
+    */
+   const T *end() const { return m_buffer.end(); }
+
+   T *end() { return m_buffer.end(); }
+
   /*!
    * \brief Add a constant times a sparse vector to this object
    * \param a The factor to multiply.

@@ -50,6 +50,20 @@ public:
   SimpleArray<T, Allocator>(const SimpleArray& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
 
   /*!
+   * @return Pointer to the start of the buffer
+   */
+  const T *begin() const { return m_buffer.begin(); }
+
+  T *begin() { return m_buffer.begin(); }
+
+  /*!
+   * @return Pointer to the end of the buffer
+   */
+  const T *end() const { return m_buffer.end(); }
+
+  T *end() { return m_buffer.end(); }
+
+  /*!
    * \brief Update a range of the object data with the contents of a provided buffer
    * \param buffer
    * \param length

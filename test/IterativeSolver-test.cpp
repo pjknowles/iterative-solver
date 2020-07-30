@@ -4,6 +4,7 @@
 #include "molpro/linalg/PagedArray.h"
 #include "molpro/linalg/SimpleArray.h"
 #include "test.h"
+#include <Eigen/Dense>
 #include <ctime>
 #include <memory>
 #include <type_traits>
@@ -101,12 +102,12 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
     action(x, g);
     auto nwork = d.addVector(x, g);
     d.report();
-//    for (auto root=0; root < nwork; root++) {
-//      std::vector<double> xxx(dimension);
-//      x[root].get(xxx.data(),dimension,0);
-//      std::cout << "New working vector";
-//      for (const auto& e : xxx) std::cout << " "<<e;std::cout<<std::endl;
-//    }
+    //    for (auto root=0; root < nwork; root++) {
+    //      std::vector<double> xxx(dimension);
+    //      x[root].get(xxx.data(),dimension,0);
+    //      std::cout << "New working vector";
+    //      for (const auto& e : xxx) std::cout << " "<<e;std::cout<<std::endl;
+    //    }
 
     for (size_t root = 0; root < (size_t)d.m_roots; root++) {
       syncr(x[root], std::is_same<ptype, linalg::PagedArray<double>>{});
@@ -118,12 +119,12 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
     update(x, g, shift);
     //    auto newp = d.suggestP(x, g, 3);
     // if (d.endIteration(x, g)) break;
-//    bool upd = d.endIteration(x, g);
+    //    bool upd = d.endIteration(x, g);
     for (size_t root = 0; root < (size_t)d.m_roots; root++) {
       syncr(x[root], std::is_same<ptype, linalg::PagedArray<double>>{});
       syncr(g[root], std::is_same<ptype, linalg::PagedArray<double>>{});
     }
-    if (nwork==0)
+    if (nwork == 0)
       break;
   }
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>> es(testmatrix);
@@ -142,8 +143,9 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   molpro::cout << std::endl;
 
   std::vector<int> rootlist;
-  for (size_t root = 0; root < (size_t)d.m_roots; root++) rootlist.push_back(root);
-  d.solution(rootlist,x,g);
+  for (size_t root = 0; root < (size_t)d.m_roots; root++)
+    rootlist.push_back(root);
+  d.solution(rootlist, x, g);
   for (size_t root = 0; root < (size_t)d.m_roots; root++) {
     syncr(x[root], std::is_same<ptype, linalg::PagedArray<double>>{});
   }
@@ -180,8 +182,7 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
  * \param difficulty Level of numerical challenge, ranging from 0 to 1.
  */
 template <class ptype>
-void DIISTest(int verbosity = 0, size_t maxDim = 6, double svdThreshold = 1e-10,
-              enum DIIS<ptype>::DIISmode_type mode = DIIS<ptype>::DIISmode, double difficulty = 0.1) {
+void DIISTest(int verbosity = 0, size_t maxDim = 6, double svdThreshold = 1e-10, double difficulty = 0.1) {
   using scalar = typename DIIS<ptype>::scalar_type;
   static struct {
     void operator()(const ptype& psx, ptype& outputs) const {
@@ -219,13 +220,12 @@ void DIISTest(int verbosity = 0, size_t maxDim = 6, double svdThreshold = 1e-10,
   DIIS<ptype> d;
   d.m_maxQ = maxDim;
   d.m_svdThreshold = svdThreshold;
-  d.setMode(mode);
 
   if (verbosity >= 0)
     molpro::cout << "Test DIIS::iterate, difficulty=" << difficulty << std::endl;
   d.m_verbosity = verbosity - 1;
   //  d.m_options["weight"]=2;
-  return;
+  //  return;
   std::vector<scalar> xxx(2);
   xxx[0] = xxx[1] = 1 - difficulty; // initial guess
   x.put(&xxx[0], 2, 0);
@@ -244,8 +244,9 @@ void DIISTest(int verbosity = 0, size_t maxDim = 6, double svdThreshold = 1e-10,
     //    if (verbosity > 2)
     //      molpro::cout << "new x after iterate " << x.front() << std::endl;
     if (verbosity >= 0)
-      molpro::cout << "iteration " << iteration
-//                   << ", Residual norm = " << std::sqrt(d.fLastResidual())
+      molpro::cout << "iteration "
+                   << iteration
+                   //                   << ", Residual norm = " << std::sqrt(d.fLastResidual())
                    << ", Distance from solution = "
                    << std::sqrt((xxx[0] - 1) * (xxx[0] - 1) + (xxx[1] - 1) * (xxx[1] - 1))
                    << ", error = " << d.errors().front() << ", converged? " << converged << std::endl;
@@ -496,7 +497,7 @@ TEST(IterativeSolver_test, old) {
     //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
     //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
     //  IterativeSolver::DIIS<double>::randomTest(100,100,0.1,3.0);
-    DIISTest<PagedArray<double>>(2, 6, 1e-10, DIIS<PagedArray<double>>::DIISmode, 0.0002);
+    DIISTest<PagedArray<double>>(2, 6, 1e-10, 0.0002);
     //  MPI_Abort(MPI_COMM_WORLD,1);
     //  DIISTest<LinearAlgebra::PagedVector<double> >(1,6,1e-10,IterativeSolver::DIIS<LinearAlgebra::PagedVector<double>
     //  >::DIISmode,0.2); DIISTest<LinearAlgebra::PagedVector<double>

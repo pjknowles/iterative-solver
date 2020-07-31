@@ -174,17 +174,17 @@ void molpro::linalg::iterativesolver::helper<value_type>::eigenproblem(
     }
   //     molpro::cout << "eigenvalues"<<std::endl<<subspaceEigenvalues<<std::endl;
   //     molpro::cout << "eigenvectors"<<std::endl<<subspaceEigenvectors<<std::endl;
-  eigenvectors.resize(dimension * dimension);
-  eigenvalues.resize(dimension);
   // TODO complex should be implemented with a specialised function
   static_assert(not std::is_class_v<value_type>, "Complex not implemented here");
   // TODO real should be implemented with always-executed runtime assertion that eigensolution turns out to be real
   assert((subspaceEigenvectors - subspaceEigenvectors.real()).norm() < 1e-12);
   assert((subspaceEigenvalues - subspaceEigenvalues.real()).norm() < 1e-12);
+  eigenvectors.resize(dimension * Hbar.cols());
+  eigenvalues.resize(Hbar.cols());
   //    if constexpr (std::is_class<value_type>::value) {
-  Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(eigenvectors.data(), dimension, dimension) =
+  Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(eigenvectors.data(), dimension, Hbar.cols()) =
       subspaceEigenvectors.real();
-  Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, 1>> ev(eigenvalues.data(), dimension);
+  Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, 1>> ev(eigenvalues.data(), Hbar.cols());
   ev = subspaceEigenvalues.real();
   //    } else {
   //      Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m_evec_xx.data(), dimension, dimension)

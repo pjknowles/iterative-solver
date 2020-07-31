@@ -137,8 +137,10 @@ protected:
   using vectorSetP = typename std::vector<vectorP>;                ///< Container of P-space parameters
   molpro::linalg::array::ArrayHandlerIterable<T, slowvector> m_handler;
 public:
+  //using scalar_type =
+  //    decltype(std::declval<T>().dot(std::declval<const T&>())); ///< The type of scalar products of vectors
   using scalar_type =
-      decltype(std::declval<T>().dot(std::declval<const T&>())); ///< The type of scalar products of vectors
+    decltype(m_handler.dot(std::declval<T>(), std::declval<const T&>())); ///< The type of scalar products of vectors
   std::shared_ptr<molpro::Profiler> m_profiler;
   /*!
    * \brief Take, typically, a current solution and residual, and return new solution.
@@ -198,11 +200,15 @@ public:
       const auto& qa = m_qspace[a];
       const auto& qha = m_qspace.action(a);
       for (size_t m = 0; m < m_working_set.size(); m++) {
-        m_s_qr[a][m] = parameters[m].get().dot(m_qspace[a]);
-        m_h_qr[a][m] = action[m].get().dot(m_subspaceMatrixResRes ? m_qspace.action(a) : m_qspace[a]);
-        m_hh_qr[a][m] = action[m].get().dot(m_qspace.action(a));
+        //m_s_qr[a][m] = parameters[m].get().dot(m_qspace[a]);
+        m_s_qr[a][m] = m_handler.dot(parameters[m].get(), m_qspace[a]);
+        //m_h_qr[a][m] = action[m].get().dot(m_subspaceMatrixResRes ? m_qspace.action(a) : m_qspace[a]);
+        m_h_qr[a][m] = m_handler.dot(action[m].get(), m_subspaceMatrixResRes ? m_qspace.action(a) : m_qspace[a]);
+        //m_hh_qr[a][m] = action[m].get().dot(m_qspace.action(a));
+        m_hh_qr[a][m] = m_handler.dot(action[m].get(), m_qspace.action(a));
         m_h_rq[a][m] = m_hermitian ? m_h_qr[a][m]
-                                   : (m_subspaceMatrixResRes ? action : parameters)[m].get().dot(m_qspace.action(a));
+                                   : m_handler.dot((m_subspaceMatrixResRes ? action : parameters)[m].get(), m_qspace.action(a));
+                                   //: (m_subspaceMatrixResRes ? action : parameters)[m].get().dot(m_qspace.action(a));
         //        molpro::cout << "a=" << a << ", m=" << m << ", m_s_qr " << m_s_qr[a][m] << ", m_h_qr " << m_h_qr[a][m]
         //                     << ", m_h_rq " << m_h_rq[a][m] << std::endl;
       }
@@ -216,8 +222,10 @@ public:
       m_h_rp.push_back(std::vector<value_type>(m_working_set.size()));
       for (size_t k = 0; k < m_working_set.size(); k++) {
         m_s_pr[p][k] = parameters[k].get().dot(m_pspace[p]);
+        //m_s_pr[p][k] = m_handler.dot(parameters[k].get(), m_pspace[p]);
         m_h_pr[p][k] = m_h_rp[p][k] =
             action[k].get().dot(m_pspace[p]); // TODO this works only for hermitian. Check that there is a check
+            //m_handler.dot(action[k].get(), m_pspace[p]); // TODO this works only for hermitian. Check that there is a check
       }
     }
     m_s_rr.clear();
@@ -230,11 +238,11 @@ public:
       m_h_rr.push_back(std::vector<value_type>(m_working_set.size()));
       m_hh_rr.push_back(std::vector<value_type>(m_working_set.size()));
       for (size_t rhs = 0; rhs < m_rhs.size(); rhs++)
-        m_rhs_r[m][rhs] = parameters[m].get().dot(m_rhs[rhs]);
+        m_rhs_r[m][rhs] = m_handler.dot(parameters[m].get(), m_rhs[rhs]);
       for (size_t n = 0; n < m_working_set.size(); n++) {
-        m_s_rr[m][n] = parameters[n].get().dot(parameters[m].get());
-        m_h_rr[m][n] = action[n].get().dot((m_subspaceMatrixResRes ? action[m] : parameters[m]).get());
-        m_hh_rr[m][n] = action[n].get().dot(action[m].get());
+        m_s_rr[m][n] = m_handler.dot(parameters[n].get(), parameters[m].get());
+        m_h_rr[m][n] = m_handler.dot(action[n].get(), (m_subspaceMatrixResRes ? action[m] : parameters[m]).get());
+        m_hh_rr[m][n] = m_handler.dot(action[n].get(), action[m].get());
       }
     }
 
@@ -263,7 +271,7 @@ public:
       if (m_linear)
         doInterpolation(parameters, action, parametersP, false);
       for (auto k = 0; k < m_working_set.size(); k++) {
-        double a = std::abs(action[k].get().dot(action[k]));
+        double a = std::abs(m_handler.dot(action[k].get(), action[k]));
         m_errors[m_working_set[k]] = std::sqrt(a);
       }
     } else
@@ -728,7 +736,7 @@ protected:
           residual[kkk].get().axpy(this->m_solution_x[l + nX * root], m_current_v[c]);
         }
         if (m_residual_eigen) {
-          auto norm = solution[kkk].get().dot(solution[kkk].get());
+          auto norm = m_handler.dot(solution[kkk].get(), solution[kkk].get());
           //          if (norm == 0)
           //            throw std::runtime_error("new solution has zero norm");
           if (norm != 0) {
@@ -967,7 +975,7 @@ public:
   explicit Optimize(const std::string& algorithm = "L-BFGS", bool minimize = true)
       : m_algorithm(algorithm), m_minimize(minimize), m_strong_Wolfe(true), m_Wolfe_1(0.0001),
         m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
-        m_linesearch_tolerance(0.2), m_linesearch_grow_factor(3), m_linesearch_steplength(0) {
+        m_linesearch_tolerance(0.2), m_linesearch_grow_factor(3), m_linesearch_steplength(0), m_handler{} {
     this->m_linear = false;
     this->m_residual_rhs = false;
     this->m_residual_eigen = false;
@@ -983,6 +991,7 @@ public:
 protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
   bool m_minimize;         ///< whether to minimize or maximize
+  molpro::linalg::array::ArrayHandlerIterable<T, slowvector> m_handler;
 public:
   bool m_strong_Wolfe;             /// Whether to use strong or weak Wolfe conditions
   double m_Wolfe_1;                ///< Acceptance parameter for function value
@@ -1040,7 +1049,7 @@ protected:
       auto f0 = m_best_f;
       auto f1 = this->m_values.back();
       auto g1 = step * this->m_h_qr[n - 1][0];
-      auto g0 = step * (*m_best_v).dot(this->m_qspace[this->m_qspace.size() - 1]);
+      auto g0 = step * m_handler.dot((*m_best_v), this->m_qspace[this->m_qspace.size() - 1]);
       bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
       bool Wolfe_2 = m_strong_Wolfe ? g1 >= m_Wolfe_2 * g0 : std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
       if (this->m_verbosity > 1) {
@@ -1139,7 +1148,7 @@ public:
           for (size_t a = 0; a < this->m_qspace.size(); a++) {
             //            molpro::cout << "iterate q_" << a << std::endl;
             auto factor = this->m_solution_x[a] -
-                          this->m_qspace.action(a).dot(solution.back().get()) / this->m_qspace.action(a, a);
+                          m_handler.dot(this->m_qspace.action(a), solution.back().get()) / this->m_qspace.action(a, a);
             solution.back().get().axpy(factor, this->m_qspace[a]);
             //            molpro::cout << "Q factor " << factor << std::endl;
           }

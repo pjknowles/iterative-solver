@@ -120,6 +120,10 @@ protected:
   virtual value_type dotLR(const AL &x, const AR &y) = 0;
   virtual value_type dotRL(const AR &x, const AL &y) = 0;
   virtual value_type dotRR(const AR &x, const AR &y) = 0;
+  virtual value_type dotLL(const AL &x, const AL &y) const = 0;
+  virtual value_type dotLR(const AL &x, const AR &y) const = 0;
+  virtual value_type dotRL(const AR &x, const AL &y) const = 0;
+  virtual value_type dotRR(const AR &x, const AR &y) const = 0;
   virtual void fused_axpyLL(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
                             const std::vector<value_type> &alphas,
                             const std::vector<std::reference_wrapper<const AL>> &xx,
@@ -184,6 +188,10 @@ public:
   value_type dot(const AL &x, const AR &y) { return dotLR(x, y); }
   value_type dot(const AR &x, const AL &y) { return dotRL(x, y); }
   value_type dot(const AR &x, const AR &y) { return dotRR(x, y); }
+  value_type dot(const AL &x, const AL &y) const { return dotLL(x, y); }
+  value_type dot(const AL &x, const AR &y) const { return dotLR(x, y); }
+  value_type dot(const AR &x, const AL &y) const { return dotRL(x, y); }
+  value_type dot(const AR &x, const AR &y) const { return dotRR(x, y); }
 
 protected:
   using ArrayHandlerBase<AL, AR>::scalL;
@@ -218,6 +226,7 @@ public:
   AL &fill(value_type alpha, AL &x) { return fillL(alpha, x); }
   AL &axpy(value_type alpha, const AL &x, AL &y) { return axpyLL(alpha, x, y); }
   value_type dot(const AL &x, const AL &y) { return dotLL(x, y); }
+  value_type dot(const AL &x, const AL &y) const { return dotLL(x, y); }
 
 protected:
   using ArrayHandlerBase<AL, AR>::scalL;
@@ -505,6 +514,7 @@ protected:
    * @param message error message
    */
   virtual void error(std::string message) = 0;
+  virtual void error(std::string message) const = 0;
 
   /*!
    * @brief Registers operations for lazy evaluation. Evaluation is triggered by calling eval() or on destruction.

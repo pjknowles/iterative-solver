@@ -58,7 +58,7 @@ public:
 
   size_type size() const { return m_size; }
 
-  bool empty() const { return m_buffer == nullptr && m_size == 0; }
+  bool empty() const { return m_size == 0; }
 
 protected:
   iterator m_buffer = nullptr;

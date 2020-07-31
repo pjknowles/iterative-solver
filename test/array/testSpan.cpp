@@ -32,6 +32,8 @@ TEST_F(SpanF, empty) {
   EXPECT_TRUE(t.empty());
   auto v = Span<T>(nullptr, 0);
   EXPECT_TRUE(v.empty());
+  auto u = Span<T>(data.data(), 0);
+  EXPECT_TRUE(u.empty());
 }
 
 TEST_F(SpanF, copy_constructor) {

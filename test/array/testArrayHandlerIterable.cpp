@@ -1,6 +1,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <complex>
 #include <deque>
 #include <molpro/linalg/array/ArrayHandlerIterable.h>
 
@@ -11,15 +12,26 @@ using ::testing::DoubleEq;
 using ::testing::Each;
 using ::testing::Pointwise;
 
-TEST(ArrayHandlerIterable, constructor) { ArrayHandlerIterable<std::vector<int>> handler{}; }
+template <class T>
+struct TestArrayHandlerIterable : ::testing::Test {};
 
-TEST(ArrayHandlerIterable, lazy_dot) {
-  using value_type = int;
+TYPED_TEST_SUITE_P(TestArrayHandlerIterable);
+
+TYPED_TEST_P(TestArrayHandlerIterable, constructor) {
+  ArrayHandlerIterable<std::vector<typename TypeParam::first_type>, std::vector<typename TypeParam::second_type>>
+      handler{};
+}
+
+TYPED_TEST_P(TestArrayHandlerIterable, lazy_dot) {
+  ArrayHandlerIterable<std::vector<typename TypeParam::first_type>, std::vector<typename TypeParam::second_type>>
+      handler{};
+  using value_type_L = typename decltype(handler)::value_type_L;
+  using value_type_R = typename decltype(handler)::value_type_R;
+  using value_type = typename decltype(handler)::value_type;
   static const int N = 2;
   static const int dim = 5;
-  ArrayHandlerIterable<std::vector<value_type>> handler{};
-  auto xx = std::vector<std::vector<value_type>>(N);
-  auto yy = xx;
+  auto xx = std::vector<std::vector<value_type_L>>(N);
+  auto yy = std::vector<std::vector<value_type_R>>(N);
   auto result = std::vector<value_type>(N * N);
   auto ref_dot = std::vector<value_type>(N * N);
   for (size_t i = 0; i < N; ++i) {
@@ -42,17 +54,20 @@ TEST(ArrayHandlerIterable, lazy_dot) {
   EXPECT_THAT(result, ContainerEq(ref_dot));
 }
 
-TEST(ArrayHandlerIterable, lazy_axpy) {
-  using value_type = int;
+TYPED_TEST_P(TestArrayHandlerIterable, lazy_axpy) {
+  ArrayHandlerIterable<std::vector<typename TypeParam::first_type>, std::vector<typename TypeParam::second_type>>
+      handler{};
+  using value_type_L = typename decltype(handler)::value_type_L;
+  using value_type_R = typename decltype(handler)::value_type_R;
+  using value_type = typename decltype(handler)::value_type;
   static const int N = 2;
   static const int dim = 5;
   static const value_type alpha = 3;
-  static const value_type xval = 2;
-  static const value_type yval = 5;
-  ArrayHandlerIterable<std::vector<value_type>> handler{};
-  auto xx = std::vector<std::vector<value_type>>(N, std::vector<value_type>(dim, xval));
-  auto yy = std::vector<std::vector<value_type>>(N, std::vector<value_type>(dim, yval));
-  auto ref_axpy = std::vector<std::vector<value_type>>(N, std::vector<value_type>(dim, alpha * xval + yval));
+  static const value_type_L xval = 2;
+  static const value_type_R yval = 5;
+  auto xx = std::vector<std::vector<value_type_L>>(N, std::vector<value_type_L>(dim, xval));
+  auto yy = std::vector<std::vector<value_type_R>>(N, std::vector<value_type_R>(dim, yval));
+  auto ref_axpy = std::vector<std::vector<value_type_R>>(N, std::vector<value_type_R>(dim, alpha * xval + yval));
   {
     auto h = handler.lazy_handle();
     for (size_t i = 0; i < N; ++i) {
@@ -66,17 +81,20 @@ TEST(ArrayHandlerIterable, lazy_axpy) {
     EXPECT_THAT(yy[i], ContainerEq(ref_axpy[i]));
 }
 
-TEST(ArrayHandlerIterable, lazy_axpy_lazy_off) {
-  using value_type = int;
+TYPED_TEST_P(TestArrayHandlerIterable, lazy_axpy_lazy_off) {
+  ArrayHandlerIterable<std::vector<typename TypeParam::first_type>, std::vector<typename TypeParam::second_type>>
+      handler{};
+  using value_type_L = typename decltype(handler)::value_type_L;
+  using value_type_R = typename decltype(handler)::value_type_R;
+  using value_type = typename decltype(handler)::value_type;
   static const int N = 2;
   static const int dim = 5;
   static const value_type alpha = 3;
   static const value_type xval = 2;
   static const value_type yval = 5;
-  ArrayHandlerIterable<std::vector<value_type>> handler{};
-  auto xx = std::vector<std::vector<value_type>>(N, std::vector<value_type>(dim, xval));
-  auto yy = std::vector<std::vector<value_type>>(N, std::vector<value_type>(dim, yval));
-  auto ref_axpy = std::vector<std::vector<value_type>>(N, std::vector<value_type>(dim, alpha * xval + yval));
+  auto xx = std::vector<std::vector<value_type_L>>(N, std::vector<value_type_L>(dim, xval));
+  auto yy = std::vector<std::vector<value_type_R>>(N, std::vector<value_type_R>(dim, yval));
+  auto ref_axpy = std::vector<std::vector<value_type_R>>(N, std::vector<value_type_R>(dim, alpha * xval + yval));
   {
     auto h = handler.lazy_handle();
     EXPECT_FALSE(h.is_off());
@@ -90,6 +108,17 @@ TEST(ArrayHandlerIterable, lazy_axpy_lazy_off) {
       EXPECT_THAT(yy[i], ContainerEq(ref_axpy[i]));
   }
 }
+
+REGISTER_TYPED_TEST_SUITE_P(TestArrayHandlerIterable, constructor, lazy_dot, lazy_axpy, lazy_axpy_lazy_off);
+
+using IntTypes = ::testing::Types<std::pair<int, int>, std::pair<int, short>, std::pair<short, int>>;
+using FloatTypes = ::testing::Types<std::pair<double, double>, std::pair<double, float>, std::pair<float, double>>;
+using MixTypes = ::testing::Types<std::pair<double, int>, std::pair<int, double>>;
+using ComplexTypes = ::testing::Types<std::pair<std::complex<double>, std::complex<double>>>;
+INSTANTIATE_TYPED_TEST_SUITE_P(Int, TestArrayHandlerIterable, IntTypes);
+INSTANTIATE_TYPED_TEST_SUITE_P(Float, TestArrayHandlerIterable, FloatTypes);
+INSTANTIATE_TYPED_TEST_SUITE_P(Mix, TestArrayHandlerIterable, MixTypes);
+INSTANTIATE_TYPED_TEST_SUITE_P(Complex, TestArrayHandlerIterable, ComplexTypes);
 
 TEST(ArrayHandlerIterable, copy_same) {
   using X = std::vector<double>;

@@ -3,6 +3,7 @@
 #include "molpro/ProfilerSingle.h"
 #include "molpro/linalg/iterativesolver/Q.h"
 #include "molpro/linalg/iterativesolver/helper.h"
+#include "molpro/linalg/array/ArrayHandlerIterable.h"
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
@@ -115,8 +116,10 @@ public:
       m_qspace(m_pspace, m_hermitian),
       m_exclude_r_from_redundancy_test(false),
       m_orthogonalise_Q(true),
-      m_nullify_solution_before_update(false)
+      m_nullify_solution_before_update(false),
+      m_handler{}
 {
+    //molpro::linalg::array::ArrayHandlerIterable<T,slowvector> m_handler{};
 }
   // clang-format on
 
@@ -132,6 +135,7 @@ protected:
   using constVectorRefSetP =
       typename std::vector<std::reference_wrapper<const vectorP>>; ///< Container of P-space parameters
   using vectorSetP = typename std::vector<vectorP>;                ///< Container of P-space parameters
+  molpro::linalg::array::ArrayHandlerIterable<T, slowvector> m_handler;
 public:
   using scalar_type =
       decltype(std::declval<T>().dot(std::declval<const T&>())); ///< The type of scalar products of vectors
@@ -165,7 +169,8 @@ public:
     for (size_t k = 0; k < m_working_set.size(); k++) {
       if (m_residual_eigen) { // scale to roughly unit length for homogeneous equations in case the update has produced
                               // a very large vector in response to degeneracy
-        auto s = parameters[k].get().dot(parameters[k]);
+        //auto s = parameters[k].get().dot(parameters[k]);
+        auto s = m_handler.dot(parameters[k].get(), parameters[k]);
         if (std::abs(s - 1) > 1e-3) {
           parameters[k].get().scal(1 / std::sqrt(s));
           action[k].get().scal(1 / std::sqrt(s));

@@ -231,6 +231,19 @@ private:
 
 public:
   /*!
+   * @brief Fake functions to satisfy ArrayHandlerIterable
+   */
+  void push_back(const T& elem) {}
+
+  T *begin() {return m_data;}
+
+  const T *begin() const {return m_data;}
+
+  T *end() {return m_data+m_size;}
+
+  const T *end() const {return m_data+m_size;}
+
+  /*!
    * \brief Update a range of the object data with the contents of a provided buffer
    * \param buffer The provided data segment
    * \param length Length of data

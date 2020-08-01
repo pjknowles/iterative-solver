@@ -137,8 +137,6 @@ protected:
   using vectorSetP = typename std::vector<vectorP>;                ///< Container of P-space parameters
   mutable molpro::linalg::array::ArrayHandlerIterable<T, slowvector> m_handler;
 public:
-  //using scalar_type =
-  //    decltype(std::declval<T>().dot(std::declval<const T&>())); ///< The type of scalar products of vectors
   using scalar_type =
     decltype(m_handler.dot(std::declval<T>(), std::declval<const T&>())); ///< The type of scalar products of vectors
   std::shared_ptr<molpro::Profiler> m_profiler;
@@ -171,7 +169,6 @@ public:
     for (size_t k = 0; k < m_working_set.size(); k++) {
       if (m_residual_eigen) { // scale to roughly unit length for homogeneous equations in case the update has produced
                               // a very large vector in response to degeneracy
-        //auto s = parameters[k].get().dot(parameters[k]);
         auto s = m_handler.dot(parameters[k].get(), parameters[k]);
         if (std::abs(s - 1) > 1e-3) {
           parameters[k].get().scal(1 / std::sqrt(s));
@@ -200,15 +197,11 @@ public:
       const auto& qa = m_qspace[a];
       const auto& qha = m_qspace.action(a);
       for (size_t m = 0; m < m_working_set.size(); m++) {
-        //m_s_qr[a][m] = parameters[m].get().dot(m_qspace[a]);
         m_s_qr[a][m] = m_handler.dot(parameters[m].get(), m_qspace[a]);
-        //m_h_qr[a][m] = action[m].get().dot(m_subspaceMatrixResRes ? m_qspace.action(a) : m_qspace[a]);
         m_h_qr[a][m] = m_handler.dot(action[m].get(), m_subspaceMatrixResRes ? m_qspace.action(a) : m_qspace[a]);
-        //m_hh_qr[a][m] = action[m].get().dot(m_qspace.action(a));
         m_hh_qr[a][m] = m_handler.dot(action[m].get(), m_qspace.action(a));
         m_h_rq[a][m] = m_hermitian ? m_h_qr[a][m]
                                    : m_handler.dot((m_subspaceMatrixResRes ? action : parameters)[m].get(), m_qspace.action(a));
-                                   //: (m_subspaceMatrixResRes ? action : parameters)[m].get().dot(m_qspace.action(a));
         //        molpro::cout << "a=" << a << ", m=" << m << ", m_s_qr " << m_s_qr[a][m] << ", m_h_qr " << m_h_qr[a][m]
         //                     << ", m_h_rq " << m_h_rq[a][m] << std::endl;
       }
@@ -726,14 +719,14 @@ protected:
       //      std::endl;
       for (size_t q = 0; q < nQ; q++) {
         auto l = oQ + q;
-        solution[kkk].get().axpy(this->m_solution_x[l + nX * root], m_qspace[q]);
-        residual[kkk].get().axpy(this->m_solution_x[l + nX * root], m_qspace.action(q));
+        m_handler.axpy(this->m_solution_x[l + nX * root], m_qspace[q], solution[kkk].get());
+        m_handler.axpy(this->m_solution_x[l + nX * root], m_qspace.action(q), residual[kkk].get());
       }
       if (true) {
         for (int c = 0; c < nR; c++) {
           auto l = oR + c;
-          solution[kkk].get().axpy(this->m_solution_x[l + nX * root], m_current_r[c]);
-          residual[kkk].get().axpy(this->m_solution_x[l + nX * root], m_current_v[c]);
+          m_handler.axpy(this->m_solution_x[l + nX * root], m_current_r[c], solution[kkk].get());
+          m_handler.axpy(this->m_solution_x[l + nX * root], m_current_v[c], residual[kkk].get());
         }
         if (m_residual_eigen) {
           auto norm = m_handler.dot(solution[kkk].get(), solution[kkk].get());
@@ -748,9 +741,9 @@ protected:
       }
       if (not actionOnly and (m_residual_eigen || (m_residual_rhs && m_augmented_hessian > 0)))
         // TODO check this is really right for multiroot augmented hessian. The eigenvalue depends on root?
-        residual[kkk].get().axpy(-this->m_eval_xx[root], solution[kkk]);
+        m_handler.axpy(-this->m_eval_xx[root], solution[kkk].get(), residual[kkk].get());
       if (not actionOnly and m_residual_rhs)
-        residual[kkk].get().axpy(-1, this->m_rhs[root]);
+        m_handler.axpy(-1, this->m_rhs[root], residual[kkk].get());
     }
   }
 
@@ -1134,7 +1127,7 @@ public:
         //        std::endl;
         //              molpro::cout << "solution " << solution.front().get() << std::endl;
         solution.front().get() = *m_best_r;
-        solution.front().get().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size() - 1]);
+        m_handler.axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size() - 1], solution.front().get());
         this->m_values.pop_back();
         this->m_qspace.remove(this->m_qspace.size() - 1);
       } else { // quasi-Newton
@@ -1149,13 +1142,13 @@ public:
             //            molpro::cout << "iterate q_" << a << std::endl;
             auto factor = this->m_solution_x[a] -
                           m_handler.dot(this->m_qspace.action(a), solution.back().get()) / this->m_qspace.action(a, a);
-            solution.back().get().axpy(factor, this->m_qspace[a]);
+            m_handler.axpy(factor, this->m_qspace[a], solution.back().get());
             //            molpro::cout << "Q factor " << factor << std::endl;
           }
           //          molpro::cout << "after Q loop solution length=" <<
           //          std::sqrt(solution.back().get().dot(solution.back().get()))
           //                       << std::endl;
-          solution.back().get().axpy(1, *(this->m_best_r));
+          m_handler.axpy(1, *(this->m_best_r), solution.back().get());
           //          molpro::cout << "after adding rk solution length="
           //                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
         }

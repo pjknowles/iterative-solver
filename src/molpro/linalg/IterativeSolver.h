@@ -135,7 +135,7 @@ protected:
   using constVectorRefSetP =
       typename std::vector<std::reference_wrapper<const vectorP>>; ///< Container of P-space parameters
   using vectorSetP = typename std::vector<vectorP>;                ///< Container of P-space parameters
-  molpro::linalg::array::ArrayHandlerIterable<T, slowvector> m_handler;
+  mutable molpro::linalg::array::ArrayHandlerIterable<T, slowvector> m_handler;
 public:
   //using scalar_type =
   //    decltype(std::declval<T>().dot(std::declval<const T&>())); ///< The type of scalar products of vectors

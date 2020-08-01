@@ -25,7 +25,6 @@ public:
   ArrayHandlerIterable(const ArrayHandlerIterable<AL, AR> &) = default;
 
   void error(std::string message) override { throw std::runtime_error(message); }
-  void error(std::string message) const override { throw std::runtime_error(message); }
 
   typename ArrayHandler<AL, AR>::ProxyHandle lazy_handle() override {
     auto handle = std::make_shared<typename ArrayHandler<AL, AR>::LazyHandle>(*this);
@@ -81,19 +80,10 @@ protected:
     return std::inner_product(x.begin(), x.end(), y.begin(), (value_type)0);
   }
 
-  template <typename T, typename S> value_type dotAny(const T &x, const S &y) const {
-      if (x.size() > y.size())
-          error("ArrayHandlerIterable::dot() incompatible x and y arrays, x.size() > y.size()");
-      return std::inner_product(x.begin(), x.end(), y.begin(), (value_type)0);
-  }
   value_type dotLL(const AL &x, const AL &y) { return dotAny(x, y); }
   value_type dotLR(const AL &x, const AR &y) { return dotAny(x, y); }
   value_type dotRL(const AR &x, const AL &y) { return dotAny(x, y); }
   value_type dotRR(const AR &x, const AR &y) { return dotAny(x, y); }
-  value_type dotLL(const AL &x, const AL &y) const { return dotAny(x, y); }
-  value_type dotLR(const AL &x, const AR &y) const { return dotAny(x, y); }
-  value_type dotRL(const AR &x, const AL &y) const { return dotAny(x, y); }
-  value_type dotRR(const AR &x, const AR &y) const { return dotAny(x, y); }
 
   template <typename T, typename S>
   void fused_axpyAny(const std::vector<std::tuple<size_t, size_t, size_t>> &reg, const std::vector<value_type> &alphas,

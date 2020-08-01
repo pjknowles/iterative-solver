@@ -119,7 +119,7 @@ public:
       m_exclude_r_from_redundancy_test(false),
       m_orthogonalise_Q(true),
       m_nullify_solution_before_update(false),
-      m_handler(molpro::linalg::array::ArrayHandlerFactory<T, slowvector>::create())
+      m_handler(molpro::linalg::array::ArrayHandlerFactory<Rvector, Qvector>::create())
 {}
   // clang-format on
 
@@ -135,10 +135,10 @@ protected:
   using constVectorRefSetP =
       typename std::vector<std::reference_wrapper<const vectorP>>; ///< Container of P-space parameters
   using vectorSetP = typename std::vector<vectorP>;                ///< Container of P-space parameters
-  mutable std::shared_ptr<molpro::linalg::array::ArrayHandler<T, slowvector>> m_handler;
+  mutable std::shared_ptr<molpro::linalg::array::ArrayHandler<Rvector, Qvector>> m_handler;
+
 public:
   using scalar_type =
-    decltype(m_handler->dot(std::declval<T>(), std::declval<const T&>())); ///< The type of scalar products of vectors
       decltype(std::declval<Rvector>().dot(std::declval<const Rvector&>())); ///< The type of scalar products of vectors
   std::shared_ptr<molpro::Profiler> m_profiler;
   /*!
@@ -202,8 +202,9 @@ public:
         m_s_qr[a][m] = m_handler->dot(parameters[m].get(), m_qspace[a]);
         m_h_qr[a][m] = m_handler->dot(action[m].get(), m_subspaceMatrixResRes ? m_qspace.action(a) : m_qspace[a]);
         m_hh_qr[a][m] = m_handler->dot(action[m].get(), m_qspace.action(a));
-        m_h_rq[a][m] = m_hermitian ? m_h_qr[a][m]
-                                   : m_handler->dot((m_subspaceMatrixResRes ? action : parameters)[m].get(), m_qspace.action(a));
+        m_h_rq[a][m] =
+            m_hermitian ? m_h_qr[a][m]
+                        : m_handler->dot((m_subspaceMatrixResRes ? action : parameters)[m].get(), m_qspace.action(a));
         //        molpro::cout << "a=" << a << ", m=" << m << ", m_s_qr " << m_s_qr[a][m] << ", m_h_qr " << m_h_qr[a][m]
         //                     << ", m_h_rq " << m_h_rq[a][m] << std::endl;
       }
@@ -217,10 +218,11 @@ public:
       m_h_rp.push_back(std::vector<value_type>(m_working_set.size()));
       for (size_t k = 0; k < m_working_set.size(); k++) {
         m_s_pr[p][k] = parameters[k].get().dot(m_pspace[p]);
-        //m_s_pr[p][k] = m_handler->dot(parameters[k].get(), m_pspace[p]);
+        // m_s_pr[p][k] = m_handler->dot(parameters[k].get(), m_pspace[p]);
         m_h_pr[p][k] = m_h_rp[p][k] =
             action[k].get().dot(m_pspace[p]); // TODO this works only for hermitian. Check that there is a check
-            //m_handler->dot(action[k].get(), m_pspace[p]); // TODO this works only for hermitian. Check that there is a check
+        // m_handler->dot(action[k].get(), m_pspace[p]); // TODO this works only for hermitian. Check that there is a
+        // check
       }
     }
     m_s_rr.clear();
@@ -973,7 +975,7 @@ public:
       : m_algorithm(algorithm), m_minimize(minimize), m_strong_Wolfe(true), m_Wolfe_1(0.0001),
         m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
         m_linesearch_tolerance(0.2), m_linesearch_grow_factor(3), m_linesearch_steplength(0),
-        m_handler(molpro::linalg::array::ArrayHandlerFactory<T, slowvector>::create()) {
+        m_handler(molpro::linalg::array::ArrayHandlerFactory<Rvector, Qvector>::create()) {
     this->m_linear = false;
     this->m_residual_rhs = false;
     this->m_residual_eigen = false;
@@ -989,7 +991,8 @@ public:
 protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
   bool m_minimize;         ///< whether to minimize or maximize
-  mutable std::shared_ptr<molpro::linalg::array::ArrayHandler<T, slowvector>> m_handler;
+  mutable std::shared_ptr<molpro::linalg::array::ArrayHandler<Rvector, Qvector>> m_handler;
+
 public:
   bool m_strong_Wolfe;             /// Whether to use strong or weak Wolfe conditions
   double m_Wolfe_1;                ///< Acceptance parameter for function value

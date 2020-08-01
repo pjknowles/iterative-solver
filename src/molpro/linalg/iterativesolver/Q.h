@@ -1,10 +1,10 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_Q_H_
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_Q_H_
-#include "P.h"
+#include <molpro/linalg/iterativesolver/P.h>
 #include <cmath>
 #include <map>
 #include <memory>
-#include <molpro/iostream.h>
+//#include <molpro/iostream.h>
 #include <vector>
 
 namespace molpro {
@@ -13,13 +13,15 @@ namespace iterativesolver {
 
 /*!
  * @brief A class holding a Q space
- * @tparam fastvector In-memory vectors. New instances will not be created.
- * @tparam slowvector Out-of memory vectors to be used for storing the space.
+ * @tparam Rvector In-memory vectors. New instances will not be created.
+ * @tparam Qvector Out-of memory vectors to be used for storing the space.
+ * @tparam Pvector Containers that specify a P-space member
  */
-template <class fastvector, class slowvector = fastvector>
+template <class Rvector, class Qvector = Rvector,
+          class Pvector = std::map<size_t, typename Rvector::value_type>>
 class Q {
   using scalar_type = decltype(
-      std::declval<fastvector>().dot(std::declval<const fastvector&>())); ///< The type of scalar products of vectors
+      std::declval<Rvector>().dot(std::declval<const Rvector&>())); ///< The type of scalar products of vectors
   using key_type = int;
   bool m_hermitian;
   std::map<key_type, std::map<key_type, scalar_type>> m_metric;
@@ -27,17 +29,16 @@ class Q {
   std::map<key_type, std::map<key_type, scalar_type>> m_action_action;
   std::map<key_type, std::vector<scalar_type>> m_rhs;
   key_type m_index = 0;
-  std::map<key_type, slowvector> m_vectors;
-  std::map<key_type, slowvector> m_actions;
-  const P<typename fastvector::value_type>& m_pspace;
+  std::map<key_type, Qvector> m_vectors;
+  std::map<key_type, Qvector> m_actions;
+  const P<Pvector>& m_pspace;
   std::map<key_type, std::vector<scalar_type>> m_metric_pspace;
   std::map<key_type, std::vector<scalar_type>> m_action_pspace;
   std::vector<key_type> m_keys;
-  std::map<key_type, typename fastvector::value_type> m_scale_factors, m_diff_factors;
+  std::map<key_type, typename Rvector::value_type> m_scale_factors, m_diff_factors;
 
 public:
-  Q(const P<typename fastvector::value_type>& pspace, bool hermitian = false)
-      : m_hermitian(hermitian), m_pspace(pspace) {}
+  Q(const P<Pvector>& pspace, bool hermitian = false) : m_hermitian(hermitian), m_pspace(pspace) {}
 
   const scalar_type& metric(size_t i, size_t j) const { return m_metric.at(m_keys[i]).at(m_keys[j]); }
 
@@ -51,10 +52,10 @@ public:
 
   size_t size() const { return m_vectors.size(); }
 
-  const slowvector& operator[](size_t i) const { return m_vectors.at(m_keys[i]); }
-  const slowvector& action(size_t i) const { return m_actions.at(m_keys[i]); }
+  const Qvector& operator[](size_t i) const { return m_vectors.at(m_keys[i]); }
+  const Qvector& action(size_t i) const { return m_actions.at(m_keys[i]); }
 
-  const typename fastvector::value_type scale_factor(size_t i) const { return m_scale_factors.at(m_keys[i]); }
+  const typename Rvector::value_type scale_factor(size_t i) const { return m_scale_factors.at(m_keys[i]); }
 
 public:
   /*!
@@ -89,7 +90,7 @@ public:
    * @param rhs
    * @param resres If true, action matrix will be action.action instead of vector.action
    */
-  void add(const fastvector& vector, const fastvector& action, const std::vector<slowvector>& rhs,
+  void add(const Rvector& vector, const Rvector& action, const std::vector<Qvector>& rhs,
            bool resres = false) {
     for (const auto& vi : (resres ? m_actions : m_vectors)) {
       m_metric[m_index][vi.first] = m_metric[vi.first][m_index] = vector.dot(vi.second);
@@ -117,8 +118,8 @@ public:
     m_rhs[m_index] = std::vector<scalar_type>();
     for (const auto& rhs1 : rhs)
       m_rhs[m_index].push_back(vector.dot(rhs1));
-    m_vectors.emplace(std::make_pair(m_index, slowvector{vector}));
-    m_actions.emplace(std::make_pair(m_index, slowvector{action}));
+    m_vectors.emplace(std::make_pair(m_index, Qvector{vector}));
+    m_actions.emplace(std::make_pair(m_index, Qvector{action}));
     m_index++;
     m_keys = keys();
   }
@@ -134,11 +135,11 @@ public:
    * @param orthogonalise If true, the new vector will be orthogonal to vector
    * @return The scale factor applied to make the new vector length 1
    */
-  scalar_type add(const fastvector& vector, const fastvector& action, const slowvector& oldvector,
-                  const slowvector& oldaction, const std::vector<slowvector>& rhs, bool resres = false,
+  scalar_type add(const Rvector& vector, const Rvector& action, const Qvector& oldvector,
+                  const Qvector& oldaction, const std::vector<Qvector>& rhs, bool resres = false,
                   bool orthogonalise = true) {
     auto rr = vector.dot(vector);
-    typename fastvector::value_type scale_factor, diff_factor;
+    typename Rvector::value_type scale_factor, diff_factor;
     if (resres) {
       rr = action.dot(action);
       auto dd = oldaction.dot(oldaction);
@@ -162,8 +163,8 @@ public:
     //    molpro::cout << "Q.add difference, alpha=" << alpha << ", beta=" << beta << std::endl;
     //    molpro::cout << "dd=" << dd << ", rr=" << rr
     //                 << ", rd=" << rd << std::endl;
-    auto& v = const_cast<fastvector&>(vector);
-    auto& a = const_cast<fastvector&>(action);
+    auto& v = const_cast<Rvector&>(vector);
+    auto& a = const_cast<Rvector&>(action);
     v.scal(scale_factor);
     v.axpy(-diff_factor * scale_factor, oldvector);
     a.scal(scale_factor);
@@ -183,7 +184,7 @@ public:
    * @brief Refresh stored interactions with P space. Must be called whenever the P space is changed.
    * @param workspace is used as scratch space, and its contents are undefined on exit unless the P space is null.
    */
-  void refreshP(fastvector& workspace) {
+  void refreshP(Rvector& workspace) {
     for (const auto& vi : m_vectors) {
       const auto& i = vi.first;
       m_metric_pspace[i].resize(m_pspace.size());

@@ -6,10 +6,11 @@ namespace molpro {
 namespace linalg {
 namespace iterativesolver {
 
-template <class value_type = double>
+template <class Pvector=std::map<size_t,double>>
 class P {
 public:
-  using Pvector = std::map<size_t, value_type>; //!< Sparse array defining a P vector
+//  using Pvector = std::map<size_t, value_type>; //!< Sparse array defining a P vector
+using value_type = typename Pvector::mapped_type;
 protected:
   std::vector<value_type> m_metric;
   std::vector<value_type> m_action;

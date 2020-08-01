@@ -79,10 +79,12 @@ static std::vector<std::reference_wrapper<std::vector<typename T::value_type>>> 
  * offline, and if 2 or 3, distributed. These options are presented when copies of input solution and residual vectors
  * are taken to store the history, and if implemented, can save memory.
  *
- * @tparam T The class encapsulating solution and residual vectors
- * @tparam slowvector Used internally as a class for storing vectors on backing store
+ * @tparam Rvector The class encapsulating solution and residual vectors
+ * @tparam Qvector Used internally as a class for storing vectors on backing store
+ * @tparam Pvector Specify a P-space vector as a sparse combination of parameters.
  */
-template <class T, class slowvector = T>
+template <class Rvector = std::vector<double>, class Qvector = Rvector,
+          class Pvector = std::map<size_t, typename Rvector::value_type>>
 class IterativeSolver {
 public:
   // clang-format off
@@ -124,12 +126,12 @@ public:
   virtual ~IterativeSolver() = default;
 
 protected:
-  using value_type = typename T::value_type;                            ///< The underlying type of elements of vectors
-  using vectorSet = typename std::vector<T>;                            ///< Container of vectors
-  using vectorRefSet = typename std::vector<std::reference_wrapper<T>>; ///< Container of vectors
-  using constVectorRefSet = typename std::vector<std::reference_wrapper<const T>>; ///< Container of vectors
-  using vectorP = typename std::vector<value_type>;                                ///< P-space parameters
-  using vectorRefSetP = typename std::vector<std::reference_wrapper<vectorP>>;     ///< Container of P-space parameters
+  using value_type = typename Rvector::value_type; ///< The underlying type of elements of vectors
+  using vectorSet = typename std::vector<Rvector>; ///< Container of vectors
+  using vectorRefSet = typename std::vector<std::reference_wrapper<Rvector>>;            ///< Container of vectors
+  using constVectorRefSet = typename std::vector<std::reference_wrapper<const Rvector>>; ///< Container of vectors
+  using vectorP = typename std::vector<value_type>;                                      ///< P-space parameters
+  using vectorRefSetP = typename std::vector<std::reference_wrapper<vectorP>>; ///< Container of P-space parameters
   using constVectorRefSetP =
       typename std::vector<std::reference_wrapper<const vectorP>>; ///< Container of P-space parameters
   using vectorSetP = typename std::vector<vectorP>;                ///< Container of P-space parameters
@@ -137,6 +139,7 @@ protected:
 public:
   using scalar_type =
     decltype(m_handler->dot(std::declval<T>(), std::declval<const T&>())); ///< The type of scalar products of vectors
+      decltype(std::declval<Rvector>().dot(std::declval<const Rvector&>())); ///< The type of scalar products of vectors
   std::shared_ptr<molpro::Profiler> m_profiler;
   /*!
    * \brief Take, typically, a current solution and residual, and return new solution.
@@ -150,7 +153,8 @@ public:
    * \return whether it is expected that the client should make an update, based on the returned parameters and
    * residual, before the subsequent call to endIteration()
    */
-  size_t addVector(vectorRefSet parameters, vectorRefSet action, vectorRefSetP parametersP = nullVectorRefSetP<T>) {
+  size_t addVector(vectorRefSet parameters, vectorRefSet action,
+                   vectorRefSetP parametersP = nullVectorRefSetP<Rvector>) {
     if (m_roots < 1)
       m_roots = parameters.size();                      // number of roots defaults to size of parameters
     if (m_qspace.size() == 0 and m_working_set.empty()) // initial
@@ -240,7 +244,8 @@ public:
     return solveAndGenerateWorkingSet(parameters, action, parametersP);
   }
   size_t solveAndGenerateWorkingSet(vectorRefSet parameters, vectorRefSet action,
-                                    vectorRefSetP parametersP = nullVectorRefSetP<T>, bool calculateError = true) {
+                                    vectorRefSetP parametersP = nullVectorRefSetP<Rvector>,
+                                    bool calculateError = true) {
     buildSubspace();
     solveReducedProblem();
     //    molpro::cout << "update=" << update << std::endl;
@@ -322,11 +327,12 @@ public:
     m_current_v.clear();
     return m_working_set.size();
   }
-  size_t addVector(std::vector<T>& parameters, std::vector<T>& action, vectorSetP& parametersP = nullVectorSetP<T>) {
+  size_t addVector(std::vector<Rvector>& parameters, std::vector<Rvector>& action,
+                   vectorSetP& parametersP = nullVectorSetP<Rvector>) {
     return addVector(vectorRefSet(parameters.begin(), parameters.end()), vectorRefSet(action.begin(), action.end()),
                      vectorRefSetP(parametersP.begin(), parametersP.end()));
   }
-  size_t addVector(T& parameters, T& action, vectorP& parametersP = nullVectorP<T>) {
+  size_t addVector(Rvector& parameters, Rvector& action, vectorP& parametersP = nullVectorP<Rvector>) {
     return addVector(vectorRefSet(1, parameters), vectorRefSet(1, action), vectorRefSetP(1, parametersP));
   }
 
@@ -338,7 +344,7 @@ public:
    * interpolated parameters. \return whether it is expected that the client should make an update, based on the
    * returned parameters and residual, before the subsequent call to endIteration()
    */
-  size_t addValue(T& parameters, value_type value, T& action) {
+  size_t addValue(Rvector& parameters, value_type value, Rvector& action) {
     m_values.push_back(value);
     //    std::cout << "m_values resized to " << m_values.size() << " and filled with " << value
     //              << std::endl;
@@ -346,12 +352,6 @@ public:
   }
 
 public:
-  /*!
-   * \brief Specify a P-space vector as a sparse combination of parameters. The container holds a number of segments,
-   * each characterised by an offset in the full space, and a vector of coefficients starting at that offset.
-   */
-  using Pvector = std::map<size_t, value_type>;
-
   /*!
    * \brief Add P-space vectors to the expansion set for linear methods.
    * \param Pvectors the vectors to add
@@ -374,12 +374,12 @@ public:
     m_last_hd.clear();
     return result;
   }
-  size_t addP(std::vector<Pvector> Pvectors, const value_type* PP, std::vector<T>& parameters, std::vector<T>& action,
-              vectorSetP& parametersP) {
+  size_t addP(std::vector<Pvector> Pvectors, const value_type* PP, std::vector<Rvector>& parameters,
+              std::vector<Rvector>& action, vectorSetP& parametersP) {
     return addP(Pvectors, PP, vectorRefSet(parameters.begin(), parameters.end()),
                 vectorRefSet(action.begin(), action.end()), vectorRefSetP(parametersP.begin(), parametersP.end()));
   }
-  size_t addP(Pvector Pvectors, const value_type* PP, T& parameters, T& action, vectorP& parametersP) {
+  size_t addP(Pvector Pvectors, const value_type* PP, Rvector& parameters, Rvector& action, vectorP& parametersP) {
     return addP(std::vector<Pvector>{Pvectors}, PP, vectorRefSet(1, parameters), vectorRefSet(1, action),
                 vectorRefSetP(1, parametersP));
   }
@@ -396,16 +396,16 @@ public:
     report();
     return m_errors.empty() ? false : *std::max_element(m_errors.cbegin(), m_errors.cend()) < m_thresh;
   }
-  virtual bool endIteration(std::vector<T>& solution, const std::vector<T>& residual) {
+  virtual bool endIteration(std::vector<Rvector>& solution, const std::vector<Rvector>& residual) {
     return endIteration(vectorRefSet(solution.begin(), solution.end()),
                         constVectorRefSet(residual.begin(), residual.end()));
   }
-  virtual bool endIteration(T& solution, const T& residual) {
+  virtual bool endIteration(Rvector& solution, const Rvector& residual) {
     return endIteration(vectorRefSet(1, solution), constVectorRefSet(1, residual));
   }
 
   void solution(const std::vector<int>& roots, vectorRefSet parameters, vectorRefSet residual,
-                vectorRefSetP parametersP = nullVectorRefSetP<T>) {
+                vectorRefSetP parametersP = nullVectorRefSetP<Rvector>) {
     auto working_set_save = m_working_set;
     m_working_set = roots;
     buildSubspace(true);
@@ -413,13 +413,13 @@ public:
     doInterpolation(parameters, residual, parametersP);
     m_working_set = working_set_save;
   }
-  void solution(const std::vector<int>& roots, std::vector<T>& parameters, std::vector<T>& residual,
-                vectorSetP& parametersP = nullVectorSetP<T>) {
+  void solution(const std::vector<int>& roots, std::vector<Rvector>& parameters, std::vector<Rvector>& residual,
+                vectorSetP& parametersP = nullVectorSetP<Rvector>) {
     return solution(roots, vectorRefSet(parameters.begin(), parameters.end()),
                     vectorRefSet(residual.begin(), residual.end()),
                     vectorRefSetP(parametersP.begin(), parametersP.end()));
   }
-  void solution(int root, T& parameters, T& residual, vectorP& parametersP = nullVectorP<T>) {
+  void solution(int root, Rvector& parameters, Rvector& residual, vectorP& parametersP = nullVectorP<Rvector>) {
     return solution(std::vector<int>(1, root), vectorRefSet(1, parameters), vectorRefSet(1, residual),
                     vectorRefSetP(1, parametersP));
   }
@@ -470,7 +470,7 @@ public:
     //   for (auto k=0; k<indices.size(); k++) molpro::cout << "suggest P "<< indices[k] <<" : "<<values[k]<<std::endl;
     return indices;
   }
-  std::vector<size_t> suggestP(const std::vector<T>& solution, const std::vector<T>& residual,
+  std::vector<size_t> suggestP(const std::vector<Rvector>& solution, const std::vector<Rvector>& residual,
                                const size_t maximumNumber = 1000, const double threshold = 0) {
     return suggestP(constVectorRefSet(solution.begin(), solution.end()),
                     constVectorRefSet(residual.begin(), residual.end()), maximumNumber, threshold);
@@ -531,12 +531,12 @@ public:
   ///< - m_options["convergence"]=="step": m_errors() returns the norm of the step in the solution
   ///< - m_options["convergence"]=="residual": m_errors() returns the norm of the residual vector
 protected:
-  molpro::linalg::iterativesolver::Q<T> m_qspace;
-  molpro::linalg::iterativesolver::P<value_type> m_pspace;
-  std::vector<slowvector> m_last_d;    ///< optimum solution in last iteration
-  std::vector<slowvector> m_last_hd;   ///< action vector corresponding to optimum solution in last iteration
-  std::vector<slowvector> m_current_r; ///< current working space TODO can probably eliminate using m_last_d
-  std::vector<slowvector> m_current_v; ///< action vector corresponding to current working space
+  molpro::linalg::iterativesolver::Q<Rvector, Qvector, Pvector> m_qspace;
+  molpro::linalg::iterativesolver::P<Pvector> m_pspace;
+  std::vector<Qvector> m_last_d;    ///< optimum solution in last iteration
+  std::vector<Qvector> m_last_hd;   ///< action vector corresponding to optimum solution in last iteration
+  std::vector<Qvector> m_current_r; ///< current working space TODO can probably eliminate using m_last_d
+  std::vector<Qvector> m_current_v; ///< action vector corresponding to current working space
   std::vector<std::vector<value_type>> m_s_rr, m_h_rr, m_hh_rr, m_rhs_r;  ///< interactions within R space
   std::map<int, std::vector<value_type>> m_s_qr, m_h_qr, m_h_rq, m_hh_qr; ///< interactions between R and Q spaces
   std::vector<std::vector<value_type>> m_s_pr, m_h_pr, m_h_rp;            ///< interactions between R and P spaces
@@ -807,19 +807,23 @@ namespace linalg {
  * Example using a P-space and offline distributed storage provided by the PagedVector class: @include
  * LinearEigensystemExample-paged.cpp
  *
- * \tparam scalar Type of matrix elements
+ * @tparam Rvector The class encapsulating solution and residual vectors
+ * @tparam Qvector Used internally as a class for storing vectors on backing store
+ * @tparam Pvector Specify a P-space vector as a sparse combination of parameters.
  */
-template <class T, class slowvector = T>
-class LinearEigensystem : public IterativeSolver<T, slowvector> {
+template <class Rvector = std::vector<double>, class Qvector = Rvector,
+          class Pvector = std::map<size_t, typename Rvector::value_type>>
+class LinearEigensystem : public IterativeSolver<Rvector, Qvector, Pvector> {
 public:
-  using typename IterativeSolver<T>::scalar_type;
-  using typename IterativeSolver<T>::value_type;
-  using IterativeSolver<T>::m_verbosity;
+  using typename IterativeSolver<Rvector>::scalar_type;
+  using typename IterativeSolver<Rvector>::value_type;
+  using IterativeSolver<Rvector>::m_verbosity;
 
   /*!
    * \brief LinearEigensystem
    */
-  explicit LinearEigensystem(std::shared_ptr<molpro::Profiler> profiler = nullptr) : IterativeSolver<T>(profiler) {
+  explicit LinearEigensystem(std::shared_ptr<molpro::Profiler> profiler = nullptr)
+      : IterativeSolver<Rvector>(profiler) {
     this->m_residual_rhs = false;
     this->m_residual_eigen = true;
     this->m_linear = true;
@@ -870,19 +874,21 @@ public:
  * preconditioned Lanczos
  *
  * Example of simplest use: @include LinearEquationsExample.cpp
- * \tparam scalar Type of matrix elements
- *
+ * @tparam Rvector The class encapsulating solution and residual vectors
+ * @tparam Qvector Used internally as a class for storing vectors on backing store
+ * @tparam Pvector Specify a P-space vector as a sparse combination of parameters.
  */
-template <class T, class slowvector = T>
-class LinearEquations : public IterativeSolver<T, slowvector> {
-  using typename IterativeSolver<T>::scalar_type;
-  using typename IterativeSolver<T>::value_type;
+template <class Rvector = std::vector<double>, class Qvector = Rvector,
+          class Pvector = std::map<size_t, typename Rvector::value_type>>
+class LinearEquations : public IterativeSolver<Rvector, Qvector, Pvector> {
+  using typename IterativeSolver<Rvector>::scalar_type;
+  using typename IterativeSolver<Rvector>::value_type;
 
 public:
-  using vectorSet = typename std::vector<T>;                                       ///< Container of vectors
-  using vectorRefSet = typename std::vector<std::reference_wrapper<T>>;            ///< Container of vectors
-  using constVectorRefSet = typename std::vector<std::reference_wrapper<const T>>; ///< Container of vectors
-  using IterativeSolver<T>::m_verbosity;
+  using vectorSet = typename std::vector<Rvector>;                                       ///< Container of vectors
+  using vectorRefSet = typename std::vector<std::reference_wrapper<Rvector>>;            ///< Container of vectors
+  using constVectorRefSet = typename std::vector<std::reference_wrapper<const Rvector>>; ///< Container of vectors
+  using IterativeSolver<Rvector>::m_verbosity;
 
   /*!
    * \brief Constructor
@@ -906,7 +912,7 @@ public:
     addEquations(rhsr);
   }
 
-  explicit LinearEquations(const T& rhs, double augmented_hessian = 0) {
+  explicit LinearEquations(const Rvector& rhs, double augmented_hessian = 0) {
     auto rhsr = constVectorRefSet(1, rhs);
     this->m_linear = true;
     this->m_residual_rhs = true;
@@ -927,8 +933,8 @@ public:
                                LINEARALGEBRA_DISTRIBUTED | LINEARALGEBRA_OFFLINE); // TODO template-ise these options
     //   molpro::cout << "addEquations makes m_rhs.back()="<<this->m_rhs.back()<<std::endl;
   }
-  void addEquations(const std::vector<T>& rhs) { addEquations(vectorSet(rhs.begin(), rhs.end())); }
-  void addEquations(const T& rhs) { addEquations(vectorSet(1, rhs)); }
+  void addEquations(const std::vector<Rvector>& rhs) { addEquations(vectorSet(rhs.begin(), rhs.end())); }
+  void addEquations(const Rvector& rhs) { addEquations(vectorSet(1, rhs)); }
 
 protected:
   bool solveReducedProblem() override {
@@ -944,19 +950,19 @@ protected:
  * \brief A class that optimises a function using a Quasi-Newton or other method
  *
  * Example of simplest use: @include OptimizeExample.cpp
- * \tparam scalar Type of matrix elements
- *
+ * @tparam Rvector The class encapsulating solution and residual vectors
+ * @tparam Qvector Used internally as a class for storing vectors on backing store
  */
-template <class T, class slowvector = T>
-class Optimize : public IterativeSolver<T, slowvector> {
+template <class Rvector = std::vector<double>, class Qvector = Rvector>
+class Optimize : public IterativeSolver<Rvector, Qvector> {
 public:
-  using typename IterativeSolver<T>::scalar_type;
-  using typename IterativeSolver<T>::value_type;
-  using vectorSet = typename std::vector<T>;                                       ///< Container of vectors
-  using vectorRefSet = typename std::vector<std::reference_wrapper<T>>;            ///< Container of vectors
-  using constVectorRefSet = typename std::vector<std::reference_wrapper<const T>>; ///< Container of vectors
-  using IterativeSolver<T>::m_verbosity;
-  using IterativeSolver<T>::m_values;
+  using typename IterativeSolver<Rvector>::scalar_type;
+  using typename IterativeSolver<Rvector>::value_type;
+  using vectorSet = typename std::vector<Rvector>;                                       ///< Container of vectors
+  using vectorRefSet = typename std::vector<std::reference_wrapper<Rvector>>;            ///< Container of vectors
+  using constVectorRefSet = typename std::vector<std::reference_wrapper<const Rvector>>; ///< Container of vectors
+  using IterativeSolver<Rvector>::m_verbosity;
+  using IterativeSolver<Rvector>::m_values;
 
   /*!
    * \brief Constructor
@@ -995,7 +1001,7 @@ protected:
   double m_linesearch_steplength; ///< the current line search step. Zero means continue with QN
   //  double m_linesearch_quasinewton_steplength; ///< what fraction of the Quasi-Newton step is the current line
   //  search step
-  std::unique_ptr<slowvector> m_best_r, m_best_v;
+  std::unique_ptr<Qvector> m_best_r, m_best_v;
   double m_best_f;
 
   bool interpolatedMinimum(value_type& x, double& f, value_type x0, value_type x1, double f0, double f1, value_type g0,
@@ -1089,8 +1095,8 @@ protected:
       //      molpro::cout << "we need to do a new line-search step " << alpha << std::endl;
       m_linesearch_steplength = (alpha - 1) * step;
       if (f1 <= f0) {
-        m_best_r.reset(new slowvector(this->m_current_r.front()));
-        m_best_v.reset(new slowvector(this->m_current_v.front()));
+        m_best_r.reset(new Qvector(this->m_current_r.front()));
+        m_best_v.reset(new Qvector(this->m_current_v.front()));
         m_best_f = this->m_values.back();
         //        molpro::cout << "setting best to current, with f=" << m_best_f << std::endl;
       }
@@ -1111,8 +1117,8 @@ protected:
         this->m_solution_x[a] /= this->m_qspace.action(a, a);
       }
     }
-    m_best_r.reset(new slowvector(this->m_current_r.front()));
-    m_best_v.reset(new slowvector(this->m_current_v.front()));
+    m_best_r.reset(new Qvector(this->m_current_r.front()));
+    m_best_v.reset(new Qvector(this->m_current_v.front()));
     m_best_f = this->m_values.back();
 
     return true;
@@ -1154,14 +1160,14 @@ public:
       }
       //    molpro::cout << "*exit endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
     }
-    return IterativeSolver<T>::endIteration(solution, residual);
+    return IterativeSolver<Rvector>::endIteration(solution, residual);
   }
 
-  virtual bool endIteration(std::vector<T>& solution, const std::vector<T>& residual) override {
+  virtual bool endIteration(std::vector<Rvector>& solution, const std::vector<Rvector>& residual) override {
     return endIteration(vectorRefSet(solution.begin(), solution.end()),
                         constVectorRefSet(residual.begin(), residual.end()));
   }
-  virtual bool endIteration(T& solution, const T& residual) override {
+  virtual bool endIteration(Rvector& solution, const Rvector& residual) override {
     return endIteration(vectorRefSet(1, solution), constVectorRefSet(1, residual));
   }
 
@@ -1185,14 +1191,16 @@ public:
  *
  * Example of simplest use: @include DIISexample.cpp
  *
+ * @tparam Rvector The class encapsulating solution and residual vectors
+ * @tparam Qvector Used internally as a class for storing vectors on backing store
  */
-template <class T, class slowvector = T>
-class DIIS : public IterativeSolver<T, slowvector> {
+template <class Rvector = std::vector<double>, class Qvector = Rvector>
+class DIIS : public IterativeSolver<Rvector, Qvector> {
 
 public:
-  using typename IterativeSolver<T>::scalar_type;
-  using typename IterativeSolver<T>::value_type;
-  using IterativeSolver<T>::m_verbosity;
+  using typename IterativeSolver<Rvector>::scalar_type;
+  using typename IterativeSolver<Rvector>::value_type;
+  using IterativeSolver<Rvector>::m_verbosity;
 
   /*!
    * \brief DIIS

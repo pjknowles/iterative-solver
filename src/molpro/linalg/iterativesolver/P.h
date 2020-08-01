@@ -2,6 +2,10 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_P_H_
 #include <map>
 
+namespace molpro {
+namespace linalg {
+namespace iterativesolver {
+
 template <class value_type = double>
 class P {
 public:
@@ -30,7 +34,7 @@ public:
    * @param PP Matrix projected onto the existing+new, new P space. It should be provided as a
    * 1-dimensional array, with the existing+new index running fastest.
    */
-   template <class slowvector>
+  template <class slowvector>
   void add(const std::vector<Pvector>& Pvectors, const value_type* PP, const std::vector<slowvector>& rhs) {
     auto old_size = m_vectors.size();
     auto new_size = m_vectors.size() + Pvectors.size();
@@ -43,7 +47,7 @@ public:
           new_metric[i * new_size + j] = m_metric[i * old_size + j];
           new_action[i * new_size + j] = m_action[i * old_size + j];
         }
-        for (size_t j = 0; j < rhs.size() ; j++) {
+        for (size_t j = 0; j < rhs.size(); j++) {
           new_rhs[i + new_size * j] = m_action[i + old_size * j];
         }
       }
@@ -59,8 +63,8 @@ public:
           }
           new_metric[j * new_size + (i + old_size)] = new_metric[j + new_size * (i + old_size)] = overlap;
         }
-        for (size_t j = 0; j < rhs.size() ; j++) {
-          new_rhs[i+old_size + new_size * j] = rhs[j].dot(m_vectors[i]);
+        for (size_t j = 0; j < rhs.size(); j++) {
+          new_rhs[i + old_size + new_size * j] = rhs[j].dot(m_vectors[i]);
         }
       }
       m_metric = new_metric;
@@ -69,5 +73,8 @@ public:
     }
   }
 };
+} // namespace iterativesolver
+} // namespace linalg
+} // namespace molpro
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_P_H_

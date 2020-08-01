@@ -533,8 +533,8 @@ public:
   ///< - m_options["convergence"]=="step": m_errors() returns the norm of the step in the solution
   ///< - m_options["convergence"]=="residual": m_errors() returns the norm of the residual vector
 protected:
-  Q<T> m_qspace;
-  P<value_type> m_pspace;
+  molpro::linalg::iterativesolver::Q<T> m_qspace;
+  molpro::linalg::iterativesolver::P<value_type> m_pspace;
   std::vector<slowvector> m_last_d;    ///< optimum solution in last iteration
   std::vector<slowvector> m_last_hd;   ///< action vector corresponding to optimum solution in last iteration
   std::vector<slowvector> m_current_r; ///< current working space TODO can probably eliminate using m_last_d

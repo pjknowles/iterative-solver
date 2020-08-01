@@ -7,6 +7,10 @@
 #include <molpro/iostream.h>
 #include <vector>
 
+namespace molpro {
+namespace linalg {
+namespace iterativesolver {
+
 /*!
  * @brief A class holding a Q space
  * @tparam fastvector In-memory vectors. New instances will not be created.
@@ -220,5 +224,8 @@ public:
     m_keys = keys();
   }
 };
+} // namespace iterativesolver
+} // namespace linalg
+} // namespace molpro
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_Q_H_

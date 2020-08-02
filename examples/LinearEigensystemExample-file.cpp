@@ -1,4 +1,5 @@
 #include "molpro/linalg/IterativeSolver.h"
+#include <fstream>
 #include <iomanip>
 // Find lowest eigensolutions of a matrix obtained from an external file
 // Storage of vectors in-memory via class pv

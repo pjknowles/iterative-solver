@@ -4,9 +4,13 @@
 #include <cmath>
 #include <molpro/linalg/iterativesolver/helper.h>
 
+namespace molpro {
+namespace linalg {
+namespace iterativesolver {
+
 template <typename value_type>
-int molpro::linalg::iterativesolver::helper<value_type>::propose_singularity_deletion(
-    size_t n, size_t ndim, const value_type* m, const std::vector<size_t>& candidates, double threshold) {
+int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, const std::vector<size_t>& candidates,
+                                 double threshold) {
   Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester_(m, ndim, ndim);
   auto singularTester = singularTester_.block(0, 0, n, n);
   Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester, Eigen::ComputeThinV);
@@ -36,22 +40,22 @@ int molpro::linalg::iterativesolver::helper<value_type>::propose_singularity_del
 }
 
 template <typename value_type>
-void molpro::linalg::iterativesolver::helper<value_type>::printMatrix(const std::vector<value_type> m, size_t rows,
-                                                                      size_t cols, std::string title, std::ostream& s) {
+void printMatrix(const std::vector<value_type> m, size_t rows, size_t cols, std::string title, std::ostream& s) {
   s << title << "\n"
     << Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), rows, cols) << std::endl;
 }
 
-template <>
-void molpro::linalg::iterativesolver::helper<std::complex<double>>::eigenproblem(
-    std::vector<std::complex<double>>& eigenvectors, std::vector<std::complex<double>>& eigenvalues,
-    const std::vector<std::complex<double>>& matrix, const std::vector<std::complex<double>>& metric,
-    const size_t dimension, bool hermitian, double svdThreshold, int verbosity) {}
+template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>
+void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
+                  const std::vector<value_type>& matrix, const std::vector<value_type>& metric, const size_t dimension,
+                  bool hermitian, double svdThreshold, int verbosity) {
+  assert(false); // Complex not implemented here
+}
 
-template <typename value_type>
-void molpro::linalg::iterativesolver::helper<value_type>::eigenproblem(
-    std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues, const std::vector<value_type>& matrix,
-    const std::vector<value_type>& metric, const size_t dimension, bool hermitian, double svdThreshold, int verbosity) {
+template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, nullptr_t>>
+void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
+                  const std::vector<value_type>& matrix, const std::vector<value_type>& metric, const size_t dimension,
+                  bool hermitian, double svdThreshold, int verbosity) {
   Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> H(matrix.data(), dimension, dimension);
   Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> S(metric.data(), dimension, dimension);
   Eigen::MatrixXcd subspaceEigenvectors; // FIXME templating
@@ -175,7 +179,6 @@ void molpro::linalg::iterativesolver::helper<value_type>::eigenproblem(
   //     molpro::cout << "eigenvalues"<<std::endl<<subspaceEigenvalues<<std::endl;
   //     molpro::cout << "eigenvectors"<<std::endl<<subspaceEigenvectors<<std::endl;
   // TODO complex should be implemented with a specialised function
-  static_assert(not std::is_class_v<value_type>, "Complex not implemented here");
   // TODO real should be implemented with always-executed runtime assertion that eigensolution turns out to be real
   assert((subspaceEigenvectors - subspaceEigenvectors.real()).norm() < 1e-12);
   assert((subspaceEigenvalues - subspaceEigenvalues.real()).norm() < 1e-12);
@@ -194,11 +197,19 @@ void molpro::linalg::iterativesolver::helper<value_type>::eigenproblem(
   //    }
 }
 
-template <typename value_type>
-void molpro::linalg::iterativesolver::helper<value_type>::solve_LinearEquations(
-    std::vector<value_type>& solution, std::vector<value_type>& eigenvalues, const std::vector<value_type>& matrix,
-    const std::vector<value_type>& metric, const std::vector<value_type> rhs, const size_t dimension, size_t nroot,
-    double augmented_hessian, double svdThreshold, int verbosity) {
+template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>
+void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_type>& eigenvalues,
+                           const std::vector<value_type>& matrix, const std::vector<value_type>& metric,
+                           const std::vector<value_type> rhs, const size_t dimension, size_t nroot,
+                           double augmented_hessian, double svdThreshold, int verbosity) {
+  assert(false); // Complex not implemented here
+}
+
+template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, nullptr_t>>
+void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_type>& eigenvalues,
+                           const std::vector<value_type>& matrix, const std::vector<value_type>& metric,
+                           const std::vector<value_type> rhs, const size_t dimension, size_t nroot,
+                           double augmented_hessian, double svdThreshold, int verbosity) {
   const Eigen::Index nX = dimension;
   solution.resize(nX * nroot);
   if (augmented_hessian > 0) { // Augmented hessian
@@ -218,23 +229,19 @@ void molpro::linalg::iterativesolver::helper<value_type>::solve_LinearEquations(
       }
       subspaceMatrix(nX, nX) = 0;
       subspaceOverlap(nX, nX) = 1;
-      if constexpr (not std::is_same<value_type, double>::value) {
-        throw std::runtime_error("Cannot do augmented hessian with complex arithmetic");
-      } else {
 
-        Eigen::GeneralizedEigenSolver<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> s(subspaceMatrix,
-                                                                                                   subspaceOverlap);
-        auto eval = s.eigenvalues();
-        auto evec = s.eigenvectors();
-        Eigen::Index imax = 0;
-        for (Eigen::Index i = 0; i < nX + 1; i++)
-          if (eval(i).real() < eval(imax).real())
-            imax = i;
-        eigenvalues[root] = eval(imax).real();
-        auto Solution = evec.col(imax).real().head(nX) / (augmented_hessian * evec.real()(nX, imax));
-        for (auto k = 0; k < nX; k++)
-          solution[k + nX * root] = Solution(k);
-      }
+      Eigen::GeneralizedEigenSolver<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> s(subspaceMatrix,
+                                                                                                 subspaceOverlap);
+      auto eval = s.eigenvalues();
+      auto evec = s.eigenvectors();
+      Eigen::Index imax = 0;
+      for (Eigen::Index i = 0; i < nX + 1; i++)
+        if (eval(i).real() < eval(imax).real())
+          imax = i;
+      eigenvalues[root] = eval(imax).real();
+      auto Solution = evec.col(imax).real().head(nX) / (augmented_hessian * evec.real()(nX, imax));
+      for (auto k = 0; k < nX; k++)
+        solution[k + nX * root] = Solution(k);
     }
   } else { // straight solution of linear equations
     Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> subspaceMatrix(matrix.data(), nX, nX);
@@ -248,10 +255,8 @@ void molpro::linalg::iterativesolver::helper<value_type>::solve_LinearEquations(
 }
 
 template <typename value_type>
-void molpro::linalg::iterativesolver::helper<value_type>::solve_DIIS(std::vector<value_type>& solution,
-                                                                     const std::vector<value_type>& matrix,
-                                                                     const size_t dimension, double svdThreshold,
-                                                                     int verbosity) {
+void solve_DIIS(std::vector<value_type>& solution, const std::vector<value_type>& matrix, const size_t dimension,
+                double svdThreshold, int verbosity) {
   auto nQ = dimension - 1;
   solution.resize(nQ + 1);
   if (nQ > 0) {
@@ -265,8 +270,8 @@ void molpro::linalg::iterativesolver::helper<value_type>::solve_DIIS(std::vector
     B.block(0, 0, nQ, nQ) = subspaceMatrix.block(0, 0, nQ, nQ);
     Rhs = -subspaceMatrix.block(0, nQ, nQ, 1);
 
-//    molpro::cout << "B:" << std::endl << B << std::endl;
-//    molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
+    //    molpro::cout << "B:" << std::endl << B << std::endl;
+    //    molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
 
     // invert the system, determine extrapolation coefficients.
     Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> svd(B, Eigen::ComputeThinU |
@@ -291,5 +296,8 @@ void molpro::linalg::iterativesolver::helper<value_type>::solve_DIIS(std::vector
   }
   solution[nQ] = 1;
 }
+} // namespace iterativesolver
+} // namespace linalg
+} // namespace molpro
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_IMPLEMENTATION_H_

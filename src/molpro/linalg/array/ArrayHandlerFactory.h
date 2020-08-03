@@ -2,12 +2,12 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERFACTORY_H
 #include "molpro/linalg/array/ArrayHandler.h"
 #include "molpro/linalg/array/ArrayHandlerIterable.h"
-#include "molpro/linalg/array/DistrArray.h"
-#include "molpro/linalg/array/DistrArrayHDF5.h"
 
 namespace molpro {
 namespace linalg {
 namespace array {
+class DistrArray;
+class DistrArrayHDF5;
 
 /*!
  * @brief Factory for creating correct handler for any combination of LinearAlgebra arrays and iterable containers
@@ -44,7 +44,8 @@ namespace array {
  * @endcode
  *
  */
-template <typename AL, typename AR = AL> struct ArrayHandlerFactory {
+template <typename AL, typename AR = AL>
+struct ArrayHandlerFactory {
   //! Pathway when both arrays are derived from DistrArray
   template <typename T1 = AL, typename T2 = AR,
             typename = typename std::enable_if_t<std::is_base_of<DistrArray, T1>::value &&
@@ -63,7 +64,8 @@ template <typename AL, typename AR = AL> struct ArrayHandlerFactory {
   }
 
   //! handler for a pair of Iterable arrays
-  template <typename T1, typename T2> static auto createIterable() {
+  template <typename T1, typename T2>
+  static auto createIterable() {
     return std::make_shared<ArrayHandlerIterable<T1, T2>>();
   }
 

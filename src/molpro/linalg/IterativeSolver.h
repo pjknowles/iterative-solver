@@ -138,7 +138,7 @@ protected:
 
 public:
   using scalar_type =
-      decltype(std::declval<Rvector>().dot(std::declval<const Rvector&>())); ///< The type of scalar products of vectors
+      decltype(m_handler->dot(std::declval<Rvector>(), std::declval<const Rvector&>())); ///< The type of scalar products of vectors
   std::shared_ptr<molpro::Profiler> m_profiler;
   /*!
    * \brief Take, typically, a current solution and residual, and return new solution.
@@ -172,8 +172,8 @@ public:
                               // a very large vector in response to degeneracy
         auto s = m_handler->dot(parameters[k].get(), parameters[k]);
         if (std::abs(s - 1) > 1e-3) {
-          parameters[k].get().scal(1 / std::sqrt(s));
-          action[k].get().scal(1 / std::sqrt(s));
+          m_handler->scal(1 / std::sqrt(s), parameters[k].get());
+          m_handler->scal(1 / std::sqrt(s), action[k].get());
         }
       }
       m_current_r.emplace_back(parameters[k].get());
@@ -319,7 +319,7 @@ public:
       m_last_d.clear();
       m_last_hd.clear();
       for (auto k = 0; k < m_working_set.size(); k++) {
-        parameters[k].get().scal(0);
+        m_handler->scal(0, parameters[k].get());
         m_last_d.emplace_back(m_current_r[k]);
         m_last_hd.emplace_back(m_current_v[k]);
       }
@@ -683,9 +683,9 @@ protected:
   void doInterpolation(vectorRefSet solution, vectorRefSet residual, vectorRefSetP solutionP,
                        bool actionOnly = false) const {
     for (auto& s : solution)
-      s.get().scal(0);
+      m_handler->scal(0, s.get());
     for (auto& s : residual)
-      s.get().scal(0);
+      m_handler->scal(0, s.get());
     const auto nP = m_pspace.size();
     const auto nR = m_current_r.size();
     //    auto nQ = m_qspace.size();
@@ -728,8 +728,8 @@ protected:
         if (m_residual_eigen) {
           auto norm = m_handler->dot(solution[kkk].get(), solution[kkk].get());
           if (norm != 0) {
-            solution[kkk].get().scal(1 / std::sqrt(norm));
-            residual[kkk].get().scal(1 / std::sqrt(norm));
+            m_handler->scal(1 / std::sqrt(norm), solution[kkk].get());
+            m_handler->scal(1 / std::sqrt(norm), residual[kkk].get());
           }
         }
         // TODO

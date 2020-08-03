@@ -502,7 +502,7 @@ TEST(IterativeSolver_test, old) {
     //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
     //  IterativeSolver::DIIS<double>::randomTest(100,100,0.1,3.0);
 //    DIISTest<PagedArray<double>>(2, 6, 1e-10, 0.0002);
-    DIISTest<SimpleArray<double>>(2, 6, 1e-10, 0.0002);
+//    DIISTest<SimpleArray<double>>(2, 6, 1e-10, 0.0002);
     //  MPI_Abort(MPI_COMM_WORLD,1);
     //  DIISTest<LinearAlgebra::PagedVector<double> >(1,6,1e-10,IterativeSolver::DIIS<LinearAlgebra::PagedVector<double>
     //  >::DIISmode,0.2); DIISTest<LinearAlgebra::PagedVector<double>

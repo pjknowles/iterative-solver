@@ -385,7 +385,8 @@ public:
    * \return Whether convergence has been reached
    */
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) {
-    report();
+    if (m_verbosity>=0)
+      report();
     return m_errors.empty() ? false : *std::max_element(m_errors.cbegin(), m_errors.cend()) < m_thresh;
   }
   virtual bool endIteration(std::vector<Rvector>& solution, const std::vector<Rvector>& residual) {
@@ -800,15 +801,15 @@ template <class Rvector = std::vector<double>, class Qvector = Rvector,
           class Pvector = std::map<size_t, typename Rvector::value_type>>
 class LinearEigensystem : public IterativeSolver<Rvector, Qvector, Pvector> {
 public:
-  using typename IterativeSolver<Rvector>::scalar_type;
-  using typename IterativeSolver<Rvector>::value_type;
-  using IterativeSolver<Rvector>::m_verbosity;
+  using typename IterativeSolver<Rvector, Qvector, Pvector>::scalar_type;
+  using typename IterativeSolver<Rvector, Qvector, Pvector>::value_type;
+  using IterativeSolver<Rvector, Qvector, Pvector>::m_verbosity;
 
   /*!
    * \brief LinearEigensystem
    */
   explicit LinearEigensystem(std::shared_ptr<molpro::Profiler> profiler = nullptr)
-      : IterativeSolver<Rvector>(profiler) {
+      : IterativeSolver<Rvector, Qvector, Pvector>(profiler) {
     this->m_residual_rhs = false;
     this->m_residual_eigen = true;
     this->m_linear = true;
@@ -866,14 +867,14 @@ public:
 template <class Rvector = std::vector<double>, class Qvector = Rvector,
           class Pvector = std::map<size_t, typename Rvector::value_type>>
 class LinearEquations : public IterativeSolver<Rvector, Qvector, Pvector> {
-  using typename IterativeSolver<Rvector>::scalar_type;
-  using typename IterativeSolver<Rvector>::value_type;
+  using typename IterativeSolver<Rvector, Qvector, Pvector>::scalar_type;
+  using typename IterativeSolver<Rvector, Qvector, Pvector>::value_type;
 
 public:
   using vectorSet = typename std::vector<Rvector>;                                       ///< Container of vectors
   using vectorRefSet = typename std::vector<std::reference_wrapper<Rvector>>;            ///< Container of vectors
   using constVectorRefSet = typename std::vector<std::reference_wrapper<const Rvector>>; ///< Container of vectors
-  using IterativeSolver<Rvector>::m_verbosity;
+  using IterativeSolver<Rvector, Qvector, Pvector>::m_verbosity;
 
   /*!
    * \brief Constructor
@@ -941,13 +942,13 @@ protected:
 template <class Rvector = std::vector<double>, class Qvector = Rvector>
 class Optimize : public IterativeSolver<Rvector, Qvector> {
 public:
-  using typename IterativeSolver<Rvector>::scalar_type;
-  using typename IterativeSolver<Rvector>::value_type;
+  using typename IterativeSolver<Rvector, Qvector>::scalar_type;
+  using typename IterativeSolver<Rvector, Qvector>::value_type;
   using vectorSet = typename std::vector<Rvector>;                                       ///< Container of vectors
   using vectorRefSet = typename std::vector<std::reference_wrapper<Rvector>>;            ///< Container of vectors
   using constVectorRefSet = typename std::vector<std::reference_wrapper<const Rvector>>; ///< Container of vectors
-  using IterativeSolver<Rvector>::m_verbosity;
-  using IterativeSolver<Rvector>::m_values;
+  using IterativeSolver<Rvector, Qvector>::m_verbosity;
+  using IterativeSolver<Rvector, Qvector>::m_values;
 
   /*!
    * \brief Constructor
@@ -1076,13 +1077,15 @@ protected:
       }
       // when we arrive here, we need to do a new line-search step
       //      molpro::cout << "we need to do a new line-search step " << alpha << std::endl;
-      m_linesearch_steplength = (alpha - 1) * step;
       if (f1 <= f0) {
+        m_linesearch_steplength = (alpha - 1) * step;
         m_best_r.reset(new Qvector(this->m_current_r.front()));
         m_best_v.reset(new Qvector(this->m_current_v.front()));
         m_best_f = this->m_values.back();
         //        molpro::cout << "setting best to current, with f=" << m_best_f << std::endl;
-      }
+      } else
+        m_linesearch_steplength = alpha * step;
+
       this->m_nullify_solution_before_update = false;
       return false;
     }
@@ -1143,7 +1146,7 @@ public:
       }
       //    molpro::cout << "*exit endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
     }
-    return IterativeSolver<Rvector>::endIteration(solution, residual);
+    return IterativeSolver<Rvector, Qvector>::endIteration(solution, residual);
   }
 
   virtual bool endIteration(std::vector<Rvector>& solution, const std::vector<Rvector>& residual) override {
@@ -1181,9 +1184,9 @@ template <class Rvector = std::vector<double>, class Qvector = Rvector>
 class DIIS : public IterativeSolver<Rvector, Qvector> {
 
 public:
-  using typename IterativeSolver<Rvector>::scalar_type;
-  using typename IterativeSolver<Rvector>::value_type;
-  using IterativeSolver<Rvector>::m_verbosity;
+  using typename IterativeSolver<Rvector, Qvector>::scalar_type;
+  using typename IterativeSolver<Rvector, Qvector>::value_type;
+  using IterativeSolver<Rvector, Qvector>::m_verbosity;
 
   /*!
    * \brief DIIS

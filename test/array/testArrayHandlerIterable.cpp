@@ -28,7 +28,7 @@ TYPED_TEST_P(TestArrayHandlerIterable, lazy_dot) {
   using value_type_L = typename decltype(handler)::value_type_L;
   using value_type_R = typename decltype(handler)::value_type_R;
   using value_type = typename decltype(handler)::value_type;
-  static const int N = 2;
+  static const int N = 3;
   static const int dim = 5;
   auto xx = std::vector<std::vector<value_type_L>>(N);
   auto yy = std::vector<std::vector<value_type_R>>(N);
@@ -60,7 +60,7 @@ TYPED_TEST_P(TestArrayHandlerIterable, lazy_axpy) {
   using value_type_L = typename decltype(handler)::value_type_L;
   using value_type_R = typename decltype(handler)::value_type_R;
   using value_type = typename decltype(handler)::value_type;
-  static const int N = 2;
+  static const int N = 3;
   static const int dim = 5;
   static const value_type alpha = 3;
   static const value_type_L xval = 2;
@@ -87,7 +87,7 @@ TYPED_TEST_P(TestArrayHandlerIterable, lazy_axpy_lazy_off) {
   using value_type_L = typename decltype(handler)::value_type_L;
   using value_type_R = typename decltype(handler)::value_type_R;
   using value_type = typename decltype(handler)::value_type;
-  static const int N = 2;
+  static const int N = 3;
   static const int dim = 5;
   static const value_type alpha = 3;
   static const value_type xval = 2;

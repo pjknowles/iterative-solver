@@ -117,14 +117,14 @@ protected:
   virtual AL copyRL(const AR &source) = 0;
   virtual AR copyLR(const AL &source) = 0;
   virtual AR copyRR(const AR &source) = 0;
-  virtual AL &scalL(value_type alpha, AL &x) = 0;
-  virtual AR &scalR(value_type alpha, AR &x) = 0;
-  virtual AL &fillL(value_type alpha, AL &x) = 0;
-  virtual AR &fillR(value_type alpha, AR &x) = 0;
-  virtual AL &axpyLL(value_type alpha, const AL &x, AL &y) = 0;
-  virtual AL &axpyRL(value_type alpha, const AR &x, AL &y) = 0;
-  virtual AR &axpyLR(value_type alpha, const AL &x, AR &y) = 0;
-  virtual AR &axpyRR(value_type alpha, const AR &x, AR &y) = 0;
+  virtual void scalL(value_type alpha, AL &x) = 0;
+  virtual void scalR(value_type alpha, AR &x) = 0;
+  virtual void fillL(value_type alpha, AL &x) = 0;
+  virtual void fillR(value_type alpha, AR &x) = 0;
+  virtual void axpyLL(value_type alpha, const AL &x, AL &y) = 0;
+  virtual void axpyRL(value_type alpha, const AR &x, AL &y) = 0;
+  virtual void axpyLR(value_type alpha, const AL &x, AR &y) = 0;
+  virtual void axpyRR(value_type alpha, const AR &x, AR &y) = 0;
   virtual value_type dotLL(const AL &x, const AL &y) = 0;
   virtual value_type dotLR(const AL &x, const AR &y) = 0;
   virtual value_type dotRL(const AR &x, const AL &y) = 0;
@@ -178,16 +178,16 @@ public:
   AR copySame(const AR &source) { return copyRR(source); }
 
   //! scale all elements of array x by constant value alpha
-  AL &scal(value_type alpha, AL &x) { return scalL(alpha, x); }
-  AR &scal(value_type alpha, AR &x) { return scalR(alpha, x); }
+  void scal(value_type alpha, AL &x) { scalL(alpha, x); }
+  void scal(value_type alpha, AR &x) { scalR(alpha, x); }
   //! replace all elements of array x by constant value alpha
-  AL &fill(value_type alpha, AL &x) { return fillL(alpha, x); }
-  AR &fill(value_type alpha, AR &x) { return fillR(alpha, x); }
+  void fill(value_type alpha, AL &x) { fillL(alpha, x); }
+  void fill(value_type alpha, AR &x) { fillR(alpha, x); }
   //! y[:] += alpha * x[:]
-  AL &axpy(value_type alpha, const AL &x, AL &y) { return axpyLL(alpha, x, y); }
-  AL &axpy(value_type alpha, const AR &x, AL &y) { return axpyRL(alpha, x, y); }
-  AR &axpy(value_type alpha, const AL &x, AR &y) { return axpyLR(alpha, x, y); }
-  AR &axpy(value_type alpha, const AR &x, AR &y) { return axpyRR(alpha, x, y); }
+  void axpy(value_type alpha, const AL &x, AL &y) { axpyLL(alpha, x, y); }
+  void axpy(value_type alpha, const AR &x, AL &y) { axpyRL(alpha, x, y); }
+  void axpy(value_type alpha, const AL &x, AR &y) { axpyLR(alpha, x, y); }
+  void axpy(value_type alpha, const AR &x, AR &y) { axpyRR(alpha, x, y); }
   //! inner product: result = x.y
   value_type dot(const AL &x, const AL &y) { return dotLL(x, y); }
   value_type dot(const AL &x, const AR &y) { return dotLR(x, y); }
@@ -224,9 +224,9 @@ public:
   AL copySame(const AL &source) { return copyLL(source); }
   AL copy(const AL &source) { return copySame(source); }
 
-  AL &scal(value_type alpha, AL &x) { return scalL(alpha, x); }
-  AL &fill(value_type alpha, AL &x) { return fillL(alpha, x); }
-  AL &axpy(value_type alpha, const AL &x, AL &y) { return axpyLL(alpha, x, y); }
+  void scal(value_type alpha, AL &x) { scalL(alpha, x); }
+  void fill(value_type alpha, AL &x) { fillL(alpha, x); }
+  void axpy(value_type alpha, const AL &x, AL &y) { axpyLL(alpha, x, y); }
   value_type dot(const AL &x, const AL &y) { return dotLL(x, y); }
 
 protected:

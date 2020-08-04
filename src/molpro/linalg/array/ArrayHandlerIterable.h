@@ -47,35 +47,32 @@ protected:
   AL copyRL(const AR &source) override { return copyAny<AL, AR>(source); }
 
   template <typename T>
-  T &scalAny(value_type alpha, T &x) {
+  void scalAny(value_type alpha, T &x) {
     for (auto &el : x)
       el *= alpha;
-    return x;
   }
-  AL &scalL(value_type alpha, AL &x) override { return scalAny(alpha, x); }
-  AR &scalR(value_type alpha, AR &x) override { return scalAny(alpha, x); }
+  void scalL(value_type alpha, AL &x) override { scalAny(alpha, x); }
+  void scalR(value_type alpha, AR &x) override { scalAny(alpha, x); }
 
   template <typename T>
-  T &fillAny(value_type alpha, T &x) {
+  void fillAny(value_type alpha, T &x) {
     std::fill(x.begin(), x.end(), alpha);
-    return x;
   }
-  AL &fillL(value_type alpha, AL &x) override { return fillAny(alpha, x); }
-  AR &fillR(value_type alpha, AR &x) override { return fillAny(alpha, x); }
+  void fillL(value_type alpha, AL &x) override { fillAny(alpha, x); }
+  void fillR(value_type alpha, AR &x) override { fillAny(alpha, x); }
 
   template <typename T, typename S>
-  S &axpyAny(value_type alpha, const T &x, S &y) {
+  void axpyAny(value_type alpha, const T &x, S &y) {
     if (y.size() > x.size())
       error("ArrayHandlerIterable::axpy() incompatible x and y arrays, y.size() > x.size()");
     auto ix = x.begin();
     for (auto iy = y.begin(); iy != y.end(); ++iy, ++ix)
       *iy += alpha * (*ix);
-    return y;
   }
-  AL &axpyLL(value_type alpha, const AL &x, AL &y) override { return axpyAny(alpha, x, y); }
-  AR &axpyLR(value_type alpha, const AL &x, AR &y) override { return axpyAny(alpha, x, y); }
-  AL &axpyRL(value_type alpha, const AR &x, AL &y) override { return axpyAny(alpha, x, y); }
-  AR &axpyRR(value_type alpha, const AR &x, AR &y) override { return axpyAny(alpha, x, y); }
+  void axpyLL(value_type alpha, const AL &x, AL &y) override { axpyAny(alpha, x, y); }
+  void axpyLR(value_type alpha, const AL &x, AR &y) override { axpyAny(alpha, x, y); }
+  void axpyRL(value_type alpha, const AR &x, AL &y) override { axpyAny(alpha, x, y); }
+  void axpyRR(value_type alpha, const AR &x, AR &y) override { axpyAny(alpha, x, y); }
 
   template <typename T, typename S>
   value_type dotAny(const T &x, const S &y) {

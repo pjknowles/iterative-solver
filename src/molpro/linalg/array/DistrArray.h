@@ -206,10 +206,10 @@ public:
    */
   //! @{
   //! Set all local elements to val. @note each process has its own val, there is no communication
-  virtual DistrArray &fill(value_type val);
+  virtual void fill(value_type val);
   //! Copies all elements of y. If both arrays are empty than does nothing. If only one is empty, throws an
   //! error.
-  virtual DistrArray &copy(const DistrArray &y);
+  virtual void copy(const DistrArray &y);
   /*!
    * @brief Copies elements in a patch of y. If both arrays are empty than does nothing. If only one is empty,
    * throws an error.
@@ -217,29 +217,29 @@ public:
    * @param start index of first element to copy
    * @param end index of last element to copy
    */
-  virtual DistrArray &copy_patch(const DistrArray &y, index_type start, index_type end);
+  virtual void copy_patch(const DistrArray &y, index_type start, index_type end);
   /*!
    * \brief this[:] += a * y[:]. Throws an error if any array is empty.
    * Add a multiple of another array to this one. Blocking, collective.
    */
-  virtual DistrArray &axpy(value_type a, const DistrArray &y);
-  virtual DistrArray &axpy(value_type a, const SparseArray &y);
+  virtual void axpy(value_type a, const DistrArray &y);
+  virtual void axpy(value_type a, const SparseArray &y);
   //! Scale by a constant. Local.
-  virtual DistrArray &scal(value_type a);
+  virtual void scal(value_type a);
   //! Add another array to this. Local. Throws error if any array is empty.
-  virtual DistrArray &add(const DistrArray &y);
+  virtual void add(const DistrArray &y);
   //! Add a constant. Local.
-  virtual DistrArray &add(value_type a);
+  virtual void add(value_type a);
   //! Subtract another array from this. Local. Throws error if any array is empty.
-  virtual DistrArray &sub(const DistrArray &y);
+  virtual void sub(const DistrArray &y);
   //! Subtract a constant. Local.
-  virtual DistrArray &sub(value_type a);
+  virtual void sub(value_type a);
   //! Take element-wise reciprocal of this. Local. No checks are made for zero values
-  virtual DistrArray &recip();
+  virtual void recip();
   //! this[i] *= y[i]. Throws error if any array is empty.
-  virtual DistrArray &times(const DistrArray &y);
+  virtual void times(const DistrArray &y);
   //! this[i] = y[i]*z[i]. Throws error if any array is empty.
-  virtual DistrArray &times(const DistrArray &y, const DistrArray &z);
+  virtual void times(const DistrArray &y, const DistrArray &z);
   //! @}
 
   /*! @name Collective linear algebra operations, synchronisation on exit
@@ -264,9 +264,9 @@ public:
    * @param append Whether to += or =
    * @param negative Whether to scale  right hand side by -1
    */
-  DistrArray &divide(const DistrArray &y, const DistrArray &z, value_type shift = 0, bool append = false,
+  void divide(const DistrArray &y, const DistrArray &z, value_type shift = 0, bool append = false,
                      bool negative = false) {
-    return _divide(y, z, shift, append, negative);
+    _divide(y, z, shift, append, negative);
   }
 
   /*!
@@ -312,7 +312,7 @@ public:
   virtual void error(const std::string &message) const;
 
 protected:
-  virtual DistrArray &_divide(const DistrArray &y, const DistrArray &z, value_type shift, bool append, bool negative);
+  virtual void _divide(const DistrArray &y, const DistrArray &z, value_type shift, bool append, bool negative);
 };
 
 namespace util {

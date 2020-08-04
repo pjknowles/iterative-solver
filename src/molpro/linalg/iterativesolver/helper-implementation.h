@@ -40,7 +40,7 @@ int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, con
 }
 
 template <typename value_type>
-void printMatrix(const std::vector<value_type> m, size_t rows, size_t cols, std::string title, std::ostream& s) {
+void printMatrix(const std::vector<value_type>& m, size_t rows, size_t cols, std::string title, std::ostream& s) {
   s << title << "\n"
     << Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), rows, cols) << std::endl;
 }
@@ -200,7 +200,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>
 void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_type>& eigenvalues,
                            const std::vector<value_type>& matrix, const std::vector<value_type>& metric,
-                           const std::vector<value_type> rhs, const size_t dimension, size_t nroot,
+                           const std::vector<value_type>& rhs, const size_t dimension, size_t nroot,
                            double augmented_hessian, double svdThreshold, int verbosity) {
   assert(false); // Complex not implemented here
 }
@@ -208,7 +208,7 @@ void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_
 template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, nullptr_t>>
 void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_type>& eigenvalues,
                            const std::vector<value_type>& matrix, const std::vector<value_type>& metric,
-                           const std::vector<value_type> rhs, const size_t dimension, size_t nroot,
+                           const std::vector<value_type>& rhs, const size_t dimension, size_t nroot,
                            double augmented_hessian, double svdThreshold, int verbosity) {
   const Eigen::Index nX = dimension;
   solution.resize(nX * nroot);

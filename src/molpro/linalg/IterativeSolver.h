@@ -107,7 +107,7 @@ public:
       m_dimension(0),
       m_value_print_name("value"),
       m_iterations(0),
-      m_singularity_threshold(1e-5),
+      m_singularity_threshold(1e-4),
       m_augmented_hessian(0),
       m_svdThreshold(1e-15),
       m_maxQ(std::max(m_roots, size_t(16))),
@@ -277,7 +277,7 @@ public:
       //      molpro::cout << "k=" << k << ", root=" << root << ", error=" << m_errors[root] << std::endl;
       if (m_linear and m_errors[root] < m_thresh and m_q_solutions.count(root) == 0) { // converged just now
         if (m_verbosity > 1)
-          molpro::cout << "selecting root " << root << " for adding converged solution to Q space at position"
+          molpro::cout << "selecting root " << root << " for adding converged solution to Q space at position "
                        << m_qspace.size() << std::endl;
         m_qspace.add(parameters[k], action[k], m_rhs, m_subspaceMatrixResRes);
         m_q_solutions[m_working_set[k]] = m_qspace.keys().back();

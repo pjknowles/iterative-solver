@@ -29,9 +29,9 @@ add_subdirectory(dependencies)
 add_subdirectory(src)
 
 if (${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
-    add_subdirectory(examples)
     add_subdirectory(benchmark)
     enable_testing()
+    add_subdirectory(examples)
     add_subdirectory(test)
 endif ()
 

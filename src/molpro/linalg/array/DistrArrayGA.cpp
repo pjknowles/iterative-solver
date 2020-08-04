@@ -45,7 +45,7 @@ DistrArrayGA::DistrArrayGA(DistrArrayGA &&source) noexcept
     : DistrArray(source.m_dimension, source.m_communicator, source.m_prof), m_comm_rank(source.m_comm_rank),
       m_comm_size(source.m_comm_size), m_ga_handle(source.m_ga_handle), m_ga_pgroup(source.m_ga_pgroup),
       m_ga_chunk(source.m_ga_chunk), m_ga_allocated(source.m_ga_allocated),
-      m_distribution(source.m_distribution ? std::move(source.m_distribution) : nullptr) {
+      m_distribution(std::move(source.m_distribution)) {
   source.m_ga_allocated = false;
 }
 

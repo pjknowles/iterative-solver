@@ -1,10 +1,10 @@
 #include "molpro/linalg/IterativeSolver.h"
-#include "molpro/linalg/PagedArray.h"
+#include "molpro/linalg/SimpleArray.h"
 #include <regex>
 
 //  typedef SimpleParameterVector pv;
 using scalar = double;
-using pv = molpro::linalg::PagedArray<scalar>;
+using pv = molpro::linalg::SimpleArray<scalar>;
 
 static double alpha;
 static double anharmonicity;

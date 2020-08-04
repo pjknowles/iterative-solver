@@ -1,5 +1,6 @@
 if (FORTRAN
         AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL "Intel"  # avoid the challenge of linking C++ and Fortran with Intel
+        AND OFF # TODO reinstate Fortran examples when Fortran support is reinstated
         )
     set(ITERATIVESOLVER_FORTRAN_EXAMPLES
             OptimizeExampleF.F90
@@ -12,7 +13,7 @@ if (FORTRAN
 endif ()
 set(EXAMPLES DIISexample.cpp
         OptimizeExample.cpp
-        LinearEigensystemExample.cpp LinearEigensystemExample-file.cpp LinearEigensystemExample-paged.cpp
+        LinearEigensystemExample.cpp LinearEigensystemExample-file.cpp
         LinearEquationsExample.cpp
         ${ITERATIVESOLVER_FORTRAN_EXAMPLES}
         )

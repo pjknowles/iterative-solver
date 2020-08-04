@@ -142,7 +142,7 @@ public:
       auto dd = oldaction.dot(oldaction);
       auto rd = action.dot(oldaction);
       scale_factor = 1 / std::sqrt(rr + dd - 2 * rd);
-      diff_factor = scale_factor;
+      diff_factor = 1;
     } else {
       auto dd = oldvector.dot(oldvector);
       auto rd = vector.dot(oldvector);
@@ -164,9 +164,11 @@ public:
     a.scal(scale_factor);
     a.axpy(-diff_factor * scale_factor, oldaction);
     auto actual_norm = std::sqrt(resres ? a.dot(a) : v.dot(v));
-    if (actual_norm > 1e-6 and actual_norm < 0.95) { // rescale because of numerical precision problems when vector
-                                                  //    \approx oldvector
-                                                  //    do not do it if the problem is severe, since then action will be inaccurate
+//    std::cout << "actual_norm=" << actual_norm << std::endl;
+    if (actual_norm > 1e-6 and
+        std::abs(actual_norm - 1) > 1e-2) { // rescale because of numerical precision problems when vector
+                                            //    \approx oldvector
+      //    do not do it if the problem is severe, since then action will be inaccurate
       v.scal(1 / actual_norm);
       a.scal(1 / actual_norm);
       scale_factor /= actual_norm;

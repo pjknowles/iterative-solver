@@ -20,8 +20,11 @@ namespace iterativesolver {
 template <class Rvector, class Qvector = Rvector,
           class Pvector = std::map<size_t, typename Rvector::value_type>>
 class Q {
+  using ArrayHandlerFactory = molpro::linalg::array::ArrayHandlerFactory<Rvector, Qvector>;
+  using ArrayHandler = molpro::linalg::array::ArrayHandler<Rvector, Qvector>;
+  mutable std::shared_ptr<ArrayHandler> m_handler;
   using scalar_type = decltype(
-      std::declval<Rvector>().dot(std::declval<const Rvector&>())); ///< The type of scalar products of vectors
+      m_handler->dot(std::declval<Rvector>(), std::declval<const Rvector&>())); ///< The type of scalar products of vectors
   using key_type = int;
   bool m_hermitian;
   std::map<key_type, std::map<key_type, scalar_type>> m_metric;
@@ -38,7 +41,8 @@ class Q {
   std::map<key_type, typename Rvector::value_type> m_scale_factors, m_diff_factors;
 
 public:
-  Q(const P<Pvector>& pspace, bool hermitian = false) : m_hermitian(hermitian), m_pspace(pspace) {}
+  Q(const P<Pvector>& pspace, bool hermitian = false) : m_hermitian(hermitian), m_pspace(pspace),
+     m_handler(ArrayHandlerFactory::create()) {}
 
   const scalar_type& metric(size_t i, size_t j) const { return m_metric.at(m_keys[i]).at(m_keys[j]); }
 
@@ -93,22 +97,22 @@ public:
   void add(const Rvector& vector, const Rvector& action, const std::vector<Qvector>& rhs,
            bool resres = false) {
     for (const auto& vi : (resres ? m_actions : m_vectors)) {
-      m_metric[m_index][vi.first] = m_metric[vi.first][m_index] = vector.dot(vi.second);
-      m_action[vi.first][m_index] = action.dot(vi.second);
+      m_metric[m_index][vi.first] = m_metric[vi.first][m_index] = m_handler->dot(vector, vi.second);
+      m_action[vi.first][m_index] = m_handler->dot(action, vi.second);
     }
     for (const auto& vi : m_actions) {
-      m_action_action[m_index][vi.first] = m_action_action[vi.first][m_index] = action.dot(vi.second);
+      m_action_action[m_index][vi.first] = m_action_action[vi.first][m_index] = m_handler->dot(action, vi.second);
     }
     for (const auto& vi : m_actions) {
       const auto& i = vi.first;
       if (m_hermitian)
         m_action[m_index][i] = m_action[i][m_index];
       else
-        m_action[m_index][i] = resres ? action.dot(vi.second) : vector.dot(vi.second);
+        m_action[m_index][i] = resres ? m_handler->dot(action, vi.second) : m_handler->dot(vector, vi.second);
     }
-    m_metric[m_index][m_index] = vector.dot(vector);
-    m_action[m_index][m_index] = resres ? action.dot(action) : vector.dot(action);
-    m_action_action[m_index][m_index] = action.dot(action); // TODO retire this
+    m_metric[m_index][m_index] = m_handler->dot(vector, vector);
+    m_action[m_index][m_index] = resres ? m_handler->dot(action, action) : m_handler->dot(vector, action);
+    m_action_action[m_index][m_index] = m_handler->dot(action, action); // TODO retire this
     m_metric_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
     m_action_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
     for (auto i = 0; i < m_pspace.size(); i++) {
@@ -117,7 +121,7 @@ public:
     }
     m_rhs[m_index] = std::vector<scalar_type>();
     for (const auto& rhs1 : rhs)
-      m_rhs[m_index].push_back(vector.dot(rhs1));
+      m_rhs[m_index].push_back(m_handler->dot(vector, rhs1));
     m_vectors.emplace(std::make_pair(m_index, Qvector{vector}));
     m_actions.emplace(std::make_pair(m_index, Qvector{action}));
     m_index++;
@@ -138,17 +142,17 @@ public:
   scalar_type add(const Rvector& vector, const Rvector& action, const Qvector& oldvector,
                   const Qvector& oldaction, const std::vector<Qvector>& rhs, bool resres = false,
                   bool orthogonalise = true) {
-    auto rr = vector.dot(vector);
+    auto rr = m_handler->dot(vector, vector);
     typename Rvector::value_type scale_factor, diff_factor;
     if (resres) {
-      rr = action.dot(action);
-      auto dd = oldaction.dot(oldaction);
-      auto rd = action.dot(oldaction);
+      rr = m_handler->dot(action, action);
+      auto dd = m_handler->dot(oldaction, oldaction);
+      auto rd = m_handler->dot(action, oldaction);
       scale_factor = 1 / std::sqrt(rr + dd - 2 * rd);
       diff_factor = scale_factor;
     } else {
-      auto dd = oldvector.dot(oldvector);
-      auto rd = vector.dot(oldvector);
+      auto dd = m_handler->dot(oldvector, oldvector);
+      auto rd = m_handler->dot(vector, oldvector);
       //      molpro::cout << "dd="<<dd<<std::endl;
       //      molpro::cout << "rd="<<rd<<std::endl;
       //      molpro::cout << "rr="<<rr<<std::endl;

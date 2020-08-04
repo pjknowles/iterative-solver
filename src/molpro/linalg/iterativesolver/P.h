@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_P_H_
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_P_H_
+#include <molpro/linalg/array/ArrayHandlerFactory.h>
 #include <map>
 
 namespace molpro {

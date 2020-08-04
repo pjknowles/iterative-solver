@@ -1,11 +1,11 @@
 #ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H
 #define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H
+#include <cmath>
 #include <list>
 #include <map>
 #include <memory>
 #include <mpi.h>
 #include <vector>
-#include <cmath>
 
 namespace molpro {
 class Profiler;
@@ -94,16 +94,20 @@ public:
 
 protected:
   class Distribution;
-  index_type m_dimension;  //!< number of elements in the array
-  MPI_Comm m_communicator; //!< Outer communicator
+  index_type m_dimension = 0;   //!< number of elements in the array
+  MPI_Comm m_communicator = {}; //!< Outer communicator
 public:
   std::shared_ptr<molpro::Profiler> m_prof = nullptr; //!< optional profiler
-  DistrArray() = delete;
+  DistrArray() = default;
   //! Initializes array without allocating any memory
   DistrArray(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof);
+  //! Copy constructor. If source has been allocated the new array will allocate buffer and copy its content.
   DistrArray(const DistrArray &source) = delete;
+  //! Move constructor. Takes ownership of all source content, source is left in undefined state.
   DistrArray(DistrArray &&source) = delete;
+  //! Assignment operator. Copies contents of source, allocating buffer if necessary.
   DistrArray &operator=(const DistrArray &source) = delete;
+  //! Move assignment operator. Takes ownership of source and leaves source in undefined state.
   DistrArray &operator=(DistrArray &&source) = delete;
   virtual ~DistrArray() = default;
 
@@ -117,6 +121,8 @@ public:
   bool compatible(const DistrArray &other) const;
   //! allocates memory to the array without initializing it with any value. Blocking, collective operation.
   virtual void allocate_buffer() = 0;
+  //! frees the buffer
+  virtual void free_buffer() = 0;
   //! checks if array has been allocated
   virtual bool empty() const;
 
@@ -265,7 +271,7 @@ public:
    * @param negative Whether to scale  right hand side by -1
    */
   void divide(const DistrArray &y, const DistrArray &z, value_type shift = 0, bool append = false,
-                     bool negative = false) {
+              bool negative = false) {
     _divide(y, z, shift, append, negative);
   }
 
@@ -316,7 +322,8 @@ protected:
 };
 
 namespace util {
-template <typename T, class Compare> struct CompareAbs {
+template <typename T, class Compare>
+struct CompareAbs {
   constexpr bool operator()(const T &lhs, const T &rhs) const { return Compare()(std::abs(lhs), std::abs(rhs)); }
 };
 template <class Compare>

@@ -27,26 +27,62 @@ int get_communicator_rank(MPI_Comm comm) {
 
 DistrArrayGA::DistrArrayGA(size_t dimension, MPI_Comm comm, std::shared_ptr<Profiler> prof)
     : DistrArray(dimension, comm, std::move(prof)), m_comm_rank(get_communicator_rank(comm)),
-      m_comm_size(get_communicator_size(comm)), m_ga_handle(0), m_ga_chunk(1), m_ga_pgroup(0), m_ga_allocated(false) {}
+      m_comm_size(get_communicator_size(comm)) {}
 
 std::map<MPI_Comm, int> DistrArrayGA::_ga_pgroups{};
 
 DistrArrayGA::DistrArrayGA(const DistrArrayGA &source)
     : DistrArray(source.m_dimension, source.m_communicator, source.m_prof), m_comm_rank(source.m_comm_rank),
-      m_comm_size(source.m_comm_size), m_ga_handle(0), m_ga_chunk(source.m_ga_chunk), m_ga_pgroup(0),
-      m_ga_allocated(false) {
-  m_dimension = source.m_dimension;
-  *this = source;
+      m_comm_size(source.m_comm_size), m_ga_chunk(source.m_ga_chunk),
+      m_distribution(source.m_distribution ? std::make_unique<DistributionGA>(*source.m_distribution) : nullptr) {
+  if (!source.empty()) {
+    DistrArrayGA::allocate_buffer();
+    DistrArrayGA::copy(source);
+  }
+}
+
+DistrArrayGA::DistrArrayGA(DistrArrayGA &&source) noexcept
+    : DistrArray(source.m_dimension, source.m_communicator, source.m_prof), m_comm_rank(source.m_comm_rank),
+      m_comm_size(source.m_comm_size), m_ga_handle(source.m_ga_handle), m_ga_pgroup(source.m_ga_pgroup),
+      m_ga_chunk(source.m_ga_chunk), m_ga_allocated(source.m_ga_allocated),
+      m_distribution(source.m_distribution ? std::move(source.m_distribution) : nullptr) {
+  source.m_ga_allocated = false;
 }
 
 DistrArrayGA &DistrArrayGA::operator=(const DistrArrayGA &source) {
-  m_dimension = source.m_dimension;
-  m_communicator = source.m_communicator;
-  m_prof = source.m_prof;
-  if (empty() && !source.empty())
+  if (this == &source)
+    return *this;
+  if (source.empty() || empty() || !compatible(source)) {
+    free_buffer();
+    DistrArrayGA t{source};
+    swap(*this, t);
+  } else {
     allocate_buffer();
-  copy(source);
+    copy(source);
+    m_prof = source.m_prof;
+  }
   return *this;
+}
+
+DistrArrayGA &DistrArrayGA::operator=(DistrArrayGA &&source) noexcept {
+  DistrArrayGA t{std::move(source)};
+  swap(*this, t);
+  t.m_ga_allocated = false;
+  return *this;
+}
+
+void swap(DistrArrayGA &a1, DistrArrayGA &a2) {
+  using std::swap;
+  swap(a1.m_dimension, a2.m_dimension);
+  swap(a1.m_communicator, a2.m_communicator);
+  swap(a1.m_prof, a2.m_prof);
+  swap(a1.m_distribution, a2.m_distribution);
+  swap(a1.m_comm_rank, a2.m_comm_rank);
+  swap(a1.m_comm_size, a2.m_comm_size);
+  swap(a1.m_ga_handle, a2.m_ga_handle);
+  swap(a1.m_ga_chunk, a2.m_ga_chunk);
+  swap(a1.m_ga_pgroup, a2.m_ga_pgroup);
+  swap(a1.m_ga_allocated, a2.m_ga_allocated);
 }
 
 DistrArrayGA::~DistrArrayGA() {
@@ -87,6 +123,13 @@ void DistrArrayGA::allocate_buffer() {
     error("Failed to allocate");
   m_ga_allocated = true;
   m_distribution = std::make_unique<DistributionGA>(m_ga_handle, get_communicator_size(m_communicator));
+}
+
+void DistrArrayGA::free_buffer() {
+  if (!DistrArrayGA::empty()) {
+    GA_Destroy(m_ga_handle);
+    m_ga_allocated = false;
+  }
 }
 
 void DistrArrayGA::sync() const {
@@ -244,15 +287,13 @@ void DistrArrayGA::acc(index_type lo, index_type hi, const value_type *data) {
 
 const DistrArray::Distribution &DistrArrayGA::distribution() const { return *m_distribution; }
 
-DistrArrayGA::DistributionGA::DistributionGA() : m_ga_handle{0}, m_dummy{true}, m_n_proc{0} {}
-
 DistrArrayGA::DistributionGA::DistributionGA(int ga_handle, int n_proc)
     : m_ga_handle{ga_handle}, m_dummy{false}, m_n_proc{n_proc} {}
 
 std::pair<int, int> DistrArrayGA::DistributionGA::locate_process(DistrArray::index_type lo,
                                                                  DistrArray::index_type hi) const {
   if (m_dummy)
-    return std::pair<int, int>();
+    return {};
   auto regions = std::vector<int>(2 * m_n_proc);
   auto procs = std::vector<int>(m_n_proc);
   int _lo = lo, _hi = hi;

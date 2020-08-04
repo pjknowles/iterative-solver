@@ -17,10 +17,10 @@ constexpr size_t nRoot = 2; // number of equations
 
 scalar matrix(const size_t i, const size_t j) { return (i == j ? alpha * (i + 1) : 0) + i + j; }
 
-void action(const vectorSet& psx, vectorSet& outputs) {
+void action(const vectorSet& psx, vectorSet& outputs, size_t nroot) {
   std::vector<scalar> psxk(n);
   std::vector<scalar> output(n);
-  for (size_t k = 0; k < psx.size(); k++) {
+  for (size_t k = 0; k < nroot; k++) {
     psx[k].get(&(psxk[0]), n, 0);
     for (size_t i = 0; i < n; i++) {
       output[i] = 0;
@@ -32,9 +32,9 @@ void action(const vectorSet& psx, vectorSet& outputs) {
 }
 
 void actionP(const std::vector<std::map<size_t, scalar>> pspace, const std::vector<std::vector<scalar>>& psx,
-             vectorSet& outputs) {
+             vectorSet& outputs, size_t nroot) {
   const size_t nP = pspace.size();
-  for (size_t k = 0; k < psx.size(); k++) {
+  for (size_t k = 0; k < nroot; k++) {
     std::vector<scalar> output(n);
     outputs[k].get(&output[0], n, 0);
     for (size_t p = 0; p < nP; p++) {
@@ -47,10 +47,10 @@ void actionP(const std::vector<std::map<size_t, scalar>> pspace, const std::vect
   }
 }
 
-void update(vectorSet& psc, const vectorSet& psg) {
+void update(vectorSet& psc, const vectorSet& psg, size_t nroot) {
   std::vector<scalar> psck(n);
   std::vector<scalar> psgk(n);
-  for (size_t k = 0; k < psc.size(); k++) {
+  for (size_t k = 0; k < nroot; k++) {
     psg[k].get(&psgk[0], n, 0);
     psc[k].get(&psck[0], n, 0);
     for (size_t i = 0; i < n; i++)
@@ -60,8 +60,14 @@ void update(vectorSet& psc, const vectorSet& psg) {
 }
 
 int main(int argc, char* argv[]) {
+  int rank = 0;
 #ifdef HAVE_MPI_H
   MPI_Init(&argc, &argv);
+  int size;
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  if (rank == 0)
+    std::cout << "MPI size=" << size << std::endl;
 #endif
   vectorSet g;
   g.reserve(nRoot);
@@ -98,34 +104,38 @@ int main(int argc, char* argv[]) {
     std::vector<std::vector<scalar>> Pcoeff(solver.m_roots);
     for (size_t i = 0; i < solver.m_roots; ++i)
       Pcoeff[i].resize(nP);
-    solver.addP(pspace, PP.data(), x, g, Pcoeff);
+    auto nwork = solver.addP(pspace, PP.data(), x, g, Pcoeff);
     for (auto iter = 0; iter < 100; iter++) {
-      actionP(pspace, Pcoeff, g);
-      update(x, g);
-      if (solver.endIteration(x, g))
+      actionP(pspace, Pcoeff, g, nwork);
+      update(x, g, nwork);
+      if (rank == 0)
+        solver.report();
+      action(x, g, nwork);
+      nwork = solver.addVector(x, g, Pcoeff);
+      if (nwork == 0)
         break;
-      action(x, g);
-      solver.addVector(x, g, Pcoeff);
     }
 
     std::cout << "Error={ ";
     for (const auto& e : solver.errors())
       std::cout << e << " ";
     std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
-    std::vector<int> roots(solver.m_roots);
-    std::iota(roots.begin(), roots.end(), 0);
-    solver.solution(roots, x, g);
-    action(x, g);
-    for (size_t root = 0; root < solver.m_roots; root++) {
-      g[root].axpy(-1, b[root]);
-      std::vector<scalar> buf(n);
-      x[root].get(&buf[0], n, 0);
-      std::cout << "Solution:";
-      for (size_t k = 0; k < n; k++)
-        std::cout << " " << buf[k];
-      std::cout << std::endl;
-      auto err = g[root].dot(g[root]);
-      std::cout << "residual norm " << std::sqrt(err) << std::endl;
+    if (false) {
+      std::vector<int> roots(solver.m_roots);
+      std::iota(roots.begin(), roots.end(), 0);
+      solver.solution(roots, x, g);
+      action(x, g, solver.m_roots);
+      for (size_t root = 0; root < solver.m_roots; root++) {
+        g[root].axpy(-1, b[root]);
+        std::vector<scalar> buf(n);
+        x[root].get(&buf[0], n, 0);
+        std::cout << "Solution:";
+        for (size_t k = 0; k < n; k++)
+          std::cout << " " << buf[k];
+        std::cout << std::endl;
+        auto err = g[root].dot(g[root]);
+        std::cout << "residual norm " << std::sqrt(err) << std::endl;
+      }
     }
   }
 }

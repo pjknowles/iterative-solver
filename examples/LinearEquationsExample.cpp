@@ -1,5 +1,8 @@
 #include "molpro/linalg/IterativeSolver.h"
 #include "molpro/linalg/PagedArray.h"
+#ifdef HAVE_MPI_H
+#include <mpi.h>
+#endif
 // For M(i,j) = alpha*(i+1)*delta(i,j) + i + j, b(i,n)=n+i
 // solve M x = b
 // Storage of vectors distributed and out of memory via PagedVector class
@@ -8,8 +11,9 @@ using pv = molpro::linalg::PagedArray<scalar>;
 using vectorSet = std::vector<pv>;
 constexpr size_t n = 300;     // dimension of problem
 constexpr scalar alpha = 300; // separation of diagonal elements
-constexpr size_t nP = 10;     // number in initial P-space
-constexpr size_t nRoot = 2;   // number of equations
+// TODO nP>0
+constexpr size_t nP = 0;    // number in initial P-space
+constexpr size_t nRoot = 2; // number of equations
 
 scalar matrix(const size_t i, const size_t j) { return (i == j ? alpha * (i + 1) : 0) + i + j; }
 
@@ -56,6 +60,9 @@ void update(vectorSet& psc, const vectorSet& psg) {
 }
 
 int main(int argc, char* argv[]) {
+#ifdef HAVE_MPI_H
+  MPI_Init(&argc, &argv);
+#endif
   vectorSet g;
   g.reserve(nRoot);
   vectorSet b;
@@ -105,6 +112,9 @@ int main(int argc, char* argv[]) {
     for (const auto& e : solver.errors())
       std::cout << e << " ";
     std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
+    std::vector<int> roots(solver.m_roots);
+    std::iota(roots.begin(), roots.end(), 0);
+    solver.solution(roots, x, g);
     action(x, g);
     for (size_t root = 0; root < solver.m_roots; root++) {
       g[root].axpy(-1, b[root]);

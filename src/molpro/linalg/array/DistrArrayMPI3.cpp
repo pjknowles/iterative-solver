@@ -208,6 +208,8 @@ void DistrArrayMPI3::error(const std::string& message) const { MPI_Abort(m_commu
 const DistrArray::Distribution& DistrArrayMPI3::distribution() const { return *m_distribution; }
 
 DistrArrayMPI3::LocalBufferMPI3::LocalBufferMPI3(DistrArrayMPI3& source) {
+  if (!source.m_allocated)
+    source.error("attempting to access local buffer of empty array");
   int rank;
   MPI_Comm_rank(source.communicator(), &rank);
   index_type _lo;

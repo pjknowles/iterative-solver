@@ -1,5 +1,13 @@
 #include "molpro/linalg/IterativeSolver.h"
 #include <iomanip>
+
+template <class T>
+std::ostream& operator<<(std::ostream& o, const std::vector<T>& v) {
+  for (const auto& s : v)
+    o << " " << s;
+  return o;
+}
+
 // Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + i + j
 // Storage of vectors in-memory via class pv
 using scalar = double;
@@ -80,17 +88,15 @@ void update(std::vector<pv>& psc, const std::vector<pv>& psg, std::vector<scalar
   //      std::cout <<" "<< -psg[k][i] / (1e-12-shift[k] + matrix(i,i));
   //    std::cout<<std::endl;
   //  }
-  for (size_t k = 0; k < psc.size(); k++)
+  for (size_t k = 0; k < psc.size() and k < shift.size(); k++)
     for (size_t i = 0; i < n; i++)
       psc[k][i] -= psg[k][i] / (1e-12 - shift[k] + matrix(i, i));
 }
 
 int main(int argc, char* argv[]) {
   for (const auto& nn : std::vector<int>{1, 2, 4, 10, 100}) {
-//      for (const auto& nn : std::vector<int>{10}) {
     n = nn;
     for (const auto& nroot : std::vector<int>{1, 2, 4}) {
-//          for (const auto& nroot : std::vector<int>{2}) {
       if (nroot > n)
         break;
       std::cout << "\nMatrix dimension=" << n << ", looking for " << nroot << " roots" << std::endl;
@@ -123,52 +129,11 @@ int main(int argc, char* argv[]) {
       int nwork = solver.m_roots;
       for (auto iter = 0; iter < 10; iter++) {
         action(x, g);
-        if (true) {
-          for (auto root = 0; root < nwork; root++) {
-            std::cout << "before addVector() x:";
-            for (auto i = 0; i < n; i++)
-              std::cout << " " << x[root][i];
-            std::cout << std::endl;
-            std::cout << "before addVector() g:";
-            for (auto i = 0; i < n; i++)
-              std::cout << " " << g[root][i];
-            std::cout << std::endl;
-          }
-        }
         nwork = solver.addVector(x, g, Pcoeff);
-        //        std::cout << "nwork after addVector: " << nwork << std::endl;
         solver.report();
         if (nwork == 0)
           break;
-        for (auto root = 0; root < nwork; root++) {
-          std::cout << "after addVector()"
-                    << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" << solver.errors()[root]
-                    << " x:";
-          for (auto i = 0; i < n; i++)
-            std::cout << " " << x[root][i];
-          std::cout << std::endl;
-          std::cout << "after addVector() g:";
-          for (auto i = 0; i < n; i++)
-            std::cout << " " << g[root][i];
-          std::cout << std::endl;
-        }
-        x.resize(nwork);
-        g.resize(nwork);
-        std::cout << "residual lengths:";
-        for (const auto& gg : g)
-          std::cout << " " << std::sqrt(gg.dot(gg)) << " (square=" << gg.dot(gg) << ")";
-        std::cout << std::endl;
         update(x, g, solver.working_set_eigenvalues());
-        for (auto root = 0; root < nwork; root++) {
-          std::cout << "after update() x:";
-          for (auto i = 0; i < n; i++)
-            std::cout << " " << x[root][i];
-          std::cout << std::endl;
-          std::cout << "after update() g:";
-          for (auto i = 0; i < n; i++)
-            std::cout << " " << g[root][i];
-          std::cout << std::endl;
-        }
       }
       std::cout << "Error={ ";
       for (const auto& e : solver.errors())
@@ -176,11 +141,11 @@ int main(int argc, char* argv[]) {
       std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
       for (size_t root = 0; root < solver.m_roots; root++) {
         std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] << std::endl;
-        //        solver.solution(root, x.front(), g.front(), Pcoeff.front());
-        //        std::cout << "Eigenvector: (norm=" << std::sqrt(x[0].dot(x[0])) << "): ";
-        //        for (size_t k = 0; k < n; k++)
-        //          std::cout << " " << (x[0])[k];
-        //        std::cout << std::endl;
+                solver.solution(root, x.front(), g.front(), Pcoeff.front());
+                std::cout << "Eigenvector: (norm=" << std::sqrt(x[0].dot(x[0])) << "): ";
+                for (size_t k = 0; k < n; k++)
+                  std::cout << " " << (x[0])[k];
+                std::cout << std::endl;
       }
     }
   }

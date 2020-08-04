@@ -104,7 +104,7 @@ public:
       m_dimension(0),
       m_value_print_name("value"),
       m_iterations(0),
-      m_singularity_threshold(1e-5),
+      m_singularity_threshold(1e-4),
       m_augmented_hessian(0),
       m_svdThreshold(1e-15),
       m_maxQ(std::max(m_roots, size_t(16))),
@@ -274,7 +274,7 @@ public:
       //      molpro::cout << "k=" << k << ", root=" << root << ", error=" << m_errors[root] << std::endl;
       if (m_linear and m_errors[root] < m_thresh and m_q_solutions.count(root) == 0) { // converged just now
         if (m_verbosity > 1)
-          molpro::cout << "selecting root " << root << " for adding converged solution to Q space at position"
+          molpro::cout << "selecting root " << root << " for adding converged solution to Q space at position "
                        << m_qspace.size() << std::endl;
         m_qspace.add(parameters[k], action[k], m_rhs, m_subspaceMatrixResRes);
         m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
@@ -382,7 +382,7 @@ public:
    * \return Whether convergence has been reached
    */
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) {
-    if (m_verbosity>=0)
+    if (m_verbosity >= 0)
       report();
     return m_errors.empty() ? false : *std::max_element(m_errors.cbegin(), m_errors.cend()) < m_thresh;
   }
@@ -628,7 +628,7 @@ protected:
         if (std::abs(m_s_xx[k * (nX + 1)] - 1) < 1e-15)
           m_s_xx[k * (nX + 1)] =
               1; // somehow avoid problems that eigen with Intel 18 get the SVD wrong if near-unit matrix
-      auto del = molpro::linalg::iterativesolver::helper<value_type>::propose_singularity_deletion(
+      auto del = iterativesolver::propose_singularity_deletion(
           m_exclude_r_from_redundancy_test ? nX - nR : nX, nX, m_residual_eigen ? m_s_xx.data() : m_h_xx.data(),
           candidates, nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
@@ -650,15 +650,15 @@ protected:
     if (m_verbosity > 1)
       molpro::cout << "nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
     if (m_verbosity > 2) {
-      molpro::linalg::iterativesolver::helper<value_type>::printMatrix(this->m_s_xx, nX, nX, "Subspace overlap");
-      molpro::linalg::iterativesolver::helper<value_type>::printMatrix(this->m_h_xx, nX, nX, "Subspace matrix");
+      iterativesolver::printMatrix(this->m_s_xx, nX, nX, "Subspace overlap");
+      iterativesolver::printMatrix(this->m_h_xx, nX, nX, "Subspace matrix");
     }
   }
 
 protected:
   void diagonalizeSubspaceMatrix() {
-    molpro::linalg::iterativesolver::helper<value_type>::eigenproblem(m_evec_xx, m_eval_xx, m_h_xx, m_s_xx, m_n_x,
-                                                                      m_hermitian, m_svdThreshold, m_verbosity);
+    iterativesolver::eigenproblem(m_evec_xx, m_eval_xx, m_h_xx, m_s_xx, m_n_x, m_hermitian, m_svdThreshold,
+                                  m_verbosity);
     return;
   }
 
@@ -921,9 +921,9 @@ public:
 
 protected:
   bool solveReducedProblem() override {
-    molpro::linalg::iterativesolver::helper<value_type>::solve_LinearEquations(
-        this->m_solution_x, this->m_eval_xx, this->m_h_xx, this->m_s_xx, this->m_rhs_x, this->m_n_x, this->m_roots,
-        this->m_augmented_hessian, this->m_svdThreshold, this->m_verbosity);
+    iterativesolver::solve_LinearEquations(this->m_solution_x, this->m_eval_xx, this->m_h_xx, this->m_s_xx,
+                                           this->m_rhs_x, this->m_n_x, this->m_roots, this->m_augmented_hessian,
+                                           this->m_svdThreshold, this->m_verbosity);
     return true;
   }
 };
@@ -1207,8 +1207,7 @@ protected:
     if (this->m_roots > 1)
       throw std::logic_error("DIIS does not handle multiple solutions");
 
-    molpro::linalg::iterativesolver::helper<value_type>::solve_DIIS(this->m_solution_x, this->m_h_xx, this->m_n_x,
-                                                                    this->m_svdThreshold, this->m_verbosity);
+    iterativesolver::solve_DIIS(this->m_solution_x, this->m_h_xx, this->m_n_x, this->m_svdThreshold, this->m_verbosity);
     return true;
   }
 };

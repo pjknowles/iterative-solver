@@ -392,7 +392,8 @@ public:
    * \return Whether convergence has been reached
    */
   virtual bool endIteration(vectorRefSet solution, constVectorRefSet residual) {
-    report();
+    if (m_verbosity >= 0)
+      report();
     return m_errors.empty() ? false : *std::max_element(m_errors.cbegin(), m_errors.cend()) < m_thresh;
   }
   virtual bool endIteration(std::vector<Rvector>& solution, const std::vector<Rvector>& residual) {
@@ -637,7 +638,7 @@ protected:
         if (std::abs(m_s_xx[k * (nX + 1)] - 1) < 1e-15)
           m_s_xx[k * (nX + 1)] =
               1; // somehow avoid problems that eigen with Intel 18 get the SVD wrong if near-unit matrix
-      auto del = molpro::linalg::iterativesolver::helper<value_type>::propose_singularity_deletion(
+      auto del = iterativesolver::propose_singularity_deletion(
           m_exclude_r_from_redundancy_test ? nX - nR : nX, nX, m_residual_eigen ? m_s_xx.data() : m_h_xx.data(),
           candidates, nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
@@ -659,15 +660,15 @@ protected:
     if (m_verbosity > 1)
       molpro::cout << "nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
     if (m_verbosity > 2) {
-      molpro::linalg::iterativesolver::helper<value_type>::printMatrix(this->m_s_xx, nX, nX, "Subspace overlap");
-      molpro::linalg::iterativesolver::helper<value_type>::printMatrix(this->m_h_xx, nX, nX, "Subspace matrix");
+      iterativesolver::printMatrix(this->m_s_xx, nX, nX, "Subspace overlap");
+      iterativesolver::printMatrix(this->m_h_xx, nX, nX, "Subspace matrix");
     }
   }
 
 protected:
   void diagonalizeSubspaceMatrix() {
-    molpro::linalg::iterativesolver::helper<value_type>::eigenproblem(m_evec_xx, m_eval_xx, m_h_xx, m_s_xx, m_n_x,
-                                                                      m_hermitian, m_svdThreshold, m_verbosity);
+    iterativesolver::eigenproblem(m_evec_xx, m_eval_xx, m_h_xx, m_s_xx, m_n_x, m_hermitian, m_svdThreshold,
+                                  m_verbosity);
     return;
   }
 
@@ -807,15 +808,15 @@ template <class Rvector = std::vector<double>, class Qvector = Rvector,
           class Pvector = std::map<size_t, typename Rvector::value_type>>
 class LinearEigensystem : public IterativeSolver<Rvector, Qvector, Pvector> {
 public:
-  using typename IterativeSolver<Rvector>::scalar_type;
-  using typename IterativeSolver<Rvector>::value_type;
-  using IterativeSolver<Rvector>::m_verbosity;
+  using typename IterativeSolver<Rvector, Qvector, Pvector>::scalar_type;
+  using typename IterativeSolver<Rvector, Qvector, Pvector>::value_type;
+  using IterativeSolver<Rvector, Qvector, Pvector>::m_verbosity;
 
   /*!
    * \brief LinearEigensystem
    */
   explicit LinearEigensystem(std::shared_ptr<molpro::Profiler> profiler = nullptr)
-      : IterativeSolver<Rvector>(profiler) {
+      : IterativeSolver<Rvector, Qvector, Pvector>(profiler) {
     this->m_residual_rhs = false;
     this->m_residual_eigen = true;
     this->m_linear = true;
@@ -873,14 +874,14 @@ public:
 template <class Rvector = std::vector<double>, class Qvector = Rvector,
           class Pvector = std::map<size_t, typename Rvector::value_type>>
 class LinearEquations : public IterativeSolver<Rvector, Qvector, Pvector> {
-  using typename IterativeSolver<Rvector>::scalar_type;
-  using typename IterativeSolver<Rvector>::value_type;
+  using typename IterativeSolver<Rvector, Qvector, Pvector>::scalar_type;
+  using typename IterativeSolver<Rvector, Qvector, Pvector>::value_type;
 
 public:
   using vectorSet = typename std::vector<Rvector>;                                       ///< Container of vectors
   using vectorRefSet = typename std::vector<std::reference_wrapper<Rvector>>;            ///< Container of vectors
   using constVectorRefSet = typename std::vector<std::reference_wrapper<const Rvector>>; ///< Container of vectors
-  using IterativeSolver<Rvector>::m_verbosity;
+  using IterativeSolver<Rvector, Qvector, Pvector>::m_verbosity;
 
   /*!
    * \brief Constructor
@@ -930,9 +931,9 @@ public:
 
 protected:
   bool solveReducedProblem() override {
-    molpro::linalg::iterativesolver::helper<value_type>::solve_LinearEquations(
-        this->m_solution_x, this->m_eval_xx, this->m_h_xx, this->m_s_xx, this->m_rhs_x, this->m_n_x, this->m_roots,
-        this->m_augmented_hessian, this->m_svdThreshold, this->m_verbosity);
+    iterativesolver::solve_LinearEquations(this->m_solution_x, this->m_eval_xx, this->m_h_xx, this->m_s_xx,
+                                           this->m_rhs_x, this->m_n_x, this->m_roots, this->m_augmented_hessian,
+                                           this->m_svdThreshold, this->m_verbosity);
     return true;
   }
 };
@@ -948,13 +949,13 @@ protected:
 template <class Rvector = std::vector<double>, class Qvector = Rvector>
 class Optimize : public IterativeSolver<Rvector, Qvector> {
 public:
-  using typename IterativeSolver<Rvector>::scalar_type;
-  using typename IterativeSolver<Rvector>::value_type;
+  using typename IterativeSolver<Rvector, Qvector>::scalar_type;
+  using typename IterativeSolver<Rvector, Qvector>::value_type;
   using vectorSet = typename std::vector<Rvector>;                                       ///< Container of vectors
   using vectorRefSet = typename std::vector<std::reference_wrapper<Rvector>>;            ///< Container of vectors
   using constVectorRefSet = typename std::vector<std::reference_wrapper<const Rvector>>; ///< Container of vectors
-  using IterativeSolver<Rvector>::m_verbosity;
-  using IterativeSolver<Rvector>::m_values;
+  using IterativeSolver<Rvector, Qvector>::m_verbosity;
+  using IterativeSolver<Rvector, Qvector>::m_values;
 
   /*!
    * \brief Constructor
@@ -1086,13 +1087,15 @@ protected:
       }
       // when we arrive here, we need to do a new line-search step
       //      molpro::cout << "we need to do a new line-search step " << alpha << std::endl;
-      m_linesearch_steplength = (alpha - 1) * step;
       if (f1 <= f0) {
+        m_linesearch_steplength = (alpha - 1) * step;
         m_best_r.reset(new Qvector(this->m_current_r.front()));
         m_best_v.reset(new Qvector(this->m_current_v.front()));
         m_best_f = this->m_values.back();
         //        molpro::cout << "setting best to current, with f=" << m_best_f << std::endl;
-      }
+      } else
+        m_linesearch_steplength = alpha * step;
+
       this->m_nullify_solution_before_update = false;
       return false;
     }
@@ -1153,7 +1156,7 @@ public:
       }
       //    molpro::cout << "*exit endIteration m_linesearch_steplength=" << m_linesearch_steplength << std::endl;
     }
-    return IterativeSolver<Rvector>::endIteration(solution, residual);
+    return IterativeSolver<Rvector, Qvector>::endIteration(solution, residual);
   }
 
   virtual bool endIteration(std::vector<Rvector>& solution, const std::vector<Rvector>& residual) override {
@@ -1191,9 +1194,9 @@ template <class Rvector = std::vector<double>, class Qvector = Rvector>
 class DIIS : public IterativeSolver<Rvector, Qvector> {
 
 public:
-  using typename IterativeSolver<Rvector>::scalar_type;
-  using typename IterativeSolver<Rvector>::value_type;
-  using IterativeSolver<Rvector>::m_verbosity;
+  using typename IterativeSolver<Rvector, Qvector>::scalar_type;
+  using typename IterativeSolver<Rvector, Qvector>::value_type;
+  using IterativeSolver<Rvector, Qvector>::m_verbosity;
 
   /*!
    * \brief DIIS
@@ -1217,8 +1220,7 @@ protected:
     if (this->m_roots > 1)
       throw std::logic_error("DIIS does not handle multiple solutions");
 
-    molpro::linalg::iterativesolver::helper<value_type>::solve_DIIS(this->m_solution_x, this->m_h_xx, this->m_n_x,
-                                                                    this->m_svdThreshold, this->m_verbosity);
+    iterativesolver::solve_DIIS(this->m_solution_x, this->m_h_xx, this->m_n_x, this->m_svdThreshold, this->m_verbosity);
     return true;
   }
 };

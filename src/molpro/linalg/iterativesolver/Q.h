@@ -1,9 +1,9 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_Q_H_
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_Q_H_
-#include <molpro/linalg/iterativesolver/P.h>
 #include <cmath>
 #include <map>
 #include <memory>
+#include <molpro/linalg/iterativesolver/P.h>
 //#include <molpro/iostream.h>
 #include <vector>
 
@@ -17,8 +17,7 @@ namespace iterativesolver {
  * @tparam Qvector Out-of memory vectors to be used for storing the space.
  * @tparam Pvector Containers that specify a P-space member
  */
-template <class Rvector, class Qvector = Rvector,
-          class Pvector = std::map<size_t, typename Rvector::value_type>>
+template <class Rvector, class Qvector = Rvector, class Pvector = std::map<size_t, typename Rvector::value_type>>
 class Q {
   using ArrayHandlerFactory = molpro::linalg::array::ArrayHandlerFactory<Rvector, Qvector>;
   using ArrayHandler = molpro::linalg::array::ArrayHandler<Rvector, Qvector>;
@@ -94,8 +93,7 @@ public:
    * @param rhs
    * @param resres If true, action matrix will be action.action instead of vector.action
    */
-  void add(const Rvector& vector, const Rvector& action, const std::vector<Qvector>& rhs,
-           bool resres = false) {
+  void add(const Rvector& vector, const Rvector& action, const std::vector<Qvector>& rhs, bool resres = false) {
     for (const auto& vi : (resres ? m_actions : m_vectors)) {
       m_metric[m_index][vi.first] = m_metric[vi.first][m_index] = m_handler->dot(vector, vi.second);
       m_action[vi.first][m_index] = m_handler->dot(action, vi.second);
@@ -139,9 +137,8 @@ public:
    * @param orthogonalise If true, the new vector will be orthogonal to vector
    * @return The scale factor applied to make the new vector length 1
    */
-  scalar_type add(const Rvector& vector, const Rvector& action, const Qvector& oldvector,
-                  const Qvector& oldaction, const std::vector<Qvector>& rhs, bool resres = false,
-                  bool orthogonalise = true) {
+  scalar_type add(const Rvector& vector, const Rvector& action, const Qvector& oldvector, const Qvector& oldaction,
+                  const std::vector<Qvector>& rhs, bool resres = false, bool orthogonalise = true) {
     auto rr = m_handler->dot(vector, vector);
     typename Rvector::value_type scale_factor, diff_factor;
     if (resres) {
@@ -180,7 +177,7 @@ public:
     v.scal(1 / scale_factor);
     a.axpy(diff_factor * scale_factor, oldaction);
     a.scal(1 / scale_factor);
-    //    molpro::cout << "created Q, scale_factor="<<scale_factor<<std::endl;
+//    std::cout << "created Q, scale_factor=" << scale_factor << std::endl;
     return scale_factor;
   }
 

@@ -37,17 +37,22 @@ public:
   ~Span() = default;
   Span(T* data, size_type size) : m_buffer{data}, m_size{size} {}
   Span(const Span& source) = default;
-  Span(Span&& source) : m_buffer{source.m_buffer}, m_size{source.m_size} {
-    source.m_buffer = nullptr;
-    source.m_size = 0;
+  Span(Span<T>&& source) noexcept : m_buffer{source.m_buffer}, m_size{source.m_size} {
+    Span<T> t{};
+    swap(source, t);
   }
   Span& operator=(const Span& source) = default;
-  Span& operator=(Span&& source) {
-    m_buffer = source.m_buffer;
-    m_size = source.m_size;
-    source.m_buffer = nullptr;
-    source.m_size = 0;
+  Span& operator=(Span&& source) noexcept {
+    Span<T> t{std::move(source)};
+    swap(*this, t);
     return *this;
+  }
+
+  //! Swap content of two Spans
+  friend void swap(Span<T>& x, Span<T>& y) {
+    using std::swap;
+    swap(x.m_buffer, y.m_buffer);
+    swap(x.m_size, y.m_size);
   }
 
   iterator data() { return m_buffer; }

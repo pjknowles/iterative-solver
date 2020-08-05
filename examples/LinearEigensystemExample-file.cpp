@@ -16,7 +16,20 @@ public:
 
   explicit pv(size_t length = 0, int option = 0) : buffer(length) {}
 
-  explicit pv(const pv& source, int option = 0) { *this = source; }
+  //explicit pv(const pv& source, int option = 0) { *this = source; }
+  pv(const pv& source, int option = 0) { *this = source; }
+
+  std::vector<scalar>::const_iterator begin() const { return buffer.begin(); }
+
+  std::vector<scalar>::iterator begin() { return buffer.begin(); }
+
+  std::vector<scalar>::const_iterator end() const { return buffer.end(); }
+
+  std::vector<scalar>::iterator end() { return buffer.end(); }
+
+  size_t size() const { return buffer.size(); }
+
+  void push_back(const scalar& elem) {buffer.push_back(elem);}
 
   void axpy(scalar a, const pv& other) {
     for (size_t i = 0; i < buffer.size(); i++)

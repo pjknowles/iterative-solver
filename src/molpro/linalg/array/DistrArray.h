@@ -134,21 +134,29 @@ protected:
   //! Provides access to the local portion of the array locking that portion for all other process.
   class LocalBuffer {
   public:
+    using value_type = DistrArray::value_type;
+    using size_type = DistrArray::index_type;
+    using iterator = value_type *;
+    using const_iterator = const value_type *;
     //! Size of the local buffer
-    size_t size() const { return hi - lo; };
+    size_type size() const { return hi - lo; };
     //! Pointer to the start of the buffer
-    DistrArray::value_type *begin() { return buffer; };
-    const DistrArray::value_type *begin() const { return buffer; };
-    const DistrArray::value_type *cbegin() const { return begin(); };
+    iterator begin() { return buffer; };
+    const_iterator begin() const { return buffer; };
+    const_iterator cbegin() const { return begin(); };
     //! Pointer to the end of the buffer (element just after the last one)
-    DistrArray::value_type *end() { return buffer + size(); };
-    const DistrArray::value_type *end() const { return buffer + size(); };
-    const DistrArray::value_type *cend() const { return end(); };
+    friend iterator begin(LocalBuffer &x) { return x.begin(); }
+    friend const_iterator begin(const LocalBuffer &x) { return x.begin(); }
+    iterator end() { return buffer + size(); };
+    const_iterator end() const { return buffer + size(); };
+    const_iterator cend() const { return end(); };
+    friend iterator end(LocalBuffer &x) { return x.end(); }
+    friend const_iterator end(const LocalBuffer &x) { return x.end(); }
     //! Checks that the current and the other buffers correspond to the same section of their respective arrays
     bool compatible(const LocalBuffer &other) const { return lo == other.lo && hi == other.hi; };
     //! Access element at position i relative to begin() without bounds checking
-    DistrArray::value_type &at(size_t i) { return buffer[i]; };
-    DistrArray::value_type const &at(size_t i) const { return buffer[i]; };
+    value_type &at(size_t i) { return buffer[i]; };
+    value_type const &at(size_t i) const { return buffer[i]; };
     DistrArray::index_type lo;      //!< index of first element of local buffer in the array
     DistrArray::index_type hi;      //!< index of one past the last element in the buffer (same as end())
     DistrArray::value_type *buffer; //!< pointer to the start of the local array buffer

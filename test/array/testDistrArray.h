@@ -20,7 +20,8 @@ using ::testing::Pointwise;
 using molpro::linalg::array::util::LockMPI3;
 using molpro::linalg::test::mpi_comm;
 
-template <class Array> struct TestDistrArray : public ::testing::Test {};
+template <class Array>
+struct TestDistrArray : public ::testing::Test {};
 
 TYPED_TEST_SUITE_P(TestDistrArray);
 
@@ -33,15 +34,120 @@ TYPED_TEST_P(TestDistrArray, constructor) {
 
 TYPED_TEST_P(TestDistrArray, constructor_copy) {
   LockMPI3 lock{mpi_comm};
-  auto proxy = lock.scope();
   size_t dim = 100;
   TypeParam a{dim, mpi_comm};
   TypeParam b(a);
+  auto proxy = lock.scope();
+  ASSERT_EQ(b.size(), a.size());
+  ASSERT_EQ(b.communicator(), a.communicator());
+  ASSERT_EQ(a.empty(), b.empty());
 }
 
-REGISTER_TYPED_TEST_SUITE_P(TestDistrArray, constructor, constructor_copy);
+TYPED_TEST_P(TestDistrArray, constructor_copy_allocated) {
+  LockMPI3 lock{mpi_comm};
+  size_t dim = 100;
+  double alpha = 1;
+  TypeParam a{dim, mpi_comm};
+  a.allocate_buffer();
+  a.fill(alpha);
+  TypeParam b(a);
+  auto proxy = lock.scope();
+  ASSERT_EQ(b.size(), a.size());
+  ASSERT_EQ(b.communicator(), a.communicator());
+  ASSERT_EQ(a.empty(), b.empty());
+  ASSERT_THAT(*b.local_buffer(), Each(DoubleEq(alpha)));
+}
 
-template <typename Array> class DistArrayInitializationF : public Array, public ::testing::Test {
+TYPED_TEST_P(TestDistrArray, copy_assignment_op) {
+  LockMPI3 lock{mpi_comm};
+  size_t dim = 100;
+  TypeParam a{dim, mpi_comm};
+  TypeParam b{};
+  b = a;
+  auto proxy = lock.scope();
+  ASSERT_EQ(b.size(), a.size());
+  ASSERT_EQ(b.communicator(), a.communicator());
+  ASSERT_EQ(a.empty(), b.empty());
+}
+
+TYPED_TEST_P(TestDistrArray, copy_assignment_op_allocated) {
+  LockMPI3 lock{mpi_comm};
+  size_t dim = 100;
+  double alpha = 1;
+  TypeParam a{dim, mpi_comm};
+  a.allocate_buffer();
+  a.fill(alpha);
+  TypeParam b{};
+  b = a;
+  auto proxy = lock.scope();
+  ASSERT_EQ(b.size(), a.size());
+  ASSERT_EQ(b.communicator(), a.communicator());
+  ASSERT_EQ(a.empty(), b.empty());
+  ASSERT_THAT(*b.local_buffer(), Each(DoubleEq(alpha)));
+}
+
+TYPED_TEST_P(TestDistrArray, constructor_move) {
+  LockMPI3 lock{mpi_comm};
+  size_t dim = 100;
+  TypeParam &&a{dim, mpi_comm};
+  TypeParam b(std::move(a));
+  auto proxy = lock.scope();
+  ASSERT_EQ(b.size(), dim);
+  ASSERT_EQ(b.communicator(), mpi_comm);
+  ASSERT_TRUE(b.empty());
+}
+
+TYPED_TEST_P(TestDistrArray, constructor_move_allocated) {
+  LockMPI3 lock{mpi_comm};
+  size_t dim = 100;
+  double alpha = 1;
+  TypeParam &&a{dim, mpi_comm};
+  a.allocate_buffer();
+  a.fill(alpha);
+  TypeParam b(std::move(a));
+  auto proxy = lock.scope();
+  ASSERT_EQ(b.size(), dim);
+  ASSERT_EQ(b.communicator(), mpi_comm);
+  ASSERT_FALSE(b.empty());
+  ASSERT_THAT(*b.local_buffer(), Each(DoubleEq(alpha)));
+}
+
+TYPED_TEST_P(TestDistrArray, move_assignment_op) {
+  LockMPI3 lock{mpi_comm};
+  size_t dim = 100;
+  TypeParam &&a{dim, mpi_comm};
+  TypeParam b{};
+  b = std::move(a);
+  auto proxy = lock.scope();
+  ASSERT_EQ(b.size(), dim);
+  ASSERT_EQ(b.communicator(), mpi_comm);
+  ASSERT_TRUE(b.empty());
+  ASSERT_TRUE(a.empty());
+}
+
+TYPED_TEST_P(TestDistrArray, move_assignment_op_allocated) {
+  LockMPI3 lock{mpi_comm};
+  size_t dim = 100;
+  double alpha = 1;
+  TypeParam &&a{dim, mpi_comm};
+  a.allocate_buffer();
+  a.fill(alpha);
+  TypeParam b{};
+  b = std::move(a);
+  auto proxy = lock.scope();
+  ASSERT_EQ(b.size(), dim);
+  ASSERT_EQ(b.communicator(), mpi_comm);
+  ASSERT_FALSE(b.empty());
+  ASSERT_TRUE(a.empty());
+  ASSERT_THAT(*b.local_buffer(), Each(DoubleEq(alpha)));
+}
+
+REGISTER_TYPED_TEST_SUITE_P(TestDistrArray, constructor, constructor_copy, constructor_copy_allocated,
+                            copy_assignment_op, copy_assignment_op_allocated, constructor_move,
+                            constructor_move_allocated, move_assignment_op, move_assignment_op_allocated);
+
+template <typename Array>
+class DistArrayInitializationF : public Array, public ::testing::Test {
 public:
   DistArrayInitializationF() : Array(dim, mpi_comm), lock(mpi_comm), m_comm_rank{0} {
     MPI_Comm_rank(mpi_comm, &m_comm_rank);
@@ -158,7 +264,8 @@ TYPED_TEST_P(DistArrayInitializationF, fill) {
 
 REGISTER_TYPED_TEST_SUITE_P(DistArrayInitializationF, size, empty, allocate_buffer, zero, vec, get, put, fill);
 
-template <typename Array> class DistrArrayRangeF : public ::testing::Test, public Array {
+template <typename Array>
+class DistrArrayRangeF : public ::testing::Test, public Array {
 public:
   //! Stores a range in the buffer {1, 2, 3, 4, 5, .., dim}
   DistrArrayRangeF() : Array((size_t)dim, mpi_comm), lock(mpi_comm), p_rank(0), p_size(0) {
@@ -377,10 +484,10 @@ TYPED_TEST_P(DistrArrayRangeF, recip) {
 REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeF, gather, scatter, scatter_acc, at, min_loc_n, min_loc_n_reverse, max_n,
                             min_abs_n, max_abs_n, scal_double, add_double, sub_double, recip);
 
-template <typename Array> class DistrArrayCollectiveOpF : public ::testing::Test {
+template <typename Array>
+class DistrArrayCollectiveOpF : public ::testing::Test {
 public:
-  DistrArrayCollectiveOpF()
-      : lock(mpi_comm), p_rank(0), p_size(0), a(dim, mpi_comm), b(dim, mpi_comm) {
+  DistrArrayCollectiveOpF() : lock(mpi_comm), p_rank(0), p_size(0), a(dim, mpi_comm), b(dim, mpi_comm) {
     MPI_Comm_rank(mpi_comm, &p_rank);
     MPI_Comm_size(mpi_comm, &p_size);
     a.allocate_buffer();

@@ -231,8 +231,9 @@ DistrArrayMPI3::LocalBufferMPI3::LocalBufferMPI3(DistrArrayMPI3& source) {
   std::tie(_lo, sz) = source.distribution().range(rank);
   lo = _lo;
   hi = lo + sz;
+  m_size = sz;
   int flag;
-  MPI_Win_get_attr(source.m_win, MPI_WIN_BASE, &buffer, &flag);
+  MPI_Win_get_attr(source.m_win, MPI_WIN_BASE, &m_buffer, &flag);
 }
 
 DistrArrayMPI3::DistributionMPI3::DistributionMPI3(int n_proc, size_t dimension) : m_dim(dimension) {

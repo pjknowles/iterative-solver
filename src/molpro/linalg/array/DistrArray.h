@@ -7,6 +7,8 @@
 #include <mpi.h>
 #include <vector>
 
+#include <molpro/linalg/array/Span.h>
+
 namespace molpro {
 class Profiler;
 }
@@ -132,34 +134,19 @@ public:
   //! @{
 protected:
   //! Provides access to the local portion of the array locking that portion for all other process.
-  class LocalBuffer {
+  class LocalBuffer : public span::Span<value_type> {
   public:
-    using value_type = DistrArray::value_type;
-    using size_type = DistrArray::index_type;
-    using iterator = value_type *;
-    using const_iterator = const value_type *;
-    //! Size of the local buffer
-    size_type size() const { return hi - lo; };
-    //! Pointer to the start of the buffer
-    iterator begin() { return buffer; };
-    const_iterator begin() const { return buffer; };
-    const_iterator cbegin() const { return begin(); };
-    //! Pointer to the end of the buffer (element just after the last one)
-    friend iterator begin(LocalBuffer &x) { return x.begin(); }
-    friend const_iterator begin(const LocalBuffer &x) { return x.begin(); }
-    iterator end() { return buffer + size(); };
-    const_iterator end() const { return buffer + size(); };
-    const_iterator cend() const { return end(); };
-    friend iterator end(LocalBuffer &x) { return x.end(); }
-    friend const_iterator end(const LocalBuffer &x) { return x.end(); }
-    //! Checks that the current and the other buffers correspond to the same section of their respective arrays
-    bool compatible(const LocalBuffer &other) const { return lo == other.lo && hi == other.hi; };
+    using span::Span<value_type>::Span;
     //! Access element at position i relative to begin() without bounds checking
-    value_type &at(size_t i) { return buffer[i]; };
-    value_type const &at(size_t i) const { return buffer[i]; };
-    DistrArray::index_type lo;      //!< index of first element of local buffer in the array
-    DistrArray::index_type hi;      //!< index of one past the last element in the buffer (same as end())
-    DistrArray::value_type *buffer; //!< pointer to the start of the local array buffer
+    value_type &at(size_t i) { return *(m_buffer + i); };
+    value_type const &at(size_t i) const { return *(m_buffer + i); };
+    //! Checks that the current and the other buffers correspond to the same section of their respective arrays
+    bool compatible(const LocalBuffer &other) const { return lo == other.lo && size() == other.size(); };
+    // //! Return index to the start of the local buffer section in the distributed array
+    //    size_type start() const { return m_lo; }
+    //  protected:
+    size_type lo = 0; //!< index of first element of local buffer in the array
+    size_type hi = 0; //!< index of one past the last element in the buffer (same as end())
   };
 
   //! Information on how the array is distributed among the processes.

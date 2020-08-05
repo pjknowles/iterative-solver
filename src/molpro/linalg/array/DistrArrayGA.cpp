@@ -138,16 +138,17 @@ void DistrArrayGA::sync() const {
   GA_Pgroup_sync(m_ga_pgroup);
 }
 
-DistrArrayGA::LocalBufferGA::LocalBufferGA(DistrArrayGA &source) : DistrArray::LocalBuffer{0, 0, nullptr} {
+DistrArrayGA::LocalBufferGA::LocalBufferGA(DistrArrayGA &source) : DistrArray::LocalBuffer{} {
   if (source.empty())
     return;
   int lo_, hi_, ld{0};
   NGA_Distribution(source.m_ga_handle, source.m_comm_rank, &lo_, &hi_);
-  NGA_Access(source.m_ga_handle, &lo_, &hi_, &buffer, &ld);
-  if (buffer == nullptr)
+  NGA_Access(source.m_ga_handle, &lo_, &hi_, &m_buffer, &ld);
+  if (m_buffer == nullptr)
     source.error("Array::LocalBuffer::LocalBuffer() Failed to get local buffer");
   lo = lo_;
   hi = hi_ + 1;
+  m_size = hi - lo;
 }
 
 std::shared_ptr<const DistrArray::LocalBuffer> DistrArrayGA::local_buffer() const {

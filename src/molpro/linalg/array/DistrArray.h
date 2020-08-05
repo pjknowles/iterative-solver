@@ -133,20 +133,17 @@ public:
    */
   //! @{
 protected:
-  //! Provides access to the local portion of the array locking that portion for all other process.
+  //! Provides access to the local portion of the array
   class LocalBuffer : public span::Span<value_type> {
   public:
     using span::Span<value_type>::Span;
-    //! Access element at position i relative to begin() without bounds checking
-    value_type &at(size_t i) { return *(m_buffer + i); };
-    value_type const &at(size_t i) const { return *(m_buffer + i); };
     //! Checks that the current and the other buffers correspond to the same section of their respective arrays
-    bool compatible(const LocalBuffer &other) const { return lo == other.lo && size() == other.size(); };
-    // //! Return index to the start of the local buffer section in the distributed array
-    //    size_type start() const { return m_lo; }
-    //  protected:
-    size_type lo = 0; //!< index of first element of local buffer in the array
-    size_type hi = 0; //!< index of one past the last element in the buffer (same as end())
+    bool compatible(const LocalBuffer &other) const { return start() == other.start() && size() == other.size(); };
+    //! Return index to the start of the local buffer section in the distributed array
+    size_type start() const { return m_start; }
+
+  protected:
+    size_type m_start = 0; //!< index of first element of local buffer in the array
   };
 
   //! Information on how the array is distributed among the processes.
@@ -159,8 +156,8 @@ protected:
 
 public:
   //! Access the buffer local to this process
-  [[nodiscard]] virtual std::shared_ptr<LocalBuffer> local_buffer() = 0;
-  [[nodiscard]] virtual std::shared_ptr<const LocalBuffer> local_buffer() const = 0;
+  [[nodiscard]] virtual std::unique_ptr<LocalBuffer> local_buffer() = 0;
+  [[nodiscard]] virtual std::unique_ptr<const LocalBuffer> local_buffer() const = 0;
   //! Access distribution of the array among processes
   [[nodiscard]] virtual const Distribution &distribution() const = 0;
   //! @}

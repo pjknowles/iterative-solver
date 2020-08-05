@@ -109,13 +109,12 @@ void DistrArrayMPI3::sync() const {
   MPI_Barrier(m_communicator);
 }
 
-std::shared_ptr<const DistrArray::LocalBuffer> DistrArrayMPI3::local_buffer() const {
-  return std::make_shared<const LocalBufferMPI3>(*const_cast<DistrArrayMPI3*>(this));
+std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayMPI3::local_buffer() const {
+  return std::make_unique<const LocalBufferMPI3>(*const_cast<DistrArrayMPI3*>(this));
 }
 
-std::shared_ptr<DistrArrayMPI3::LocalBuffer> DistrArrayMPI3::local_buffer() {
-  auto cp = const_cast<const DistrArrayMPI3*>(this)->local_buffer();
-  return std::const_pointer_cast<DistrArrayMPI3::LocalBuffer>(cp);
+std::unique_ptr<DistrArrayMPI3::LocalBuffer> DistrArrayMPI3::local_buffer() {
+  return std::make_unique<LocalBufferMPI3>(*this);
 }
 
 DistrArray::value_type DistrArrayMPI3::at(index_type ind) const {
@@ -226,12 +225,7 @@ DistrArrayMPI3::LocalBufferMPI3::LocalBufferMPI3(DistrArrayMPI3& source) {
     source.error("attempting to access local buffer of empty array");
   int rank;
   MPI_Comm_rank(source.communicator(), &rank);
-  index_type _lo;
-  size_t sz;
-  std::tie(_lo, sz) = source.distribution().range(rank);
-  lo = _lo;
-  hi = lo + sz;
-  m_size = sz;
+  std::tie(m_start, m_size) = source.distribution().range(rank);
   int flag;
   MPI_Win_get_attr(source.m_win, MPI_WIN_BASE, &m_buffer, &flag);
 }

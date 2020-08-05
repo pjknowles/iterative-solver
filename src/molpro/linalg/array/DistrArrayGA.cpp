@@ -141,23 +141,21 @@ void DistrArrayGA::sync() const {
 DistrArrayGA::LocalBufferGA::LocalBufferGA(DistrArrayGA &source) : DistrArray::LocalBuffer{} {
   if (source.empty())
     return;
-  int lo_, hi_, ld{0};
-  NGA_Distribution(source.m_ga_handle, source.m_comm_rank, &lo_, &hi_);
-  NGA_Access(source.m_ga_handle, &lo_, &hi_, &m_buffer, &ld);
+  int lo, hi, ld{0};
+  NGA_Distribution(source.m_ga_handle, source.m_comm_rank, &lo, &hi);
+  NGA_Access(source.m_ga_handle, &lo, &hi, &m_buffer, &ld);
   if (m_buffer == nullptr)
     source.error("Array::LocalBuffer::LocalBuffer() Failed to get local buffer");
-  lo = lo_;
-  hi = hi_ + 1;
-  m_size = hi - lo;
+  m_start = lo;
+  m_size = hi - lo + 1;
 }
 
-std::shared_ptr<const DistrArray::LocalBuffer> DistrArrayGA::local_buffer() const {
-  return std::make_shared<const DistrArrayGA::LocalBufferGA>(*const_cast<DistrArrayGA *>(this));
+std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayGA::local_buffer() const {
+  return std::make_unique<const DistrArrayGA::LocalBufferGA>(*const_cast<DistrArrayGA *>(this));
 }
 
-std::shared_ptr<DistrArray::LocalBuffer> DistrArrayGA::local_buffer() {
-  auto cp = const_cast<const DistrArrayGA *>(this)->local_buffer();
-  return std::const_pointer_cast<DistrArrayGA::LocalBuffer>(cp);
+std::unique_ptr<DistrArray::LocalBuffer> DistrArrayGA::local_buffer() {
+  return std::make_unique<DistrArrayGA::LocalBufferGA>(*this);
 }
 
 void DistrArrayGA::check_ga_ind_overlow(index_type ind) const {

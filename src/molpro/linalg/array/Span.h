@@ -28,6 +28,8 @@ class Span {
 public:
   using element_type = T;
   using value_type = std::remove_cv_t<T>;
+  using reference = T&;
+  using const_reference = T&;
   using size_type = size_t;
   using difference_type = std::ptrdiff_t;
   using iterator = T*;
@@ -47,6 +49,8 @@ public:
     swap(*this, t);
     return *this;
   }
+  reference operator[](size_type i) { return *(m_buffer + i); }
+  const_reference operator[](size_type i) const { return *(m_buffer + i); }
 
   //! Swap content of two Spans
   friend void swap(Span<T>& x, Span<T>& y) {

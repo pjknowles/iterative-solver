@@ -65,8 +65,8 @@ protected:
 
 public:
   [[nodiscard]] const Distribution &distribution() const override;
-  [[nodiscard]] std::shared_ptr<LocalBuffer> local_buffer() override;
-  [[nodiscard]] std::shared_ptr<const LocalBuffer> local_buffer() const override;
+  [[nodiscard]] std::unique_ptr<LocalBuffer> local_buffer() override;
+  [[nodiscard]] std::unique_ptr<const LocalBuffer> local_buffer() const override;
   [[nodiscard]] value_type at(index_type ind) const override;
   void set(index_type ind, value_type val) override;
   void get(index_type lo, index_type hi, value_type *buf) const override;

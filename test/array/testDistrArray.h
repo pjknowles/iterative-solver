@@ -275,7 +275,7 @@ public:
     values.resize(dim);
     std::iota(values.begin(), values.end(), 1.);
     auto buffer = Array::local_buffer();
-    std::copy(values.begin() + buffer->lo, values.begin() + buffer->hi, buffer->begin());
+    std::copy(values.begin() + buffer->start(), values.begin() + buffer->start() + buffer->size(), buffer->begin());
     sub_indices = {0, 1, 7, 15, 21, 29};
     for (auto el : sub_indices)
       sub_values.push_back(values[el]);
@@ -391,8 +391,8 @@ TYPED_TEST_P(DistrArrayRangeF, max_n) {
 TYPED_TEST_P(DistrArrayRangeF, min_abs_n) {
   auto loc_buffer = TypeParam::local_buffer();
   for (size_t i = 0; i < loc_buffer->size(); ++i)
-    if ((i + loc_buffer->lo) % 2 == 1)
-      loc_buffer->at(i) *= -1;
+    if ((i + loc_buffer->start()) % 2 == 1)
+      (*loc_buffer)[i] *= -1;
   int n = 10;
   auto ref_minloc_ind = std::vector<size_t>(n);
   std::iota(ref_minloc_ind.begin(), ref_minloc_ind.end(), 0);
@@ -410,8 +410,8 @@ TYPED_TEST_P(DistrArrayRangeF, min_abs_n) {
 TYPED_TEST_P(DistrArrayRangeF, max_abs_n) {
   auto loc_buffer = TypeParam::local_buffer();
   for (size_t i = 0; i < loc_buffer->size(); ++i)
-    if ((i + loc_buffer->lo) % 2 == 1)
-      loc_buffer->at(i) *= -1;
+    if ((i + loc_buffer->start()) % 2 == 1)
+      (*loc_buffer)[i] *= -1;
   int n = 10;
   auto ref_minloc_ind = std::vector<size_t>(n);
   std::iota(ref_minloc_ind.rbegin(), ref_minloc_ind.rend(), TypeParam::size() - n);

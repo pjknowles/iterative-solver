@@ -51,18 +51,19 @@ void DistrArray::axpy(value_type a, const DistrArray& y) {
     error(name + " incompatible local buffers");
   if (a == 1)
     for (size_t i = 0; i < loc_x->size(); ++i)
-      loc_x->at(i) += loc_y->at(i);
+      (*loc_x)[i] += (*loc_y)[i];
   else if (a == -1)
     for (size_t i = 0; i < loc_x->size(); ++i)
-      loc_x->at(i) -= loc_y->at(i);
+      (*loc_x)[i] -= (*loc_y)[i];
   else
     for (size_t i = 0; i < loc_x->size(); ++i)
-      loc_x->at(i) += a * loc_y->at(i);
+      (*loc_x)[i] += a * (*loc_y)[i];
 }
 
 void DistrArray::scal(DistrArray::value_type a) {
   util::ScopeProfiler p{m_prof, "Array::scal"};
-  for (auto& el : *local_buffer())
+  auto x = local_buffer();
+  for (auto& el : *x)
     el *= a;
 }
 
@@ -70,7 +71,8 @@ void DistrArray::add(const DistrArray& y) { return axpy(1, y); }
 
 void DistrArray::add(DistrArray::value_type a) {
   util::ScopeProfiler p{m_prof, "Array::add"};
-  for (auto& el : *local_buffer())
+  auto x = local_buffer();
+  for (auto& el : *x)
     el += a;
 }
 
@@ -80,7 +82,8 @@ void DistrArray::sub(DistrArray::value_type a) { return add(-a); }
 
 void DistrArray::recip() {
   util::ScopeProfiler p{m_prof, "Array::recip"};
-  for (auto& el : *local_buffer())
+  auto x = local_buffer();
+  for (auto& el : *x)
     el = 1. / el;
 }
 
@@ -96,7 +99,7 @@ void DistrArray::times(const DistrArray& y) {
   if (!loc_x->compatible(*loc_y))
     error(name + " incompatible local buffers");
   for (size_t i = 0; i < loc_x->size(); ++i)
-    loc_x->at(i) *= loc_y->at(i);
+    (*loc_x)[i] *= (*loc_y)[i];
 }
 
 void DistrArray::times(const DistrArray& y, const DistrArray& z) {
@@ -114,7 +117,7 @@ void DistrArray::times(const DistrArray& y, const DistrArray& z) {
   if (!loc_x->compatible(*loc_y) || !loc_x->compatible(*loc_z))
     error(name + " incompatible local buffers");
   for (size_t i = 0; i < loc_x->size(); ++i)
-    loc_x->at(i) = loc_y->at(i) * loc_z->at(i);
+    (*loc_x)[i] = (*loc_y)[i] * (*loc_z)[i];
 }
 
 DistrArray::value_type DistrArray::dot(const DistrArray& y) const {
@@ -128,7 +131,7 @@ DistrArray::value_type DistrArray::dot(const DistrArray& y) const {
   auto loc_y = y.local_buffer();
   if (!loc_x->compatible(*loc_y))
     error(name + " incompatible local buffers");
-  auto a = std::inner_product(loc_x->begin(), loc_x->end(), loc_y->begin(), 0.);
+  auto a = std::inner_product(begin(*loc_x), end(*loc_x), begin(*loc_y), (value_type)0);
   MPI_Allreduce(MPI_IN_PLACE, &a, 1, MPI_DOUBLE, MPI_SUM, communicator());
   return a;
 }
@@ -151,17 +154,17 @@ void DistrArray::_divide(const DistrArray& y, const DistrArray& z, DistrArray::v
   if (append) {
     if (negative)
       for (size_t i = 0; i < loc_x->size(); ++i)
-        loc_x->at(i) -= loc_y->at(i) / (loc_z->at(i) + shift);
+        (*loc_x)[i] -= (*loc_y)[i] / ((*loc_z)[i] + shift);
     else
       for (size_t i = 0; i < loc_x->size(); ++i)
-        loc_x->at(i) += loc_y->at(i) / (loc_z->at(i) + shift);
+        (*loc_x)[i] += (*loc_y)[i] / ((*loc_z)[i] + shift);
   } else {
     if (negative)
       for (size_t i = 0; i < loc_x->size(); ++i)
-        loc_x->at(i) = -loc_y->at(i) / (loc_z->at(i) + shift);
+        (*loc_x)[i] = -(*loc_y)[i] / ((*loc_z)[i] + shift);
     else
       for (size_t i = 0; i < loc_x->size(); ++i)
-        loc_x->at(i) = loc_y->at(i) / (loc_z->at(i) + shift);
+        (*loc_x)[i] = (*loc_y)[i] / ((*loc_z)[i] + shift);
   }
 }
 
@@ -176,11 +179,11 @@ std::list<std::pair<unsigned long, double>> extrema(const DistrArray& x, int n) 
   auto nmin = length > n ? n : length;
   auto loc_extrema = std::list<std::pair<unsigned long, double>>();
   for (size_t i = 0; i < nmin; ++i)
-    loc_extrema.emplace_back(buffer->lo + i, buffer->at(i));
+    loc_extrema.emplace_back(buffer->start() + i, (*buffer)[i]);
   auto compare = Compare();
   auto compare_pair = [&compare](const auto& p1, const auto& p2) { return compare(p1.second, p2.second); };
   for (size_t i = nmin; i < length; ++i) {
-    loc_extrema.emplace_back(buffer->lo + i, buffer->at(i));
+    loc_extrema.emplace_back(buffer->start() + i, (*buffer)[i]);
     loc_extrema.sort(compare_pair);
     loc_extrema.pop_back();
   }
@@ -211,7 +214,7 @@ std::list<std::pair<unsigned long, double>> extrema(const DistrArray& x, int n) 
     MPI_Igather(MPI_IN_PLACE, n, MPI_DOUBLE, values_loc.data(), n, MPI_UNSIGNED_LONG, 0, x.communicator(),
                 &requests[2]);
     MPI_Waitall(3, requests, MPI_STATUSES_IGNORE);
-    auto tot_dummy = std::accumulate(ndummy.cbegin(), ndummy.cend(), 0);
+    auto tot_dummy = std::accumulate(begin(ndummy), end(ndummy), 0);
     if (tot_dummy != 0) {
       size_t shift = 0;
       for (size_t i = 0, ind = 0; i < comm_size; ++i) {
@@ -225,10 +228,10 @@ std::list<std::pair<unsigned long, double>> extrema(const DistrArray& x, int n) 
       values_loc.resize(ntot - tot_dummy);
     }
     std::vector<unsigned int> sort_permutation(indices_loc.size());
-    std::iota(sort_permutation.begin(), sort_permutation.end(), 0);
-    std::sort(
-        sort_permutation.begin(), sort_permutation.end(),
-        [&values_loc, &compare](const auto& i1, const auto& i2) { return compare(values_loc[i1], values_loc[i2]); });
+    std::iota(begin(sort_permutation), end(sort_permutation), (unsigned int)0);
+    std::sort(begin(sort_permutation), end(sort_permutation), [&values_loc, &compare](const auto& i1, const auto& i2) {
+      return compare(values_loc[i1], values_loc[i2]);
+    });
     for (size_t i = 0; i < n; ++i) {
       auto j = sort_permutation[i];
       indices_glob[i] = indices_loc[j];
@@ -281,7 +284,7 @@ std::vector<DistrArray::index_type> DistrArray::min_loc_n(int n) const {
     return {};
   auto min_list = min_abs_n(n);
   auto min_vec = std::vector<index_type>(n);
-  std::transform(min_list.cbegin(), min_list.cend(), min_vec.begin(), [](const auto& p) { return p.first; });
+  std::transform(begin(min_list), end(min_list), begin(min_vec), [](const auto& p) { return p.first; });
   return min_vec;
 }
 
@@ -297,7 +300,7 @@ void DistrArray::copy(const DistrArray& y) {
   if (!loc_x->compatible(*loc_y))
     error(name + " incompatible local buffers");
   for (size_t i = 0; i < loc_x->size(); ++i)
-    loc_x->at(i) = loc_y->at(i);
+    (*loc_x)[i] = (*loc_y)[i];
 }
 
 void DistrArray::copy_patch(const DistrArray& y, DistrArray::index_type start, DistrArray::index_type end) {
@@ -313,10 +316,10 @@ void DistrArray::copy_patch(const DistrArray& y, DistrArray::index_type start, D
     error(name + " incompatible local buffers");
   if (start > end)
     return;
-  auto s = start <= loc_x->lo ? 0 : start - loc_x->lo;
+  auto s = start <= loc_x->start() ? 0 : start - loc_x->start();
   auto e = end - start + 1 >= loc_x->size() ? loc_x->size() : end - start + 1;
   for (auto i = s; i < e; ++i)
-    loc_x->at(i) = loc_y->at(i);
+    (*loc_x)[i] = (*loc_y)[i];
 }
 
 DistrArray::value_type DistrArray::dot(const SparseArray& y) const {
@@ -332,9 +335,9 @@ DistrArray::value_type DistrArray::dot(const SparseArray& y) const {
   double res = 0;
   index_type i;
   value_type v;
-  for (auto it = y.lower_bound(loc_x->lo); it != y.upper_bound(loc_x->hi); ++it) {
+  for (auto it = y.lower_bound(loc_x->start()); it != y.upper_bound(loc_x->start() + loc_x->size()); ++it) {
     std::tie(i, v) = *it;
-    res += loc_x->at(i - loc_x->lo) * v;
+    res += (*loc_x)[i - loc_x->start()] * v;
   }
   MPI_Allreduce(MPI_IN_PLACE, &res, 1, MPI_DOUBLE, MPI_SUM, communicator());
   return res;
@@ -353,19 +356,19 @@ void DistrArray::axpy(value_type a, const SparseArray& y) {
   index_type i;
   value_type v;
   if (a == 1)
-    for (auto it = y.lower_bound(loc_x->lo); it != y.upper_bound(loc_x->hi); ++it) {
+    for (auto it = y.lower_bound(loc_x->start()); it != y.upper_bound(loc_x->start() + loc_x->size()); ++it) {
       std::tie(i, v) = *it;
-      loc_x->at(i - loc_x->lo) += v;
+      (*loc_x)[i - loc_x->start()] += v;
     }
   else if (a == -1)
-    for (auto it = y.lower_bound(loc_x->lo); it != y.upper_bound(loc_x->hi); ++it) {
+    for (auto it = y.lower_bound(loc_x->start()); it != y.upper_bound(loc_x->start() + loc_x->size()); ++it) {
       std::tie(i, v) = *it;
-      loc_x->at(i - loc_x->lo) -= v;
+      (*loc_x)[i - loc_x->start()] -= v;
     }
   else
-    for (auto it = y.lower_bound(loc_x->lo); it != y.upper_bound(loc_x->hi); ++it) {
+    for (auto it = y.lower_bound(loc_x->start()); it != y.upper_bound(loc_x->start() + loc_x->size()); ++it) {
       std::tie(i, v) = *it;
-      loc_x->at(i - loc_x->lo) += a * v;
+      (*loc_x)[i - loc_x->start()] += a * v;
     }
 }
 } // namespace array

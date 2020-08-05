@@ -99,6 +99,26 @@ struct RefEqual {
 
 //! Base- classes and intermediates for ArrayHandler
 namespace handler {
+
+template <class... Ts>
+using void_t = void;
+
+template <class A, class = void>
+struct has_mapped_type : std::false_type {};
+
+template <class A>
+struct has_mapped_type<A, void_t<typename A::mapped_type>> : std::true_type {};
+
+template <class A, bool = has_mapped_type<A>()>
+struct mapped_or_value_type {
+  using value = typename A::value_type;
+};
+
+template <class A>
+struct mapped_or_value_type<A, true> {
+  using value = typename A::mapped_type;
+};
+
 template <typename AL, typename AR>
 class LazyHandleBase;
 
@@ -108,8 +128,8 @@ class ArrayHandlerBase {
   friend LazyHandleBase<AL, AR>;
 
 public:
-  using value_type_L = typename AL::value_type;
-  using value_type_R = typename AR::value_type;
+  using value_type_L = typename mapped_or_value_type<AL>::value;
+  using value_type_R = typename mapped_or_value_type<AR>::value;
   using value_type = decltype(value_type_L{} * value_type_R{});
 
 protected:

@@ -3,82 +3,106 @@
 
 #include <molpro/linalg/array/Span.h>
 
+#include <complex>
 #include <vector>
 
 using molpro::linalg::array::Span;
 using ::testing::Eq;
 using ::testing::Pointwise;
 
+template <typename T>
 struct SpanF : ::testing::Test {
 public:
   SpanF() = default;
 
-  using T = int;
   std::vector<T> data = {1, 2, 3, 4, 5};
 };
 
-TEST_F(SpanF, default_constructor) {
-  auto s = Span<T>();
+TYPED_TEST_SUITE_P(SpanF);
+
+TYPED_TEST_P(SpanF, default_constructor) {
+  auto s = Span<TypeParam>();
   EXPECT_EQ(s.begin(), nullptr);
   EXPECT_EQ(s.size(), 0);
 }
 
-TEST_F(SpanF, constructor) { auto s = Span<T>(data.data(), data.size()); }
+TYPED_TEST_P(SpanF, constructor) { auto s = Span<TypeParam>(this->data.data(), this->data.size()); }
 
-TEST_F(SpanF, empty) {
-  auto s = Span<T>(data.data(), data.size());
+TYPED_TEST_P(SpanF, empty) {
+  auto& data = this->data;
+  auto s = Span<TypeParam>(data.data(), data.size());
   EXPECT_FALSE(s.empty());
-  auto t = Span<T>();
+  auto t = Span<TypeParam>();
   EXPECT_TRUE(t.empty());
-  auto v = Span<T>(nullptr, 0);
+  auto v = Span<TypeParam>(nullptr, 0);
   EXPECT_TRUE(v.empty());
-  auto u = Span<T>(data.data(), 0);
+  auto u = Span<TypeParam>(&data[0], 0);
   EXPECT_TRUE(u.empty());
 }
 
-TEST_F(SpanF, copy_constructor) {
-  auto s = Span<T>(data.data(), data.size());
-  auto t = Span<T>(s);
+TYPED_TEST_P(SpanF, copy_constructor) {
+  auto& data = this->data;
+  auto s = Span<TypeParam>(data.data(), data.size());
+  auto t = Span<TypeParam>(s);
   EXPECT_EQ(s.begin(), t.begin());
   EXPECT_EQ(s.size(), t.size());
 }
 
-TEST_F(SpanF, move_constructor) {
-  auto&& s = Span<T>(data.data(), data.size());
-  auto t = Span<T>(std::forward<Span<T>>(s));
+TYPED_TEST_P(SpanF, move_constructor) {
+  auto& data = this->data;
+  auto&& s = Span<TypeParam>(data.data(), data.size());
+  auto t = Span<TypeParam>(std::forward<Span<TypeParam>>(s));
   EXPECT_EQ(t.begin(), data.data());
   EXPECT_EQ(t.size(), data.size());
   EXPECT_EQ(s.begin(), nullptr);
   EXPECT_EQ(s.size(), 0);
 }
 
-TEST_F(SpanF, copy_operator) {
-  auto s = Span<T>(data.data(), data.size());
-  auto t = Span<T>();
+TYPED_TEST_P(SpanF, copy_operator) {
+  auto& data = this->data;
+  auto s = Span<TypeParam>(data.data(), data.size());
+  auto t = Span<TypeParam>();
   t = s;
   EXPECT_EQ(s.begin(), t.begin());
   EXPECT_EQ(s.size(), t.size());
 }
 
-TEST_F(SpanF, move_operator) {
-  auto&& s = Span<T>(data.data(), data.size());
-
-  auto t = Span<T>();
-  t = std::forward<Span<T>>(s);
+TYPED_TEST_P(SpanF, move_operator) {
+  auto& data = this->data;
+  auto&& s = Span<TypeParam>(data.data(), data.size());
+  auto t = Span<TypeParam>();
+  t = std::forward<Span<TypeParam>>(s);
   EXPECT_EQ(t.begin(), data.data());
   EXPECT_EQ(t.size(), data.size());
   EXPECT_EQ(s.begin(), nullptr);
   EXPECT_EQ(s.size(), 0);
 }
 
-TEST(Span, iterate) {
-  using T = int;
-  auto data = std::vector<T>{1, 2, 3, 4, 5};
-  auto ref_data = std::vector<T>{2, 3, 4, 5, 6};
-  auto s = Span<T>(data.data(), data.size());
+TYPED_TEST_P(SpanF, iterate) {
+  auto& data = this->data;
+  auto ref_data = std::vector<TypeParam>(data.size());
+  std::transform(begin(data), end(data), begin(ref_data), [](auto el) { return el + TypeParam(1); });
+  auto s = Span<TypeParam>(data.data(), data.size());
   for (auto& el : s)
     el += 1;
   EXPECT_THAT(s, Pointwise(Eq(), ref_data));
   EXPECT_THAT(data, Pointwise(Eq(), ref_data));
   EXPECT_THAT(s, Pointwise(Eq(), data));
 }
+
+TYPED_TEST_P(SpanF, begin_end) {
+  auto& data = this->data;
+  auto ref_data = std::vector<TypeParam>(data.size());
+  std::transform(begin(data), end(data), begin(ref_data), [](auto el) { return el + TypeParam(1); });
+  auto s = Span<TypeParam>(data.data(), data.size());
+  std::transform(begin(s), end(s), begin(s), [](auto el) { return el + TypeParam(1); });
+  EXPECT_THAT(s, Pointwise(Eq(), ref_data));
+  EXPECT_THAT(data, Pointwise(Eq(), ref_data));
+  EXPECT_THAT(s, Pointwise(Eq(), data));
+}
+
+REGISTER_TYPED_TEST_SUITE_P(SpanF, default_constructor, constructor, empty, copy_constructor, move_constructor,
+                            copy_operator, move_operator, iterate, begin_end);
+
+using ArrayTypes = ::testing::Types<int, double, float, std::complex<double>>;
+INSTANTIATE_TYPED_TEST_SUITE_P(Numeric, SpanF, ArrayTypes);

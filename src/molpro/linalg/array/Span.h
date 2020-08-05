@@ -65,6 +65,25 @@ protected:
   size_type m_size = 0;
 };
 
+template <typename T>
+auto begin(Span<T>& x) {
+  return x.begin();
+}
+
+template <typename T>
+auto begin(const Span<T>& x) {
+  return x.begin();
+}
+
+template <typename T>
+auto end(Span<T>& x) {
+  return x.end();
+}
+
+template <typename T>
+auto end(const Span<T>& x) {
+  return x.end();
+}
 #endif // C++20
 } // namespace array
 } // namespace linalg

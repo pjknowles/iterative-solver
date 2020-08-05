@@ -46,45 +46,59 @@ void DistrArrayMPI3::allocate_buffer() {
 
 bool DistrArrayMPI3::empty() const { return !m_allocated; }
 
-DistrArrayMPI3::DistrArrayMPI3(const DistrArray& source)
-    : DistrArray(source.size(), source.communicator(), nullptr),
-      m_distribution(std::make_unique<DistributionMPI3>(comm_size(m_communicator), m_dimension)) {
+DistrArrayMPI3::DistrArrayMPI3(const DistrArrayMPI3& source)
+    : DistrArray(source.size(), source.communicator(), source.m_prof),
+      m_distribution(source.m_distribution ? std::make_unique<DistributionMPI3>(*source.m_distribution) : nullptr) {
   if (!source.empty()) {
     DistrArrayMPI3::allocate_buffer();
     DistrArray::copy(source);
   }
 }
 
-DistrArrayMPI3::DistrArrayMPI3(const DistrArrayMPI3& source) : DistrArrayMPI3(static_cast<const DistrArray&>(source)) {}
+DistrArrayMPI3::DistrArrayMPI3(DistrArrayMPI3&& source) noexcept
+    : DistrArray(source.m_dimension, source.m_communicator, source.m_prof), m_win(source.m_win),
+      m_allocated(source.m_allocated), m_distribution(std::move(source.m_distribution)) {
+  source.m_allocated = false;
+}
 
-DistrArrayMPI3& DistrArrayMPI3::operator=(const DistrArray& source) {
-  auto old_dim = m_dimension;
-  m_dimension = source.size();
-  m_communicator = source.communicator();
-  m_distribution = std::make_unique<DistributionMPI3>(comm_size(m_communicator), m_dimension);
-  if (!source.empty()) {
-    if (empty())
-      allocate_buffer();
-    else if (old_dim != source.size()) {
-      free_buffer();
-      allocate_buffer();
-    }
+DistrArrayMPI3& DistrArrayMPI3::operator=(const DistrArrayMPI3& source) {
+  if (this == &source)
+    return *this;
+  if (source.empty() || empty() || !compatible(source)) {
+    free_buffer();
+    DistrArrayMPI3 t{source};
+    swap(*this, t);
+  } else {
+    allocate_buffer();
     copy(source);
+    m_prof = source.m_prof;
   }
   return *this;
 }
 
-DistrArrayMPI3& DistrArrayMPI3::operator=(const DistrArrayMPI3& source) {
-  *this = static_cast<const DistrArray&>(source);
+DistrArrayMPI3& DistrArrayMPI3::operator=(DistrArrayMPI3&& source) noexcept {
+  DistrArrayMPI3 t{std::move(source)};
+  swap(*this, t);
+  t.m_allocated = false;
   return *this;
 }
 
+void swap(DistrArrayMPI3& a1, DistrArrayMPI3& a2) {
+  using std::swap;
+  swap(a1.m_dimension, a2.m_dimension);
+  swap(a1.m_communicator, a2.m_communicator);
+  swap(a1.m_prof, a2.m_prof);
+  swap(a1.m_distribution, a2.m_distribution);
+  swap(a1.m_allocated, a2.m_allocated);
+  swap(a1.m_win, a2.m_win);
+}
+
 void DistrArrayMPI3::free_buffer() {
-  if (!m_allocated)
-    error("Attempting to free a buffer that was not allocated");
-  MPI_Win_unlock_all(m_win);
-  MPI_Win_free(&m_win);
-  m_allocated = false;
+  if (m_allocated) {
+    MPI_Win_unlock_all(m_win);
+    MPI_Win_free(&m_win);
+    m_allocated = false;
+  }
 }
 
 void DistrArrayMPI3::sync() const {
@@ -95,13 +109,12 @@ void DistrArrayMPI3::sync() const {
   MPI_Barrier(m_communicator);
 }
 
-std::shared_ptr<const DistrArray::LocalBuffer> DistrArrayMPI3::local_buffer() const {
-  return std::make_shared<const LocalBufferMPI3>(*const_cast<DistrArrayMPI3*>(this));
+std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayMPI3::local_buffer() const {
+  return std::make_unique<const LocalBufferMPI3>(*const_cast<DistrArrayMPI3*>(this));
 }
 
-std::shared_ptr<DistrArrayMPI3::LocalBuffer> DistrArrayMPI3::local_buffer() {
-  auto cp = const_cast<const DistrArrayMPI3*>(this)->local_buffer();
-  return std::const_pointer_cast<DistrArrayMPI3::LocalBuffer>(cp);
+std::unique_ptr<DistrArrayMPI3::LocalBuffer> DistrArrayMPI3::local_buffer() {
+  return std::make_unique<LocalBufferMPI3>(*this);
 }
 
 DistrArray::value_type DistrArrayMPI3::at(index_type ind) const {
@@ -208,15 +221,13 @@ void DistrArrayMPI3::error(const std::string& message) const { MPI_Abort(m_commu
 const DistrArray::Distribution& DistrArrayMPI3::distribution() const { return *m_distribution; }
 
 DistrArrayMPI3::LocalBufferMPI3::LocalBufferMPI3(DistrArrayMPI3& source) {
+  if (!source.m_allocated)
+    source.error("attempting to access local buffer of empty array");
   int rank;
   MPI_Comm_rank(source.communicator(), &rank);
-  index_type _lo;
-  size_t sz;
-  std::tie(_lo, sz) = source.distribution().range(rank);
-  lo = _lo;
-  hi = lo + sz;
+  std::tie(m_start, m_size) = source.distribution().range(rank);
   int flag;
-  MPI_Win_get_attr(source.m_win, MPI_WIN_BASE, &buffer, &flag);
+  MPI_Win_get_attr(source.m_win, MPI_WIN_BASE, &m_buffer, &flag);
 }
 
 DistrArrayMPI3::DistributionMPI3::DistributionMPI3(int n_proc, size_t dimension) : m_dim(dimension) {

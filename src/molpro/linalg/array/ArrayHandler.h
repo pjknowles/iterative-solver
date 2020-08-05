@@ -3,15 +3,21 @@
 #include <functional>
 #include <list>
 #include <memory>
+#include <stdexcept>
 
 namespace molpro {
 namespace linalg {
 namespace array {
 namespace util {
 
+struct ArrayHandlerError : public std::logic_error {
+  using std::logic_error::logic_error;
+};
+
 //! Registers operations identified by their Arguments
 //! @tparam Args arguments to the operation. Consider using reference_wrapper if arguments are references.
-template <typename... Args> struct OperationRegister {
+template <typename... Args>
+struct OperationRegister {
   using OP = std::tuple<Args...>;
   std::list<std::tuple<Args...>> m_register; //!< ordered register of operations
 
@@ -19,7 +25,8 @@ template <typename... Args> struct OperationRegister {
   //! Those groups are ordered on a first come basis.
   //! @tparam N if N >= 0 order operations by grouping identical Nth arguments together, otherwise no reordering
   //! @tparam ArgEqual functor bool operator()(const Arg&, const Arg&); returning true if two Nth arguments are equal
-  template <int N, class ArgEqual> void push(const Args &... args, ArgEqual equal) {
+  template <int N, class ArgEqual>
+  void push(const Args &... args, ArgEqual equal) {
     auto &&new_op = OP{args...};
     auto &ref = std::get<N>(new_op);
     auto rend = std::find_if(m_register.rbegin(), m_register.rend(), [&ref, &equal](const auto &el) {
@@ -81,7 +88,8 @@ remove_duplicates(const std::list<std::tuple<X, Y, Z>> &reg, EqualX equal_x, Equ
 }
 
 //! When called returns true if addresses of two references are the same
-template <typename T = int> struct RefEqual {
+template <typename T = int>
+struct RefEqual {
   bool operator()(const std::reference_wrapper<T> &l, const std::reference_wrapper<T> &r) {
     return std::addressof(l.get()) == std::addressof(r.get());
   }
@@ -91,10 +99,12 @@ template <typename T = int> struct RefEqual {
 
 //! Base- classes and intermediates for ArrayHandler
 namespace handler {
-template <typename AL, typename AR> class LazyHandleBase;
+template <typename AL, typename AR>
+class LazyHandleBase;
 
 //! Common base for ArrayHandler with all virtual methods that need to be implemented
-template <typename AL, typename AR, bool = !std::is_same<AL, AR>::value> class ArrayHandlerBase {
+template <typename AL, typename AR, bool = !std::is_same<AL, AR>::value>
+class ArrayHandlerBase {
   friend LazyHandleBase<AL, AR>;
 
 public:
@@ -107,14 +117,14 @@ protected:
   virtual AL copyRL(const AR &source) = 0;
   virtual AR copyLR(const AL &source) = 0;
   virtual AR copyRR(const AR &source) = 0;
-  virtual AL &scalL(value_type alpha, AL &x) = 0;
-  virtual AR &scalR(value_type alpha, AR &x) = 0;
-  virtual AL &fillL(value_type alpha, AL &x) = 0;
-  virtual AR &fillR(value_type alpha, AR &x) = 0;
-  virtual AL &axpyLL(value_type alpha, const AL &x, AL &y) = 0;
-  virtual AL &axpyRL(value_type alpha, const AR &x, AL &y) = 0;
-  virtual AR &axpyLR(value_type alpha, const AL &x, AR &y) = 0;
-  virtual AR &axpyRR(value_type alpha, const AR &x, AR &y) = 0;
+  virtual void scalL(value_type alpha, AL &x) = 0;
+  virtual void scalR(value_type alpha, AR &x) = 0;
+  virtual void fillL(value_type alpha, AL &x) = 0;
+  virtual void fillR(value_type alpha, AR &x) = 0;
+  virtual void axpyLL(value_type alpha, const AL &x, AL &y) = 0;
+  virtual void axpyRL(value_type alpha, const AR &x, AL &y) = 0;
+  virtual void axpyLR(value_type alpha, const AL &x, AR &y) = 0;
+  virtual void axpyRR(value_type alpha, const AR &x, AR &y) = 0;
   virtual value_type dotLL(const AL &x, const AL &y) = 0;
   virtual value_type dotLR(const AL &x, const AR &y) = 0;
   virtual value_type dotRL(const AR &x, const AL &y) = 0;
@@ -168,16 +178,16 @@ public:
   AR copySame(const AR &source) { return copyRR(source); }
 
   //! scale all elements of array x by constant value alpha
-  AL &scal(value_type alpha, AL &x) { return scalL(alpha, x); }
-  AR &scal(value_type alpha, AR &x) { return scalR(alpha, x); }
+  void scal(value_type alpha, AL &x) { scalL(alpha, x); }
+  void scal(value_type alpha, AR &x) { scalR(alpha, x); }
   //! replace all elements of array x by constant value alpha
-  AL &fill(value_type alpha, AL &x) { return fillL(alpha, x); }
-  AR &fill(value_type alpha, AR &x) { return fillR(alpha, x); }
+  void fill(value_type alpha, AL &x) { fillL(alpha, x); }
+  void fill(value_type alpha, AR &x) { fillR(alpha, x); }
   //! y[:] += alpha * x[:]
-  AL &axpy(value_type alpha, const AL &x, AL &y) { return axpyLL(alpha, x, y); }
-  AL &axpy(value_type alpha, const AR &x, AL &y) { return axpyRL(alpha, x, y); }
-  AR &axpy(value_type alpha, const AL &x, AR &y) { return axpyLR(alpha, x, y); }
-  AR &axpy(value_type alpha, const AR &x, AR &y) { return axpyRR(alpha, x, y); }
+  void axpy(value_type alpha, const AL &x, AL &y) { axpyLL(alpha, x, y); }
+  void axpy(value_type alpha, const AR &x, AL &y) { axpyRL(alpha, x, y); }
+  void axpy(value_type alpha, const AL &x, AR &y) { axpyLR(alpha, x, y); }
+  void axpy(value_type alpha, const AR &x, AR &y) { axpyRR(alpha, x, y); }
   //! inner product: result = x.y
   value_type dot(const AL &x, const AL &y) { return dotLL(x, y); }
   value_type dot(const AL &x, const AR &y) { return dotLR(x, y); }
@@ -204,7 +214,8 @@ protected:
 };
 
 //! Interface methods for the ArrayHandler when AL==AR
-template <typename AL, typename AR> class ArrayHandlerInterface<AL, AR, false> : public ArrayHandlerBase<AL, AR> {
+template <typename AL, typename AR>
+class ArrayHandlerInterface<AL, AR, false> : public ArrayHandlerBase<AL, AR> {
 public:
   using value_type_L = typename AL::value_type;
   using value_type_R = typename AR::value_type;
@@ -213,9 +224,9 @@ public:
   AL copySame(const AL &source) { return copyLL(source); }
   AL copy(const AL &source) { return copySame(source); }
 
-  AL &scal(value_type alpha, AL &x) { return scalL(alpha, x); }
-  AL &fill(value_type alpha, AL &x) { return fillL(alpha, x); }
-  AL &axpy(value_type alpha, const AL &x, AL &y) { return axpyLL(alpha, x, y); }
+  void scal(value_type alpha, AL &x) { scalL(alpha, x); }
+  void fill(value_type alpha, AL &x) { fillL(alpha, x); }
+  void axpy(value_type alpha, const AL &x, AL &y) { axpyLL(alpha, x, y); }
   value_type dot(const AL &x, const AL &y) { return dotLL(x, y); }
 
 protected:
@@ -227,10 +238,12 @@ protected:
 };
 
 //! Base class for ArrayHandler::LazyHandle. It contains all the virtual functions and member variables.
-template <typename AL, typename AR> class LazyHandleBase {
+template <typename AL, typename AR>
+class LazyHandleBase {
 public:
   using value_type = decltype(typename AL::value_type{} * typename AR::value_type{});
-  template <typename T> using ref_wrap = std::reference_wrapper<T>;
+  template <typename T>
+  using ref_wrap = std::reference_wrapper<T>;
 
   virtual ~LazyHandleBase() = default;
 
@@ -412,7 +425,8 @@ public:
 };
 
 //! Interface to ArrayHandler::LazyHandle when AL==AR.
-template <typename AL, typename AR> class LazyHandleInterface<AL, AR, false> : public LazyHandleBase<AL, AR> {
+template <typename AL, typename AR>
+class LazyHandleInterface<AL, AR, false> : public LazyHandleBase<AL, AR> {
 protected:
   LazyHandleInterface() = default;
   using LazyHandleBase<AL, AR>::axpyLL;
@@ -474,7 +488,8 @@ public:
  * h.eval(); // or let the destructor handle it
  * @endcode
  */
-template <class AL, class AR = AL> class ArrayHandler : public handler::ArrayHandlerInterface<AL, AR> {
+template <class AL, class AR = AL>
+class ArrayHandler : public handler::ArrayHandlerInterface<AL, AR> {
 protected:
   ArrayHandler() = default;
   ArrayHandler(const ArrayHandler &) = default;
@@ -503,7 +518,76 @@ protected:
    * @brief Throws an error
    * @param message error message
    */
-  virtual void error(std::string message) = 0;
+  virtual void error(const std::string &message) { throw util::ArrayHandlerError{message}; };
+
+  //! Default implementation of fused_axpy without any simplification
+  template <typename T, typename S>
+  void fused_axpyAny(const std::vector<std::tuple<size_t, size_t, size_t>> &reg, const std::vector<value_type> &alphas,
+                     const std::vector<std::reference_wrapper<const T>> &xx,
+                     std::vector<std::reference_wrapper<S>> &yy) {
+    for (const auto &i : reg) {
+      size_t ai, xi, yi;
+      std::tie(ai, xi, yi) = i;
+      axpy(alphas[ai], xx[xi].get(), yy[yi].get());
+    }
+  }
+  void fused_axpyLL(const std::vector<std::tuple<size_t, size_t, size_t>> &reg, const std::vector<value_type> &alphas,
+                    const std::vector<std::reference_wrapper<const AL>> &xx,
+                    std::vector<std::reference_wrapper<AL>> &yy) override {
+    return fused_axpyAny(reg, alphas, xx, yy);
+  }
+  void fused_axpyLR(const std::vector<std::tuple<size_t, size_t, size_t>> &reg, const std::vector<value_type> &alphas,
+                    const std::vector<std::reference_wrapper<const AL>> &xx,
+                    std::vector<std::reference_wrapper<AR>> &yy) override {
+    return fused_axpyAny(reg, alphas, xx, yy);
+  }
+  void fused_axpyRL(const std::vector<std::tuple<size_t, size_t, size_t>> &reg, const std::vector<value_type> &alphas,
+                    const std::vector<std::reference_wrapper<const AR>> &xx,
+                    std::vector<std::reference_wrapper<AL>> &yy) override {
+    return fused_axpyAny(reg, alphas, xx, yy);
+  }
+  void fused_axpyRR(const std::vector<std::tuple<size_t, size_t, size_t>> &reg, const std::vector<value_type> &alphas,
+                    const std::vector<std::reference_wrapper<const AR>> &xx,
+                    std::vector<std::reference_wrapper<AR>> &yy) override {
+    return fused_axpyAny(reg, alphas, xx, yy);
+  }
+
+  //! Default implementation of fused_dot without any simplification
+  template <typename T, typename S>
+  void fused_dotAny(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
+                    const std::vector<std::reference_wrapper<const T>> &xx,
+                    const std::vector<std::reference_wrapper<const S>> &yy,
+                    std::vector<std::reference_wrapper<value_type>> &out) {
+    for (const auto &i : reg) {
+      size_t xi, yi, zi;
+      std::tie(xi, yi, zi) = i;
+      out[zi].get() = dot(xx[xi].get(), yy[yi].get());
+    }
+  }
+  void fused_dotLL(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
+                   const std::vector<std::reference_wrapper<const AL>> &xx,
+                   const std::vector<std::reference_wrapper<const AL>> &yy,
+                   std::vector<std::reference_wrapper<value_type>> &out) override {
+    return fused_dotAny<AL, AL>(reg, xx, yy, out);
+  }
+  void fused_dotLR(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
+                   const std::vector<std::reference_wrapper<const AL>> &xx,
+                   const std::vector<std::reference_wrapper<const AR>> &yy,
+                   std::vector<std::reference_wrapper<value_type>> &out) override {
+    return fused_dotAny(reg, xx, yy, out);
+  }
+  void fused_dotRL(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
+                   const std::vector<std::reference_wrapper<const AR>> &xx,
+                   const std::vector<std::reference_wrapper<const AL>> &yy,
+                   std::vector<std::reference_wrapper<value_type>> &out) override {
+    return fused_dotAny(reg, xx, yy, out);
+  }
+  void fused_dotRR(const std::vector<std::tuple<size_t, size_t, size_t>> &reg,
+                   const std::vector<std::reference_wrapper<const AR>> &xx,
+                   const std::vector<std::reference_wrapper<const AR>> &yy,
+                   std::vector<std::reference_wrapper<value_type>> &out) override {
+    return fused_dotAny(reg, xx, yy, out);
+  }
 
   /*!
    * @brief Registers operations for lazy evaluation. Evaluation is triggered by calling eval() or on destruction.
@@ -544,12 +628,14 @@ protected:
   public:
     ProxyHandle(std::shared_ptr<LazyHandle> handle) : m_lazy_handle{std::move(handle)} {}
 
-    template <typename... Args> void axpy(Args &&... args) {
+    template <typename... Args>
+    void axpy(Args &&... args) {
       m_lazy_handle->axpy(std::forward<Args>(args)...);
       if (m_off)
         eval();
     }
-    template <typename... Args> void dot(Args &&... args) {
+    template <typename... Args>
+    void dot(Args &&... args) {
       m_lazy_handle->dot(std::forward<Args>(args)...);
       if (m_off)
         eval();
@@ -581,6 +667,12 @@ protected:
     else
       *empty_handle = handle;
   }
+
+  ProxyHandle lazy_handle(ArrayHandler<AL, AR> &handler) {
+    auto handle = std::make_shared<typename ArrayHandler<AL, AR>::LazyHandle>(handler);
+    save_handle(handle);
+    return handle;
+  };
 
 public:
   //! Returns a lazy handle

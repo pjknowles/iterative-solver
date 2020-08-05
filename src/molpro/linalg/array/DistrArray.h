@@ -1,11 +1,13 @@
 #ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H
 #define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H
+#include <cmath>
 #include <list>
 #include <map>
 #include <memory>
 #include <mpi.h>
 #include <vector>
-#include <cmath>
+
+#include <molpro/linalg/array/Span.h>
 
 namespace molpro {
 class Profiler;
@@ -94,16 +96,20 @@ public:
 
 protected:
   class Distribution;
-  index_type m_dimension;  //!< number of elements in the array
-  MPI_Comm m_communicator; //!< Outer communicator
+  index_type m_dimension = 0;   //!< number of elements in the array
+  MPI_Comm m_communicator = {}; //!< Outer communicator
 public:
   std::shared_ptr<molpro::Profiler> m_prof = nullptr; //!< optional profiler
-  DistrArray() = delete;
+  DistrArray() = default;
   //! Initializes array without allocating any memory
   DistrArray(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof);
+  //! Copy constructor. If source has been allocated the new array will allocate buffer and copy its content.
   DistrArray(const DistrArray &source) = delete;
+  //! Move constructor. Takes ownership of all source content, source is left in undefined state.
   DistrArray(DistrArray &&source) = delete;
+  //! Assignment operator. Copies contents of source, allocating buffer if necessary.
   DistrArray &operator=(const DistrArray &source) = delete;
+  //! Move assignment operator. Takes ownership of source and leaves source in undefined state.
   DistrArray &operator=(DistrArray &&source) = delete;
   virtual ~DistrArray() = default;
 
@@ -117,6 +123,8 @@ public:
   bool compatible(const DistrArray &other) const;
   //! allocates memory to the array without initializing it with any value. Blocking, collective operation.
   virtual void allocate_buffer() = 0;
+  //! frees the buffer
+  virtual void free_buffer() = 0;
   //! checks if array has been allocated
   virtual bool empty() const;
 
@@ -125,27 +133,17 @@ public:
    */
   //! @{
 protected:
-  //! Provides access to the local portion of the array locking that portion for all other process.
-  class LocalBuffer {
+  //! Provides access to the local portion of the array
+  class LocalBuffer : public span::Span<value_type> {
   public:
-    //! Size of the local buffer
-    size_t size() const { return hi - lo; };
-    //! Pointer to the start of the buffer
-    DistrArray::value_type *begin() { return buffer; };
-    const DistrArray::value_type *begin() const { return buffer; };
-    const DistrArray::value_type *cbegin() const { return begin(); };
-    //! Pointer to the end of the buffer (element just after the last one)
-    DistrArray::value_type *end() { return buffer + size(); };
-    const DistrArray::value_type *end() const { return buffer + size(); };
-    const DistrArray::value_type *cend() const { return end(); };
+    using span::Span<value_type>::Span;
     //! Checks that the current and the other buffers correspond to the same section of their respective arrays
-    bool compatible(const LocalBuffer &other) const { return lo == other.lo && hi == other.hi; };
-    //! Access element at position i relative to begin() without bounds checking
-    DistrArray::value_type &at(size_t i) { return buffer[i]; };
-    DistrArray::value_type const &at(size_t i) const { return buffer[i]; };
-    DistrArray::index_type lo;      //!< index of first element of local buffer in the array
-    DistrArray::index_type hi;      //!< index of one past the last element in the buffer (same as end())
-    DistrArray::value_type *buffer; //!< pointer to the start of the local array buffer
+    bool compatible(const LocalBuffer &other) const { return start() == other.start() && size() == other.size(); };
+    //! Return index to the start of the local buffer section in the distributed array
+    size_type start() const { return m_start; }
+
+  protected:
+    size_type m_start = 0; //!< index of first element of local buffer in the array
   };
 
   //! Information on how the array is distributed among the processes.
@@ -158,8 +156,8 @@ protected:
 
 public:
   //! Access the buffer local to this process
-  [[nodiscard]] virtual std::shared_ptr<LocalBuffer> local_buffer() = 0;
-  [[nodiscard]] virtual std::shared_ptr<const LocalBuffer> local_buffer() const = 0;
+  [[nodiscard]] virtual std::unique_ptr<LocalBuffer> local_buffer() = 0;
+  [[nodiscard]] virtual std::unique_ptr<const LocalBuffer> local_buffer() const = 0;
   //! Access distribution of the array among processes
   [[nodiscard]] virtual const Distribution &distribution() const = 0;
   //! @}
@@ -206,10 +204,10 @@ public:
    */
   //! @{
   //! Set all local elements to val. @note each process has its own val, there is no communication
-  virtual DistrArray &fill(value_type val);
+  virtual void fill(value_type val);
   //! Copies all elements of y. If both arrays are empty than does nothing. If only one is empty, throws an
   //! error.
-  virtual DistrArray &copy(const DistrArray &y);
+  virtual void copy(const DistrArray &y);
   /*!
    * @brief Copies elements in a patch of y. If both arrays are empty than does nothing. If only one is empty,
    * throws an error.
@@ -217,29 +215,29 @@ public:
    * @param start index of first element to copy
    * @param end index of last element to copy
    */
-  virtual DistrArray &copy_patch(const DistrArray &y, index_type start, index_type end);
+  virtual void copy_patch(const DistrArray &y, index_type start, index_type end);
   /*!
    * \brief this[:] += a * y[:]. Throws an error if any array is empty.
    * Add a multiple of another array to this one. Blocking, collective.
    */
-  virtual DistrArray &axpy(value_type a, const DistrArray &y);
-  virtual DistrArray &axpy(value_type a, const SparseArray &y);
+  virtual void axpy(value_type a, const DistrArray &y);
+  virtual void axpy(value_type a, const SparseArray &y);
   //! Scale by a constant. Local.
-  virtual DistrArray &scal(value_type a);
+  virtual void scal(value_type a);
   //! Add another array to this. Local. Throws error if any array is empty.
-  virtual DistrArray &add(const DistrArray &y);
+  virtual void add(const DistrArray &y);
   //! Add a constant. Local.
-  virtual DistrArray &add(value_type a);
+  virtual void add(value_type a);
   //! Subtract another array from this. Local. Throws error if any array is empty.
-  virtual DistrArray &sub(const DistrArray &y);
+  virtual void sub(const DistrArray &y);
   //! Subtract a constant. Local.
-  virtual DistrArray &sub(value_type a);
+  virtual void sub(value_type a);
   //! Take element-wise reciprocal of this. Local. No checks are made for zero values
-  virtual DistrArray &recip();
+  virtual void recip();
   //! this[i] *= y[i]. Throws error if any array is empty.
-  virtual DistrArray &times(const DistrArray &y);
+  virtual void times(const DistrArray &y);
   //! this[i] = y[i]*z[i]. Throws error if any array is empty.
-  virtual DistrArray &times(const DistrArray &y, const DistrArray &z);
+  virtual void times(const DistrArray &y, const DistrArray &z);
   //! @}
 
   /*! @name Collective linear algebra operations, synchronisation on exit
@@ -264,9 +262,9 @@ public:
    * @param append Whether to += or =
    * @param negative Whether to scale  right hand side by -1
    */
-  DistrArray &divide(const DistrArray &y, const DistrArray &z, value_type shift = 0, bool append = false,
-                     bool negative = false) {
-    return _divide(y, z, shift, append, negative);
+  void divide(const DistrArray &y, const DistrArray &z, value_type shift = 0, bool append = false,
+              bool negative = false) {
+    _divide(y, z, shift, append, negative);
   }
 
   /*!
@@ -312,11 +310,12 @@ public:
   virtual void error(const std::string &message) const;
 
 protected:
-  virtual DistrArray &_divide(const DistrArray &y, const DistrArray &z, value_type shift, bool append, bool negative);
+  virtual void _divide(const DistrArray &y, const DistrArray &z, value_type shift, bool append, bool negative);
 };
 
 namespace util {
-template <typename T, class Compare> struct CompareAbs {
+template <typename T, class Compare>
+struct CompareAbs {
   constexpr bool operator()(const T &lhs, const T &rhs) const { return Compare()(std::abs(lhs), std::abs(rhs)); }
 };
 template <class Compare>

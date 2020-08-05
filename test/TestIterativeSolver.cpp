@@ -893,7 +893,7 @@ TEST(Rosenbrock, Optimize) {
   expected_iterations[-1] = 36;
 //  expected_iterations[0.01] = 131;
   expected_iterations[1] = 1;
-  expected_iterations[2] = 35;
+  expected_iterations[2] = 36;
   expected_iterations[3] = 37;
 //  expected_iterations[8] = 104;
 //  expected_iterations[30] = 114;

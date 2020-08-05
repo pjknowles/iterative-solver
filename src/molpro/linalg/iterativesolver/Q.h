@@ -146,13 +146,11 @@ public:
       auto dd = m_handler->dot(oldaction, oldaction);
       auto rd = m_handler->dot(action, oldaction);
       scale_factor = 1 / std::sqrt(rr + dd - 2 * rd);
-      diff_factor = scale_factor;
+      diff_factor = 1;
     } else {
       auto dd = m_handler->dot(oldvector, oldvector);
       auto rd = m_handler->dot(vector, oldvector);
-      //      molpro::cout << "dd="<<dd<<std::endl;
-      //      molpro::cout << "rd="<<rd<<std::endl;
-      //      molpro::cout << "rr="<<rr<<std::endl;
+      //      std::cout << "dd-1=" << dd - 1 << ", rr-1=" << rr - 1 << ", rd-1=" << rd - 1 << std::endl;
       diff_factor = orthogonalise ? rr / rd : 1;
       auto norm = std::sqrt(std::max(rr - 2 * diff_factor * rd + diff_factor * diff_factor * dd, (decltype(rr))0));
       if (norm == 0) { // let linear dependence code deal with this exceptional case later
@@ -161,23 +159,33 @@ public:
         scale_factor = 1 / norm;
       }
     }
-    //    molpro::cout << "Q.add difference, alpha=" << alpha << ", beta=" << beta << std::endl;
-    //    molpro::cout << "dd=" << dd << ", rr=" << rr
-    //                 << ", rd=" << rd << std::endl;
+    //    std::cout << "Q.add difference, scale_factor=" << scale_factor << ", diff_factor=" << diff_factor
+    //              << ", orthogonalise=" << orthogonalise << std::endl;
     auto& v = const_cast<Rvector&>(vector);
     auto& a = const_cast<Rvector&>(action);
     v.scal(scale_factor);
     v.axpy(-diff_factor * scale_factor, oldvector);
     a.scal(scale_factor);
     a.axpy(-diff_factor * scale_factor, oldaction);
+    auto actual_norm = std::sqrt(resres ? a.dot(a) : v.dot(v));
+//    std::cout << "actual_norm=" << actual_norm << std::endl;
+    if (actual_norm > 1e-6 and
+        std::abs(actual_norm - 1) > 1e-2) { // rescale because of numerical precision problems when vector
+                                            //    \approx oldvector
+      //    do not do it if the problem is severe, since then action will be inaccurate
+      v.scal(1 / actual_norm);
+      a.scal(1 / actual_norm);
+      scale_factor /= actual_norm;
+    }
     m_scale_factors[m_index] = scale_factor;
     m_diff_factors[m_index] = diff_factor;
     add(v, a, rhs, resres);
+    //    std::cout << "new Q vector self-overlap=" << v.dot(v) << std::endl;
     v.axpy(diff_factor * scale_factor, oldvector);
     v.scal(1 / scale_factor);
     a.axpy(diff_factor * scale_factor, oldaction);
     a.scal(1 / scale_factor);
-//    std::cout << "created Q, scale_factor=" << scale_factor << std::endl;
+    //    std::cout << "created Q, scale_factor=" << scale_factor << ", diff_factor=" << diff_factor << std::endl;
     return scale_factor;
   }
 

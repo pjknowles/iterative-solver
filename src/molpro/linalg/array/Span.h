@@ -5,13 +5,18 @@ namespace molpro {
 namespace linalg {
 namespace array {
 
-#if __cplusplus > 201703L
+#if __cplusplus >= 202002L
 #include <span>
 
 //! For those who moved on to c++20
 using Span = std::span;
 
-#else
+#endif
+
+#if __cplusplus < 202002L
+inline
+#endif
+    namespace span {
 
 /*!
  * @brief Non-owning container taking a pointer to the data buffer and its size and exposing routines for iteration
@@ -84,7 +89,7 @@ template <typename T>
 auto end(const Span<T>& x) {
   return x.end();
 }
-#endif // C++20
+} // namespace span
 } // namespace array
 } // namespace linalg
 } // namespace molpro

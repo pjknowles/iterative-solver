@@ -63,11 +63,11 @@ TYPED_TEST_P(TestArrayHandlerIterable, lazy_axpy) {
   static const int N = 3;
   static const int dim = 5;
   static const value_type alpha = 3;
-  static const value_type_L xval = 2;
-  static const value_type_R yval = 5;
-  auto xx = std::vector<std::vector<value_type_L>>(N, std::vector<value_type_L>(dim, xval));
-  auto yy = std::vector<std::vector<value_type_R>>(N, std::vector<value_type_R>(dim, yval));
-  auto ref_axpy = std::vector<std::vector<value_type_R>>(N, std::vector<value_type_R>(dim, alpha * xval + yval));
+  static const value_type_R xval = 2;
+  static const value_type_L yval = 5;
+  auto xx = std::vector<std::vector<value_type_R>>(N, std::vector<value_type_R>(dim, xval));
+  auto yy = std::vector<std::vector<value_type_L>>(N, std::vector<value_type_L>(dim, yval));
+  auto ref_axpy = std::vector<std::vector<value_type_L>>(N, std::vector<value_type_L>(dim, alpha * xval + yval));
   {
     auto h = handler.lazy_handle();
     for (size_t i = 0; i < N; ++i) {
@@ -90,11 +90,11 @@ TYPED_TEST_P(TestArrayHandlerIterable, lazy_axpy_lazy_off) {
   static const int N = 3;
   static const int dim = 5;
   static const value_type alpha = 3;
-  static const value_type xval = 2;
-  static const value_type yval = 5;
-  auto xx = std::vector<std::vector<value_type_L>>(N, std::vector<value_type_L>(dim, xval));
-  auto yy = std::vector<std::vector<value_type_R>>(N, std::vector<value_type_R>(dim, yval));
-  auto ref_axpy = std::vector<std::vector<value_type_R>>(N, std::vector<value_type_R>(dim, alpha * xval + yval));
+  static const value_type_R xval = 2;
+  static const value_type_L yval = 5;
+  auto xx = std::vector<std::vector<value_type_R>>(N, std::vector<value_type_R>(dim, xval));
+  auto yy = std::vector<std::vector<value_type_L>>(N, std::vector<value_type_L>(dim, yval));
+  auto ref_axpy = std::vector<std::vector<value_type_L>>(N, std::vector<value_type_L>(dim, alpha * xval + yval));
   {
     auto h = handler.lazy_handle();
     EXPECT_FALSE(h.is_off());
@@ -132,9 +132,9 @@ TEST(ArrayHandlerIterable, copyL) {
   using X = std::vector<double>;
   using Y = std::deque<int>;
   ArrayHandlerIterable<X, Y> handler{};
-  auto x = X{1, 2, 3, 4};
-  auto y = handler.copy(x);
-  EXPECT_THAT(y, Pointwise(DoubleEq(), x));
+  auto y = Y{1, 2, 3, 4};
+  auto x = handler.copy(y);
+  EXPECT_THAT(x, Pointwise(DoubleEq(), y));
 }
 
 TEST(ArrayHandlerIterable, copyR) {

@@ -6,6 +6,18 @@
 namespace molpro {
 namespace linalg {
 namespace array {
+namespace util {
+
+template <typename T, bool = std::is_array<T>::value>
+struct is_array : std::true_type {};
+
+template <typename T>
+struct is_array<T, false> : std::false_type {};
+
+template <typename T, int N>
+struct is_array<std::array<T, N>, false> : std::true_type {};
+
+} // namespace util
 
 /*!
  * @brief Array handler for two containers both of which can be iterated through using begin() and end() member
@@ -17,75 +29,55 @@ public:
   using typename ArrayHandler<AL, AR>::value_type_L;
   using typename ArrayHandler<AL, AR>::value_type_R;
   using typename ArrayHandler<AL, AR>::value_type;
-  using ArrayHandler<AL, AR>::copySame;
-  using ArrayHandler<AL, AR>::copy;
-  using ArrayHandler<AL, AR>::fill;
-  using ArrayHandler<AL, AR>::scal;
-  using ArrayHandler<AL, AR>::axpy;
-  using ArrayHandler<AL, AR>::dot;
   using typename ArrayHandler<AL, AR>::ProxyHandle;
 
   ArrayHandlerIterable() = default;
   ArrayHandlerIterable(const ArrayHandlerIterable<AL, AR> &) = default;
 
+  AL copy(const AR &source) override { return copyAny<AL, AR>(source); };
+
+  void scal(value_type alpha, AL &x) override {
+    for (auto &el : x)
+      el *= alpha;
+  };
+
+  void fill(value_type alpha, AL &x) override { std::fill(x.begin(), x.end(), alpha); };
+
+  void axpy(value_type alpha, const AR &x, AL &y) override {
+    if (x.size() < y.size())
+      error("ArrayHandlerIterable::axpy() incompatible x and y arrays, x.size() < y.size()");
+    using std::begin;
+    using std::end;
+    std::transform(begin(y), end(y), begin(x), begin(y), [alpha](auto &ely, auto &elx) { return ely + alpha * elx; });
+  };
+
+  value_type dot(const AL &x, const AR &y) override {
+    if (x.size() > y.size())
+      error("ArrayHandlerIterable::dot() incompatible x and y arrays, x.size() > y.size()");
+    using std::begin;
+    using std::end;
+    return std::inner_product(begin(x), end(x), begin(y), (value_type)0);
+  };
+
   ProxyHandle lazy_handle() override { return this->lazy_handle(*this); };
 
 protected:
-  using ArrayHandler<AL, AR>::lazy_handle;
   using ArrayHandler<AL, AR>::error;
+  using ArrayHandler<AL, AR>::lazy_handle;
   using ArrayHandler<AL, AR>::m_lazy_handles;
-  AR copyRR(const AR &source) override { return source; };
-  AL copyLL(const AL &source) override { return source; };
 
-  template <typename T, typename S>
+  template <typename T, typename S, typename std::enable_if_t<util::is_array<T>::value, nullptr_t> = nullptr>
   T copyAny(const S &source) {
-    T result{};
-    std::copy(source.begin(), source.end(), std::back_inserter(result));
+    auto result = T();
+    std::copy(begin(source), end(source), begin(result));
     return result;
   }
-  AR copyLR(const AL &source) override { return copyAny<AR, AL>(source); }
-  AL copyRL(const AR &source) override { return copyAny<AL, AR>(source); }
-
-  template <typename T>
-  void scalAny(value_type alpha, T &x) {
-    for (auto &el : x)
-      el *= alpha;
+  template <typename T, typename S, typename std::enable_if_t<!util::is_array<T>::value, int> = 0>
+  T copyAny(const S &source) {
+    auto result = T(source.size());
+    std::copy(begin(source), end(source), begin(result));
+    return result;
   }
-  void scalL(value_type alpha, AL &x) override { scalAny(alpha, x); }
-  void scalR(value_type alpha, AR &x) override { scalAny(alpha, x); }
-
-  template <typename T>
-  void fillAny(value_type alpha, T &x) {
-    std::fill(x.begin(), x.end(), alpha);
-  }
-  void fillL(value_type alpha, AL &x) override { fillAny(alpha, x); }
-  void fillR(value_type alpha, AR &x) override { fillAny(alpha, x); }
-
-  template <typename T, typename S>
-  void axpyAny(value_type alpha, const T &x, S &y) {
-    if (y.size() > x.size())
-      error("ArrayHandlerIterable::axpy() incompatible x and y arrays, y.size() > x.size()");
-    auto ix = x.begin();
-    for (auto iy = y.begin(); iy != y.end(); ++iy, ++ix)
-      *iy += alpha * (*ix);
-  }
-  void axpyLL(value_type alpha, const AL &x, AL &y) override { axpyAny(alpha, x, y); }
-  void axpyLR(value_type alpha, const AL &x, AR &y) override { axpyAny(alpha, x, y); }
-  void axpyRL(value_type alpha, const AR &x, AL &y) override { axpyAny(alpha, x, y); }
-  void axpyRR(value_type alpha, const AR &x, AR &y) override { axpyAny(alpha, x, y); }
-
-  template <typename T, typename S>
-  value_type dotAny(const T &x, const S &y) {
-    if (x.size() > y.size())
-      error("ArrayHandlerIterable::dot() incompatible x and y arrays, x.size() > y.size()");
-    return std::inner_product(x.begin(), x.end(), y.begin(), (value_type)0);
-  }
-
-  value_type dotLL(const AL &x, const AL &y) { return dotAny(x, y); }
-  value_type dotLR(const AL &x, const AR &y) { return dotAny(x, y); }
-  value_type dotRL(const AR &x, const AL &y) { return dotAny(x, y); }
-  value_type dotRR(const AR &x, const AR &y) { return dotAny(x, y); }
-
 }; // namespace linalg
 
 } // namespace array

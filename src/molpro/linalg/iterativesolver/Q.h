@@ -164,7 +164,7 @@ public:
     a.scal(scale_factor);
     a.axpy(-diff_factor * scale_factor, oldaction);
     auto actual_norm = std::sqrt(resres ? a.dot(a) : v.dot(v));
-//    std::cout << "actual_norm=" << actual_norm << std::endl;
+    //    std::cout << "actual_norm=" << actual_norm << std::endl;
     if (actual_norm > 1e-6 and
         std::abs(actual_norm - 1) > 1e-2) { // rescale because of numerical precision problems when vector
                                             //    \approx oldvector

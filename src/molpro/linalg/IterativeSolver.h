@@ -58,24 +58,27 @@ static std::vector<std::reference_wrapper<std::vector<typename T::value_type>>> 
  * an improved estimate, and the best estimate of the residual vector.
  * - calculate a new solution (non-linear) or expansion vector (linear) by implementing
  * appropriate preconditioning on the residual, if addVector() has requested it.
- * -  optionally (but necessarily for BFGS optimization) make a call to endIteration(). Except in the BFGS case, endIteration() merely calls report(), which prints progress information to standard output
+ * -  optionally (but necessarily for BFGS optimization) make a call to endIteration(). Except in the BFGS case,
+ * endIteration() merely calls report(), which prints progress information to standard output
  *
  * Classes that derive from this will, in the simplest case, need to provide just the solveReducedProblem() method that
  * governs how the parameter and residual vectors from successive iterations should be combined to form an optimum
  * solution with minimal residual.
  *
  * The underlying vector spaces are accessed through instances of the Rvector class.
- * - Both scalar (Rvector) and vector(std::vector<Rvector>) interfaces are provided to the class functions addVector(), addValue() and
- * endIteration()
+ * - Both scalar (Rvector) and vector(std::vector<Rvector>) interfaces are provided to the class functions addVector(),
+ * addValue() and endIteration()
  * - The following operations are carried out on Rvector objects
  *   - scalar_type dot(const Rvector& x, const Rvector& y) - scalar product of two vectors
  *   - void axpy(scalar_type a, Rvector& x, const Rvector& y) add a multiple a of y to x;
- *   - scal(Rvector& x, scalar_type a) scale x by a. In the special case a==0, *this on entry might be uninitialised.
+ *   - scal(Rvector& x, scalar_type a) scale x by a. In the special case a==0, x on entry might be uninitialised.
  * and these operations need to be provided by a handler class.
  *
- * @tparam Rvector The class encapsulating solution and residual vectors passed through the interface to class functions.
+ * @tparam Rvector The class encapsulating solution and residual vectors passed through the interface to class
+ * functions.
  * @tparam Qvector Used internally as a class for storing vectors on backing store.
- * Handler classes must be provided for operations between Rvector and Qvector classes. Qvector objects are created by copy-construction from an Rvector object, and no functions that subsequently modify them are called.
+ * Handler classes must be provided for operations between Rvector and Qvector classes. Qvector objects are created by
+ * copy-construction from an Rvector object, and no functions that subsequently modify them are called.
  * @tparam Pvector Specify a P-space vector as a sparse combination of parameters.
  */
 template <class Rvector = std::vector<double>, class Qvector = Rvector,
@@ -85,7 +88,6 @@ public:
   // clang-format off
   IterativeSolver(std::shared_ptr<molpro::Profiler> profiler = nullptr
   ) :
-      m_Pvectors(0),
       m_verbosity(0),
       m_thresh(1e-8),
       m_maxIterations(1000),
@@ -498,9 +500,6 @@ public:
 
   const std::vector<scalar_type>& errors() const { return m_errors; } //!< Error at last iteration
 
-protected:
-  std::vector<Pvector> m_Pvectors;
-
 public:
   int m_verbosity; //!< How much to print. Zero means nothing; One results in a single progress-report line printed each
                    //!< iteration.
@@ -628,9 +627,9 @@ protected:
         if (std::abs(m_s_xx[k * (nX + 1)] - 1) < 1e-15)
           m_s_xx[k * (nX + 1)] =
               1; // somehow avoid problems that eigen with Intel 18 get the SVD wrong if near-unit matrix
-      auto del = iterativesolver::propose_singularity_deletion(
-          m_exclude_r_from_redundancy_test ? nX - nR : nX, nX, m_residual_eigen ? m_s_xx.data() : m_h_xx.data(),
-          candidates, nQ > m_maxQ ? 1e6 : m_singularity_threshold);
+      auto del = iterativesolver::propose_singularity_deletion(m_exclude_r_from_redundancy_test ? nX - nR : nX, nX,
+                                                               m_residual_eigen ? m_s_xx.data() : m_h_xx.data(),
+                                                               candidates, nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
         if (m_verbosity > 2)
           molpro::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
@@ -726,7 +725,6 @@ protected:
         // TODO
       }
       if (not actionOnly and (m_residual_eigen || (m_residual_rhs && m_augmented_hessian > 0)))
-        // TODO check this is really right for multiroot augmented hessian. The eigenvalue depends on root?
         residual[kkk].get().axpy(-this->m_eval_xx[root], solution[kkk]);
       if (not actionOnly and m_residual_rhs)
         residual[kkk].get().axpy(-1, this->m_rhs[root]);
@@ -770,18 +768,8 @@ public:
 protected:
 };
 
-template <class T>
-typename T::value_type inline operator*(const typename IterativeSolver<T>::Pvector& a,
-                                        const typename IterativeSolver<T>::Pvector& b) {
-  typename T::value_type result = 0;
-  for (const auto& aa : a)
-    if (b.find(aa.first))
-      result += aa.second * b[aa.first];
-  return result;
-}
 
 /*! @example LinearEigensystemExample.cpp */
-/*! @example LinearEigensystemExample-paged.cpp */
 /*!
  * \brief A class that finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos
  *
@@ -835,8 +823,8 @@ public:
     std::vector<value_type> ev = this->eigenvalues();
     if (this->m_verbosity > 0) {
       molpro::cout << "iteration " << this->iterations() << "[" << this->m_working_set.size() << "]";
-      if (!this->m_Pvectors.empty())
-        molpro::cout << ", P=" << this->m_Pvectors.size();
+      if (this->m_pspace.size()>0)
+        molpro::cout << ", P=" << this->m_pspace.size();
       if (this->m_roots > 1)
         molpro::cout << ", error["
                      << std::max_element(this->m_errors.cbegin(), this->m_errors.cend()) - this->m_errors.cbegin()

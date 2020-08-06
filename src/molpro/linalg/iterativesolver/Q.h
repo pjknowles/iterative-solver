@@ -19,11 +19,9 @@ namespace iterativesolver {
  */
 template <class Rvector, class Qvector = Rvector, class Pvector = std::map<size_t, typename Rvector::value_type>>
 class Q {
-  using ArrayHandlerFactory = molpro::linalg::array::ArrayHandlerFactory<Rvector, Qvector>;
-  using ArrayHandler = molpro::linalg::array::ArrayHandler<Rvector, Qvector>;
+  using ArrayHandler = array::ArrayHandler<Rvector, Qvector>;
   mutable std::shared_ptr<ArrayHandler> m_handler;
-  using scalar_type = decltype(
-      m_handler->dot(std::declval<Rvector>(), std::declval<const Rvector&>())); ///< The type of scalar products of vectors
+  using scalar_type = typename ArrayHandler::value_type; ///< The type of scalar products of vectors
   using key_type = int;
   bool m_hermitian;
   std::map<key_type, std::map<key_type, scalar_type>> m_metric;
@@ -40,8 +38,8 @@ class Q {
   std::map<key_type, typename Rvector::value_type> m_scale_factors, m_diff_factors;
 
 public:
-  Q(const P<Pvector>& pspace, bool hermitian = false) : m_hermitian(hermitian), m_pspace(pspace),
-     m_handler(ArrayHandlerFactory::create()) {}
+  Q(const P<Pvector>& pspace, bool hermitian, std::shared_ptr<ArrayHandler> handler)
+      : m_hermitian(hermitian), m_pspace(pspace), m_handler(std::move(handler)) {}
 
   const scalar_type& metric(size_t i, size_t j) const { return m_metric.at(m_keys[i]).at(m_keys[j]); }
 
@@ -120,8 +118,8 @@ public:
     m_rhs[m_index] = std::vector<scalar_type>();
     for (const auto& rhs1 : rhs)
       m_rhs[m_index].push_back(m_handler->dot(vector, rhs1));
-    m_vectors.emplace(std::make_pair(m_index, Qvector{vector}));
-    m_actions.emplace(std::make_pair(m_index, Qvector{action}));
+    m_vectors.emplace(m_index, m_handler->copy(vector));
+    m_actions.emplace(m_index, m_handler->copy(action));
     m_index++;
     m_keys = keys();
   }
@@ -143,11 +141,13 @@ public:
     typename Rvector::value_type scale_factor, diff_factor;
     if (resres) {
       rr = m_handler->dot(action, action);
+      // FIXME can we avoid calculating norm of the oldaction. Was it calculated before?
       auto dd = m_handler->dot(oldaction, oldaction);
       auto rd = m_handler->dot(action, oldaction);
       scale_factor = 1 / std::sqrt(rr + dd - 2 * rd);
       diff_factor = 1;
     } else {
+      // FIXME Again, can this dot be avoided
       auto dd = m_handler->dot(oldvector, oldvector);
       auto rd = m_handler->dot(vector, oldvector);
       //      std::cout << "dd-1=" << dd - 1 << ", rr-1=" << rr - 1 << ", rd-1=" << rd - 1 << std::endl;
@@ -161,30 +161,31 @@ public:
     }
     //    std::cout << "Q.add difference, scale_factor=" << scale_factor << ", diff_factor=" << diff_factor
     //              << ", orthogonalise=" << orthogonalise << std::endl;
+    // FIXME why are they passed as const, if they get modified?
     auto& v = const_cast<Rvector&>(vector);
     auto& a = const_cast<Rvector&>(action);
-    v.scal(scale_factor);
-    v.axpy(-diff_factor * scale_factor, oldvector);
-    a.scal(scale_factor);
-    a.axpy(-diff_factor * scale_factor, oldaction);
+    m_handler->scal(scale_factor, v);
+    m_handler->axpy(-diff_factor * scale_factor, oldvector, v);
+    m_handler->scal(scale_factor, a);
+    m_handler->axpy(-diff_factor * scale_factor, oldaction, a);
     auto actual_norm = std::sqrt(resres ? m_handler->dot(a, a) : m_handler->dot(v, v));
-//    std::cout << "actual_norm=" << actual_norm << std::endl;
+    //    std::cout << "actual_norm=" << actual_norm << std::endl;
     if (actual_norm > 1e-6 and
         std::abs(actual_norm - 1) > 1e-2) { // rescale because of numerical precision problems when vector
                                             //    \approx oldvector
       //    do not do it if the problem is severe, since then action will be inaccurate
-      v.scal(1 / actual_norm);
-      a.scal(1 / actual_norm);
+      m_handler->scal(1. / actual_norm, v);
+      m_handler->scal(1. / actual_norm, a);
       scale_factor /= actual_norm;
     }
     m_scale_factors[m_index] = scale_factor;
     m_diff_factors[m_index] = diff_factor;
     add(v, a, rhs, resres);
     //    std::cout << "new Q vector self-overlap=" << v.dot(v) << std::endl;
-    v.axpy(diff_factor * scale_factor, oldvector);
-    v.scal(1 / scale_factor);
-    a.axpy(diff_factor * scale_factor, oldaction);
-    a.scal(1 / scale_factor);
+    m_handler->axpy(diff_factor * scale_factor, oldvector, v);
+    m_handler->scal(1. / scale_factor, v);
+    m_handler->axpy(diff_factor * scale_factor, oldaction, a);
+    m_handler->scal(1. / scale_factor, a);
     //    std::cout << "created Q, scale_factor=" << scale_factor << ", diff_factor=" << diff_factor << std::endl;
     return scale_factor;
   }

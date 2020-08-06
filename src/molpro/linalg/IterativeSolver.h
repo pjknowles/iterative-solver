@@ -87,7 +87,7 @@ template <class Rvector = std::vector<double>, class Qvector = Rvector,
           class Pvector = std::map<size_t, typename Rvector::value_type>>
 class IterativeSolver {
 public:
-  IterativeSolver(std::shared_ptr<array::ArrayHandler<Rvector, Qvector>> handler =
+  IterativeSolver(const std::shared_ptr<array::ArrayHandler<Rvector, Qvector>>& handler =
                       array::ArrayHandlerFactory<Rvector, Qvector>::create(),
                   std::shared_ptr<molpro::Profiler> profiler = nullptr)
       : // clang-format off
@@ -116,11 +116,11 @@ public:
       m_maxQ(std::max(m_roots, size_t(16))),
       m_profiler(std::move(profiler)),
       m_pspace(),
-      m_qspace(m_pspace, m_hermitian),
+      m_qspace(m_pspace, m_hermitian, handler),
       m_exclude_r_from_redundancy_test(false),
       m_orthogonalise_Q(true),
       m_nullify_solution_before_update(false),
-      m_handler(std::move(handler))
+      m_handler(handler)
 {}
   // clang-format on
 

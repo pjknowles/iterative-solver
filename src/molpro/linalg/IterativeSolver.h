@@ -18,6 +18,7 @@
 #include <numeric>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #ifndef LINEARALGEBRA_OFFLINE
@@ -86,9 +87,10 @@ template <class Rvector = std::vector<double>, class Qvector = Rvector,
           class Pvector = std::map<size_t, typename Rvector::value_type>>
 class IterativeSolver {
 public:
-  // clang-format off
-  IterativeSolver(std::shared_ptr<molpro::Profiler> profiler = nullptr
-  ) :
+  IterativeSolver(std::shared_ptr<array::ArrayHandler<Rvector, Qvector>> handler =
+                      array::ArrayHandlerFactory<Rvector, Qvector>::create(),
+                  std::shared_ptr<molpro::Profiler> profiler = nullptr)
+      : // clang-format off
       m_Pvectors(0),
       m_verbosity(0),
       m_thresh(1e-8),
@@ -118,7 +120,7 @@ public:
       m_exclude_r_from_redundancy_test(false),
       m_orthogonalise_Q(true),
       m_nullify_solution_before_update(false),
-      m_handler(molpro::linalg::array::ArrayHandlerFactory<Rvector, Qvector>::create())
+      m_handler(std::move(handler))
 {}
   // clang-format on
 
@@ -818,12 +820,17 @@ public:
   /*!
    * \brief LinearEigensystem
    */
-  explicit LinearEigensystem(std::shared_ptr<molpro::Profiler> profiler = nullptr)
-      : IterativeSolver<Rvector, Qvector, Pvector>(profiler) {
+  explicit LinearEigensystem(const std::shared_ptr<array::ArrayHandler<Rvector, Qvector>>& handler =
+                                 array::ArrayHandlerFactory<Rvector, Qvector>::create(),
+                             const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
+      : IterativeSolver<Rvector, Qvector, Pvector>(handler, profiler) {
     this->m_residual_rhs = false;
     this->m_residual_eigen = true;
     this->m_linear = true;
   }
+
+  explicit LinearEigensystem(const std::shared_ptr<molpro::Profiler>& profiler)
+      : LinearEigensystem(array::ArrayHandlerFactory<Rvector, Qvector>::create(), profiler) {}
 
 private:
   bool solveReducedProblem() override {
@@ -877,6 +884,7 @@ public:
 template <class Rvector = std::vector<double>, class Qvector = Rvector,
           class Pvector = std::map<size_t, typename Rvector::value_type>>
 class LinearEquations : public IterativeSolver<Rvector, Qvector, Pvector> {
+protected:
   using typename IterativeSolver<Rvector, Qvector, Pvector>::scalar_type;
   using typename IterativeSolver<Rvector, Qvector, Pvector>::value_type;
 
@@ -892,29 +900,28 @@ public:
    * not yet started. \param augmented_hessian If zero, solve the inhomogeneous equations unmodified. If 1, solve
    * instead the augmented hessian problem. Other values scale the augmented hessian damping.
    */
-  explicit LinearEquations(constVectorRefSet rhs, double augmented_hessian = 0) {
+  explicit LinearEquations(constVectorRefSet rhs, double augmented_hessian = 0,
+                           const std::shared_ptr<array::ArrayHandler<Rvector, Qvector>>& handler =
+                               array::ArrayHandlerFactory<Rvector, Qvector>::create(),
+                           const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
+      : IterativeSolver<Rvector, Qvector, Pvector>(handler, profiler) {
     this->m_linear = true;
-    this->m_residual_eigen = true;
     this->m_residual_rhs = true;
     this->m_augmented_hessian = augmented_hessian;
     addEquations(rhs);
   }
 
-  explicit LinearEquations(const vectorSet& rhs, double augmented_hessian = 0) {
-    auto rhsr = constVectorRefSet(rhs.begin(), rhs.end());
-    this->m_linear = true;
-    this->m_residual_rhs = true;
-    this->m_augmented_hessian = augmented_hessian;
-    addEquations(rhsr);
-  }
+  explicit LinearEquations(const vectorSet& rhs, double augmented_hessian = 0,
+                           const std::shared_ptr<array::ArrayHandler<Rvector, Qvector>>& handler =
+                               array::ArrayHandlerFactory<Rvector, Qvector>::create(),
+                           const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
+      : LinearEquations(constVectorRefSet(rhs.begin(), rhs.end()), augmented_hessian, handler, profiler) {}
 
-  explicit LinearEquations(const Rvector& rhs, double augmented_hessian = 0) {
-    auto rhsr = constVectorRefSet(1, rhs);
-    this->m_linear = true;
-    this->m_residual_rhs = true;
-    this->m_augmented_hessian = augmented_hessian;
-    addEquations(rhsr);
-  }
+  explicit LinearEquations(const Rvector& rhs, double augmented_hessian = 0,
+                           const std::shared_ptr<array::ArrayHandler<Rvector, Qvector>>& handler =
+                               array::ArrayHandlerFactory<Rvector, Qvector>::create(),
+                           const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
+      : LinearEquations(constVectorRefSet(1, rhs), augmented_hessian, handler, profiler) {}
 
   /*!
    * \brief add one or more equations to the set to be solved, by specifying their right-hand-side vector
@@ -965,9 +972,12 @@ public:
    * \param algorithm Allowed values: "L-BFGS","null"
    * \param minimize If false, a maximum, not minimum, will be sought
    */
-  explicit Optimize(const std::string& algorithm = "L-BFGS", bool minimize = true)
-      : m_algorithm(algorithm), m_minimize(minimize), m_strong_Wolfe(true), m_Wolfe_1(0.0001),
-        m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
+  explicit Optimize(std::string algorithm = "L-BFGS", bool minimize = true,
+                    const std::shared_ptr<array::ArrayHandler<Rvector, Qvector>>& handler =
+                        array::ArrayHandlerFactory<Rvector, Qvector>::create(),
+                    const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
+      : IterativeSolver<Rvector, Qvector>(handler, profiler), m_algorithm(std::move(algorithm)), m_minimize(minimize),
+        m_strong_Wolfe(true), m_Wolfe_1(0.0001), m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
         m_linesearch_tolerance(0.2), m_linesearch_grow_factor(3), m_linesearch_steplength(0),
         m_handler(molpro::linalg::array::ArrayHandlerFactory<Rvector, Qvector>::create()) {
     this->m_linear = false;
@@ -1206,7 +1216,10 @@ public:
   /*!
    * \brief DIIS
    */
-  DIIS() {
+  DIIS(const std::shared_ptr<array::ArrayHandler<Rvector, Qvector>>& handler =
+           array::ArrayHandlerFactory<Rvector, Qvector>::create(),
+       const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
+      : IterativeSolver<Rvector, Qvector>(handler, profiler) {
     this->m_residual_rhs = false;
     this->m_residual_eigen = false;
     this->m_roots = 1;

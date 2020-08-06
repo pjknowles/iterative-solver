@@ -9,7 +9,7 @@ endif ()
 
 LibraryManager_Append(${PROJECT_NAME}
         SOURCES HDF5Handle.cpp
-        PUBLIC_HEADER HDF5Handle.h ArrayHandler.h ArrayHandlerIterable.h ArrayHandlerFactory.h Span.h
+        PUBLIC_HEADER HDF5Handle.h ArrayHandler.h ArrayHandlerIterable.h ArrayHandlerSparse.h ArrayHandlerFactory.h Span.h
         )
 target_link_libraries(${PROJECT_NAME} PUBLIC ${HDF5_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${HDF5_INCLUDE_DIRS})

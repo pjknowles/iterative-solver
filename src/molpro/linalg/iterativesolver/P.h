@@ -7,11 +7,11 @@ namespace molpro {
 namespace linalg {
 namespace iterativesolver {
 
-template <class Pvector=std::map<size_t,double>>
+template <class Pvector = std::map<size_t, double>>
 class P {
 public:
-//  using Pvector = std::map<size_t, value_type>; //!< Sparse array defining a P vector
-using value_type = typename Pvector::mapped_type;
+  using value_type = typename Pvector::mapped_type;
+
 protected:
   std::vector<value_type> m_metric;
   std::vector<value_type> m_action;
@@ -78,5 +78,18 @@ public:
 } // namespace iterativesolver
 } // namespace linalg
 } // namespace molpro
+
+
+// TODO this should be provided by the appropriate handler.
+template <class Rvector = std::vector<double>, class Qvector = Rvector,
+    class Pvector = std::map<size_t, typename Rvector::value_type>>
+typename Pvector::value_type inline operator*(const Pvector& a, const Pvector& b) {
+  typename Pvector::value_type result = 0;
+  for (const auto& aa : a)
+    if (b.find(aa.first))
+      result += aa.second * b[aa.first];
+  return result;
+}
+
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_P_H_

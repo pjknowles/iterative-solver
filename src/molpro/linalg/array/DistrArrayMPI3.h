@@ -25,24 +25,24 @@ protected:
   class DistributionMPI3;
   MPI_Win m_win = MPI_WIN_NULL; //!< window object
   //! distribution of array buffer among processes. Stores start index and size for each
-  std::unique_ptr<DistributionMPI3> m_distribution;
+  std::unique_ptr<DistributionMPI3> m_distribution = nullptr;
   bool m_allocated = false; //!< whether the window has been created
 
 public:
-  DistrArrayMPI3() = delete;
-  DistrArrayMPI3(DistrArrayMPI3 &&other) = delete;
-  DistrArrayMPI3 &operator=(const DistrArrayMPI3 &&) = delete;
+  DistrArrayMPI3() = default;
 
   DistrArrayMPI3(size_t dimension, MPI_Comm commun, std::shared_ptr<Profiler> prof = nullptr);
   //! Copy constructor allocates the buffer if source is not empty
-  DistrArrayMPI3(const DistrArray &source);
   DistrArrayMPI3(const DistrArrayMPI3 &source);
-  DistrArrayMPI3 &operator=(const DistrArray &source);
+  DistrArrayMPI3(DistrArrayMPI3 &&source) noexcept;
   DistrArrayMPI3 &operator=(const DistrArrayMPI3 &source);
+  DistrArrayMPI3 &operator=(DistrArrayMPI3 &&source) noexcept;
   ~DistrArrayMPI3() override;
 
+  friend void swap(DistrArrayMPI3 &a1, DistrArrayMPI3 &a2);
   void sync() const override;
   void allocate_buffer() override;
+  void free_buffer() override;
   bool empty() const override;
 
 protected:
@@ -53,6 +53,7 @@ protected:
   class DistributionMPI3 : public DistrArray::Distribution {
   public:
     DistributionMPI3(int n_proc, size_t dimension);
+    DistributionMPI3(const DistributionMPI3 &) = default;
     std::pair<int, int> locate_process(index_type lo, index_type hi) const override;
     std::pair<index_type, size_t> range(int process_rank) const override;
 
@@ -64,8 +65,8 @@ protected:
 
 public:
   [[nodiscard]] const Distribution &distribution() const override;
-  [[nodiscard]] std::shared_ptr<LocalBuffer> local_buffer() override;
-  [[nodiscard]] std::shared_ptr<const LocalBuffer> local_buffer() const override;
+  [[nodiscard]] std::unique_ptr<LocalBuffer> local_buffer() override;
+  [[nodiscard]] std::unique_ptr<const LocalBuffer> local_buffer() const override;
   [[nodiscard]] value_type at(index_type ind) const override;
   void set(index_type ind, value_type val) override;
   void get(index_type lo, index_type hi, value_type *buf) const override;
@@ -79,8 +80,6 @@ public:
   void error(const std::string &message) const override;
 
 protected:
-  //! Free the window
-  void free_buffer();
   enum class RMAType { get, put, acc, gather, scatter, scatter_acc };
   //! does get or put or accumulate
   void _get_put(index_type lo, index_type hi, const value_type *buf, RMAType option);

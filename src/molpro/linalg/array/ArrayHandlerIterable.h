@@ -41,7 +41,11 @@ public:
       el *= alpha;
   };
 
-  void fill(value_type alpha, AL &x) override { std::fill(x.begin(), x.end(), alpha); };
+  void fill(value_type alpha, AL &x) override {
+    using std::begin;
+    using std::end;
+    std::fill(begin(x), end(x), alpha);
+  };
 
   void axpy(value_type alpha, const AR &x, AL &y) override {
     if (x.size() < y.size())

@@ -30,6 +30,8 @@ bool DistrArray::empty() const { return true; }
 void DistrArray::zero() { fill(0); }
 
 void DistrArray::fill(DistrArray::value_type val) {
+  if (empty())
+    error("DistrArray::fill cannot fill empty array");
   util::ScopeProfiler p{m_prof, "Array::fill"};
   auto lb = local_buffer();
   for (auto& el : *lb)

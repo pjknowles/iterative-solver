@@ -124,8 +124,9 @@ TEST(ArrayHandlerIterable, copy_same) {
   using X = std::vector<double>;
   using Y = X;
   ArrayHandlerIterable<X, Y> handler{};
-  auto x = X{1, 2, 3, 4};
-  auto y = handler.copy(x);
+  auto y = Y{1, 2, 3, 4};
+  auto x = handler.copy(y);
+  EXPECT_THAT(x, Pointwise(DoubleEq(), y));
 }
 
 TEST(ArrayHandlerIterable, copyL) {

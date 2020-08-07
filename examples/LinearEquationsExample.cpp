@@ -3,6 +3,16 @@
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
+
+#include <molpro/linalg/array/ArrayHandlerIterable.h>
+#include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
+#include <molpro/linalg/array/ArrayHandlerSparse.h>
+
+using molpro::linalg::array::ArrayHandlerIterable;
+using molpro::linalg::array::ArrayHandlerIterableSparse;
+using molpro::linalg::array::ArrayHandlerSparse;
+using molpro::linalg::iterativesolver::ArrayHandlers;
+
 // For M(i,j) = alpha*(i+1)*delta(i,j) + i + j, b(i,n)=n+i
 // solve M x = b
 // Storage of vectors distributed and out of memory via SimpleArray class
@@ -87,7 +97,15 @@ int main(int argc, char* argv[]) {
   std::vector<double> augmented_hessian_factors = {0, .001, .01, .1, 1};
   for (const auto& augmented_hessian_factor : augmented_hessian_factors) {
     std::cout << "Augmented hessian factor = " << augmented_hessian_factor << std::endl;
-    molpro::linalg::LinearEquations<pv> solver(b, augmented_hessian_factor);
+    auto rr = std::make_shared<ArrayHandlerIterable<pv>>();
+    auto qq = std::make_shared<ArrayHandlerIterable<pv>>();
+    auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
+    auto rq = std::make_shared<ArrayHandlerIterable<pv>>();
+    auto rp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+    auto qr = std::make_shared<ArrayHandlerIterable<pv>>();
+    auto qp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+    auto handlers = ArrayHandlers<pv, pv, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
+    molpro::linalg::LinearEquations<pv> solver(b, handlers, augmented_hessian_factor);
     solver.m_verbosity = 1;
     solver.m_roots = nRoot;
     solver.m_thresh = 1e-6;

@@ -13,9 +13,8 @@ namespace iterativesolver {
  * @tparam Q array for Q space
  * @tparam P array for P space
  */
-template <typename R, typename Q, typename P>
-class ArrayHandlers {
-public:
+template <typename R, typename Q = R, typename P = std::map<size_t, typename R::value_type>>
+struct ArrayHandlers {
   auto& rr() { return *m_rr; }
   auto& qq() { return *m_qq; }
   auto& pp() { return *m_pp; }
@@ -24,7 +23,6 @@ public:
   auto& rp() { return *m_rp; }
   auto& qp() { return *m_qp; }
 
-protected:
   std::shared_ptr<array::ArrayHandler<R, R>> m_rr;
   std::shared_ptr<array::ArrayHandler<Q, Q>> m_qq;
   std::shared_ptr<array::ArrayHandler<P, P>> m_pp;

@@ -10,6 +10,15 @@
 #include <memory>
 #include <type_traits>
 
+#include <molpro/linalg/array/ArrayHandlerIterable.h>
+#include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
+#include <molpro/linalg/array/ArrayHandlerSparse.h>
+
+using molpro::linalg::array::ArrayHandler;
+using molpro::linalg::array::ArrayHandlerIterable;
+using molpro::linalg::array::ArrayHandlerIterableSparse;
+using molpro::linalg::array::ArrayHandlerSparse;
+using molpro::linalg::iterativesolver::ArrayHandlers;
 namespace molpro {
 namespace linalg {
 
@@ -85,7 +94,15 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   if (problem == 3)
     testmatrix(0, 1) = testmatrix(1, 0) = 1;
 
-  LinearEigensystem<ptype> d;
+  auto rr = std::make_shared<ArrayHandlerIterable<ptype>>();
+  auto qq = std::make_shared<ArrayHandlerIterable<ptype>>();
+  auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
+  auto rq = std::make_shared<ArrayHandlerIterable<ptype>>();
+  auto rp = std::make_shared<ArrayHandlerIterableSparse<ptype, std::map<size_t, double>>>();
+  auto qr = std::make_shared<ArrayHandlerIterable<ptype>>();
+  auto qp = std::make_shared<ArrayHandlerIterableSparse<ptype, std::map<size_t, double>>>();
+  auto handlers = ArrayHandlers<ptype, ptype, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
+  LinearEigensystem<ptype> d{handlers};
   molpro::linalg::array::ArrayHandlerIterable<ptype> handler{};
   d.m_roots = roots;
   d.m_verbosity = verbosity;
@@ -158,9 +175,9 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   }
   std::vector<scalar> errors;
   for (size_t root = 0; root < (size_t)d.m_roots; root++) {
-    //g[root].axpy(-ev[root], x[root]);
+    // g[root].axpy(-ev[root], x[root]);
     handler.axpy(-ev[root], x[root], g[root]);
-    //errors.push_back(g[root].dot(g[root]));
+    // errors.push_back(g[root].dot(g[root]));
     errors.push_back(handler.dot(g[root], g[root]));
   }
   //   molpro::cout << "Square residual norms: "; for (typename std::vector<T>::const_iterator e=errors.begin();
@@ -501,8 +518,8 @@ TEST(IterativeSolver_test, old) {
     //  IterativeSolver::DIIS::randomTest(100,100,0.1,1.0);
     //  IterativeSolver::DIIS::randomTest(100,100,0.1,2.0);
     //  IterativeSolver::DIIS<double>::randomTest(100,100,0.1,3.0);
-//    DIISTest<PagedArray<double>>(2, 6, 1e-10, 0.0002);
-//    DIISTest<SimpleArray<double>>(2, 6, 1e-10, 0.0002);
+    //    DIISTest<PagedArray<double>>(2, 6, 1e-10, 0.0002);
+    //    DIISTest<SimpleArray<double>>(2, 6, 1e-10, 0.0002);
     //  MPI_Abort(MPI_COMM_WORLD,1);
     //  DIISTest<LinearAlgebra::PagedVector<double> >(1,6,1e-10,IterativeSolver::DIIS<LinearAlgebra::PagedVector<double>
     //  >::DIISmode,0.2); DIISTest<LinearAlgebra::PagedVector<double>
@@ -511,25 +528,25 @@ TEST(IterativeSolver_test, old) {
     if (true) {
 
       DavidsonTest<SimpleArray<double>>(3, 3, 1, 2);
-//      DavidsonTest<PagedArray<double>>(3, 3, 1, 2);
+      //      DavidsonTest<PagedArray<double>>(3, 3, 1, 2);
       DavidsonTest<SimpleArray<double>>(3, 2, 1, 2);
-//      DavidsonTest<PagedArray<double>>(3, 2, 1, 2);
+      //      DavidsonTest<PagedArray<double>>(3, 2, 1, 2);
       DavidsonTest<SimpleArray<double>>(9, 1, 1, 2);
-//      DavidsonTest<PagedArray<double>>(9, 1, 1, 2);
+      //      DavidsonTest<PagedArray<double>>(9, 1, 1, 2);
       //      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 2, false);
       DavidsonTest<SimpleArray<double>>(9, 9, 1, 1);
-//      DavidsonTest<PagedArray<double>>(9, 9, 1, 1);
+      //      DavidsonTest<PagedArray<double>>(9, 9, 1, 1);
       //      DavidsonTest<LinearAlgebra::PagedVector<double> >(9, 1, 1, 1, false);
       DavidsonTest<SimpleArray<double>>(9, 1, 1, 1);
-//      DavidsonTest<PagedArray<double>>(9, 1, 1, 1);
+      //      DavidsonTest<PagedArray<double>>(9, 1, 1, 1);
       DavidsonTest<SimpleArray<double>>(9, 1, 1, 2);
-//      DavidsonTest<PagedArray<double>>(9, 1, 1, 2);
+      //      DavidsonTest<PagedArray<double>>(9, 1, 1, 2);
       DavidsonTest<SimpleArray<double>>(9, 2, 1, 2);
-//      DavidsonTest<PagedArray<double>>(9, 2, 1, 2);
+      //      DavidsonTest<PagedArray<double>>(9, 2, 1, 2);
       DavidsonTest<SimpleArray<double>>(100, 1, 1, 2);
-//      DavidsonTest<PagedArray<double>>(100, 1, 1, 2);
+      //      DavidsonTest<PagedArray<double>>(100, 1, 1, 2);
       //      DavidsonTest<LinearAlgebra::PagedVector<double> >(100, 3, 1, 2, false);
-//      DavidsonTest<PagedArray<double>>(100, 3, 1, 2);
+      //      DavidsonTest<PagedArray<double>>(100, 3, 1, 2);
       DavidsonTest<SimpleArray<double>>(100, 3, 1, 2);
       DavidsonTest<OpaqueArray<double>>(100, 3, 1, 2);
     }

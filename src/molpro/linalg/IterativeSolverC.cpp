@@ -1,5 +1,5 @@
-#include "IterativeSolver.h"
 #include "IterativeSolverC.h"
+#include "IterativeSolver.h"
 #include "OutOfCoreArray.h"
 #include "molpro/ProfilerSingle.h"
 #include <memory>
@@ -12,15 +12,42 @@
 #include <ppidd.h>
 #endif
 
+#include <molpro/linalg/array/ArrayHandlerDistr.h>
+#include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
+#include <molpro/linalg/array/ArrayHandlerSparse.h>
+
+using molpro::linalg::DIIS;
+using molpro::linalg::LinearEigensystem;
+using molpro::linalg::LinearEquations;
+using molpro::linalg::Optimize;
+using molpro::linalg::array::ArrayHandlerDistr;
+using molpro::linalg::array::ArrayHandlerDistrSparse;
+using molpro::linalg::array::ArrayHandlerSparse;
+using molpro::linalg::iterativesolver::ArrayHandlers;
+
 // C interface to IterativeSolver
 // using v = LinearAlgebra::PagedVector<double>;
 using v = molpro::linalg::OutOfCoreArray<double>;
 
+auto make_handlers() {
+  auto handler_rr = std::make_shared<ArrayHandlerDistr<v>>();
+  auto handler_qq = std::make_shared<ArrayHandlerDistr<v>>();
+  auto handler_pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
+  auto handler_rq = std::make_shared<ArrayHandlerDistr<v>>();
+  auto handler_rp = std::make_shared<ArrayHandlerDistrSparse<v, std::map<size_t, double>>>();
+  auto handler_qr = std::make_shared<ArrayHandlerDistr<v>>();
+  auto handler_qp = std::make_shared<ArrayHandlerDistrSparse<v, std::map<size_t, double>>>();
+  auto handlers = ArrayHandlers<v, v, std::map<size_t, double>>{handler_rr, handler_qq, handler_pp, handler_rq,
+                                                                handler_rp, handler_qr, handler_qp};
+  return handlers;
+}
+
+// FIXME Only top solver is active at any one time. This should be documented somewhere.
 static std::stack<std::unique_ptr<molpro::linalg::IterativeSolver<v>>> instances;
 
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, double thresh,
-                                                           unsigned int maxIterations, int verbosity,
-                                                           const char* fname, int64_t fcomm, int lmppx) {
+                                                           unsigned int maxIterations, int verbosity, const char* fname,
+                                                           int64_t fcomm, int lmppx) {
   std::shared_ptr<molpro::Profiler> profiler = nullptr;
 #ifdef HAVE_MPI_H
   int flag;
@@ -49,8 +76,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
     profiler = molpro::ProfilerSingle::instance(pname);
   }
 #endif
-  instances.push(
-      std::make_unique<molpro::linalg::LinearEigensystem<v>>(molpro::linalg::LinearEigensystem<v>(profiler)));
+  instances.push(std::make_unique<LinearEigensystem<v>>(LinearEigensystem<v>(make_handlers(), profiler)));
   auto& instance = instances.top();
   instance->m_dimension = n;
   instance->m_roots = nroot;
@@ -79,7 +105,7 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
     // rr.push_back(v(const_cast<double*>(&rhs[root * n]),
     //               n)); // in principle the const_cast is dangerous, but we trust LinearEquations to behave
   }
-  instances.push(std::make_unique<molpro::linalg::LinearEquations<v>>(rr, aughes));
+  instances.push(std::make_unique<LinearEquations<v>>(rr, make_handlers(), aughes));
   // instances.push(std::make_unique<IterativeSolver::LinearEquations<v> >(IterativeSolver::LinearEquations<v>(rr,
   //                                                                                                          aughes)));
   auto& instance = instances.top();
@@ -102,7 +128,7 @@ extern "C" void IterativeSolverDIISInitialize(size_t n, double thresh, unsigned 
     MPI_Init(0, nullptr);
 #endif
 #endif
-  instances.push(std::make_unique<molpro::linalg::DIIS<v>>(molpro::linalg::DIIS<v>()));
+  instances.emplace(std::make_unique<DIIS<v>>(make_handlers()));
   auto& instance = instances.top();
   instance->m_dimension = n;
   instance->m_thresh = thresh;
@@ -123,10 +149,9 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, double thresh, unsig
 #endif
 #endif
   if (*algorithm)
-    instances.push(
-        std::make_unique<molpro::linalg::Optimize<v>>(molpro::linalg::Optimize<v>(algorithm, minimize != 0)));
+    instances.emplace(std::make_unique<Optimize<v>>(make_handlers(), algorithm, minimize != 0));
   else
-    instances.push(std::make_unique<molpro::linalg::Optimize<v>>(molpro::linalg::Optimize<v>()));
+    instances.emplace(std::make_unique<Optimize<v>>(make_handlers()));
   auto& instance = instances.top();
   instance->m_dimension = n;
   instance->m_roots = 1;

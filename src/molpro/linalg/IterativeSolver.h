@@ -803,15 +803,13 @@ public:
   /*!
    * \brief LinearEigensystem
    */
-  explicit LinearEigensystem(const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers={},
+  explicit LinearEigensystem(const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers,
                              const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector, Pvector>(handlers, profiler) {
     this->m_residual_rhs = false;
     this->m_residual_eigen = true;
     this->m_linear = true;
   }
-
-  explicit LinearEigensystem(const std::shared_ptr<molpro::Profiler>& profiler) : LinearEigensystem({}, profiler) {}
 
 private:
   bool solveReducedProblem() override {
@@ -881,9 +879,9 @@ public:
    * not yet started. \param augmented_hessian If zero, solve the inhomogeneous equations unmodified. If 1, solve
    * instead the augmented hessian problem. Other values scale the augmented hessian damping.
    */
-  explicit LinearEquations(constVectorRefSet rhs, double augmented_hessian = 0,
-                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers = {},
-                           const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
+  explicit LinearEquations(constVectorRefSet rhs,
+                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers,
+                           double augmented_hessian = 0, const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector, Pvector>(handlers, profiler) {
     this->m_linear = true;
     this->m_residual_rhs = true;
@@ -891,15 +889,15 @@ public:
     addEquations(rhs);
   }
 
-  explicit LinearEquations(const vectorSet& rhs, double augmented_hessian = 0,
-                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers = {},
-                           const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
-      : LinearEquations(constVectorRefSet(rhs.begin(), rhs.end()), augmented_hessian, handlers, profiler) {}
+  explicit LinearEquations(const vectorSet& rhs,
+                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers,
+                           double augmented_hessian = 0, const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
+      : LinearEquations(constVectorRefSet(rhs.begin(), rhs.end()), handlers, augmented_hessian, profiler) {}
 
-  explicit LinearEquations(const Rvector& rhs, double augmented_hessian = 0,
-                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers = {},
-                           const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
-      : LinearEquations(constVectorRefSet(1, rhs), augmented_hessian, handlers, profiler) {}
+  explicit LinearEquations(const Rvector& rhs,
+                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers,
+                           double augmented_hessian = 0, const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
+      : LinearEquations(constVectorRefSet(1, rhs), handlers, augmented_hessian, profiler) {}
 
   /*!
    * \brief add one or more equations to the set to be solved, by specifying their right-hand-side vector
@@ -950,8 +948,8 @@ public:
    * \param algorithm Allowed values: "L-BFGS","null"
    * \param minimize If false, a maximum, not minimum, will be sought
    */
-  explicit Optimize(std::string algorithm = "L-BFGS", bool minimize = true,
-                    const iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>& handlers = {},
+  explicit Optimize(const iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>& handlers,
+                    std::string algorithm = "L-BFGS", bool minimize = true,
                     const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector>(handlers, profiler), m_algorithm(std::move(algorithm)), m_minimize(minimize),
         m_strong_Wolfe(true), m_Wolfe_1(0.0001), m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
@@ -1193,7 +1191,7 @@ public:
   /*!
    * \brief DIIS
    */
-  DIIS(const iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>& handlers = {},
+  DIIS(const iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>& handlers,
        const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector>(handlers, profiler) {
     this->m_residual_rhs = false;

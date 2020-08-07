@@ -1,10 +1,20 @@
 #include "molpro/linalg/IterativeSolver.h"
 #include "molpro/linalg/OutOfCoreArray.h"
 #include "test.h"
+#include <Eigen/Dense>
 #include <ctime>
 #include <memory>
 #include <type_traits>
-#include <Eigen/Dense>
+
+#include <molpro/linalg/array/ArrayHandlerDistr.h>
+#include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
+#include <molpro/linalg/array/ArrayHandlerSparse.h>
+
+using molpro::linalg::array::ArrayHandler;
+using molpro::linalg::array::ArrayHandlerDistr;
+using molpro::linalg::array::ArrayHandlerDistrSparse;
+using molpro::linalg::array::ArrayHandlerSparse;
+using molpro::linalg::iterativesolver::ArrayHandlers;
 
 namespace molpro {
 namespace linalg {
@@ -93,7 +103,15 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   if (problem == 3)
     testmatrix(0, 1) = testmatrix(1, 0) = 1;
 
-  LinearEigensystem<ptype> d;
+  auto rr = std::make_shared<ArrayHandlerDistr<ptype>>();
+  auto qq = std::make_shared<ArrayHandlerDistr<ptype>>();
+  auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
+  auto rq = std::make_shared<ArrayHandlerDistr<ptype>>();
+  auto rp = std::make_shared<ArrayHandlerDistrSparse<ptype, std::map<size_t, double>>>();
+  auto qr = std::make_shared<ArrayHandlerDistr<ptype>>();
+  auto qp = std::make_shared<ArrayHandlerDistrSparse<ptype, std::map<size_t, double>>>();
+  auto handlers = ArrayHandlers<ptype, ptype, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
+  LinearEigensystem<ptype> d{handlers};
   d.m_roots = roots;
   d.m_verbosity = verbosity;
   d.m_maxIterations = dimension;
@@ -118,7 +136,7 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   }
   for (size_t iteration = 0; iteration < dimension + 1; iteration++) {
     action(xvec, gvec);
-    auto nwork=d.addVector(x, g);
+    auto nwork = d.addVector(x, g);
     for (size_t work = 0; work < (size_t)nwork; work++) {
       syncr(x[work], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
       syncr(g[work], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
@@ -138,7 +156,7 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
       syncr(x[root], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
       syncr(g[root], std::is_same<ptype, linalg::OutOfCoreArray<double>>{});
     }
-    if (nwork==0)
+    if (nwork == 0)
       break;
   }
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix<scalar, Eigen::Dynamic, Eigen::Dynamic>> es(testmatrix);
@@ -157,8 +175,9 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   molpro::cout << std::endl;
 
   std::vector<int> rootlist;
-  for (size_t root = 0; root < (size_t)d.m_roots; root++) rootlist.push_back(root);
-  d.solution(rootlist,x,g);
+  for (size_t root = 0; root < (size_t)d.m_roots; root++)
+    rootlist.push_back(root);
+  d.solution(rootlist, x, g);
   action(xvec, gvec);
   std::vector<scalar> errors;
   for (size_t root = 0; root < (size_t)d.m_roots; root++) {
@@ -514,18 +533,18 @@ TEST(IterativeSolver_test, DISABLED_OOCA) {
     //  >(1,6,1e-3,IterativeSolver::DIIS<LinearAlgebra::OutOfCoreArray<double> >::disabled,0.0002);
     //   DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(2,2,2,2,false);
     if (true) {
-      DavidsonTest<OutOfCoreArray<double>>(3, 3, 1, 2);
-      DavidsonTest<OutOfCoreArray<double>>(3, 2, 1, 2);
-      DavidsonTest<OutOfCoreArray<double>>(9, 1, 1, 2);
-      //      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(9, 1, 1, 2, false);
-      DavidsonTest<OutOfCoreArray<double>>(9, 9, 1, 1);
-      //      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(9, 1, 1, 1, false);
-      DavidsonTest<OutOfCoreArray<double>>(9, 1, 1, 1);
-      DavidsonTest<OutOfCoreArray<double>>(9, 1, 1, 2);
-      DavidsonTest<OutOfCoreArray<double>>(9, 2, 1, 2);
-      DavidsonTest<OutOfCoreArray<double>>(100, 1, 1, 2);
-      //      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(100, 3, 1, 2, false);
-      DavidsonTest<OutOfCoreArray<double>>(100, 3, 1, 2);
+//      DavidsonTest<OutOfCoreArray<double>>(3, 3, 1, 2);
+//      DavidsonTest<OutOfCoreArray<double>>(3, 2, 1, 2);
+//      DavidsonTest<OutOfCoreArray<double>>(9, 1, 1, 2);
+//      //      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(9, 1, 1, 2, false);
+//      DavidsonTest<OutOfCoreArray<double>>(9, 9, 1, 1);
+//      //      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(9, 1, 1, 1, false);
+//      DavidsonTest<OutOfCoreArray<double>>(9, 1, 1, 1);
+//      DavidsonTest<OutOfCoreArray<double>>(9, 1, 1, 2);
+//      DavidsonTest<OutOfCoreArray<double>>(9, 2, 1, 2);
+//      DavidsonTest<OutOfCoreArray<double>>(100, 1, 1, 2);
+//      //      DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(100, 3, 1, 2, false);
+//      DavidsonTest<OutOfCoreArray<double>>(100, 3, 1, 2);
     }
 //  DavidsonTest<LinearAlgebra::OutOfCoreArray<double> >(600,3,1,2,true);
 //  RSPTTest<LinearAlgebra::OutOfCoreArray<double> ,double>(100,2e0);

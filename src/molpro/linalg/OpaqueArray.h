@@ -37,7 +37,8 @@ class OpaqueArray {
 
 public:
   typedef T value_type;
-  explicit OpaqueArray(size_t length = 0, const T& value = T()) : m_buffer(length, value) {}
+  OpaqueArray() = default;
+  explicit OpaqueArray(size_t length, const T& value = T()) : m_buffer(length, value) {}
   /*!
    * @brief Copy constructor
    * @param source
@@ -62,7 +63,10 @@ public:
   /*!
    * @brief Implements a simple push_back operation
    */
-  void push_back(const T& elem) {m_buffer.push_back(elem);}
+  void push_back(const T& elem) { m_buffer.push_back(elem); }
+
+  value_type& operator[](size_t i) { return m_buffer[i]; }
+  const value_type& operator[](size_t i) const { return m_buffer[i]; }
 
   /*!
    * \brief Add a constant times a sparse vector to this object

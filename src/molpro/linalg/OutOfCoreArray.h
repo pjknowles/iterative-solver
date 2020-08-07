@@ -235,13 +235,13 @@ public:
    */
   void push_back(const T& elem) {}
 
-  T *begin() {return m_data;}
+  T* begin() { return m_data; }
 
-  const T *begin() const {return m_data;}
+  const T* begin() const { return m_data; }
 
-  T *end() {return m_data+m_size;}
+  T* end() { return m_data + m_size; }
 
-  const T *end() const {return m_data+m_size;}
+  const T* end() const { return m_data + m_size; }
 
   /*!
    * \brief Update a range of the object data with the contents of a provided buffer
@@ -595,6 +595,18 @@ public:
       for (size_t i = 0; i < m_segment_length; i++)
         m_data[m_segment_offset + i] = 0;
     }
+    m_sync = false;
+  }
+
+  /*!
+   * \brief Set all elements to value a
+   */
+  void fill(scalar_type a) {
+    if (m_data == nullptr) {
+      throw std::logic_error("Scal() should not be called for a vector written to disk");
+    }
+    for (size_t i = 0; i < m_segment_length; i++)
+      m_data[m_segment_offset + i] = a;
     m_sync = false;
   }
 

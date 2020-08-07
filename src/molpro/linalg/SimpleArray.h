@@ -41,7 +41,8 @@ class SimpleArray {
 public:
   typedef double scalar_type; // TODO implement this properly from T
   typedef T value_type;
-  explicit SimpleArray(size_t length = 0, const T& value = T()) : m_buffer(length, value) {}
+  SimpleArray() = default;
+  explicit SimpleArray(size_t length, const T& value = T()) : m_buffer(length, value) {}
   /*!
    * @brief Copy constructor
    * @param source
@@ -104,7 +105,7 @@ public:
   /*!
    * @brief Implements a simple push_back operation
    */
-  void push_back(const T& elem) {m_buffer.push_back(elem);}
+  void push_back(const T& elem) { m_buffer.push_back(elem); }
 
   /*!
    * \brief Add a constant times another object to this object

@@ -200,11 +200,11 @@ public:
       m_action_pspace[i].resize(m_pspace.size());
       workspace = m_vectors[i];
       for (auto j = 0; j < m_pspace.size(); j++) {
-        m_metric_pspace[i][j] = workspace.dot(m_pspace[j]);
+        m_metric_pspace[i][j] = m_handlers.rp().dot(workspace, m_pspace[j]);
       }
       workspace = m_actions[i];
       for (auto j = 0; j < m_pspace.size(); j++) {
-        m_action_pspace[i][j] = workspace.dot(m_pspace[j]);
+        m_action_pspace[i][j] = m_handlers.rp().dot(workspace, m_pspace[j]);
       }
     }
   }

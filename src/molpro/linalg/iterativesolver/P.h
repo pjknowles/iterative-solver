@@ -1,7 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_P_H_
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_P_H_
-#include <molpro/linalg/array/ArrayHandlerFactory.h>
 #include <map>
+#include <molpro/linalg/array/ArrayHandler.h>
 
 namespace molpro {
 namespace linalg {
@@ -37,7 +37,8 @@ public:
    * 1-dimensional array, with the existing+new index running fastest.
    */
   template <class slowvector>
-  void add(const std::vector<Pvector>& Pvectors, const value_type* PP, const std::vector<slowvector>& rhs) {
+  void add(const std::vector<Pvector>& Pvectors, const value_type* PP, const std::vector<slowvector>& rhs,
+           array::ArrayHandler<Pvector, Pvector>& handle_pp, array::ArrayHandler<slowvector, Pvector>& handle_qp) {
     auto old_size = m_vectors.size();
     auto new_size = m_vectors.size() + Pvectors.size();
     {
@@ -56,17 +57,13 @@ public:
       for (size_t i = 0; i < Pvectors.size(); i++) {
         for (size_t j = 0; j < new_size; j++)
           new_action[j * new_size + (i + old_size)] = new_action[j + new_size * (i + old_size)] = PP[new_size * j + i];
-        m_vectors.push_back(Pvectors[i]);
+        m_vectors.emplace_back(handle_pp.copy(Pvectors[i]));
         for (size_t j = 0; j < m_vectors.size(); j++) {
-          value_type overlap = 0;
-          for (const auto& p : Pvectors[i]) {
-            if (m_vectors[j].count(p.first))
-              overlap += p.second * m_vectors[j][p.first];
-          }
+          auto overlap = handle_pp.dot(Pvectors[i], m_vectors[j]);
           new_metric[j * new_size + (i + old_size)] = new_metric[j + new_size * (i + old_size)] = overlap;
         }
         for (size_t j = 0; j < rhs.size(); j++) {
-          new_rhs[i + old_size + new_size * j] = rhs[j].dot(m_vectors[i]);
+          new_rhs[i + old_size + new_size * j] = handle_qp.dot(rhs[j], m_vectors[i]);
         }
       }
       m_metric = new_metric;
@@ -78,18 +75,4 @@ public:
 } // namespace iterativesolver
 } // namespace linalg
 } // namespace molpro
-
-
-// TODO this should be provided by the appropriate handler.
-template <class Rvector = std::vector<double>, class Qvector = Rvector,
-    class Pvector = std::map<size_t, typename Rvector::value_type>>
-typename Pvector::value_type inline operator*(const Pvector& a, const Pvector& b) {
-  typename Pvector::value_type result = 0;
-  for (const auto& aa : a)
-    if (b.find(aa.first))
-      result += aa.second * b[aa.first];
-  return result;
-}
-
-
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_P_H_

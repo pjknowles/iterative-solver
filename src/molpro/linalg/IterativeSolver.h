@@ -292,7 +292,7 @@ public:
       if (m_linear and m_errors[root] < m_thresh) { // converged
         //        molpro::cout << "  remove this vector from the working set"<<std::endl;
         //  remove this vector from the working set
-        // FIXME Doesn't this cause a copy? Should be without .get
+        // FIXME Doesn't this cause a copy? Should use swap, without .get
         for (auto kp = k + 1; kp < m_working_set.size(); kp++) {
           parameters[kp - 1].get() = parameters[kp].get();
           action[kp - 1].get() = action[kp].get();
@@ -366,7 +366,7 @@ public:
    */
   size_t addP(std::vector<Pvector> Pvectors, const value_type* PP, vectorRefSet parameters, vectorRefSet action,
               vectorRefSetP parametersP) {
-    m_pspace.add(Pvectors, PP, m_rhs);
+    m_pspace.add(Pvectors, PP, m_rhs, m_handlers.pp(), m_handlers.qp());
     m_qspace.refreshP(action.front());
     //    return m_working_set.size();
     m_working_set.clear();
@@ -530,8 +530,8 @@ public:
   ///< - m_options["convergence"]=="step": m_errors() returns the norm of the step in the solution
   ///< - m_options["convergence"]=="residual": m_errors() returns the norm of the residual vector
 protected:
-  molpro::linalg::iterativesolver::Q<Rvector, Qvector, Pvector, scalar_type> m_qspace;
-  molpro::linalg::iterativesolver::P<Pvector> m_pspace;
+  iterativesolver::Q<Rvector, Qvector, Pvector, scalar_type> m_qspace;
+  iterativesolver::P<Pvector> m_pspace;
   std::vector<Qvector> m_last_d;    ///< optimum solution in last iteration
   std::vector<Qvector> m_last_hd;   ///< action vector corresponding to optimum solution in last iteration
   std::vector<Qvector> m_current_r; ///< current working space TODO can probably eliminate using m_last_d
@@ -668,7 +668,6 @@ protected:
   void diagonalizeSubspaceMatrix() {
     iterativesolver::eigenproblem(m_evec_xx, m_eval_xx, m_h_xx, m_s_xx, m_n_x, m_hermitian, m_svdThreshold,
                                   m_verbosity);
-    return;
   }
 
   /*!

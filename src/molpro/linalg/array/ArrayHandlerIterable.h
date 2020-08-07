@@ -73,12 +73,16 @@ protected:
   template <typename T, typename S, typename std::enable_if_t<util::is_array<T>::value, nullptr_t> = nullptr>
   T copyAny(const S &source) {
     auto result = T();
+    using std::begin;
+    using std::end;
     std::copy(begin(source), end(source), begin(result));
     return result;
   }
   template <typename T, typename S, typename std::enable_if_t<!util::is_array<T>::value, int> = 0>
   T copyAny(const S &source) {
     auto result = T(source.size());
+    using std::begin;
+    using std::end;
     std::copy(begin(source), end(source), begin(result));
     return result;
   }

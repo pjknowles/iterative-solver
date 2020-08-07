@@ -37,13 +37,36 @@ class OpaqueArray {
 
 public:
   typedef T value_type;
-  explicit OpaqueArray(size_t length = 0, const T& value = T()) : m_buffer(length, value) {}
+  OpaqueArray() = default;
+  explicit OpaqueArray(size_t length, const T& value = T()) : m_buffer(length, value) {}
   /*!
    * @brief Copy constructor
    * @param source
    * @param option
    */
   OpaqueArray<T, Allocator>(const OpaqueArray& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
+
+  /*!
+   * @return Iterator at the start of the buffer
+   */
+  typename std::vector<T>::const_iterator begin() const { return m_buffer.begin(); }
+
+  typename std::vector<T>::iterator begin() { return m_buffer.begin(); }
+
+  /*!
+   * @return Iterator at the end of the buffer
+   */
+  typename std::vector<T>::const_iterator end() const { return m_buffer.end(); }
+
+  typename std::vector<T>::iterator end() { return m_buffer.end(); }
+
+  /*!
+   * @brief Implements a simple push_back operation
+   */
+  void push_back(const T& elem) { m_buffer.push_back(elem); }
+
+  value_type& operator[](size_t i) { return m_buffer[i]; }
+  const value_type& operator[](size_t i) const { return m_buffer[i]; }
 
   /*!
    * \brief Add a constant times a sparse vector to this object

@@ -14,6 +14,16 @@
 #include <numeric>
 #include <regex>
 #include <vector>
+
+#include <molpro/linalg/array/ArrayHandlerIterable.h>
+#include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
+#include <molpro/linalg/array/ArrayHandlerSparse.h>
+
+using molpro::linalg::array::ArrayHandler;
+using molpro::linalg::array::ArrayHandlerIterable;
+using molpro::linalg::array::ArrayHandlerIterableSparse;
+using molpro::linalg::array::ArrayHandlerSparse;
+using molpro::linalg::iterativesolver::ArrayHandlers;
 // Find lowest eigensolution of a matrix obtained from an external file
 // Storage of vectors in-memory via class pv
 using scalar = double;
@@ -85,7 +95,15 @@ TEST(IterativeSolver, file_eigen) {
       for (auto np = 0; np <= 16; np += 4) {
         molpro::cout << "\n\n*** " << file << ", " << nroot << " roots, problem dimension " << n
                      << ", pspace dimension " << np << std::endl;
-        molpro::linalg::LinearEigensystem<pv> solver;
+        auto rr = std::make_shared<ArrayHandlerIterable<pv>>();
+        auto qq = std::make_shared<ArrayHandlerIterable<pv>>();
+        auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
+        auto rq = std::make_shared<ArrayHandlerIterable<pv>>();
+        auto rp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+        auto qr = std::make_shared<ArrayHandlerIterable<pv>>();
+        auto qp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+        auto handlers = ArrayHandlers<pv, pv, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
+        molpro::linalg::LinearEigensystem<pv> solver{handlers};
         solver.m_verbosity = 1;
         solver.m_roots = nroot;
         solver.m_thresh = 1e-9;
@@ -233,7 +251,15 @@ TEST(IterativeSolver, file_optimize_eigenvalue) {
       //      molpro::cout << std::endl;
       {
         molpro::cout << "\n\n*** " << file << ", BFGS for lowest eigensolution, problem dimension " << n << std::endl;
-        molpro::linalg::Optimize<pv> solver;
+        auto rr = std::make_shared<ArrayHandlerIterable<pv>>();
+        auto qq = std::make_shared<ArrayHandlerIterable<pv>>();
+        auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
+        auto rq = std::make_shared<ArrayHandlerIterable<pv>>();
+        auto rp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+        auto qr = std::make_shared<ArrayHandlerIterable<pv>>();
+        auto qp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+        auto handlers = ArrayHandlers<pv, pv, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
+        molpro::linalg::Optimize<pv> solver{handlers};
         solver.m_verbosity = 1;
         solver.m_thresh = 1e-9;
         std::vector<pv> g;
@@ -317,10 +343,9 @@ TEST(IterativeSolver, file_optimize_eigenvalue) {
         }
         EXPECT_THAT(solver.errors(),
                     ::testing::Pointwise(::testing::DoubleNear(solver.m_thresh), std::vector<double>(1, double(0))));
-        EXPECT_THAT(evals,
-                    ::testing::Pointwise(::testing::DoubleNear(2e-9),
-                                         std::vector<double>(expected_eigenvalues.data(),
-                                                             expected_eigenvalues.data() + solver.m_roots)));
+        EXPECT_THAT(evals, ::testing::Pointwise(::testing::DoubleNear(2e-9),
+                                                std::vector<double>(expected_eigenvalues.data(),
+                                                                    expected_eigenvalues.data() + solver.m_roots)));
       }
     }
   }
@@ -345,7 +370,15 @@ TEST(IterativeSolver, file_diis_eigenvalue) {
       //      molpro::cout << std::endl;
       {
         molpro::cout << "\n\n*** " << file << ", DIIS for lowest eigensolution, problem dimension " << n << std::endl;
-        molpro::linalg::DIIS<pv> solver;
+        auto rr = std::make_shared<ArrayHandlerIterable<pv>>();
+        auto qq = std::make_shared<ArrayHandlerIterable<pv>>();
+        auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
+        auto rq = std::make_shared<ArrayHandlerIterable<pv>>();
+        auto rp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+        auto qr = std::make_shared<ArrayHandlerIterable<pv>>();
+        auto qp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+        auto handlers = ArrayHandlers<pv, pv, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
+        molpro::linalg::DIIS<pv> solver{handlers};
         solver.m_verbosity = 1;
         solver.m_thresh = 1e-9;
         std::vector<pv> g;
@@ -429,10 +462,9 @@ TEST(IterativeSolver, file_diis_eigenvalue) {
         }
         EXPECT_THAT(solver.errors(),
                     ::testing::Pointwise(::testing::DoubleNear(solver.m_thresh), std::vector<double>(1, double(0))));
-        EXPECT_THAT(evals,
-                    ::testing::Pointwise(::testing::DoubleNear(2e-9),
-                                         std::vector<double>(expected_eigenvalues.data(),
-                                                             expected_eigenvalues.data() + solver.m_roots)));
+        EXPECT_THAT(evals, ::testing::Pointwise(::testing::DoubleNear(2e-9),
+                                                std::vector<double>(expected_eigenvalues.data(),
+                                                                    expected_eigenvalues.data() + solver.m_roots)));
       }
     }
   }

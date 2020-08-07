@@ -1,5 +1,14 @@
-#include "molpro/linalg/IterativeSolver.h"
 #include <iomanip>
+#include <molpro/linalg/IterativeSolver.h>
+#include <molpro/linalg/array/ArrayHandlerIterable.h>
+#include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
+#include <molpro/linalg/array/ArrayHandlerSparse.h>
+
+using molpro::linalg::array::ArrayHandler;
+using molpro::linalg::array::ArrayHandlerIterable;
+using molpro::linalg::array::ArrayHandlerIterableSparse;
+using molpro::linalg::array::ArrayHandlerSparse;
+using molpro::linalg::iterativesolver::ArrayHandlers;
 
 template <class T>
 std::ostream& operator<<(std::ostream& o, const std::vector<T>& v) {
@@ -21,9 +30,23 @@ public:
   using scalar_type = scalar;
   using value_type = scalar;
 
-  explicit pv(size_t length = 0, int option = 0) : buffer(length) {}
+  pv() = default;
+  explicit pv(size_t length, int option = 0) : buffer(length) {}
 
-  explicit pv(const pv& source, int option = 0) { *this = source; }
+  // explicit pv(const pv& source, int option = 0) { *this = source; }
+  pv(const pv& source, int option = 0) { *this = source; }
+
+  std::vector<scalar>::const_iterator begin() const { return buffer.begin(); }
+
+  std::vector<scalar>::iterator begin() { return buffer.begin(); }
+
+  std::vector<scalar>::const_iterator end() const { return buffer.end(); }
+
+  std::vector<scalar>::iterator end() { return buffer.end(); }
+
+  size_t size() const { return buffer.size(); }
+
+  void push_back(const scalar& elem) { buffer.push_back(elem); }
 
   void axpy(scalar a, const pv& other) {
     for (size_t i = 0; i < buffer.size(); i++)
@@ -108,11 +131,20 @@ int main(int argc, char* argv[]) {
       //          std::cout << " " << matrix(i, j);
       //        std::cout << std::endl;
       //      }
-      std::vector<double> diagonals;
+      std::vector<double> diagonals(n);
       for (auto i = 0; i < n; i++)
         diagonals.push_back(matrix(i, i));
       std::cout << std::endl;
-      molpro::linalg::LinearEigensystem<pv> solver;
+
+      auto rr = std::make_shared<ArrayHandlerIterable<pv>>();
+      auto qq = std::make_shared<ArrayHandlerIterable<pv>>();
+      auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
+      auto rq = std::make_shared<ArrayHandlerIterable<pv>>();
+      auto rp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+      auto qr = std::make_shared<ArrayHandlerIterable<pv>>();
+      auto qp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+      auto handlers = ArrayHandlers<pv, pv, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
+      molpro::linalg::LinearEigensystem<pv> solver{handlers};
       solver.m_verbosity = 1;
       solver.m_roots = nroot;
       solver.m_thresh = 1e-9;
@@ -141,11 +173,11 @@ int main(int argc, char* argv[]) {
       std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
       for (size_t root = 0; root < solver.m_roots; root++) {
         std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] << std::endl;
-                solver.solution(root, x.front(), g.front(), Pcoeff.front());
-                std::cout << "Eigenvector: (norm=" << std::sqrt(x[0].dot(x[0])) << "): ";
-                for (size_t k = 0; k < n; k++)
-                  std::cout << " " << (x[0])[k];
-                std::cout << std::endl;
+        solver.solution(root, x.front(), g.front(), Pcoeff.front());
+        std::cout << "Eigenvector: (norm=" << std::sqrt(x[0].dot(x[0])) << "): ";
+        for (size_t k = 0; k < n; k++)
+          std::cout << " " << (x[0])[k];
+        std::cout << std::endl;
       }
     }
   }

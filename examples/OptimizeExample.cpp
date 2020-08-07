@@ -2,6 +2,15 @@
 #include "molpro/linalg/SimpleArray.h"
 #include <regex>
 
+#include <molpro/linalg/array/ArrayHandlerIterable.h>
+#include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
+#include <molpro/linalg/array/ArrayHandlerSparse.h>
+
+using molpro::linalg::array::ArrayHandlerIterable;
+using molpro::linalg::array::ArrayHandlerIterableSparse;
+using molpro::linalg::array::ArrayHandlerSparse;
+using molpro::linalg::iterativesolver::ArrayHandlers;
+
 //  typedef SimpleParameterVector pv;
 using scalar = double;
 using pv = molpro::linalg::SimpleArray<scalar>;
@@ -41,7 +50,15 @@ int main(int argc, char* argv[]) {
   anharmonicity = 0.7;
   for (const auto& method : std::vector<std::string>{"null", "L-BFGS"}) {
     std::cout << "optimize with " << method << std::endl;
-    molpro::linalg::Optimize<pv> solver(std::regex_replace(method, std::regex("-iterate"), ""));
+    auto rr = std::make_shared<ArrayHandlerIterable<pv>>();
+    auto qq = std::make_shared<ArrayHandlerIterable<pv>>();
+    auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
+    auto rq = std::make_shared<ArrayHandlerIterable<pv>>();
+    auto rp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+    auto qr = std::make_shared<ArrayHandlerIterable<pv>>();
+    auto qp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+    auto handlers = ArrayHandlers<pv, pv, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
+    molpro::linalg::Optimize<pv> solver(handlers, std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_maxIterations = 100;
     solver.m_verbosity = 1;
     pv g(n);

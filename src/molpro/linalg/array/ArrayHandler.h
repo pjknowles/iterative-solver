@@ -3,6 +3,8 @@
 #include <functional>
 #include <list>
 #include <memory>
+#include <set>
+#include <algorithm>
 #include <stdexcept>
 
 namespace molpro {

@@ -41,13 +41,28 @@ class SimpleArray {
 public:
   typedef double scalar_type; // TODO implement this properly from T
   typedef T value_type;
-  explicit SimpleArray(size_t length = 0, const T& value = T()) : m_buffer(length, value) {}
+  SimpleArray() = default;
+  explicit SimpleArray(size_t length, const T& value = T()) : m_buffer(length, value) {}
   /*!
    * @brief Copy constructor
    * @param source
    * @param option
    */
   SimpleArray<T, Allocator>(const SimpleArray& source, unsigned int option = 0) : m_buffer(source.m_buffer) {}
+
+  /*!
+   * @return Pointer to the start of the buffer
+   */
+  typename std::vector<T>::const_iterator begin() const { return m_buffer.begin(); }
+
+  typename std::vector<T>::iterator begin() { return m_buffer.begin(); }
+
+  /*!
+   * @return Pointer to the end of the buffer
+   */
+  typename std::vector<T>::const_iterator end() const { return m_buffer.end(); }
+
+  typename std::vector<T>::iterator end() { return m_buffer.end(); }
 
   /*!
    * \brief Update a range of the object data with the contents of a provided buffer
@@ -86,6 +101,11 @@ public:
    * @return
    */
   size_t size() const { return m_buffer.size(); }
+
+  /*!
+   * @brief Implements a simple push_back operation
+   */
+  void push_back(const T& elem) { m_buffer.push_back(elem); }
 
   /*!
    * \brief Add a constant times another object to this object

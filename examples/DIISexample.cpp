@@ -1,6 +1,15 @@
 #include "molpro/linalg/IterativeSolver.h"
 #include "molpro/linalg/SimpleArray.h"
 
+#include <molpro/linalg/array/ArrayHandlerIterable.h>
+#include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
+#include <molpro/linalg/array/ArrayHandlerSparse.h>
+
+using molpro::linalg::array::ArrayHandlerIterable;
+using molpro::linalg::array::ArrayHandlerIterableSparse;
+using molpro::linalg::array::ArrayHandlerSparse;
+using molpro::linalg::iterativesolver::ArrayHandlers;
+
 //  typedef SimpleParameterVector pv;
 using scalar = double;
 using pv = molpro::linalg::SimpleArray<scalar>;
@@ -35,7 +44,15 @@ int main(int argc, char* argv[]) {
   alpha = 1;
   n = 100;
   anharmonicity = .1;
-  molpro::linalg::DIIS<pv> solver;
+  auto rr = std::make_shared<ArrayHandlerIterable<pv>>();
+  auto qq = std::make_shared<ArrayHandlerIterable<pv>>();
+  auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
+  auto rq = std::make_shared<ArrayHandlerIterable<pv>>();
+  auto rp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+  auto qr = std::make_shared<ArrayHandlerIterable<pv>>();
+  auto qp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
+  auto handlers = ArrayHandlers<pv, pv, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
+  molpro::linalg::DIIS<pv> solver{handlers};
   solver.m_verbosity = 3;
   solver.m_maxIterations = 100;
   pv g(n);
@@ -45,14 +62,14 @@ int main(int argc, char* argv[]) {
   x.put(&one, 1, 0); // initial guess
   for (size_t iter = 0; iter < solver.m_maxIterations; ++iter) {
     anharmonic_residual(x, g);
-    std::cout << "Before addVector x: "<<x[0]<<" "<<x[n-1] <<std::endl;
-    std::cout << "Before addVector g: "<<g[0]<<" "<<g[n-1] <<std::endl;
+    std::cout << "Before addVector x: " << x[0] << " " << x[n - 1] << std::endl;
+    std::cout << "Before addVector g: " << g[0] << " " << g[n - 1] << std::endl;
     solver.addVector(x, g);
-    std::cout << "After  addVector x: "<<x[0]<<" "<<x[n-1] <<std::endl;
-    std::cout << "After  addVector g: "<<g[0]<<" "<<g[n-1] <<std::endl;
+    std::cout << "After  addVector x: " << x[0] << " " << x[n - 1] << std::endl;
+    std::cout << "After  addVector g: " << g[0] << " " << g[n - 1] << std::endl;
     update(x, g);
-    std::cout << "After  update x: "<<x[0]<<" "<<x[n-1] <<std::endl;
-    std::cout << "After  update g: "<<g[0]<<" "<<g[n-1] <<std::endl;
+    std::cout << "After  update x: " << x[0] << " " << x[n - 1] << std::endl;
+    std::cout << "After  update g: " << g[0] << " " << g[n - 1] << std::endl;
     if (solver.endIteration(x, g))
       break;
   }

@@ -53,3 +53,5 @@ if (MPI)
                 PUBLIC_HEADER DistrArrayHDF5.h)
     endif ()
 endif ()
+
+add_subdirectory(util)

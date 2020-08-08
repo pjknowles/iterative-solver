@@ -24,7 +24,8 @@ gtest_discover_tests(test-${PROJECT_NAME}-ArrayHandler.exe)
 if (MPI)
     add_executable(test-${PROJECT_NAME}-parallel
             main.cpp
-            testutil.cpp
+            testLockMPI3.cpp
+            testDistrFlags.cpp
             testDistrArray.h
             )
     if (LINEARALGEBRA_ARRAY_MPI3)

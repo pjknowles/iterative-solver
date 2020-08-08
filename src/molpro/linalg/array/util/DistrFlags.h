@@ -32,7 +32,7 @@ public:
   ~DistrFlags();
 
   //! Construct the distributed array with initial value of flag
-  explicit DistrFlags(MPI_Comm comm, int value = 0);
+  DistrFlags(MPI_Comm comm, int value = 0);
 
   friend void swap(DistrFlags &x, DistrFlags &y);
 
@@ -45,6 +45,8 @@ public:
   //! Access flag on current process rank a proxy, locking access for all other processes until the proxy is destroyed.
   //! Cannot be called on an empty object.
   Proxy access(int rank) const;
+
+  MPI_Comm communicator() const { return m_comm; }
 
 protected:
   /*!

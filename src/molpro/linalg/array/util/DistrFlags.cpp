@@ -24,7 +24,7 @@ DistrFlags::DistrFlags(MPI_Comm comm, int value) : m_comm{comm} {
 
 DistrFlags::~DistrFlags() {
   if (!empty()) {
-    if (m_counter || !m_counter && *m_counter != 0)
+    if (!m_counter || m_counter && *m_counter != 0)
       MPI_Abort(m_comm, 1);
     MPI_Win_free(&m_win);
   }
@@ -74,11 +74,13 @@ DistrFlags::Proxy DistrFlags::access() const { return access(mpi_rank(m_comm)); 
 DistrFlags::Proxy::Proxy(MPI_Comm comm, MPI_Win win, int rank, std::shared_ptr<int> counter)
     : m_comm{comm}, m_win{win}, m_rank{rank}, m_counter{std::move(counter)} {
   *m_counter += 1;
-  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, m_rank, 0, m_win);
+  if (*m_counter == 1)
+    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, m_rank, 0, m_win);
 }
 
 DistrFlags::Proxy::~Proxy() {
-  MPI_Win_unlock(m_rank, m_win);
+  if (*m_counter == 1)
+    MPI_Win_unlock(m_rank, m_win);
   *m_counter -= 1;
 }
 
@@ -89,8 +91,9 @@ int DistrFlags::Proxy::get() const {
 }
 
 int DistrFlags::Proxy::replace(int val) {
-  MPI_Fetch_and_op(&val, &val, MPI_INT, m_rank, 0, MPI_REPLACE, m_win);
-  return val;
+  int res;
+  MPI_Fetch_and_op(&val, &res, MPI_INT, m_rank, 0, MPI_REPLACE, m_win);
+  return res;
 }
 
 } // namespace util

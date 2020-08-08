@@ -29,9 +29,9 @@ struct ScopeProfiler {
 //! Atomic lock allowing only one process to acquire it. Implemented using MPI3 RMA.
 class LockMPI3 {
 protected:
-  MPI_Comm m_comm = MPI_COMM_NULL; //! MPI communicator
-  MPI_Win m_win = MPI_WIN_NULL;    //! empty window handle
-  bool m_locked = false;           //!
+  MPI_Comm m_comm = MPI_COMM_NULL; //!< MPI communicator
+  MPI_Win m_win = MPI_WIN_NULL;    //!< empty window handle
+  bool m_locked = false;           //!< whether lock is active
 
 public:
   //! Create the lock without acquiring it. This is collective and must be called by all processes in the communicator.
@@ -69,13 +69,15 @@ public:
   std::shared_ptr<Proxy> scope();
 };
 
-template <typename Result=void> class Task {
+template <typename Result = void>
+class Task {
 protected:
   Task(std::future<Result> &&task) : m_task{task} {};
   Task(Task &&other) : m_task(std::move(other.m_task)){};
 
 public:
-  template <class Func, typename... Args> static Task create(Func &&f, Args &&... args) {
+  template <class Func, typename... Args>
+  static Task create(Func &&f, Args &&... args) {
     return {std::async(std::forward<Func>(f), std::forward<Args>(args)...)};
   }
 

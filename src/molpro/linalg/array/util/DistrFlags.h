@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_DISTRFLAGS_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_DISTRFLAGS_H
+#include <memory>
 #include <mpi.h>
 
 namespace molpro {
@@ -9,35 +10,41 @@ namespace util {
 
 /*!
  * @brief Distributed array of integer flags with one flag per process and a locking mechanism to ensure atomic access.
+ *
+ * @note Copying creates a proxy to access flag values on their processor.
+ *
+ * @warning Access to the data of a given rank is done via a Proxy which locks the window buffer on that rank. Care must
+ * be taken to ensure a combination of proxies does not lead to a deadlock, especially when mixed with copying.
  */
 class DistrFlags {
 protected:
   struct Proxy;
-  MPI_Comm m_comm = {};                    //!< mpi communicator
-  MPI_Win m_win = MPI_WIN_NULL;            //! empty window handle
-  int *m_data = nullptr;                   //!< window buffer with one element
-  std::shared_ptr<bool> m_alive = nullptr; //!< flags whether the object is alive (true) or was destroyed (false)
+  MPI_Comm m_comm = {};         //!< mpi communicator
+  MPI_Win m_win = MPI_WIN_NULL; //! empty window handle
+  std::shared_ptr<int> m_counter =
+      nullptr; //!< counter of Proxy objects created. They must all be destroyed before this can be destroyed
 public:
   DistrFlags() = default;
-  DistrFlags(const DistrFlags &);
-  DistrFlags(DistrFlags &&);
-  DistrFlags &operator=(const DistrFlags &);
-  DistrFlags &operator=(DistrFlags &&);
-  DistrFlags(MPI_Comm comm) : m_comm(comm) {}
+  DistrFlags(const DistrFlags &source);
+  DistrFlags(DistrFlags &&source) noexcept;
+  DistrFlags &operator=(const DistrFlags &source);
+  DistrFlags &operator=(DistrFlags &&source) noexcept;
   ~DistrFlags();
+
+  //! Construct the distributed array with initial value of flag
+  explicit DistrFlags(MPI_Comm comm, int value = 0);
 
   friend void swap(DistrFlags &x, DistrFlags &y);
 
   //! Whether distributed array was allocated.
-  bool empty() const { return m_win == MPI_WIN_NULL; }
+  bool empty() const;
 
   //! Access flag on current process through a proxy, locking access for all other processes until the proxy is
-  //! destroyed
-  const Proxy access() const;
-  //! Access flag on current process rank a proxy, locking access for all other processes until the proxy is destroyed
-  const Proxy access(int rank) const;
-  Proxy access();
-  Proxy access(int rank);
+  //! destroyed. Cannot be called on an empty object.
+  Proxy access() const;
+  //! Access flag on current process rank a proxy, locking access for all other processes until the proxy is destroyed.
+  //! Cannot be called on an empty object.
+  Proxy access(int rank) const;
 
 protected:
   /*!
@@ -49,8 +56,20 @@ protected:
    */
   class Proxy {
   public:
-    Proxy(DistrFlags &flags, int rank, std::shared_ptr<bool> status)
-        : m_dflags{flags}, m_rank{rank}, m_dflags_alive{std::move(status)} {}
+    /*!
+     * @brief Construct Proxy using contents of an active DistrFlags object.
+     *
+     * Passing contents of DistrFlags object instead of a reference, allows movement of the overlying object without
+     * invalidating the Proxy.
+     *
+     * @param comm communicator
+     * @param win MPI window
+     * @param rank rank of processor to access
+     * @param counter number of proxies with this window
+     */
+    Proxy(MPI_Comm comm, MPI_Win win, int rank, std::shared_ptr<int> counter)
+        : m_comm{comm}, m_win{win}, m_rank{rank}, m_counter{std::move(counter)} {}
+    ~Proxy();
     //! value of the flag
     int value() const;
 
@@ -61,11 +80,10 @@ protected:
     int rank() const { return m_rank; }
 
   protected:
-    //! Checks that the DistrFlags object is valid and raises logic_error if it is not
-    void validate() const;
-    DistrFlags &m_dflags;                 //!< reference to DistrFlags object
-    int m_rank;                           //!< rank of process to lock
-    std::shared_ptr<bool> m_dflags_alive; //!< status of m_dflags object, whether it is alive or was destroyed
+    MPI_Comm m_comm = {};           //!< mpi communicator
+    MPI_Win m_win = MPI_WIN_NULL;   //! empty window handle
+    int m_rank;                     //!< rank of process to lock
+    std::shared_ptr<int> m_counter; //!< counter of proxy objects created by overlying DistrFlags object.
   };
 };
 } // namespace util

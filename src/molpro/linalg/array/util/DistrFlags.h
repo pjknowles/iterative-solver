@@ -67,14 +67,13 @@ protected:
      * @param rank rank of processor to access
      * @param counter number of proxies with this window
      */
-    Proxy(MPI_Comm comm, MPI_Win win, int rank, std::shared_ptr<int> counter)
-        : m_comm{comm}, m_win{win}, m_rank{rank}, m_counter{std::move(counter)} {}
+    Proxy(MPI_Comm comm, MPI_Win win, int rank, std::shared_ptr<int> counter);
     ~Proxy();
-    //! value of the flag
-    int value() const;
+    //! get value of the flag
+    int get() const;
 
-    //! set value of flag
-    void set(int val);
+    //! replace value of flag @returns original value
+    int replace(int val);
 
     //! Which rank the proxy has access to
     int rank() const { return m_rank; }

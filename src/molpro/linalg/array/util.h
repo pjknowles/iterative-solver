@@ -71,11 +71,10 @@ public:
 
 template <typename Result = void>
 class Task {
-protected:
-  Task(std::future<Result> &&task) : m_task{task} {};
-  Task(Task &&other) : m_task(std::move(other.m_task)){};
-
 public:
+  Task(std::future<Result> &&task) : m_task{std::move(task)} {};
+  Task(Task &&other) = default;
+
   template <class Func, typename... Args>
   static Task create(Func &&f, Args &&... args) {
     return {std::async(std::forward<Func>(f), std::forward<Args>(args)...)};

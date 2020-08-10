@@ -1,7 +1,11 @@
 #include "DistrArrayDisk.h"
+#include "util.h"
+#include "util/DistrFlags.h"
+
 namespace molpro {
 namespace linalg {
 namespace array {
+using util::Task;
 namespace {
 
 int mpi_rank(MPI_Comm comm) {
@@ -12,37 +16,21 @@ int mpi_rank(MPI_Comm comm) {
 
 } // namespace
 
-DistrArrayDisk::DistrArrayDisk(size_t dimension, MPI_Comm commun, std::shared_ptr<Profiler> prof)
-    : DistrArray(dimension, commun, std::move(prof)) {}
-
 DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source) : m_source{source} {
-  if (!source.m_allocated) {
-    m_start = m_size = 0;
-    m_buffer = nullptr;
-    return;
-  }
-  int rank;
-  MPI_Comm_rank(source.communicator(), &rank);
+  int rank = mpi_rank(source.communicator());
   std::tie(m_start, m_size) = source.distribution().range(rank);
-  bool get_data = false;
   if (!source.m_allocated) {
     m_snapshot_buffer.resize(m_size);
-    m_buffer = m_snapshot_buffer.data();
+    m_buffer = &m_snapshot_buffer[0];
     m_dump = true;
-    get_data = true;
+    source.get(start(), start() + size() - 1, m_buffer);
   } else {
     m_buffer = source.m_buffer.data();
     m_dump = false;
-    get_data = !source.is_valid();
-  }
-  if (get_data) {
-    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, source.m_win);
-    source.get(start(), start() + size() - 1, m_buffer);
-    MPI_Win_unlock(rank, source.m_win);
   }
 }
 
-bool DistrArrayDisk::LocalBufferDisk::memory_view() { return m_snapshot_buffer.empty(); }
+bool DistrArrayDisk::LocalBufferDisk::is_snapshot() { return !m_snapshot_buffer.empty(); }
 
 DistrArrayDisk::LocalBufferDisk::~LocalBufferDisk() {
   if (m_dump)
@@ -52,64 +40,40 @@ DistrArrayDisk::LocalBufferDisk::~LocalBufferDisk() {
 void DistrArrayDisk::allocate_buffer() {
   if (m_allocated)
     return;
-  if (m_win == MPI_WIN_NULL) {
-    int* base = nullptr;
-    int size_of_type = sizeof(int);
-    MPI_Win_allocate(size_of_type, size_of_type, MPI_INFO_NULL, m_communicator, &base, &m_win);
-  }
-  int rank;
-  MPI_Comm_rank(communicator(), &rank);
+  auto rank = mpi_rank(communicator());
   index_type _lo;
   size_t sz;
   std::tie(_lo, sz) = distribution().range(rank);
-  if (m_allocated_buffer.size() < sz) {
+  if (m_allocated_buffer.size() < sz)
     m_allocated_buffer.resize(sz);
-    mark_validity(false);
-  }
-  m_buffer = Span<value_type>(m_allocated_buffer.data(), m_allocated_buffer.size());
+  m_buffer = Span<value_type>(&m_allocated_buffer[0], m_allocated_buffer.size());
   m_allocated = true;
 }
 
 void DistrArrayDisk::allocate_buffer(Span<value_type> buffer) {
-  int rank;
-  MPI_Comm_rank(communicator(), &rank);
+  auto rank = mpi_rank(communicator());
   index_type _lo;
   size_t sz;
   std::tie(_lo, sz) = distribution().range(rank);
   if (buffer.size() < sz)
     error("provided buffer is too small");
-  deallocate_buffer();
-  m_buffer = buffer;
+  if (m_allocated) {
+    std::copy(begin(m_buffer), end(m_buffer), begin(buffer));
+    free_buffer();
+  }
+  swap(m_buffer, buffer);
   m_allocated = true;
-  mark_validity(false);
+  if (!m_allocated_buffer.empty()) {
+    m_allocated_buffer.clear();
+    m_allocated_buffer.shrink_to_fit();
+  }
 }
 
-void DistrArrayDisk::deallocate_buffer() {
+void DistrArrayDisk::free_buffer() {
   m_buffer = Span<value_type>{};
   m_allocated_buffer.clear();
   m_allocated_buffer.shrink_to_fit();
   m_allocated = false;
-  mark_validity(false);
-}
-
-void DistrArrayDisk::mark_validity(bool valid) {
-  if (m_win == MPI_WIN_NULL)
-    return;
-  int buffer = valid ? 1 : 0;
-  auto rank = mpi_rank(communicator());
-  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, m_win);
-  MPI_Put(&buffer, 1, MPI_INT, rank, 0, 1, MPI_INT, m_win);
-  MPI_Win_unlock(rank, m_win);
-}
-bool DistrArrayDisk::is_valid() {
-  if (m_win == MPI_WIN_NULL)
-    return false;
-  int buffer = 0;
-  auto rank = mpi_rank(communicator());
-  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, m_win);
-  MPI_Get(&buffer, 1, MPI_INT, rank, 0, 1, MPI_INT, m_win);
-  MPI_Win_unlock(rank, m_win);
-  return buffer;
 }
 
 void DistrArrayDisk::flush() {
@@ -119,13 +83,86 @@ void DistrArrayDisk::flush() {
   index_type _lo;
   size_t sz;
   std::tie(_lo, sz) = distribution().range(rank);
-  if (is_valid())
-    put(_lo, _lo + sz - 1, m_buffer.data());
-  else
-    get(_lo, _lo + sz - 1, m_buffer.data());
+  put(_lo, _lo + sz - 1, m_buffer.data());
 }
 
 bool DistrArrayDisk::empty() const { return m_allocated; }
+
+std::unique_ptr<DistrArray::LocalBuffer> DistrArrayDisk::local_buffer() {
+  return std::make_unique<LocalBufferDisk>(*this);
+}
+
+std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer() const {
+  auto l = std::make_unique<LocalBufferDisk>(*const_cast<DistrArrayDisk*>(this));
+  l->dump() = false;
+  return l;
+}
+
+std::unique_ptr<Task<void>> DistrArrayDisk::tput(index_type lo, index_type hi, const value_type* data) {
+  return std::make_unique<Task<void>>(
+      Task<void>::create(std::launch::async, [lo, hi, data, this]() { this->put(lo, hi, data); }));
+}
+
+std::unique_ptr<Task<void>> DistrArrayDisk::tget(index_type lo, index_type hi, value_type* buf) {
+  return std::make_unique<Task<void>>(
+      Task<void>::create(std::launch::async, [lo, hi, buf, this]() { this->get(lo, hi, buf); }));
+}
+
+std::unique_ptr<Task<std::vector<DistrArrayDisk::value_type>>> DistrArrayDisk::tget(index_type lo, index_type hi) {
+  return std::make_unique<Task<std::vector<value_type>>>(
+      Task<std::vector<value_type>>::create(std::launch::async, [lo, hi, this]() { return this->get(lo, hi); }));
+}
+
+std::unique_ptr<Task<DistrArrayDisk::value_type>> DistrArrayDisk::tat(index_type ind) const {
+  return std::make_unique<Task<value_type>>(Task<value_type>::create(
+      std::launch::async, [ ind, this ]() -> auto { return this->at(ind); }));
+}
+
+std::unique_ptr<Task<void>> DistrArrayDisk::tset(index_type ind, value_type val) {
+  return std::make_unique<Task<void>>(Task<void>::create(
+      std::launch::async, [ ind, val, this ]() -> auto { return this->set(ind, val); }));
+}
+
+std::unique_ptr<Task<void>> DistrArrayDisk::tacc(DistrArray::index_type lo, DistrArray::index_type hi,
+                                                 const DistrArray::value_type* data) {
+  return std::make_unique<Task<void>>(Task<void>::create(
+      std::launch::async, [ lo, hi, data, this ]() -> auto { return this->acc(lo, hi, data); }));
+}
+
+std::unique_ptr<Task<std::vector<DistrArrayDisk::value_type>>>
+DistrArrayDisk::tgather(const std::vector<index_type>& indices) const {
+  return std::make_unique<Task<std::vector<value_type>>>(Task<std::vector<value_type>>::create(
+      std::launch::async, [&indices, this ]() -> auto { return this->gather(indices); }));
+}
+
+std::unique_ptr<Task<void>> DistrArrayDisk::tscatter(const std::vector<index_type>& indices,
+                                                     const std::vector<value_type>& data) {
+  return std::make_unique<Task<void>>(Task<void>::create(
+      std::launch::async, [&indices, &data, this ]() -> auto { return this->scatter(indices, data); }));
+}
+
+std::unique_ptr<Task<void>> DistrArrayDisk::tscatter_acc(std::vector<index_type>& indices,
+                                                         const std::vector<value_type>& data) {
+  return std::make_unique<Task<void>>(Task<void>::create(
+      std::launch::async, [&indices, &data, this ]() -> auto { return this->scatter_acc(indices, data); }));
+}
+
+std::unique_ptr<Task<std::vector<DistrArrayDisk::value_type>>> DistrArrayDisk::tvec() const {
+  return std::make_unique<Task<std::vector<value_type>>>(Task<std::vector<value_type>>::create(
+      std::launch::async, [this]() -> auto { return this->vec(); }));
+}
+
+std::unique_ptr<Task<std::unique_ptr<DistrArray::LocalBuffer>>> DistrArrayDisk::tlocal_buffer() {
+  return std::make_unique<Task<std::unique_ptr<DistrArray::LocalBuffer>>>(
+      Task<std::unique_ptr<DistrArray::LocalBuffer>>::create(
+          std::launch::async, [this]() -> auto { return this->local_buffer(); }));
+}
+
+std::unique_ptr<Task<std::unique_ptr<const DistrArray::LocalBuffer>>> DistrArrayDisk::tlocal_buffer() const {
+  return std::make_unique<Task<std::unique_ptr<const DistrArray::LocalBuffer>>>(
+      Task<std::unique_ptr<const DistrArray::LocalBuffer>>::create(
+          std::launch::async, [this]() -> auto { return this->local_buffer(); }));
+}
 
 } // namespace array
 } // namespace linalg

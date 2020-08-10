@@ -98,19 +98,12 @@ protected:
   class Distribution;
   index_type m_dimension = 0;   //!< number of elements in the array
   MPI_Comm m_communicator = {}; //!< Outer communicator
-public:
-  std::shared_ptr<molpro::Profiler> m_prof = nullptr; //!< optional profiler
-  DistrArray() = default;
   //! Initializes array without allocating any memory
   DistrArray(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof);
-  //! Copy constructor. If source has been allocated the new array will allocate buffer and copy its content.
-  DistrArray(const DistrArray &source) = delete;
-  //! Move constructor. Takes ownership of all source content, source is left in undefined state.
-  DistrArray(DistrArray &&source) = delete;
-  //! Assignment operator. Copies contents of source, allocating buffer if necessary.
-  DistrArray &operator=(const DistrArray &source) = delete;
-  //! Move assignment operator. Takes ownership of source and leaves source in undefined state.
-  DistrArray &operator=(DistrArray &&source) = delete;
+  DistrArray() = default;
+
+public:
+  std::shared_ptr<molpro::Profiler> m_prof = nullptr; //!< optional profiler
   virtual ~DistrArray() = default;
 
   //! return a copy of the communicator
@@ -136,7 +129,9 @@ protected:
   //! Provides access to the local portion of the array
   class LocalBuffer : public span::Span<value_type> {
   public:
+    virtual ~LocalBuffer() = default;
     using span::Span<value_type>::Span;
+    friend void swap(LocalBuffer &, LocalBuffer &) { static_assert(true, "LocalBuffer cannot be swapped"); }
     //! Checks that the current and the other buffers correspond to the same section of their respective arrays
     bool compatible(const LocalBuffer &other) const { return start() == other.start() && size() == other.size(); };
     //! Return index to the start of the local buffer section in the distributed array

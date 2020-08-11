@@ -15,7 +15,7 @@ DistrArray::DistrArray(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro
 void DistrArray::sync() const { MPI_Barrier(m_communicator); }
 
 void DistrArray::error(const std::string& message) const {
-  std::cout << message << std::endl;
+  std::cerr << message << std::endl;
   MPI_Abort(m_communicator, 1);
 }
 

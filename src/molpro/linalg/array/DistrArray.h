@@ -131,7 +131,7 @@ protected:
   public:
     virtual ~LocalBuffer() = default;
     using span::Span<value_type>::Span;
-    friend void swap(LocalBuffer &, LocalBuffer &) { static_assert(true, "LocalBuffer cannot be swapped"); }
+    friend void swap(LocalBuffer &, LocalBuffer &) = delete;
     //! Checks that the current and the other buffers correspond to the same section of their respective arrays
     bool compatible(const LocalBuffer &other) const { return start() == other.start() && size() == other.size(); };
     //! Return index to the start of the local buffer section in the distributed array

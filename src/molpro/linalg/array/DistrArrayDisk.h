@@ -127,10 +127,10 @@ public:
   bool empty() const override;
   //! Release the allocated buffer. @note buffer is not flushed.
   void free_buffer() override;
-  //! Writes memory view buffer
+  //! Writes the memory view buffer.
   virtual void flush();
-  //! Erase the array from disk deleting the underlying storage object.
-  virtual bool erase() = 0;
+  //! Erase the array from disk.
+  virtual void erase() = 0;
 
 protected:
   class LocalBufferDisk : public DistrArray::LocalBuffer {

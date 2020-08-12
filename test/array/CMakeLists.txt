@@ -21,12 +21,18 @@ endif ()
 target_link_libraries(test-${PROJECT_NAME}-ArrayHandler.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
 gtest_discover_tests(test-${PROJECT_NAME}-ArrayHandler.exe)
 
+add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp)
+target_link_libraries(test-${PROJECT_NAME}-array-util.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
+gtest_discover_tests(test-${PROJECT_NAME}-array-util.exe)
+
 if (MPI)
     add_executable(test-${PROJECT_NAME}-parallel
             main.cpp
             testLockMPI3.cpp
             testDistrFlags.cpp
             testDistrArray.h
+            testDistrArrayDisk.h
+            testDistrArrayDiskHDF5.cpp
             )
     if (LINEARALGEBRA_ARRAY_MPI3)
         target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayMPI3.cpp testArrayHandlerDistr.cpp

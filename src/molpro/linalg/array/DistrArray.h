@@ -16,6 +16,10 @@ class Profiler;
 namespace molpro {
 namespace linalg {
 namespace array {
+namespace util {
+template <typename Ind>
+class Distribution;
+}
 /*!
  * @brief Array distributed across many processes supporting remote-memory-access, access to process local buffer, and
  * some linear algebra operations.
@@ -93,9 +97,9 @@ public:
   using value_type = double;
   using index_type = unsigned long int;
   using SparseArray = std::map<unsigned long int, double>;
+  using Distribution = util::Distribution<index_type>;
 
 protected:
-  class Distribution;
   index_type m_dimension = 0;   //!< number of elements in the array
   MPI_Comm m_communicator = {}; //!< Outer communicator
   //! Initializes array without allocating any memory
@@ -139,14 +143,6 @@ protected:
 
   protected:
     size_type m_start = 0; //!< index of first element of local buffer in the array
-  };
-
-  //! Information on how the array is distributed among the processes.
-  struct Distribution {
-    //! Maps fist and last index in the array to a pair of processes encapsulating the corresponding buffer range
-    virtual std::pair<int, int> locate_process(index_type lo, index_type hi) const = 0;
-    //! Returns start and size for section of array local to process_rank
-    virtual std::pair<index_type, size_t> range(int process_rank) const = 0;
   };
 
 public:

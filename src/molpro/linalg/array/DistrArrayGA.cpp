@@ -1,5 +1,6 @@
 #include "DistrArrayGA.h"
 #include "util.h"
+#include "util/Distribution.h"
 
 #include "molpro/Profiler.h"
 #include <algorithm>
@@ -25,6 +26,8 @@ int get_communicator_rank(MPI_Comm comm) {
 
 } // namespace
 
+DistrArrayGA::DistrArrayGA() = default;
+
 DistrArrayGA::DistrArrayGA(size_t dimension, MPI_Comm comm, std::shared_ptr<Profiler> prof)
     : DistrArray(dimension, comm, std::move(prof)), m_comm_rank(get_communicator_rank(comm)),
       m_comm_size(get_communicator_size(comm)) {}
@@ -34,7 +37,7 @@ std::map<MPI_Comm, int> DistrArrayGA::_ga_pgroups{};
 DistrArrayGA::DistrArrayGA(const DistrArrayGA &source)
     : DistrArray(source.m_dimension, source.m_communicator, source.m_prof), m_comm_rank(source.m_comm_rank),
       m_comm_size(source.m_comm_size), m_ga_chunk(source.m_ga_chunk),
-      m_distribution(source.m_distribution ? std::make_unique<DistributionGA>(*source.m_distribution) : nullptr) {
+      m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
   if (!source.empty()) {
     DistrArrayGA::allocate_buffer();
     DistrArrayGA::copy(source);
@@ -59,7 +62,6 @@ DistrArrayGA &DistrArrayGA::operator=(const DistrArrayGA &source) {
   } else {
     allocate_buffer();
     copy(source);
-    m_prof = source.m_prof;
   }
   return *this;
 }
@@ -71,7 +73,7 @@ DistrArrayGA &DistrArrayGA::operator=(DistrArrayGA &&source) noexcept {
   return *this;
 }
 
-void swap(DistrArrayGA &a1, DistrArrayGA &a2) {
+void swap(DistrArrayGA &a1, DistrArrayGA &a2) noexcept {
   using std::swap;
   swap(a1.m_dimension, a2.m_dimension);
   swap(a1.m_communicator, a2.m_communicator);
@@ -122,7 +124,7 @@ void DistrArrayGA::allocate_buffer() {
   if (!succ)
     error("Failed to allocate");
   m_ga_allocated = true;
-  m_distribution = std::make_unique<DistributionGA>(m_ga_handle, get_communicator_size(m_communicator));
+  m_distribution = std::make_unique<Distribution>(make_distribution());
 }
 
 void DistrArrayGA::free_buffer() {
@@ -267,7 +269,7 @@ std::vector<DistrArrayGA::value_type> DistrArrayGA::vec() const {
   util::ScopeProfiler p{m_prof, name};
   std::vector<double> vec(m_dimension);
   double *buffer = vec.data();
-  int lo = 0, hi = m_dimension - 1, ld;
+  int lo = 0, hi = int(m_dimension) - 1, ld;
   NGA_Get(m_ga_handle, &lo, &hi, buffer, &ld);
   return vec;
 }
@@ -284,29 +286,22 @@ void DistrArrayGA::acc(index_type lo, index_type hi, const value_type *data) {
   NGA_Acc(m_ga_handle, &ilo, &ihi, const_cast<double *>(data), &ld, &scaling_constant);
 }
 
-const DistrArray::Distribution &DistrArrayGA::distribution() const { return *m_distribution; }
-
-DistrArrayGA::DistributionGA::DistributionGA(int ga_handle, int n_proc)
-    : m_ga_handle{ga_handle}, m_dummy{false}, m_n_proc{n_proc} {}
-
-std::pair<int, int> DistrArrayGA::DistributionGA::locate_process(DistrArray::index_type lo,
-                                                                 DistrArray::index_type hi) const {
-  if (m_dummy)
-    return {};
-  auto regions = std::vector<int>(2 * m_n_proc);
-  auto procs = std::vector<int>(m_n_proc);
-  int _lo = lo, _hi = hi;
-  auto n_proc = NGA_Locate_region(m_ga_handle, &_lo, &_hi, regions.data(), procs.data());
-  if (n_proc < 1)
-    GA_Error((char *)"failed to locate region of array buffer", 1);
-  return {procs[0], procs[n_proc - 1]};
+const DistrArray::Distribution &DistrArrayGA::distribution() const {
+  if (!m_distribution)
+    error("allocate buffer before asking for distribution");
+  return *m_distribution;
 }
 
-std::pair<DistrArrayGA::index_type, size_t> DistrArrayGA::DistributionGA::range(int process_rank) const {
+DistrArrayGA::Distribution DistrArrayGA::make_distribution() const {
+  if (!m_ga_allocated)
+    return {};
+  auto chunk_borders = std::vector<index_type>{0};
   int lo, hi;
-  NGA_Distribution(m_ga_handle, process_rank, &lo, &hi);
-  size_t size = hi > lo ? hi - lo : 0;
-  return {lo, size};
+  for (size_t rank = 0; rank < get_communicator_size(communicator()); ++rank) {
+    NGA_Distribution(m_ga_handle, rank, &lo, &hi);
+    chunk_borders.push_back(hi);
+  }
+  return {chunk_borders};
 }
 
 } // namespace array

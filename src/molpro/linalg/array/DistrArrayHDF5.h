@@ -60,13 +60,6 @@ public:
   //! @returns HDF5 dataset object
   hid_t datest() const { return m_dataset; }
 
-protected:
-  class LocalBufferDiskHDF5 : public DistrArrayHDF5::LocalBufferDisk {
-  public:
-    explicit LocalBufferDiskHDF5(DistrArrayHDF5 &source);
-  };
-
-public:
   [[nodiscard]] const Distribution &distribution() const override;
 
   void open_access() override;

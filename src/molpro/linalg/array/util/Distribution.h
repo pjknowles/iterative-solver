@@ -76,6 +76,13 @@ public:
 
   const std::vector<index_type> &chunk_borders() const { return m_chunk_borders; }
 
+  //! Checks that other distribution is the same
+  bool compatible(const Distribution<Ind> &other) const {
+    return size() == other.size() &&
+           std::inner_product(begin(m_chunk_borders), end(m_chunk_borders), begin(other.m_chunk_borders), true,
+                              std::logical_and<>(), std::equal_to<>());
+  }
+
 protected:
   /*!
    * @brief list of starting indices for each chunk with past the end index as last element.

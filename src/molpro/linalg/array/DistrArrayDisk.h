@@ -102,9 +102,9 @@ class DistrFlags;
  */
 class DistrArrayDisk : public DistrArray {
 protected:
-  bool m_allocated = false;  //!< Flags that the memory view buffer has been allocated
-  Span<value_type> m_buffer; //!< memory view buffer either wraps allocated buffer or stores user supplied buffer
-  std::vector<value_type> m_allocated_buffer; //!< buffer allocated by the class
+  bool m_allocated = false;       //!< Flags that the memory view buffer has been allocated
+  Span<value_type> m_view_buffer; //!< memory view buffer either wraps allocated buffer or stores user supplied buffer
+  std::vector<value_type> m_owned_buffer; //!< buffer allocated by the class
   using DistrArray::DistrArray;
 
 public:

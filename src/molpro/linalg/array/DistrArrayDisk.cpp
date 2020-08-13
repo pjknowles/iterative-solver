@@ -27,7 +27,7 @@ DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source) : m_sou
     m_dump = true;
     source.get(start(), start() + size() - 1, m_buffer);
   } else {
-    m_buffer = source.m_buffer.data();
+    m_buffer = source.m_view_buffer.data();
     m_dump = false;
   }
 }
@@ -46,9 +46,9 @@ void DistrArrayDisk::allocate_buffer() {
   index_type lo, hi;
   std::tie(lo, hi) = distribution().range(rank);
   size_t sz = hi - lo;
-  if (m_allocated_buffer.size() < sz)
-    m_allocated_buffer.resize(sz);
-  m_buffer = Span<value_type>(&m_allocated_buffer[0], m_allocated_buffer.size());
+  if (m_owned_buffer.size() < sz)
+    m_owned_buffer.resize(sz);
+  m_view_buffer = Span<value_type>(&m_owned_buffer[0], m_owned_buffer.size());
   m_allocated = true;
 }
 
@@ -60,21 +60,21 @@ void DistrArrayDisk::allocate_buffer(Span<value_type> buffer) {
   if (buffer.size() < sz)
     error("provided buffer is too small");
   if (m_allocated) {
-    std::copy(begin(m_buffer), end(m_buffer), begin(buffer));
+    std::copy(begin(m_view_buffer), end(m_view_buffer), begin(buffer));
     free_buffer();
   }
-  swap(m_buffer, buffer);
+  swap(m_view_buffer, buffer);
   m_allocated = true;
-  if (!m_allocated_buffer.empty()) {
-    m_allocated_buffer.clear();
-    m_allocated_buffer.shrink_to_fit();
+  if (!m_owned_buffer.empty()) {
+    m_owned_buffer.clear();
+    m_owned_buffer.shrink_to_fit();
   }
 }
 
 void DistrArrayDisk::free_buffer() {
-  m_buffer = Span<value_type>{};
-  m_allocated_buffer.clear();
-  m_allocated_buffer.shrink_to_fit();
+  m_view_buffer = Span<value_type>{};
+  m_owned_buffer.clear();
+  m_owned_buffer.shrink_to_fit();
   m_allocated = false;
 }
 
@@ -84,7 +84,7 @@ void DistrArrayDisk::flush() {
   auto rank = mpi_rank(communicator());
   index_type lo, hi;
   std::tie(lo, hi) = distribution().range(rank);
-  put(lo, hi - 1, m_buffer.data());
+  put(lo, hi - 1, m_view_buffer.data());
 }
 
 bool DistrArrayDisk::empty() const { return m_allocated; }

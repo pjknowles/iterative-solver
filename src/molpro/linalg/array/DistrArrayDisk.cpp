@@ -16,6 +16,24 @@ int mpi_rank(MPI_Comm comm) {
 
 } // namespace
 
+DistrArrayDisk::DistrArrayDisk() = default;
+
+DistrArrayDisk::DistrArrayDisk(const DistrArrayDisk& source) : DistrArray(source) {
+  if (source.m_allocated) {
+    DistrArrayDisk::allocate_buffer();
+    DistrArray::copy(source);
+  }
+}
+
+DistrArrayDisk::DistrArrayDisk(DistrArrayDisk&& source) noexcept : DistrArray(source) {
+  using std::swap;
+  if (source.m_allocated) {
+    m_allocated = source.m_allocated;
+    m_view_buffer = std::move(source.m_view_buffer);
+    swap(m_owned_buffer, source.m_owned_buffer);
+  }
+}
+
 DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source) : m_source{source} {
   int rank = mpi_rank(source.communicator());
   index_type hi;

@@ -107,6 +107,10 @@ protected:
   std::vector<value_type> m_owned_buffer; //!< buffer allocated by the class
   using DistrArray::DistrArray;
 
+  DistrArrayDisk();
+  DistrArrayDisk(const DistrArrayDisk &source);
+  DistrArrayDisk(DistrArrayDisk &&source) noexcept;
+
 public:
   //! Opens access to the storage on disk, creating the underlying storage object if it does not exist. Assume
   //! collective, but not all implementations might require that.

@@ -952,8 +952,7 @@ public:
                     const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector>(handlers, profiler), m_algorithm(std::move(algorithm)), m_minimize(minimize),
         m_strong_Wolfe(true), m_Wolfe_1(0.0001), m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
-        m_linesearch_tolerance(0.2), m_linesearch_grow_factor(3), m_linesearch_steplength(0),
-        m_handler(molpro::linalg::array::ArrayHandlerFactory<Rvector, Qvector>::create()) {
+        m_linesearch_tolerance(0.2), m_linesearch_grow_factor(3), m_linesearch_steplength(0) {
     this->m_linear = false;
     this->m_residual_rhs = false;
     this->m_residual_eigen = false;
@@ -969,7 +968,7 @@ public:
 protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
   bool m_minimize;         ///< whether to minimize or maximize
-  mutable std::shared_ptr<array::ArrayHandler<Rvector, Qvector>> m_handler;
+  using IterativeSolver<Rvector, Qvector>::m_handlers;
 
 public:
   bool m_strong_Wolfe;             /// Whether to use strong or weak Wolfe conditions
@@ -1028,7 +1027,7 @@ protected:
       auto f0 = m_best_f;
       auto f1 = this->m_values.back();
       auto g1 = step * this->m_h_qr[n - 1][0];
-      auto g0 = step * m_handler->dot((*m_best_v), this->m_qspace[this->m_qspace.size() - 1]);
+      auto g0 = step * m_handlers.qq().dot((*m_best_v), this->m_qspace[this->m_qspace.size() - 1]);
       bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
       bool Wolfe_2 = m_strong_Wolfe ? g1 >= m_Wolfe_2 * g0 : std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
       if (this->m_verbosity > 1) {
@@ -1117,7 +1116,7 @@ public:
         //              molpro::cout << "solution " << solution.front().get() << std::endl;
         // FIXME is this meant to be a copy?
         solution.front().get() = *m_best_r;
-        m_handler->axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size() - 1], solution.front());
+        m_handlers.rq().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size() - 1], solution.front());
         this->m_values.pop_back();
         this->m_qspace.remove(this->m_qspace.size() - 1);
       } else { // quasi-Newton
@@ -1131,14 +1130,14 @@ public:
           for (size_t a = 0; a < this->m_qspace.size(); a++) {
             //            molpro::cout << "iterate q_" << a << std::endl;
             auto factor = this->m_solution_x[a] -
-                          m_handler->dot(this->m_qspace.action(a), solution.back()) / this->m_qspace.action(a, a);
-            m_handler->axpy(factor, this->m_qspace[a], solution.back());
+                          m_handlers.qr().dot(this->m_qspace.action(a), solution.back()) / this->m_qspace.action(a, a);
+            m_handlers.rq().axpy(factor, this->m_qspace[a], solution.back());
             //            molpro::cout << "Q factor " << factor << std::endl;
           }
           //          molpro::cout << "after Q loop solution length=" <<
           //          std::sqrt(solution.back().get().dot(solution.back().get()))
           //                       << std::endl;
-          m_handler->axpy(1, *(this->m_best_r), solution.back());
+          m_handlers.rq().axpy(1, *(this->m_best_r), solution.back());
           //          molpro::cout << "after adding rk solution length="
           //                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
         }

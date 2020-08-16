@@ -156,4 +156,7 @@ int main(int argc, char* argv[]) {
       }
     }
   }
+#ifdef HAVE_MPI_H
+  MPI_Finalize();
+#endif
 }

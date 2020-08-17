@@ -20,7 +20,7 @@ public:
   using ArrayHandler<AL, AR>::lazy_handle;
   using ArrayHandler<AL, AR>::error;
 
-  AL copy(const AR &source) override { return {source}; };
+  AL copy(const AR &source) override { return AL{source}; };
 
   void scal(value_type alpha, AL &x) override { x.scal(alpha); }
 

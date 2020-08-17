@@ -216,11 +216,10 @@ public:
       m_h_pr.push_back(std::vector<value_type>(m_working_set.size()));
       m_h_rp.push_back(std::vector<value_type>(m_working_set.size()));
       for (size_t k = 0; k < m_working_set.size(); k++) {
-        m_s_pr[p][k] = parameters[k].get().dot(m_pspace[p]);
-        // m_s_pr[p][k] = m_handler->dot(parameters[k].get(), m_pspace[p]);
+        m_s_pr[p][k] = m_handlers.rp().dot(parameters[k].get(), m_pspace[p]);
         m_h_pr[p][k] = m_h_rp[p][k] =
-            action[k].get().dot(m_pspace[p]); // TODO this works only for hermitian. Check that there is a check
-        // m_handler->dot(action[k].get(), m_pspace[p]); // TODO this works only for hermitian. Check that there is a
+            m_handlers.rp().dot(action[k].get(),
+                                m_pspace[p]); // TODO this works only for hermitian. Check that there is a
         // check
       }
     }
@@ -705,11 +704,8 @@ protected:
         solutionP[kkk].get().resize(nP);
       if (not actionOnly) {
         for (size_t i = 0; i < nP; i++) {
-          solution[kkk].get().axpy((solutionP[kkk].get()[i] = this->m_solution_x[oP + i + nX * root]), m_pspace[i]);
-          //          double gp = 0;
-          //          for (auto j = 0; j < nP; j++)
-          //            gp += m_pspace.action(j, i) * this->m_interpolation(oP + j, root);
-          //          residual[kkk].get().axpy(gp, m_pspace[i]);
+          m_handlers.rp().axpy((solutionP[kkk].get()[i] = this->m_solution_x[oP + i + nX * root]), m_pspace[i],
+                               solution[kkk]);
         }
       }
       //      molpro::cout << "square norm of solution after P contribution " << solution[kkk]->dot(*solution[kkk]) <<

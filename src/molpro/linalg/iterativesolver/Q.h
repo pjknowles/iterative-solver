@@ -111,8 +111,8 @@ public:
     m_metric_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
     m_action_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
     for (auto i = 0; i < m_pspace.size(); i++) {
-      m_metric_pspace[m_index][i] = vector.dot(m_pspace[i]);
-      m_action_pspace[m_index][i] = action.dot(m_pspace[i]);
+      m_metric_pspace[m_index][i] = m_handlers.rp().dot(vector,m_pspace[i]);
+      m_action_pspace[m_index][i] = m_handlers.rp().dot(action,m_pspace[i]);
     }
     m_rhs[m_index] = std::vector<scalar_type>();
     for (const auto& rhs1 : rhs)

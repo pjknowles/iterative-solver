@@ -1,5 +1,6 @@
 #include "molpro/linalg/IterativeSolver.h"
 #include "molpro/linalg/SimpleArray.h"
+//#define USE_ARRAY 1
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
@@ -9,7 +10,11 @@
 #include <molpro/linalg/array/ArrayHandlerSparse.h>
 
 #include <algorithm>
+#ifdef USE_ARRAY
 #include <array>
+#else
+#include <vector>
+#endif
 #include <numeric>
 
 using molpro::linalg::array::ArrayHandlerIterable;
@@ -25,9 +30,12 @@ constexpr bool print = false;
 // Storage of vectors distributed and out of memory via SimpleArray class
 using scalar = double;
 // using pv = molpro::linalg::SimpleArray<scalar>;
-// using pv = std::vector<scalar>;
 constexpr size_t n = 300; // dimension of problem
+#ifdef USE_ARRAY
 using pv = std::array<scalar, n>;
+#else
+using pv = std::vector<scalar>;
+#endif
 using vectorSet = std::vector<pv>;
 constexpr scalar alpha = 300; // separation of diagonal elements
 // TODO nP>0
@@ -80,6 +88,11 @@ int main(int argc, char* argv[]) {
   vectorSet b(nRoot);
   vectorSet x(nRoot);
   for (size_t root = 0; root < nRoot; root++) {
+#ifndef USE_ARRAY
+    g[root].resize(n);
+    x[root].resize(n);
+    b[root].resize(n);
+#endif
     for (size_t i = 0; i < n; i++)
       b[root][i] = 1 / (1.0 + root + i);
   }

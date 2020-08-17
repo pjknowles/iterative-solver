@@ -110,6 +110,7 @@ protected:
   DistrArrayDisk();
   DistrArrayDisk(const DistrArrayDisk &source);
   DistrArrayDisk(DistrArrayDisk &&source) noexcept;
+  ~DistrArrayDisk() override;
 
 public:
   //! Opens access to the storage on disk, creating the underlying storage object if it does not exist. Assume

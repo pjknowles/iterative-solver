@@ -17,24 +17,29 @@ class PHDF5Handle;
  * @warning Before using operations that require access to the file, the hdf5 file must be opened.
  * To avoid corruption on accidental termination the file must be closed when the data is no longer needed.
  */
-class DistrArrayHDF5 final : public DistrArrayDisk {
+class DistrArrayHDF5 : public DistrArrayDisk {
 protected:
+  std::unique_ptr<Distribution> m_distribution;     //!< describes distribution of array among processes
   std::shared_ptr<util::PHDF5Handle> m_file_handle; //!< hdf5 file handle
   hid_t m_dataset = dataset_default;                //!< HDF5 dataset object
-  const hid_t dataset_default = -1;                 //!< default value for dataset id
 public:
+  const hid_t dataset_default = -1;         //!< default value for dataset id
   const std::string dataset_name = "array"; //!< name of HDF5 dataset where array is stored
 
   //! Constructor for a blank object. The blank is only useful as a temporary. Move a valid object inside the blank to
   //! make it usable.
-  DistrArrayHDF5() = default;
+  DistrArrayHDF5();
   //! Copies the array from source. Copies to the memory view if it was allocated, otherwise copies directly from disk.
   DistrArrayHDF5(const DistrArrayHDF5 &source);
   //! Takes ownership of source content.
-  DistrArrayHDF5(DistrArrayHDF5 &&source);
+  DistrArrayHDF5(DistrArrayHDF5 &&source) noexcept;
 
   /*!
-   * @brief
+   * @brief Create a disk array with a file assigned and default distribution.
+   *
+   * By default array is distributed uniformly with any remainder spread over the first processes so their size is
+   * larger by 1.
+   *
    * @param file_handle handle for opening the HDF5 group where array is/will be stored.
    * @param dimension size of array. If dataset already exists it will be resized to dimension.
    * @param prof profiler
@@ -42,25 +47,40 @@ public:
   DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, size_t dimension,
                  std::shared_ptr<Profiler> prof = nullptr);
   /*!
-   * @brief
-   * @param file_handle
+   * @brief Create a disk array with file and distribution assigned.
+   * @param file_handle handle for opening the HDF5 group where array is/will be stored.
+   * @param distribution specifies how array is distributed among processes
+   * @param prof profiler
+   */
+  DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, Distribution distribution,
+                 std::shared_ptr<Profiler> prof = nullptr);
+  /*!
+   * @brief Create a dummy disk array with a file assigned.
+   *
+   * If the group contains dataset with dataset_name, than dimension will be read from it. Otherwise, the disk array
+   * object will be a dummy, still useful for later copying a valid array into it.
+   *
+   * @param file_handle handle for opening the HDF5 group where array is/will be stored.
    * @param prof
    */
   DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, std::shared_ptr<Profiler> prof = nullptr);
 
-  DistrArrayHDF5 &operator=(const DistrArrayHDF5 &);
-  DistrArrayHDF5 &operator=(DistrArrayHDF5 &&);
+  //! Copies the array from source. Copies to the memory view if it was allocated, otherwise copies directly from disk
+  //! if source has opened access.
+  //! If no file handle was assigned, than it is copied from source.
+  DistrArrayHDF5 &operator=(const DistrArrayHDF5 &source);
+  DistrArrayHDF5 &operator=(DistrArrayHDF5 &&source) noexcept;
 
   DistrArrayHDF5 &operator=(const DistrArray &source);
 
-  friend void swap(DistrArrayHDF5 &x, DistrArrayHDF5 &y);
+  friend void swap(DistrArrayHDF5 &x, DistrArrayHDF5 &y) noexcept;
 
+  //! Flushes the buffer if file access is open
   ~DistrArrayHDF5() override;
 
-  //! @returns HDF5 dataset object
-  hid_t datest() const { return m_dataset; }
-
   [[nodiscard]] const Distribution &distribution() const override;
+
+  bool compatible(const DistrArrayHDF5 &source) const;
 
   void open_access() override;
   void close_access() override;
@@ -79,9 +99,14 @@ public:
   void scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data) override;
   std::vector<value_type> vec() const override;
 
-protected:
-  //! Checks that the array dataset under default name exists. The group must be already open.
+  //! @returns a copy of a file handle
+  std::shared_ptr<util::PHDF5Handle> file_handle() const;
+
+  //! @returns id of dataset object.
+  hid_t dataset() const;
+  //! Checks that the array dataset exists in the file. The group must be already open.
   int dataset_exists() const;
+  //! True if dataset is currently open, implies that file and group is open as well.
   bool dataset_is_open() const;
 };
 

@@ -34,6 +34,8 @@ DistrArrayDisk::DistrArrayDisk(DistrArrayDisk&& source) noexcept : DistrArray(so
   }
 }
 
+DistrArrayDisk::~DistrArrayDisk() = default;
+
 DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source) : m_source{source} {
   int rank = mpi_rank(source.communicator());
   index_type hi;

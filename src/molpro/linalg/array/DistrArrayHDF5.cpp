@@ -1,19 +1,107 @@
 #include "DistrArrayHDF5.h"
+#include "util/Distribution.h"
 #include <algorithm>
-#include <cassert>
 
 #include "PHDF5Handle.h"
 namespace molpro {
 namespace linalg {
 namespace array {
 
+DistrArrayHDF5::DistrArrayHDF5() = default;
+
+DistrArrayHDF5::DistrArrayHDF5(const DistrArrayHDF5 &source)
+    : DistrArrayDisk(source),
+      m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {}
+
+DistrArrayHDF5::DistrArrayHDF5(DistrArrayHDF5 &&source) noexcept
+    : DistrArrayDisk(std::move(source)), m_distribution(std::move(source.m_distribution)),
+      m_file_handle(std::move(source.m_file_handle)), m_dataset(source.m_dataset) {}
+
+DistrArrayHDF5 &DistrArrayHDF5::operator=(const DistrArrayHDF5 &source) {
+  if (this == &source)
+    return *this;
+  if (!m_file_handle)
+    m_file_handle = source.m_file_handle;
+  if (source.empty() || empty() || !compatible(source)) {
+    free_buffer();
+    DistrArrayHDF5 t{source};
+    swap(*this, t);
+  } else if (!source.m_view_buffer.empty() || source.dataset_is_open()) {
+    bool is_open = dataset_is_open() || !m_view_buffer.empty();
+    if (!is_open)
+      open_access();
+    copy(source);
+    if (!is_open)
+      close_access();
+  }
+  return *this;
+}
+
+DistrArrayHDF5 &DistrArrayHDF5::operator=(DistrArrayHDF5 &&source) noexcept {
+  DistrArrayHDF5 t{std::move(source)};
+  swap(*this, t);
+  t.m_dataset = dataset_default;
+  t.m_file_handle.reset();
+  t.m_allocated = false;
+  return *this;
+}
+
+DistrArrayHDF5 &DistrArrayHDF5::operator=(const DistrArray &source) {
+  if (!source.empty()) {
+    bool is_open = dataset_is_open() || !m_view_buffer.empty();
+    if (!is_open)
+      open_access();
+    copy(source);
+    if (!is_open)
+      close_access();
+  }
+  return *this;
+}
+
+DistrArrayHDF5::~DistrArrayHDF5() {
+  if (m_allocated && dataset_is_open())
+    DistrArrayHDF5::flush();
+  if (dataset_is_open())
+    DistrArrayHDF5::close_access();
+}
+
+
+bool DistrArrayHDF5::compatible(const DistrArrayHDF5 &source) const {
+  auto res = DistrArray::compatible(source);
+  res = res && !m_distribution && !source.m_distribution;
+  if (!res || !m_distribution || !source.m_distribution)
+    return false;
+  return m_distribution->compatible(*source.m_distribution);
+}
+
+void swap(DistrArrayHDF5 &x, DistrArrayHDF5 &y) noexcept {
+  using std::swap;
+  swap(x.m_dimension, y.m_dimension);
+  swap(x.m_communicator, y.m_communicator);
+  swap(x.m_prof, y.m_prof);
+  swap(x.m_allocated, y.m_allocated);
+  swap(x.m_view_buffer, y.m_view_buffer);
+  swap(x.m_owned_buffer, y.m_owned_buffer);
+  swap(x.m_distribution, y.m_distribution);
+  swap(x.m_file_handle, y.m_file_handle);
+  swap(x.m_dataset, y.m_dataset);
+}
+
+const DistrArray::Distribution &DistrArrayHDF5::distribution() const {
+  if (!m_distribution)
+    error("allocate buffer before asking for distribution");
+  return *m_distribution;
+}
+
 int DistrArrayHDF5::dataset_exists() const {
-  assert(m_file_handle->group_is_open());
+  if (!m_file_handle->group_is_open())
+    error("group must be open before using dataset");
   return util::hdf5_link_exists(m_file_handle->group_id(), dataset_name);
 }
 
 void DistrArrayHDF5::open_access() {
-  assert(m_file_handle);
+  if (!m_file_handle)
+    error("must provide a file handle before openning access to disk array");
   m_file_handle->open_group();
   auto exists = dataset_exists();
   if (exists > 0) {
@@ -141,6 +229,10 @@ void DistrArrayHDF5::scatter_acc(std::vector<index_type> &indices, const std::ve
 }
 
 std::vector<DistrArrayHDF5::value_type> DistrArrayHDF5::vec() const { return get(0, m_dimension - 1); }
+
+std::shared_ptr<util::PHDF5Handle> DistrArrayHDF5::file_handle() const { return m_file_handle; }
+
+hid_t DistrArrayHDF5::dataset() const { return m_dataset; }
 
 } // namespace array
 } // namespace linalg

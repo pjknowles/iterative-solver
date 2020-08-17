@@ -1,5 +1,6 @@
 #include "molpro/linalg/IterativeSolver.h"
 #include "molpro/linalg/SimpleArray.h"
+//#define USE_ARRAY 1
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
@@ -8,18 +9,34 @@
 #include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
 #include <molpro/linalg/array/ArrayHandlerSparse.h>
 
+#include <algorithm>
+#ifdef USE_ARRAY
+#include <array>
+#else
+#include <vector>
+#endif
+#include <numeric>
+
 using molpro::linalg::array::ArrayHandlerIterable;
 using molpro::linalg::array::ArrayHandlerIterableSparse;
 using molpro::linalg::array::ArrayHandlerSparse;
 using molpro::linalg::iterativesolver::ArrayHandlers;
 
+constexpr bool check = true;
+constexpr bool print = false;
+
 // For M(i,j) = alpha*(i+1)*delta(i,j) + i + j, b(i,n)=n+i
 // solve M x = b
 // Storage of vectors distributed and out of memory via SimpleArray class
 using scalar = double;
-using pv = molpro::linalg::SimpleArray<scalar>;
+// using pv = molpro::linalg::SimpleArray<scalar>;
+constexpr size_t n = 300; // dimension of problem
+#ifdef USE_ARRAY
+using pv = std::array<scalar, n>;
+#else
+using pv = std::vector<scalar>;
+#endif
 using vectorSet = std::vector<pv>;
-constexpr size_t n = 300;     // dimension of problem
 constexpr scalar alpha = 300; // separation of diagonal elements
 // TODO nP>0
 constexpr size_t nP = 0;    // number in initial P-space
@@ -28,16 +45,12 @@ constexpr size_t nRoot = 2; // number of equations
 scalar matrix(const size_t i, const size_t j) { return (i == j ? alpha * (i + 1) : 0) + i + j; }
 
 void action(const vectorSet& psx, vectorSet& outputs, size_t nroot) {
-  std::vector<scalar> psxk(n);
-  std::vector<scalar> output(n);
   for (size_t k = 0; k < nroot; k++) {
-    psx[k].get(&(psxk[0]), n, 0);
     for (size_t i = 0; i < n; i++) {
-      output[i] = 0;
+      outputs[k][i] = 0;
       for (size_t j = 0; j < n; j++)
-        output[i] += matrix(i, j) * psxk[j];
+        outputs[k][i] += matrix(i, j) * psx[k][j];
     }
-    outputs[k].put(&output[0], n, 0);
   }
 }
 
@@ -45,27 +58,19 @@ void actionP(const std::vector<std::map<size_t, scalar>> pspace, const std::vect
              vectorSet& outputs, size_t nroot) {
   const size_t nP = pspace.size();
   for (size_t k = 0; k < nroot; k++) {
-    std::vector<scalar> output(n);
-    outputs[k].get(&output[0], n, 0);
     for (size_t p = 0; p < nP; p++) {
       for (const auto& pc : pspace[p]) {
         for (size_t j = 0; j < n; j++)
-          output[j] += matrix(pc.first, j) * pc.second * psx[k][p];
+          outputs[k][j] += matrix(pc.first, j) * pc.second * psx[k][p];
       }
     }
-    outputs[k].put(&output[0], n, 0);
   }
 }
 
 void update(vectorSet& psc, const vectorSet& psg, size_t nroot) {
-  std::vector<scalar> psck(n);
-  std::vector<scalar> psgk(n);
   for (size_t k = 0; k < nroot; k++) {
-    psg[k].get(&psgk[0], n, 0);
-    psc[k].get(&psck[0], n, 0);
     for (size_t i = 0; i < n; i++)
-      psck[i] -= psgk[i] / (2 * i + alpha * (i + 1));
-    psc[k].put(&psck[0], n, 0);
+      psc[k][i] -= psg[k][i] / (2 * i + alpha * (i + 1));
   }
 }
 
@@ -79,20 +84,17 @@ int main(int argc, char* argv[]) {
   if (rank == 0)
     std::cout << "MPI size=" << size << std::endl;
 #endif
-  vectorSet g;
-  g.reserve(nRoot);
-  vectorSet b;
-  b.reserve(nRoot);
-  vectorSet x;
-  x.reserve(nRoot);
+  vectorSet g(nRoot);
+  vectorSet b(nRoot);
+  vectorSet x(nRoot);
   for (size_t root = 0; root < nRoot; root++) {
-    std::vector<scalar> bb(n);
+#ifndef USE_ARRAY
+    g[root].resize(n);
+    x[root].resize(n);
+    b[root].resize(n);
+#endif
     for (size_t i = 0; i < n; i++)
-      bb[i] = 1 / (1.0 + root + i);
-    b.emplace_back(n);
-    b.back().put(bb.data(), bb.size(), 0);
-    x.emplace_back(n);
-    g.emplace_back(n);
+      b[root][i] = 1 / (1.0 + root + i);
   }
   std::vector<double> augmented_hessian_factors = {0, .001, .01, .1, 1};
   for (const auto& augmented_hessian_factor : augmented_hessian_factors) {
@@ -138,21 +140,26 @@ int main(int argc, char* argv[]) {
     for (const auto& e : solver.errors())
       std::cout << e << " ";
     std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
-    if (false) {
+    if (check or print) {
       std::vector<int> roots(solver.m_roots);
       std::iota(roots.begin(), roots.end(), 0);
       solver.solution(roots, x, g);
-      action(x, g, solver.m_roots);
-      for (size_t root = 0; root < solver.m_roots; root++) {
-        g[root].axpy(-1, b[root]);
-        std::vector<scalar> buf(n);
-        x[root].get(&buf[0], n, 0);
-        std::cout << "Solution:";
-        for (size_t k = 0; k < n; k++)
-          std::cout << " " << buf[k];
-        std::cout << std::endl;
-        auto err = g[root].dot(g[root]);
-        std::cout << "residual norm " << std::sqrt(err) << std::endl;
+      if (print) {
+        for (size_t root = 0; root < solver.m_roots; root++) {
+          std::cout << "Solution:";
+          for (size_t k = 0; k < n; k++)
+            std::cout << " " << x[root][k];
+          std::cout << std::endl;
+        }
+      }
+      if (check) {
+        action(x, g, solver.m_roots);
+        for (size_t root = 0; root < solver.m_roots; root++) {
+          std::transform(b[root].begin(), b[root].end(), g[root].begin(), g[root].begin(),
+                         [](const scalar& a, const scalar& b) { return b - a; });
+          auto err = std::inner_product(g[root].begin(), g[root].end(), g[root].begin(), 0);
+          std::cout << "residual norm " << std::sqrt(err) << std::endl;
+        }
       }
     }
   }

@@ -8,14 +8,17 @@ namespace linalg {
 namespace array {
 namespace util {
 
-template <typename T, bool = std::is_array<T>::value>
-struct is_array : std::true_type {};
+template <typename T>
+struct is_std_array : std::false_type {};
+
+template <typename T, std::size_t N>
+struct is_std_array<std::array<T, N>> : std::true_type {};
 
 template <typename T>
-struct is_array<T, false> : std::false_type {};
+constexpr bool is_std_array_v = is_std_array<T>::value;
 
-template <typename T, int N>
-struct is_array<std::array<T, N>, false> : std::true_type {};
+template <typename T>
+constexpr bool is_array_v = std::is_array<T>::value || is_std_array_v<T>;
 
 } // namespace util
 
@@ -70,7 +73,7 @@ protected:
   using ArrayHandler<AL, AR>::lazy_handle;
   using ArrayHandler<AL, AR>::m_lazy_handles;
 
-  template <typename T, typename S, typename std::enable_if_t<util::is_array<T>::value, nullptr_t> = nullptr>
+  template <typename T, typename S, typename std::enable_if_t<util::is_array_v<T>, nullptr_t> = nullptr>
   T copyAny(const S &source) {
     auto result = T();
     using std::begin;
@@ -78,7 +81,8 @@ protected:
     std::copy(begin(source), end(source), begin(result));
     return result;
   }
-  template <typename T, typename S, typename std::enable_if_t<!util::is_array<T>::value, int> = 0>
+
+  template <typename T, typename S, typename std::enable_if_t<!util::is_array_v<T>, int> = 0>
   T copyAny(const S &source) {
     auto result = T(source.size());
     using std::begin;

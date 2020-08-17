@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLE_H
 #include "molpro/linalg/array/ArrayHandler.h"
 #include <numeric>
+#include <cstddef>
 
 namespace molpro {
 namespace linalg {
@@ -73,7 +74,7 @@ protected:
   using ArrayHandler<AL, AR>::lazy_handle;
   using ArrayHandler<AL, AR>::m_lazy_handles;
 
-  template <typename T, typename S, typename std::enable_if_t<util::is_array_v<T>, nullptr_t> = nullptr>
+  template <typename T, typename S, typename std::enable_if_t<util::is_array_v<T>, std::nullptr_t> = nullptr>
   T copyAny(const S &source) {
     auto result = T();
     using std::begin;

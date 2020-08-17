@@ -31,8 +31,7 @@ if (MPI)
             testLockMPI3.cpp
             testDistrFlags.cpp
             testDistrArray.h
-            testDistrArrayDisk.h
-            testDistrArrayDiskHDF5.cpp
+            testDistrArrayHDF5.cpp
             )
     if (LINEARALGEBRA_ARRAY_MPI3)
         target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayMPI3.cpp testArrayHandlerDistr.cpp

@@ -6,10 +6,19 @@ int main(int argc, char* argv[]) {
 #ifdef HAVE_MPI_H
   MPI_Init(&argc, &argv);
 #endif
-  molpro::linalg::ArrayBenchmark<std::vector<double>> bm("std::vector<double>");
-  bm.all();
-  std::cout << bm << std::endl;
+  {
+
+    auto bm = molpro::linalg::ArrayBenchmarkII<std::vector<double>>("std::vector<double>");
+    bm.all();
+    std::cout << bm << std::endl;
+  }
 #ifdef HAVE_MPI_H
+  {
+    auto bm = molpro::linalg::ArrayBenchmarkDD<molpro::linalg::array::DistrArrayMPI3>(
+        "molpro::linalg::array::DistrArrayMPI3");
+    bm.all();
+    std::cout << bm << std::endl;
+  }
   MPI_Finalize();
 #endif
 }

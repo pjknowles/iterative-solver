@@ -40,6 +40,8 @@ public:
    * By default array is distributed uniformly with any remainder spread over the first processes so their size is
    * larger by 1.
    *
+   * @note if the file contains dataset with dataset_name than it should be of the same dimension
+   *
    * @param file_handle handle for opening the HDF5 group where array is/will be stored.
    * @param dimension size of array. If dataset already exists it will be resized to dimension.
    * @param prof profiler
@@ -48,6 +50,9 @@ public:
                  std::shared_ptr<Profiler> prof = nullptr);
   /*!
    * @brief Create a disk array with file and distribution assigned.
+   *
+   * @note if the file contains dataset with dataset_name than it should be of the same dimension
+   *
    * @param file_handle handle for opening the HDF5 group where array is/will be stored.
    * @param distribution specifies how array is distributed among processes
    * @param prof profiler

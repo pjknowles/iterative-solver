@@ -6,6 +6,50 @@
 namespace molpro {
 namespace linalg {
 namespace array {
+namespace {
+int mpi_size(MPI_Comm comm) {
+  int rank;
+  MPI_Comm_size(comm, &rank);
+  return rank;
+}
+} // namespace
+
+DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, Distribution distribution,
+                               std::shared_ptr<Profiler> prof)
+    : DistrArrayDisk(distribution.border().second, file_handle->communicator(), std::move(prof)),
+      m_file_handle(std::move(file_handle)), m_distribution(std::make_unique<Distribution>(std::move(distribution))) {
+  if (m_distribution->border().first != 0)
+    DistrArray::error("Distribution of array must start from 0");
+}
+
+DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, size_t dimension,
+                               std::shared_ptr<Profiler> prof)
+    : DistrArrayHDF5(
+          std::move(file_handle),
+          util::make_distribution_spread_remainder<index_type>(dimension, mpi_size(file_handle->communicator())),
+          std::move(prof)) {}
+
+DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, std::shared_ptr<Profiler> prof)
+    : m_file_handle(std::move(file_handle)) {
+  m_file_handle->open_group();
+  if (dataset_exists()) {
+    DistrArrayHDF5::open_access();
+    auto space = H5Dget_space(m_dataset);
+    auto n = H5Sget_simple_extent_ndims(space);
+    if (n < 0)
+      DistrArray::error("failed to get number of dimensions in dataset");
+    if (n != 1)
+      DistrArray::error("dataset does not correspond to a 1D array");
+    hsize_t dims;
+    n = H5Sget_simple_extent_dims(space, &dims, nullptr);
+    if (n < 0)
+      DistrArray::error("failed to get dimensions in dataset");
+    // create a new array
+    DistrArrayHDF5 t{m_file_handle, dims, std::move(prof)};
+    swap(*this, t);
+    t.m_file_handle.reset();
+  }
+}
 
 DistrArrayHDF5::DistrArrayHDF5() = default;
 
@@ -64,7 +108,6 @@ DistrArrayHDF5::~DistrArrayHDF5() {
   if (dataset_is_open())
     DistrArrayHDF5::close_access();
 }
-
 
 bool DistrArrayHDF5::compatible(const DistrArrayHDF5 &source) const {
   auto res = DistrArray::compatible(source);

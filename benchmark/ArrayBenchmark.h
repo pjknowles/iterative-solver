@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_BENCHMARK_ARRAYBENCHMARK_H_
 #include <molpro/Profiler.h>
 #include <molpro/linalg/array/ArrayHandler.h>
+#include <molpro/linalg/array/ArrayHandlerIterable.h>
 #include <vector>
 #include <ostream>
 namespace molpro {
@@ -18,7 +19,7 @@ class ArrayBenchmark {
 
 public:
   explicit ArrayBenchmark(std::string title, size_t n = 10000000, double target_seconds = 1)
-      : m_size(n), m_target_seconds(target_seconds), m_profiler(title) {
+      : m_size(n), m_target_seconds(target_seconds), m_profiler(title), m_handler(std::make_unique<array::ArrayHandlerIterable<L,R>>()) {
 //    m_profiler.push("ArrayBenchmark constructor"); // TODO this doesn't work properly
     m_profiler.start("ArrayBenchmark constructor");
     m_bufferL.resize(n);

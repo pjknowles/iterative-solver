@@ -16,20 +16,27 @@ int mpi_rank(MPI_Comm comm) {
 
 } // namespace
 
+DistrArrayDisk::DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm commun,
+                               std::shared_ptr<molpro::Profiler> prof)
+    : DistrArray(distr->border().second, commun, std::move(prof)), m_distribution(std::move(distr)) {}
+
 DistrArrayDisk::DistrArrayDisk() = default;
 
-DistrArrayDisk::DistrArrayDisk(const DistrArrayDisk& source) : DistrArray(source) {
+DistrArrayDisk::DistrArrayDisk(const DistrArrayDisk& source)
+    : DistrArray(source),
+      m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
   if (source.m_allocated) {
     DistrArrayDisk::allocate_buffer();
     DistrArray::copy(source);
   }
 }
 
-DistrArrayDisk::DistrArrayDisk(DistrArrayDisk&& source) noexcept : DistrArray(source) {
+DistrArrayDisk::DistrArrayDisk(DistrArrayDisk&& source) noexcept
+    : DistrArray(source), m_distribution(std::move(source.m_distribution)) {
   using std::swap;
   if (source.m_allocated) {
-    m_allocated = source.m_allocated;
-    m_view_buffer = std::move(source.m_view_buffer);
+    swap(m_allocated , source.m_allocated);
+    swap(m_view_buffer , source.m_view_buffer);
     swap(m_owned_buffer, source.m_owned_buffer);
   }
 }
@@ -107,7 +114,13 @@ void DistrArrayDisk::flush() {
   put(lo, hi - 1, m_view_buffer.data());
 }
 
-bool DistrArrayDisk::empty() const { return m_allocated; }
+const DistrArray::Distribution& DistrArrayDisk::distribution() const {
+  if (!m_distribution)
+    error("allocate buffer before asking for distribution");
+  return *m_distribution;
+}
+
+bool DistrArrayDisk::empty() const { return !m_allocated; }
 
 std::unique_ptr<DistrArray::LocalBuffer> DistrArrayDisk::local_buffer() {
   return std::make_unique<LocalBufferDisk>(*this);

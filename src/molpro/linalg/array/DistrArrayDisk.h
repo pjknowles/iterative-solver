@@ -11,7 +11,6 @@ namespace util {
 template <typename Result>
 class Task;
 
-class DistrFlags;
 } // namespace util
 /*!
  * @brief Distributed array located primarily on disk
@@ -104,9 +103,11 @@ class DistrArrayDisk : public DistrArray {
 protected:
   bool m_allocated = false;       //!< Flags that the memory view buffer has been allocated
   Span<value_type> m_view_buffer; //!< memory view buffer either wraps allocated buffer or stores user supplied buffer
-  std::vector<value_type> m_owned_buffer; //!< buffer allocated by the class
+  std::vector<value_type> m_owned_buffer;       //!< buffer allocated by the class
+  std::unique_ptr<Distribution> m_distribution; //!< describes distribution of array among processes
   using DistrArray::DistrArray;
 
+  DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof);
   DistrArrayDisk();
   DistrArrayDisk(const DistrArrayDisk &source);
   DistrArrayDisk(DistrArrayDisk &&source) noexcept;
@@ -136,6 +137,7 @@ public:
   virtual void flush();
   //! Erase the array from disk.
   virtual void erase() = 0;
+  [[nodiscard]] const Distribution &distribution() const override;
 
 protected:
   class LocalBufferDisk : public DistrArray::LocalBuffer {

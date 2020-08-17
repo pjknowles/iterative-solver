@@ -19,12 +19,11 @@ class PHDF5Handle;
  */
 class DistrArrayHDF5 : public DistrArrayDisk {
 protected:
-  std::unique_ptr<Distribution> m_distribution;     //!< describes distribution of array among processes
   std::shared_ptr<util::PHDF5Handle> m_file_handle; //!< hdf5 file handle
   hid_t m_dataset = dataset_default;                //!< HDF5 dataset object
 public:
-  const hid_t dataset_default = -1;         //!< default value for dataset id
-  const std::string dataset_name = "array"; //!< name of HDF5 dataset where array is stored
+  static constexpr int dataset_default = -1; //!< default value for dataset id
+  const std::string dataset_name = "array";  //!< name of HDF5 dataset where array is stored
 
   //! Constructor for a blank object. The blank is only useful as a temporary. Move a valid object inside the blank to
   //! make it usable.
@@ -57,7 +56,7 @@ public:
    * @param distribution specifies how array is distributed among processes
    * @param prof profiler
    */
-  DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, Distribution distribution,
+  DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, std::unique_ptr<Distribution> distribution,
                  std::shared_ptr<Profiler> prof = nullptr);
   /*!
    * @brief Create a dummy disk array with a file assigned.
@@ -83,12 +82,12 @@ public:
   //! Flushes the buffer if file access is open
   ~DistrArrayHDF5() override;
 
-  [[nodiscard]] const Distribution &distribution() const override;
-
   bool compatible(const DistrArrayHDF5 &source) const;
 
   void open_access() override;
   void close_access() override;
+  //! @returns true if array is not accessible through file nor memory view. Returns true otherwise.
+  bool empty() const override;
   //! Removes link to the array dataset from the hdf5 file. This does not reduce the file size, consider using h5repack.
   void erase() override;
   value_type at(index_type ind) const override;

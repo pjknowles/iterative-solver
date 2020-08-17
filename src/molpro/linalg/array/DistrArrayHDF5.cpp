@@ -14,20 +14,20 @@ int mpi_size(MPI_Comm comm) {
 }
 } // namespace
 
-DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, Distribution distribution,
-                               std::shared_ptr<Profiler> prof)
-    : DistrArrayDisk(distribution.border().second, file_handle->communicator(), std::move(prof)),
-      m_file_handle(std::move(file_handle)), m_distribution(std::make_unique<Distribution>(std::move(distribution))) {
+DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle,
+                               std::unique_ptr<Distribution> distribution, std::shared_ptr<Profiler> prof)
+    : DistrArrayDisk(std::move(distribution), file_handle->communicator(), std::move(prof)),
+      m_file_handle(std::move(file_handle)) {
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");
 }
 
 DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, size_t dimension,
                                std::shared_ptr<Profiler> prof)
-    : DistrArrayHDF5(
-          std::move(file_handle),
-          util::make_distribution_spread_remainder<index_type>(dimension, mpi_size(file_handle->communicator())),
-          std::move(prof)) {}
+    : DistrArrayHDF5(std::move(file_handle),
+                     std::make_unique<Distribution>(util::make_distribution_spread_remainder<index_type>(
+                         dimension, mpi_size(file_handle->communicator()))),
+                     std::move(prof)) {}
 
 DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, std::shared_ptr<Profiler> prof)
     : m_file_handle(std::move(file_handle)) {
@@ -54,12 +54,12 @@ DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, s
 DistrArrayHDF5::DistrArrayHDF5() = default;
 
 DistrArrayHDF5::DistrArrayHDF5(const DistrArrayHDF5 &source)
-    : DistrArrayDisk(source),
-      m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {}
+    : DistrArrayDisk(source), m_file_handle(source.m_file_handle), m_dataset(source.m_dataset) {}
 
 DistrArrayHDF5::DistrArrayHDF5(DistrArrayHDF5 &&source) noexcept
-    : DistrArrayDisk(std::move(source)), m_distribution(std::move(source.m_distribution)),
-      m_file_handle(std::move(source.m_file_handle)), m_dataset(source.m_dataset) {}
+    : DistrArrayDisk(std::move(source)), m_file_handle(std::move(source.m_file_handle)), m_dataset(source.m_dataset) {
+  source.m_dataset = source.dataset_default;
+}
 
 DistrArrayHDF5 &DistrArrayHDF5::operator=(const DistrArrayHDF5 &source) {
   if (this == &source)
@@ -130,12 +130,6 @@ void swap(DistrArrayHDF5 &x, DistrArrayHDF5 &y) noexcept {
   swap(x.m_dataset, y.m_dataset);
 }
 
-const DistrArray::Distribution &DistrArrayHDF5::distribution() const {
-  if (!m_distribution)
-    error("allocate buffer before asking for distribution");
-  return *m_distribution;
-}
-
 int DistrArrayHDF5::dataset_exists() const {
   if (!m_file_handle->group_is_open())
     error("group must be open before using dataset");
@@ -143,12 +137,20 @@ int DistrArrayHDF5::dataset_exists() const {
 }
 
 void DistrArrayHDF5::open_access() {
+  if (dataset_is_open())
+    return;
   if (!m_file_handle)
     error("must provide a file handle before openning access to disk array");
-  m_file_handle->open_group();
+  auto id = m_file_handle->open_file(util::HDF5Handle::Access::read_write);
+  if (id < 0)
+    error("Failed to open file");
+  id = m_file_handle->open_group();
+  if (id < 0)
+    error("Failed to open group");
   auto exists = dataset_exists();
   if (exists > 0) {
-    m_dataset = H5Dopen(m_file_handle->group_id(), dataset_name.c_str(), H5P_DEFAULT);
+    if (m_dataset == dataset_default)
+      m_dataset = H5Dopen(m_file_handle->group_id(), dataset_name.c_str(), H5P_DEFAULT);
   } else if (exists == 0) {
     hsize_t dimensions[1] = {m_dimension};
     auto space = H5Screate_simple(1, dimensions, nullptr);
@@ -166,9 +168,16 @@ void DistrArrayHDF5::close_access() {
   m_file_handle->close_file();
 }
 
+bool DistrArrayHDF5::empty() const {
+  auto res = DistrArrayDisk::empty() && !dataset_is_open();
+  return res;
+}
+
 void DistrArrayHDF5::erase() {
   open_access();
-  auto lapl_id = H5Dget_access_plist(m_file_handle->group_id());
+  auto lapl_id = H5Dget_access_plist(m_dataset);
+  if (lapl_id < 0)
+    error("Failed to access property list of a group");
   H5Ldelete(m_file_handle->group_id(), dataset_name.c_str(), lapl_id);
   H5Pclose(lapl_id);
   close_access();

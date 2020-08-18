@@ -6,17 +6,10 @@
 #include <molpro/linalg/array/util/DistrFlags.h>
 
 using molpro::linalg::array::util::DistrFlags;
-using molpro::linalg::array::util::LockMPI3;
+using molpro::linalg::array::util::ScopeLock;
 using molpro::linalg::test::mpi_comm;
 
 namespace {
-struct ScopeLock {
-  ScopeLock() : lock{mpi_comm}, l{lock.scope()} {}
-
-  LockMPI3 lock;
-  decltype(std::declval<LockMPI3>().scope()) l;
-};
-
 int mpi_size() {
   int size;
   MPI_Comm_size(mpi_comm, &size);
@@ -31,26 +24,26 @@ int mpi_rank() {
 
 TEST(DistrFlags, constructor_default) {
   DistrFlags df{};
-  ScopeLock l{};
+  ScopeLock l{mpi_comm};
   ASSERT_TRUE(df.empty());
 }
 
 TEST(DistrFlags, constructor_comm) {
   DistrFlags df{mpi_comm};
-  ScopeLock l{};
+  ScopeLock l{mpi_comm};
   ASSERT_FALSE(df.empty());
 }
 
 TEST(DistrFlags, constructor_comm_value) {
   DistrFlags df{mpi_comm, 0};
-  ScopeLock l{};
+  ScopeLock l{mpi_comm};
   ASSERT_FALSE(df.empty());
 }
 
 TEST(DistrFlags, constructor_copy) {
   DistrFlags df{mpi_comm};
   DistrFlags g{df};
-  ScopeLock l{};
+  ScopeLock l{mpi_comm};
   ASSERT_EQ(g.empty(), df.empty());
   ASSERT_EQ(g.communicator(), df.communicator());
 }
@@ -58,7 +51,7 @@ TEST(DistrFlags, constructor_copy) {
 TEST(DistrFlags, constructor_move) {
   DistrFlags&& df{mpi_comm};
   DistrFlags g{std::move(df)};
-  ScopeLock l{};
+  ScopeLock l{mpi_comm};
   ASSERT_TRUE(df.empty());
   ASSERT_FALSE(g.empty());
   ASSERT_EQ(g.communicator(), mpi_comm);
@@ -68,7 +61,7 @@ TEST(DistrFlags, copy_assignment) {
   DistrFlags df{mpi_comm};
   DistrFlags g{};
   g = df;
-  ScopeLock l{};
+  ScopeLock l{mpi_comm};
   ASSERT_EQ(g.empty(), df.empty());
   ASSERT_EQ(g.communicator(), df.communicator());
 }
@@ -77,7 +70,7 @@ TEST(DistrFlags, move_assignment) {
   DistrFlags&& df{mpi_comm};
   DistrFlags g{};
   g = std::move(df);
-  ScopeLock l{};
+  ScopeLock l{mpi_comm};
   ASSERT_TRUE(df.empty());
   ASSERT_FALSE(g.empty());
   ASSERT_EQ(g.communicator(), mpi_comm);
@@ -100,7 +93,7 @@ TEST(DistrFlags, get) {
   auto rank = mpi_rank();
   DistrFlags df{mpi_comm, rank};
   auto v = df.access().get();
-  ScopeLock l{};
+  ScopeLock l{mpi_comm};
   ASSERT_EQ(v, rank);
 }
 

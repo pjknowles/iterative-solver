@@ -79,7 +79,6 @@ DistrArrayMPI3& DistrArrayMPI3::operator=(const DistrArrayMPI3& source) {
 DistrArrayMPI3& DistrArrayMPI3::operator=(DistrArrayMPI3&& source) noexcept {
   DistrArrayMPI3 t{std::move(source)};
   swap(*this, t);
-  t.m_allocated = false;
   return *this;
 }
 

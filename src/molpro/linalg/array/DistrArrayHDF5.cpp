@@ -84,9 +84,6 @@ DistrArrayHDF5 &DistrArrayHDF5::operator=(const DistrArrayHDF5 &source) {
 DistrArrayHDF5 &DistrArrayHDF5::operator=(DistrArrayHDF5 &&source) noexcept {
   DistrArrayHDF5 t{std::move(source)};
   swap(*this, t);
-  t.m_dataset = dataset_default;
-  t.m_file_handle.reset();
-  t.m_allocated = false;
   return *this;
 }
 

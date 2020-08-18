@@ -6,11 +6,11 @@ int main(int argc, char* argv[]) {
   int rank = 0;
 #ifdef HAVE_MPI_H
   MPI_Init(&argc, &argv);
-  int size;
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  int mpi_size;
+  MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   if (rank == 0)
-    std::cout << size << " MPI ranks" << std::endl;
+    std::cout << mpi_size << " MPI ranks" << std::endl;
 #endif
 #ifdef LINEARALGEBRA_ARRAY_GA
   GA_Initialize();
@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Vector length " << length << std::endl;
     molpro::linalg::ArrayBenchmarkII<std::vector<double>>("std::vector<double>", length, true, 1e-6)
         .axpy(); // flush memory
-    {
+    if (mpi_size <= 1) {
       auto bm = molpro::linalg::ArrayBenchmarkII<std::vector<double>>("std::vector<double>", length);
       bm.all();
       if (rank == 0)
@@ -33,6 +33,12 @@ int main(int argc, char* argv[]) {
       bm.all();
       std::cout << bm;
     }
+//    {
+//      auto bm = molpro::linalg::ArrayBenchmarkID<std::vector<double>, molpro::linalg::array::DistrArrayMPI3>(
+//          "std::vector<double>,molpro::linalg::array::DistrArrayMPI3", length);
+//      bm.all();
+//      std::cout << bm;
+//    }
 #endif
 #ifdef LINEARALGEBRA_ARRAY_GA
     {

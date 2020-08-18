@@ -60,19 +60,24 @@ class ArrayBenchmark {
   molpro::Profiler m_profiler;
   std::unique_ptr<array::ArrayHandler<L, R>> m_handler;
   bool m_profile_individual;
+  int m_mpi_size;
 
 public:
   explicit ArrayBenchmark(std::string title, std::unique_ptr<array::ArrayHandler<L, R>> handler, size_t n = 10000000,
                           bool profile_individual = false, double target_seconds = 1)
       : m_size(n), m_target_seconds(target_seconds), m_bufferL(allocate<L>(n)), m_bufferR(allocate<R>(n)),
-        m_profiler(title), m_handler(std::move(handler)), m_profile_individual(profile_individual) {}
+        m_profiler(title), m_handler(std::move(handler)), m_profile_individual(profile_individual), m_mpi_size(1) {
+#ifdef HAVE_MPI_H
+    MPI_Comm_size(MPI_COMM_WORLD, &m_mpi_size);
+#endif
+  }
 
   void dot() {
     size_t repeat = std::max(1, int(1e9 * m_target_seconds / m_size));
     auto prof = m_profiler.push("dot");
     for (auto i = 0; i < repeat; i++)
       m_handler->dot(*m_bufferL, *m_bufferR);
-    prof += m_size * repeat;
+    prof += m_size * repeat / m_mpi_size;
   }
 
   void axpy() {
@@ -80,15 +85,15 @@ public:
     auto prof = m_profiler.push("axpy");
     for (auto i = 0; i < repeat; i++)
       m_handler->axpy(1.0, *m_bufferL, *m_bufferR);
-    prof += m_size * repeat;
+    prof += m_size * repeat / m_mpi_size;
   }
 
   void copy() {
     size_t repeat = std::max(1, int(1e9 * m_target_seconds / m_size));
     auto prof = m_profiler.push("copy");
-    for (auto i = 0; i < repeat; i++)
+    for (auto i = 0; i < repeat / m_mpi_size; i++)
       *m_bufferL = m_handler->copy(*m_bufferR);
-    prof += m_size * repeat;
+    prof += m_size * repeat / m_mpi_size;
   }
 
   void fill() {
@@ -97,7 +102,7 @@ public:
     auto prof = m_profiler.push("fill");
     for (auto i = 0; i < repeat; i++)
       m_handler->fill(static_cast<scalar_type>(1), *m_bufferL);
-    prof += m_size * repeat;
+    prof += m_size * repeat / m_mpi_size;
   }
 
   void scal() {
@@ -107,13 +112,13 @@ public:
       for (auto i = 0; i < repeat; i++) {
         auto prof = m_profiler.push("scal");
         m_handler->scal(1, *m_bufferL);
-        prof += m_size;
+        prof += m_size / m_mpi_size;
       }
     else {
       auto prof = m_profiler.push("scal");
       for (auto i = 0; i < repeat; i++)
         m_handler->scal(1, *m_bufferL);
-      prof += m_size * repeat;
+      prof += m_size * repeat / m_mpi_size;
     }
   }
 

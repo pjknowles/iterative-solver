@@ -1,7 +1,11 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_ARRAYHANDLERS_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_ARRAYHANDLERS_H
 #include <molpro/linalg/array/ArrayHandler.h>
+#include <molpro/linalg/array/ArrayHandlerSparse.h>
 #include <molpro/linalg/array/ArrayHandlerIterable.h>
+//#include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
+#include <molpro/linalg/array/ArrayHandlerDistr.h>
+//#include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
 
 namespace molpro {
 namespace linalg {
@@ -117,10 +121,10 @@ public:
         //m_qq = create_default_handler<Q, Q>();
         m_qq = std::make_shared<array::ArrayHandlerIterable<Q, Q>>();
       }
-      //if (!m_pp) {
-      //  //m_pp = create_default_handler<P, P>();
-      //  m_pp = std::make_shared<array::ArrayHandlerIterable<P, P>>();
-      //}
+      if (!m_pp) {
+        m_pp = create_default_handler<P, P>();
+        //m_pp = std::make_shared<array::ArrayHandlerIterable<P, P>>();
+      }
       if (!m_rq) {
         //m_rq = create_default_handler<R, Q>();
         m_rq = std::make_shared<array::ArrayHandlerIterable<R, Q>>();
@@ -137,6 +141,13 @@ public:
       //  //m_qp = create_default_handler<Q, P>();
       //  m_qp = std::make_shared<array::ArrayHandlerIterable<Q, P>>();
       //}
+    }
+    
+    template< typename S, typename T,
+              typename = std::enable_if_t<array::util::has_mapped_type<S>{}>,
+              typename = std::enable_if_t<array::util::has_mapped_type<T>{}> >
+    static auto create_default_handler() {
+      return std::make_shared<array::ArrayHandlerSparse<S,T>>();
     }
 
     ArrayHandlers build() const {

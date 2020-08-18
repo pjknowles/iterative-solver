@@ -23,13 +23,6 @@ namespace molpro {
 namespace linalg {
 
 template <class T>
-auto resize(T& obj, size_t n) -> decltype(obj.resize, void()) {
-  obj.resize(n);
-}
-template <class T>
-auto resize(T& obj, size_t n) -> decltype(obj, void()) {}
-
-template <class T>
 auto allocate(size_t n) {
   return std::make_unique<T>(n);
 }
@@ -66,25 +59,20 @@ class ArrayBenchmark {
   std::unique_ptr<R> m_bufferR;
   molpro::Profiler m_profiler;
   std::unique_ptr<array::ArrayHandler<L, R>> m_handler;
+  bool m_profile_individual;
 
 public:
   explicit ArrayBenchmark(std::string title, std::unique_ptr<array::ArrayHandler<L, R>> handler, size_t n = 10000000,
-                          double target_seconds = 1)
+                          bool profile_individual = false, double target_seconds = 1)
       : m_size(n), m_target_seconds(target_seconds), m_bufferL(allocate<L>(n)), m_bufferR(allocate<R>(n)),
-        m_profiler(title), m_handler(std::move(handler)) {
-    //    m_profiler.push("ArrayBenchmark constructor"); // TODO this doesn't work properly
-    m_profiler.start("ArrayBenchmark constructor");
-    resize(*m_bufferL, n);
-    resize(*m_bufferR, n);
-    m_profiler.stop("ArrayBenchmark constructor");
-  }
+        m_profiler(title), m_handler(std::move(handler)), m_profile_individual(profile_individual) {}
 
   void dot() {
     size_t repeat = std::max(1, int(1e9 * m_target_seconds / m_size));
     auto prof = m_profiler.push("dot");
     for (auto i = 0; i < repeat; i++)
       m_handler->dot(*m_bufferL, *m_bufferR);
-    prof += 2 * m_size * repeat;
+    prof += m_size * repeat;
   }
 
   void axpy() {
@@ -92,7 +80,7 @@ public:
     auto prof = m_profiler.push("axpy");
     for (auto i = 0; i < repeat; i++)
       m_handler->axpy(1.0, *m_bufferL, *m_bufferR);
-    prof += 2 * m_size * repeat;
+    prof += m_size * repeat;
   }
 
   void copy() {
@@ -108,17 +96,25 @@ public:
     size_t repeat = std::max(1, int(1e9 * m_target_seconds / m_size));
     auto prof = m_profiler.push("fill");
     for (auto i = 0; i < repeat; i++)
-      m_handler->fill(static_cast<scalar_type>(1) , *m_bufferL);
+      m_handler->fill(static_cast<scalar_type>(1), *m_bufferL);
     prof += m_size * repeat;
   }
 
   void scal() {
     using scalar_type = typename L::value_type;
     size_t repeat = std::max(1, int(1e9 * m_target_seconds / m_size));
-    auto prof = m_profiler.push("scal");
-    for (auto i = 0; i < repeat; i++)
-      m_handler->scal(static_cast<scalar_type>(1) , *m_bufferL);
-    prof += m_size * repeat;
+    if (m_profile_individual)
+      for (auto i = 0; i < repeat; i++) {
+        auto prof = m_profiler.push("scal");
+        m_handler->scal(1, *m_bufferL);
+        prof += m_size;
+      }
+    else {
+      auto prof = m_profiler.push("scal");
+      for (auto i = 0; i < repeat; i++)
+        m_handler->scal(1, *m_bufferL);
+      prof += m_size * repeat;
+    }
   }
 
   void all() {
@@ -139,18 +135,24 @@ std::ostream& operator<<(std::ostream& os, ArrayBenchmark<L, R>& obj) {
 }
 
 template <class L = std::vector<double>, class R = L>
-ArrayBenchmark<L, R> ArrayBenchmarkII(std::string title, size_t n = 10000000, double target_seconds = 1) {
-  return ArrayBenchmark<L, R>(title, std::make_unique<array::ArrayHandlerIterable<L, R>>(), n, target_seconds);
+ArrayBenchmark<L, R> ArrayBenchmarkII(std::string title, size_t n = 10000000, bool profile_individual = false,
+                                      double target_seconds = 1) {
+  return ArrayBenchmark<L, R>(title, std::make_unique<array::ArrayHandlerIterable<L, R>>(), n, profile_individual,
+                              target_seconds);
 }
 
 template <class L = std::vector<double>, class R = array::DistrArrayMPI3>
-ArrayBenchmark<L, R> ArrayBenchmarkID(std::string title, size_t n = 10000000, double target_seconds = 1) {
-  return ArrayBenchmark<L, R>(title, std::make_unique<array::ArrayHandlerDistr<L, R>>(), n, target_seconds);
+ArrayBenchmark<L, R> ArrayBenchmarkID(std::string title, size_t n = 10000000, bool profile_individual = false,
+                                      double target_seconds = 1) {
+  return ArrayBenchmark<L, R>(title, std::make_unique<array::ArrayHandlerDistr<L, R>>(), n, profile_individual,
+                              target_seconds);
 }
 
 template <class L = array::DistrArrayMPI3, class R = L>
-ArrayBenchmark<L, R> ArrayBenchmarkDD(std::string title, size_t n = 10000000, double target_seconds = 1) {
-  return ArrayBenchmark<L, R>(title, std::make_unique<array::ArrayHandlerDistr<L, R>>(), n, target_seconds);
+ArrayBenchmark<L, R> ArrayBenchmarkDD(std::string title, size_t n = 10000000, bool profile_individual = false,
+                                      double target_seconds = 1) {
+  return ArrayBenchmark<L, R>(title, std::make_unique<array::ArrayHandlerDistr<L, R>>(), n, profile_individual,
+                              target_seconds);
 }
 
 } // namespace linalg

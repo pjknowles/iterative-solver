@@ -24,7 +24,7 @@ DistrFlags::DistrFlags(MPI_Comm comm, int value) : m_comm{comm} {
 
 DistrFlags::~DistrFlags() {
   if (!empty()) {
-    if (!m_counter || m_counter && *m_counter != 0)
+    if (!m_counter || (m_counter && *m_counter != 0))
       MPI_Abort(m_comm, 1);
     MPI_Win_free(&m_win);
   }

@@ -37,7 +37,7 @@ public:
    * @param indices list of starting indices for each chunk with last element storing past the end index
    */
   Distribution(const std::vector<index_type> &indices) : m_chunk_borders{indices} {
-    assert(("indices must be sorted", std::is_sorted(begin(m_chunk_borders), end(m_chunk_borders))));
+    assert("indices must be sorted" && std::is_sorted(begin(m_chunk_borders), end(m_chunk_borders)));
   };
 
   /*!

@@ -173,8 +173,8 @@ public:
     }
   
     template<typename S, typename T,
-        std::enable_if_t<array::util::has_distr_tag<S>{}, int> = 0,
-        std::enable_if_t<array::util::has_mapped_type<T>{}> >
+             std::enable_if_t<array::util::has_distr_tag<S>{}, int> = 0,
+             typename = std::enable_if_t<array::util::has_mapped_type<T>{}> >
     static auto create_default_handler() {
       return std::make_shared<array::ArrayHandlerDistrSparse<S,T>>();
     }

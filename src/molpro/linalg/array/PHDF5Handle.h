@@ -21,6 +21,7 @@ public:
   //! @copydoc HDF5Handle::HDF5Handle(std::string, std::string)
   PHDF5Handle(std::string file, std::string group, MPI_Comm comm);
   //! @copydoc HDF5Handle::HDF5Handle(hid_t, bool)
+  //! @param comm communicator
   PHDF5Handle(hid_t hid, MPI_Comm comm, bool transfer_ownership = false);
 
   //! @copydoc HDF5Handle::HDF5Handle(const HDF5Handle&)
@@ -33,6 +34,7 @@ public:
   //! @note The communicator is not copied.
   PHDF5Handle &operator=(const PHDF5Handle &source);
   //! @copydoc HDF5Handle::HDF5Handle(HDF5Handle&&)
+  //! @param source source handle to move
   //! @param comm assigns a new communicator
   PHDF5Handle(PHDF5Handle &&source, MPI_Comm comm) noexcept;
   //! @copydoc HDF5Handle::HDF5Handle(HDF5Handle&&)

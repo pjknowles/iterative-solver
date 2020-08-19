@@ -29,7 +29,27 @@ protected:
 public:
   DistrArrayMPI3();
 
+  /*!
+   * @brief Creates distributed array using MPI3 RMA routines and default distribution.
+   *
+   * By default array is distributed uniformly with any remainder spread over the first processes so their size is
+   * larger by 1.
+   *
+   * @param dimension overall size of array
+   * @param commun MPI communicator
+   * @param prof
+   */
   DistrArrayMPI3(size_t dimension, MPI_Comm commun, std::shared_ptr<Profiler> prof = nullptr);
+
+  /*!
+   * @brief Creates distributed array using MPI3 RMA routines and specified distribution.
+   *
+   * @param distribution specification of how array is distributed among processes
+   * @param commun MPI communicator
+   * @param prof
+   */
+  DistrArrayMPI3(std::unique_ptr<Distribution> distribution, MPI_Comm commun, std::shared_ptr<Profiler> prof = nullptr);
+
   //! Copy constructor allocates the buffer if source is not empty
   DistrArrayMPI3(const DistrArrayMPI3 &source);
   DistrArrayMPI3(DistrArrayMPI3 &&source) noexcept;
@@ -40,6 +60,14 @@ public:
   friend void swap(DistrArrayMPI3 &a1, DistrArrayMPI3 &a2) noexcept;
   void sync() const override;
   void allocate_buffer() override;
+  /*!
+   * @brief Use an external buffer for the local section of the array.
+   *
+   * The buffer must be >= size of local array section
+   *
+   * @param buffer external buffer
+   */
+  void allocate_buffer(Span<value_type> buffer);
   void free_buffer() override;
   bool empty() const override;
 

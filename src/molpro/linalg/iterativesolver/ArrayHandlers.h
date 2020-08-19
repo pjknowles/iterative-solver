@@ -3,12 +3,25 @@
 #include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/array/ArrayHandlerSparse.h>
 #include <molpro/linalg/array/ArrayHandlerIterable.h>
-//#include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
+#include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
 #include <molpro/linalg/array/ArrayHandlerDistr.h>
-//#include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
+#include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
 
 namespace molpro {
 namespace linalg {
+namespace array {
+namespace util {
+
+template <typename T, typename = void>
+struct is_iterable : std::false_type {};
+
+template <typename T>
+struct is_iterable<T, void_t<decltype(std::begin(std::declval<T>())),
+    decltype(std::end(std::declval<T>()))>> : std::true_type {};
+
+} // namespace array::util
+} // namespace array
+
 namespace iterativesolver {
 namespace util {
 
@@ -16,7 +29,8 @@ struct ArrayHandlersError : public std::logic_error {
   using std::logic_error::logic_error;
 };
 
-}
+} // iterativesolver::util
+
 // TODO We need a constructor that can take any number of handlers explicitly and generate the rest using the factory
 /*!
  * @brief Collection of array handlers needed by IterativeSolver
@@ -114,35 +128,52 @@ public:
     
     void add_default_handlers() const {
       if (!m_rr) {
-        //m_rr = create_default_handler<R, R>();
-        m_rr = std::make_shared<array::ArrayHandlerIterable<R, R>>();
+        m_rr = create_default_handler<R, R>();
+        //m_rr = std::make_shared<array::ArrayHandlerIterable<R, R>>();
       }
       if (!m_qq) {
-        //m_qq = create_default_handler<Q, Q>();
-        m_qq = std::make_shared<array::ArrayHandlerIterable<Q, Q>>();
+        m_qq = create_default_handler<Q, Q>();
+        //m_qq = std::make_shared<array::ArrayHandlerIterable<Q, Q>>();
       }
       if (!m_pp) {
         m_pp = create_default_handler<P, P>();
         //m_pp = std::make_shared<array::ArrayHandlerIterable<P, P>>();
       }
       if (!m_rq) {
-        //m_rq = create_default_handler<R, Q>();
-        m_rq = std::make_shared<array::ArrayHandlerIterable<R, Q>>();
+        m_rq = create_default_handler<R, Q>();
+        //m_rq = std::make_shared<array::ArrayHandlerIterable<R, Q>>();
       }
-      //if (!m_rp) {
-      //  //m_rp = create_default_handler<R, P>();
-      //  m_rp = std::make_shared<array::ArrayHandlerIterable<R, P>>();
-      //}
+      if (!m_rp) {
+        m_rp = create_default_handler<R, P>();
+        //m_rp = std::make_shared<array::ArrayHandlerIterable<R, P>>();
+      }
       if (!m_qr) {
-        //m_qr = create_default_handler<Q, R>();
-        m_qr = std::make_shared<array::ArrayHandlerIterable<Q, R>>();
+        m_qr = create_default_handler<Q, R>();
+        //m_qr = std::make_shared<array::ArrayHandlerIterable<Q, R>>();
       }
-      //if (!m_qp) {
-      //  //m_qp = create_default_handler<Q, P>();
-      //  m_qp = std::make_shared<array::ArrayHandlerIterable<Q, P>>();
-      //}
+      if (!m_qp) {
+        m_qp = create_default_handler<Q, P>();
+        //m_qp = std::make_shared<array::ArrayHandlerIterable<Q, P>>();
+      }
     }
-    
+  
+    template< typename S, typename T,
+              typename = std::enable_if_t<array::util::is_iterable<S>{}>,
+              typename = std::enable_if_t<!array::util::has_mapped_type<S>{}>,
+              typename = std::enable_if_t<array::util::is_iterable<T>{}>,
+              typename = std::enable_if_t<!array::util::has_mapped_type<T>{}> >
+    static auto create_default_handler() {
+      return std::make_shared<array::ArrayHandlerIterable<S,T>>();
+    }
+  
+    template< typename S, typename T,
+              typename = std::enable_if_t<array::util::is_iterable<S>{}>,
+              typename = std::enable_if_t<!array::util::has_mapped_type<S>{}>,
+              typename = std::enable_if_t<array::util::has_mapped_type<T>{}> >
+    static auto create_default_handler() {
+      return std::make_shared<array::ArrayHandlerIterableSparse<S,T>>();
+    }
+  
     template< typename S, typename T,
               typename = std::enable_if_t<array::util::has_mapped_type<S>{}>,
               typename = std::enable_if_t<array::util::has_mapped_type<T>{}> >

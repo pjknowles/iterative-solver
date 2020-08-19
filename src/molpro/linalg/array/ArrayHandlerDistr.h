@@ -20,7 +20,7 @@ public:
   using ArrayHandler<AL, AR>::lazy_handle;
   using ArrayHandler<AL, AR>::error;
 
-  AL copy(const AR &source) override { return {source}; };
+  AL copy(const AR &source) override { return AL{source}; };
 
   void scal(value_type alpha, AL &x) override { x.scal(alpha); }
 
@@ -28,7 +28,7 @@ public:
 
   void axpy(value_type alpha, const AR &x, AL &y) override { y.axpy(alpha, x); }
 
-  value_type dot(const AL &x, const AR &y) { return x.dot(y); }
+  value_type dot(const AL &x, const AR &y) override { return x.dot(y); }
 };
 
 } // namespace array

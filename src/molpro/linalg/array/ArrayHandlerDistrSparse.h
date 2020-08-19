@@ -1,5 +1,5 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLESPARSE_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLESPARSE_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDISTRSPARSE_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDISTRSPARSE_H
 #include "molpro/linalg/array/ArrayHandler.h"
 #include <numeric>
 
@@ -22,7 +22,7 @@ public:
 
   AL copy(const AR &source) override {
     static_assert(true, "General copy from sparse to dense is ill-defined");
-    return {};
+    return AL{};
   };
 
   void scal(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerDistr for unary operations"); };
@@ -46,4 +46,4 @@ protected:
 } // namespace linalg
 } // namespace molpro
 
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLESPARSE_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDISTRSPARSE_H

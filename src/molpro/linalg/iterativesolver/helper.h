@@ -3,6 +3,7 @@
 #include <complex>
 #include <molpro/iostream.h>
 #include <vector>
+#include <cstddef>
 
 namespace molpro {
 namespace linalg {
@@ -26,7 +27,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, size_t dimension,
                   bool hermitian, double svdThreshold, int verbosity = 0);
 
-template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, nullptr_t> = nullptr>
+template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t> = nullptr>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, size_t dimension,
                   bool hermitian, double svdThreshold, int verbosity = 0);
@@ -37,7 +38,7 @@ void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_
                            const std::vector<value_type>& rhs, size_t dimension, size_t nroot, double augmented_hessian,
                            double svdThreshold, int verbosity);
 
-template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, nullptr_t> = nullptr>
+template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t> = nullptr>
 void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_type>& eigenvalues,
                            const std::vector<value_type>& matrix, const std::vector<value_type>& metric,
                            const std::vector<value_type>& rhs, size_t dimension, size_t nroot, double augmented_hessian,

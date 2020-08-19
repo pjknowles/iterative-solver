@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERFACTORY_H
 #include "molpro/linalg/array/ArrayHandler.h"
 #include "molpro/linalg/array/ArrayHandlerIterable.h"
+#include <cstddef>
 
 namespace molpro {
 namespace linalg {
@@ -58,7 +59,7 @@ struct ArrayHandlerFactory {
   template <
       typename T1 = AL, typename T2 = AR,
       typename std::enable_if_t<!std::is_base_of<DistrArray, T1>::value && !std::is_base_of<DistrArray, T2>::value,
-                                nullptr_t> = nullptr>
+                                std::nullptr_t> = nullptr>
   static auto create() {
     return createIterable<T1, T2>();
   }
@@ -80,7 +81,7 @@ struct ArrayHandlerFactory {
   //! handler for <DistrArrayHDF5 , DistrArray> and  <DistrArray, DistrArrayHDF5>
   template <typename T1, typename T2,
             typename std::enable_if_t<
-                std::is_base_of<DistrArrayHDF5, T1>::value || std::is_base_of<DistrArrayHDF5, AR>::value, nullptr_t> =
+                std::is_base_of<DistrArrayHDF5, T1>::value || std::is_base_of<DistrArrayHDF5, AR>::value, std::nullptr_t> =
                 nullptr>
   static auto createDistrArray() {
     return;

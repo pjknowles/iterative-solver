@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_IMPLEMENTATION_H_
 #include <Eigen/Dense>
 #include <cmath>
+#include <cstddef>
 #include <molpro/linalg/iterativesolver/helper.h>
 
 namespace molpro {
@@ -52,7 +53,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
   assert(false); // Complex not implemented here
 }
 
-template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, nullptr_t>>
+template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, const size_t dimension,
                   bool hermitian, double svdThreshold, int verbosity) {
@@ -205,7 +206,7 @@ void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_
   assert(false); // Complex not implemented here
 }
 
-template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, nullptr_t>>
+template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>
 void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_type>& eigenvalues,
                            const std::vector<value_type>& matrix, const std::vector<value_type>& metric,
                            const std::vector<value_type>& rhs, const size_t dimension, size_t nroot,

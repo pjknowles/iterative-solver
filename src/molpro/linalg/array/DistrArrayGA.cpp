@@ -69,7 +69,6 @@ DistrArrayGA &DistrArrayGA::operator=(const DistrArrayGA &source) {
 DistrArrayGA &DistrArrayGA::operator=(DistrArrayGA &&source) noexcept {
   DistrArrayGA t{std::move(source)};
   swap(*this, t);
-  t.m_ga_allocated = false;
   return *this;
 }
 

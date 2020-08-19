@@ -1,4 +1,4 @@
-foreach (t PagedVector-benchmark)
+foreach (t PagedVector-benchmark benchmark)
     add_executable(${t}.exe ${t}.cpp)
     target_link_libraries(${t}.exe PUBLIC ${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
     if (MPI)

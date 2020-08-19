@@ -22,7 +22,7 @@ public:
 
   AL copy(const AR &source) override {
     static_assert(true, "General copy from sparse to dense is ill-defined");
-    return {};
+    return AL{};
   };
 
   void scal(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerIterable for unary operations"); };

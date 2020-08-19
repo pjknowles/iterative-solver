@@ -15,14 +15,22 @@ DistrArray::DistrArray(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro
 void DistrArray::sync() const { MPI_Barrier(m_communicator); }
 
 void DistrArray::error(const std::string& message) const {
-  std::cout << message << std::endl;
+  std::cerr << message << std::endl;
   MPI_Abort(m_communicator, 1);
 }
 
 bool DistrArray::compatible(const DistrArray& other) const {
-  int comp;
-  MPI_Comm_compare(m_communicator, other.m_communicator, &comp);
-  return (m_dimension == other.m_dimension) && (comp == MPI_IDENT || comp == MPI_CONGRUENT);
+  bool result = (m_dimension == other.m_dimension);
+  if (m_communicator == other.m_communicator)
+    result &= true;
+  else if (m_communicator == MPI_COMM_NULL || other.m_communicator == MPI_COMM_NULL)
+    result &= false;
+  else {
+    int comp;
+    MPI_Comm_compare(m_communicator, other.m_communicator, &comp);
+    result &= (comp == MPI_IDENT || comp == MPI_CONGRUENT);
+  }
+  return result;
 }
 
 bool DistrArray::empty() const { return true; }

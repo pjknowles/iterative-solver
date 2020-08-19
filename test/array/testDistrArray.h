@@ -142,10 +142,6 @@ TYPED_TEST_P(TestDistrArray, move_assignment_op_allocated) {
   ASSERT_THAT(*b.local_buffer(), Each(DoubleEq(alpha)));
 }
 
-REGISTER_TYPED_TEST_SUITE_P(TestDistrArray, constructor, constructor_copy, constructor_copy_allocated,
-                            copy_assignment_op, copy_assignment_op_allocated, constructor_move,
-                            constructor_move_allocated, move_assignment_op, move_assignment_op_allocated);
-
 template <typename Array>
 class DistArrayInitializationF : public Array, public ::testing::Test {
 public:
@@ -261,8 +257,6 @@ TYPED_TEST_P(DistArrayInitializationF, fill) {
   }
   TypeParam::sync();
 }
-
-REGISTER_TYPED_TEST_SUITE_P(DistArrayInitializationF, size, empty, allocate_buffer, zero, vec, get, put, fill);
 
 template <typename Array>
 class DistrArrayRangeF : public ::testing::Test, public Array {
@@ -480,9 +474,6 @@ TYPED_TEST_P(DistrArrayRangeF, recip) {
   }
   TypeParam::sync();
 }
-
-REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeF, gather, scatter, scatter_acc, at, min_loc_n, min_loc_n_reverse, max_n,
-                            min_abs_n, max_abs_n, scal_double, add_double, sub_double, recip);
 
 template <typename Array>
 class DistrArrayCollectiveOpF : public ::testing::Test {
@@ -706,6 +697,13 @@ TYPED_TEST_P(DistrArrayCollectiveOpF, divide_overwrite_positive) {
   }
   this->a.sync();
 }
+
+REGISTER_TYPED_TEST_SUITE_P(DistArrayInitializationF, size, empty, allocate_buffer, zero, vec, get, put, fill);
+REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeF, gather, scatter, scatter_acc, at, min_loc_n, min_loc_n_reverse, max_n,
+                            min_abs_n, max_abs_n, scal_double, add_double, sub_double, recip);
+REGISTER_TYPED_TEST_SUITE_P(TestDistrArray, constructor, constructor_copy, constructor_copy_allocated,
+                            copy_assignment_op, copy_assignment_op_allocated, constructor_move,
+                            constructor_move_allocated, move_assignment_op, move_assignment_op_allocated);
 REGISTER_TYPED_TEST_SUITE_P(DistrArrayCollectiveOpF, add, sub, axpy, axpy_map, dot_array, dot_map, times,
                             divide_append_negative, divide_append_positive, divide_overwrite_positive);
 

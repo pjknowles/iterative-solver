@@ -216,11 +216,10 @@ public:
       m_h_pr.push_back(std::vector<value_type>(m_working_set.size()));
       m_h_rp.push_back(std::vector<value_type>(m_working_set.size()));
       for (size_t k = 0; k < m_working_set.size(); k++) {
-        m_s_pr[p][k] = parameters[k].get().dot(m_pspace[p]);
-        // m_s_pr[p][k] = m_handler->dot(parameters[k].get(), m_pspace[p]);
+        m_s_pr[p][k] = m_handlers.rp().dot(parameters[k].get(), m_pspace[p]);
         m_h_pr[p][k] = m_h_rp[p][k] =
-            action[k].get().dot(m_pspace[p]); // TODO this works only for hermitian. Check that there is a check
-        // m_handler->dot(action[k].get(), m_pspace[p]); // TODO this works only for hermitian. Check that there is a
+            m_handlers.rp().dot(action[k].get(),
+                                m_pspace[p]); // TODO this works only for hermitian. Check that there is a
         // check
       }
     }
@@ -705,11 +704,8 @@ protected:
         solutionP[kkk].get().resize(nP);
       if (not actionOnly) {
         for (size_t i = 0; i < nP; i++) {
-          solution[kkk].get().axpy((solutionP[kkk].get()[i] = this->m_solution_x[oP + i + nX * root]), m_pspace[i]);
-          //          double gp = 0;
-          //          for (auto j = 0; j < nP; j++)
-          //            gp += m_pspace.action(j, i) * this->m_interpolation(oP + j, root);
-          //          residual[kkk].get().axpy(gp, m_pspace[i]);
+          m_handlers.rp().axpy((solutionP[kkk].get()[i] = this->m_solution_x[oP + i + nX * root]), m_pspace[i],
+                               solution[kkk]);
         }
       }
       //      molpro::cout << "square norm of solution after P contribution " << solution[kkk]->dot(*solution[kkk]) <<
@@ -952,8 +948,7 @@ public:
                     const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector>(handlers, profiler), m_algorithm(std::move(algorithm)), m_minimize(minimize),
         m_strong_Wolfe(true), m_Wolfe_1(0.0001), m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
-        m_linesearch_tolerance(0.2), m_linesearch_grow_factor(3), m_linesearch_steplength(0),
-        m_handlers(handlers) {
+        m_linesearch_tolerance(0.2), m_linesearch_grow_factor(3), m_linesearch_steplength(0) {
     this->m_linear = false;
     this->m_residual_rhs = false;
     this->m_residual_eigen = false;
@@ -969,8 +964,7 @@ public:
 protected:
   std::string m_algorithm; ///< which variant of Quasi-Newton or other methods
   bool m_minimize;         ///< whether to minimize or maximize
-  mutable std::shared_ptr<array::ArrayHandler<Rvector, Qvector>> m_handler;
-  mutable iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>> m_handlers;
+  using IterativeSolver<Rvector, Qvector>::m_handlers;
 
 public:
   bool m_strong_Wolfe;             /// Whether to use strong or weak Wolfe conditions
@@ -1118,7 +1112,7 @@ public:
         //              molpro::cout << "solution " << solution.front().get() << std::endl;
         // FIXME is this meant to be a copy?
         solution.front().get() = *m_best_r;
-        m_handlers.qr().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size() - 1], solution.front());
+        m_handlers.rq().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size() - 1], solution.front());
         this->m_values.pop_back();
         this->m_qspace.remove(this->m_qspace.size() - 1);
       } else { // quasi-Newton
@@ -1133,13 +1127,13 @@ public:
             //            molpro::cout << "iterate q_" << a << std::endl;
             auto factor = this->m_solution_x[a] -
                           m_handlers.qr().dot(this->m_qspace.action(a), solution.back()) / this->m_qspace.action(a, a);
-            m_handlers.qr().axpy(factor, this->m_qspace[a], solution.back());
+            m_handlers.rq().axpy(factor, this->m_qspace[a], solution.back());
             //            molpro::cout << "Q factor " << factor << std::endl;
           }
           //          molpro::cout << "after Q loop solution length=" <<
           //          std::sqrt(solution.back().get().dot(solution.back().get()))
           //                       << std::endl;
-          m_handlers.qr().axpy(1, *(this->m_best_r), solution.back());
+          m_handlers.rq().axpy(1, *(this->m_best_r), solution.back());
           //          molpro::cout << "after adding rk solution length="
           //                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
         }

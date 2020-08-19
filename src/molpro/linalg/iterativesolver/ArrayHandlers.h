@@ -19,6 +19,12 @@ template <typename T>
 struct is_iterable<T, void_t<decltype(std::begin(std::declval<T>())),
     decltype(std::end(std::declval<T>()))>> : std::true_type {};
 
+template <typename T, typename = void>
+struct has_distr_tag : std::false_type {};
+
+template <typename T>
+struct has_distr_tag<T, void_t<typename T::DistrHandlerTag>> : std::true_type {};
+  
 } // namespace array::util
 } // namespace array
 
@@ -111,49 +117,27 @@ public:
       return *this;
     }
     
-    //template <typename S, typename T = S>
-    //Builder& add_my_handler(std::shared_ptr<array::ArrayHandler<S, T>> handler) {
-    //  map_handler<S, T>(handler);
-    //  //map_handler(handler);
-    //  return *this;
-    //};
-
-    //template<typename S, typename T = S>
-    //Builder& add_default_handler_iterable() {
-    //  std::shared_ptr<array::ArrayHandlerIterable<S, T>> handler = std::make_shared<array::ArrayHandlerIterable<S, T>>();
-    //  map_handler<S, T>(handler);
-    //  //map_handler(handler);
-    //  return *this;
-    //};
-    
     void add_default_handlers() const {
       if (!m_rr) {
         m_rr = create_default_handler<R, R>();
-        //m_rr = std::make_shared<array::ArrayHandlerIterable<R, R>>();
       }
       if (!m_qq) {
         m_qq = create_default_handler<Q, Q>();
-        //m_qq = std::make_shared<array::ArrayHandlerIterable<Q, Q>>();
       }
       if (!m_pp) {
         m_pp = create_default_handler<P, P>();
-        //m_pp = std::make_shared<array::ArrayHandlerIterable<P, P>>();
       }
       if (!m_rq) {
         m_rq = create_default_handler<R, Q>();
-        //m_rq = std::make_shared<array::ArrayHandlerIterable<R, Q>>();
       }
       if (!m_rp) {
         m_rp = create_default_handler<R, P>();
-        //m_rp = std::make_shared<array::ArrayHandlerIterable<R, P>>();
       }
       if (!m_qr) {
         m_qr = create_default_handler<Q, R>();
-        //m_qr = std::make_shared<array::ArrayHandlerIterable<Q, R>>();
       }
       if (!m_qp) {
         m_qp = create_default_handler<Q, P>();
-        //m_qp = std::make_shared<array::ArrayHandlerIterable<Q, P>>();
       }
     }
   
@@ -180,7 +164,21 @@ public:
     static auto create_default_handler() {
       return std::make_shared<array::ArrayHandlerSparse<S,T>>();
     }
-
+    
+    template<typename S, typename T,
+             std::enable_if_t<array::util::has_distr_tag<S>{}, int> = 0,
+             std::enable_if_t<array::util::has_distr_tag<T>{}, int> = 0 >
+    static auto create_default_handler() {
+      return std::make_shared<array::ArrayHandlerDistr<S,T>>();
+    }
+  
+    template<typename S, typename T,
+        std::enable_if_t<array::util::has_distr_tag<S>{}, int> = 0,
+        std::enable_if_t<array::util::has_mapped_type<T>{}> >
+    static auto create_default_handler() {
+      return std::make_shared<array::ArrayHandlerDistrSparse<S,T>>();
+    }
+  
     ArrayHandlers build() const {
       add_default_handlers();
       return ArrayHandlers{m_rr, m_qq, m_pp, m_rq, m_rp, m_qr, m_qp};
@@ -195,57 +193,11 @@ public:
     mutable std::shared_ptr<array::ArrayHandler<Q, R>> m_qr;
     mutable std::shared_ptr<array::ArrayHandler<Q, P>> m_qp;
   
-    //template<typename S, typename T = S>
-    //void map_handler(std::shared_ptr<array::ArrayHandler<S, T>> handler) {
-    //  if constexpr (std::is_same<S, R>::value) {
-    //    if constexpr (std::is_same<T, Q>::value) {
-    //        //std::shared_ptr<array::ArrayHandler<S, T>> m_rq = handler;
-    //        m_rq = handler;
-    //        //std::cout<<"Bla bla"<<std::endl;
-    //    } else if constexpr (std::is_same<T, P>::value) {
-    //        //std::shared_ptr<array::ArrayHandler<S, T>> m_rp = handler;
-    //        m_rp = handler;
-    //        //std::cout<<"Bla bla"<<std::endl;
-    //    } else if constexpr (std::is_same<T, R>::value) {
-    //        //std::shared_ptr<array::ArrayHandler<S, T>> m_rr = handler;
-    //        m_rr = handler;
-    //        //std::cout<<"Bla bla"<<std::endl;
-    //    } else {
-    //        error("Container type passed to Builder out of scope of ArrayHandlers container types");
-    //    }
-    //  } else if constexpr (std::is_same<S, Q>::value) {
-    //      if constexpr (std::is_same<T, R>::value) {  // redundant?
-    //        //std::shared_ptr<array::ArrayHandler<S, T>> m_qr = handler;
-    //        m_qr = handler;
-    //        //std::cout<<"Bla bla"<<std::endl;
-    //    } else if constexpr (std::is_same<T, P>::value) {
-    //        //std::shared_ptr<array::ArrayHandler<S, T>> m_qp = handler;
-    //        m_qp = handler;
-    //        //std::cout<<"Bla bla"<<std::endl;
-    //    } else if constexpr (std::is_same<T, Q>::value) {
-    //        //std::shared_ptr<array::ArrayHandler<S, T>> m_qq = handler;
-    //        m_qq = handler;
-    //    } else {
-    //        error("Container type passed to Builder out of scope of ArrayHandlers container types");
-    //    }
-    //  } else if constexpr (std::is_same<S, P>::value) {
-    //      if (std::is_same<T, P>::value) {
-    //        //m_pp = std::make_shared<array::ArrayHandler<P, P>>(handler);
-    //        m_pp = handler;
-    //      std::cout<<"Bla bla"<<std::endl;
-    //    } else {
-    //        error("With the first container being SparceArray, second can be Sparce Array only");
-    //    }
-    //  } else {
-    //      error("Container type passed to Builder out of scope of ArrayHandlers container types");
-    //  }
-    //};
-
     void error(const std::string &message) { throw util::ArrayHandlersError{message}; };
     
   };
 
-  auto& rr() { return *m_rr; } // Do we need the getters?
+  auto& rr() { return *m_rr; }
   auto& qq() { return *m_qq; }
   auto& pp() { return *m_pp; }
   auto& rq() { return *m_rq; }

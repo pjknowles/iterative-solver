@@ -94,6 +94,7 @@ class Distribution;
  */
 class DistrArray {
 public:
+  struct DistrHandlerTag {};
   using value_type = double;
   using index_type = unsigned long int;
   using SparseArray = std::map<unsigned long int, double>;

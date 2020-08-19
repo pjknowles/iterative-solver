@@ -13,7 +13,6 @@ namespace array {
  */
 class DistrArrayGA : public DistrArray {
 protected:
-  class DistributionGA;
   int m_comm_rank = 0;         //!< rank in process group
   int m_comm_size = 0;         //!< size of process group
   int m_ga_handle = 0;         //!< Global Array handle, needed by GA libary
@@ -22,10 +21,10 @@ protected:
   bool m_ga_allocated = false; //!< Flags that GA has been allocated
   //! Record every process group created, because GA can only allocate a fixed number of them
   static std::map<MPI_Comm, int> _ga_pgroups;
-  std::unique_ptr<DistributionGA> m_distribution = nullptr;
+  std::unique_ptr<Distribution> m_distribution;
 
 public:
-  DistrArrayGA() = default;
+  DistrArrayGA();
   DistrArrayGA(size_t dimension, MPI_Comm commun, std::shared_ptr<Profiler> prof = nullptr);
   //! Make a copy of source, allocating buffer if necessary.
   DistrArrayGA(const DistrArrayGA &source);
@@ -38,7 +37,7 @@ public:
   ~DistrArrayGA() override;
 
   //! swap content of two arrays. Not collective.
-  friend void swap(DistrArrayGA &a1, DistrArrayGA &a2);
+  friend void swap(DistrArrayGA &a1, DistrArrayGA &a2) noexcept;
   void sync() const override;
   void allocate_buffer() override;
   void free_buffer() override;
@@ -47,20 +46,6 @@ public:
 protected:
   struct LocalBufferGA : public DistrArray::LocalBuffer {
     explicit LocalBufferGA(DistrArrayGA &source);
-  };
-
-  class DistributionGA : public DistrArray::Distribution {
-  public:
-    DistributionGA() = default;
-    DistributionGA(const DistributionGA &) = default;
-    DistributionGA(int ga_handle, int n_proc);
-    std::pair<int, int> locate_process(index_type lo, index_type hi) const override;
-    std::pair<index_type, size_t> range(int process_rank) const override;
-
-  protected:
-    int m_ga_handle = 0;
-    bool m_dummy = true; //!< marks it as a dummy object, because GA was not allocated yet
-    int m_n_proc = 0;    //!< number of processes
   };
 
 public:
@@ -82,6 +67,8 @@ public:
 protected:
   //! Checks if index will overflow when converted to int. Calls error() if it does.
   void check_ga_ind_overlow(index_type ind) const;
+
+  Distribution make_distribution() const;
 };
 
 } // namespace array

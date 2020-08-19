@@ -1,6 +1,6 @@
 #ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYMPI3_H
 #define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYMPI3_H
-#include "molpro/linalg/array/DistrArray.h"
+#include <molpro/linalg/array/DistrArray.h>
 #include <mpi.h>
 
 namespace molpro {
@@ -22,14 +22,12 @@ namespace array {
  */
 class DistrArrayMPI3 : public DistrArray {
 protected:
-  class DistributionMPI3;
-  MPI_Win m_win = MPI_WIN_NULL; //!< window object
-  //! distribution of array buffer among processes. Stores start index and size for each
-  std::unique_ptr<DistributionMPI3> m_distribution = nullptr;
-  bool m_allocated = false; //!< whether the window has been created
+  MPI_Win m_win = MPI_WIN_NULL;                 //!< window object
+  std::unique_ptr<Distribution> m_distribution; //!< describes distribution of array among processes
+  bool m_allocated = false;                     //!< whether the window has been created
 
 public:
-  DistrArrayMPI3() = default;
+  DistrArrayMPI3();
 
   DistrArrayMPI3(size_t dimension, MPI_Comm commun, std::shared_ptr<Profiler> prof = nullptr);
   //! Copy constructor allocates the buffer if source is not empty
@@ -39,7 +37,7 @@ public:
   DistrArrayMPI3 &operator=(DistrArrayMPI3 &&source) noexcept;
   ~DistrArrayMPI3() override;
 
-  friend void swap(DistrArrayMPI3 &a1, DistrArrayMPI3 &a2);
+  friend void swap(DistrArrayMPI3 &a1, DistrArrayMPI3 &a2) noexcept;
   void sync() const override;
   void allocate_buffer() override;
   void free_buffer() override;
@@ -48,19 +46,6 @@ public:
 protected:
   struct LocalBufferMPI3 : public DistrArray::LocalBuffer {
     explicit LocalBufferMPI3(DistrArrayMPI3 &source);
-  };
-
-  class DistributionMPI3 : public DistrArray::Distribution {
-  public:
-    DistributionMPI3(int n_proc, size_t dimension);
-    DistributionMPI3(const DistributionMPI3 &) = default;
-    std::pair<int, int> locate_process(index_type lo, index_type hi) const override;
-    std::pair<index_type, size_t> range(int process_rank) const override;
-
-  protected:
-    //! start and size for section of array local to each process
-    std::vector<std::pair<unsigned long, size_t>> m_proc_range;
-    size_t m_dim;
   };
 
 public:

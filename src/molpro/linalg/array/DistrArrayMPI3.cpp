@@ -1,5 +1,6 @@
 #include "DistrArrayMPI3.h"
 #include "util.h"
+#include "util/Distribution.h"
 #include <algorithm>
 #include <tuple>
 namespace molpro {
@@ -20,22 +21,26 @@ int comm_rank(MPI_Comm comm) {
 }
 } // namespace
 
+DistrArrayMPI3::DistrArrayMPI3() = default;
+
 DistrArrayMPI3::DistrArrayMPI3(size_t dimension, MPI_Comm commun, std::shared_ptr<Profiler> prof)
     : DistrArray(dimension, commun, std::move(prof)),
-      m_distribution(std::make_unique<DistributionMPI3>(comm_size(m_communicator), m_dimension)) {}
+      m_distribution(std::make_unique<Distribution>(
+          util::make_distribution_spread_remainder<index_type>(m_dimension, comm_size(commun)))) {}
 
 DistrArrayMPI3::~DistrArrayMPI3() {
   if (m_allocated)
-    free_buffer();
+    DistrArrayMPI3::free_buffer();
 }
 
 void DistrArrayMPI3::allocate_buffer() {
   if (!empty())
     return;
   int rank;
-  MPI_Aint n;
   MPI_Comm_rank(m_communicator, &rank);
-  std::tie(std::ignore, n) = m_distribution->range(rank);
+  index_type lo, hi;
+  std::tie(lo, hi) = m_distribution->range(rank);
+  MPI_Aint n = hi - lo;
   double* base = nullptr;
   int size_of_type = sizeof(value_type);
   n *= size_of_type;
@@ -48,7 +53,7 @@ bool DistrArrayMPI3::empty() const { return !m_allocated; }
 
 DistrArrayMPI3::DistrArrayMPI3(const DistrArrayMPI3& source)
     : DistrArray(source.size(), source.communicator(), source.m_prof),
-      m_distribution(source.m_distribution ? std::make_unique<DistributionMPI3>(*source.m_distribution) : nullptr) {
+      m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
   if (!source.empty()) {
     DistrArrayMPI3::allocate_buffer();
     DistrArray::copy(source);
@@ -82,7 +87,7 @@ DistrArrayMPI3& DistrArrayMPI3::operator=(DistrArrayMPI3&& source) noexcept {
   return *this;
 }
 
-void swap(DistrArrayMPI3& a1, DistrArrayMPI3& a2) {
+void swap(DistrArrayMPI3& a1, DistrArrayMPI3& a2) noexcept {
   using std::swap;
   swap(a1.m_dimension, a2.m_dimension);
   swap(a1.m_communicator, a2.m_communicator);
@@ -133,17 +138,17 @@ void DistrArrayMPI3::_get_put(index_type lo, index_type hi, const value_type* bu
     error(name + " called on an empty array");
   util::ScopeProfiler prof{m_prof, name};
   index_type p_lo, p_hi;
-  std::tie(p_lo, p_hi) = m_distribution->locate_process(lo, hi);
+  std::tie(p_lo, p_hi) = m_distribution->cover(lo, hi);
   auto* curr_buf = const_cast<value_type*>(buf);
   auto requests = std::vector<MPI_Request>(p_hi - p_lo + 1);
   for (size_t i = p_lo; i < p_hi + 1; ++i) {
-    index_type bound_lo;
-    size_t bound_size;
-    std::tie(bound_lo, bound_size) = m_distribution->range(i);
+    index_type bound_lo, bound_hi;
+    std::tie(bound_lo, bound_hi) = m_distribution->range(i);
+    --bound_hi;
     auto local_lo = std::max(lo, bound_lo);
-    auto local_hi = std::min(hi, bound_lo + bound_size - 1);
+    auto local_hi = std::min(hi, bound_hi);
     MPI_Aint offset = (local_lo - bound_lo);
-    int count = (local_hi - local_lo + 1);
+    int count = (int(local_hi - local_lo) + 1);
     if (option == RMAType::get)
       MPI_Rget(curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, m_win, &requests[i - p_lo]);
     else if (option == RMAType::put)
@@ -199,7 +204,7 @@ void DistrArrayMPI3::_gather_scatter(const std::vector<index_type>& indices, std
   for (size_t i = 0; i < indices.size(); ++i) {
     int p;
     index_type lo;
-    std::tie(p, std::ignore) = m_distribution->locate_process(indices[i], indices[i]);
+    p = m_distribution->cover(indices[i]);
     std::tie(lo, std::ignore) = m_distribution->range(p);
     MPI_Aint offset = indices[i] - lo;
     if (option == RMAType::gather)
@@ -217,46 +222,24 @@ void DistrArrayMPI3::acc(index_type lo, index_type hi, const value_type* data) {
 
 void DistrArrayMPI3::error(const std::string& message) const { MPI_Abort(m_communicator, 1); }
 
-const DistrArray::Distribution& DistrArrayMPI3::distribution() const { return *m_distribution; }
+const DistrArray::Distribution& DistrArrayMPI3::distribution() const {
+  if (!m_distribution)
+    error("allocate buffer before asking for distribution");
+  return *m_distribution;
+}
 
 DistrArrayMPI3::LocalBufferMPI3::LocalBufferMPI3(DistrArrayMPI3& source) {
   if (!source.m_allocated)
     source.error("attempting to access local buffer of empty array");
   int rank;
   MPI_Comm_rank(source.communicator(), &rank);
-  std::tie(m_start, m_size) = source.distribution().range(rank);
+  index_type hi;
+  std::tie(m_start, hi) = source.distribution().range(rank);
+  m_size = hi - m_start;
   int flag;
   MPI_Win_get_attr(source.m_win, MPI_WIN_BASE, &m_buffer, &flag);
 }
 
-DistrArrayMPI3::DistributionMPI3::DistributionMPI3(int n_proc, size_t dimension) : m_dim(dimension) {
-  m_proc_range.reserve(n_proc);
-  // First get even distribution
-  auto block = m_dim / n_proc;
-  // Spread the remainder over the first processes
-  auto n_extra = m_dim % n_proc;
-  size_t lo = 0;
-  for (size_t i = 0; i < n_extra; ++i, lo += block + 1)
-    m_proc_range.emplace_back(lo, block + 1);
-  for (size_t i = n_extra; i < n_proc; ++i, lo += block)
-    m_proc_range.emplace_back(lo, block);
-}
-
-std::pair<int, int> DistrArrayMPI3::DistributionMPI3::locate_process(index_type lo, index_type hi) const {
-  auto block = m_dim / m_proc_range.size();
-  auto n_extra = m_dim % m_proc_range.size();
-  auto size_large_chunk = (block + 1) * n_extra;
-  auto find_process = [size_large_chunk, n_extra, block](auto ind) -> int {
-    if (ind < size_large_chunk)
-      return (ind / (block + 1));
-    else
-      return (n_extra + (ind - size_large_chunk) / (block));
-  };
-  return {find_process(lo), find_process(hi)};
-}
-std::pair<DistrArrayMPI3::index_type, size_t> DistrArrayMPI3::DistributionMPI3::range(int process_rank) const {
-  return m_proc_range[process_rank];
-}
 } // namespace array
 } // namespace linalg
 } // namespace molpro

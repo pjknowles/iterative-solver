@@ -16,6 +16,10 @@ class Profiler;
 namespace molpro {
 namespace linalg {
 namespace array {
+namespace util {
+template <typename Ind>
+class Distribution;
+}
 /*!
  * @brief Array distributed across many processes supporting remote-memory-access, access to process local buffer, and
  * some linear algebra operations.
@@ -93,11 +97,11 @@ public:
   using value_type = double;
   using index_type = unsigned long int;
   using SparseArray = std::map<unsigned long int, double>;
+  using Distribution = util::Distribution<index_type>;
 
 protected:
-  class Distribution;
   index_type m_dimension = 0;   //!< number of elements in the array
-  MPI_Comm m_communicator = {}; //!< Outer communicator
+  MPI_Comm m_communicator = MPI_COMM_NULL; //!< Outer communicator
   //! Initializes array without allocating any memory
   DistrArray(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof);
   DistrArray() = default;
@@ -131,7 +135,7 @@ protected:
   public:
     virtual ~LocalBuffer() = default;
     using span::Span<value_type>::Span;
-    friend void swap(LocalBuffer &, LocalBuffer &) { static_assert(true, "LocalBuffer cannot be swapped"); }
+    friend void swap(LocalBuffer &, LocalBuffer &) = delete;
     //! Checks that the current and the other buffers correspond to the same section of their respective arrays
     bool compatible(const LocalBuffer &other) const { return start() == other.start() && size() == other.size(); };
     //! Return index to the start of the local buffer section in the distributed array
@@ -139,14 +143,6 @@ protected:
 
   protected:
     size_type m_start = 0; //!< index of first element of local buffer in the array
-  };
-
-  //! Information on how the array is distributed among the processes.
-  struct Distribution {
-    //! Maps fist and last index in the array to a pair of processes encapsulating the corresponding buffer range
-    virtual std::pair<int, int> locate_process(index_type lo, index_type hi) const = 0;
-    //! Returns start and size for section of array local to process_rank
-    virtual std::pair<index_type, size_t> range(int process_rank) const = 0;
   };
 
 public:

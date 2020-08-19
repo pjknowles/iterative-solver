@@ -69,6 +69,16 @@ public:
   std::shared_ptr<Proxy> scope();
 };
 
+//! Utility object that locks on creation and unlocks on destruction
+class ScopeLock {
+public:
+  explicit ScopeLock(MPI_Comm comm) : lock{comm}, l{lock.scope()} {}
+
+protected:
+  LockMPI3 lock;
+  decltype(std::declval<LockMPI3>().scope()) l;
+};
+
 template <typename Result = void>
 class Task {
 public:

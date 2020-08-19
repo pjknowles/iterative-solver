@@ -1,6 +1,6 @@
 #include "DistrArrayDisk.h"
 #include "util.h"
-#include "util/DistrFlags.h"
+#include "util/Distribution.h"
 
 namespace molpro {
 namespace linalg {
@@ -16,16 +16,45 @@ int mpi_rank(MPI_Comm comm) {
 
 } // namespace
 
+DistrArrayDisk::DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm commun,
+                               std::shared_ptr<molpro::Profiler> prof)
+    : DistrArray(distr->border().second, commun, std::move(prof)), m_distribution(std::move(distr)) {}
+
+DistrArrayDisk::DistrArrayDisk() = default;
+
+DistrArrayDisk::DistrArrayDisk(const DistrArrayDisk& source)
+    : DistrArray(source),
+      m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
+  if (source.m_allocated) {
+    DistrArrayDisk::allocate_buffer();
+    DistrArray::copy(source);
+  }
+}
+
+DistrArrayDisk::DistrArrayDisk(DistrArrayDisk&& source) noexcept
+    : DistrArray(source), m_distribution(std::move(source.m_distribution)) {
+  using std::swap;
+  if (source.m_allocated) {
+    swap(m_allocated , source.m_allocated);
+    swap(m_view_buffer , source.m_view_buffer);
+    swap(m_owned_buffer, source.m_owned_buffer);
+  }
+}
+
+DistrArrayDisk::~DistrArrayDisk() = default;
+
 DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source) : m_source{source} {
   int rank = mpi_rank(source.communicator());
-  std::tie(m_start, m_size) = source.distribution().range(rank);
+  index_type hi;
+  std::tie(m_start, hi) = source.distribution().range(rank);
+  m_size = hi - m_start;
   if (!source.m_allocated) {
     m_snapshot_buffer.resize(m_size);
     m_buffer = &m_snapshot_buffer[0];
     m_dump = true;
     source.get(start(), start() + size() - 1, m_buffer);
   } else {
-    m_buffer = source.m_buffer.data();
+    m_buffer = source.m_view_buffer.data();
     m_dump = false;
   }
 }
@@ -41,38 +70,38 @@ void DistrArrayDisk::allocate_buffer() {
   if (m_allocated)
     return;
   auto rank = mpi_rank(communicator());
-  index_type _lo;
-  size_t sz;
-  std::tie(_lo, sz) = distribution().range(rank);
-  if (m_allocated_buffer.size() < sz)
-    m_allocated_buffer.resize(sz);
-  m_buffer = Span<value_type>(&m_allocated_buffer[0], m_allocated_buffer.size());
+  index_type lo, hi;
+  std::tie(lo, hi) = distribution().range(rank);
+  size_t sz = hi - lo;
+  if (m_owned_buffer.size() < sz)
+    m_owned_buffer.resize(sz);
+  m_view_buffer = Span<value_type>(&m_owned_buffer[0], m_owned_buffer.size());
   m_allocated = true;
 }
 
 void DistrArrayDisk::allocate_buffer(Span<value_type> buffer) {
   auto rank = mpi_rank(communicator());
-  index_type _lo;
-  size_t sz;
-  std::tie(_lo, sz) = distribution().range(rank);
+  index_type lo, hi;
+  std::tie(lo, hi) = distribution().range(rank);
+  size_t sz = hi - lo;
   if (buffer.size() < sz)
     error("provided buffer is too small");
   if (m_allocated) {
-    std::copy(begin(m_buffer), end(m_buffer), begin(buffer));
+    std::copy(begin(m_view_buffer), end(m_view_buffer), begin(buffer));
     free_buffer();
   }
-  swap(m_buffer, buffer);
+  swap(m_view_buffer, buffer);
   m_allocated = true;
-  if (!m_allocated_buffer.empty()) {
-    m_allocated_buffer.clear();
-    m_allocated_buffer.shrink_to_fit();
+  if (!m_owned_buffer.empty()) {
+    m_owned_buffer.clear();
+    m_owned_buffer.shrink_to_fit();
   }
 }
 
 void DistrArrayDisk::free_buffer() {
-  m_buffer = Span<value_type>{};
-  m_allocated_buffer.clear();
-  m_allocated_buffer.shrink_to_fit();
+  m_view_buffer = Span<value_type>{};
+  m_owned_buffer.clear();
+  m_owned_buffer.shrink_to_fit();
   m_allocated = false;
 }
 
@@ -80,13 +109,18 @@ void DistrArrayDisk::flush() {
   if (!m_allocated)
     return;
   auto rank = mpi_rank(communicator());
-  index_type _lo;
-  size_t sz;
-  std::tie(_lo, sz) = distribution().range(rank);
-  put(_lo, _lo + sz - 1, m_buffer.data());
+  index_type lo, hi;
+  std::tie(lo, hi) = distribution().range(rank);
+  put(lo, hi - 1, m_view_buffer.data());
 }
 
-bool DistrArrayDisk::empty() const { return m_allocated; }
+const DistrArray::Distribution& DistrArrayDisk::distribution() const {
+  if (!m_distribution)
+    error("allocate buffer before asking for distribution");
+  return *m_distribution;
+}
+
+bool DistrArrayDisk::empty() const { return !m_allocated; }
 
 std::unique_ptr<DistrArray::LocalBuffer> DistrArrayDisk::local_buffer() {
   return std::make_unique<LocalBufferDisk>(*this);

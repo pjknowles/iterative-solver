@@ -16,6 +16,15 @@ class PHDF5Handle;
  *
  * @warning Before using operations that require access to the file, the hdf5 file must be opened.
  * To avoid corruption on accidental termination the file must be closed when the data is no longer needed.
+ *
+ * Use cases
+ * ---------
+ * Backing up:
+ * @code{.cpp}
+ * auto backup(const DistrArray &current_solution, std::shared_ptr<PHDF5Handle> backup_file){
+ *      return DistrArrayDisk{current_solution, backup_file};
+ * }
+ * @endcode
  */
 class DistrArrayHDF5 : public DistrArrayDisk {
 protected:
@@ -68,14 +77,31 @@ public:
    * @param prof
    */
   DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, std::shared_ptr<Profiler> prof = nullptr);
+  /*!
+   * @brief Creates a disk array by copying source to disk.
+   * @param source a distributed array
+   * @param file_handle handle for opening the HDF5 group where array is/will be stored.
+   */
+  DistrArrayHDF5(const DistrArray &source, std::shared_ptr<util::PHDF5Handle> file_handle);
 
-  //! Copies the array from source. Copies to the memory view if it was allocated, otherwise copies directly from disk
-  //! if source has opened access.
-  //! If no file handle was assigned, than it is copied from source.
-  DistrArrayHDF5 &operator=(const DistrArrayHDF5 &source);
+  /*!
+   * @brief Copies the array from source.
+   *
+   * If this array is a dummy (i.e. has no underlying array) than
+   *
+   * Copies to the memory view if it was allocated, otherwise copies directly from disk
+   * if source has opened access.
+   * If no file handle was assigned, than it is copied from source.
+   * If source is not compatible, than this will be a direct copy of source.
+   *
+   * @todo This is very unintuitive. I am deleting this operator until the logic can be made clear. The basic case of
+   * copying data is already covered by copy().
+   *
+   * @param source
+   * @return
+   */
+  DistrArrayHDF5 &operator=(const DistrArrayHDF5 &source) = delete;
   DistrArrayHDF5 &operator=(DistrArrayHDF5 &&source) noexcept;
-
-  DistrArrayHDF5 &operator=(const DistrArray &source);
 
   friend void swap(DistrArrayHDF5 &x, DistrArrayHDF5 &y) noexcept;
 
@@ -86,7 +112,7 @@ public:
 
   void open_access() override;
   void close_access() override;
-  //! @returns true if array is not accessible through file nor memory view. Returns true otherwise.
+  //! @returns true if array is not accessible through file nor memory view. Returns false otherwise.
   bool empty() const override;
   //! Removes link to the array dataset from the hdf5 file. This does not reduce the file size, consider using h5repack.
   void erase() override;

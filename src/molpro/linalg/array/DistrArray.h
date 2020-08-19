@@ -101,7 +101,7 @@ public:
 
 protected:
   index_type m_dimension = 0;   //!< number of elements in the array
-  MPI_Comm m_communicator = {}; //!< Outer communicator
+  MPI_Comm m_communicator = MPI_COMM_NULL; //!< Outer communicator
   //! Initializes array without allocating any memory
   DistrArray(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof);
   DistrArray() = default;

@@ -30,8 +30,6 @@ if (MPI)
             main.cpp
             testLockMPI3.cpp
             testDistrFlags.cpp
-            testDistrArray.h
-            testDistrArrayHDF5.cpp
             )
     if (LINEARALGEBRA_ARRAY_MPI3)
         target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayMPI3.cpp testArrayHandlerDistr.cpp
@@ -42,7 +40,8 @@ if (MPI)
         target_compile_definitions(test-${PROJECT_NAME}-parallel PRIVATE TEST_WITH_GA)
     endif ()
     if (LINEARALGEBRA_ARRAY_HDF5)
-        target_sources(test-${PROJECT_NAME}-parallel PRIVATE testPHDF5Handle.cpp)
+        target_sources(test-${PROJECT_NAME}-parallel PRIVATE testPHDF5Handle.cpp testDistrArray.h
+                testDistrArrayHDF5.cpp)
         target_compile_definitions(test-${PROJECT_NAME}-parallel PUBLIC "ARRAY_DATA=\"${CMAKE_CURRENT_BINARY_DIR}/data\"")
     endif ()
     target_link_libraries(test-${PROJECT_NAME}-parallel PUBLIC molpro::${PROJECT_NAME} gmock_main)

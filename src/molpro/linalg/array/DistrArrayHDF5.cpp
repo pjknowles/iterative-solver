@@ -30,9 +30,11 @@ DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, s
                      std::move(prof)) {}
 
 DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, std::shared_ptr<Profiler> prof)
-    : m_file_handle(std::move(file_handle)) {
+    : DistrArrayDisk(std::make_unique<Distribution>(std::vector<index_type>{0, 0}), file_handle->communicator(),
+                     std::move(prof)),
+      m_file_handle(std::move(file_handle)) {
   m_file_handle->open_group();
-  if (dataset_exists()) {
+  if (m_file_handle->group_is_open() && dataset_exists()) {
     DistrArrayHDF5::open_access();
     auto space = H5Dget_space(m_dataset);
     auto n = H5Sget_simple_extent_ndims(space);
@@ -49,6 +51,17 @@ DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, s
     swap(*this, t);
     t.m_file_handle.reset();
   }
+  m_file_handle->close_file();
+}
+
+DistrArrayHDF5::DistrArrayHDF5(const DistrArray &source, std::shared_ptr<util::PHDF5Handle> file_handle)
+    : DistrArrayDisk(std::make_unique<Distribution>(source.distribution()), source.communicator(), source.m_prof),
+      m_file_handle(std::move(file_handle)) {
+  if (!source.empty()) {
+    DistrArrayHDF5::open_access();
+    DistrArrayHDF5::copy(source);
+    DistrArrayHDF5::close_access();
+  }
 }
 
 DistrArrayHDF5::DistrArrayHDF5() = default;
@@ -61,41 +74,9 @@ DistrArrayHDF5::DistrArrayHDF5(DistrArrayHDF5 &&source) noexcept
   source.m_dataset = source.dataset_default;
 }
 
-DistrArrayHDF5 &DistrArrayHDF5::operator=(const DistrArrayHDF5 &source) {
-  if (this == &source)
-    return *this;
-  if (!m_file_handle)
-    m_file_handle = source.m_file_handle;
-  if (source.empty() || empty() || !compatible(source)) {
-    free_buffer();
-    DistrArrayHDF5 t{source};
-    swap(*this, t);
-  } else if (!source.m_view_buffer.empty() || source.dataset_is_open()) {
-    bool is_open = dataset_is_open() || !m_view_buffer.empty();
-    if (!is_open)
-      open_access();
-    copy(source);
-    if (!is_open)
-      close_access();
-  }
-  return *this;
-}
-
 DistrArrayHDF5 &DistrArrayHDF5::operator=(DistrArrayHDF5 &&source) noexcept {
   DistrArrayHDF5 t{std::move(source)};
   swap(*this, t);
-  return *this;
-}
-
-DistrArrayHDF5 &DistrArrayHDF5::operator=(const DistrArray &source) {
-  if (!source.empty()) {
-    bool is_open = dataset_is_open() || !m_view_buffer.empty();
-    if (!is_open)
-      open_access();
-    copy(source);
-    if (!is_open)
-      close_access();
-  }
   return *this;
 }
 
@@ -108,10 +89,11 @@ DistrArrayHDF5::~DistrArrayHDF5() {
 
 bool DistrArrayHDF5::compatible(const DistrArrayHDF5 &source) const {
   auto res = DistrArray::compatible(source);
-  res = res && !m_distribution && !source.m_distribution;
-  if (!res || !m_distribution || !source.m_distribution)
-    return false;
-  return m_distribution->compatible(*source.m_distribution);
+  if (m_distribution && source.m_distribution)
+    res &= m_distribution->compatible(*source.m_distribution);
+  else
+    res &= !m_distribution && !source.m_distribution;
+  return res;
 }
 
 void swap(DistrArrayHDF5 &x, DistrArrayHDF5 &y) noexcept {

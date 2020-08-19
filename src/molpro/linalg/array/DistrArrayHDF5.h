@@ -1,6 +1,7 @@
 #ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYHDF5_H
 #define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYHDF5_H
 #include <hdf5.h>
+#include <string>
 
 #include "molpro/linalg/array/DistrArrayDisk.h"
 #include <string>

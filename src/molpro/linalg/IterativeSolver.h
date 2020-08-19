@@ -873,6 +873,8 @@ public:
    * \param rhs right-hand-side vectors. More can be added subsequently using addEquations(), provided iterations have
    * not yet started. \param augmented_hessian If zero, solve the inhomogeneous equations unmodified. If 1, solve
    * instead the augmented hessian problem. Other values scale the augmented hessian damping.
+   * \param handlers group of array handlers for coordinating array operations
+   * \param profiler optional profiler
    */
   explicit LinearEquations(constVectorRefSet rhs,
                            const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers,
@@ -942,6 +944,8 @@ public:
    * \brief Constructor
    * \param algorithm Allowed values: "L-BFGS","null"
    * \param minimize If false, a maximum, not minimum, will be sought
+   * \param handlers group of array handlers for coordinating array operations
+   * \param profiler optional profiler
    */
   explicit Optimize(const iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>& handlers,
                     std::string algorithm = "L-BFGS", bool minimize = true,

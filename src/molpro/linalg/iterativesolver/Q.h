@@ -211,7 +211,6 @@ public:
 
   /*!
    * @brief Remove a vector from the Q space
-   * @param index
    */
   void remove(const size_t seq) {
     if (m_keys.size() <= seq)

@@ -151,6 +151,7 @@ public:
    *   - a group corresponding to a different file is open (effectively reassignment)
    *
    * @param file name of the file to take ownership of
+   * @param type access type
    * @return id of hdf5 object. Returns hid_default if the operation fails or the file was assigned on construction.
    */
   virtual hid_t open_file(const std::string &file, Access type);

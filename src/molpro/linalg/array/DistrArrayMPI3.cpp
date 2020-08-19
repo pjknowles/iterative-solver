@@ -24,9 +24,16 @@ int comm_rank(MPI_Comm comm) {
 DistrArrayMPI3::DistrArrayMPI3() = default;
 
 DistrArrayMPI3::DistrArrayMPI3(size_t dimension, MPI_Comm commun, std::shared_ptr<Profiler> prof)
-    : DistrArray(dimension, commun, std::move(prof)),
-      m_distribution(std::make_unique<Distribution>(
-          util::make_distribution_spread_remainder<index_type>(m_dimension, comm_size(commun)))) {}
+    : DistrArrayMPI3(std::make_unique<Distribution>(
+                         util::make_distribution_spread_remainder<index_type>(dimension, comm_size(commun))),
+                     commun, std::move(prof)) {}
+
+DistrArrayMPI3::DistrArrayMPI3(std::unique_ptr<Distribution> distribution, MPI_Comm commun,
+                               std::shared_ptr<Profiler> prof)
+    : DistrArray(distribution->border().second, commun, std::move(prof)), m_distribution(std::move(distribution)) {
+  if (m_distribution->border().first != 0)
+    DistrArray::error("Distribution of array must start from 0");
+}
 
 DistrArrayMPI3::~DistrArrayMPI3() {
   if (m_allocated)
@@ -36,6 +43,8 @@ DistrArrayMPI3::~DistrArrayMPI3() {
 void DistrArrayMPI3::allocate_buffer() {
   if (!empty())
     return;
+  if (!m_distribution)
+    error("Cannot allocate an array without distribution");
   int rank;
   MPI_Comm_rank(m_communicator, &rank);
   index_type lo, hi;
@@ -45,6 +54,25 @@ void DistrArrayMPI3::allocate_buffer() {
   int size_of_type = sizeof(value_type);
   n *= size_of_type;
   MPI_Win_allocate(n, size_of_type, MPI_INFO_NULL, m_communicator, &base, &m_win);
+  MPI_Win_lock_all(0, m_win);
+  m_allocated = true;
+}
+
+void DistrArrayMPI3::allocate_buffer(Span<value_type> buffer) {
+  if (!empty())
+    return;
+  if (!m_distribution)
+    error("Cannot allocate an array without distribution");
+  int rank;
+  MPI_Comm_rank(m_communicator, &rank);
+  index_type lo, hi;
+  std::tie(lo, hi) = m_distribution->range(rank);
+  MPI_Aint n = hi - lo;
+  if (buffer.size() < n)
+    error("Specified external buffer is too small");
+  int size_of_type = sizeof(value_type);
+  n *= size_of_type;
+  MPI_Win_create(&buffer[0], n, size_of_type, MPI_INFO_NULL, m_communicator, &m_win);
   MPI_Win_lock_all(0, m_win);
   m_allocated = true;
 }

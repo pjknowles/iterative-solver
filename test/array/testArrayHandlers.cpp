@@ -16,6 +16,10 @@ using ::testing::DoubleEq;
 using ::testing::Each;
 using ::testing::Pointwise;
 
+TEST(TestArrayHandlersIterable, constructor) {
+  auto handlers = ArrayHandlers<std::vector<double>, std::vector<double>, std::map<size_t, double>>::Builder{}.build();
+}
+
 TEST(TestArrayHandlersDistrMPI3Sparse, constructor) {
   auto handlers = ArrayHandlers<DistrArrayMPI3, DistrArrayMPI3, std::map<size_t, double>>::Builder{}.build();
 }

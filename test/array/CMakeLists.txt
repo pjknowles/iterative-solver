@@ -14,6 +14,7 @@ gtest_discover_tests(test-${PROJECT_NAME}-Span.exe)
 add_executable(test-${PROJECT_NAME}-ArrayHandler.exe testArrayHandler.cpp testArrayHandlerIterable.cpp
         testArrayHandlerSparse.cpp
         testArrayHandlerIterableSparse.cpp
+        testArrayHandlerDefault.cpp
         )
 target_link_libraries(test-${PROJECT_NAME}-ArrayHandler.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
 gtest_discover_tests(test-${PROJECT_NAME}-ArrayHandler.exe)

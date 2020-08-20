@@ -1,11 +1,11 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_ARRAYHANDLERS_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_ARRAYHANDLERS_H
 #include <molpro/linalg/array/ArrayHandler.h>
-#include <molpro/linalg/array/ArrayHandlerSparse.h>
-#include <molpro/linalg/array/ArrayHandlerIterable.h>
-#include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
 #include <molpro/linalg/array/ArrayHandlerDistr.h>
 #include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
+#include <molpro/linalg/array/ArrayHandlerIterable.h>
+#include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
+#include <molpro/linalg/array/ArrayHandlerSparse.h>
 
 namespace molpro {
 namespace linalg {
@@ -16,16 +16,16 @@ template <typename T, typename = void>
 struct is_iterable : std::false_type {};
 
 template <typename T>
-struct is_iterable<T, void_t<decltype(std::begin(std::declval<T>())),
-    decltype(std::end(std::declval<T>()))>> : std::true_type {};
+struct is_iterable<T, void_t<decltype(std::begin(std::declval<T>())), decltype(std::end(std::declval<T>()))>>
+    : std::true_type {};
 
 template <typename T, typename = void>
 struct has_distr_tag : std::false_type {};
 
 template <typename T>
-struct has_distr_tag<T, void_t<typename T::DistrHandlerTag>> : std::true_type {};
-  
-} // namespace array::util
+struct has_distr_tag<T, void_t<typename T::distributed_array>> : std::true_type {};
+
+} // namespace util
 } // namespace array
 
 namespace iterativesolver {
@@ -35,7 +35,7 @@ struct ArrayHandlersError : public std::logic_error {
   using std::logic_error::logic_error;
 };
 
-} // iterativesolver::util
+} // namespace util
 
 /*!
  * @brief Class, containing a collection of array handlers used in IterativeSolver
@@ -48,52 +48,50 @@ struct ArrayHandlersError : public std::logic_error {
 template <typename R, typename Q = R, typename P = std::map<size_t, typename R::value_type>>
 class ArrayHandlers {
 public:
-
   ArrayHandlers(std::shared_ptr<array::ArrayHandler<R, R>> rr, std::shared_ptr<array::ArrayHandler<Q, Q>> qq,
                 std::shared_ptr<array::ArrayHandler<P, P>> pp, std::shared_ptr<array::ArrayHandler<R, Q>> rq,
                 std::shared_ptr<array::ArrayHandler<R, P>> rp, std::shared_ptr<array::ArrayHandler<Q, R>> qr,
-                std::shared_ptr<array::ArrayHandler<Q, P>> qp) : m_rr{rr}, m_qq{qq}, m_pp{pp}, m_rq{rq}, m_rp{rp},
-                                                                 m_qr{qr}, m_qp{qp} {}
+                std::shared_ptr<array::ArrayHandler<Q, P>> qp)
+      : m_rr{rr}, m_qq{qq}, m_pp{pp}, m_rq{rq}, m_rp{rp}, m_qr{qr}, m_qp{qp} {}
 
   class Builder {
-  
+
   public:
-    
     Builder& rr(std::shared_ptr<array::ArrayHandler<R, R>> handler) {
       m_rr = handler;
       return *this;
     }
-  
+
     Builder& qq(std::shared_ptr<array::ArrayHandler<Q, Q>> handler) {
       m_qq = handler;
       return *this;
     }
-  
+
     Builder& pp(std::shared_ptr<array::ArrayHandler<P, P>> handler) {
       m_pp = handler;
       return *this;
     }
-  
+
     Builder& rq(std::shared_ptr<array::ArrayHandler<R, Q>> handler) {
       m_rq = handler;
       return *this;
     }
-  
+
     Builder& rp(std::shared_ptr<array::ArrayHandler<R, P>> handler) {
       m_rp = handler;
       return *this;
     }
-  
+
     Builder& qr(std::shared_ptr<array::ArrayHandler<Q, R>> handler) {
       m_qr = handler;
       return *this;
     }
-  
+
     Builder& qp(std::shared_ptr<array::ArrayHandler<Q, P>> handler) {
       m_qp = handler;
       return *this;
     }
-    
+
     void add_default_handlers() const {
       if (!m_rr) {
         m_rr = create_default_handler<R, R>();
@@ -117,45 +115,40 @@ public:
         m_qp = create_default_handler<Q, P>();
       }
     }
-  
-    template< typename S, typename T,
-              typename = std::enable_if_t<array::util::is_iterable<S>{}>,
+
+    template <typename S, typename T, typename = std::enable_if_t<array::util::is_iterable<S>{}>,
               typename = std::enable_if_t<!array::util::has_mapped_type<S>{}>,
               typename = std::enable_if_t<array::util::is_iterable<T>{}>,
-              typename = std::enable_if_t<!array::util::has_mapped_type<T>{}> >
+              typename = std::enable_if_t<!array::util::has_mapped_type<T>{}>>
     static auto create_default_handler() {
-      return std::make_shared<array::ArrayHandlerIterable<S,T>>();
+      return std::make_shared<array::ArrayHandlerIterable<S, T>>();
     }
-  
-    template< typename S, typename T,
-              typename = std::enable_if_t<array::util::is_iterable<S>{}>,
+
+    template <typename S, typename T, typename = std::enable_if_t<array::util::is_iterable<S>{}>,
               typename = std::enable_if_t<!array::util::has_mapped_type<S>{}>,
-              typename = std::enable_if_t<array::util::has_mapped_type<T>{}> >
+              typename = std::enable_if_t<array::util::has_mapped_type<T>{}>>
     static auto create_default_handler() {
-      return std::make_shared<array::ArrayHandlerIterableSparse<S,T>>();
+      return std::make_shared<array::ArrayHandlerIterableSparse<S, T>>();
     }
-  
-    template< typename S, typename T,
-              typename = std::enable_if_t<array::util::has_mapped_type<S>{}>,
-              typename = std::enable_if_t<array::util::has_mapped_type<T>{}> >
+
+    template <typename S, typename T, typename = std::enable_if_t<array::util::has_mapped_type<S>{}>,
+              typename = std::enable_if_t<array::util::has_mapped_type<T>{}>>
     static auto create_default_handler() {
-      return std::make_shared<array::ArrayHandlerSparse<S,T>>();
+      return std::make_shared<array::ArrayHandlerSparse<S, T>>();
     }
-    
-    template<typename S, typename T,
-             std::enable_if_t<array::util::has_distr_tag<S>{}, int> = 0,
-             std::enable_if_t<array::util::has_distr_tag<T>{}, int> = 0 >
+
+    template <typename S, typename T, std::enable_if_t<array::util::has_distr_tag<S>{}, int> = 0,
+              std::enable_if_t<array::util::has_distr_tag<T>{}, int> = 0>
     static auto create_default_handler() {
-      return std::make_shared<array::ArrayHandlerDistr<S,T>>();
+      return std::make_shared<array::ArrayHandlerDistr<S, T>>();
     }
-  
-    template<typename S, typename T,
-             std::enable_if_t<array::util::has_distr_tag<S>{}, int> = 0,
-             typename = std::enable_if_t<array::util::has_mapped_type<T>{}> >
+
+    template <typename S, typename T, std::enable_if_t<array::util::has_distr_tag<S>{}, int> = 0,
+              typename = std::enable_if_t<array::util::has_mapped_type<T>{}>>
     static auto create_default_handler() {
-      return std::make_shared<array::ArrayHandlerDistrSparse<S,T>>();
+      return std::make_shared<array::ArrayHandlerDistrSparse<S, T>>();
     }
-  
+
     ArrayHandlers build() const {
       add_default_handlers();
       return ArrayHandlers{m_rr, m_qq, m_pp, m_rq, m_rp, m_qr, m_qp};
@@ -169,9 +162,8 @@ public:
     mutable std::shared_ptr<array::ArrayHandler<R, P>> m_rp;
     mutable std::shared_ptr<array::ArrayHandler<Q, R>> m_qr;
     mutable std::shared_ptr<array::ArrayHandler<Q, P>> m_qp;
-  
-    void error(const std::string &message) { throw util::ArrayHandlersError{message}; };
-    
+
+    void error(const std::string& message) { throw util::ArrayHandlersError{message}; };
   };
 
   auto& rr() { return *m_rr; }
@@ -190,7 +182,6 @@ private:
   std::shared_ptr<array::ArrayHandler<R, P>> m_rp;
   std::shared_ptr<array::ArrayHandler<Q, R>> m_qr;
   std::shared_ptr<array::ArrayHandler<Q, P>> m_qp;
-
 };
 
 } // namespace iterativesolver

@@ -84,16 +84,8 @@ int main(int argc, char* argv[]) {
       diagonals.reserve(n);
       for (auto i = 0; i < n; i++)
         diagonals.push_back(matrix(i, i));
-      auto rr = std::make_shared<ArrayHandlerDistr<Rvector, Rvector>>();
-      auto qq = std::make_shared<ArrayHandlerDistr<Qvector, Qvector>>();
-      auto pp = std::make_shared<ArrayHandlerSparse<Pvector, Pvector>>();
-      auto rq = std::make_shared<ArrayHandlerDistr<Rvector, Qvector>>();
-      auto rp = std::make_shared<ArrayHandlerDistrSparse<Rvector, Pvector>>();
-      auto qr = std::make_shared<ArrayHandlerDistr<Qvector, Rvector>>();
-      auto qp = std::make_shared<ArrayHandlerDistrSparse<Qvector, Pvector>>();
-      auto handlers = ArrayHandlers<Rvector, Rvector, Pvector>{rr, qq, pp, rq, rp, qr, qp};
-      //      auto handlers = ArrayHandlers<Rvector, Qvector, Pvector>{};
-      molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector> solver{handlers};
+      molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector> solver;
+      auto handlers=solver.handlers();
       solver.m_verbosity = 1;
       solver.m_roots = nroot;
       solver.m_thresh = 1e-9;

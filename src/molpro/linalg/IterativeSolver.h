@@ -137,6 +137,7 @@ protected:
   mutable iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector> m_handlers;
 
 public:
+  iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers() { return m_handlers; };
   using scalar_type =
       typename array::ArrayHandler<Rvector, Qvector>::value_type; ///< The type of scalar products of vectors
   std::shared_ptr<molpro::Profiler> m_profiler;
@@ -798,9 +799,11 @@ public:
   /*!
    * \brief LinearEigensystem
    */
-  explicit LinearEigensystem(const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers,
+  explicit LinearEigensystem(const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers =
+                                 iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>{},
                              const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector, Pvector>(handlers, profiler) {
+    //    auto handlers = ArrayHandlers<Rvector, Qvector, Pvector>{};
     this->m_residual_rhs = false;
     this->m_residual_eigen = true;
     this->m_linear = true;
@@ -877,7 +880,8 @@ public:
    * \param profiler optional profiler
    */
   explicit LinearEquations(constVectorRefSet rhs,
-                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers,
+                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers =
+                               iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>{},
                            double augmented_hessian = 0, const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector, Pvector>(handlers, profiler) {
     this->m_linear = true;
@@ -887,12 +891,14 @@ public:
   }
 
   explicit LinearEquations(const vectorSet& rhs,
-                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers,
+                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers =
+                               iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>{},
                            double augmented_hessian = 0, const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : LinearEquations(constVectorRefSet(rhs.begin(), rhs.end()), handlers, augmented_hessian, profiler) {}
 
   explicit LinearEquations(const Rvector& rhs,
-                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers,
+                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers =
+                               iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>{},
                            double augmented_hessian = 0, const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : LinearEquations(constVectorRefSet(1, rhs), handlers, augmented_hessian, profiler) {}
 
@@ -947,7 +953,8 @@ public:
    * \param handlers group of array handlers for coordinating array operations
    * \param profiler optional profiler
    */
-  explicit Optimize(const iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>& handlers,
+  explicit Optimize(const iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>& handlers =
+                        iterativesolver::ArrayHandlers<Rvector, Qvector>{},
                     std::string algorithm = "L-BFGS", bool minimize = true,
                     const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector>(handlers, profiler), m_algorithm(std::move(algorithm)), m_minimize(minimize),
@@ -1189,7 +1196,8 @@ public:
   /*!
    * \brief DIIS
    */
-  DIIS(const iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>& handlers,
+  DIIS(const iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>& handlers =
+           iterativesolver::ArrayHandlers<Rvector, Qvector>{},
        const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector>(handlers, profiler) {
     this->m_residual_rhs = false;

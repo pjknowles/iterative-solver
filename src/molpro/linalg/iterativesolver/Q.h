@@ -210,6 +210,14 @@ public:
   }
 
   /*!
+   * @brief Empty the P space
+   */
+  void clearP() {
+    m_pspace.clear();
+    m_metric_pspace.clear();
+    m_action_pspace.clear();
+  }
+  /*!
    * @brief Remove a vector from the Q space
    */
   void remove(const size_t seq) {

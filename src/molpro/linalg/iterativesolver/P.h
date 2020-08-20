@@ -76,6 +76,12 @@ public:
       m_rhs = new_rhs;
     }
   }
+  void clear() {
+    m_metric.clear();
+    m_action.clear();
+    m_rhs.clear();
+    m_vectors.clear();
+  }
 };
 } // namespace iterativesolver
 } // namespace linalg

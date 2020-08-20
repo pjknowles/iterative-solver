@@ -375,6 +375,7 @@ public:
     m_last_hd.clear();
     return result;
   }
+
   size_t addP(std::vector<Pvector> Pvectors, const value_type* PP, std::vector<Rvector>& parameters,
               std::vector<Rvector>& action, vectorSetP& parametersP) {
     return addP(Pvectors, PP, vectorRefSet(parameters.begin(), parameters.end()),
@@ -383,6 +384,13 @@ public:
   size_t addP(Pvector Pvectors, const value_type* PP, Rvector& parameters, Rvector& action, vectorP& parametersP) {
     return addP(std::vector<Pvector>{Pvectors}, PP, vectorRefSet(1, parameters), vectorRefSet(1, action),
                 vectorRefSetP(1, parametersP));
+  }
+
+  /*!
+   * @brief Empty the P space
+   */
+  void clearP() {
+    m_qspace.clearP();
   }
 
   /*!

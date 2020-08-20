@@ -24,91 +24,19 @@ struct ArrayHandlersError : public std::logic_error {
  */
 template <typename R, typename Q = R, typename P = std::map<size_t, typename R::value_type>>
 class ArrayHandlers {
+protected:
+  class Builder;
+
 public:
   ArrayHandlers(std::shared_ptr<array::ArrayHandler<R, R>> rr, std::shared_ptr<array::ArrayHandler<Q, Q>> qq,
                 std::shared_ptr<array::ArrayHandler<P, P>> pp, std::shared_ptr<array::ArrayHandler<R, Q>> rq,
                 std::shared_ptr<array::ArrayHandler<R, P>> rp, std::shared_ptr<array::ArrayHandler<Q, R>> qr,
                 std::shared_ptr<array::ArrayHandler<Q, P>> qp)
       : m_rr{rr}, m_qq{qq}, m_pp{pp}, m_rq{rq}, m_rp{rp}, m_qr{qr}, m_qp{qp} {}
-
-  class Builder {
-
-  public:
-    Builder& rr(std::shared_ptr<array::ArrayHandler<R, R>> handler) {
-      m_rr = handler;
-      return *this;
-    }
-
-    Builder& qq(std::shared_ptr<array::ArrayHandler<Q, Q>> handler) {
-      m_qq = handler;
-      return *this;
-    }
-
-    Builder& pp(std::shared_ptr<array::ArrayHandler<P, P>> handler) {
-      m_pp = handler;
-      return *this;
-    }
-
-    Builder& rq(std::shared_ptr<array::ArrayHandler<R, Q>> handler) {
-      m_rq = handler;
-      return *this;
-    }
-
-    Builder& rp(std::shared_ptr<array::ArrayHandler<R, P>> handler) {
-      m_rp = handler;
-      return *this;
-    }
-
-    Builder& qr(std::shared_ptr<array::ArrayHandler<Q, R>> handler) {
-      m_qr = handler;
-      return *this;
-    }
-
-    Builder& qp(std::shared_ptr<array::ArrayHandler<Q, P>> handler) {
-      m_qp = handler;
-      return *this;
-    }
-
-    void add_default_handlers() const {
-      if (!m_rr) {
-        m_rr = array::create_default_handler<R, R>();
-      }
-      if (!m_qq) {
-        m_qq = array::create_default_handler<Q, Q>();
-      }
-      if (!m_pp) {
-        m_pp = array::create_default_handler<P, P>();
-      }
-      if (!m_rq) {
-        m_rq = array::create_default_handler<R, Q>();
-      }
-      if (!m_rp) {
-        m_rp = array::create_default_handler<R, P>();
-      }
-      if (!m_qr) {
-        m_qr = array::create_default_handler<Q, R>();
-      }
-      if (!m_qp) {
-        m_qp = array::create_default_handler<Q, P>();
-      }
-    }
-
-    ArrayHandlers build() const {
-      add_default_handlers();
-      return ArrayHandlers{m_rr, m_qq, m_pp, m_rq, m_rp, m_qr, m_qp};
-    };
-
-  private:
-    mutable std::shared_ptr<array::ArrayHandler<R, R>> m_rr;
-    mutable std::shared_ptr<array::ArrayHandler<Q, Q>> m_qq;
-    mutable std::shared_ptr<array::ArrayHandler<P, P>> m_pp;
-    mutable std::shared_ptr<array::ArrayHandler<R, Q>> m_rq;
-    mutable std::shared_ptr<array::ArrayHandler<R, P>> m_rp;
-    mutable std::shared_ptr<array::ArrayHandler<Q, R>> m_qr;
-    mutable std::shared_ptr<array::ArrayHandler<Q, P>> m_qp;
-
-    void error(const std::string& message) { throw util::ArrayHandlersError{message}; };
-  };
+  ArrayHandlers(const ArrayHandlers<R, Q, P>& source) = default;
+  ArrayHandlers(ArrayHandlers<R, Q, P>&& source) = default;
+  //! Uses default handlers
+  ArrayHandlers() : ArrayHandlers(Builder{}.build()){};
 
   auto& rr() { return *m_rr; }
   auto& qq() { return *m_qq; }
@@ -118,7 +46,64 @@ public:
   auto& rp() { return *m_rp; }
   auto& qp() { return *m_qp; }
 
-private:
+  /*!
+   * @brief Utility for creating Array handlers with some user specified handlers
+   *
+   * For example:
+   * @code{c++}
+   * // create ArrayHandlers with user defined handlers: rr_explicit, rq_explicit
+   * auto array_handlers = ArrayHandlers<Rtype, Qtype, Ptype>::create().rr(rr_explicit).rq(rq_explicit).build();
+   * @endcode
+   * @return
+   */
+  static Builder create() { return {}; }
+
+protected:
+  class Builder {
+  public:
+    Builder() : rr(this), qq(this), pp(this), rq(this), rp(this), qr(this), qp(this) {}
+
+    ArrayHandlers build() {
+      return ArrayHandlers{rr.handler(), qq.handler(), pp.handler(), rq.handler(),
+                           rp.handler(), qr.handler(), qp.handler()};
+    };
+
+  protected:
+    template <class T, class S>
+    class Proxy {
+    public:
+      Proxy() = default;
+      explicit Proxy(Builder* b) : builder(b) {}
+
+      //! assigns a handler to the proxy
+      Builder& operator()(const std::shared_ptr<array::ArrayHandler<T, S>>& h) {
+        m_handler = h;
+        return *builder;
+      }
+
+      //! @returns a stored or a default handler
+      std::shared_ptr<array::ArrayHandler<T, S>> handler() const {
+        if (!m_handler)
+          return array::create_default_handler<T, S>();
+        else
+          return m_handler;
+      }
+
+    protected:
+      Builder* builder = nullptr;
+      std::shared_ptr<array::ArrayHandler<T, S>> m_handler;
+    };
+
+  public:
+    Proxy<R, R> rr;
+    Proxy<Q, Q> qq;
+    Proxy<P, P> pp;
+    Proxy<R, Q> rq;
+    Proxy<R, P> rp;
+    Proxy<Q, R> qr;
+    Proxy<Q, P> qp;
+  };
+
   std::shared_ptr<array::ArrayHandler<R, R>> m_rr;
   std::shared_ptr<array::ArrayHandler<Q, Q>> m_qq;
   std::shared_ptr<array::ArrayHandler<P, P>> m_pp;

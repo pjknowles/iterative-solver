@@ -17,11 +17,11 @@ using ::testing::Each;
 using ::testing::Pointwise;
 
 TEST(TestArrayHandlersIterable, constructor) {
-  auto handlers = ArrayHandlers<std::vector<double>, std::vector<double>, std::map<size_t, double>>::Builder{}.build();
+  auto handlers = ArrayHandlers<std::vector<double>, std::vector<double>, std::map<size_t, double>>();
 }
 
 TEST(TestArrayHandlersDistrMPI3Sparse, constructor) {
-  auto handlers = ArrayHandlers<DistrArrayMPI3, DistrArrayMPI3, std::map<size_t, double>>::Builder{}.build();
+  auto handlers = ArrayHandlers<DistrArrayMPI3, DistrArrayMPI3, std::map<size_t, double>>();
 }
 
 TEST(TestArrayHandlersDistrMPI3Sparse, axpy) {
@@ -36,7 +36,7 @@ TEST(TestArrayHandlersDistrMPI3Sparse, axpy) {
   for (const auto& el : x) {
     y_ref[el.first] += alpha * el.second;
   }
-  auto handlers = ArrayHandlers<decltype(y), decltype(y), decltype(x)>::Builder{}.build();
+  auto handlers = ArrayHandlers<decltype(y), decltype(y), decltype(x)>();
   handlers.rp().axpy(alpha, x, y);
   y.sync();
   LockMPI3 lock{mpi_comm};
@@ -53,7 +53,7 @@ TEST(TestArrayHandlersDistrMPI3Sparse, dot) {
   x.fill(alpha);
   x.sync();
   auto y = std::map<size_t, double>{{1, 1.0}, {3, 2.0}, {6, 3.0}, {11, 4.0}};
-  auto handlers = ArrayHandlers<decltype(x), decltype(x), decltype(y)>::Builder{}.build();
+  auto handlers = ArrayHandlers<decltype(x), decltype(x), decltype(y)>();
   double ref = 0.5 + 0.5 * 2. + 0.5 * 3. + 0.5 * 4.;
   auto result = handlers.rp().dot(x, y);
   LockMPI3 lock{mpi_comm};

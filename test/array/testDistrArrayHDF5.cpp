@@ -193,6 +193,7 @@ TEST_F(DistrArrayHDF5_Fixture, allocate_buffer_flush) {
     a.fill(val);
     EXPECT_THAT(*buffer, Each(DoubleEq(val)));
   }
+  a.sync();
   auto vec = a.vec();
   {
     auto l = lock.scope();

@@ -134,7 +134,7 @@ int main(int argc, char* argv[]) {
         diagonals.push_back(matrix(i, i));
       std::cout << std::endl;
 
-      auto handlers = ArrayHandlers<pv, pv, std::map<size_t, double>>::Builder{}.build();
+      auto handlers = ArrayHandlers<pv, pv, std::map<size_t, double>>();
       molpro::linalg::LinearEigensystem<pv> solver{handlers};
       solver.m_verbosity = 1;
       solver.m_roots = nroot;

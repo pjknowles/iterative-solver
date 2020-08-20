@@ -11,37 +11,36 @@ namespace molpro {
 namespace linalg {
 namespace array {
 
-template <typename S, typename T, typename = std::enable_if_t<array::util::is_iterable<S>{}>,
-          typename = std::enable_if_t<!array::util::has_mapped_type<S>{}>,
-          typename = std::enable_if_t<array::util::is_iterable<T>{}>,
-          typename = std::enable_if_t<!array::util::has_mapped_type<T>{}>>
+template <typename S, typename T, typename = std::enable_if_t<util::is_iterable_v<S>>,
+          typename = std::enable_if_t<!util::has_mapped_type_v<S>>, typename = std::enable_if_t<util::is_iterable_v<T>>,
+          typename = std::enable_if_t<!util::has_mapped_type_v<T>>>
 auto create_default_handler() {
-  return std::make_shared<array::ArrayHandlerIterable<S, T>>();
+  return std::make_shared<ArrayHandlerIterable<S, T>>();
 }
 
-template <typename S, typename T, typename = std::enable_if_t<array::util::is_iterable<S>{}>,
-          typename = std::enable_if_t<!array::util::has_mapped_type<S>{}>,
-          typename = std::enable_if_t<array::util::has_mapped_type<T>{}>>
+template <typename S, typename T, typename = std::enable_if_t<util::is_iterable_v<S>>,
+          typename = std::enable_if_t<!util::has_mapped_type_v<S>>,
+          typename = std::enable_if_t<util::has_mapped_type_v<T>>>
 auto create_default_handler() {
-  return std::make_shared<array::ArrayHandlerIterableSparse<S, T>>();
+  return std::make_shared<ArrayHandlerIterableSparse<S, T>>();
 }
 
-template <typename S, typename T, typename = std::enable_if_t<array::util::has_mapped_type<S>{}>,
-          typename = std::enable_if_t<array::util::has_mapped_type<T>{}>>
+template <typename S, typename T, typename = std::enable_if_t<util::has_mapped_type_v<S>>,
+          typename = std::enable_if_t<util::has_mapped_type_v<T>>>
 auto create_default_handler() {
-  return std::make_shared<array::ArrayHandlerSparse<S, T>>();
+  return std::make_shared<ArrayHandlerSparse<S, T>>();
 }
 
-template <typename S, typename T, std::enable_if_t<array::util::has_distr_tag<S>{}, int> = 0,
-          std::enable_if_t<array::util::has_distr_tag<T>{}, int> = 0>
+template <typename S, typename T, std::enable_if_t<util::has_distr_tag_v<S>, int> = 0,
+          std::enable_if_t<util::has_distr_tag_v<T>, int> = 0>
 auto create_default_handler() {
-  return std::make_shared<array::ArrayHandlerDistr<S, T>>();
+  return std::make_shared<ArrayHandlerDistr<S, T>>();
 }
 
-template <typename S, typename T, std::enable_if_t<array::util::has_distr_tag<S>{}, int> = 0,
-          typename = std::enable_if_t<array::util::has_mapped_type<T>{}>>
+template <typename S, typename T, std::enable_if_t<util::has_distr_tag_v<S>, int> = 0,
+          typename = std::enable_if_t<util::has_mapped_type_v<T>>>
 auto create_default_handler() {
-  return std::make_shared<array::ArrayHandlerDistrSparse<S, T>>();
+  return std::make_shared<ArrayHandlerDistrSparse<S, T>>();
 }
 
 } // namespace array

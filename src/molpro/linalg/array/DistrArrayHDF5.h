@@ -4,7 +4,6 @@
 #include <string>
 
 #include "molpro/linalg/array/DistrArrayDisk.h"
-#include <string>
 
 namespace molpro {
 namespace linalg {

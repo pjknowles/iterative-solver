@@ -33,8 +33,7 @@ public:
                 std::shared_ptr<array::ArrayHandler<R, P>> rp, std::shared_ptr<array::ArrayHandler<Q, R>> qr,
                 std::shared_ptr<array::ArrayHandler<Q, P>> qp)
       : m_rr{rr}, m_qq{qq}, m_pp{pp}, m_rq{rq}, m_rp{rp}, m_qr{qr}, m_qp{qp} {}
-  ArrayHandlers(const ArrayHandlers<R, Q, P>& source) = default;
-  ArrayHandlers(ArrayHandlers<R, Q, P>&& source) = default;
+
   //! Uses default handlers
   ArrayHandlers() : ArrayHandlers(Builder{}.build()){};
 

@@ -13,10 +13,15 @@ if (FORTRAN
 endif ()
 set(EXAMPLES DIISexample.cpp
         OptimizeExample.cpp
-        LinearEigensystemExample.cpp LinearEigensystemExample-file.cpp
+        LinearEigensystemExample.cpp LinearEigensystemExample-serial.cpp
         LinearEquationsExample.cpp
         ${ITERATIVESOLVER_FORTRAN_EXAMPLES}
         )
+if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)
+    list(APPEND EXAMPLES
+            LinearEigensystemExample-mpi.cpp
+            )
+endif ()
 
 foreach (fil ${EXAMPLES})
     get_filename_component(nam ${fil} NAME_WE)

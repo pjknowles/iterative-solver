@@ -94,13 +94,14 @@ class Distribution;
  */
 class DistrArray {
 public:
+  using distributed_array = void; //!< a compile time tag that this is a distributed array
   using value_type = double;
   using index_type = unsigned long int;
   using SparseArray = std::map<unsigned long int, double>;
   using Distribution = util::Distribution<index_type>;
 
 protected:
-  index_type m_dimension = 0;   //!< number of elements in the array
+  index_type m_dimension = 0;              //!< number of elements in the array
   MPI_Comm m_communicator = MPI_COMM_NULL; //!< Outer communicator
   //! Initializes array without allocating any memory
   DistrArray(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof);

@@ -10,7 +10,7 @@ endif ()
 LibraryManager_Append(${PROJECT_NAME}
         SOURCES HDF5Handle.cpp
         PUBLIC_HEADER HDF5Handle.h ArrayHandler.h ArrayHandlerIterable.h ArrayHandlerSparse.h
-        ArrayHandlerIterableSparse.h ArrayHandlerFactory.h Span.h
+        ArrayHandlerIterableSparse.h Span.h type_traits.h
         )
 if (MPI)
     LibraryManager_Append(${PROJECT_NAME} PUBLIC_HEADER ArrayHandlerDistr.h ArrayHandlerDistrSparse.h)
@@ -18,11 +18,6 @@ endif ()
 target_link_libraries(${PROJECT_NAME} PUBLIC ${HDF5_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${HDF5_INCLUDE_DIRS})
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${HDF5_DEFINITIONS})
-if (MPI AND LINEARALGEBRA_ARRAY_HDF5)
-    LibraryManager_Append(${PROJECT_NAME}
-            PUBLIC_HEADER ArrayHandlerFactory.h
-            )
-endif ()
 
 if (MPI)
     LibraryManager_Append(${PROJECT_NAME}

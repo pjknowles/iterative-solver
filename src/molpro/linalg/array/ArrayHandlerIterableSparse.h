@@ -6,7 +6,7 @@
 namespace molpro {
 namespace linalg {
 namespace array {
-template <typename AL, typename AR, bool = util::has_mapped_type<AR>{}>
+template <typename AL, typename AR, bool = has_mapped_type_v<AR>>
 class ArrayHandlerIterableSparse : public ArrayHandler<AL, AR> {};
 
 /*!

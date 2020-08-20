@@ -1,11 +1,13 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLER_H
+#include <algorithm>
 #include <functional>
 #include <list>
 #include <memory>
 #include <set>
-#include <algorithm>
 #include <stdexcept>
+
+#include <molpro/linalg/array/type_traits.h>
 
 namespace molpro {
 namespace linalg {
@@ -96,25 +98,6 @@ struct RefEqual {
     return std::addressof(l.get()) == std::addressof(r.get());
   }
 };
-
-template <class... Ts>
-using void_t = void;
-
-template <class A, class = void>
-struct has_mapped_type : std::false_type {};
-
-template <class A>
-struct has_mapped_type<A, void_t<typename A::mapped_type>> : std::true_type {};
-
-template <class A, bool = has_mapped_type<A>()>
-struct mapped_or_value_type {
-  using value = typename A::value_type;
-};
-
-template <class A>
-struct mapped_or_value_type<A, true> {
-  using value = typename A::mapped_type;
-};
 } // namespace util
 
 /*!
@@ -174,8 +157,8 @@ protected:
   ArrayHandler(const ArrayHandler &) = default;
 
 public:
-  using value_type_L = typename util::mapped_or_value_type<AL>::value;
-  using value_type_R = typename util::mapped_or_value_type<AR>::value;
+  using value_type_L = typename array::mapped_or_value_type_t<AL>;
+  using value_type_R = typename array::mapped_or_value_type_t<AR>;
   using value_type = decltype(value_type_L{} * value_type_R{});
 
   virtual AL copy(const AR &source) = 0;

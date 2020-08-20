@@ -15,9 +15,6 @@ add_executable(test-${PROJECT_NAME}-ArrayHandler.exe testArrayHandler.cpp testAr
         testArrayHandlerSparse.cpp
         testArrayHandlerIterableSparse.cpp
         )
-if (MPI AND LINEARALGEBRA_ARRAY_HDF5)
-    target_sources(test-${PROJECT_NAME}-ArrayHandler.exe PRIVATE testArrayHandlerFactory.cpp)
-endif ()
 target_link_libraries(test-${PROJECT_NAME}-ArrayHandler.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
 gtest_discover_tests(test-${PROJECT_NAME}-ArrayHandler.exe)
 
@@ -33,7 +30,7 @@ if (MPI)
             )
     if (LINEARALGEBRA_ARRAY_MPI3)
         target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayMPI3.cpp testArrayHandlerDistr.cpp
-                testArrayHandlerDistrSparse.cpp)
+                testArrayHandlerDistrSparse.cpp testArrayHandlers.cpp)
     endif ()
     if (LINEARALGEBRA_ARRAY_GA)
         target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayGA.cpp)

@@ -5,7 +5,6 @@
 #include "molpro/linalg/IterativeSolver.h"
 #include "molpro/linalg/PagedArray.h"
 #include "molpro/linalg/SimpleArray.h"
-#include "molpro/linalg/array/ArrayHandlerIterable.h"
 #include <Eigen/Dense>
 #include <cmath>
 #include <limits>

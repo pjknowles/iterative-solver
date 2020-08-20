@@ -157,8 +157,8 @@ protected:
   ArrayHandler(const ArrayHandler &) = default;
 
 public:
-  using value_type_L = typename util::mapped_or_value_type<AL>::value;
-  using value_type_R = typename util::mapped_or_value_type<AR>::value;
+  using value_type_L = typename util::mapped_or_value_type_v<AL>;
+  using value_type_R = typename util::mapped_or_value_type_v<AR>;
   using value_type = decltype(value_type_L{} * value_type_R{});
 
   virtual AL copy(const AR &source) = 0;

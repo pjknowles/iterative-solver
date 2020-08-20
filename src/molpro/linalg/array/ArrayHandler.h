@@ -1,11 +1,13 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLER_H
+#include <algorithm>
 #include <functional>
 #include <list>
 #include <memory>
 #include <set>
-#include <algorithm>
 #include <stdexcept>
+
+#include <molpro/linalg/array/util/type_traits.h>
 
 namespace molpro {
 namespace linalg {
@@ -95,25 +97,6 @@ struct RefEqual {
   bool operator()(const std::reference_wrapper<T> &l, const std::reference_wrapper<T> &r) {
     return std::addressof(l.get()) == std::addressof(r.get());
   }
-};
-
-template <class... Ts>
-using void_t = void;
-
-template <class A, class = void>
-struct has_mapped_type : std::false_type {};
-
-template <class A>
-struct has_mapped_type<A, void_t<typename A::mapped_type>> : std::true_type {};
-
-template <class A, bool = has_mapped_type<A>()>
-struct mapped_or_value_type {
-  using value = typename A::value_type;
-};
-
-template <class A>
-struct mapped_or_value_type<A, true> {
-  using value = typename A::mapped_type;
 };
 } // namespace util
 

@@ -1,5 +1,5 @@
 LibraryManager_Append(${PROJECT_NAME}
-        PUBLIC_HEADER Distribution.h)
+        PUBLIC_HEADER Distribution.h type_traits.h)
 if (MPI)
     LibraryManager_Append(${PROJECT_NAME}
             SOURCES DistrFlags.cpp

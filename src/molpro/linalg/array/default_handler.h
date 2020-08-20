@@ -1,31 +1,15 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DEFAULT_HANDLER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DEFAULT_HANDLER_H
-#include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/array/ArrayHandlerDistr.h>
 #include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
 #include <molpro/linalg/array/ArrayHandlerIterable.h>
 #include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
 #include <molpro/linalg/array/ArrayHandlerSparse.h>
+#include <molpro/linalg/array/util/type_traits.h>
 
 namespace molpro {
 namespace linalg {
 namespace array {
-namespace util {
-
-template <typename T, typename = void>
-struct is_iterable : std::false_type {};
-
-template <typename T>
-struct is_iterable<T, void_t<decltype(std::begin(std::declval<T>())), decltype(std::end(std::declval<T>()))>>
-    : std::true_type {};
-
-template <typename T, typename = void>
-struct has_distr_tag : std::false_type {};
-
-template <typename T>
-struct has_distr_tag<T, void_t<typename T::distributed_array>> : std::true_type {};
-
-} // namespace util
 
 template <typename S, typename T, typename = std::enable_if_t<array::util::is_iterable<S>{}>,
           typename = std::enable_if_t<!array::util::has_mapped_type<S>{}>,

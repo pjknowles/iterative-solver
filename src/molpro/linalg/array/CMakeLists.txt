@@ -10,7 +10,7 @@ endif ()
 LibraryManager_Append(${PROJECT_NAME}
         SOURCES HDF5Handle.cpp
         PUBLIC_HEADER HDF5Handle.h ArrayHandler.h ArrayHandlerIterable.h ArrayHandlerSparse.h
-        ArrayHandlerIterableSparse.h ArrayHandlerFactory.h Span.h
+        ArrayHandlerIterableSparse.h ArrayHandlerFactory.h Span.h type_traits.h
         )
 if (MPI)
     LibraryManager_Append(${PROJECT_NAME} PUBLIC_HEADER ArrayHandlerDistr.h ArrayHandlerDistrSparse.h)

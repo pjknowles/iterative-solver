@@ -7,7 +7,7 @@
 #include <set>
 #include <stdexcept>
 
-#include <molpro/linalg/array/util/type_traits.h>
+#include <molpro/linalg/array/type_traits.h>
 
 namespace molpro {
 namespace linalg {
@@ -157,8 +157,8 @@ protected:
   ArrayHandler(const ArrayHandler &) = default;
 
 public:
-  using value_type_L = typename util::mapped_or_value_type_v<AL>;
-  using value_type_R = typename util::mapped_or_value_type_v<AR>;
+  using value_type_L = typename array::mapped_or_value_type_t<AL>;
+  using value_type_R = typename array::mapped_or_value_type_t<AR>;
   using value_type = decltype(value_type_L{} * value_type_R{});
 
   virtual AL copy(const AR &source) = 0;

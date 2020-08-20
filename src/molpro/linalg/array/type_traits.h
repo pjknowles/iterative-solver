@@ -5,7 +5,6 @@
 namespace molpro {
 namespace linalg {
 namespace array {
-namespace util {
 //! Utility for metaprogramming that maps any types to void
 template <class... Ts>
 using void_t = void;
@@ -26,16 +25,16 @@ constexpr bool is_sparse_v = has_mapped_type_v<T>;
 //! Stores A::mapped_type or A::value_type as member type value, with former taking priority if both exist.
 template <class A, bool = has_mapped_type_v<A>>
 struct mapped_or_value_type {
-  using value = typename A::value_type;
+  using type = typename A::value_type;
 };
 
 template <class A>
 struct mapped_or_value_type<A, true> {
-  using value = typename A::mapped_type;
+  using type = typename A::mapped_type;
 };
 
 template <class A>
-using mapped_or_value_type_v = typename mapped_or_value_type<A>::value;
+using mapped_or_value_type_t = typename mapped_or_value_type<A>::type;
 
 //! Checks that class T can be iterated with std::begin and std::end, and is not sparse
 template <class T, typename = void>
@@ -85,7 +84,6 @@ struct array_family<T, false, false, true> {
 template <class T>
 constexpr auto array_family_v = array_family<T>{}.value();
 
-} // namespace util
 } // namespace array
 } // namespace linalg
 } // namespace molpro

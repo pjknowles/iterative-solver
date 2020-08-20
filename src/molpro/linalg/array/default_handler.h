@@ -5,37 +5,37 @@
 #include <molpro/linalg/array/ArrayHandlerIterable.h>
 #include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
 #include <molpro/linalg/array/ArrayHandlerSparse.h>
-#include <molpro/linalg/array/util/type_traits.h>
+#include <molpro/linalg/array/type_traits.h>
 
 namespace molpro {
 namespace linalg {
 namespace array {
 
-template <class T, class S, util::ArrayFamily = util::array_family_v<T>, util::ArrayFamily = util::array_family_v<S>>
+template <class T, class S, ArrayFamily = array_family_v<T>, ArrayFamily = array_family_v<S>>
 struct default_handler {};
 
 template <class T, class S>
-struct default_handler<T, S, util::ArrayFamily::Iterable, util::ArrayFamily::Iterable> {
+struct default_handler<T, S, ArrayFamily::Iterable, ArrayFamily::Iterable> {
   using value = ArrayHandlerIterable<T, S>;
 };
 
 template <class T, class S>
-struct default_handler<T, S, util::ArrayFamily::Sparse, util::ArrayFamily::Sparse> {
+struct default_handler<T, S, ArrayFamily::Sparse, ArrayFamily::Sparse> {
   using value = ArrayHandlerSparse<T, S>;
 };
 
 template <class T, class S>
-struct default_handler<T, S, util::ArrayFamily::Distributed, util::ArrayFamily::Distributed> {
+struct default_handler<T, S, ArrayFamily::Distributed, ArrayFamily::Distributed> {
   using value = ArrayHandlerDistr<T, S>;
 };
 
 template <class T, class S>
-struct default_handler<T, S, util::ArrayFamily::Iterable, util::ArrayFamily::Sparse> {
+struct default_handler<T, S, ArrayFamily::Iterable, ArrayFamily::Sparse> {
   using value = ArrayHandlerIterableSparse<T, S>;
 };
 
 template <class T, class S>
-struct default_handler<T, S, util::ArrayFamily::Distributed, util::ArrayFamily::Sparse> {
+struct default_handler<T, S, ArrayFamily::Distributed, ArrayFamily::Sparse> {
   using value = ArrayHandlerDistrSparse<T, S>;
 };
 

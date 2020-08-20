@@ -39,17 +39,15 @@ TEST(TestIterativeSolver, small_eigenproblem) {
 
       SimpleArray<double> mm(n);
       std::vector<SimpleArray<double>> x, g;
-      //auto rr = std::make_shared<ArrayHandlerIterable<SimpleArray<double>>>();
-      //auto qq = std::make_shared<ArrayHandlerIterable<SimpleArray<double>>>();
-      //auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
-      //auto rq = std::make_shared<ArrayHandlerIterable<SimpleArray<double>>>();
-      //auto rp = std::make_shared<ArrayHandlerIterableSparse<SimpleArray<double>, std::map<size_t, double>>>();
-      //auto qr = std::make_shared<ArrayHandlerIterable<SimpleArray<double>>>();
-      //auto qp = std::make_shared<ArrayHandlerIterableSparse<SimpleArray<double>, std::map<size_t, double>>>();
-      //auto handlers =
-      //    ArrayHandlers<SimpleArray<double>, SimpleArray<double>, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
-      auto handlers = ArrayHandlers<SimpleArray<double>, SimpleArray<double>, std::map<size_t, double>>::Builder{}
-                                                                                           .build();
+      auto rr = std::make_shared<ArrayHandlerIterable<SimpleArray<double>>>();
+      auto qq = std::make_shared<ArrayHandlerIterable<SimpleArray<double>>>();
+      auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
+      auto rq = std::make_shared<ArrayHandlerIterable<SimpleArray<double>>>();
+      auto rp = std::make_shared<ArrayHandlerIterableSparse<SimpleArray<double>, std::map<size_t, double>>>();
+      auto qr = std::make_shared<ArrayHandlerIterable<SimpleArray<double>>>();
+      auto qp = std::make_shared<ArrayHandlerIterableSparse<SimpleArray<double>, std::map<size_t, double>>>();
+      auto handlers =
+          ArrayHandlers<SimpleArray<double>, SimpleArray<double>, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
       LinearEigensystem<SimpleArray<double>> solver{handlers};
       solver.m_verbosity = 1;
       solver.setThresholds(1e-12);

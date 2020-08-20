@@ -35,12 +35,15 @@ public:
    * @param Pvectors the vectors to add
    * @param PP Matrix projected onto the existing+new, new P space. It should be provided as a
    * 1-dimensional array, with the existing+new index running fastest.
+   * @param rhs The right hand side of an inhomogeneous equation set. The projection onto the new P vectors will be calculated.
    * @param handle_pp handle between arrays in P space
    * @param handle_qp handle between arrays Q and P space
+   * @tparam Qvector Out-of memory vectors to be used for storing the space.
+   * @tparam Pvector Containers that specify a P-space member
    */
-  template <class slowvector>
-  void add(const std::vector<Pvector>& Pvectors, const value_type* PP, const std::vector<slowvector>& rhs,
-           array::ArrayHandler<Pvector, Pvector>& handle_pp, array::ArrayHandler<slowvector, Pvector>& handle_qp) {
+  template <class Qvector>
+  void add(const std::vector<Pvector>& Pvectors, const value_type* PP, const std::vector<Qvector>& rhs,
+           array::ArrayHandler<Pvector, Pvector>& handle_pp, array::ArrayHandler<Qvector, Pvector>& handle_qp) {
     auto old_size = m_vectors.size();
     auto new_size = m_vectors.size() + Pvectors.size();
     {

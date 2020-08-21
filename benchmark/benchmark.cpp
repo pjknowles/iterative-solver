@@ -11,6 +11,8 @@ int main(int argc, char* argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   if (rank == 0)
     std::cout << mpi_size << " MPI ranks" << std::endl;
+#else
+  int mpi_size = 1;
 #endif
 #ifdef LINEARALGEBRA_ARRAY_GA
   GA_Initialize();

@@ -35,7 +35,9 @@ public:
 
   value_type dot(const AL &x, const AR &y) override { return x.dot(y); };
 
-  std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override { return {}; }
+  std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {
+    return x.select_max_dot(n, y);
+  }
 
   ProxyHandle lazy_handle() override { return this->lazy_handle(*this); };
 
@@ -43,7 +45,7 @@ protected:
   using ArrayHandler<AL, AR>::error;
   using ArrayHandler<AL, AR>::lazy_handle;
   using ArrayHandler<AL, AR>::m_lazy_handles;
-}; // namespace linalg
+};
 
 } // namespace array
 } // namespace linalg

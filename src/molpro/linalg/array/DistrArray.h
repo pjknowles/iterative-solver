@@ -293,6 +293,9 @@ public:
    * @return list of indices for smallest n values, or empty list if array is empty.
    */
   [[nodiscard]] std::vector<index_type> min_loc_n(int n) const;
+
+  std::map<size_t, value_type> select_max_dot(size_t n, const DistrArray &y) const;
+  std::map<size_t, value_type> select_max_dot(size_t n, const SparseArray &y) const;
   //! @}
 
   //! Set all local elements to zero.
@@ -312,6 +315,8 @@ struct CompareAbs {
 };
 template <class Compare>
 [[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> extrema(const DistrArray &x, int n);
+std::map<size_t, double> select_max_dot_broadcast(size_t n, std::map<size_t, double> &local_selection,
+                                                  MPI_Comm communicator);
 } // namespace util
 } // namespace array
 } // namespace linalg

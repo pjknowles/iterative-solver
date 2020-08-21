@@ -31,7 +31,9 @@ public:
 
   value_type dot(const AL &x, const AR &y) override { return x.dot(y); }
 
-  std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override { return {}; }
+  std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {
+    return x.select_max_dot(n, y);
+  }
 };
 
 } // namespace array

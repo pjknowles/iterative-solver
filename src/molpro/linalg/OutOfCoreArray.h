@@ -610,6 +610,19 @@ public:
     m_sync = false;
   }
 
+  std::map<size_t, double> select_max_dot(size_t n, const OutOfCoreArray<T, default_buffer_size>& measure) const {
+    auto selection = select(measure, n);
+    auto indices = std::vector<size_t>();
+    auto values = std::vector<T>();
+    std::tie(indices, values) = selection;
+    auto result = std::map<size_t, double>();
+    std::transform(std::begin(indices), std::end(indices), std::begin(values), std::inserter(result, result.begin()),
+                   [](auto i, auto v) { return std::make_pair<>(i, v); });
+    return result;
+  }
+
+  std::map<size_t, double> select_max_dot(size_t n, const std::map<size_t, T>& measure) const { return {}; }
+
   /*!
    * Find the largest values of the object.
    * @param measure A vector of the same size and matching covariancy, with which the largest contributions to the

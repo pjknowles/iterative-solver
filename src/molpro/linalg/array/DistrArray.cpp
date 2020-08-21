@@ -253,7 +253,10 @@ std::map<size_t, DistrArray::value_type> DistrArray::select_max_dot(size_t n, co
   auto ybuf = y.local_buffer();
   auto local_selection =
       util::select_max_dot<LocalBuffer, LocalBuffer, value_type, value_type>(std::min(n, xbuf->size()), *xbuf, *ybuf);
-  return util::select_max_dot_broadcast(n, local_selection, communicator());
+  auto shifted_local_selection = decltype(local_selection)();
+  for (auto& el : local_selection)
+    shifted_local_selection.emplace(xbuf->start() + el.first, el.second);
+  return util::select_max_dot_broadcast(n, shifted_local_selection, communicator());
 }
 
 std::map<size_t, DistrArray::value_type> DistrArray::select_max_dot(size_t n, const DistrArray::SparseArray& y) const {
@@ -270,7 +273,10 @@ std::map<size_t, DistrArray::value_type> DistrArray::select_max_dot(size_t n, co
   auto xbuf = local_buffer();
   auto local_selection = util::select_max_dot_iter_sparse<LocalBuffer, SparseArray, value_type, value_type>(
       std::min(n, xbuf->size()), *xbuf, y);
-  return util::select_max_dot_broadcast(n, local_selection, communicator());
+  auto shifted_local_selection = decltype(local_selection)();
+  for (auto& el : local_selection)
+    shifted_local_selection.emplace(xbuf->start() + el.first, el.second);
+  return util::select_max_dot_broadcast(n, shifted_local_selection, communicator());
 }
 
 namespace util {

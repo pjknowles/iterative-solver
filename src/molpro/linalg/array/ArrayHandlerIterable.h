@@ -1,9 +1,10 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLE_H
-#include "molpro/linalg/array/ArrayHandler.h"
+#include <molpro/linalg/array/ArrayHandler.h>
+#include <molpro/linalg/array/util/select_max_dot.h>
+
 #include <cstddef>
 #include <numeric>
-#include <queue>
 
 namespace molpro {
 namespace linalg {
@@ -70,31 +71,7 @@ public:
   };
 
   std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {
-    if (x.size() > y.size())
-      error("ArrayHandlerIterable::select_max_dot() x is larger than y");
-    if (n > x.size() || n > y.size())
-      error("ArrayHandlerIterable::select_max_dot() n is too large");
-    using std::abs;
-    using std::begin;
-    using std::end;
-    using std::greater;
-    using select_pair = std::pair<value_type_abs, size_t>; // value and index
-    auto selection = std::priority_queue<select_pair, std::vector<select_pair>, greater<select_pair>>();
-    auto ix = begin(x);
-    auto iy = begin(y);
-    for (size_t i = 0; i < n; ++i, ++ix, ++iy) {
-      selection.emplace(abs((*ix) * (*iy)), i);
-    }
-    for (size_t i = n; i < std::min(x.size(), y.size()); ++i, ++ix, ++iy) {
-      selection.emplace(abs((*ix) * (*iy)), i);
-      selection.pop();
-    }
-    auto selection_map = std::map<size_t, value_type_abs>();
-    for (size_t i = 0; i < n; ++i) {
-      selection_map.emplace(selection.top().second, selection.top().first);
-      selection.pop();
-    }
-    return selection_map;
+    return util::select_max_dot<AL, AR, value_type, value_type_abs>(n, x, y);
   }
 
   ProxyHandle lazy_handle() override { return this->lazy_handle(*this); };

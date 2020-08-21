@@ -1,5 +1,5 @@
 LibraryManager_Append(${PROJECT_NAME}
-        PUBLIC_HEADER Distribution.h)
+        PUBLIC_HEADER Distribution.h select_max_dot.h)
 if (MPI)
     LibraryManager_Append(${PROJECT_NAME}
             SOURCES DistrFlags.cpp

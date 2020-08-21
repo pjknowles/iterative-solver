@@ -343,11 +343,13 @@ DistrArray::value_type DistrArray::dot(const SparseArray& y) const {
   util::ScopeProfiler p{m_prof, name};
   auto loc_x = local_buffer();
   double res = 0;
-  index_type i;
-  value_type v;
-  for (auto it = y.lower_bound(loc_x->start()); it != y.upper_bound(loc_x->start() + loc_x->size()); ++it) {
-    std::tie(i, v) = *it;
-    res += (*loc_x)[i - loc_x->start()] * v;
+  if (loc_x->size() > 0) {
+    index_type i;
+    value_type v;
+    for (auto it = y.lower_bound(loc_x->start()); it != y.upper_bound(loc_x->start() + loc_x->size() - 1); ++it) {
+      std::tie(i, v) = *it;
+      res += (*loc_x)[i - loc_x->start()] * v;
+    }
   }
   MPI_Allreduce(MPI_IN_PLACE, &res, 1, MPI_DOUBLE, MPI_SUM, communicator());
   return res;
@@ -363,23 +365,25 @@ void DistrArray::axpy(value_type a, const SparseArray& y) {
     error(name + " sparse array x is incompatible");
   util::ScopeProfiler p{m_prof, name};
   auto loc_x = local_buffer();
-  index_type i;
-  value_type v;
-  if (a == 1)
-    for (auto it = y.lower_bound(loc_x->start()); it != y.upper_bound(loc_x->start() + loc_x->size()); ++it) {
-      std::tie(i, v) = *it;
-      (*loc_x)[i - loc_x->start()] += v;
-    }
-  else if (a == -1)
-    for (auto it = y.lower_bound(loc_x->start()); it != y.upper_bound(loc_x->start() + loc_x->size()); ++it) {
-      std::tie(i, v) = *it;
-      (*loc_x)[i - loc_x->start()] -= v;
-    }
-  else
-    for (auto it = y.lower_bound(loc_x->start()); it != y.upper_bound(loc_x->start() + loc_x->size()); ++it) {
-      std::tie(i, v) = *it;
-      (*loc_x)[i - loc_x->start()] += a * v;
-    }
+  if (loc_x->size() > 0) {
+    index_type i;
+    value_type v;
+    if (a == 1)
+      for (auto it = y.lower_bound(loc_x->start()); it != y.upper_bound(loc_x->start() + loc_x->size() - 1); ++it) {
+        std::tie(i, v) = *it;
+        (*loc_x)[i - loc_x->start()] += v;
+      }
+    else if (a == -1)
+      for (auto it = y.lower_bound(loc_x->start()); it != y.upper_bound(loc_x->start() + loc_x->size() - 1); ++it) {
+        std::tie(i, v) = *it;
+        (*loc_x)[i - loc_x->start()] -= v;
+      }
+    else
+      for (auto it = y.lower_bound(loc_x->start()); it != y.upper_bound(loc_x->start() + loc_x->size() - 1); ++it) {
+        std::tie(i, v) = *it;
+        (*loc_x)[i - loc_x->start()] += a * v;
+      }
+  }
 }
 } // namespace array
 } // namespace linalg

@@ -143,12 +143,14 @@ ArrayBenchmark<L, R> ArrayBenchmarkIterable(std::string title, size_t n = 100000
                               target_seconds);
 }
 
+#ifdef LINEARALGEBRA_ARRAY_MPI3
 template <class L = array::DistrArrayMPI3, class R = L>
 ArrayBenchmark<L, R> ArrayBenchmarkDistributed(std::string title, size_t n = 10000000, bool profile_individual = false,
                                                double target_seconds = 1) {
   return ArrayBenchmark<L, R>(title, std::make_unique<array::ArrayHandlerDistr<L, R>>(), n, profile_individual,
                               target_seconds);
 }
+#endif
 
 } // namespace linalg
 } // namespace molpro

@@ -50,7 +50,6 @@ void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t n
       (*c_chunk)[i - range.first] -= (*g_chunk)[i - range.first] / (1e-12 - shift[k] + hmat[i+i*n]);
     }
   }
-  MPI_Barrier(MPI_COMM_WORLD);
 }
 
 int main(int argc, char* argv[]) {

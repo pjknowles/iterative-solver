@@ -160,12 +160,24 @@ public:
   using value_type_L = typename array::mapped_or_value_type_t<AL>;
   using value_type_R = typename array::mapped_or_value_type_t<AR>;
   using value_type = decltype(value_type_L{} * value_type_R{});
+  using value_type_abs = decltype(check_abs<value_type>());
 
   virtual AL copy(const AR &source) = 0;
   virtual void scal(value_type alpha, AL &x) = 0;
   virtual void fill(value_type alpha, AL &x) = 0;
   virtual void axpy(value_type alpha, const AR &x, AL &y) = 0;
   virtual value_type dot(const AL &x, const AR &y) = 0;
+  /*!
+   * @brief Select n indices with largest by absolute value contributions to the dot product
+   *
+   * This is necessary for perturbation theory.
+   *
+   * @param n number of indices to select
+   * @param x left array
+   * @param y right array
+   * @return map of indices and corresponding x,y product
+   */
+  virtual std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) = 0;
 
   //! Destroys ArrayHandler instance and invalidates any LazyHandler it created. Invalidated handler will not evaluate.
   virtual ~ArrayHandler() {

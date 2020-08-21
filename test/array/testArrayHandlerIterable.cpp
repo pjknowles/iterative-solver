@@ -54,6 +54,20 @@ TYPED_TEST_P(TestArrayHandlerIterable, lazy_dot) {
   EXPECT_THAT(result, ContainerEq(ref_dot));
 }
 
+TYPED_TEST_P(TestArrayHandlerIterable, select_max_dot) {
+  ArrayHandlerIterable<std::vector<typename TypeParam::first_type>, std::vector<typename TypeParam::second_type>>
+      handler{};
+  using value_type_L = typename decltype(handler)::value_type_L;
+  using value_type_R = typename decltype(handler)::value_type_R;
+  using value_type = typename decltype(handler)::value_type;
+  using value_type_abs = typename decltype(handler)::value_type_abs;
+  auto x = std::vector<value_type_L>{1, -2, 1, 0, 3, 0, -4, 1};
+  auto y = std::vector<value_type_R>{1, 1, 1, 1, 1, 1, 1, 1};
+  auto ref_result = std::map<size_t, value_type_abs>{{6, 4}, {4, 3}, {1, 2}};
+  auto select = handler.select_max_dot(ref_result.size(), x, y);
+  ASSERT_THAT(select, ContainerEq(ref_result));
+}
+
 TYPED_TEST_P(TestArrayHandlerIterable, lazy_axpy) {
   ArrayHandlerIterable<std::vector<typename TypeParam::first_type>, std::vector<typename TypeParam::second_type>>
       handler{};
@@ -109,7 +123,8 @@ TYPED_TEST_P(TestArrayHandlerIterable, lazy_axpy_lazy_off) {
   }
 }
 
-REGISTER_TYPED_TEST_SUITE_P(TestArrayHandlerIterable, constructor, lazy_dot, lazy_axpy, lazy_axpy_lazy_off);
+REGISTER_TYPED_TEST_SUITE_P(TestArrayHandlerIterable, constructor, lazy_dot, select_max_dot, lazy_axpy,
+                            lazy_axpy_lazy_off);
 
 using IntTypes = ::testing::Types<std::pair<int, int>, std::pair<int, short>, std::pair<short, int>>;
 using FloatTypes = ::testing::Types<std::pair<double, double>, std::pair<double, float>, std::pair<float, double>>;

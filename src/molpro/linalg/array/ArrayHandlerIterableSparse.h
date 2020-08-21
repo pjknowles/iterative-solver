@@ -18,6 +18,7 @@ public:
   using typename ArrayHandler<AL, AR>::value_type_L;
   using typename ArrayHandler<AL, AR>::value_type_R;
   using typename ArrayHandler<AL, AR>::value_type;
+  using typename ArrayHandler<AL, AR>::value_type_abs;
   using typename ArrayHandler<AL, AR>::ProxyHandle;
 
   AL copy(const AR &source) override {
@@ -44,6 +45,8 @@ public:
       tot += x[el_y.first] * el_y.second;
     return tot;
   };
+
+  std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override { return {}; }
 
   ProxyHandle lazy_handle() override { return this->lazy_handle(*this); };
 

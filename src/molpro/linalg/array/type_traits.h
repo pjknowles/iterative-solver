@@ -84,6 +84,11 @@ struct array_family<T, false, false, true> {
 template <class T>
 constexpr auto array_family_v = array_family<T>{}.value();
 
+template <typename T>
+constexpr auto check_abs() {
+  using std::abs;
+  return abs(T{});
+}
 } // namespace array
 } // namespace linalg
 } // namespace molpro

@@ -45,6 +45,43 @@ auto select_max_dot(size_t n, const X& x, const Y& y) {
   return selection_map;
 }
 
+/*!
+ * @brief Select n indices with largest by absolute value contributions to the dot product
+ *
+ * @tparam X type of left array, must be random access container
+ * @tparam Y type of right array, must be a sparse array
+ * @tparam value_type type for product of X and Y elements
+ * @tparam value_type_abs type for absolute value of value_type
+ * @param n number of indices to select
+ * @param x left array
+ * @param y right array
+ * @return map of indices and corresponding x,y product
+ */
+template <class X, class Y, typename value_type, typename value_type_abs>
+auto select_max_dot_iter_sparse(size_t n, const X& x, const Y& y) {
+  using std::abs;
+  using std::begin;
+  using std::end;
+  using std::greater;
+  using select_pair = std::pair<value_type_abs, size_t>; // value and index
+  auto selection = std::priority_queue<select_pair, std::vector<select_pair>, greater<select_pair>>();
+  auto iy = begin(y);
+  for (size_t i = 0; i < n; ++i, ++iy) {
+    selection.emplace(abs(x[iy->first] * iy->second), iy->first);
+  }
+  for (auto jy = iy; jy != end(y); ++jy) {
+    selection.emplace(abs(x[jy->first] * jy->second), jy->first);
+    selection.pop();
+  }
+  auto selection_map = std::map<size_t, value_type_abs>();
+  auto m = selection.size();
+  for (size_t i = 0; i < m; ++i) {
+    selection_map.emplace(selection.top().second, selection.top().first);
+    selection.pop();
+  }
+  return selection_map;
+}
+
 } // namespace util
 } // namespace array
 } // namespace linalg

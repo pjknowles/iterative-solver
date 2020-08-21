@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLESPARSE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLESPARSE_H
-#include "molpro/linalg/array/ArrayHandlerIterable.h"
+#include <molpro/linalg/array/ArrayHandler.h>
+#include <molpro/linalg/array/util/select_max_dot.h>
 #include <numeric>
 
 namespace molpro {
@@ -46,7 +47,13 @@ public:
     return tot;
   };
 
-  std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override { return {}; }
+  std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {
+    if (y.rend()->first > x.size())
+      error("ArrayHandlerIterableSparse::axpy() incompatible x and y arrays");
+    if (n > x.size() || n > y.size())
+      error("ArrayHandlerIterableSparse::axpy() n is too large");
+    return util::select_max_dot_iter_sparse<AL, AR, value_type, value_type_abs>(n, x, y);
+  }
 
   ProxyHandle lazy_handle() override { return this->lazy_handle(*this); };
 

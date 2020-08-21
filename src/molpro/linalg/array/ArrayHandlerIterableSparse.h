@@ -49,9 +49,9 @@ public:
 
   std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {
     if (y.rend()->first > x.size())
-      error("ArrayHandlerIterableSparse::axpy() incompatible x and y arrays");
+      error("ArrayHandlerIterableSparse::select_max_dot() incompatible x and y arrays");
     if (n > x.size() || n > y.size())
-      error("ArrayHandlerIterableSparse::axpy() n is too large");
+      error("ArrayHandlerIterableSparse::select_max_dot() n is too large");
     return util::select_max_dot_iter_sparse<AL, AR, value_type, value_type_abs>(n, x, y);
   }
 

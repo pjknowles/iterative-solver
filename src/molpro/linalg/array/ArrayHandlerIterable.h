@@ -71,6 +71,8 @@ public:
   };
 
   std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {
+    if (n > x.size() || n > y.size())
+      error("ArrayHandlerIterable::select_max_dot() n is too large");
     return util::select_max_dot<AL, AR, value_type, value_type_abs>(n, x, y);
   }
 

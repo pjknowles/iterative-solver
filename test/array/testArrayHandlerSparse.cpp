@@ -5,6 +5,7 @@
 
 using molpro::linalg::array::ArrayHandlerSparse;
 
+using ::testing::ContainerEq;
 using ::testing::DoubleEq;
 using ::testing::Pointwise;
 
@@ -27,6 +28,15 @@ TYPED_TEST_P(TestArrayHandlerSparse, dot) {
   ASSERT_DOUBLE_EQ(result, ref);
 }
 
+TYPED_TEST_P(TestArrayHandlerSparse, select_max_dot) {
+  auto x = std::map<size_t, typename TypeParam::first_type>{{1, -2}, {3, 1}, {4, 3}, {6, -4}};
+  auto y = std::map<size_t, typename TypeParam::second_type>{{0, 1}, {1, 1}, {2, 1}, {4, 1}, {6, 1}};
+  auto handler = ArrayHandlerSparse<decltype(x), decltype(y)>{};
+  auto ref_result = std::map<size_t, typename decltype(handler)::value_type_abs>{{6, 4}, {4, 3}, {1, 2}};
+  auto select = handler.select_max_dot(ref_result.size(), x, y);
+  ASSERT_THAT(select, ContainerEq(ref_result));
+}
+
 TYPED_TEST_P(TestArrayHandlerSparse, axpy) {
   const int alpha = 3;
   auto x = std::map<size_t, typename TypeParam::first_type>{{1, 1.0}, {3, 2.0}, {5, 3.0}, {11, 4.0}};
@@ -44,7 +54,7 @@ TYPED_TEST_P(TestArrayHandlerSparse, axpy) {
   }
 }
 
-REGISTER_TYPED_TEST_SUITE_P(TestArrayHandlerSparse, constructor, dot, axpy);
+REGISTER_TYPED_TEST_SUITE_P(TestArrayHandlerSparse, constructor, dot, axpy, select_max_dot);
 
 using FloatTypes = ::testing::Types<std::pair<double, double>, std::pair<double, float>>;
 INSTANTIATE_TYPED_TEST_SUITE_P(Float, TestArrayHandlerSparse, FloatTypes);

@@ -142,6 +142,31 @@ TYPED_TEST_P(TestDistrArray, move_assignment_op_allocated) {
   ASSERT_THAT(*b.local_buffer(), Each(DoubleEq(alpha)));
 }
 
+TYPED_TEST_P(TestDistrArray, select_max_dot) {
+  LockMPI3 lock{mpi_comm};
+  const size_t dim = 30;
+  const size_t n = 5; // values to select
+  TypeParam x{dim, mpi_comm};
+  TypeParam y{dim, mpi_comm};
+  x.allocate_buffer();
+  y.allocate_buffer();
+  y.fill(1);
+  int rank, comm_size;
+  MPI_Comm_rank(mpi_comm, &rank);
+  MPI_Comm_size(mpi_comm, &comm_size);
+  auto buffer = x.local_buffer();
+  std::iota(buffer->begin(), buffer->end(), typename TypeParam::value_type(buffer->start()));
+  x.sync();
+  auto selection_ref = std::map<size_t, typename TypeParam::value_type>();
+  for (size_t i = 0; i < n; ++i)
+    selection_ref[dim - 1 - i] = dim - 1 - i;
+  auto selection = x.select_max_dot(n, y);
+  {
+    auto l = lock.scope();
+    ASSERT_THAT(selection, ContainerEq(selection_ref));
+  }
+}
+
 template <typename Array>
 class DistArrayInitializationF : public Array, public ::testing::Test {
 public:
@@ -703,7 +728,8 @@ REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeF, gather, scatter, scatter_acc, at, 
                             min_abs_n, max_abs_n, scal_double, add_double, sub_double, recip);
 REGISTER_TYPED_TEST_SUITE_P(TestDistrArray, constructor, constructor_copy, constructor_copy_allocated,
                             copy_assignment_op, copy_assignment_op_allocated, constructor_move,
-                            constructor_move_allocated, move_assignment_op, move_assignment_op_allocated);
+                            constructor_move_allocated, move_assignment_op, move_assignment_op_allocated,
+                            select_max_dot);
 REGISTER_TYPED_TEST_SUITE_P(DistrArrayCollectiveOpF, add, sub, axpy, axpy_map, dot_array, dot_map, times,
                             divide_append_negative, divide_append_positive, divide_overwrite_positive);
 

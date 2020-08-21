@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERSPARSE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERSPARSE_H
 #include <molpro/linalg/array/ArrayHandler.h>
+#include <molpro/linalg/array/util/select_max_dot.h>
 
 namespace molpro {
 namespace linalg {
@@ -15,6 +16,7 @@ public:
   using typename ArrayHandler<AL, AR>::value_type_L;
   using typename ArrayHandler<AL, AR>::value_type_R;
   using typename ArrayHandler<AL, AR>::value_type;
+  using typename ArrayHandler<AL, AR>::value_type_abs;
   using typename ArrayHandler<AL, AR>::ProxyHandle;
 
   AL copy(const AR &source) override { return AL{source.begin(), source.end()}; };
@@ -47,9 +49,16 @@ public:
     return tot;
   };
 
+  std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {
+    if (n > x.size() || n > y.size())
+      error("ArrayHandlerSparse::select_max_dot() n is too large");
+    return util::select_max_dot_sparse<AL, AR, value_type, value_type_abs>(n, x, y);
+  }
+
   ProxyHandle lazy_handle() override { return this->lazy_handle(*this); };
 
 protected:
+  using ArrayHandler<AL, AR>::error;
   using ArrayHandler<AL, AR>::lazy_handle;
 };
 

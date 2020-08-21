@@ -13,7 +13,9 @@ namespace linalg {
 namespace array {
 
 template <class T, class S, ArrayFamily = array_family_v<T>, ArrayFamily = array_family_v<S>>
-struct default_handler {};
+struct default_handler {
+  using value = ArrayHandlerDefault<T, S>;
+};
 
 template <class T, class S>
 struct default_handler<T, S, ArrayFamily::Iterable, ArrayFamily::Iterable> {
@@ -38,11 +40,6 @@ struct default_handler<T, S, ArrayFamily::Iterable, ArrayFamily::Sparse> {
 template <class T, class S>
 struct default_handler<T, S, ArrayFamily::Distributed, ArrayFamily::Sparse> {
   using value = ArrayHandlerDistrSparse<T, S>;
-};
-
-template <class T, class S>
-struct default_handler<T, S, ArrayFamily::None, ArrayFamily::None> {
-  using value = ArrayHandlerDefault<T, S>;
 };
 
 template <class T, class S>

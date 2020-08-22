@@ -145,10 +145,6 @@ int main(int argc, char* argv[]) {
           }
           if (mpi_rank == 0)
             std::cout << std::endl;
-          //        std::cout << "Eigenvector: (norm=" << std::sqrt(x[0].dot(x[0])) << "): ";
-          //        for (size_t k = 0; k < n; k++)
-          //          std::cout << " " << (x[0])[k];
-          //        std::cout << std::endl;
         }
       }
     }

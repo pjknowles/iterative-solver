@@ -6,6 +6,7 @@
 #include <molpro/linalg/array/util/Distribution.h>
 #include <mpi.h>
 #include <vector>
+#include <cstring>
 
 // Find lowest eigensolutions of a matrix obtained from an external file
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
@@ -18,7 +19,6 @@ int mpi_size;
 std::vector<double> hmat;
 
 void action(size_t nwork, const std::vector<Rvector>& psc, std::vector<Rvector>& psg) {
-  MPI_Barrier(MPI_COMM_WORLD);
   for (size_t k = 0; k < nwork; k++) {
     auto grange = psg[k].distribution().range(mpi_rank);
     auto gn = grange.second - grange.first;
@@ -29,7 +29,7 @@ void action(size_t nwork, const std::vector<Rvector>& psc, std::vector<Rvector>&
       auto cn = crange.second - crange.first;
       std::vector<double> c(cn);
       if (crank == mpi_rank)
-        psc[k].get(crange.first, crange.second - 1, c.data());
+        std::memcpy( c.data(), &(*psc[k].local_buffer())[0],cn* sizeof(double));
       MPI_Bcast(c.data(), cn, MPI_DOUBLE, crank, MPI_COMM_WORLD);
       for (size_t i = grange.first; i < grange.second; i++) {
         for (size_t j = crange.first; j < crange.second; j++)
@@ -37,7 +37,6 @@ void action(size_t nwork, const std::vector<Rvector>& psc, std::vector<Rvector>&
       }
     }
   }
-  MPI_Barrier(MPI_COMM_WORLD);
 }
 
 void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t nwork,
@@ -51,7 +50,6 @@ void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t n
       (*c_chunk)[i - range.first] -= (*g_chunk)[i - range.first] / (1e-12 - shift[k] + hmat[i+i*n]);
     }
   }
-  MPI_Barrier(MPI_COMM_WORLD);
 }
 
 int main(int argc, char* argv[]) {
@@ -127,7 +125,6 @@ int main(int argc, char* argv[]) {
         working_set.resize(solver.m_roots);
         std::iota(working_set.begin(), working_set.end(), 0);
         solver.solution(working_set, x, g);
-        MPI_Barrier(MPI_COMM_WORLD);
         if (mpi_rank == 0)
           std::cout << "Residual norms:";
         for (size_t root = 0; root < solver.m_roots; root++) {

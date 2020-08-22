@@ -151,32 +151,31 @@ std::unique_ptr<DistrArrayMPI3::LocalBuffer> DistrArrayMPI3::local_buffer() {
 
 DistrArray::value_type DistrArrayMPI3::at(index_type ind) const {
   value_type val;
-  get(ind, ind, &val);
+  get(ind, ind + 1, &val);
   return val;
 }
-void DistrArrayMPI3::set(index_type ind, value_type val) { put(ind, ind, &val); }
+void DistrArrayMPI3::set(index_type ind, value_type val) { put(ind, ind + 1, &val); }
 
 void DistrArrayMPI3::_get_put(index_type lo, index_type hi, const value_type* buf, RMAType option) {
-  if (lo > hi)
+  if (lo >= hi)
     return;
   auto name = std::string{"DistrArrayMPI3::_get_put"};
-  if (hi >= m_dimension)
+  if (hi > m_dimension)
     error(name + " out of bounds");
   if (empty())
     error(name + " called on an empty array");
   util::ScopeProfiler prof{m_prof, name};
   index_type p_lo, p_hi;
-  std::tie(p_lo, p_hi) = m_distribution->cover(lo, hi);
+  std::tie(p_lo, p_hi) = m_distribution->cover(lo, hi - 1);
   auto* curr_buf = const_cast<value_type*>(buf);
   auto requests = std::vector<MPI_Request>(p_hi - p_lo + 1);
   for (size_t i = p_lo; i < p_hi + 1; ++i) {
     index_type bound_lo, bound_hi;
     std::tie(bound_lo, bound_hi) = m_distribution->range(i);
-    --bound_hi;
     auto local_lo = std::max(lo, bound_lo);
     auto local_hi = std::min(hi, bound_hi);
     MPI_Aint offset = (local_lo - bound_lo);
-    int count = (int(local_hi - local_lo) + 1);
+    int count = (int(local_hi - local_lo));
     if (option == RMAType::get)
       MPI_Rget(curr_buf, count, MPI_DOUBLE, i, offset, count, MPI_DOUBLE, m_win, &requests[i - p_lo]);
     else if (option == RMAType::put)
@@ -193,9 +192,9 @@ void DistrArrayMPI3::get(index_type lo, index_type hi, value_type* buf) const {
 }
 
 std::vector<DistrArrayMPI3::value_type> DistrArrayMPI3::get(index_type lo, index_type hi) const {
-  if (lo > hi)
+  if (lo >= hi)
     return {};
-  auto val = std::vector<value_type>(hi - lo + 1);
+  auto val = std::vector<value_type>(hi - lo);
   get(lo, hi, val.data());
   return val;
 }
@@ -244,7 +243,7 @@ void DistrArrayMPI3::_gather_scatter(const std::vector<index_type>& indices, std
   }
   MPI_Waitall(requests.size(), requests.data(), MPI_STATUSES_IGNORE);
 }
-std::vector<DistrArrayMPI3::value_type> DistrArrayMPI3::vec() const { return get(0, m_dimension - 1); }
+std::vector<DistrArrayMPI3::value_type> DistrArrayMPI3::vec() const { return get(0, m_dimension); }
 
 void DistrArrayMPI3::acc(index_type lo, index_type hi, const value_type* data) { _get_put(lo, hi, data, RMAType::acc); }
 

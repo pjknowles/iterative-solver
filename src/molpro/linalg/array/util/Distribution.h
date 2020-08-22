@@ -44,6 +44,7 @@ public:
    * @brief Maps fist and last index in the array to a pair of chunks encapsulating the corresponding range
    * @param lo first index of range
    * @param hi last index of range
+   * @todo hi should be exclusive i.e. past-the-end
    * @return pair of first and last chunk indices encapsulating this range, or size() if range is outside of border()
    */
   std::pair<int, int> cover(index_type lo, index_type hi) const {

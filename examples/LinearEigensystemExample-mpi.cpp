@@ -30,7 +30,7 @@ void action(size_t nwork, const std::vector<Rvector>& psc, std::vector<Rvector>&
       auto cn = crange.second - crange.first;
       std::vector<double> c(cn);
       if (crank == mpi_rank)
-        psc[k].get(crange.first, crange.second - 1, c.data());
+        psc[k].get(crange.first, crange.second, c.data());
       MPI_Bcast(c.data(), cn, MPI_DOUBLE, crank, MPI_COMM_WORLD);
       for (size_t i = grange.first; i < grange.second; i++) {
         for (size_t j = crange.first; j < crange.second; j++)

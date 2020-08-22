@@ -173,8 +173,8 @@ struct DistrArrayHDF5_Fixture : DistrArrayHDF5_SetUp {
 
 TEST_F(DistrArrayHDF5_Fixture, put_get) {
   auto ref_vec = std::vector<double>(size, 0.3);
-  a.put(0, size - 1, &ref_vec[0]);
-  auto vec = a.get(0, size - 1);
+  a.put(0, size, &ref_vec[0]);
+  auto vec = a.get(0, size);
   ScopeLock l{mpi_comm};
   ASSERT_EQ(vec.size(), size);
   EXPECT_THAT(vec, Pointwise(DoubleEq(), ref_vec));

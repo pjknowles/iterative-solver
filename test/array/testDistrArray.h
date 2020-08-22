@@ -241,7 +241,7 @@ TYPED_TEST_P(DistArrayInitializationF, get) {
     data.assign(data.size(), 0);
     TypeParam::get(0, 10, data.data());
     ASSERT_THAT(ref_vec, Pointwise(DoubleEq(), data));
-    data = TypeParam::get(0, this->dim - 1);
+    data = TypeParam::get(0, this->dim);
     auto same_as_vec = TypeParam::vec();
     ASSERT_THAT(data, Pointwise(DoubleEq(), same_as_vec));
   }
@@ -254,8 +254,8 @@ TYPED_TEST_P(DistArrayInitializationF, put) {
     auto l = this->lock.scope();
     auto range = std::vector<double>(this->dim);
     std::iota(range.begin(), range.end(), this->m_comm_rank);
-    TypeParam::put(0, this->dim - 1, range.data());
-    auto from_ga_buffer = TypeParam::get(0, this->dim - 1);
+    TypeParam::put(0, this->dim, range.data());
+    auto from_ga_buffer = TypeParam::get(0, this->dim);
     ASSERT_THAT(from_ga_buffer, Pointwise(DoubleEq(), range));
   }
   TypeParam::sync();
@@ -381,7 +381,7 @@ TYPED_TEST_P(DistrArrayRangeF, min_loc_n_reverse) {
   int n = 10;
   std::reverse(this->values.begin(), this->values.end());
   if (this->p_rank == 0)
-    TypeParam::put(0, this->dim - 1, this->values.data());
+    TypeParam::put(0, this->dim, this->values.data());
   TypeParam::sync();
   auto ref_minloc_ind = std::vector<typename TypeParam::index_type>(n);
   std::iota(ref_minloc_ind.rbegin(), ref_minloc_ind.rend(), this->dim - n);
@@ -604,8 +604,8 @@ TYPED_TEST_P(DistrArrayCollectiveOpF, axpy_map) {
 
 TYPED_TEST_P(DistrArrayCollectiveOpF, dot_array) {
   if (this->p_rank == 0) {
-    this->a.put(0, this->dim - 1, this->range_alpha.data());
-    this->b.put(0, this->dim - 1, this->range_beta.data());
+    this->a.put(0, this->dim, this->range_alpha.data());
+    this->b.put(0, this->dim, this->range_beta.data());
   }
   this->a.sync();
   auto ga_dot = this->a.dot(this->b);
@@ -619,7 +619,7 @@ TYPED_TEST_P(DistrArrayCollectiveOpF, dot_array) {
 
 TYPED_TEST_P(DistrArrayCollectiveOpF, dot_map) {
   if (this->p_rank == 0)
-    this->a.put(0, this->dim - 1, this->range_alpha.data());
+    this->a.put(0, this->dim, this->range_alpha.data());
   this->a.sync();
   auto ga_dot = this->a.dot(this->sparse_array);
   double ref_dot = 0.;

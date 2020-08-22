@@ -162,12 +162,12 @@ public:
   [[nodiscard]] virtual value_type at(index_type ind) const = 0;
   //! Set one element to a scalar. Global operation. @todo rename to put
   virtual void set(index_type ind, value_type val) = 0;
-  //! Gets buffer[lo:hi] from global array (hi inclusive, i.e. not pythonic). Blocking.
+  //! Gets buffer[lo:hi) from global array (hi is past-the-end). Blocking.
   virtual void get(index_type lo, index_type hi, value_type *buf) const = 0;
   [[nodiscard]] virtual std::vector<value_type> get(index_type lo, index_type hi) const = 0;
-  //! array[lo:hi] = data[:] (hi inclusive, i.e. not pythonic). Blocking
+  //! array[lo:hi) = data[:] (hi is past-the-end). Blocking
   virtual void put(index_type lo, index_type hi, const value_type *data) = 0;
-  //!  array[lo:hi] += scaling_constant * data[:] (hi inclusive, i.e. not pythonic). Blocking
+  //!  array[lo:hi) += scaling_constant * data[:] (hi is past-the-end). Blocking
   virtual void acc(index_type lo, index_type hi, const value_type *data) = 0;
   /*!
    * @brief gets elements with discontinuous indices from array. Blocking

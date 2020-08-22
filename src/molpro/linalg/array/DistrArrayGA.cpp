@@ -178,33 +178,37 @@ DistrArrayGA::value_type DistrArrayGA::at(index_type ind) const {
   return buffer;
 }
 
-void DistrArrayGA::set(index_type ind, value_type val) { put(ind, ind, &val); }
+void DistrArrayGA::set(index_type ind, value_type val) { put(ind, ind + 1, &val); }
 
 void DistrArrayGA::get(index_type lo, index_type hi, value_type *buf) const {
-  if (empty())
+  if (empty() || lo >= hi)
     return;
   auto name = std::string{"DistrArrayGA::get"};
   util::ScopeProfiler p{m_prof, name};
   check_ga_ind_overlow(lo);
   check_ga_ind_overlow(hi);
-  int ld, ilo = lo, ihi = hi;
+  int ld, ilo = lo, ihi = int(hi) - 1;
   NGA_Get(m_ga_handle, &ilo, &ihi, buf, &ld);
 }
 
 std::vector<DistrArrayGA::value_type> DistrArrayGA::get(index_type lo, index_type hi) const {
-  auto buf = std::vector<value_type>(hi - lo + 1);
+  if (lo >= hi)
+    return {};
+  auto buf = std::vector<value_type>(hi - lo);
   get(lo, hi, buf.data());
   return buf;
 }
 
 void DistrArrayGA::put(index_type lo, index_type hi, const value_type *data) {
+  if (lo >= hi)
+    return;
   auto name = std::string{"DistrArrayGA::put"};
   if (empty())
     error(name + " attempting to put data into an empty array");
   check_ga_ind_overlow(lo);
   check_ga_ind_overlow(hi);
   util::ScopeProfiler p{m_prof, name};
-  int ld, ilo = lo, ihi = hi;
+  int ld, ilo = lo, ihi = int(hi) - 1;
   NGA_Put(m_ga_handle, &ilo, &ihi, const_cast<value_type *>(data), &ld);
 }
 

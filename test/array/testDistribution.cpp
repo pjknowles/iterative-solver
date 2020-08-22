@@ -53,7 +53,7 @@ TEST(Distribution, cover_2params) {
   auto cover = std::vector<int>(ref_cover.size());
   for (size_t i = 0; i < cover.size(); ++i)
     for (size_t j = i; j < cover.size(); ++j)
-      ASSERT_TRUE((d.cover(i, j) == std::pair<int, int>{ref_cover[i], ref_cover[j]}));
+      ASSERT_TRUE((d.cover(i, j + 1) == std::pair<int, int>{ref_cover[i], ref_cover[j]}));
 }
 
 TEST(Distribution, make_distribution_spread_remainder) {

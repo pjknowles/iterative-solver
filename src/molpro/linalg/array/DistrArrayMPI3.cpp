@@ -166,7 +166,7 @@ void DistrArrayMPI3::_get_put(index_type lo, index_type hi, const value_type* bu
     error(name + " called on an empty array");
   util::ScopeProfiler prof{m_prof, name};
   index_type p_lo, p_hi;
-  std::tie(p_lo, p_hi) = m_distribution->cover(lo, hi - 1);
+  std::tie(p_lo, p_hi) = m_distribution->cover(lo, hi);
   auto* curr_buf = const_cast<value_type*>(buf);
   auto requests = std::vector<MPI_Request>(p_hi - p_lo + 1);
   for (size_t i = p_lo; i < p_hi + 1; ++i) {

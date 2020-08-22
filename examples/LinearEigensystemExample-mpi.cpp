@@ -125,7 +125,6 @@ int main(int argc, char* argv[]) {
         working_set.resize(solver.m_roots);
         std::iota(working_set.begin(), working_set.end(), 0);
         solver.solution(working_set, x, g);
-        MPI_Barrier(MPI_COMM_WORLD);
         if (mpi_rank == 0)
           std::cout << "Residual norms:";
         for (size_t root = 0; root < solver.m_roots; root++) {

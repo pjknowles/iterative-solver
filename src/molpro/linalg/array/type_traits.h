@@ -1,5 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_TYPE_TRAITS_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_TYPE_TRAITS_H
+#include <cmath>
+#include <cstdlib>
 #include <type_traits>
 
 namespace molpro {

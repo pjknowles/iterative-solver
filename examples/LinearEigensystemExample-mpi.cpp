@@ -1,16 +1,16 @@
-#include <molpro/linalg/IterativeSolver.h>
+#include <cstring>
 #include <fstream>
 #include <iomanip>
-#include <molpro/linalg/array/DistrArrayMPI3.h>
+#include <molpro/linalg/IterativeSolver.h>
 #include <molpro/linalg/array/DistrArrayHDF5.h>
+#include <molpro/linalg/array/DistrArrayMPI3.h>
 #include <molpro/linalg/array/util/Distribution.h>
 #include <mpi.h>
 #include <vector>
-#include <cstring>
 
 // Find lowest eigensolutions of a matrix obtained from an external file
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
-//using Qvector = molpro::linalg::array::DistrArrayHDF5;
+// using Qvector = molpro::linalg::array::DistrArrayHDF5;
 using Qvector = molpro::linalg::array::DistrArrayMPI3;
 using Pvector = std::map<size_t, double>;
 int n; // dimension of problem
@@ -23,17 +23,18 @@ void action(size_t nwork, const std::vector<Rvector>& psc, std::vector<Rvector>&
     auto grange = psg[k].distribution().range(mpi_rank);
     auto gn = grange.second - grange.first;
     auto g_chunk = psg[k].local_buffer();
-    for (auto gg=0; gg<gn; gg++) (*g_chunk)[gg]=0;
+    for (auto gg = 0; gg < gn; gg++)
+      (*g_chunk)[gg] = 0;
     for (int crank = 0; crank < mpi_size; crank++) {
       auto crange = psc[k].distribution().range(crank);
       auto cn = crange.second - crange.first;
       std::vector<double> c(cn);
       if (crank == mpi_rank)
-        std::memcpy( c.data(), &(*psc[k].local_buffer())[0],cn* sizeof(double));
+        psc[k].get(crange.first, crange.second - 1, c.data());
       MPI_Bcast(c.data(), cn, MPI_DOUBLE, crank, MPI_COMM_WORLD);
       for (size_t i = grange.first; i < grange.second; i++) {
         for (size_t j = crange.first; j < crange.second; j++)
-          (*g_chunk)[i - grange.first] += hmat[j+i*n] * c[j - crange.first];
+          (*g_chunk)[i - grange.first] += hmat[j + i * n] * c[j - crange.first];
       }
     }
   }
@@ -47,7 +48,7 @@ void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t n
     auto c_chunk = psc[k].local_buffer();
     auto g_chunk = psg[k].local_buffer();
     for (size_t i = range.first; i < range.second; i++) {
-      (*c_chunk)[i - range.first] -= (*g_chunk)[i - range.first] / (1e-12 - shift[k] + hmat[i+i*n]);
+      (*c_chunk)[i - range.first] -= (*g_chunk)[i - range.first] / (1e-12 - shift[k] + hmat[i + i * n]);
     }
   }
 }
@@ -81,7 +82,7 @@ int main(int argc, char* argv[]) {
       std::vector<double> diagonals;
       diagonals.reserve(n);
       for (auto i = 0; i < n; i++)
-        diagonals.push_back(hmat[i+i*n]);
+        diagonals.push_back(hmat[i + i * n]);
       molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector> solver;
       auto handlers = solver.handlers();
       solver.m_verbosity = 1;

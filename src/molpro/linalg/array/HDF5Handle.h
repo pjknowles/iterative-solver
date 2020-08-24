@@ -106,6 +106,10 @@ public:
    */
   HDF5Handle(hid_t hid, bool transfer_ownership = false);
 
+  /*!
+   * @brief On destruction closes any hdf5 objects that are owned. If m_erase_on_destroy is true than also erases the
+   * underlying file
+   */
   virtual ~HDF5Handle();
 
   /*!
@@ -207,6 +211,16 @@ public:
   //! Returns true if the handle does not have an hdf5 object assigned to it
   bool empty() const;
 
+  /*!
+   * @brief Sets m_erase_on_destroy flag to value.
+   * @note Setting the flag to true can fail if the underlying file is not erasable, e.g. handle does not own the file.
+   * @param value new value for the flag
+   * @return Returns true if the flag was set, or false if it remains the same.
+   */
+  bool set_erase_on_destroy(bool value);
+  //! Access flag to erase the underlying file when the handle is destroyed
+  bool erase_on_destroy() const { return m_erase_on_destroy; }
+
   //! Default value of hid used by the handle. It is always used if the hid is not related to a valid hdf5 object.
   static const hid_t hid_default = -1;
 
@@ -217,7 +231,9 @@ protected:
   std::string m_group_name;        //!< path to the group in hdf5 file
   bool m_file_owner = false;       //!< flags that the file was open by this instance and should be closed by it
   bool m_group_owner = false;      //!< flags that the group was open by this instance and should be closed by it
+  bool m_erase_on_destroy = false; //!< flags that the underlying file should be erased when the handle is destroyed
   virtual hid_t _open_plist();     //!< returns property list for opening the file
+  virtual bool erasable();         //!< returns true if it would be possible to erase the file
 };
 
 //! Returns true if the file exists

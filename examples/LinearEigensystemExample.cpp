@@ -161,7 +161,7 @@ int main(int argc, char* argv[]) {
       std::cout << "Error={ ";
       for (const auto& e : solver.errors())
         std::cout << e << " ";
-      std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
+      std::cout << "} after " << solver.statistics().iterations << " iterations" << std::endl;
       for (size_t root = 0; root < solver.m_roots; root++) {
         std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] << std::endl;
         solver.solution(root, x.front(), g.front(), Pcoeff.front());

@@ -1,7 +1,7 @@
 # Extra checking for HDF5 and global arrays will go here
 LibraryManager_Append(${PROJECT_NAME}
         SOURCES IterativeSolverC.cpp iterativesolver/IterativeSolver-double.cpp iterativesolver/IterativeSolver-complex-double.cpp
-        PUBLIC_HEADER IterativeSolver.h IterativeSolverC.h OpaqueArray.h OutOfCoreArray.h PagedArray.h SimpleArray.h iterativesolver/P.h iterativesolver/Q.h iterativesolver/helper.h iterativesolver/ArrayHandlers.h
+        PUBLIC_HEADER IterativeSolver.h IterativeSolverC.h OpaqueArray.h OutOfCoreArray.h PagedArray.h SimpleArray.h iterativesolver/P.h iterativesolver/Q.h iterativesolver/helper.h iterativesolver/ArrayHandlers.h iterativesolver/Statistics.h
         PRIVATE_HEADER iterativesolver/helper-implementation.h
         )
 if (FORTRAN)

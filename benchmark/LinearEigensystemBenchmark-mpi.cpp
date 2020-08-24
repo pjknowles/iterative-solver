@@ -8,12 +8,16 @@
 #include <mpi.h>
 #include <vector>
 
-// Find lowest eigensolutions of a matrix obtained from an external file
+// Find lowest eigensolutions of M(i,j) = alpha*(i+1)*delta(i,j) + 1
+using scalar = double;
+size_t n;                     // dimension of problem
+constexpr scalar alpha = 1; // separation of diagonal elements
+//scalar matrix(const size_t i, const size_t j) { return (i == j ? alpha * (i + 1) : 0) + (i + j)%((n+7)/6); }
+scalar matrix(const size_t i, const size_t j) { return (i == j ? alpha * (i + 1) : 0) + 1; }
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
 // using Qvector = molpro::linalg::array::DistrArrayHDF5;
 using Qvector = molpro::linalg::array::DistrArrayMPI3;
 using Pvector = std::map<size_t, double>;
-int n; // dimension of problem
 int mpi_rank;
 int mpi_size;
 std::vector<double> hmat;
@@ -34,7 +38,7 @@ void action(size_t nwork, const std::vector<Rvector>& psc, std::vector<Rvector>&
       MPI_Bcast(c.data(), cn, MPI_DOUBLE, crank, MPI_COMM_WORLD);
       for (size_t i = grange.first; i < grange.second; i++) {
         for (size_t j = crange.first; j < crange.second; j++)
-          (*g_chunk)[i - grange.first] += hmat[j + i * n] * c[j - crange.first];
+          (*g_chunk)[i - grange.first] += matrix(j , i) * c[j - crange.first];
       }
     }
   }
@@ -48,7 +52,7 @@ void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t n
     auto c_chunk = psc[k].local_buffer();
     const auto g_chunk = psg[k].local_buffer();
     for (size_t i = range.first; i < range.second; i++) {
-      (*c_chunk)[i - range.first] -= (*g_chunk)[i - range.first] / (1e-12 - shift[k] + hmat[i + i * n]);
+      (*c_chunk)[i - range.first] -= (*g_chunk)[i - range.first] / (1e-12 - shift[k] + matrix(i,i));
     }
   }
 }
@@ -57,32 +61,18 @@ int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-  for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
+  for (const auto& nn : std::vector<int>{1,2,4,10,100,1000,10000}) {
+    n=nn;
     for (const auto& nroot : std::vector<int>{1, 2, 4}) {
+      if (nroot > n) break;
       if (mpi_rank == 0) {
-        std::string prefix{argv[0]};
-        std::cout << prefix << std::endl;
-        if (prefix.find_last_of("/") != std::string::npos)
-          prefix.resize(prefix.find_last_of("/"));
-        else
-          prefix = ".";
-        std::cout << prefix << std::endl;
-        std::ifstream f(prefix + "/examples/" + file + ".hamiltonian");
-        f >> n;
-        molpro::cout << "\n*** " << file << " (dimension " << n << "), " << nroot << " roots, mpi_size = " << mpi_size
+        molpro::cout << "\n*** dimension " << n << ", " << nroot << " roots, mpi_size = " << mpi_size
                      << std::endl;
-        hmat.resize(n * n);
-        for (auto i = 0; i < n * n; i++)
-          f >> hmat[i];
       }
-      MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
-      if (mpi_rank != 0)
-        hmat.resize(n * n);
-      MPI_Bcast(hmat.data(), n * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
       std::vector<double> diagonals;
       diagonals.reserve(n);
       for (auto i = 0; i < n; i++)
-        diagonals.push_back(hmat[i + i * n]);
+        diagonals.push_back(matrix(i,i));
       molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector> solver;
       auto handlers = solver.handlers();
       solver.m_verbosity = 1;
@@ -103,13 +93,11 @@ int main(int argc, char* argv[]) {
       }
       std::vector<std::vector<double>> Pcoeff(solver.m_roots);
       int nwork = solver.m_roots;
-      for (auto iter = 0; iter < 100; iter++) {
+      for (auto iter = 0; iter < 100 && nwork > 0; iter++) {
         action(nwork, x, g);
         nwork = solver.addVector(x, g, Pcoeff);
         if (mpi_rank == 0)
           solver.report();
-        if (nwork == 0)
-          break;
         update(x, g, nwork, solver.working_set_eigenvalues());
       }
       if (mpi_rank == 0) {

@@ -110,7 +110,7 @@ TEST(TestIterativeSolver, small_eigenproblem) {
         //        solver.endIteration(x, g))
       }
       //  std::cout << "Error={ "; for (const auto& e : solver.errors()) std::cout << e << " "; std::cout << "} after "
-      //  << solver.iterations() << " iterations" << std::endl; std::cout << "Actual eigenvalues\n"<<val<<std::endl;
+      //  << solver.statistics().iterations << " iterations" << std::endl; std::cout << "Actual eigenvalues\n"<<val<<std::endl;
       //      EXPECT_THAT(active,
       //                  ::testing::Pointwise(::testing::Eq(), std::vector<bool>(nroot, false)));
       EXPECT_THAT(solver.errors(),
@@ -224,7 +224,7 @@ TEST(TestIterativeSolver, small_nonhermitian_eigenproblem) {
           break;
       }
       //  std::cout << "Error={ "; for (const auto& e : solver.errors()) std::cout << e << " "; std::cout << "} after "
-      //  << solver.iterations() << " iterations" << std::endl; std::cout << "Actual eigenvalues\n"<<val<<std::endl;
+      //  << solver.statistics().iterations << " iterations" << std::endl; std::cout << "Actual eigenvalues\n"<<val<<std::endl;
       //      EXPECT_THAT(active,
       //                  ::testing::Pointwise(::testing::Eq(), std::vector<bool>(nroot, false)));
       EXPECT_THAT(solver.errors(),
@@ -799,7 +799,7 @@ public:
         break;
     }
     std::cout << "Distance of solution from exact solution: " << std::sqrt(handlers.rr().dot(x, x)) << std::endl;
-    std::cout << "Error=" << solver.errors().front() << " after " << solver.iterations() << " iterations" << std::endl;
+    std::cout << "Error=" << solver.errors().front() << " after " << solver.statistics().iterations << " iterations" << std::endl;
     return std::sqrt(handlers.rr().dot(x, x)) < 1e-5 && solver.errors().front() < 1e-5;
   }
 };
@@ -915,10 +915,10 @@ public:
     dist = std::sqrt(dist);
     if (verbosity > 0) {
       std::cout << "Distance of solution from exact solution: " << dist << std::endl;
-      std::cout << "Error=" << solver.errors().front() << " after " << solver.iterations() << " iterations"
+      std::cout << "Error=" << solver.errors().front() << " after " << solver.statistics().iterations << " iterations"
                 << std::endl;
     }
-    return (dist < 1e-5 && solver.errors().front() < 1e-5) ? solver.iterations() : 1000000;
+    return (dist < 1e-5 && solver.errors().front() < 1e-5) ? solver.statistics().iterations : 1000000;
   }
 };
 

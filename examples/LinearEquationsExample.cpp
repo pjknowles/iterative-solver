@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Error={ ";
     for (const auto& e : solver.errors())
       std::cout << e << " ";
-    std::cout << "} after " << solver.iterations() << " iterations" << std::endl;
+    std::cout << "} after " << solver.statistics().iterations << " iterations" << std::endl;
     if (check or print) {
       std::vector<int> roots(solver.m_roots);
       std::iota(roots.begin(), roots.end(), 0);

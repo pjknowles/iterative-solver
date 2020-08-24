@@ -3,6 +3,7 @@
 #include "molpro/ProfilerSingle.h"
 #include "molpro/linalg/iterativesolver/P.h"
 #include "molpro/linalg/iterativesolver/Q.h"
+#include "molpro/linalg/iterativesolver/Statistics.h"
 #include "molpro/linalg/iterativesolver/helper.h"
 #include <molpro/linalg/iterativesolver/ArrayHandlers.h>
 #ifndef _GNU_SOURCE
@@ -108,7 +109,6 @@ public:
       m_updateShift(0),
       m_dimension(0),
       m_value_print_name("value"),
-      m_iterations(0),
       m_singularity_threshold(1e-4),
       m_augmented_hessian(0),
       m_svdThreshold(1e-15),
@@ -165,7 +165,8 @@ public:
       return 0;
     assert(parameters.size() >= m_working_set.size());
     assert(parameters.size() == action.size());
-    m_iterations++;
+    m_statistics.iterations++;
+    m_statistics.r_creations += m_working_set.size();
     m_current_r.clear();
     m_current_v.clear();
     for (size_t k = 0; k < m_working_set.size(); k++) {
@@ -177,6 +178,7 @@ public:
           m_handlers.rr().scal(1 / std::sqrt(s), action[k]);
         }
       }
+      m_statistics.current_r_creations++;
       m_current_r.emplace_back(m_handlers.qr().copy(parameters[k]));
       m_current_v.emplace_back(m_handlers.qr().copy(action[k]));
     }
@@ -184,6 +186,7 @@ public:
       assert(m_last_d.size() == m_working_set.size());
       assert(m_last_hd.size() == m_working_set.size());
       for (size_t k = 0; k < m_working_set.size(); k++) {
+        m_statistics.q_creations++;
         m_qspace.add(parameters[k], action[k], m_last_d[k], m_last_hd[k], m_rhs, m_subspaceMatrixResRes,
                      m_orthogonalise_Q);
       }
@@ -286,6 +289,7 @@ public:
         if (m_verbosity > 1)
           molpro::cout << "selecting root " << root << " for adding converged solution to Q space at position "
                        << m_qspace.size() << std::endl;
+        m_statistics.q_creations++;
         m_qspace.add(parameters[k], action[k], m_rhs, m_subspaceMatrixResRes);
         m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
       }
@@ -305,6 +309,7 @@ public:
         //        "<<w;molpro::cout <<std::endl;
       } else { // unconverged
                //        molpro::cout << "unconverged"<<std::endl;
+        m_statistics.d_creations++;
         m_last_d.emplace_back(m_handlers.qr().copy(parameters[k]));
         m_last_hd.emplace_back(m_handlers.qr().copy(action[k]));
       }
@@ -322,6 +327,7 @@ public:
       for (auto k = 0; k < m_working_set.size(); k++) {
         m_handlers.rr().fill(0, parameters[k].get());
         // FIXME Does this require a copy or is it a move?
+        m_statistics.d_creations++;
         m_last_d.emplace_back(m_current_r[k]);
         m_last_hd.emplace_back(m_current_v[k]);
       }
@@ -366,9 +372,9 @@ public:
    */
   size_t addP(std::vector<Pvector> Pvectors, const value_type* PP, vectorRefSet parameters, vectorRefSet action,
               vectorRefSetP parametersP) {
+    m_statistics.p_creations += Pvectors.size();
     m_pspace.add(Pvectors, PP, m_rhs, m_handlers.pp(), m_handlers.qp());
     m_qspace.refreshP(action.front());
-    //    return m_working_set.size();
     m_working_set.clear();
     auto result = solveAndGenerateWorkingSet(parameters, action, parametersP, false);
     m_last_d.clear(); // TODO more intelligent way needed
@@ -389,9 +395,7 @@ public:
   /*!
    * @brief Empty the P space
    */
-  void clearP() {
-    m_qspace.clearP();
-  }
+  void clearP() { m_qspace.clearP(); }
 
   /*!
    * \brief For most solvers, this function does nothing but report, but the exception is Optimize.
@@ -491,8 +495,6 @@ public:
    */
   void setThresholds(double thresh) { m_thresh = thresh; }
 
-  unsigned int iterations() const { return m_iterations; } //!< How many iterations have occurred
-
   std::vector<scalar_type> eigenvalues() const ///< The calculated eigenvalues of the subspace matrix
   {
     std::vector<scalar_type> result;
@@ -556,7 +558,7 @@ protected:
 public:
   virtual void report() const {
     if (m_verbosity > 0) {
-      molpro::cout << "iteration " << iterations();
+      molpro::cout << "iteration " << m_statistics.iterations;
       if (not m_values.empty())
         molpro::cout << ", " << m_value_print_name << " = " << m_values.back();
       if (this->m_roots > 1)
@@ -651,6 +653,7 @@ protected:
       if (del >= 0) {
         if (m_verbosity > 2)
           molpro::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
+        m_statistics.q_deletions++;
         m_qspace.remove(del - oQ);
         m_errors.assign(m_roots, 1e20);
         for (auto m = 0; m < nR; m++)
@@ -747,6 +750,9 @@ protected:
   }
 
 public:
+  const iterativesolver::Statistics& statistics() const { return m_statistics; }
+
+public:
   std::vector<double> m_errors; //!< Error at last iteration
   bool m_subspaceMatrixResRes;  // whether m_subspaceMatrix is Residual.Residual (true) or Solution.Residual (false)
   bool m_residual_eigen;        // whether to subtract eigenvalue*solution when constructing residual
@@ -768,7 +774,6 @@ public:
                                   //!< representing the size of the underlying vector space.
   std::string m_value_print_name; //< the title report() will give to the function value
 protected:
-  unsigned int m_iterations;
   double m_singularity_threshold;
   double m_augmented_hessian; //!< The scale factor for augmented hessian solution of linear inhomogeneous systems.
                               //!< Special values:
@@ -776,6 +781,7 @@ protected:
                               //!< - 1: standard augmented hessian
 
   bool m_nullify_solution_before_update;
+  iterativesolver::Statistics m_statistics;
 
 public:
   double m_svdThreshold; ///< Threshold for singular-value truncation in linear equation solver.
@@ -839,7 +845,7 @@ public:
   void report() const override {
     std::vector<value_type> ev = this->eigenvalues();
     if (this->m_verbosity > 0) {
-      molpro::cout << "iteration " << this->iterations() << "[" << this->m_working_set.size() << "]";
+      molpro::cout << "iteration " << this->m_statistics.iterations << "[" << this->m_working_set.size() << "]";
       if (this->m_pspace.size() > 0)
         molpro::cout << ", P=" << this->m_pspace.size();
       if (this->m_roots > 1)
@@ -1091,6 +1097,7 @@ protected:
       if (f1 <= f0) {
         m_linesearch_steplength = (alpha - 1) * step;
         // FIXME make_unique using a copy. Can this be a weak ptr or a reference?
+        this->m_statistics.best_r_creations++;
         m_best_r.reset(new Qvector(this->m_current_r.front()));
         m_best_v.reset(new Qvector(this->m_current_v.front()));
         m_best_f = this->m_values.back();
@@ -1115,6 +1122,7 @@ protected:
         this->m_solution_x[a] /= this->m_qspace.action(a, a);
       }
     }
+    this->m_statistics.best_r_creations++;
     m_best_r.reset(new Qvector(this->m_current_r.front()));
     m_best_v.reset(new Qvector(this->m_current_v.front()));
     m_best_f = this->m_values.back();
@@ -1173,7 +1181,7 @@ public:
 public:
   virtual void report() const override {
     if (this->m_verbosity > 0) {
-      molpro::cout << "iteration " << this->iterations();
+      molpro::cout << "iteration " << this->m_statistics.iterations;
       if (m_linesearch_steplength != 0)
         molpro::cout << ", line search step = " << m_linesearch_steplength;
       if (not this->m_values.empty())

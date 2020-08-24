@@ -74,5 +74,5 @@ int main(int argc, char* argv[]) {
       break;
   }
   std::cout << "Distance of solution from origin: " << std::sqrt(x.dot(x)) << std::endl;
-  std::cout << "Error=" << solver.errors().front() << " after " << solver.iterations() << " iterations" << std::endl;
+  std::cout << "Error=" << solver.errors().front() << " after " << solver.statistics().iterations << " iterations" << std::endl;
 }

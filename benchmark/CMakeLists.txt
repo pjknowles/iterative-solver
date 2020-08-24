@@ -1,7 +1,8 @@
-foreach (t PagedVector-benchmark benchmark)
+foreach (t PagedVector-benchmark benchmark LinearEigensystemBenchmark-mpi)
     add_executable(${t}.exe ${t}.cpp)
-    target_link_libraries(${t}.exe PUBLIC ${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
+    target_link_libraries(${t}.exe PUBLIC ${PROJECT_NAME} Profiler)
     if (MPI)
+#        target_link_libraries(${t}.exe PUBLIC MPI::MPI_CXX)
         # in principle this should be configured at runtime but it seems cmake/ctest support is not yet there to do it simply
         if (NOT DEFINED ENV{MPIPROCS})
             set(ENV{MPIPROCS} 1)

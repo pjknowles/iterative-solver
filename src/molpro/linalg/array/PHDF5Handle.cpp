@@ -1,4 +1,5 @@
 #include "PHDF5Handle.h"
+
 namespace molpro {
 namespace linalg {
 namespace array {
@@ -40,6 +41,17 @@ PHDF5Handle& PHDF5Handle::operator=(PHDF5Handle&& source) noexcept {
   auto dummy = PHDF5Handle{source.m_comm};
   source = dummy;
   return *this;
+}
+PHDF5Handle::~PHDF5Handle() {
+  HDF5Handle::close_file();
+  if (m_erase_on_destroy) {
+    int rank;
+    MPI_Comm_rank(communicator(), &rank);
+    if (rank == 0)
+      if (file_exists(file_name()))
+        std::remove(file_name().c_str());
+    MPI_Barrier(communicator());
+  }
 }
 
 } // namespace util

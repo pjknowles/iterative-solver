@@ -203,6 +203,28 @@ TEST_F(HDF5HandleOpenFileCreatF, create_group) {
   EXPECT_EQ(h->group_name(), group_name);
 }
 
+TEST_F(HDF5HandleOpenFileCreatF, erase_on_destroy) {
+  {
+    auto handle = HDF5Handle(file_name, "/test_group");
+    EXPECT_FALSE(handle.erase_on_destroy());
+    EXPECT_TRUE(handle.set_erase_on_destroy(true)) << "file is not open yet";
+    EXPECT_TRUE(handle.set_erase_on_destroy(false));
+    EXPECT_FALSE(handle.erase_on_destroy());
+    handle.open_file(HDF5Handle::Access::read_write);
+    {
+      auto handle_non_owning = HDF5Handle(handle.file_id());
+      EXPECT_FALSE(handle_non_owning.erase_on_destroy());
+      EXPECT_TRUE(handle_non_owning.set_erase_on_destroy(false));
+      EXPECT_FALSE(handle_non_owning.set_erase_on_destroy(true));
+      EXPECT_FALSE(handle_non_owning.erase_on_destroy()) << "non owning handle cannot erase";
+    }
+    EXPECT_TRUE(file_exists(file_name));
+    EXPECT_TRUE(handle.set_erase_on_destroy(true));
+    EXPECT_TRUE(handle.erase_on_destroy());
+  }
+  EXPECT_FALSE(file_exists(file_name));
+}
+
 TEST_F(HDF5HandleDummyF, open_file_diff_name) {
   auto id_does_not_exist = h->open_file(name_inner_group_dataset + "-does-not-exist", HDF5Handle::Access::read_only);
   EXPECT_EQ(id_does_not_exist, HDF5Handle::hid_default)

@@ -1,6 +1,7 @@
 #include "HDF5Handle.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -74,7 +75,9 @@ HDF5Handle &HDF5Handle::operator=(HDF5Handle &&source) noexcept {
 
 HDF5Handle::~HDF5Handle() {
   HDF5Handle::close_file();
-  HDF5Handle::close_group();
+  if (m_erase_on_destroy)
+    if (file_exists(file_name()))
+      std::remove(file_name().c_str());
 }
 hid_t HDF5Handle::open_file(HDF5Handle::Access type) {
   if (file_is_open()) {
@@ -199,6 +202,18 @@ bool HDF5Handle::file_owner() const { return m_file_owner; }
 bool HDF5Handle::group_owner() const { return m_group_owner; }
 bool HDF5Handle::empty() const { return m_file_hid == hid_default && m_group_hid == hid_default; }
 hid_t HDF5Handle::_open_plist() { return H5P_DEFAULT; }
+
+bool HDF5Handle::set_erase_on_destroy(bool value) {
+  if (value && !erasable())
+    return false;
+  m_erase_on_destroy = value;
+  return true;
+}
+bool HDF5Handle::erasable() {
+  bool file_owner =  m_file_owner;
+  bool group_owner = (m_group_hid == hid_default) || m_group_owner;
+  return file_owner && group_owner;
+}
 
 bool file_exists(const std::string &fname) { return !std::ifstream{fname}.fail(); }
 

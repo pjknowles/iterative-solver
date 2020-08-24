@@ -34,7 +34,6 @@ CONTAINS
         INTEGER(C_size_t), INTENT(in), VALUE :: nq
         INTEGER(C_size_t), INTENT(in), VALUE :: nroot
         INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
-        INTEGER(C_int), INTENT(in), VALUE :: lsync
         REAL(c_double), INTENT(in), VALUE :: thresh
         INTEGER(C_int), INTENT(in), VALUE :: verbosity
         CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
@@ -49,8 +48,6 @@ CONTAINS
     INTEGER(c_int64_t) :: pcommC = 0
     INTEGER(c_int) :: lmppxC
     lmppxC = 0
-    INTEGER(c_int) :: lsyncC
-    lsyncC = 1
     IF (PRESENT(pname)) THEN
       ALLOCATE(pnameC(LEN(pname)+1))
       CALL c_string_from_f(pname, pnameC)
@@ -365,7 +362,7 @@ CONTAINS
       IF (lmppx) lmppxC = 1
     ENDIF
     Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action, lsyncC, lmppxC).NE.0
-  END FUNCTION Iterative_Solver_Add_Value
+  END FUNCTION Iterative_Solver_Add_Value_Nosync
   !
   !> \brief Take, typically, a current solution and residual, add it to the expansion set, and return new solution.
   !> In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
@@ -449,16 +446,17 @@ CONTAINS
   !
   SUBROUTINE Iterative_Solver_Solution(roots, parameters, action, parametersP, lmppx)
     USE iso_c_binding
-    INTEGER, DIMENSION(*), INTENT(inout) :: roots  !< Array containing root indices
+    INTEGER, INTENT(inout), DIMENSION(:) :: roots  !< Array containing root indices
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP  !< p
     LOGICAL, INTENT(in), OPTIONAL :: lmppx  !< Whether communicator should be MPI_COMM_SELF
     INTERFACE
-      SUBROUTINE Iterative_Solver_Solution_C(roots, parameters, action, parametersP, lsync, lmppx) &
+      SUBROUTINE Iterative_Solver_Solution_C(maxNum, roots, parameters, action, parametersP, lsync, lmppx) &
           BIND(C, name = 'IterativeSolverSolution')
         USE iso_c_binding
-        INTEGER(c_int), DIMENSION(*), INTENT(inout) :: roots
+        INTEGER(c_int), VALUE :: maxNum
+        INTEGER(c_int), INTENT(inout), DIMENSION(maxNum) :: roots
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
@@ -466,7 +464,8 @@ CONTAINS
         INTEGER(c_int), INTENT(in), VALUE :: lmppx
       END SUBROUTINE
     END INTERFACE
-    INTEGER(c_int), DIMENSION(SIZE(indices)) :: rootsC
+    INTEGER(c_int), DIMENSION(SIZE(roots)) :: rootsC
+    INTEGER(c_int) :: maxNum
     DOUBLE PRECISION, DIMENSION(0) :: pdummy
     INTEGER(c_int) :: lsyncC
     INTEGER(c_int) :: lmppxC
@@ -475,31 +474,33 @@ CONTAINS
     IF (PRESENT(lmppx)) THEN
       IF (lmppx) lmppxC = 1
     ENDIF
-    DO i = 1, SIZE(roots)
+    maxNum = INT(size(roots), c_int)
+    DO i = 1, size(roots)
       rootsC(i) = INT(roots(i), kind = c_int)
     ENDDO
     IF (PRESENT(parametersP)) THEN
-      call Iterative_Solver_Solution_C(roots, parameters, action, parametersP, lsyncC, lmppxC)
+      call Iterative_Solver_Solution_C(maxNum, rootsC, parameters, action, parametersP, lsyncC, lmppxC)
     ELSE
-      call Iterative_Solver_Solution_C(roots, parameters, action, pdummy, lsyncC, lmppxC)
+      call Iterative_Solver_Solution_C(maxNum, rootsC, parameters, action, pdummy, lsyncC, lmppxC)
     END IF
-    DO i = 1, SIZE(roots)
+    DO i = 1, size(roots)
       roots(i) = int(rootsC(i)) + 1
     END DO
   END SUBROUTINE
   !
   SUBROUTINE Iterative_Solver_Solution_Nosync(roots, parameters, action, parametersP, lmppx)
     USE iso_c_binding
-    INTEGER, DIMENSION(*), INTENT(inout) :: roots  !< Array containing root indices
+    INTEGER, INTENT(inout), DIMENSION(:) :: roots  !< Array containing root indices
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP  !< p
     LOGICAL, INTENT(in), OPTIONAL :: lmppx  !< Whether communicator should be MPI_COMM_SELF
     INTERFACE
-      SUBROUTINE Iterative_Solver_Solution_C(roots, parameters, action, parametersP, lsync, lmppx) &
+      SUBROUTINE Iterative_Solver_Solution_C(maxNum, roots, parameters, action, parametersP, lsync, lmppx) &
           BIND(C, name = 'IterativeSolverSolution')
         USE iso_c_binding
-        INTEGER(c_int), DIMENSION(*), INTENT(inout) :: roots
+        INTEGER(c_int), VALUE :: maxNum
+        INTEGER(c_int), INTENT(inout), DIMENSION(maxNum) :: roots
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
@@ -507,7 +508,8 @@ CONTAINS
         INTEGER(c_int), INTENT(in), VALUE :: lmppx
       END SUBROUTINE
     END INTERFACE
-    INTEGER(c_int), DIMENSION(SIZE(indices)) :: rootsC
+    INTEGER(c_int), DIMENSION(SIZE(roots)) :: rootsC
+    INTEGER(c_int) :: maxNum
     DOUBLE PRECISION, DIMENSION(0) :: pdummy
     INTEGER(c_int) :: lsyncC
     INTEGER(c_int) :: lmppxC
@@ -516,15 +518,16 @@ CONTAINS
     IF (PRESENT(lmppx)) THEN
       IF (lmppx) lmppxC = 1
     ENDIF
-    DO i = 1, SIZE(roots)
+    maxNum = INT(size(roots), c_int)
+    DO i = 1, size(roots)
       rootsC(i) = INT(roots(i), kind = c_int)
     ENDDO
     IF (PRESENT(parametersP)) THEN
-      call Iterative_Solver_Solution_C(rootsC, parameters, action, parametersP, lsyncC, lmppxC)
+      call Iterative_Solver_Solution_C(maxNum, rootsC, parameters, action, parametersP, lsyncC, lmppxC)
     ELSE
-      call Iterative_Solver_Solution_C(rootsC, parameters, action, pdummy, lsyncC, lmppxC)
+      call Iterative_Solver_Solution_C(maxNum, rootsC, parameters, action, pdummy, lsyncC, lmppxC)
     END IF
-    DO i = 1, SIZE(roots)
+    DO i = 1, size(roots)
       roots(i) = int(rootsC(i)) + 1
     END DO
   END SUBROUTINE

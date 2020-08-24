@@ -2,12 +2,14 @@
 MODULE Iterative_Solver
   USE iso_c_binding
   PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize, Iterative_Solver_Finalize
+  PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize_Ranges
   PUBLIC :: Iterative_Solver_DIIS_Initialize, Iterative_Solver_Linear_Equations_Initialize
   PUBLIC :: Iterative_Solver_Optimize_Initialize
   PUBLIC :: Iterative_Solver_Add_Value, Iterative_Solver_Add_Vector, Iterative_Solver_End_Iteration
+  PUBLIC :: Iterative_Solver_Add_Value_Nosync, Iterative_Solver_Add_Vector_Nosync
+  PUBLIC :: Iterative_Solver_Solution, Iterative_Solver_Solution_Nosync
   PUBLIC :: Iterative_Solver_Add_P, Iterative_Solver_Suggest_P
   PUBLIC :: Iterative_Solver_Eigenvalues
-  PUBLIC :: Iterative_Solver_Option
   PRIVATE
   INTEGER(c_size_t) :: m_nq, m_nroot
 
@@ -16,35 +18,93 @@ CONTAINS
   !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
   !> Example of simplest use: @include LinearEigensystemExampleF.F90
   !> Example including use of P space: @include LinearEigensystemExampleF-Pspace.F90
-  SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, maxIterations, verbosity, &
-                                                            pname, pcomm, lmppx)
+  SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, verbosity, pname, pcomm, lmppx)
     INTEGER, INTENT(in) :: nq !< dimension of matrix
     INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
+    DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< Convergence threshold
+    INTEGER, INTENT(in), OPTIONAL :: verbosity !< Print level
     CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
     INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
-    LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Communicator
-    DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
-    INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
-    INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
+    LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
     !< One gives a single progress-report line each iteration.
     INTERFACE
-      SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, thresh, maxIterations, verbosity,  &
-                  pname, pcomm, lmppx) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
+      SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, range_begin, range_end, thresh, &
+                          verbosity, pname, pcomm, lmppx) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
         USE iso_c_binding
         INTEGER(C_size_t), INTENT(in), VALUE :: nq
         INTEGER(C_size_t), INTENT(in), VALUE :: nroot
+        INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
+        INTEGER(C_int), INTENT(in), VALUE :: lsync
         REAL(c_double), INTENT(in), VALUE :: thresh
-        INTEGER(C_int), INTENT(in), VALUE :: maxIterations
         INTEGER(C_int), INTENT(in), VALUE :: verbosity
         CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
         INTEGER(C_int64_t), INTENT(in), VALUE :: pcomm
         INTEGER(C_int), INTENT(in), VALUE :: lmppx
       END SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC
     END INTERFACE
-    INTEGER(c_int) :: verbosityC = 0, maxIterationsC = 0
+    INTEGER(c_size_t) :: dummy_range_begin, dummy_range_end
+    INTEGER(c_int) :: verbosityC = 0
     REAL(c_double) :: threshC = 0d0
     CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
-    INTEGER(c_int64_t) :: pcommC = 0 ! is this OK? In principle should be MPI_COMM_NULL?
+    INTEGER(c_int64_t) :: pcommC = 0
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
+    INTEGER(c_int) :: lsyncC
+    lsyncC = 1
+    IF (PRESENT(pname)) THEN
+      ALLOCATE(pnameC(LEN(pname)+1))
+      CALL c_string_from_f(pname, pnameC)
+    ELSE
+      ALLOCATE(pnameC(1))
+      pnameC(1) = c_null_char
+    ENDIF
+    m_nq = INT(nq, kind = c_size_t)
+    m_nroot = INT(nroot, kind = c_size_t)
+    IF (PRESENT(thresh)) THEN
+      threshC = thresh
+    END IF
+    IF (PRESENT(verbosity)) THEN
+      verbosityC = INT(verbosity, kind = c_int)
+    END IF
+    IF (PRESENT(pcomm)) THEN
+      pcommC = INT(pcomm,kind = c_int64_t)
+    ENDIF
+    IF (PRESENT(lmppx)) THEN
+      IF (lmppx) lmppxC = 1
+    ENDIF
+    CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, dummy_range_begin, dummy_range_end, threshC, &
+                                                         verbosityC, pnameC, pcommC, lmppxC)
+  END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize
+  !
+  SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize_Ranges(nq, nroot, range_begin, range_end, thresh, &
+                                                                   verbosity, pname, pcomm, lmppx)
+    INTEGER, INTENT(in) :: nq !< dimension of matrix
+    INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
+    INTEGER, INTENT(out) :: range_begin, range_end !< Local range starting and ending indices
+    DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< Convergence threshold
+    INTEGER, INTENT(in), OPTIONAL :: verbosity !< Print level
+    CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
+    INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
+    LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
+    !< One gives a single progress-report line each iteration.
+    INTERFACE
+      SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, range_begin, range_end, thresh, &
+                           verbosity, pname, pcomm, lmppx) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
+        USE iso_c_binding
+        INTEGER(C_size_t), INTENT(in), VALUE :: nq
+        INTEGER(C_size_t), INTENT(in), VALUE :: nroot
+        INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
+        REAL(c_double), INTENT(in), VALUE :: thresh
+        INTEGER(C_int), INTENT(in), VALUE :: verbosity
+        CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
+        INTEGER(C_int64_t), INTENT(in), VALUE :: pcomm
+        INTEGER(C_int), INTENT(in), VALUE :: lmppx
+      END SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC
+    END INTERFACE
+    INTEGER(c_int) :: verbosityC = 0
+    REAL(c_double) :: threshC = 0d0
+    CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
+    INTEGER(c_int64_t) :: pcommC = 0
     INTEGER(c_int) :: lmppxC
     lmppxC = 0
     IF (PRESENT(pname)) THEN
@@ -59,9 +119,6 @@ CONTAINS
     IF (PRESENT(thresh)) THEN
       threshC = thresh
     END IF
-    IF (PRESENT(maxIterations)) THEN
-      maxIterationsC = INT(maxIterations, kind = c_int)
-    END IF
     IF (PRESENT(verbosity)) THEN
       verbosityC = INT(verbosity, kind = c_int)
     END IF
@@ -71,10 +128,10 @@ CONTAINS
     IF (PRESENT(lmppx)) THEN
       IF (lmppx) lmppxC = 1
     ENDIF
-    CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, threshC, maxIterationsC, verbosityC,  &
-                                                         pnameC, pcommC, lmppxC)
-  END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize
-
+    CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, range_begin, range_end, threshC, &
+                                                         verbosityC, pnameC, pcommC, lmppxC)
+  END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize_Ranges
+  !
   !> \brief Finds the solutions of linear equation systems using a generalisation of Davidson's method, i.e. preconditioned Lanczos
   !> Example of simplest use: @include LinearEquationsExampleF.F90
   !! Example including use of P space: include LinearEquationsExampleF-Pspace.F90
@@ -252,38 +309,64 @@ CONTAINS
   !>        The default is the safe .TRUE. but can be .FALSE. if appropriate.
   !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
   !> the subsequent call to Iterative_Solver_End_Iteration()
-  FUNCTION Iterative_Solver_Add_Value(value, parameters, action, synchronize, lmppx)
+  FUNCTION Iterative_Solver_Add_Value(value, parameters, action, lmppx)
     USE iso_c_binding
     LOGICAL :: Iterative_Solver_Add_Value
     DOUBLE PRECISION, INTENT(in) :: value
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
-    LOGICAL, INTENT(in), OPTIONAL :: synchronize
     LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Communicator
     INTERFACE
-      FUNCTION Iterative_Solver_Add_Value_C(value, parameters, action, sync, lmppx) &
+      FUNCTION Iterative_Solver_Add_Value_C(value, parameters, action, lsync, lmppx) &
           BIND(C, name = 'IterativeSolverAddValue')
         USE iso_c_binding
         INTEGER(c_int) Iterative_Solver_Add_Value_C
         REAL(c_double), VALUE, INTENT(in) :: value
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
-        INTEGER(c_int), INTENT(in), VALUE :: sync
+        INTEGER(c_int), INTENT(in), VALUE :: lsync
         INTEGER(c_int), INTENT(in), VALUE :: lmppx
       END FUNCTION Iterative_Solver_Add_Value_C
     END INTERFACE
-    INTEGER(c_int) :: sync
+    INTEGER(c_int) :: lsyncC
     INTEGER(c_int) :: lmppxC
     lmppxC = 0
-    sync = 1
-    IF (PRESENT(synchronize)) THEN
-      IF (.NOT. synchronize) sync = 0
-    END IF
+    lsyncC = 1
     IF (PRESENT(lmppx)) THEN
       IF (lmppx) lmppxC = 1
     ENDIF
-    Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action, sync, lmppxC).NE.0
+    Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action, lsyncC, lmppxC).NE.0
   END FUNCTION Iterative_Solver_Add_Value
+  !
+  FUNCTION Iterative_Solver_Add_Value_Nosync(value, parameters, action, lmppx)
+    USE iso_c_binding
+    LOGICAL :: Iterative_Solver_Add_Value
+    DOUBLE PRECISION, INTENT(in) :: value
+    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
+    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+    LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Communicator
+    INTERFACE
+      FUNCTION Iterative_Solver_Add_Value_C(value, parameters, action, lsync, lmppx) &
+          BIND(C, name = 'IterativeSolverAddValue')
+        USE iso_c_binding
+        INTEGER(c_int) Iterative_Solver_Add_Value_C
+        REAL(c_double), VALUE, INTENT(in) :: value
+        REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
+        REAL(c_double), DIMENSION(*), INTENT(inout) :: action
+        INTEGER(c_int), INTENT(in), VALUE :: lsync
+        INTEGER(c_int), INTENT(in), VALUE :: lmppx
+      END FUNCTION Iterative_Solver_Add_Value_C
+    END INTERFACE
+    INTEGER(c_int) :: lsyncC
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
+    lsyncC = 0
+    IF (PRESENT(lmppx)) THEN
+      IF (lmppx) lmppxC = 1
+    ENDIF
+    Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action, lsyncC, lmppxC).NE.0
+  END FUNCTION Iterative_Solver_Add_Value
+  !
   !> \brief Take, typically, a current solution and residual, add it to the expansion set, and return new solution.
   !> In the context of Lanczos-like linear methods, the input will be a current expansion vector and the result of
   !> acting on it with the matrix, and the output will be a new expansion vector.
@@ -296,44 +379,155 @@ CONTAINS
   !> appropriate.
   !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
   !> the subsequent call to Iterative_Solver_End_Iteration()
-  FUNCTION Iterative_Solver_Add_Vector(parameters, action, parametersP, synchronize, lmppx)
+  FUNCTION Iterative_Solver_Add_Vector(parameters, action, parametersP, lmppx)
     USE iso_c_binding
     LOGICAL :: Iterative_Solver_Add_Vector
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP
-    LOGICAL, INTENT(in), OPTIONAL :: synchronize
     LOGICAL, INTENT(in), OPTIONAL :: lmppx
     INTERFACE
-      FUNCTION Iterative_Solver_Add_Vector_C(parameters, action, parametersP, synchronize, lmppx) &
+      FUNCTION Iterative_Solver_Add_Vector_C(parameters, action, parametersP, lsync, lmppx) &
           BIND(C, name = 'IterativeSolverAddVector')
         USE iso_c_binding
         INTEGER(c_int) Iterative_Solver_Add_Vector_C
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
-        INTEGER(c_int), INTENT(in), VALUE :: synchronize
+        INTEGER(c_int), INTENT(in), VALUE :: lsync
         INTEGER(c_int), INTENT(in), VALUE :: lmppx
       END FUNCTION Iterative_Solver_Add_Vector_C
     END INTERFACE
     DOUBLE PRECISION, DIMENSION(0) :: pdummy
-    INTEGER(c_int) :: sync
+    INTEGER(c_int) :: lsyncC
     INTEGER(c_int) :: lmppxC
     lmppxC = 0
-    sync = 1
-    IF (PRESENT(synchronize)) THEN
-      IF (.NOT. synchronize) sync = 0
-    END IF
+    lsyncC = 1
     IF (PRESENT(lmppx)) THEN
       IF (lmppx) lmppxC = 1
     ENDIF
     IF (PRESENT(parametersP)) THEN
-      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, parametersP, sync, lmppxC).NE.0
+      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, parametersP, lsyncC, lmppxC).NE.0
     ELSE
-      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, pdummy, sync, lmppxC).NE.0
+      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, pdummy, lsyncC, lmppxC).NE.0
     END IF
   END FUNCTION Iterative_Solver_Add_Vector
-
+  !
+  FUNCTION Iterative_Solver_Add_Vector_Nosync(parameters, action, parametersP, lmppx)
+    USE iso_c_binding
+    LOGICAL :: Iterative_Solver_Add_Vector
+    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
+    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+    DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP
+    LOGICAL, INTENT(in), OPTIONAL :: lmppx
+    INTERFACE
+      FUNCTION Iterative_Solver_Add_Vector_C(parameters, action, parametersP, lsync, lmppx) &
+          BIND(C, name = 'IterativeSolverAddVector')
+        USE iso_c_binding
+        INTEGER(c_int) Iterative_Solver_Add_Vector_C
+        REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
+        REAL(c_double), DIMENSION(*), INTENT(inout) :: action
+        REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
+        INTEGER(c_int), INTENT(in), VALUE :: lsync
+        INTEGER(c_int), INTENT(in), VALUE :: lmppx
+      END FUNCTION Iterative_Solver_Add_Vector_C
+    END INTERFACE
+    DOUBLE PRECISION, DIMENSION(0) :: pdummy
+    INTEGER(c_int) :: lsyncC
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
+    lsyncC = 0
+    IF (PRESENT(lmppx)) THEN
+      IF (lmppx) lmppxC = 1
+    ENDIF
+    IF (PRESENT(parametersP)) THEN
+      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, parametersP, lsyncC, lmppxC).NE.0
+    ELSE
+      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, pdummy, lsyncC, lmppxC).NE.0
+    END IF
+  END FUNCTION Iterative_Solver_Add_Vector_Nosync
+  !
+  SUBROUTINE Iterative_Solver_Solution(roots, parameters, action, parametersP, lmppx)
+    USE iso_c_binding
+    INTEGER, DIMENSION(*), INTENT(inout) :: roots  !< Array containing root indices
+    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
+    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+    DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP  !< p
+    LOGICAL, INTENT(in), OPTIONAL :: lmppx  !< Whether communicator should be MPI_COMM_SELF
+    INTERFACE
+      SUBROUTINE Iterative_Solver_Solution_C(roots, parameters, action, parametersP, lsync, lmppx) &
+          BIND(C, name = 'IterativeSolverSolution')
+        USE iso_c_binding
+        INTEGER(c_int), DIMENSION(*), INTENT(inout) :: roots
+        REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
+        REAL(c_double), DIMENSION(*), INTENT(inout) :: action
+        REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
+        INTEGER(c_int), INTENT(in), VALUE :: lsync
+        INTEGER(c_int), INTENT(in), VALUE :: lmppx
+      END SUBROUTINE
+    END INTERFACE
+    INTEGER(c_int), DIMENSION(SIZE(indices)) :: rootsC
+    DOUBLE PRECISION, DIMENSION(0) :: pdummy
+    INTEGER(c_int) :: lsyncC
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
+    lsyncC = 1
+    IF (PRESENT(lmppx)) THEN
+      IF (lmppx) lmppxC = 1
+    ENDIF
+    DO i = 1, SIZE(roots)
+      rootsC(i) = INT(roots(i), kind = c_int)
+    ENDDO
+    IF (PRESENT(parametersP)) THEN
+      call Iterative_Solver_Solution_C(roots, parameters, action, parametersP, lsyncC, lmppxC)
+    ELSE
+      call Iterative_Solver_Solution_C(roots, parameters, action, pdummy, lsyncC, lmppxC)
+    END IF
+    DO i = 1, SIZE(roots)
+      roots(i) = int(rootsC(i)) + 1
+    END DO
+  END SUBROUTINE
+  !
+  SUBROUTINE Iterative_Solver_Solution_Nosync(roots, parameters, action, parametersP, lmppx)
+    USE iso_c_binding
+    INTEGER, DIMENSION(*), INTENT(inout) :: roots  !< Array containing root indices
+    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
+    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+    DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP  !< p
+    LOGICAL, INTENT(in), OPTIONAL :: lmppx  !< Whether communicator should be MPI_COMM_SELF
+    INTERFACE
+      SUBROUTINE Iterative_Solver_Solution_C(roots, parameters, action, parametersP, lsync, lmppx) &
+          BIND(C, name = 'IterativeSolverSolution')
+        USE iso_c_binding
+        INTEGER(c_int), DIMENSION(*), INTENT(inout) :: roots
+        REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
+        REAL(c_double), DIMENSION(*), INTENT(inout) :: action
+        REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
+        INTEGER(c_int), INTENT(in), VALUE :: lsync
+        INTEGER(c_int), INTENT(in), VALUE :: lmppx
+      END SUBROUTINE
+    END INTERFACE
+    INTEGER(c_int), DIMENSION(SIZE(indices)) :: rootsC
+    DOUBLE PRECISION, DIMENSION(0) :: pdummy
+    INTEGER(c_int) :: lsyncC
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
+    lsyncC = 0
+    IF (PRESENT(lmppx)) THEN
+      IF (lmppx) lmppxC = 1
+    ENDIF
+    DO i = 1, SIZE(roots)
+      rootsC(i) = INT(roots(i), kind = c_int)
+    ENDDO
+    IF (PRESENT(parametersP)) THEN
+      call Iterative_Solver_Solution_C(rootsC, parameters, action, parametersP, lsyncC, lmppxC)
+    ELSE
+      call Iterative_Solver_Solution_C(rootsC, parameters, action, pdummy, lsyncC, lmppxC)
+    END IF
+    DO i = 1, SIZE(roots)
+      roots(i) = int(rootsC(i)) + 1
+    END DO
+  END SUBROUTINE
   !>@brief For most methods, does nothing; for Optimize it is required.
   !> Also write progress to standard output
   !> \param solution The current solution, after interpolation and updating with the preconditioned residual.
@@ -467,24 +661,6 @@ CONTAINS
       indices(i) = int(indicesC(i)) + 1
     end do
   END FUNCTION Iterative_Solver_Suggest_P
-
-  !> \brief give options to the iterative solver
-  SUBROUTINE Iterative_Solver_Option(key, val)
-    CHARACTER(len = *), INTENT(in) :: key !< Option name
-    CHARACTER(len = *), INTENT(in) :: val !< Option value
-    INTERFACE
-      SUBROUTINE IterativeSolverOption(key, val) BIND(C, name = 'IterativeSolverOption')
-        USE iso_c_binding
-        CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: key, val
-      END SUBROUTINE IterativeSolverOption
-    END INTERFACE
-    CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: keyc, valc
-    ALLOCATE(keyc(LEN(key)+1))
-    ALLOCATE(valc(LEN(val)+1))
-    CALL c_string_from_f(key, keyc)
-    CALL c_string_from_f(val, valc)
-    CALL IterativeSolverOption(keyc, valc)
-  END SUBROUTINE Iterative_Solver_Option
 
   !> \brief the lowest eigenvalues of the reduced problem, for the number of roots sought.
   FUNCTION Iterative_Solver_Eigenvalues()

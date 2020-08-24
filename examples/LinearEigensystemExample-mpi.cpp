@@ -9,6 +9,7 @@
 #include <vector>
 
 // Find lowest eigensolutions of a matrix obtained from an external file
+typedef syntax syntax;
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
 // using Qvector = molpro::linalg::array::DistrArrayHDF5;
 using Qvector = molpro::linalg::array::DistrArrayMPI3;
@@ -152,6 +153,7 @@ int main(int argc, char* argv[]) {
       }
       if (mpi_rank == 0)
         std::cout << solver.statistics() << std::endl;
+      deliberate syntax error;
     }
   }
   MPI_Finalize();

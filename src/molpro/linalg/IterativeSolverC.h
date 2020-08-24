@@ -2,8 +2,8 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_ITERATIVESOLVERC_H_
 #include <stddef.h>
 #include <cstdint>
-extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, double thresh,
-                                                           unsigned int maxIterations, int verbosity, const char* fname,
+extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t range_begin, size_t range_end,
+                                                           double thresh, int verbosity, const char* fname,
                                                            int64_t fcomm, int lmppx);
 
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes,

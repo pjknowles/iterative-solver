@@ -5,6 +5,7 @@
 #include <memory>
 #include <stack>
 #include <string>
+#include <tuple>
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
@@ -12,43 +13,32 @@
 #include <ppidd.h>
 #endif
 
-#include <molpro/linalg/array/ArrayHandlerDistr.h>
-#include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
-#include <molpro/linalg/array/ArrayHandlerSparse.h>
+#include <molpro/linalg/array/DistrArrayMPI3.h>
+#include <molpro/linalg/iterativesolver/ArrayHandlers.h>
+#include <molpro/linalg/array/util/Distribution.h>
+#include <molpro/linalg/array/Span.h>
 
 using molpro::linalg::DIIS;
 using molpro::linalg::LinearEigensystem;
 using molpro::linalg::LinearEquations;
 using molpro::linalg::Optimize;
-using molpro::linalg::array::ArrayHandlerDistr;
-using molpro::linalg::array::ArrayHandlerDistrSparse;
-using molpro::linalg::array::ArrayHandlerSparse;
 using molpro::linalg::iterativesolver::ArrayHandlers;
+using molpro::linalg::array::Span;
 
-// C interface to IterativeSolver
-// using v = LinearAlgebra::PagedVector<double>;
-using v = molpro::linalg::OutOfCoreArray<double>;
+using Rvector = molpro::linalg::array::DistrArrayMPI3;
+using Qvector = molpro::linalg::array::DistrArrayMPI3;
+using Pvector = std::map<size_t, double>;
 
-auto make_handlers() {
-  auto handler_rr = std::make_shared<ArrayHandlerDistr<v>>();
-  auto handler_qq = std::make_shared<ArrayHandlerDistr<v>>();
-  auto handler_pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
-  auto handler_rq = std::make_shared<ArrayHandlerDistr<v>>();
-  auto handler_rp = std::make_shared<ArrayHandlerDistrSparse<v, std::map<size_t, double>>>();
-  auto handler_qr = std::make_shared<ArrayHandlerDistr<v>>();
-  auto handler_qp = std::make_shared<ArrayHandlerDistrSparse<v, std::map<size_t, double>>>();
-  auto handlers = ArrayHandlers<v, v, std::map<size_t, double>>{handler_rr, handler_qq, handler_pp, handler_rq,
-                                                                handler_rp, handler_qr, handler_qp};
-  return handlers;
-}
+using v = molpro::linalg::OutOfCoreArray<double>; // Just so old routines compile (to be removed soon)
 
 // FIXME Only top solver is active at any one time. This should be documented somewhere.
-static std::stack<std::unique_ptr<molpro::linalg::IterativeSolver<v>>> instances;
+static std::stack<std::unique_ptr<molpro::linalg::IterativeSolver<Rvector, Qvector, Pvector>>> instances;
 
-extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, double thresh,
-                                                           unsigned int maxIterations, int verbosity, const char* fname,
+extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
+                                                           double thresh, int verbosity, const char* fname,
                                                            int64_t fcomm, int lmppx) {
   std::shared_ptr<molpro::Profiler> profiler = nullptr;
+  std::string pname(fname);
 #ifdef HAVE_MPI_H
   int flag;
   MPI_Initialized(&flag);
@@ -64,28 +54,38 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   } else if (lmppx != 0) {
     pcomm = MPI_COMM_SELF;
   } else {
-    pcomm = MPI_Comm_f2c(fcomm); // Check it's not MPI_COMM_NULL? Will crash if handle is invalid.
+    // TODO: Check this is safe. Will crash if handle is invalid.
+    pcomm = MPI_Comm_f2c(fcomm);
   }
-  std::string pname(fname);
-  if (!pname.empty()) { // and not lmppx??
+  // TODO: what if lmppx != 0 ?
+  if (!pname.empty()) {
     profiler = molpro::ProfilerSingle::instance(pname, pcomm);
   }
+  int mpi_rank;
+  MPI_Comm_rank(pcomm, &mpi_rank);
 #else
-  std::string pname(fname);
   if (!pname.empty()) {
     profiler = molpro::ProfilerSingle::instance(pname);
   }
 #endif
-  instances.push(std::make_unique<LinearEigensystem<v>>(LinearEigensystem<v>(make_handlers(), profiler)));
+  instances.push(std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(
+      LinearEigensystem<Rvector, Qvector, Pvector>(ArrayHandlers<Rvector, Qvector, Pvector>{}, profiler)));
   auto& instance = instances.top();
   instance->m_dimension = n;
   instance->m_roots = nroot;
   instance->m_thresh = thresh;
-  instance->m_maxIterations = maxIterations;
   instance->m_verbosity = verbosity;
+  std::vector<Rvector> x;
+  std::vector<Rvector> g;
+  for (size_t root = 0; root < instance->m_roots; root++) {
+    x.emplace_back(n, pcomm);
+    g.emplace_back(n, pcomm);
+  }
+  //std::tie(range_begin, range_end) = x[0].distribution().range(mpi_rank);
+  std::tie(range_begin, range_end) = x[0].distribution().range(mpi_rank);
 }
-
-extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes,
+  
+  extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes,
                                                          double thresh, unsigned int maxIterations, int verbosity) {
 #ifdef HAVE_MPI_H
   int flag;
@@ -98,14 +98,16 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
     MPI_Init(0, nullptr);
 #endif
 #endif
-  std::vector<v> rr;
+  std::vector<Rvector> rr;
   rr.reserve(nroot);
   for (size_t root = 0; root < nroot; root++) {
-    rr.emplace_back(&const_cast<double*>(rhs)[root * n], n);
+    rr.emplace_back(n, MPI_COMM_COMPUTE);
+    rr.back().allocate_buffer(Span<double>(&const_cast<double*>(rhs)[root * n], n));
     // rr.push_back(v(const_cast<double*>(&rhs[root * n]),
     //               n)); // in principle the const_cast is dangerous, but we trust LinearEquations to behave
   }
-  instances.push(std::make_unique<LinearEquations<v>>(rr, make_handlers(), aughes));
+  instances.push(std::make_unique<LinearEquations<Rvector, Qvector, Pvector>>(rr,
+                                                              ArrayHandlers<Rvector, Qvector, Pvector>{}, aughes));
   // instances.push(std::make_unique<IterativeSolver::LinearEquations<v> >(IterativeSolver::LinearEquations<v>(rr,
   //                                                                                                          aughes)));
   auto& instance = instances.top();

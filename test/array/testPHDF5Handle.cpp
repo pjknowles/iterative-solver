@@ -7,6 +7,7 @@
 #include <molpro/linalg/array/PHDF5Handle.h>
 #include <molpro/linalg/array/util.h>
 
+using molpro::linalg::array::util::file_exists;
 using molpro::linalg::array::util::HDF5Handle;
 using molpro::linalg::array::util::PHDF5Handle;
 
@@ -59,4 +60,31 @@ TEST(PHDF5Handle, open_and_close_group) {
     EXPECT_FALSE(h.file_is_open());
     EXPECT_FALSE(h.group_is_open());
   }
+}
+
+struct PHDF5HandleTestFile : public ::testing::Test {
+  PHDF5HandleTestFile() : file_name{"test_new_file.hdf5"}, lock(mpi_comm) { remove_file(); }
+  ~PHDF5HandleTestFile() { remove_file(); }
+  void remove_file() {
+    int rank;
+    MPI_Comm_rank(mpi_comm, &rank);
+    if (rank == 0)
+      if (file_exists(file_name))
+        std::remove(file_name.c_str());
+  }
+  const std::string file_name;
+  LockMPI3 lock;
+};
+
+TEST_F(PHDF5HandleTestFile, erase_on_destroy) {
+  {
+    auto handle = PHDF5Handle(file_name, mpi_comm);
+    handle.open_file(PHDF5Handle::Access::read_write);
+    auto l = lock.scope();
+    ASSERT_FALSE(handle.erase_on_destroy());
+    ASSERT_TRUE(handle.set_erase_on_destroy(true));
+    ASSERT_TRUE(file_exists(handle.file_name()));
+  }
+  auto l = lock.scope();
+  ASSERT_FALSE(file_exists(file_name));
 }

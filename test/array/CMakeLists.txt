@@ -39,7 +39,7 @@ if (MPI)
     endif ()
     if (LINEARALGEBRA_ARRAY_HDF5)
         target_sources(test-${PROJECT_NAME}-parallel PRIVATE testPHDF5Handle.cpp testDistrArray.h
-                testDistrArrayHDF5.cpp)
+                testDistrArrayHDF5.cpp testArrayHandlerDDisk.cpp)
         target_compile_definitions(test-${PROJECT_NAME}-parallel PUBLIC "ARRAY_DATA=\"${CMAKE_CURRENT_BINARY_DIR}/data\"")
     endif ()
     target_link_libraries(test-${PROJECT_NAME}-parallel PUBLIC molpro::${PROJECT_NAME} gmock_main)

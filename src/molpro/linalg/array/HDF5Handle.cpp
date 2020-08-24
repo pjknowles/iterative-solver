@@ -42,6 +42,7 @@ HDF5Handle &HDF5Handle::operator=(const HDF5Handle &source) {
   m_group_name = source.m_group_name;
   m_file_owner = source.m_file_owner;
   m_group_owner = source.m_group_owner;
+  m_erase_on_destroy = source.m_erase_on_destroy;
   if (m_file_owner) {
     m_file_hid = hid_default;
     if (source.file_is_open())
@@ -66,8 +67,10 @@ HDF5Handle &HDF5Handle::operator=(HDF5Handle &&source) noexcept {
   m_group_name = source.m_group_name;
   m_file_owner = source.m_file_owner;
   m_group_owner = source.m_group_owner;
+  m_erase_on_destroy = source.m_erase_on_destroy;
   source.m_file_owner = false;
   source.m_group_owner = false;
+  source.m_erase_on_destroy = false;
   auto dummy = HDF5Handle{};
   source = dummy;
   return *this;
@@ -210,7 +213,7 @@ bool HDF5Handle::set_erase_on_destroy(bool value) {
   return true;
 }
 bool HDF5Handle::erasable() {
-  bool file_owner =  m_file_owner;
+  bool file_owner = m_file_owner;
   bool group_owner = (m_group_hid == hid_default) || m_group_owner;
   return file_owner && group_owner;
 }

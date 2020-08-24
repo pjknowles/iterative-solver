@@ -6,8 +6,8 @@ cache:
 build100:
   tags:
     - linux-farm
-  only:
-    - merge_requests
+#  only:
+#    - merge_requests
   timeout: 60m
   script:
     - BUILD=build/FORTRAN=1/MPI=0/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DFORTRAN=1 -DMPI=0 -DPPIDD=0 $OLDPWD && time cmake --build . -- -j2  && (time ctest || ctest -V)
@@ -31,8 +31,8 @@ build000:
 build010:
   tags:
     - linux-farm
-  only:
-    - merge_requests
+#  only:
+#    - merge_requests
   timeout: 60m
   script:
     - export MPIPROCS=2
@@ -40,8 +40,8 @@ build010:
 build011:
   tags:
     - linux-farm
-  only:
-    - merge_requests
+#  only:
+#    - merge_requests
   timeout: 60m
   script:
     - export MPIPROCS=2

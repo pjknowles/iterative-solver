@@ -98,12 +98,15 @@ CONTAINS
         INTEGER(C_int), INTENT(in), VALUE :: lmppx
       END SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC
     END INTERFACE
+    INTEGER(c_size_t) m_range_begin, m_range_end
     INTEGER(c_int) :: verbosityC = 0
     REAL(c_double) :: threshC = 0d0
     CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
     INTEGER(c_int64_t) :: pcommC = 0
     INTEGER(c_int) :: lmppxC
     lmppxC = 0
+    m_range_begin = INT(range_begin, kind = c_size_t)
+    m_range_end = INT(range_end, kind = c_size_t)
     IF (PRESENT(pname)) THEN
       ALLOCATE(pnameC(LEN(pname)+1))
       CALL c_string_from_f(pname, pnameC)
@@ -125,8 +128,10 @@ CONTAINS
     IF (PRESENT(lmppx)) THEN
       IF (lmppx) lmppxC = 1
     ENDIF
-    CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, range_begin, range_end, threshC, &
+    CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, m_range_begin, m_range_end, threshC, &
                                                          verbosityC, pnameC, pcommC, lmppxC)
+    range_begin = int(m_range_begin)
+    range_end = int(m_range_end)
   END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize_Ranges
   !
   !> \brief Finds the solutions of linear equation systems using a generalisation of Davidson's method, i.e. preconditioned Lanczos

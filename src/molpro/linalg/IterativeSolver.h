@@ -166,6 +166,7 @@ public:
     assert(parameters.size() >= m_working_set.size());
     assert(parameters.size() == action.size());
     m_statistics.iterations++;
+    m_statistics.r_creations += m_working_set.size();
     m_current_r.clear();
     m_current_v.clear();
     for (size_t k = 0; k < m_working_set.size(); k++) {
@@ -177,6 +178,7 @@ public:
           m_handlers.rr().scal(1 / std::sqrt(s), action[k]);
         }
       }
+      m_statistics.current_r_creations++;
       m_current_r.emplace_back(m_handlers.qr().copy(parameters[k]));
       m_current_v.emplace_back(m_handlers.qr().copy(action[k]));
     }
@@ -307,6 +309,7 @@ public:
         //        "<<w;molpro::cout <<std::endl;
       } else { // unconverged
                //        molpro::cout << "unconverged"<<std::endl;
+        m_statistics.d_creations++;
         m_last_d.emplace_back(m_handlers.qr().copy(parameters[k]));
         m_last_hd.emplace_back(m_handlers.qr().copy(action[k]));
       }
@@ -324,6 +327,7 @@ public:
       for (auto k = 0; k < m_working_set.size(); k++) {
         m_handlers.rr().fill(0, parameters[k].get());
         // FIXME Does this require a copy or is it a move?
+        m_statistics.d_creations++;
         m_last_d.emplace_back(m_current_r[k]);
         m_last_hd.emplace_back(m_current_v[k]);
       }
@@ -649,7 +653,7 @@ protected:
       if (del >= 0) {
         if (m_verbosity > 2)
           molpro::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
-        m_statistics.q_creations--;
+        m_statistics.q_deletions++;
         m_qspace.remove(del - oQ);
         m_errors.assign(m_roots, 1e20);
         for (auto m = 0; m < nR; m++)
@@ -1093,6 +1097,7 @@ protected:
       if (f1 <= f0) {
         m_linesearch_steplength = (alpha - 1) * step;
         // FIXME make_unique using a copy. Can this be a weak ptr or a reference?
+        this->m_statistics.best_r_creations++;
         m_best_r.reset(new Qvector(this->m_current_r.front()));
         m_best_v.reset(new Qvector(this->m_current_v.front()));
         m_best_f = this->m_values.back();
@@ -1117,6 +1122,7 @@ protected:
         this->m_solution_x[a] /= this->m_qspace.action(a, a);
       }
     }
+    this->m_statistics.best_r_creations++;
     m_best_r.reset(new Qvector(this->m_current_r.front()));
     m_best_v.reset(new Qvector(this->m_current_v.front()));
     m_best_f = this->m_values.back();

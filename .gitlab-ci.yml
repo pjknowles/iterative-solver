@@ -6,16 +6,16 @@ cache:
 build100:
   tags:
     - linux-farm
-#  only:
-#    - merge_requests
+  only:
+    - schedules
   timeout: 60m
   script:
     - BUILD=build/FORTRAN=1/MPI=0/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DFORTRAN=1 -DMPI=0 -DPPIDD=0 $OLDPWD && time cmake --build . -- -j2  && (time ctest || ctest -V)
-build110:
+build111:
   tags:
     - linux-farm
 #  only:
-#    - merge_requests
+#    - schedules
   timeout: 60m
   script:
     - export MPIPROCS=2
@@ -31,8 +31,8 @@ build000:
 build010:
   tags:
     - linux-farm
-#  only:
-#    - merge_requests
+  only:
+    - schedules
   timeout: 60m
   script:
     - export MPIPROCS=2
@@ -40,12 +40,12 @@ build010:
 build011:
   tags:
     - linux-farm
-#  only:
-#    - merge_requests
+  only:
+    - schedules
   timeout: 60m
   script:
     - export MPIPROCS=2
-    - BUILD=build/FORTRAN=1/MPI=1/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DFORTRAN=0 -DMPI=1 -DPPIDD=1 $OLDPWD && time cmake --build . -j2 && (time ctest || ctest -V)
+    - BUILD=build/FORTRAN=0/MPI=1/PPIDD=1 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DFORTRAN=0 -DMPI=1 -DPPIDD=1 $OLDPWD && time cmake --build . -j2 && (time ctest || ctest -V)
 clang011:
   tags:
     - linux-farm

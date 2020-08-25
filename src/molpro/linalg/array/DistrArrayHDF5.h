@@ -86,6 +86,17 @@ public:
   DistrArrayHDF5(const DistrArray &source, std::shared_ptr<util::PHDF5Handle> file_handle);
 
   /*!
+   * @brief Create a copy of source array using a temporary file which will be erased when all temporary arrays using it
+   * are destroyed
+   * @param source array to be copied
+   * @param base_name base name for the temporary file. It will form the first part of the temporary array name. The
+   * middle will be chosen to be unique and the suffix will be ".hdf5"
+   * @return
+   */
+  static DistrArrayHDF5 CreateTemp(const DistrArray &source, std::string base_name = ".temp_array");
+  static DistrArrayHDF5 CreateTemp(const DistrArrayHDF5 &source, std::string base_name = ".temp_array");
+
+  /*!
    * @brief Copies the array from source.
    *
    * If this array is a dummy (i.e. has no underlying array) than

@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_HDF5HANDLE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_HDF5HANDLE_H
 #include <hdf5.h>
+#include <molpro/linalg/array/util/TempHandle.h>
 #include <string>
 #include <utility>
 
@@ -264,6 +265,7 @@ std::string hdf5_get_file_name(hid_t id);
 //!
 htri_t hdf5_link_exists(hid_t id, std::string path);
 
+extern template struct TempHandle<HDF5Handle>;
 } // namespace util
 } // namespace array
 } // namespace linalg

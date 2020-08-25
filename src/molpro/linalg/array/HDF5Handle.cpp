@@ -267,6 +267,7 @@ htri_t hdf5_link_exists(hid_t id, std::string path) {
   return res;
 }
 
+template struct TempHandle<HDF5Handle>;
 } // namespace util
 } // namespace array
 } // namespace linalg

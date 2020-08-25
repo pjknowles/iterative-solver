@@ -1,4 +1,5 @@
 #include "PHDF5Handle.h"
+#include "util/TempHandle.h"
 
 namespace molpro {
 namespace linalg {
@@ -54,6 +55,7 @@ PHDF5Handle::~PHDF5Handle() {
   }
 }
 
+template struct TempHandle<PHDF5Handle>;
 } // namespace util
 } // namespace array
 } // namespace linalg

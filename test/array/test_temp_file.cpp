@@ -26,17 +26,3 @@ TEST(TempFile, temp_file_name) {
   ASSERT_FALSE(f1.empty());
   ASSERT_NE(f1, f3);
 }
-
-TEST(TempFile, temp_hdf5_handle) {
-  auto g = GarbageCollector{};
-  {
-    auto h1 = temp_hdf5_handle(".temp");
-    ASSERT_FALSE(h1.file_name().empty());
-    ASSERT_FALSE(file_exists(h1.file_name()));
-    ASSERT_TRUE(h1.erase_on_destroy());
-    g.file_name = h1.file_name();
-    h1.open_file(HDF5Handle::Access::read_write);
-    ASSERT_TRUE(file_exists(h1.file_name()));
-  }
-  ASSERT_FALSE(file_exists(g.file_name));
-}

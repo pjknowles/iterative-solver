@@ -2,13 +2,16 @@
 #include <gtest/gtest.h>
 
 #include "data_util.h"
+#include "file_util.h"
 
 #include <molpro/linalg/array/HDF5Handle.h>
+#include <molpro/linalg/array/util/temp_hdf5_handle.h>
 
 using molpro::linalg::array::util::file_exists;
 using molpro::linalg::array::util::hdf5_link_exists;
 using molpro::linalg::array::util::hdf5_open_file;
 using molpro::linalg::array::util::HDF5Handle;
+using molpro::linalg::array::util::temp_hdf5_handle;
 
 TEST(HDF5util, file_exists) { EXPECT_TRUE(file_exists(ARRAY_DATA)); }
 
@@ -714,4 +717,18 @@ TEST_F(HDF5HandleUsingExistingObjectF, move_constructor_operator_from_group_obj_
   EXPECT_TRUE(h.group_owner());
   EXPECT_EQ(h.file_name(), file_name);
   EXPECT_EQ(h.group_name(), group_name);
+}
+
+TEST(temp_hdf5_handle, lifetime) {
+  auto g = GarbageCollector{};
+  {
+    auto h1 = temp_hdf5_handle(".temp");
+    ASSERT_FALSE(h1.file_name().empty());
+    ASSERT_FALSE(file_exists(h1.file_name()));
+    ASSERT_TRUE(h1.erase_on_destroy());
+    g.file_name = h1.file_name();
+    h1.open_file(HDF5Handle::Access::read_write);
+    ASSERT_TRUE(file_exists(h1.file_name()));
+  }
+  ASSERT_FALSE(file_exists(g.file_name));
 }

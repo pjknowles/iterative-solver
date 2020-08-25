@@ -383,7 +383,7 @@ CONTAINS
   !> the subsequent call to Iterative_Solver_End_Iteration()
   FUNCTION Iterative_Solver_Add_Vector(parameters, action, parametersP, lmppx)
     USE iso_c_binding
-    LOGICAL :: Iterative_Solver_Add_Vector
+    INTEGER :: Iterative_Solver_Add_Vector
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP
@@ -392,7 +392,7 @@ CONTAINS
       FUNCTION Iterative_Solver_Add_Vector_C(parameters, action, parametersP, lsync, lmppx) &
           BIND(C, name = 'IterativeSolverAddVector')
         USE iso_c_binding
-        INTEGER(c_int) Iterative_Solver_Add_Vector_C
+        INTEGER(c_size_t) Iterative_Solver_Add_Vector_C
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
@@ -409,15 +409,15 @@ CONTAINS
       IF (lmppx) lmppxC = 1
     ENDIF
     IF (PRESENT(parametersP)) THEN
-      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, parametersP, lsyncC, lmppxC).NE.0
+      Iterative_Solver_Add_Vector = int(Iterative_Solver_Add_Vector_C(parameters, action, parametersP, lsyncC, lmppxC))
     ELSE
-      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, pdummy, lsyncC, lmppxC).NE.0
+      Iterative_Solver_Add_Vector = int(Iterative_Solver_Add_Vector_C(parameters, action, pdummy, lsyncC, lmppxC))
     END IF
   END FUNCTION Iterative_Solver_Add_Vector
   !
   FUNCTION Iterative_Solver_Add_Vector_Nosync(parameters, action, parametersP, lmppx)
     USE iso_c_binding
-    LOGICAL :: Iterative_Solver_Add_Vector
+    INTEGER :: Iterative_Solver_Add_Vector
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP
@@ -426,7 +426,7 @@ CONTAINS
       FUNCTION Iterative_Solver_Add_Vector_C(parameters, action, parametersP, lsync, lmppx) &
           BIND(C, name = 'IterativeSolverAddVector')
         USE iso_c_binding
-        INTEGER(c_int) Iterative_Solver_Add_Vector_C
+        INTEGER(c_size_t) Iterative_Solver_Add_Vector_C
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
@@ -443,9 +443,9 @@ CONTAINS
       IF (lmppx) lmppxC = 1
     ENDIF
     IF (PRESENT(parametersP)) THEN
-      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, parametersP, lsyncC, lmppxC).NE.0
+      Iterative_Solver_Add_Vector = int(Iterative_Solver_Add_Vector_C(parameters, action, parametersP, lsyncC, lmppxC))
     ELSE
-      Iterative_Solver_Add_Vector = Iterative_Solver_Add_Vector_C(parameters, action, pdummy, lsyncC, lmppxC).NE.0
+      Iterative_Solver_Add_Vector = int(Iterative_Solver_Add_Vector_C(parameters, action, pdummy, lsyncC, lmppxC))
     END IF
   END FUNCTION Iterative_Solver_Add_Vector_Nosync
   !
@@ -706,7 +706,7 @@ CONTAINS
     DOUBLE PRECISION, DIMENSION(:, :), ALLOCATABLE :: pp
     INTEGER :: i, j, root
     DOUBLE PRECISION :: alpha, anharmonicity, threshold
-    LOGICAL ::  update
+    INTEGER ::  working_set_size
     PRINT *, 'Test Fortran binding of IterativeSolver'
     m = 1
     DO i = 1, n
@@ -722,7 +722,7 @@ CONTAINS
       c = 0; DO i = 1, nroot; c(i, i) = 1;
       ENDDO
       g = MATMUL(m, c)
-      IF(Iterative_Solver_Add_Vector(c, g, p)) THEN
+      IF(Iterative_Solver_Add_Vector(c, g, p) .GT. 0) THEN
         e = Iterative_Solver_Eigenvalues()
         DO root = 1, nroot
           DO j = 1, n
@@ -740,7 +740,7 @@ CONTAINS
       ALLOCATE(p(np, nroot))
       WRITE (6, *) 'P-space=', nP, ', dimension=', n, ', roots=', nroot
       CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, thresh = 1d-8, verbosity = 1)
-      update = .TRUE.
+      update = nroot
       offsets(0) = 0
       DO i = 1, nP
         offsets(i) = i
@@ -761,7 +761,7 @@ CONTAINS
             END DO
           END DO
         END DO
-        IF (update) THEN
+        IF (update > 0) THEN
           DO root = 1, nroot
             DO j = 1, n
               c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(i) + 1d-15)
@@ -792,7 +792,7 @@ CONTAINS
       END DO
       !WRITE (6,*) 'c ',c(:,1)
       !WRITE (6,*) 'g ',g(:,1)
-      IF (Iterative_Solver_Add_Vector(c, g, p)) THEN
+      IF (Iterative_Solver_Add_Vector(c, g, p) .GT. 0) THEN
         DO j = 1, n
           c(j, 1) = c(j, 1) - g(j, 1) / (alpha * (j))
         END DO

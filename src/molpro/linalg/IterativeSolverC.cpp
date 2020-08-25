@@ -85,7 +85,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   std::tie(range_begin, range_end) = x[0].distribution().range(mpi_rank);
 }
   
-  extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes,
+/*  extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes,
                                                          double thresh, unsigned int maxIterations, int verbosity) {
 #ifdef HAVE_MPI_H
   int flag;
@@ -102,7 +102,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   rr.reserve(nroot);
   for (size_t root = 0; root < nroot; root++) {
     rr.emplace_back(n, MPI_COMM_COMPUTE);
-    rr.back().allocate_buffer(Span<double>(&const_cast<double*>(rhs)[root * n], n));
+    rr.back().allocate_buffer(Span<typename Rvector::double>(&const_cast<double*>(rhs)[root * n], n));
     // rr.push_back(v(const_cast<double*>(&rhs[root * n]),
     //               n)); // in principle the const_cast is dangerous, but we trust LinearEquations to behave
   }
@@ -160,11 +160,11 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, double thresh, unsig
   instance->m_thresh = thresh;
   instance->m_maxIterations = maxIterations;
   instance->m_verbosity = verbosity;
-}
+} */
 
 extern "C" void IterativeSolverFinalize() { instances.pop(); }
 
-extern "C" int IterativeSolverAddValue(double* parameters, double value, double* action, int sync, int lmppx) {
+/* extern "C" int IterativeSolverAddValue(double* parameters, double value, double* action, int sync, int lmppx) {
   auto& instance = instances.top();
 #ifdef HAVE_MPI_H
   MPI_Comm ccomm;
@@ -189,61 +189,71 @@ extern "C" int IterativeSolverAddValue(double* parameters, double value, double*
   }
 #endif
   return result;
-}
+} */
 
 extern "C" int IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync, int lmppx) {
-  std::vector<v> cc, gg;
+  std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   if (instance->m_profiler != nullptr)
     instance->m_profiler->start("AddVector");
   cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
   gg.reserve(instance->m_roots);
-  std::vector<std::vector<typename v::value_type>> ccp(instance->m_roots);
-#ifdef HAVE_MPI_H
+  std::vector<std::vector<typename Rvector::value_type>> ccp(instance->m_roots);
+//#ifdef HAVE_MPI_H
   MPI_Comm ccomm;
   if (lmppx != 0) {
     ccomm = MPI_COMM_SELF;
   } else {
     ccomm = MPI_COMM_COMPUTE;
   }
+  int mpi_rank;
+  MPI_Comm_rank(ccomm, &mpi_rank);
   for (size_t root = 0; root < instance->m_roots; root++) {
-    cc.emplace_back(&parameters[root * instance->m_dimension], instance->m_dimension, ccomm);
-    gg.emplace_back(&action[root * instance->m_dimension], instance->m_dimension, ccomm);
+    cc.emplace_back(instance->m_dimension, ccomm);
+    auto ccrange = cc.back().distribution().range(mpi_rank);
+    auto ccn = ccrange.second - ccrange.first;
+    cc.back().allocate_buffer(Span<typename Rvector::value_type>(&parameters[root * instance->m_dimension +
+                                                                                                  ccrange.first], ccn));
+    gg.emplace_back(instance->m_dimension, ccomm);
+    auto ggrange = gg.back().distribution().range(mpi_rank);
+    auto ggn = ggrange.second - ggrange.first;
+    gg.back().allocate_buffer(Span<typename Rvector::value_type>(&action[root * instance->m_dimension +
+                                                                                                  ggrange.first], ggn));
   }
-#else
+/*#else
   for (size_t root = 0; root < instance->m_roots; root++) {
     cc.emplace_back(&parameters[root * instance->m_dimension], instance->m_dimension);
     gg.emplace_back(&action[root * instance->m_dimension], instance->m_dimension);
   }
-#endif
+#endif*/
   if (instance->m_profiler != nullptr)
     instance->m_profiler->start("AddVector:Update");
-  bool update = instance->addVector(cc, gg, ccp);
+  size_t working_set_size = instance->addVector(cc, gg, ccp);
   if (instance->m_profiler != nullptr)
     instance->m_profiler->stop("AddVector:Update");
 
-  if (instance->m_profiler != nullptr)
-    instance->m_profiler->start("AddVector:Sync");
+/*  if (instance->m_profiler != nullptr)
+    instance->m_profiler->start("AddVector:Sync");*/
   for (size_t root = 0; root < instance->m_roots; root++) {
-#ifdef HAVE_MPI_H
+/*#ifdef HAVE_MPI_H
     if (sync) {
       if (!cc[root].synchronised())
         cc[root].sync();
       if (!gg[root].synchronised())
         gg[root].sync();
     }
-#endif
+#endif */
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }
-  if (instance->m_profiler != nullptr)
-    instance->m_profiler->stop("AddVector:Sync");
+/*  if (instance->m_profiler != nullptr)
+    instance->m_profiler->stop("AddVector:Sync"); */
   if (instance->m_profiler != nullptr)
     instance->m_profiler->stop("AddVector");
-  return update ? 1 : 0;
+  return working_set_size;
 }
 
-extern "C" int IterativeSolverEndIteration(double* solution, double* residual, double* error, int lmppx) {
+/* extern "C" int IterativeSolverEndIteration(double* solution, double* residual, double* error, int lmppx) {
   std::vector<v> cc, gg;
   auto& instance = instances.top();
   if (instance->m_profiler != nullptr)
@@ -339,12 +349,7 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }
-}
-
-extern "C" void IterativeSolverOption(const char* key, const char* val) {
-  auto& instance = instances.top();
-  instance->m_options.insert(std::make_pair(std::string(key), std::string(val)));
-}
+} */
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
   auto& instance = instances.top();
@@ -353,7 +358,7 @@ extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
     eigenvalues[k++] = e;
 }
 
-extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* residual, size_t maximumNumber,
+/* extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* residual, size_t maximumNumber,
                                           double threshold, size_t* indices, int lmppx) {
   std::vector<v> cc, gg;
   auto& instance = instances.top();
@@ -381,4 +386,4 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
   for (size_t i = 0; i < result.size(); i++)
     indices[i] = result[i];
   return result.size();
-}
+} */

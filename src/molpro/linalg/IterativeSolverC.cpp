@@ -246,6 +246,8 @@ extern "C" int IterativeSolverAddVector(double* parameters, double* action, doub
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }
+  
+  if (mpi_rank == 0) instance->report();
 /*  if (instance->m_profiler != nullptr)
     instance->m_profiler->stop("AddVector:Sync"); */
   if (instance->m_profiler != nullptr)
@@ -355,6 +357,13 @@ extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
   auto& instance = instances.top();
   size_t k = 0;
   for (const auto& e : instance->eigenvalues())
+    eigenvalues[k++] = e;
+}
+
+extern "C" void IterativeSolverWorkingSetEigenvalues(double* eigenvalues) {
+  auto& instance = instances.top();
+  size_t k = 0;
+  for (const auto& e : instance->working_set_eigenvalues())
     eigenvalues[k++] = e;
 }
 

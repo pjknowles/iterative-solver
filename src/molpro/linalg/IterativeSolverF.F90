@@ -683,6 +683,20 @@ CONTAINS
     CALL IterativeSolverEigenvalues(Iterative_Solver_Eigenvalues)
   END FUNCTION Iterative_Solver_Eigenvalues
 
+  !> \brief the eigenvalues of the reduced problem, for the number of roots in working set (not yet converged).
+  FUNCTION Iterative_Solver_Working_Set_Eigenvalues(working_set_size)
+    DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: Iterative_Solver_Working_Set_Eigenvalues
+    INTEGER, INTENT(in) :: working_set_size
+    INTERFACE
+      SUBROUTINE IterativeSolverWorkingSetEigenvalues(eigenvalues) BIND(C, name = 'IterativeSolverWorkingSetEigenvalues')
+        USE iso_c_binding
+        REAL(C_double), DIMENSION(*), INTENT(inout) :: eigenvalues
+      END SUBROUTINE IterativeSolverWorkingSetEigenvalues
+    END INTERFACE
+    ALLOCATE (Iterative_Solver_Working_Set_Eigenvalues(int(working_set_size, c_size_t)))
+    CALL IterativeSolverWorkingSetEigenvalues(Iterative_Solver_Working_Set_Eigenvalues)
+  END FUNCTION Iterative_Solver_Working_Set_Eigenvalues
+
   !> @brief Convert from Fortran string to C string
   SUBROUTINE c_string_from_f(fstring, cstring)
     CHARACTER(kind = c_char), DIMENSION(*) :: cstring !< A C char[] big enough to hold the result. No checks are made for overflow.

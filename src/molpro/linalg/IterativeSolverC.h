@@ -28,6 +28,8 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues);
 
+extern "C" void IterativeSolverWorkingSetEigenvalues(double* eigenvalues);
+
 extern "C" void IterativeSolverOption(const char* key, const char* val);
 
 extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* residual, size_t maximumNumber,

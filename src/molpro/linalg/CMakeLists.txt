@@ -13,11 +13,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
 
 if (MPI)
     message(STATUS "Building LinearAlgebra on MPI")
-    LibraryManager_Append(SOURCES IterativeSolverCMPI.cpp)
+    LibraryManager_Append(${PROJECT_NAME} SOURCES IterativeSolverCMPI.cpp)
     target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_MPI_H)
     target_link_libraries(${PROJECT_NAME} PUBLIC MPI::MPI_CXX)
 else ()
-    LibraryManager_Append(SOURCES IterativeSolverCSerial.cpp)
+    LibraryManager_Append(${PROJECT_NAME} SOURCES IterativeSolverCSerial.cpp)
     message(STATUS "Building serial LinearAlgebra")
 endif ()
 

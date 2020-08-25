@@ -1,6 +1,6 @@
 # Extra checking for HDF5 and global arrays will go here
 LibraryManager_Append(${PROJECT_NAME}
-        SOURCES IterativeSolverC.cpp iterativesolver/IterativeSolver-double.cpp iterativesolver/IterativeSolver-complex-double.cpp
+        SOURCES iterativesolver/IterativeSolver-double.cpp iterativesolver/IterativeSolver-complex-double.cpp
         PUBLIC_HEADER IterativeSolver.h IterativeSolverC.h OpaqueArray.h OutOfCoreArray.h PagedArray.h SimpleArray.h iterativesolver/P.h iterativesolver/Q.h iterativesolver/helper.h iterativesolver/ArrayHandlers.h iterativesolver/Statistics.h
         PRIVATE_HEADER iterativesolver/helper-implementation.h
         )
@@ -13,9 +13,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
 
 if (MPI)
     message(STATUS "Building LinearAlgebra on MPI")
+    LibraryManager_Append(SOURCES IterativeSolverCMPI.cpp)
     target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_MPI_H)
     target_link_libraries(${PROJECT_NAME} PUBLIC MPI::MPI_CXX)
 else ()
+    LibraryManager_Append(SOURCES IterativeSolverCSerial.cpp)
     message(STATUS "Building serial LinearAlgebra")
 endif ()
 

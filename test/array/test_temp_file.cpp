@@ -5,7 +5,6 @@
 #include <molpro/linalg/array/util/temp_file.h>
 #include <molpro/linalg/array/util/temp_hdf5_handle.h>
 
-#include <fstream>
 
 using molpro::linalg::array::util::file_exists;
 using molpro::linalg::array::util::HDF5Handle;

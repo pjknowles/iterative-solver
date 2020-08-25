@@ -457,11 +457,11 @@ CONTAINS
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP  !< p
     LOGICAL, INTENT(in), OPTIONAL :: lmppx  !< Whether communicator should be MPI_COMM_SELF
     INTERFACE
-      SUBROUTINE Iterative_Solver_Solution_C(maxNum, roots, parameters, action, parametersP, lsync, lmppx) &
+      SUBROUTINE Iterative_Solver_Solution_C(nroot, roots, parameters, action, parametersP, lsync, lmppx) &
           BIND(C, name = 'IterativeSolverSolution')
         USE iso_c_binding
-        INTEGER(c_int), VALUE :: maxNum
-        INTEGER(c_int), INTENT(inout), DIMENSION(maxNum) :: roots
+        INTEGER(c_int), VALUE :: nroot
+        INTEGER(c_int), INTENT(inout), DIMENSION(nroot) :: roots
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
@@ -470,7 +470,7 @@ CONTAINS
       END SUBROUTINE
     END INTERFACE
     INTEGER(c_int), DIMENSION(SIZE(roots)) :: rootsC
-    INTEGER(c_int) :: maxNum
+    INTEGER(c_int) :: nroot
     DOUBLE PRECISION, DIMENSION(0) :: pdummy
     INTEGER(c_int) :: lsyncC
     INTEGER(c_int) :: lmppxC
@@ -479,14 +479,14 @@ CONTAINS
     IF (PRESENT(lmppx)) THEN
       IF (lmppx) lmppxC = 1
     ENDIF
-    maxNum = INT(size(roots), c_int)
+    nroot = INT(size(roots), c_int)
     DO i = 1, size(roots)
       rootsC(i) = INT(roots(i), kind = c_int)
     ENDDO
     IF (PRESENT(parametersP)) THEN
-      call Iterative_Solver_Solution_C(maxNum, rootsC, parameters, action, parametersP, lsyncC, lmppxC)
+      call Iterative_Solver_Solution_C(nroot, rootsC, parameters, action, parametersP, lsyncC, lmppxC)
     ELSE
-      call Iterative_Solver_Solution_C(maxNum, rootsC, parameters, action, pdummy, lsyncC, lmppxC)
+      call Iterative_Solver_Solution_C(nroot, rootsC, parameters, action, pdummy, lsyncC, lmppxC)
     END IF
     DO i = 1, size(roots)
       roots(i) = int(rootsC(i)) + 1
@@ -501,11 +501,11 @@ CONTAINS
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP  !< p
     LOGICAL, INTENT(in), OPTIONAL :: lmppx  !< Whether communicator should be MPI_COMM_SELF
     INTERFACE
-      SUBROUTINE Iterative_Solver_Solution_C(maxNum, roots, parameters, action, parametersP, lsync, lmppx) &
+      SUBROUTINE Iterative_Solver_Solution_C(nroot, roots, parameters, action, parametersP, lsync, lmppx) &
           BIND(C, name = 'IterativeSolverSolution')
         USE iso_c_binding
-        INTEGER(c_int), VALUE :: maxNum
-        INTEGER(c_int), INTENT(inout), DIMENSION(maxNum) :: roots
+        INTEGER(c_int), VALUE :: nroot
+        INTEGER(c_int), INTENT(inout), DIMENSION(nroot) :: roots
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
@@ -514,7 +514,7 @@ CONTAINS
       END SUBROUTINE
     END INTERFACE
     INTEGER(c_int), DIMENSION(SIZE(roots)) :: rootsC
-    INTEGER(c_int) :: maxNum
+    INTEGER(c_int) :: nroot
     DOUBLE PRECISION, DIMENSION(0) :: pdummy
     INTEGER(c_int) :: lsyncC
     INTEGER(c_int) :: lmppxC
@@ -523,14 +523,14 @@ CONTAINS
     IF (PRESENT(lmppx)) THEN
       IF (lmppx) lmppxC = 1
     ENDIF
-    maxNum = INT(size(roots), c_int)
+    nroot = INT(size(roots), c_int)
     DO i = 1, size(roots)
       rootsC(i) = INT(roots(i), kind = c_int)
     ENDDO
     IF (PRESENT(parametersP)) THEN
-      call Iterative_Solver_Solution_C(maxNum, rootsC, parameters, action, parametersP, lsyncC, lmppxC)
+      call Iterative_Solver_Solution_C(nroot, rootsC, parameters, action, parametersP, lsyncC, lmppxC)
     ELSE
-      call Iterative_Solver_Solution_C(maxNum, rootsC, parameters, action, pdummy, lsyncC, lmppxC)
+      call Iterative_Solver_Solution_C(nroot, rootsC, parameters, action, pdummy, lsyncC, lmppxC)
     END IF
     DO i = 1, size(roots)
       roots(i) = int(rootsC(i)) + 1
@@ -566,7 +566,6 @@ CONTAINS
     Iterative_Solver_End_Iteration = &
         Iterative_Solver_End_Iteration_C(solution, residual, error, lmppxC) /= 0
   END FUNCTION Iterative_Solver_End_Iteration
-
 
   !> \brief add P-space vectors to the expansion set, and return new solution.
   !> \param nP the number of P-space vectors to add

@@ -1,27 +1,16 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <molpro/linalg/array/util/TempHandle.h>
+#include "file_util.h"
 #include <molpro/linalg/array/util/temp_file.h>
 #include <molpro/linalg/array/util/temp_hdf5_handle.h>
 
 #include <fstream>
 
 using molpro::linalg::array::util::file_exists;
+using molpro::linalg::array::util::HDF5Handle;
 using molpro::linalg::array::util::temp_file_name;
 using molpro::linalg::array::util::temp_hdf5_handle;
-
-class GarbageCollector {
-public:
-  GarbageCollector(std::string fname) : file_name(std::move(fname)) {}
-  ~GarbageCollector() { remove_test_files(); }
-  void remove_test_files() {
-    if (file_exists(file_name))
-      std::remove(file_name.c_str());
-  }
-
-  std::string file_name;
-};
 
 TEST(TempFile, temp_file_name) {
   const auto body = ".temp";
@@ -39,4 +28,16 @@ TEST(TempFile, temp_file_name) {
   ASSERT_NE(f1, f3);
 }
 
-// TEST(TempFile, temp_hdf5_handle) { auto h1 = temp_hdf5_handle(".temp"); }
+TEST(TempFile, temp_hdf5_handle) {
+  auto g = GarbageCollector{};
+  {
+    auto h1 = temp_hdf5_handle(".temp");
+    ASSERT_FALSE(h1.file_name().empty());
+    ASSERT_FALSE(file_exists(h1.file_name()));
+    ASSERT_TRUE(h1.erase_on_destroy());
+    g.file_name = h1.file_name();
+    h1.open_file(HDF5Handle::Access::read_write);
+    ASSERT_TRUE(file_exists(h1.file_name()));
+  }
+  ASSERT_FALSE(file_exists(g.file_name));
+}

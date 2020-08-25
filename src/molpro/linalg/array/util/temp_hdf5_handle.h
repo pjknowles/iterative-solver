@@ -14,7 +14,7 @@ namespace util {
  *
  * @param base_name base name of the file
  */
-HDF5Handle temp_hdf5_handle(std::string base_name);
+HDF5Handle temp_hdf5_handle(const std::string &base_name);
 
 } // namespace util
 } // namespace array

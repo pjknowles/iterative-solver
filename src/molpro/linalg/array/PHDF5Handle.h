@@ -23,6 +23,7 @@ public:
   //! @copydoc HDF5Handle::HDF5Handle(hid_t, bool)
   //! @param comm communicator
   PHDF5Handle(hid_t hid, MPI_Comm comm, bool transfer_ownership = false);
+  ~PHDF5Handle() override;
 
   //! @copydoc HDF5Handle::HDF5Handle(const HDF5Handle&)
   //! @param comm assign a different communicator
@@ -48,7 +49,7 @@ public:
   MPI_Comm communicator() const { return m_comm; }
 
 protected:
-  MPI_Comm m_comm; //!< processes in this communicator have parallel access to the file
+  MPI_Comm m_comm = MPI_COMM_NULL; //!< processes in this communicator have parallel access to the file
   hid_t _open_plist() override;
 };
 

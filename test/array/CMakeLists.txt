@@ -20,7 +20,7 @@ target_link_libraries(test-${PROJECT_NAME}-ArrayHandler.exe PUBLIC molpro::${PRO
 gtest_discover_tests(test-${PROJECT_NAME}-ArrayHandler.exe)
 
 add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp
-#        testUtil.cpp testTempFile.cpp
+        testUtil.cpp testTempFile.cpp
         )
 target_link_libraries(test-${PROJECT_NAME}-array-util.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
 gtest_discover_tests(test-${PROJECT_NAME}-array-util.exe)

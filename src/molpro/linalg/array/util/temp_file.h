@@ -7,7 +7,6 @@ namespace array {
 namespace util {
 /*!
  * @brief Returns file name for a temporary file in the current directory that is not already taken
- *
  * @param base_name base name for the file, the suffix will be modified until a valid file name is found
  * @param suffix suffix to add to the file name e.g. ".hdf5"
  */

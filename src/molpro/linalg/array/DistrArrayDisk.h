@@ -101,6 +101,7 @@ class Task;
  */
 class DistrArrayDisk : public DistrArray {
 protected:
+  using disk_array = void;        //!< a compile time tag that this is a distributed disk array
   bool m_allocated = false;       //!< Flags that the memory view buffer has been allocated
   Span<value_type> m_view_buffer; //!< memory view buffer either wraps allocated buffer or stores user supplied buffer
   std::vector<value_type> m_owned_buffer;       //!< buffer allocated by the class

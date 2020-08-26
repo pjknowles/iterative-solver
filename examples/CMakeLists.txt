@@ -21,6 +21,11 @@ if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)
     list(APPEND EXAMPLES
             LinearEigensystemExample-mpi.cpp
             )
+    if (FORTRAN)
+        list(APPEND EXAMPLES
+                LinearEigensystemExampleF-mpi.F90
+                )
+    endif()
 endif ()
 
 foreach (fil ${EXAMPLES})

@@ -9,7 +9,7 @@ MODULE Iterative_Solver
   PUBLIC :: Iterative_Solver_Add_Value_Nosync, Iterative_Solver_Add_Vector_Nosync
   PUBLIC :: Iterative_Solver_Solution, Iterative_Solver_Solution_Nosync
   PUBLIC :: Iterative_Solver_Add_P, Iterative_Solver_Suggest_P
-  PUBLIC :: Iterative_Solver_Eigenvalues
+  PUBLIC :: Iterative_Solver_Eigenvalues, Iterative_Solver_Working_Set_Eigenvalues
   PRIVATE
   INTEGER(c_size_t) :: m_nq, m_nroot
 
@@ -45,9 +45,10 @@ CONTAINS
     INTEGER(c_int) :: verbosityC = 0
     REAL(c_double) :: threshC = 0d0
     CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
-    INTEGER(c_int64_t) :: pcommC = 0
+    INTEGER(c_int64_t) :: pcommC
     INTEGER(c_int) :: lmppxC
     lmppxC = 0
+    pcommC = 0
     IF (PRESENT(pname)) THEN
       ALLOCATE(pnameC(LEN(pname)+1))
       CALL c_string_from_f(pname, pnameC)
@@ -102,9 +103,10 @@ CONTAINS
     INTEGER(c_int) :: verbosityC = 0
     REAL(c_double) :: threshC = 0d0
     CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
-    INTEGER(c_int64_t) :: pcommC = 0
+    INTEGER(c_int64_t) :: pcommC
     INTEGER(c_int) :: lmppxC
     lmppxC = 0
+    pcommC = 0
     m_range_begin = INT(range_begin, kind = c_size_t)
     m_range_end = INT(range_end, kind = c_size_t)
     IF (PRESENT(pname)) THEN
@@ -707,112 +709,112 @@ CONTAINS
   END SUBROUTINE c_string_from_f
 
   !!> Unit testing of IterativeSolver Fortran binding
-  SUBROUTINE Iterative_Solver_Test() BIND(C, name = 'IterativeSolverFTest')
-    INTEGER, PARAMETER :: n = 100, nroot = 2, nPmax = 20
-    DOUBLE PRECISION, DIMENSION (n, n) :: m
-    DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g
-    DOUBLE PRECISION, DIMENSION(:, :), ALLOCATABLE :: p
-    DOUBLE PRECISION, DIMENSION (nroot) :: e, error
-    INTEGER, DIMENSION(0 : nPmax) :: offsets
-    INTEGER, DIMENSION(nPmax) :: indices
-    DOUBLE PRECISION, DIMENSION(nPmax) :: coefficients
-    DOUBLE PRECISION, DIMENSION(:, :), ALLOCATABLE :: pp
-    INTEGER :: i, j, root
-    DOUBLE PRECISION :: alpha, anharmonicity, threshold
-    INTEGER ::  working_set_size
-    PRINT *, 'Test Fortran binding of IterativeSolver'
-    m = 1
-    DO i = 1, n
-      m(i, i) = 3 * i
-    END DO
+  !SUBROUTINE Iterative_Solver_Test() BIND(C, name = 'IterativeSolverFTest')
+  !  INTEGER, PARAMETER :: n = 100, nroot = 2, nPmax = 20
+  !  DOUBLE PRECISION, DIMENSION (n, n) :: m
+  !  DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g
+  !  DOUBLE PRECISION, DIMENSION(:, :), ALLOCATABLE :: p
+  !  DOUBLE PRECISION, DIMENSION (nroot) :: e, error
+  !  INTEGER, DIMENSION(0 : nPmax) :: offsets
+  !  INTEGER, DIMENSION(nPmax) :: indices
+  !  DOUBLE PRECISION, DIMENSION(nPmax) :: coefficients
+  !  DOUBLE PRECISION, DIMENSION(:, :), ALLOCATABLE :: pp
+  !  INTEGER :: i, j, root
+  !  DOUBLE PRECISION :: alpha, anharmonicity, threshold
+  !  INTEGER ::  working_set_size
+  !  PRINT *, 'Test Fortran binding of IterativeSolver'
+  !  m = 1
+  !  DO i = 1, n
+  !    m(i, i) = 3 * i
+  !  END DO
 
-    DO irep = 1, 1
-      WRITE (6, *) 'Without P-space, dimension=', n, ', roots=', nroot
-      threshold = 1d-6;
-      CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, &
-          thresh = threshold, verbosity = 1)
-      CALL Iterative_Solver_Option("convergence", "residual")
-      c = 0; DO i = 1, nroot; c(i, i) = 1;
-      ENDDO
-      g = MATMUL(m, c)
-      IF(Iterative_Solver_Add_Vector(c, g, p) .GT. 0) THEN
-        e = Iterative_Solver_Eigenvalues()
-        DO root = 1, nroot
-          DO j = 1, n
-            c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(root) + 1d-15)
-          END DO
-        END DO
-      END IF
-        IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
-      CALL Iterative_Solver_Finalize
-      !write (6,*) 'end of irep loop ',irep
-    ENDDO
+  !  DO irep = 1, 1
+  !    WRITE (6, *) 'Without P-space, dimension=', n, ', roots=', nroot
+  !    threshold = 1d-6;
+  !    CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, &
+  !        thresh = threshold, verbosity = 1)
+  !    CALL Iterative_Solver_Option("convergence", "residual")
+  !    c = 0; DO i = 1, nroot; c(i, i) = 1;
+  !    ENDDO
+  !    g = MATMUL(m, c)
+  !    IF(Iterative_Solver_Add_Vector(c, g, p) .GT. 0) THEN
+  !      e = Iterative_Solver_Eigenvalues()
+  !      DO root = 1, nroot
+  !        DO j = 1, n
+  !          c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(root) + 1d-15)
+  !        END DO
+  !      END DO
+  !    END IF
+  !      IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
+  !    CALL Iterative_Solver_Finalize
+  !    !write (6,*) 'end of irep loop ',irep
+  !  ENDDO
 
-    DO np = nroot, nPmax, nroot
-      ALLOCATE(pp(np, np))
-      ALLOCATE(p(np, nroot))
-      WRITE (6, *) 'P-space=', nP, ', dimension=', n, ', roots=', nroot
-      CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, thresh = 1d-8, verbosity = 1)
-      update = nroot
-      offsets(0) = 0
-      DO i = 1, nP
-        offsets(i) = i
-        indices(i) = i
-        coefficients(i) = 1
-        DO j = 1, nP
-          pp(i, j) = m(i, j)
-        END DO
-      END DO
-      c = 0
-      CALL Iterative_Solver_Add_P(nP, offsets, indices, coefficients, pp, c, g, p)
-      DO iter = 1, 10
-        e = Iterative_Solver_Eigenvalues()
-        DO root = 1, nroot
-          DO i = 1, nP
-            DO j = 1, n
-              g(j, root) = g(j, root) + m(j, indices(i)) * p(i, root)
-            END DO
-          END DO
-        END DO
-        IF (update > 0) THEN
-          DO root = 1, nroot
-            DO j = 1, n
-              c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(i) + 1d-15)
-            END DO
-          END DO
-        END IF
-        IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
-        g = MATMUL(m, c)
-        update = Iterative_Solver_Add_Vector(c, g, p)
-      END DO
-      CALL Iterative_Solver_Finalize
-      DEALLOCATE(p)
-      DEALLOCATE(pp)
-    END DO
+  !  DO np = nroot, nPmax, nroot
+  !    ALLOCATE(pp(np, np))
+  !    ALLOCATE(p(np, nroot))
+  !    WRITE (6, *) 'P-space=', nP, ', dimension=', n, ', roots=', nroot
+  !    CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, thresh = 1d-8, verbosity = 1)
+  !    update = nroot
+  !    offsets(0) = 0
+  !    DO i = 1, nP
+  !      offsets(i) = i
+  !      indices(i) = i
+  !      coefficients(i) = 1
+  !      DO j = 1, nP
+  !        pp(i, j) = m(i, j)
+  !      END DO
+  !    END DO
+  !    c = 0
+  !    CALL Iterative_Solver_Add_P(nP, offsets, indices, coefficients, pp, c, g, p)
+  !    DO iter = 1, 10
+  !      e = Iterative_Solver_Eigenvalues()
+  !      DO root = 1, nroot
+  !        DO i = 1, nP
+  !          DO j = 1, n
+  !            g(j, root) = g(j, root) + m(j, indices(i)) * p(i, root)
+  !          END DO
+  !        END DO
+  !      END DO
+  !      IF (update > 0) THEN
+  !        DO root = 1, nroot
+  !          DO j = 1, n
+  !            c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(i) + 1d-15)
+  !          END DO
+  !        END DO
+  !      END IF
+  !      IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
+  !      g = MATMUL(m, c)
+  !      update = Iterative_Solver_Add_Vector(c, g, p)
+  !    END DO
+  !    CALL Iterative_Solver_Finalize
+  !    DEALLOCATE(p)
+  !    DEALLOCATE(pp)
+  !  END DO
 
-    stop
-    alpha = 1
-    anharmonicity = .5
-    WRITE (6, *) 'DIIS, dimension=', n
-    CALL Iterative_Solver_DIIS_Initialize(n, thresh = 1d-10, verbosity = 1)
-    c = 0;  c(1, 1) = 1
-    DO iter = 1, 1000
-      DO i = 1, n
-        g(i, 1) = (alpha * (i) + anharmonicity * c(i, 1)) * c(i, 1);
-        DO j = 1, n
-          g(i, 1) = g(i, 1) + (i + j - 2) * c(j, 1);
-        END DO
-      END DO
-      !WRITE (6,*) 'c ',c(:,1)
-      !WRITE (6,*) 'g ',g(:,1)
-      IF (Iterative_Solver_Add_Vector(c, g, p) .GT. 0) THEN
-        DO j = 1, n
-          c(j, 1) = c(j, 1) - g(j, 1) / (alpha * (j))
-        END DO
-      END IF
-      IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
-    END DO
-    WRITE (6, *) 'error ', error(1), SQRT(dot_PRODUCT(c(:, 1), c(:, 1)))
-    CALL Iterative_Solver_Finalize
-  END SUBROUTINE Iterative_Solver_Test
+  !  stop
+  !  alpha = 1
+  !  anharmonicity = .5
+  !  WRITE (6, *) 'DIIS, dimension=', n
+  !  CALL Iterative_Solver_DIIS_Initialize(n, thresh = 1d-10, verbosity = 1)
+  !  c = 0;  c(1, 1) = 1
+  !  DO iter = 1, 1000
+  !    DO i = 1, n
+  !      g(i, 1) = (alpha * (i) + anharmonicity * c(i, 1)) * c(i, 1);
+  !      DO j = 1, n
+  !        g(i, 1) = g(i, 1) + (i + j - 2) * c(j, 1);
+  !      END DO
+  !    END DO
+  !    !WRITE (6,*) 'c ',c(:,1)
+  !    !WRITE (6,*) 'g ',g(:,1)
+  !    IF (Iterative_Solver_Add_Vector(c, g, p) .GT. 0) THEN
+  !      DO j = 1, n
+  !        c(j, 1) = c(j, 1) - g(j, 1) / (alpha * (j))
+  !      END DO
+  !    END IF
+  !    IF (Iterative_Solver_End_Iteration(c, g, error)) EXIT
+  !  END DO
+  !  WRITE (6, *) 'error ', error(1), SQRT(dot_PRODUCT(c(:, 1), c(:, 1)))
+  !  CALL Iterative_Solver_Finalize
+  !END SUBROUTINE Iterative_Solver_Test
 END MODULE Iterative_Solver

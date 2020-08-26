@@ -1,4 +1,4 @@
-foreach (t PagedVector-benchmark benchmark)
+foreach (t benchmark)
     add_executable(${t}.exe ${t}.cpp)
     target_link_libraries(${t}.exe PUBLIC ${PROJECT_NAME} Profiler)
     if (MPI)

@@ -19,7 +19,9 @@ add_executable(test-${PROJECT_NAME}-ArrayHandler.exe testArrayHandler.cpp testAr
 target_link_libraries(test-${PROJECT_NAME}-ArrayHandler.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
 gtest_discover_tests(test-${PROJECT_NAME}-ArrayHandler.exe)
 
-add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp testUtil.cpp)
+add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp file_util.h
+        testUtil.cpp test_temp_file.cpp
+        )
 target_link_libraries(test-${PROJECT_NAME}-array-util.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
 gtest_discover_tests(test-${PROJECT_NAME}-array-util.exe)
 
@@ -39,7 +41,7 @@ if (MPI)
     endif ()
     if (LINEARALGEBRA_ARRAY_HDF5)
         target_sources(test-${PROJECT_NAME}-parallel PRIVATE testPHDF5Handle.cpp testDistrArray.h
-                testDistrArrayHDF5.cpp)
+                testDistrArrayHDF5.cpp testArrayHandlerDDisk.cpp)
         target_compile_definitions(test-${PROJECT_NAME}-parallel PUBLIC "ARRAY_DATA=\"${CMAKE_CURRENT_BINARY_DIR}/data\"")
     endif ()
     target_link_libraries(test-${PROJECT_NAME}-parallel PUBLIC molpro::${PROJECT_NAME} gmock_main)

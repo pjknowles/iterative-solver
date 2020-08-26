@@ -1,7 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_PHDF5HANDLE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_PHDF5HANDLE_H
 
-#include "molpro/linalg/array/HDF5Handle.h"
+#include <molpro/linalg/array/HDF5Handle.h>
 #include <mpi.h>
 
 namespace molpro {
@@ -53,6 +53,7 @@ protected:
   hid_t _open_plist() override;
 };
 
+extern template struct TempHandle<PHDF5Handle>;
 } // namespace util
 } // namespace array
 } // namespace linalg

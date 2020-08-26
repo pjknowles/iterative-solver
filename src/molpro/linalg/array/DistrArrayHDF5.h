@@ -77,13 +77,21 @@ public:
    * @param file_handle handle for opening the HDF5 group where array is/will be stored.
    * @param prof
    */
-  DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, std::shared_ptr<Profiler> prof = nullptr);
+  explicit DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, std::shared_ptr<Profiler> prof = nullptr);
   /*!
    * @brief Creates a disk array by copying source to disk.
    * @param source a distributed array
    * @param file_handle handle for opening the HDF5 group where array is/will be stored.
    */
   DistrArrayHDF5(const DistrArray &source, std::shared_ptr<util::PHDF5Handle> file_handle);
+
+  /*!
+   * @brief Create a copy of source array using a temporary file which will be erased on destruction
+   * @param source array to be copied
+   * @param base_name base name for the temporary file. It will form the first part of the temporary array name. The
+   * middle will be chosen to be unique and the suffix will be ".hdf5"
+   */
+  static DistrArrayHDF5 CreateTempCopy(const DistrArray &source, const std::string &base_name = ".temp_array");
 
   /*!
    * @brief Copies the array from source.

@@ -3,5 +3,5 @@ LibraryManager_Append(${PROJECT_NAME}
 if (MPI)
     LibraryManager_Append(${PROJECT_NAME}
             SOURCES DistrFlags.cpp
-            PUBLIC_HEADER DistrFlags.h)
+            PUBLIC_HEADER DistrFlags.h gather_all.h)
 endif ()

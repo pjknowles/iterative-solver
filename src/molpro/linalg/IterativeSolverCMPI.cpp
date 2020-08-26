@@ -15,6 +15,7 @@
 #include <molpro/linalg/iterativesolver/ArrayHandlers.h>
 #include <molpro/linalg/array/util/Distribution.h>
 #include <molpro/linalg/array/Span.h>
+#include <molpro/linalg/array/util/gather_all.h>
 
 using molpro::linalg::DIIS;
 using molpro::linalg::LinearEigensystem;
@@ -22,6 +23,7 @@ using molpro::linalg::LinearEquations;
 using molpro::linalg::Optimize;
 using molpro::linalg::iterativesolver::ArrayHandlers;
 using molpro::linalg::array::Span;
+using molpro::linalg::array::util::gather_all;
 
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
 using Qvector = molpro::linalg::array::DistrArrayMPI3;
@@ -217,22 +219,18 @@ extern "C" int IterativeSolverAddVector(double* parameters, double* action, doub
   if (instance->m_profiler != nullptr)
     instance->m_profiler->stop("AddVector:Update");
 
-/*  if (instance->m_profiler != nullptr)
-    instance->m_profiler->start("AddVector:Sync");*/
+  if (instance->m_profiler != nullptr)
+    instance->m_profiler->start("AddVector:Sync");
   for (size_t root = 0; root < instance->m_roots; root++) {
-/*
     if (sync) {
-      if (!cc[root].synchronised())
-        cc[root].sync();
-      if (!gg[root].synchronised())
-        gg[root].sync();
+      gather_all(cc[root], ccomm);
+      gather_all(gg[root], ccomm);
     }
-*/
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }
-/*  if (instance->m_profiler != nullptr)
-    instance->m_profiler->stop("AddVector:Sync"); */
+  if (instance->m_profiler != nullptr)
+    instance->m_profiler->stop("AddVector:Sync");
   if (mpi_rank == 0) instance->report();
   if (instance->m_profiler != nullptr)
     instance->m_profiler->stop("AddVector");
@@ -275,22 +273,18 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
   if (instance->m_profiler != nullptr)
     instance->m_profiler->stop("Solution:Call");
 
-/*  if (instance->m_profiler != nullptr)
-    instance->m_profiler->start("Solution:Sync");*/
+  if (instance->m_profiler != nullptr)
+    instance->m_profiler->start("Solution:Sync");
   for (size_t root = 0; root < instance->m_roots; root++) {
-/*
     if (sync) {
-      if (!cc[root].synchronised())
-        cc[root].sync();
-      if (!gg[root].synchronised())
-        gg[root].sync();
+      gather_all(cc[root], ccomm);
+      gather_all(gg[root], ccomm);
     }
-*/
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }
-/*  if (instance->m_profiler != nullptr)
-    instance->m_profiler->stop("Solution:Sync"); */
+  if (instance->m_profiler != nullptr)
+    instance->m_profiler->stop("Solution:Sync");
   if (mpi_rank == 0) instance->report();
   if (instance->m_profiler != nullptr)
     instance->m_profiler->stop("Solution");

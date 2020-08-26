@@ -58,7 +58,7 @@ TEST_F(ArrayHandlerDDiskF, constructor_default) {
 TEST_F(ArrayHandlerDDiskF, constructor_erase_on_default) {
   LockMPI3 lock{mpi_comm};
   auto copy_func = [this](const auto& source) {
-    fhandle_n2->set_erase_on_destroy(true);
+    fhandle_n2->set_erase_file_on_destroy(true);
     return DistrArrayHDF5(source, fhandle_n2);
   };
   auto a = ArrayHandlerDDisk<DistrArrayHDF5>(copy_func);
@@ -66,7 +66,7 @@ TEST_F(ArrayHandlerDDiskF, constructor_erase_on_default) {
   {
     auto y = a.copy(x);
     auto l = lock.scope();
-    EXPECT_TRUE(fhandle_n2->erase_on_destroy());
+    EXPECT_TRUE(fhandle_n2->erase_file_on_destroy());
     ASSERT_EQ(y.file_handle(), fhandle_n2);
   }
   {

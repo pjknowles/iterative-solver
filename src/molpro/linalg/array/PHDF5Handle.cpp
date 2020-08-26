@@ -45,7 +45,7 @@ PHDF5Handle& PHDF5Handle::operator=(PHDF5Handle&& source) noexcept {
 }
 PHDF5Handle::~PHDF5Handle() {
   HDF5Handle::close_file();
-  if (m_erase_on_destroy) {
+  if (m_erase_file_on_destroy) {
     int rank;
     MPI_Comm_rank(communicator(), &rank);
     if (rank == 0)

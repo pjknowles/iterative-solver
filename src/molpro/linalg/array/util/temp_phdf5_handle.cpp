@@ -10,7 +10,7 @@ namespace util {
 PHDF5Handle temp_phdf5_handle(const std::string &base_name, MPI_Comm comm) {
   auto fname = temp_file_name(base_name, ".hdf5");
   auto t = PHDF5Handle(fname, comm);
-  assert(t.set_erase_on_destroy(true));
+  assert(t.set_erase_file_on_destroy(true));
   return t;
 }
 

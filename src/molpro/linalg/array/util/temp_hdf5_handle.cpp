@@ -14,7 +14,7 @@ namespace util {
 HDF5Handle temp_hdf5_handle(const std::string &base_name) {
   auto fname = temp_file_name(base_name, ".hdf5");
   auto handle = HDF5Handle(fname);
-  assert(handle.set_erase_on_destroy(true));
+  assert(handle.set_erase_file_on_destroy(true));
   return handle;
 }
 

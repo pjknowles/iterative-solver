@@ -86,8 +86,8 @@ TEST_F(PHDF5HandleTestFile, erase_on_destroy) {
     auto handle = PHDF5Handle(file_name, mpi_comm);
     handle.open_file(PHDF5Handle::Access::read_write);
     auto l = lock.scope();
-    ASSERT_FALSE(handle.erase_on_destroy());
-    ASSERT_TRUE(handle.set_erase_on_destroy(true));
+    ASSERT_FALSE(handle.erase_file_on_destroy());
+    ASSERT_TRUE(handle.set_erase_file_on_destroy(true));
     ASSERT_TRUE(file_exists(handle.file_name()));
   }
   auto l = lock.scope();
@@ -103,7 +103,7 @@ TEST(temp_phdf5_handle, lifetime) {
       auto l = lock.scope();
       ASSERT_FALSE(h1.file_name().empty());
       ASSERT_FALSE(file_exists(h1.file_name()));
-      ASSERT_TRUE(h1.erase_on_destroy());
+      ASSERT_TRUE(h1.erase_file_on_destroy());
     }
     g.file_name = h1.file_name();
     h1.open_file(HDF5Handle::Access::read_write);

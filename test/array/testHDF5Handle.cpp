@@ -213,24 +213,24 @@ TEST_F(HDF5HandleOpenFileCreatF, create_group) {
   EXPECT_EQ(h->group_name(), group_name);
 }
 
-TEST_F(HDF5HandleOpenFileCreatF, erase_on_destroy) {
+TEST_F(HDF5HandleOpenFileCreatF, erase_file_on_destroy) {
   {
     auto handle = HDF5Handle(file_name, "/test_group");
-    EXPECT_FALSE(handle.erase_on_destroy());
-    EXPECT_TRUE(handle.set_erase_on_destroy(true)) << "file is not open yet";
-    EXPECT_TRUE(handle.set_erase_on_destroy(false));
-    EXPECT_FALSE(handle.erase_on_destroy());
+    EXPECT_FALSE(handle.erase_file_on_destroy());
+    EXPECT_TRUE(handle.set_erase_file_on_destroy(true)) << "file is not open yet";
+    EXPECT_TRUE(handle.set_erase_file_on_destroy(false));
+    EXPECT_FALSE(handle.erase_file_on_destroy());
     handle.open_file(HDF5Handle::Access::read_write);
     {
       auto handle_non_owning = HDF5Handle(handle.file_id());
-      EXPECT_FALSE(handle_non_owning.erase_on_destroy());
-      EXPECT_TRUE(handle_non_owning.set_erase_on_destroy(false));
-      EXPECT_FALSE(handle_non_owning.set_erase_on_destroy(true));
-      EXPECT_FALSE(handle_non_owning.erase_on_destroy()) << "non owning handle cannot erase";
+      EXPECT_FALSE(handle_non_owning.erase_file_on_destroy());
+      EXPECT_TRUE(handle_non_owning.set_erase_file_on_destroy(false));
+      EXPECT_FALSE(handle_non_owning.set_erase_file_on_destroy(true));
+      EXPECT_FALSE(handle_non_owning.erase_file_on_destroy()) << "non owning handle cannot erase";
     }
     EXPECT_TRUE(file_exists(file_name));
-    EXPECT_TRUE(handle.set_erase_on_destroy(true));
-    EXPECT_TRUE(handle.erase_on_destroy());
+    EXPECT_TRUE(handle.set_erase_file_on_destroy(true));
+    EXPECT_TRUE(handle.erase_file_on_destroy());
   }
   EXPECT_FALSE(file_exists(file_name));
 }
@@ -732,7 +732,7 @@ TEST(temp_hdf5_handle, lifetime) {
     auto h1 = temp_hdf5_handle(".temp");
     ASSERT_FALSE(h1.file_name().empty());
     ASSERT_FALSE(file_exists(h1.file_name()));
-    ASSERT_TRUE(h1.erase_on_destroy());
+    ASSERT_TRUE(h1.erase_file_on_destroy());
     g.file_name = h1.file_name();
     h1.open_file(HDF5Handle::Access::read_write);
     ASSERT_TRUE(file_exists(h1.file_name()));

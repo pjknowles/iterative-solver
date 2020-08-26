@@ -8,7 +8,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 include(GoogleTest)
-foreach (t IterativeSolver-test IterativeSolver-OOCA-test TestIterativeSolver PagedVector-test OutOfCoreArray-test SimpleVector-test LinearEigensystem-file-test)
+foreach (t IterativeSolver-test TestIterativeSolver PagedVector-test OutOfCoreArray-test SimpleVector-test LinearEigensystem-file-test)
     add_executable(${t}.exe ${t}.cpp test.h)
     target_link_libraries(${t}.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)# ${MPI_CXX_LIBRARIES})
     gtest_discover_tests(${t}.exe)

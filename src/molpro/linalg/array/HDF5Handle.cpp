@@ -232,6 +232,11 @@ bool HDF5Handle::erasable() {
   bool group_owner = (m_group_hid == hid_default) || m_group_owner;
   return file_owner && group_owner;
 }
+void HDF5Handle::assign_group(const std::string &group) {
+  close_group();
+  m_group_name = group;
+  m_group_owner = true;
+}
 
 bool file_exists(const std::string &fname) { return !std::ifstream{fname}.fail(); }
 

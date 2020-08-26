@@ -176,6 +176,11 @@ public:
    * @return id of hdf5 object. Returns hid_default if a group was already assigned on construction.
    */
   virtual hid_t open_group(const std::string &group);
+  /*!
+   * @brief Assign a new group, closing the old one
+   * @param group new group name, should be an absolute path
+   */
+  void assign_group(const std::string &group);
   //! Closes the file if it is open, also closes the group. If handle is not owning, the underlying object is not closed
   virtual void close_file();
   //! Closes the group if it is open. If handle is not owning, the underlying object is not closed.

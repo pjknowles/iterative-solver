@@ -2,14 +2,17 @@
 #include <gtest/gtest.h>
 
 #include "data_util.h"
+#include "file_util.h"
 #include "parallel_util.h"
 
 #include <molpro/linalg/array/PHDF5Handle.h>
 #include <molpro/linalg/array/util.h>
+#include <molpro/linalg/array/util/temp_phdf5_handle.h>
 
 using molpro::linalg::array::util::file_exists;
 using molpro::linalg::array::util::HDF5Handle;
 using molpro::linalg::array::util::PHDF5Handle;
+using molpro::linalg::array::util::temp_phdf5_handle;
 
 using molpro::linalg::array::util::LockMPI3;
 using molpro::linalg::test::mpi_comm;
@@ -87,4 +90,26 @@ TEST_F(PHDF5HandleTestFile, erase_on_destroy) {
   }
   auto l = lock.scope();
   ASSERT_FALSE(file_exists(file_name));
+}
+
+TEST(temp_phdf5_handle, lifetime) {
+  LockMPI3 lock{mpi_comm};
+  auto g = GarbageCollector{};
+  {
+    auto h1 = temp_phdf5_handle(".temp", mpi_comm);
+    {
+      auto l = lock.scope();
+      ASSERT_FALSE(h1.file_name().empty());
+      ASSERT_FALSE(file_exists(h1.file_name()));
+      ASSERT_TRUE(h1.erase_on_destroy());
+    }
+    g.file_name = h1.file_name();
+    h1.open_file(HDF5Handle::Access::read_write);
+    {
+      auto l = lock.scope();
+      ASSERT_TRUE(file_exists(h1.file_name()));
+    }
+  }
+  auto l = lock.scope();
+  ASSERT_FALSE(file_exists(g.file_name));
 }

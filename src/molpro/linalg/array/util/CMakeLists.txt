@@ -7,6 +7,7 @@ if (MPI)
             PUBLIC_HEADER DistrFlags.h)
     if (LINEARALGEBRA_ARRAY_HDF5)
         LibraryManager_Append(${PROJECT_NAME}
+                SOURCES temp_phdf5_handle.cpp
                 PUBLIC_HEADER temp_phdf5_handle.h)
     endif ()
 endif ()

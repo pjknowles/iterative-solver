@@ -13,14 +13,10 @@ namespace util {
  * The handle has no group assigned to it.
  *
  * @param base_name base name of the file
+ * @param comm mpi communicator
  */
-PHDF5Handle temp_phdf5_handle(std::string base_name);
+PHDF5Handle temp_phdf5_handle(const std::string &base_name, MPI_Comm comm);
 
-//! Keeps track of temporary handles
-struct TempPHDF5Handles{
-
-
-};
 } // namespace util
 } // namespace array
 } // namespace linalg

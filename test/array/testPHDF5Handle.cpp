@@ -127,6 +127,20 @@ TEST_F(PHDF5HandleTestFile, erase_group_on_destroy) {
   EXPECT_EQ(hdf5_link_exists(h.file_id(), group_name), 0) << "group should have been removed";
 }
 
+TEST_F(PHDF5HandleTestFile, temp_hdf5_handle_group) {
+  auto group_name = "/test";
+  auto h1 = PHDF5Handle(file_name, mpi_comm);
+  h1.open_file(HDF5Handle::Access::read_write);
+  {
+    auto h2 = temp_phdf5_handle_group(h1, group_name);
+    auto l = lock.scope();
+    ASSERT_TRUE(h2.erase_group_on_destroy());
+    ASSERT_TRUE(hdf5_link_exists(h2.file_id(), group_name) > 0);
+  }
+  auto l = lock.scope();
+  ASSERT_TRUE(hdf5_link_exists(h1.file_id(), group_name) == 0);
+}
+
 TEST(temp_phdf5_handle, lifetime) {
   LockMPI3 lock{mpi_comm};
   auto g = GarbageCollector{};

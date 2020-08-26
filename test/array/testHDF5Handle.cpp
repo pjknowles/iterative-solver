@@ -235,6 +235,31 @@ TEST_F(HDF5HandleOpenFileCreatF, erase_file_on_destroy) {
   EXPECT_FALSE(file_exists(file_name));
 }
 
+TEST_F(HDF5HandleOpenFileCreatF, erase_group_on_destroy_not_owner) {
+  auto h1 = HDF5Handle(file_name, "test_group");
+  h1.open_group();
+  auto h2 = HDF5Handle(h1.group_id());
+  EXPECT_FALSE(h2.erase_group_on_destroy());
+  EXPECT_FALSE(h2.set_erase_group_on_destroy(true));
+  EXPECT_TRUE(h2.set_erase_group_on_destroy(false));
+}
+
+TEST_F(HDF5HandleOpenFileCreatF, erase_group_on_destroy) {
+  const std::string group_name = "/test";
+  auto fid = H5Fcreate(file_name.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT);
+  {
+    auto h2 = HDF5Handle(fid, true);
+    h2.open_group(group_name);
+    EXPECT_TRUE(hdf5_link_exists(h2.file_id(), group_name) > 0) << "group should have been created";
+    EXPECT_FALSE(h2.erase_group_on_destroy());
+    EXPECT_TRUE(h2.set_erase_group_on_destroy(false));
+    EXPECT_TRUE(h2.set_erase_group_on_destroy(true));
+  }
+  auto h = HDF5Handle(file_name);
+  h.open_file(HDF5Handle::Access::read_only);
+  EXPECT_EQ(hdf5_link_exists(h.file_id(), group_name), 0) << "group should have been removed";
+}
+
 TEST_F(HDF5HandleDummyF, open_file_diff_name) {
   auto id_does_not_exist = h->open_file(name_inner_group_dataset + "-does-not-exist", HDF5Handle::Access::read_only);
   EXPECT_EQ(id_does_not_exist, HDF5Handle::hid_default)

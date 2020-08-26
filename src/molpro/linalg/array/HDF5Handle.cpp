@@ -78,9 +78,15 @@ HDF5Handle &HDF5Handle::operator=(HDF5Handle &&source) noexcept {
 
 HDF5Handle::~HDF5Handle() {
   HDF5Handle::close_file();
-  if (m_erase_file_on_destroy)
-    if (file_exists(file_name()))
+  if (m_erase_file_on_destroy) {
+    if (file_exists(file_name())) {
       std::remove(file_name().c_str());
+    }
+  } else if (m_erase_group_on_destroy) {
+    HDF5Handle::open_file(Access::read_write);
+    HDF5Handle::open_group();
+    H5Ldelete(file_id(), group_name().c_str(), H5P_DEFAULT);
+  }
 }
 hid_t HDF5Handle::open_file(HDF5Handle::Access type) {
   if (file_is_open()) {
@@ -212,6 +218,14 @@ bool HDF5Handle::set_erase_file_on_destroy(bool value) {
   m_erase_file_on_destroy = value;
   return true;
 }
+
+bool HDF5Handle::set_erase_group_on_destroy(bool value) {
+  if (value && !m_group_owner)
+    return false;
+  m_erase_group_on_destroy = value;
+  return true;
+}
+
 bool HDF5Handle::erasable() {
   bool file_owner = m_file_owner;
   bool group_owner = (m_group_hid == hid_default) || m_group_owner;

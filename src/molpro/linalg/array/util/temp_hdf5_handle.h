@@ -16,6 +16,20 @@ namespace util {
  */
 HDF5Handle temp_hdf5_handle(const std::string &base_name);
 
+/*!
+ * @brief Returns a name for a temporary group that is not already taken
+ * @param handle handle with an open file
+ * @param base_name base name of the temporary group. It can be absolute path, or relative to group name of handle
+ */
+std::string temp_group_name(const HDF5Handle &handle, const std::string &base_name);
+
+/*!
+ * @brief Returns copy of the handle with a temporary group assigned and opened
+ * @param handle handle to modify
+ * @param base_name base name of the temporary group. It can be absolute path, or relative to group name of handle
+ */
+HDF5Handle temp_hdf5_handle_group(const HDF5Handle &handle, const std::string &base_name);
+
 } // namespace util
 } // namespace array
 } // namespace linalg

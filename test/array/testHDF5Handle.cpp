@@ -11,7 +11,9 @@ using molpro::linalg::array::util::file_exists;
 using molpro::linalg::array::util::hdf5_link_exists;
 using molpro::linalg::array::util::hdf5_open_file;
 using molpro::linalg::array::util::HDF5Handle;
+using molpro::linalg::array::util::temp_group_name;
 using molpro::linalg::array::util::temp_hdf5_handle;
+using molpro::linalg::array::util::temp_hdf5_handle_group;
 using molpro::linalg::test::GarbageCollector;
 using molpro::linalg::test::name_inner_group_dataset;
 using molpro::linalg::test::name_single_dataset;
@@ -736,4 +738,33 @@ TEST(temp_hdf5_handle, lifetime) {
     ASSERT_TRUE(file_exists(h1.file_name()));
   }
   ASSERT_FALSE(file_exists(g.file_name));
+}
+
+TEST_F(HDF5HandleOpenFileCreatF, temp_group_name_no_group) {
+  auto h1 = HDF5Handle(file_name);
+  h1.open_file(HDF5Handle::Access::read_write);
+  ASSERT_TRUE(file_exists(h1.file_name()));
+  EXPECT_THROW(temp_group_name(h1, "temp_group"), std::runtime_error);
+  auto group_name = temp_group_name(h1, "/temp_group");
+  ASSERT_TRUE(hdf5_link_exists(h1.file_id(), group_name) == 0);
+  auto depth = std::count(begin(group_name), end(group_name), '/');
+  ASSERT_EQ(depth, 1);
+  auto h2 = HDF5Handle(file_name, group_name);
+  h2.open_group();
+  auto group_name2 = temp_group_name(h1, "/temp_group");
+  ASSERT_NE(group_name2, group_name);
+  ASSERT_NE(h1.group_id(), h2.group_id());
+  auto depth2 = std::count(begin(group_name2), end(group_name2), '/');
+  ASSERT_EQ(depth2, depth);
+}
+
+TEST_F(HDF5HandleOpenFileCreatF, temp_group_name_with_group) {
+  auto h1 = HDF5Handle(file_name, "/test_group");
+  h1.open_file(HDF5Handle::Access::read_write);
+  h1.open_group();
+  ASSERT_TRUE(file_exists(h1.file_name()));
+  auto group_name = temp_group_name(h1, "temp_group");
+  ASSERT_TRUE(hdf5_link_exists(h1.file_id(), group_name) == 0);
+  auto depth = std::count(begin(group_name), end(group_name), '/');
+  ASSERT_EQ(depth, 2);
 }

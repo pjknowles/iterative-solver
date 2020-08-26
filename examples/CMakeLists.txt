@@ -25,9 +25,13 @@ if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)
         list(APPEND EXAMPLES
                 LinearEigensystemExampleF-mpi.F90
                 )
-    endif()
+    endif ()
 endif ()
 
+if (FORTRAN AND MPI)
+    find_package(MPI COMPONENTS Fortran)
+    message("MPI_Fortran_LIBRARIES=${MPI_Fortran_LIBRARIES}")
+endif ()
 foreach (fil ${EXAMPLES})
     get_filename_component(nam ${fil} NAME_WE)
     set(test_name ${PROJECT_NAME}-${nam})
@@ -36,7 +40,7 @@ foreach (fil ${EXAMPLES})
             PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
             )
-    target_link_libraries(${test_name} PUBLIC molpro::${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
+    target_link_libraries(${test_name} PUBLIC molpro::${PROJECT_NAME} ${MPI_CXX_LIBRARIES} ${MPI_Fortran_LIBRARIES})
     if (FORTRAN AND CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
         target_link_libraries(${test_name} PUBLIC ifcore)
     endif ()

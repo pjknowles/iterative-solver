@@ -16,7 +16,7 @@ struct Statistics {
   int best_r_creations = 0;
   int current_r_creations = 0;
 };
-std::ostream& operator<<(std::ostream& o, const Statistics& statistics) {
+inline std::ostream& operator<<(std::ostream& o, const Statistics& statistics) {
   if (statistics.iterations > 0)
     o << statistics.iterations << " iterations, ";
   if (statistics.r_creations > 0)

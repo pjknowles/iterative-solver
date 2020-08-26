@@ -2,7 +2,9 @@
 #define LINEARALGEBRA_TEST_ARRAY_FILE_UTIL_H
 #include <fstream>
 
-namespace {
+namespace molpro {
+namespace linalg {
+namespace test {
 class GarbageCollector {
 public:
   GarbageCollector() = default;
@@ -17,6 +19,8 @@ public:
 
   std::string file_name;
 };
-} // namespace
+} // namespace test
+} // namespace linalg
+} // namespace molpro
 
 #endif // LINEARALGEBRA_TEST_ARRAY_FILE_UTIL_H

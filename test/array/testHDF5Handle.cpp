@@ -12,6 +12,11 @@ using molpro::linalg::array::util::hdf5_link_exists;
 using molpro::linalg::array::util::hdf5_open_file;
 using molpro::linalg::array::util::HDF5Handle;
 using molpro::linalg::array::util::temp_hdf5_handle;
+using molpro::linalg::test::GarbageCollector;
+using molpro::linalg::test::name_inner_group_dataset;
+using molpro::linalg::test::name_single_dataset;
+using molpro::linalg::test::test_file_hdf5_n1;
+using molpro::linalg::test::test_file_hdf5_n2;
 
 TEST(HDF5util, file_exists) { EXPECT_TRUE(file_exists(ARRAY_DATA)); }
 

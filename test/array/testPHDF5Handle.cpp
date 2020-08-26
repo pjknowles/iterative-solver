@@ -13,6 +13,8 @@ using molpro::linalg::array::util::file_exists;
 using molpro::linalg::array::util::HDF5Handle;
 using molpro::linalg::array::util::PHDF5Handle;
 using molpro::linalg::array::util::temp_phdf5_handle;
+using molpro::linalg::test::GarbageCollector;
+using molpro::linalg::test::name_inner_group_dataset;
 
 using molpro::linalg::array::util::LockMPI3;
 using molpro::linalg::test::mpi_comm;

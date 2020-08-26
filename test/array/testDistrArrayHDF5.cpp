@@ -21,6 +21,8 @@ using molpro::linalg::array::util::LockMPI3;
 using molpro::linalg::array::util::PHDF5Handle;
 using molpro::linalg::array::util::ScopeLock;
 using molpro::linalg::test::mpi_comm;
+using molpro::linalg::test::test_file_hdf5_n1;
+using molpro::linalg::test::test_file_hdf5_n2;
 
 using ::testing::ContainerEq;
 using ::testing::DoubleEq;

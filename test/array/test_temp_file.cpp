@@ -5,11 +5,11 @@
 #include <molpro/linalg/array/util/temp_file.h>
 #include <molpro/linalg/array/util/temp_hdf5_handle.h>
 
-
 using molpro::linalg::array::util::file_exists;
 using molpro::linalg::array::util::HDF5Handle;
 using molpro::linalg::array::util::temp_file_name;
 using molpro::linalg::array::util::temp_hdf5_handle;
+using molpro::linalg::test::GarbageCollector;
 
 TEST(TempFile, temp_file_name) {
   const auto body = ".temp";

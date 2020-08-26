@@ -160,12 +160,12 @@ TEST_F(DistrArrayHDF5_SetUp, constructor_copy_from_distr_array) {
 }
 #endif
 
-TEST_F(DistrArrayHDF5_SetUp, CreateTemp) {
+TEST_F(DistrArrayHDF5_SetUp, CreateTempCopy) {
   LockMPI3 lock{mpi_comm};
   auto a = DistrArrayHDF5(fhandle_n1, size);
   std::string fname;
   {
-    auto b = DistrArrayHDF5::CreateTemp(a);
+    auto b = DistrArrayHDF5::CreateTempCopy(a);
     fname = b.file_handle()->file_name();
     b.open_access();
     auto l = lock.scope();

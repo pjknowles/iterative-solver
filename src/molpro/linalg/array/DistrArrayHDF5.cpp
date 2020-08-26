@@ -89,7 +89,7 @@ DistrArrayHDF5::~DistrArrayHDF5() {
     DistrArrayHDF5::close_access();
 }
 
-DistrArrayHDF5 DistrArrayHDF5::CreateTemp(const DistrArray &source, const std::string &base_name) {
+DistrArrayHDF5 DistrArrayHDF5::CreateTempCopy(const DistrArray &source, const std::string &base_name) {
   auto handle = std::make_shared<util::PHDF5Handle>(util::temp_phdf5_handle(base_name, source.communicator()));
   handle->assign_group("/");
   return DistrArrayHDF5(source, handle);

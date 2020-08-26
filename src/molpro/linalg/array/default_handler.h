@@ -60,7 +60,7 @@ struct create_default_handler {
 template <class T, class S>
 struct create_default_handler<T, S, ArrayHandlerDDisk<T, S>> {
   auto operator()() {
-    auto temp_copy = [](const S& source) { auto t = T::CreateTemporary(source); };
+    auto temp_copy = [](const S& source) { auto t = T::CreateTempCopy(source); };
     std::make_shared<ArrayHandlerDDisk<T, S>>(temp_copy);
   }
 };

@@ -91,7 +91,7 @@ public:
    * @param base_name base name for the temporary file. It will form the first part of the temporary array name. The
    * middle will be chosen to be unique and the suffix will be ".hdf5"
    */
-  static DistrArrayHDF5 CreateTemp(const DistrArray &source, const std::string &base_name = ".temp_array");
+  static DistrArrayHDF5 CreateTempCopy(const DistrArray &source, const std::string &base_name = ".temp_array");
 
   /*!
    * @brief Copies the array from source.

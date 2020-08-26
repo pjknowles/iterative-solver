@@ -160,6 +160,21 @@ TEST_F(DistrArrayHDF5_SetUp, constructor_copy_from_distr_array) {
 }
 #endif
 
+TEST_F(DistrArrayHDF5_SetUp, CreateTemp) {
+  LockMPI3 lock{mpi_comm};
+  auto a = DistrArrayHDF5(fhandle_n1, size);
+  std::string fname;
+  {
+    auto b = DistrArrayHDF5::CreateTemp(a);
+    fname = b.file_handle()->file_name();
+    b.open_access();
+    auto l = lock.scope();
+    ASSERT_TRUE(file_exists(fname));
+  }
+  auto l = lock.scope();
+  ASSERT_FALSE(file_exists(fname));
+}
+
 struct DistrArrayHDF5_Fixture : DistrArrayHDF5_SetUp {
   void SetUp() override {
     DistrArrayHDF5_SetUp::SetUp();

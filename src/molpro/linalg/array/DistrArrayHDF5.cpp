@@ -3,6 +3,8 @@
 #include <algorithm>
 
 #include "PHDF5Handle.h"
+#include "util/TempHandle.h"
+#include "util/temp_phdf5_handle.h"
 namespace molpro {
 namespace linalg {
 namespace array {
@@ -85,6 +87,12 @@ DistrArrayHDF5::~DistrArrayHDF5() {
     DistrArrayHDF5::flush();
   if (dataset_is_open())
     DistrArrayHDF5::close_access();
+}
+
+DistrArrayHDF5 DistrArrayHDF5::CreateTemp(const DistrArray &source, const std::string &base_name) {
+  auto handle = std::make_shared<util::PHDF5Handle>(util::temp_phdf5_handle(base_name, source.communicator()));
+  handle->assign_group("/");
+  return DistrArrayHDF5(source, handle);
 }
 
 bool DistrArrayHDF5::compatible(const DistrArrayHDF5 &source) const {

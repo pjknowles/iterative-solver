@@ -44,14 +44,22 @@ PHDF5Handle& PHDF5Handle::operator=(PHDF5Handle&& source) noexcept {
   return *this;
 }
 PHDF5Handle::~PHDF5Handle() {
-  HDF5Handle::close_file();
+  int rank;
+  MPI_Comm_rank(communicator(), &rank);
+  PHDF5Handle::close_file();
   if (m_erase_file_on_destroy) {
-    int rank;
-    MPI_Comm_rank(communicator(), &rank);
     if (rank == 0)
       if (file_exists(file_name()))
         std::remove(file_name().c_str());
     MPI_Barrier(communicator());
+    m_erase_file_on_destroy = false;
+  } else if (m_erase_group_on_destroy) {
+    PHDF5Handle::open_file(Access::read_write);
+    PHDF5Handle::open_group();
+    H5Ldelete(file_id(), group_name().c_str(), H5P_DEFAULT);
+    PHDF5Handle::close_file();
+    MPI_Barrier(communicator());
+    m_erase_group_on_destroy = false;
   }
 }
 

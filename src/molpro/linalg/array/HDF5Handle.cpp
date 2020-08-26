@@ -86,6 +86,7 @@ HDF5Handle::~HDF5Handle() {
     HDF5Handle::open_file(Access::read_write);
     HDF5Handle::open_group();
     H5Ldelete(file_id(), group_name().c_str(), H5P_DEFAULT);
+    HDF5Handle::close_file();
   }
 }
 hid_t HDF5Handle::open_file(HDF5Handle::Access type) {

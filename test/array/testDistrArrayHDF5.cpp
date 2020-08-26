@@ -69,6 +69,7 @@ TEST_F(DistrArrayHDF5_SetUp, constructor_dummy_with_fhandle) {
 }
 
 TEST_F(DistrArrayHDF5_SetUp, constructor_fhandle_size) {
+  ASSERT_TRUE(fhandle_n1);
   auto a = DistrArrayHDF5{fhandle_n1, size};
   LockMPI3 lock{mpi_comm};
   {

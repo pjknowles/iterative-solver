@@ -10,6 +10,7 @@
 #include <molpro/linalg/array/util/temp_phdf5_handle.h>
 
 using molpro::linalg::array::util::file_exists;
+using molpro::linalg::array::util::hdf5_link_exists;
 using molpro::linalg::array::util::HDF5Handle;
 using molpro::linalg::array::util::PHDF5Handle;
 using molpro::linalg::array::util::temp_phdf5_handle;
@@ -72,10 +73,12 @@ struct PHDF5HandleTestFile : public ::testing::Test {
   ~PHDF5HandleTestFile() { remove_file(); }
   void remove_file() {
     int rank;
+    MPI_Barrier(mpi_comm);
     MPI_Comm_rank(mpi_comm, &rank);
     if (rank == 0)
       if (file_exists(file_name))
         std::remove(file_name.c_str());
+    MPI_Barrier(mpi_comm);
   }
   const std::string file_name;
   LockMPI3 lock;
@@ -92,6 +95,36 @@ TEST_F(PHDF5HandleTestFile, erase_on_destroy) {
   }
   auto l = lock.scope();
   ASSERT_FALSE(file_exists(file_name));
+}
+
+TEST_F(PHDF5HandleTestFile, erase_group_on_destroy_not_owner) {
+  auto h1 = PHDF5Handle(file_name, "test_group", mpi_comm);
+  h1.open_group();
+  auto h2 = PHDF5Handle(h1.group_id(), mpi_comm);
+  auto l = lock.scope();
+  EXPECT_FALSE(h2.erase_group_on_destroy());
+  EXPECT_FALSE(h2.set_erase_group_on_destroy(true));
+  EXPECT_TRUE(h2.set_erase_group_on_destroy(false));
+}
+
+TEST_F(PHDF5HandleTestFile, erase_group_on_destroy) {
+  const std::string group_name = "/test";
+  {
+    auto h2 = PHDF5Handle(file_name, mpi_comm);
+    h2.open_file(HDF5Handle::Access::read_write);
+    h2.open_group(group_name);
+    auto l = lock.scope();
+    EXPECT_TRUE(hdf5_link_exists(h2.file_id(), group_name) > 0) << "group should have been created";
+    EXPECT_FALSE(h2.erase_group_on_destroy());
+    EXPECT_TRUE(h2.set_erase_group_on_destroy(false));
+    EXPECT_TRUE(h2.set_erase_group_on_destroy(true));
+  }
+  auto l = lock.scope();
+  std::cout << file_exists(file_name) << std::endl;
+  auto h = HDF5Handle(file_name);
+  h.open_file(HDF5Handle::Access::read_only);
+  ASSERT_TRUE(h.file_is_open());
+  EXPECT_EQ(hdf5_link_exists(h.file_id(), group_name), 0) << "group should have been removed";
 }
 
 TEST(temp_phdf5_handle, lifetime) {

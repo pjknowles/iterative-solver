@@ -260,6 +260,18 @@ TEST_F(HDF5HandleOpenFileCreatF, erase_group_on_destroy) {
   EXPECT_EQ(hdf5_link_exists(h.file_id(), group_name), 0) << "group should have been removed";
 }
 
+TEST_F(HDF5HandleOpenFileCreatF, temp_hdf5_handle_group) {
+  auto group_name = "/test";
+  auto h1 = HDF5Handle(file_name);
+  h1.open_file(HDF5Handle::Access::read_write);
+  {
+    auto h2 = temp_hdf5_handle_group(h1, group_name);
+    ASSERT_TRUE(h2.erase_group_on_destroy());
+    ASSERT_TRUE(hdf5_link_exists(h1.file_id(), group_name) > 0);
+  }
+  ASSERT_TRUE(hdf5_link_exists(h1.file_id(), group_name) == 0);
+}
+
 TEST_F(HDF5HandleDummyF, open_file_diff_name) {
   auto id_does_not_exist = h->open_file(name_inner_group_dataset + "-does-not-exist", HDF5Handle::Access::read_only);
   EXPECT_EQ(id_does_not_exist, HDF5Handle::hid_default)

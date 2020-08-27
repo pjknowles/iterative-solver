@@ -19,6 +19,7 @@ PHDF5Handle temp_phdf5_handle(const std::string &base_name, MPI_Comm comm);
 
 /*!
  * @brief Returns copy of the handle with a temporary group assigned and opened
+ * @note When creating a new group in a parallel hdf5 file that group might not be registered until the file is closed.
  * @param handle handle to modify
  * @param base_name base name of the temporary group. It can be absolute path, or relative to group name of handle
  * @param comm new mpi communicator. If null than the communicator from handle will be used.

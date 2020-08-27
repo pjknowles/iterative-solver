@@ -52,7 +52,8 @@ TEST_F(ArrayHandlerDDiskF, constructor_default) {
   auto a = ArrayHandlerDDisk<DistrArrayHDF5>();
   auto x = DistrArrayHDF5(fhandle_n1);
   auto y = a.copy(x);
-  ASSERT_EQ(y.file_handle(), x.file_handle());
+  ASSERT_NE(y.file_handle(), x.file_handle());
+  ASSERT_TRUE(y.file_handle()->erase_file_on_destroy());
 }
 
 TEST_F(ArrayHandlerDDiskF, constructor_erase_on_default) {

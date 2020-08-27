@@ -52,19 +52,11 @@ template <class T, class S>
 using default_handler_t = typename default_handler<T, S>::value;
 
 namespace detail {
+//! SFINAE functor for default handler creation allows for more customisation
 template <class T, class S, typename = default_handler_t<T, S>>
 struct create_default_handler {
   auto operator()() { return std::make_shared<default_handler_t<T, S>>(); }
 };
-
-template <class T, class S>
-struct create_default_handler<T, S, ArrayHandlerDDisk<T, S>> {
-  auto operator()() {
-    auto temp_copy = [](const S& source) { auto t = T::CreateTempCopy(source); };
-    std::make_shared<ArrayHandlerDDisk<T, S>>(temp_copy);
-  }
-};
-
 } // namespace detail
 
 /*!

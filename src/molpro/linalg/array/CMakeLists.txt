@@ -2,6 +2,7 @@ if (MPI)
     set(HDF5_PREFER_PARALLEL ON)
 endif ()
 find_package(HDF5 REQUIRED COMPONENTS C)
+find_package(Threads)
 
 if (MPI AND NOT HDF5_IS_PARALLEL)
     message(FATAL_ERROR "Parallel HDF5 is required when building LinearAlgebra with MPI on")
@@ -43,6 +44,7 @@ if (MPI)
         set(HDF5_PREFER_PARALLEL ON)
         find_package(HDF5 REQUIRED COMPONENTS C)
         target_compile_definitions(${PROJECT_NAME} PUBLIC LINEARALGEBRA_ARRAY_HDF5)
+        target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads)
         LibraryManager_Append(${PROJECT_NAME}
                 SOURCES DistrArrayHDF5.cpp
                 PUBLIC_HEADER DistrArrayHDF5.h)

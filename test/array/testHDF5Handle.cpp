@@ -2,13 +2,23 @@
 #include <gtest/gtest.h>
 
 #include "data_util.h"
+#include "file_util.h"
 
 #include <molpro/linalg/array/HDF5Handle.h>
+#include <molpro/linalg/array/util/temp_hdf5_handle.h>
 
 using molpro::linalg::array::util::file_exists;
 using molpro::linalg::array::util::hdf5_link_exists;
 using molpro::linalg::array::util::hdf5_open_file;
 using molpro::linalg::array::util::HDF5Handle;
+using molpro::linalg::array::util::temp_group_name;
+using molpro::linalg::array::util::temp_hdf5_handle;
+using molpro::linalg::array::util::temp_hdf5_handle_group;
+using molpro::linalg::test::GarbageCollector;
+using molpro::linalg::test::name_inner_group_dataset;
+using molpro::linalg::test::name_single_dataset;
+using molpro::linalg::test::test_file_hdf5_n1;
+using molpro::linalg::test::test_file_hdf5_n2;
 
 TEST(HDF5util, file_exists) { EXPECT_TRUE(file_exists(ARRAY_DATA)); }
 
@@ -203,26 +213,63 @@ TEST_F(HDF5HandleOpenFileCreatF, create_group) {
   EXPECT_EQ(h->group_name(), group_name);
 }
 
-TEST_F(HDF5HandleOpenFileCreatF, erase_on_destroy) {
+TEST_F(HDF5HandleOpenFileCreatF, erase_file_on_destroy) {
   {
     auto handle = HDF5Handle(file_name, "/test_group");
-    EXPECT_FALSE(handle.erase_on_destroy());
-    EXPECT_TRUE(handle.set_erase_on_destroy(true)) << "file is not open yet";
-    EXPECT_TRUE(handle.set_erase_on_destroy(false));
-    EXPECT_FALSE(handle.erase_on_destroy());
+    EXPECT_FALSE(handle.erase_file_on_destroy());
+    EXPECT_TRUE(handle.set_erase_file_on_destroy(true)) << "file is not open yet";
+    EXPECT_TRUE(handle.set_erase_file_on_destroy(false));
+    EXPECT_FALSE(handle.erase_file_on_destroy());
     handle.open_file(HDF5Handle::Access::read_write);
     {
       auto handle_non_owning = HDF5Handle(handle.file_id());
-      EXPECT_FALSE(handle_non_owning.erase_on_destroy());
-      EXPECT_TRUE(handle_non_owning.set_erase_on_destroy(false));
-      EXPECT_FALSE(handle_non_owning.set_erase_on_destroy(true));
-      EXPECT_FALSE(handle_non_owning.erase_on_destroy()) << "non owning handle cannot erase";
+      EXPECT_FALSE(handle_non_owning.erase_file_on_destroy());
+      EXPECT_TRUE(handle_non_owning.set_erase_file_on_destroy(false));
+      EXPECT_FALSE(handle_non_owning.set_erase_file_on_destroy(true));
+      EXPECT_FALSE(handle_non_owning.erase_file_on_destroy()) << "non owning handle cannot erase";
     }
     EXPECT_TRUE(file_exists(file_name));
-    EXPECT_TRUE(handle.set_erase_on_destroy(true));
-    EXPECT_TRUE(handle.erase_on_destroy());
+    EXPECT_TRUE(handle.set_erase_file_on_destroy(true));
+    EXPECT_TRUE(handle.erase_file_on_destroy());
   }
   EXPECT_FALSE(file_exists(file_name));
+}
+
+TEST_F(HDF5HandleOpenFileCreatF, erase_group_on_destroy_not_owner) {
+  auto h1 = HDF5Handle(file_name, "test_group");
+  h1.open_group();
+  auto h2 = HDF5Handle(h1.group_id());
+  EXPECT_FALSE(h2.erase_group_on_destroy());
+  EXPECT_FALSE(h2.set_erase_group_on_destroy(true));
+  EXPECT_TRUE(h2.set_erase_group_on_destroy(false));
+}
+
+TEST_F(HDF5HandleOpenFileCreatF, erase_group_on_destroy) {
+  const std::string group_name = "/test";
+  auto fid = H5Fcreate(file_name.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT);
+  {
+    auto h2 = HDF5Handle(fid, true);
+    h2.open_group(group_name);
+    EXPECT_TRUE(hdf5_link_exists(h2.file_id(), group_name) > 0) << "group should have been created";
+    EXPECT_FALSE(h2.erase_group_on_destroy());
+    EXPECT_TRUE(h2.set_erase_group_on_destroy(false));
+    EXPECT_TRUE(h2.set_erase_group_on_destroy(true));
+  }
+  auto h = HDF5Handle(file_name);
+  h.open_file(HDF5Handle::Access::read_only);
+  EXPECT_EQ(hdf5_link_exists(h.file_id(), group_name), 0) << "group should have been removed";
+}
+
+TEST_F(HDF5HandleOpenFileCreatF, temp_hdf5_handle_group) {
+  auto group_name = "/test";
+  auto h1 = HDF5Handle(file_name);
+  h1.open_file(HDF5Handle::Access::read_write);
+  {
+    auto h2 = temp_hdf5_handle_group(h1, group_name);
+    ASSERT_TRUE(h2.erase_group_on_destroy());
+    ASSERT_TRUE(hdf5_link_exists(h1.file_id(), group_name) > 0);
+  }
+  ASSERT_TRUE(hdf5_link_exists(h1.file_id(), group_name) == 0);
 }
 
 TEST_F(HDF5HandleDummyF, open_file_diff_name) {
@@ -714,4 +761,47 @@ TEST_F(HDF5HandleUsingExistingObjectF, move_constructor_operator_from_group_obj_
   EXPECT_TRUE(h.group_owner());
   EXPECT_EQ(h.file_name(), file_name);
   EXPECT_EQ(h.group_name(), group_name);
+}
+
+TEST(temp_hdf5_handle, lifetime) {
+  auto g = GarbageCollector{};
+  {
+    auto h1 = temp_hdf5_handle(".temp");
+    ASSERT_FALSE(h1.file_name().empty());
+    ASSERT_FALSE(file_exists(h1.file_name()));
+    ASSERT_TRUE(h1.erase_file_on_destroy());
+    g.file_name = h1.file_name();
+    h1.open_file(HDF5Handle::Access::read_write);
+    ASSERT_TRUE(file_exists(h1.file_name()));
+  }
+  ASSERT_FALSE(file_exists(g.file_name));
+}
+
+TEST_F(HDF5HandleOpenFileCreatF, temp_group_name_no_group) {
+  auto h1 = HDF5Handle(file_name);
+  h1.open_file(HDF5Handle::Access::read_write);
+  ASSERT_TRUE(file_exists(h1.file_name()));
+  EXPECT_THROW(temp_group_name(h1, "temp_group"), std::runtime_error);
+  auto group_name = temp_group_name(h1, "/temp_group");
+  ASSERT_TRUE(hdf5_link_exists(h1.file_id(), group_name) == 0);
+  auto depth = std::count(begin(group_name), end(group_name), '/');
+  ASSERT_EQ(depth, 1);
+  auto h2 = HDF5Handle(file_name, group_name);
+  h2.open_group();
+  auto group_name2 = temp_group_name(h1, "/temp_group");
+  ASSERT_NE(group_name2, group_name);
+  ASSERT_NE(h1.group_id(), h2.group_id());
+  auto depth2 = std::count(begin(group_name2), end(group_name2), '/');
+  ASSERT_EQ(depth2, depth);
+}
+
+TEST_F(HDF5HandleOpenFileCreatF, temp_group_name_with_group) {
+  auto h1 = HDF5Handle(file_name, "/test_group");
+  h1.open_file(HDF5Handle::Access::read_write);
+  h1.open_group();
+  ASSERT_TRUE(file_exists(h1.file_name()));
+  auto group_name = temp_group_name(h1, "temp_group");
+  ASSERT_TRUE(hdf5_link_exists(h1.file_id(), group_name) == 0);
+  auto depth = std::count(begin(group_name), end(group_name), '/');
+  ASSERT_EQ(depth, 2);
 }

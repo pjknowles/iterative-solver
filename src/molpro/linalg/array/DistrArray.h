@@ -1,6 +1,7 @@
 #ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H
 #define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H
 #include <cmath>
+#include <cstdlib>
 #include <list>
 #include <map>
 #include <memory>

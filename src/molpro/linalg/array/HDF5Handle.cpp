@@ -42,7 +42,7 @@ HDF5Handle &HDF5Handle::operator=(const HDF5Handle &source) {
   m_group_name = source.m_group_name;
   m_file_owner = source.m_file_owner;
   m_group_owner = source.m_group_owner;
-  m_erase_on_destroy = source.m_erase_on_destroy;
+  m_erase_file_on_destroy = source.m_erase_file_on_destroy;
   if (m_file_owner) {
     m_file_hid = hid_default;
     if (source.file_is_open())
@@ -67,10 +67,10 @@ HDF5Handle &HDF5Handle::operator=(HDF5Handle &&source) noexcept {
   m_group_name = source.m_group_name;
   m_file_owner = source.m_file_owner;
   m_group_owner = source.m_group_owner;
-  m_erase_on_destroy = source.m_erase_on_destroy;
+  m_erase_file_on_destroy = source.m_erase_file_on_destroy;
   source.m_file_owner = false;
   source.m_group_owner = false;
-  source.m_erase_on_destroy = false;
+  source.m_erase_file_on_destroy = false;
   auto dummy = HDF5Handle{};
   source = dummy;
   return *this;
@@ -78,9 +78,16 @@ HDF5Handle &HDF5Handle::operator=(HDF5Handle &&source) noexcept {
 
 HDF5Handle::~HDF5Handle() {
   HDF5Handle::close_file();
-  if (m_erase_on_destroy)
-    if (file_exists(file_name()))
+  if (m_erase_file_on_destroy) {
+    if (file_exists(file_name())) {
       std::remove(file_name().c_str());
+    }
+  } else if (m_erase_group_on_destroy) {
+    HDF5Handle::open_file(Access::read_write);
+    HDF5Handle::open_group();
+    H5Ldelete(file_id(), group_name().c_str(), H5P_DEFAULT);
+    HDF5Handle::close_file();
+  }
 }
 hid_t HDF5Handle::open_file(HDF5Handle::Access type) {
   if (file_is_open()) {
@@ -206,16 +213,29 @@ bool HDF5Handle::group_owner() const { return m_group_owner; }
 bool HDF5Handle::empty() const { return m_file_hid == hid_default && m_group_hid == hid_default; }
 hid_t HDF5Handle::_open_plist() { return H5P_DEFAULT; }
 
-bool HDF5Handle::set_erase_on_destroy(bool value) {
+bool HDF5Handle::set_erase_file_on_destroy(bool value) {
   if (value && !erasable())
     return false;
-  m_erase_on_destroy = value;
+  m_erase_file_on_destroy = value;
   return true;
 }
+
+bool HDF5Handle::set_erase_group_on_destroy(bool value) {
+  if (value && !m_group_owner)
+    return false;
+  m_erase_group_on_destroy = value;
+  return true;
+}
+
 bool HDF5Handle::erasable() {
   bool file_owner = m_file_owner;
   bool group_owner = (m_group_hid == hid_default) || m_group_owner;
   return file_owner && group_owner;
+}
+void HDF5Handle::assign_group(const std::string &group) {
+  close_group();
+  m_group_name = group;
+  m_group_owner = true;
 }
 
 bool file_exists(const std::string &fname) { return !std::ifstream{fname}.fail(); }
@@ -267,6 +287,7 @@ htri_t hdf5_link_exists(hid_t id, std::string path) {
   return res;
 }
 
+template struct TempHandle<HDF5Handle>;
 } // namespace util
 } // namespace array
 } // namespace linalg

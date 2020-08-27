@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DEFAULT_HANDLER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DEFAULT_HANDLER_H
+#include <molpro/linalg/array/ArrayHandlerDDisk.h>
 #include <molpro/linalg/array/ArrayHandlerDefault.h>
 #include <molpro/linalg/array/ArrayHandlerDistr.h>
 #include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
@@ -43,11 +44,35 @@ struct default_handler<T, S, ArrayFamily::Distributed, ArrayFamily::Sparse> {
 };
 
 template <class T, class S>
-using default_handler_t = typename default_handler<T, S>::value;
+struct default_handler<T, S, ArrayFamily::DistributedDisk, ArrayFamily::DistributedDisk> {
+  using value = ArrayHandlerDDisk<T, S>;
+};
 
 template <class T, class S>
+using default_handler_t = typename default_handler<T, S>::value;
+
+namespace detail {
+template <class T, class S, typename = default_handler_t<T, S>>
+struct create_default_handler {
+  auto operator()() { return std::make_shared<default_handler_t<T, S>>(); }
+};
+
+template <class T, class S>
+struct create_default_handler<T, S, ArrayHandlerDDisk<T, S>> {
+  auto operator()() {
+    auto temp_copy = [](const S& source) { auto t = T::CreateTempCopy(source); };
+    std::make_shared<ArrayHandlerDDisk<T, S>>(temp_copy);
+  }
+};
+
+} // namespace detail
+
+/*!
+ * @brief Creates an appropriate handler for the given array types
+ */
+template <class T, class S>
 auto create_default_handler() {
-  return std::make_shared<default_handler_t<T, S>>();
+  return detail::create_default_handler<T, S>{}();
 }
 
 } // namespace array

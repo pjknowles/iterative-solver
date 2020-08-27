@@ -78,7 +78,8 @@ int main(int argc, char* argv[]) {
       diagonals.reserve(n);
       for (auto i = 0; i < n; i++)
         diagonals.push_back(matrix(i, i));
-      molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector> solver;
+      auto solver = molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector>(
+          std::make_shared<molpro::linalg::iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>());
       auto handlers = solver.handlers();
       solver.m_verbosity = 1;
       solver.m_roots = nroot;
@@ -122,7 +123,7 @@ int main(int argc, char* argv[]) {
         if (mpi_rank == 0)
           std::cout << "Residual norms:";
         for (size_t root = 0; root < solver.m_roots; root++) {
-          auto result = std::sqrt(handlers.rr().dot(g[root], g[root]));
+          auto result = std::sqrt(handlers->rr().dot(g[root], g[root]));
           if (mpi_rank == 0)
             std::cout << " " << result;
         }
@@ -132,7 +133,7 @@ int main(int argc, char* argv[]) {
           std::cout << "Eigenvector orthonormality:\n";
         for (size_t root = 0; root < solver.m_roots; root++) {
           for (size_t soot = 0; soot < solver.m_roots; soot++) {
-            auto result = handlers.rr().dot(x[root], x[soot]);
+            auto result = handlers->rr().dot(x[root], x[soot]);
             if (mpi_rank == 0)
               std::cout << " " << result;
           }

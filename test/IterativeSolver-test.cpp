@@ -22,6 +22,15 @@ using molpro::linalg::iterativesolver::ArrayHandlers;
 namespace molpro {
 namespace linalg {
 
+TEST(LinearEigensystem, copy_constructor) {
+  using R = std::vector<double>;
+  auto handlers = std::make_shared<ArrayHandlers<R>>();
+  auto solver1 = molpro::linalg::LinearEigensystem<R>(handlers);
+  ASSERT_EQ(solver1.handlers(), handlers);
+  auto solver2 = molpro::linalg::LinearEigensystem<R>(solver1);
+  ASSERT_EQ(solver2.handlers(), solver1.handlers());
+}
+
 template <class T>
 void syncr(T& x, std::true_type) {
   if (!x.synchronised())
@@ -101,8 +110,8 @@ static void DavidsonTest(size_t dimension, size_t roots = 1, int verbosity = 0, 
   auto rp = std::make_shared<ArrayHandlerIterableSparse<ptype, std::map<size_t, double>>>();
   auto qr = std::make_shared<ArrayHandlerIterable<ptype>>();
   auto qp = std::make_shared<ArrayHandlerIterableSparse<ptype, std::map<size_t, double>>>();
-  auto handlers = ArrayHandlers<ptype, ptype, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
-  LinearEigensystem<ptype> d{handlers};
+  auto handlers = std::make_shared<ArrayHandlers<ptype, ptype, std::map<size_t, double>>>(rr, qq, pp, rq, rp, qr, qp);
+  auto d = LinearEigensystem<ptype>{handlers};
   molpro::linalg::array::ArrayHandlerIterable<ptype> handler{};
   d.m_roots = roots;
   d.m_verbosity = verbosity;

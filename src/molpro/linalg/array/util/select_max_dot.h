@@ -1,7 +1,8 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_SELECT_MAX_DOT_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_SELECT_MAX_DOT_H
-#include <queue>
 #include <cmath>
+#include <cstdlib>
+#include <queue>
 
 namespace molpro {
 namespace linalg {

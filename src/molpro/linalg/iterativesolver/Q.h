@@ -20,7 +20,7 @@ namespace iterativesolver {
  */
 template <class Rvector, class Qvector, class Pvector, typename scalar_type>
 class Q {
-  ArrayHandlers<Rvector, Qvector, Pvector>& m_handlers;
+  std::shared_ptr<ArrayHandlers<Rvector, Qvector, Pvector>> m_handlers;
   using key_type = int;
   bool m_hermitian;
   std::map<key_type, std::map<key_type, scalar_type>> m_metric;
@@ -37,7 +37,7 @@ class Q {
   std::map<key_type, typename Rvector::value_type> m_scale_factors, m_diff_factors;
 
 public:
-  Q(const P<Pvector>& pspace, bool hermitian, ArrayHandlers<Rvector, Qvector, Pvector>& handlers)
+  Q(const P<Pvector>& pspace, bool hermitian, const std::shared_ptr<ArrayHandlers<Rvector, Qvector, Pvector>>& handlers)
       : m_hermitian(hermitian), m_pspace(pspace), m_handlers(handlers) {}
 
   const scalar_type& metric(size_t i, size_t j) const { return m_metric.at(m_keys[i]).at(m_keys[j]); }
@@ -92,33 +92,33 @@ public:
    */
   void add(const Rvector& vector, const Rvector& action, const std::vector<Qvector>& rhs, bool resres = false) {
     for (const auto& vi : (resres ? m_actions : m_vectors)) {
-      m_metric[m_index][vi.first] = m_metric[vi.first][m_index] = m_handlers.rr().dot(vector, vi.second);
-      m_action[vi.first][m_index] = m_handlers.rr().dot(action, vi.second);
+      m_metric[m_index][vi.first] = m_metric[vi.first][m_index] = m_handlers->rr().dot(vector, vi.second);
+      m_action[vi.first][m_index] = m_handlers->rr().dot(action, vi.second);
     }
     for (const auto& vi : m_actions) {
-      m_action_action[m_index][vi.first] = m_action_action[vi.first][m_index] = m_handlers.rr().dot(action, vi.second);
+      m_action_action[m_index][vi.first] = m_action_action[vi.first][m_index] = m_handlers->rr().dot(action, vi.second);
     }
     for (const auto& vi : m_actions) {
       const auto& i = vi.first;
       if (m_hermitian)
         m_action[m_index][i] = m_action[i][m_index];
       else
-        m_action[m_index][i] = resres ? m_handlers.rr().dot(action, vi.second) : m_handlers.rr().dot(vector, vi.second);
+        m_action[m_index][i] = resres ? m_handlers->rr().dot(action, vi.second) : m_handlers->rr().dot(vector, vi.second);
     }
-    m_metric[m_index][m_index] = m_handlers.rr().dot(vector, vector);
-    m_action[m_index][m_index] = resres ? m_handlers.rr().dot(action, action) : m_handlers.rr().dot(vector, action);
-    m_action_action[m_index][m_index] = m_handlers.rr().dot(action, action); // TODO retire this
+    m_metric[m_index][m_index] = m_handlers->rr().dot(vector, vector);
+    m_action[m_index][m_index] = resres ? m_handlers->rr().dot(action, action) : m_handlers->rr().dot(vector, action);
+    m_action_action[m_index][m_index] = m_handlers->rr().dot(action, action); // TODO retire this
     m_metric_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
     m_action_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
     for (auto i = 0; i < m_pspace.size(); i++) {
-      m_metric_pspace[m_index][i] = m_handlers.rp().dot(vector,m_pspace[i]);
-      m_action_pspace[m_index][i] = m_handlers.rp().dot(action,m_pspace[i]);
+      m_metric_pspace[m_index][i] = m_handlers->rp().dot(vector,m_pspace[i]);
+      m_action_pspace[m_index][i] = m_handlers->rp().dot(action,m_pspace[i]);
     }
     m_rhs[m_index] = std::vector<scalar_type>();
     for (const auto& rhs1 : rhs)
-      m_rhs[m_index].push_back(m_handlers.rq().dot(vector, rhs1));
-    m_vectors.emplace(m_index, m_handlers.qr().copy(vector));
-    m_actions.emplace(m_index, m_handlers.qr().copy(action));
+      m_rhs[m_index].push_back(m_handlers->rq().dot(vector, rhs1));
+    m_vectors.emplace(m_index, m_handlers->qr().copy(vector));
+    m_actions.emplace(m_index, m_handlers->qr().copy(action));
     m_index++;
     m_keys = keys();
   }
@@ -136,19 +136,19 @@ public:
    */
   scalar_type add(const Rvector& vector, const Rvector& action, const Qvector& oldvector, const Qvector& oldaction,
                   const std::vector<Qvector>& rhs, bool resres = false, bool orthogonalise = true) {
-    auto rr = m_handlers.rr().dot(vector, vector);
+    auto rr = m_handlers->rr().dot(vector, vector);
     typename Rvector::value_type scale_factor, diff_factor;
     if (resres) {
-      rr = m_handlers.rr().dot(action, action);
+      rr = m_handlers->rr().dot(action, action);
       // FIXME can we avoid calculating norm of the oldaction. Was it calculated before?
-      auto dd = m_handlers.qq().dot(oldaction, oldaction);
-      auto rd = m_handlers.rq().dot(action, oldaction);
+      auto dd = m_handlers->qq().dot(oldaction, oldaction);
+      auto rd = m_handlers->rq().dot(action, oldaction);
       scale_factor = 1 / std::sqrt(rr + dd - 2 * rd);
       diff_factor = 1;
     } else {
       // FIXME Again, can this dot be avoided
-      auto dd = m_handlers.qq().dot(oldvector, oldvector);
-      auto rd = m_handlers.rq().dot(vector, oldvector);
+      auto dd = m_handlers->qq().dot(oldvector, oldvector);
+      auto rd = m_handlers->rq().dot(vector, oldvector);
       //      std::cout << "dd-1=" << dd - 1 << ", rr-1=" << rr - 1 << ", rd-1=" << rd - 1 << std::endl;
       diff_factor = orthogonalise ? rr / rd : 1;
       auto norm = std::sqrt(std::max(rr - 2 * diff_factor * rd + diff_factor * diff_factor * dd, (decltype(rr))0));
@@ -163,28 +163,28 @@ public:
     // FIXME why are they passed as const, if they get modified?
     auto& v = const_cast<Rvector&>(vector);
     auto& a = const_cast<Rvector&>(action);
-    m_handlers.rr().scal(scale_factor, v);
-    m_handlers.rq().axpy(-diff_factor * scale_factor, oldvector, v);
-    m_handlers.rr().scal(scale_factor, a);
-    m_handlers.rq().axpy(-diff_factor * scale_factor, oldaction, a);
-    auto actual_norm = std::sqrt(resres ? m_handlers.rr().dot(a, a) : m_handlers.rr().dot(v, v));
+    m_handlers->rr().scal(scale_factor, v);
+    m_handlers->rq().axpy(-diff_factor * scale_factor, oldvector, v);
+    m_handlers->rr().scal(scale_factor, a);
+    m_handlers->rq().axpy(-diff_factor * scale_factor, oldaction, a);
+    auto actual_norm = std::sqrt(resres ? m_handlers->rr().dot(a, a) : m_handlers->rr().dot(v, v));
     //    std::cout << "actual_norm=" << actual_norm << std::endl;
     if (actual_norm > 1e-6 and
         std::abs(actual_norm - 1) > 1e-2) { // rescale because of numerical precision problems when vector
                                             //    \approx oldvector
       //    do not do it if the problem is severe, since then action will be inaccurate
-      m_handlers.rr().scal(1. / actual_norm, v);
-      m_handlers.rr().scal(1. / actual_norm, a);
+      m_handlers->rr().scal(1. / actual_norm, v);
+      m_handlers->rr().scal(1. / actual_norm, a);
       scale_factor /= actual_norm;
     }
     m_scale_factors[m_index] = scale_factor;
     m_diff_factors[m_index] = diff_factor;
     add(v, a, rhs, resres);
     //    std::cout << "new Q vector self-overlap=" << v.dot(v) << std::endl;
-    m_handlers.rq().axpy(diff_factor * scale_factor, oldvector, v);
-    m_handlers.rr().scal(1. / scale_factor, v);
-    m_handlers.rq().axpy(diff_factor * scale_factor, oldaction, a);
-    m_handlers.rr().scal(1. / scale_factor, a);
+    m_handlers->rq().axpy(diff_factor * scale_factor, oldvector, v);
+    m_handlers->rr().scal(1. / scale_factor, v);
+    m_handlers->rq().axpy(diff_factor * scale_factor, oldaction, a);
+    m_handlers->rr().scal(1. / scale_factor, a);
     //    std::cout << "created Q, scale_factor=" << scale_factor << ", diff_factor=" << diff_factor << std::endl;
     return scale_factor;
   }
@@ -200,11 +200,11 @@ public:
       m_action_pspace[i].resize(m_pspace.size());
       workspace = m_vectors[i];
       for (auto j = 0; j < m_pspace.size(); j++) {
-        m_metric_pspace[i][j] = m_handlers.rp().dot(workspace, m_pspace[j]);
+        m_metric_pspace[i][j] = m_handlers->rp().dot(workspace, m_pspace[j]);
       }
       workspace = m_actions[i];
       for (auto j = 0; j < m_pspace.size(); j++) {
-        m_action_pspace[i][j] = m_handlers.rp().dot(workspace, m_pspace[j]);
+        m_action_pspace[i][j] = m_handlers->rp().dot(workspace, m_pspace[j]);
       }
     }
   }

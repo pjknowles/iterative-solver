@@ -21,6 +21,8 @@ using molpro::linalg::array::util::LockMPI3;
 using molpro::linalg::array::util::PHDF5Handle;
 using molpro::linalg::array::util::ScopeLock;
 using molpro::linalg::test::mpi_comm;
+using molpro::linalg::test::test_file_hdf5_n1;
+using molpro::linalg::test::test_file_hdf5_n2;
 
 using ::testing::ContainerEq;
 using ::testing::DoubleEq;
@@ -67,6 +69,7 @@ TEST_F(DistrArrayHDF5_SetUp, constructor_dummy_with_fhandle) {
 }
 
 TEST_F(DistrArrayHDF5_SetUp, constructor_fhandle_size) {
+  ASSERT_TRUE(fhandle_n1);
   auto a = DistrArrayHDF5{fhandle_n1, size};
   LockMPI3 lock{mpi_comm};
   {
@@ -156,6 +159,21 @@ TEST_F(DistrArrayHDF5_SetUp, constructor_copy_from_distr_array) {
   }
 }
 #endif
+
+TEST_F(DistrArrayHDF5_SetUp, CreateTempCopy) {
+  LockMPI3 lock{mpi_comm};
+  auto a = DistrArrayHDF5(fhandle_n1, size);
+  std::string fname;
+  {
+    auto b = DistrArrayHDF5::CreateTempCopy(a);
+    fname = b.file_handle()->file_name();
+    b.open_access();
+    auto l = lock.scope();
+    ASSERT_TRUE(file_exists(fname));
+  }
+  auto l = lock.scope();
+  ASSERT_FALSE(file_exists(fname));
+}
 
 struct DistrArrayHDF5_Fixture : DistrArrayHDF5_SetUp {
   void SetUp() override {

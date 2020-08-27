@@ -88,10 +88,10 @@ template <class Rvector = std::vector<double>, class Qvector = Rvector,
           class Pvector = std::map<size_t, typename Rvector::value_type>>
 class IterativeSolver {
 public:
-  IterativeSolver(iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector> handlers,
+  IterativeSolver(const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
                   std::shared_ptr<molpro::Profiler> profiler = nullptr)
       : // clang-format off
-      m_handlers(std::move(handlers)),
+      m_handlers(handlers),
       m_verbosity(0),
       m_thresh(1e-8),
       m_maxIterations(1000),
@@ -122,6 +122,11 @@ public:
 {}
   // clang-format on
 
+  IterativeSolver() = delete;
+  IterativeSolver(const IterativeSolver&) = default;
+  IterativeSolver(IterativeSolver&&) noexcept = default;
+  IterativeSolver& operator=(const IterativeSolver&) = default;
+  IterativeSolver& operator=(IterativeSolver&&) noexcept = default;
   virtual ~IterativeSolver() = default;
 
 protected:
@@ -134,10 +139,10 @@ protected:
   using constVectorRefSetP =
       typename std::vector<std::reference_wrapper<const vectorP>>; ///< Container of P-space parameters
   using vectorSetP = typename std::vector<vectorP>;                ///< Container of P-space parameters
-  mutable iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector> m_handlers;
+  mutable std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>> m_handlers;
 
 public:
-  iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers() { return m_handlers; };
+  std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>> handlers() { return m_handlers; };
   using scalar_type =
       typename array::ArrayHandler<Rvector, Qvector>::value_type; ///< The type of scalar products of vectors
   std::shared_ptr<molpro::Profiler> m_profiler;
@@ -172,15 +177,15 @@ public:
     for (size_t k = 0; k < m_working_set.size(); k++) {
       if (m_residual_eigen) { // scale to roughly unit length for homogeneous equations in case the update has produced
                               // a very large vector in response to degeneracy
-        auto s = m_handlers.rr().dot(parameters[k], parameters[k]);
+        auto s = m_handlers->rr().dot(parameters[k], parameters[k]);
         if (std::abs(s - 1) > 1e-3) {
-          m_handlers.rr().scal(1 / std::sqrt(s), parameters[k]);
-          m_handlers.rr().scal(1 / std::sqrt(s), action[k]);
+          m_handlers->rr().scal(1 / std::sqrt(s), parameters[k]);
+          m_handlers->rr().scal(1 / std::sqrt(s), action[k]);
         }
       }
       m_statistics.current_r_creations++;
-      m_current_r.emplace_back(m_handlers.qr().copy(parameters[k]));
-      m_current_v.emplace_back(m_handlers.qr().copy(action[k]));
+      m_current_r.emplace_back(m_handlers->qr().copy(parameters[k]));
+      m_current_v.emplace_back(m_handlers->qr().copy(action[k]));
     }
     if (not m_last_d.empty()) {
       assert(m_last_d.size() == m_working_set.size());
@@ -202,12 +207,12 @@ public:
       const auto& qa = m_qspace[a];
       const auto& qha = m_qspace.action(a);
       for (size_t m = 0; m < m_working_set.size(); m++) {
-        m_s_qr[a][m] = m_handlers.rq().dot(parameters[m], m_qspace[a]);
-        m_h_qr[a][m] = m_handlers.rq().dot(action[m], m_subspaceMatrixResRes ? m_qspace.action(a) : m_qspace[a]);
-        m_hh_qr[a][m] = m_handlers.rq().dot(action[m], m_qspace.action(a));
-        m_h_rq[a][m] =
-            m_hermitian ? m_h_qr[a][m]
-                        : m_handlers.rq().dot((m_subspaceMatrixResRes ? action[m] : parameters[m]), m_qspace.action(a));
+        m_s_qr[a][m] = m_handlers->rq().dot(parameters[m], m_qspace[a]);
+        m_h_qr[a][m] = m_handlers->rq().dot(action[m], m_subspaceMatrixResRes ? m_qspace.action(a) : m_qspace[a]);
+        m_hh_qr[a][m] = m_handlers->rq().dot(action[m], m_qspace.action(a));
+        m_h_rq[a][m] = m_hermitian ? m_h_qr[a][m]
+                                   : m_handlers->rq().dot((m_subspaceMatrixResRes ? action[m] : parameters[m]),
+                                                          m_qspace.action(a));
         //        molpro::cout << "a=" << a << ", m=" << m << ", m_s_qr " << m_s_qr[a][m] << ", m_h_qr " << m_h_qr[a][m]
         //                     << ", m_h_rq " << m_h_rq[a][m] << std::endl;
       }
@@ -220,10 +225,10 @@ public:
       m_h_pr.push_back(std::vector<value_type>(m_working_set.size()));
       m_h_rp.push_back(std::vector<value_type>(m_working_set.size()));
       for (size_t k = 0; k < m_working_set.size(); k++) {
-        m_s_pr[p][k] = m_handlers.rp().dot(parameters[k].get(), m_pspace[p]);
+        m_s_pr[p][k] = m_handlers->rp().dot(parameters[k].get(), m_pspace[p]);
         m_h_pr[p][k] = m_h_rp[p][k] =
-            m_handlers.rp().dot(action[k].get(),
-                                m_pspace[p]); // TODO this works only for hermitian. Check that there is a
+            m_handlers->rp().dot(action[k].get(),
+                                 m_pspace[p]); // TODO this works only for hermitian. Check that there is a
         // check
       }
     }
@@ -237,11 +242,11 @@ public:
       m_h_rr.push_back(std::vector<value_type>(m_working_set.size()));
       m_hh_rr.push_back(std::vector<value_type>(m_working_set.size()));
       for (size_t rhs = 0; rhs < m_rhs.size(); rhs++)
-        m_rhs_r[m][rhs] = m_handlers.rr().dot(parameters[m], m_rhs[rhs]);
+        m_rhs_r[m][rhs] = m_handlers->rr().dot(parameters[m], m_rhs[rhs]);
       for (size_t n = 0; n < m_working_set.size(); n++) {
-        m_s_rr[m][n] = m_handlers.rr().dot(parameters[n], parameters[m]);
-        m_h_rr[m][n] = m_handlers.rr().dot(action[n], (m_subspaceMatrixResRes ? action[m] : parameters[m]));
-        m_hh_rr[m][n] = m_handlers.rr().dot(action[n], action[m]);
+        m_s_rr[m][n] = m_handlers->rr().dot(parameters[n], parameters[m]);
+        m_h_rr[m][n] = m_handlers->rr().dot(action[n], (m_subspaceMatrixResRes ? action[m] : parameters[m]));
+        m_hh_rr[m][n] = m_handlers->rr().dot(action[n], action[m]);
       }
     }
 
@@ -271,7 +276,7 @@ public:
       if (m_linear)
         doInterpolation(parameters, action, parametersP, false);
       for (auto k = 0; k < m_working_set.size(); k++) {
-        double a = std::abs(m_handlers.rr().dot(action[k], action[k]));
+        double a = std::abs(m_handlers->rr().dot(action[k], action[k]));
         m_errors[m_working_set[k]] = std::sqrt(a);
       }
     } else
@@ -310,8 +315,8 @@ public:
       } else { // unconverged
                //        molpro::cout << "unconverged"<<std::endl;
         m_statistics.d_creations++;
-        m_last_d.emplace_back(m_handlers.qr().copy(parameters[k]));
-        m_last_hd.emplace_back(m_handlers.qr().copy(action[k]));
+        m_last_d.emplace_back(m_handlers->qr().copy(parameters[k]));
+        m_last_hd.emplace_back(m_handlers->qr().copy(action[k]));
       }
     }
     //    molpro::cout << "working set size "<<m_working_set.size()<<std::endl;
@@ -325,7 +330,7 @@ public:
       m_last_d.clear();
       m_last_hd.clear();
       for (auto k = 0; k < m_working_set.size(); k++) {
-        m_handlers.rr().fill(0, parameters[k].get());
+        m_handlers->rr().fill(0, parameters[k].get());
         // FIXME Does this require a copy or is it a move?
         m_statistics.d_creations++;
         m_last_d.emplace_back(m_current_r[k]);
@@ -373,7 +378,7 @@ public:
   size_t addP(std::vector<Pvector> Pvectors, const value_type* PP, vectorRefSet parameters, vectorRefSet action,
               vectorRefSetP parametersP) {
     m_statistics.p_creations += Pvectors.size();
-    m_pspace.add(Pvectors, PP, m_rhs, m_handlers.pp(), m_handlers.qp());
+    m_pspace.add(Pvectors, PP, m_rhs, m_handlers->pp(), m_handlers->qp());
     m_qspace.refreshP(action.front());
     m_working_set.clear();
     auto result = solveAndGenerateWorkingSet(parameters, action, parametersP, false);
@@ -693,9 +698,9 @@ protected:
   void doInterpolation(vectorRefSet solution, vectorRefSet residual, vectorRefSetP solutionP,
                        bool actionOnly = false) const {
     for (auto& s : solution)
-      m_handlers.rr().fill(0, s);
+      m_handlers->rr().fill(0, s);
     for (auto& s : residual)
-      m_handlers.rr().fill(0, s);
+      m_handlers->rr().fill(0, s);
     const auto nP = m_pspace.size();
     const auto nR = m_current_r.size();
     //    auto nQ = m_qspace.size();
@@ -716,36 +721,36 @@ protected:
         solutionP[kkk].get().resize(nP);
       if (not actionOnly) {
         for (size_t i = 0; i < nP; i++) {
-          m_handlers.rp().axpy((solutionP[kkk].get()[i] = this->m_solution_x[oP + i + nX * root]), m_pspace[i],
-                               solution[kkk]);
+          m_handlers->rp().axpy((solutionP[kkk].get()[i] = this->m_solution_x[oP + i + nX * root]), m_pspace[i],
+                                solution[kkk]);
         }
       }
       //      molpro::cout << "square norm of solution after P contribution " << solution[kkk]->dot(*solution[kkk]) <<
       //      std::endl;
       for (size_t q = 0; q < nQ; q++) {
         auto l = oQ + q;
-        m_handlers.rq().axpy(this->m_solution_x[l + nX * root], m_qspace[q], solution[kkk]);
-        m_handlers.rq().axpy(this->m_solution_x[l + nX * root], m_qspace.action(q), residual[kkk]);
+        m_handlers->rq().axpy(this->m_solution_x[l + nX * root], m_qspace[q], solution[kkk]);
+        m_handlers->rq().axpy(this->m_solution_x[l + nX * root], m_qspace.action(q), residual[kkk]);
       }
       if (true) {
         for (int c = 0; c < nR; c++) {
           auto l = oR + c;
-          m_handlers.rq().axpy(this->m_solution_x[l + nX * root], m_current_r[c], solution[kkk]);
-          m_handlers.rq().axpy(this->m_solution_x[l + nX * root], m_current_v[c], residual[kkk]);
+          m_handlers->rq().axpy(this->m_solution_x[l + nX * root], m_current_r[c], solution[kkk]);
+          m_handlers->rq().axpy(this->m_solution_x[l + nX * root], m_current_v[c], residual[kkk]);
         }
         if (m_residual_eigen) {
-          auto norm = m_handlers.rr().dot(solution[kkk], solution[kkk]);
+          auto norm = m_handlers->rr().dot(solution[kkk], solution[kkk]);
           if (norm != 0) {
-            m_handlers.rr().scal(1 / std::sqrt(norm), solution[kkk]);
-            m_handlers.rr().scal(1 / std::sqrt(norm), residual[kkk]);
+            m_handlers->rr().scal(1 / std::sqrt(norm), solution[kkk]);
+            m_handlers->rr().scal(1 / std::sqrt(norm), residual[kkk]);
           }
         }
         // TODO
       }
       if (not actionOnly and (m_residual_eigen || (m_residual_rhs && m_augmented_hessian > 0)))
-        m_handlers.rr().axpy(-this->m_eval_xx[root], solution[kkk], residual[kkk]);
+        m_handlers->rr().axpy(-this->m_eval_xx[root], solution[kkk], residual[kkk]);
       if (not actionOnly and m_residual_rhs)
-        m_handlers.rr().axpy(-1, this->m_rhs[root], residual[kkk]);
+        m_handlers->rr().axpy(-1, this->m_rhs[root], residual[kkk]);
     }
   }
 
@@ -813,11 +818,9 @@ public:
   /*!
    * \brief LinearEigensystem
    */
-  explicit LinearEigensystem(const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers =
-                                 iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>{},
+  explicit LinearEigensystem(const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
                              const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector, Pvector>(handlers, profiler) {
-    //    auto handlers = ArrayHandlers<Rvector, Qvector, Pvector>{};
     this->m_residual_rhs = false;
     this->m_residual_eigen = true;
     this->m_linear = true;
@@ -894,8 +897,7 @@ public:
    * \param profiler optional profiler
    */
   explicit LinearEquations(constVectorRefSet rhs,
-                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers =
-                               iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>{},
+                           const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
                            double augmented_hessian = 0, const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector, Pvector>(handlers, profiler) {
     this->m_linear = true;
@@ -905,14 +907,12 @@ public:
   }
 
   explicit LinearEquations(const vectorSet& rhs,
-                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers =
-                               iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>{},
+                           const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
                            double augmented_hessian = 0, const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : LinearEquations(constVectorRefSet(rhs.begin(), rhs.end()), handlers, augmented_hessian, profiler) {}
 
   explicit LinearEquations(const Rvector& rhs,
-                           const iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>& handlers =
-                               iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>{},
+                           const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
                            double augmented_hessian = 0, const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : LinearEquations(constVectorRefSet(1, rhs), handlers, augmented_hessian, profiler) {}
 
@@ -926,7 +926,7 @@ public:
     this->m_rhs.reserve(rhs.size());
     for (const auto& v : rhs)
       // FIXME Is this meant to be a copy?
-      this->m_rhs.emplace_back(this->m_handlers.rr().copy(v)); // TODO template-ise these options
+      this->m_rhs.emplace_back(this->m_handlers->rr().copy(v)); // TODO template-ise these options
     //   molpro::cout << "addEquations makes m_rhs.back()="<<this->m_rhs.back()<<std::endl;
   }
   void addEquations(const std::vector<Rvector>& rhs) { addEquations(vectorSet(rhs.begin(), rhs.end())); }
@@ -967,10 +967,10 @@ public:
    * \param handlers group of array handlers for coordinating array operations
    * \param profiler optional profiler
    */
-  explicit Optimize(const iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>& handlers =
-                        iterativesolver::ArrayHandlers<Rvector, Qvector>{},
-                    std::string algorithm = "L-BFGS", bool minimize = true,
-                    const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
+  explicit Optimize(
+      const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>>& handlers,
+      std::string algorithm = "L-BFGS", bool minimize = true,
+      const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector>(handlers, profiler), m_algorithm(std::move(algorithm)), m_minimize(minimize),
         m_strong_Wolfe(true), m_Wolfe_1(0.0001), m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
         m_linesearch_tolerance(0.2), m_linesearch_grow_factor(3), m_linesearch_steplength(0) {
@@ -1048,7 +1048,7 @@ protected:
       auto f0 = m_best_f;
       auto f1 = this->m_values.back();
       auto g1 = step * this->m_h_qr[n - 1][0];
-      auto g0 = step * m_handlers.qq().dot((*m_best_v), this->m_qspace[this->m_qspace.size() - 1]);
+      auto g0 = step * m_handlers->qq().dot((*m_best_v), this->m_qspace[this->m_qspace.size() - 1]);
       bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
       bool Wolfe_2 = m_strong_Wolfe ? g1 >= m_Wolfe_2 * g0 : std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
       if (this->m_verbosity > 1) {
@@ -1139,7 +1139,7 @@ public:
         //              molpro::cout << "solution " << solution.front().get() << std::endl;
         // FIXME is this meant to be a copy?
         solution.front().get() = *m_best_r;
-        m_handlers.rq().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size() - 1], solution.front());
+        m_handlers->rq().axpy(m_linesearch_steplength, this->m_qspace[this->m_qspace.size() - 1], solution.front());
         this->m_values.pop_back();
         this->m_qspace.remove(this->m_qspace.size() - 1);
       } else { // quasi-Newton
@@ -1153,14 +1153,14 @@ public:
           for (size_t a = 0; a < this->m_qspace.size(); a++) {
             //            molpro::cout << "iterate q_" << a << std::endl;
             auto factor = this->m_solution_x[a] -
-                          m_handlers.qr().dot(this->m_qspace.action(a), solution.back()) / this->m_qspace.action(a, a);
-            m_handlers.rq().axpy(factor, this->m_qspace[a], solution.back());
+                          m_handlers->qr().dot(this->m_qspace.action(a), solution.back()) / this->m_qspace.action(a, a);
+            m_handlers->rq().axpy(factor, this->m_qspace[a], solution.back());
             //            molpro::cout << "Q factor " << factor << std::endl;
           }
           //          molpro::cout << "after Q loop solution length=" <<
           //          std::sqrt(solution.back().get().dot(solution.back().get()))
           //                       << std::endl;
-          m_handlers.rq().axpy(1, *(this->m_best_r), solution.back());
+          m_handlers->rq().axpy(1, *(this->m_best_r), solution.back());
           //          molpro::cout << "after adding rk solution length="
           //                       << std::sqrt(solution.back().get().dot(solution.back().get())) << std::endl;
         }
@@ -1212,8 +1212,7 @@ public:
   /*!
    * \brief DIIS
    */
-  DIIS(const iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>& handlers =
-           iterativesolver::ArrayHandlers<Rvector, Qvector>{},
+  DIIS(const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>>& handlers,
        const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector>(handlers, profiler) {
     this->m_residual_rhs = false;

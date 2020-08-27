@@ -48,8 +48,8 @@ int main(int argc, char* argv[]) {
       diagonals.reserve(n);
       for (auto i = 0; i < n; i++)
         diagonals.push_back(hmat[i + i * n]);
-      molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector> solver;
-      auto handlers = solver.handlers();
+      auto handlers = std::make_shared<molpro::linalg::iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>();
+      auto solver = molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector>(handlers);
       solver.m_verbosity = 1;
       solver.m_roots = nroot;
       solver.m_thresh = 1e-9;
@@ -89,12 +89,12 @@ int main(int argc, char* argv[]) {
         solver.solution(working_set, x, g);
         std::cout << "Residual norms:";
         for (size_t root = 0; root < solver.m_roots; root++)
-          std::cout << " " << std::sqrt(handlers.rr().dot(g[root], g[root]));
+          std::cout << " " << std::sqrt(handlers->rr().dot(g[root], g[root]));
         std::cout << std::endl;
         std::cout << "Eigenvector orthonormality:\n";
         for (size_t root = 0; root < solver.m_roots; root++) {
           for (size_t soot = 0; soot < solver.m_roots; soot++)
-            std::cout << " " << handlers.rr().dot(x[root], x[soot]);
+            std::cout << " " << handlers->rr().dot(x[root], x[soot]);
           std::cout << std::endl;
         }
       }

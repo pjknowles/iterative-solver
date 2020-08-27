@@ -44,15 +44,8 @@ int main(int argc, char* argv[]) {
   alpha = 1;
   n = 100;
   anharmonicity = .1;
-  auto rr = std::make_shared<ArrayHandlerIterable<pv>>();
-  auto qq = std::make_shared<ArrayHandlerIterable<pv>>();
-  auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
-  auto rq = std::make_shared<ArrayHandlerIterable<pv>>();
-  auto rp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
-  auto qr = std::make_shared<ArrayHandlerIterable<pv>>();
-  auto qp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
-  auto handlers = ArrayHandlers<pv, pv, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
-  molpro::linalg::DIIS<pv> solver{handlers};
+  auto handlers = std::make_shared<ArrayHandlers<pv, pv, std::map<size_t, double>>>();
+  auto solver = molpro::linalg::DIIS<pv>{handlers};
   solver.m_verbosity = 3;
   solver.m_maxIterations = 100;
   pv g(n);
@@ -74,5 +67,6 @@ int main(int argc, char* argv[]) {
       break;
   }
   std::cout << "Distance of solution from origin: " << std::sqrt(x.dot(x)) << std::endl;
-  std::cout << "Error=" << solver.errors().front() << " after " << solver.statistics().iterations << " iterations" << std::endl;
+  std::cout << "Error=" << solver.errors().front() << " after " << solver.statistics().iterations << " iterations"
+            << std::endl;
 }

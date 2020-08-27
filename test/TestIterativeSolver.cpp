@@ -47,8 +47,9 @@ TEST(TestIterativeSolver, small_eigenproblem) {
       auto qr = std::make_shared<ArrayHandlerIterable<SimpleArray<double>>>();
       auto qp = std::make_shared<ArrayHandlerIterableSparse<SimpleArray<double>, std::map<size_t, double>>>();
       auto handlers =
-          ArrayHandlers<SimpleArray<double>, SimpleArray<double>, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
-      LinearEigensystem<SimpleArray<double>> solver{handlers};
+          std::make_shared<ArrayHandlers<SimpleArray<double>, SimpleArray<double>, std::map<size_t, double>>>(
+              rr, qq, pp, rq, rp, qr, qp);
+      auto solver = LinearEigensystem<SimpleArray<double>>{handlers};
       solver.m_verbosity = 1;
       solver.setThresholds(1e-12);
       if (solver.m_verbosity > 0)
@@ -110,7 +111,8 @@ TEST(TestIterativeSolver, small_eigenproblem) {
         //        solver.endIteration(x, g))
       }
       //  std::cout << "Error={ "; for (const auto& e : solver.errors()) std::cout << e << " "; std::cout << "} after "
-      //  << solver.statistics().iterations << " iterations" << std::endl; std::cout << "Actual eigenvalues\n"<<val<<std::endl;
+      //  << solver.statistics().iterations << " iterations" << std::endl; std::cout << "Actual
+      //  eigenvalues\n"<<val<<std::endl;
       //      EXPECT_THAT(active,
       //                  ::testing::Pointwise(::testing::Eq(), std::vector<bool>(nroot, false)));
       EXPECT_THAT(solver.errors(),
@@ -133,12 +135,12 @@ TEST(TestIterativeSolver, small_eigenproblem) {
         EXPECT_THAT(r, ::testing::Pointwise(::testing::DoubleNear(1e-5), std::vector<double>(n, double(0))));
         if (solver.m_verbosity > 1)
           for (size_t soot = 0; soot <= root; soot++)
-            std::cout << "Eigenvector overlap " << root << " " << soot << " " << handlers.rr().dot(x[root], x[soot])
+            std::cout << "Eigenvector overlap " << root << " " << soot << " " << handlers->rr().dot(x[root], x[soot])
                       << std::endl;
         for (size_t soot = 0; soot < root; soot++)
-          EXPECT_LE(std::abs(handlers.rr().dot(x[root], x[soot])),
+          EXPECT_LE(std::abs(handlers->rr().dot(x[root], x[soot])),
                     1e-8); // can't expect exact orthogonality when last thing might have been an update
-        EXPECT_THAT(std::abs(handlers.rr().dot(x[root], x[root])), ::testing::DoubleNear(1, 1e-10));
+        EXPECT_THAT(std::abs(handlers->rr().dot(x[root], x[root])), ::testing::DoubleNear(1, 1e-10));
       }
     }
   }
@@ -165,8 +167,9 @@ TEST(TestIterativeSolver, small_nonhermitian_eigenproblem) {
       auto qr = std::make_shared<ArrayHandlerIterable<SimpleArray<double>>>();
       auto qp = std::make_shared<ArrayHandlerIterableSparse<SimpleArray<double>, std::map<size_t, double>>>();
       auto handlers =
-          ArrayHandlers<SimpleArray<double>, SimpleArray<double>, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
-      molpro::linalg::LinearEigensystem<SimpleArray<double>> solver{handlers};
+          std::make_shared<ArrayHandlers<SimpleArray<double>, SimpleArray<double>, std::map<size_t, double>>>(
+              rr, qq, pp, rq, rp, qr, qp);
+      auto solver = molpro::linalg::LinearEigensystem<SimpleArray<double>>{handlers};
       solver.m_verbosity = 1;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0)
@@ -224,7 +227,8 @@ TEST(TestIterativeSolver, small_nonhermitian_eigenproblem) {
           break;
       }
       //  std::cout << "Error={ "; for (const auto& e : solver.errors()) std::cout << e << " "; std::cout << "} after "
-      //  << solver.statistics().iterations << " iterations" << std::endl; std::cout << "Actual eigenvalues\n"<<val<<std::endl;
+      //  << solver.statistics().iterations << " iterations" << std::endl; std::cout << "Actual
+      //  eigenvalues\n"<<val<<std::endl;
       //      EXPECT_THAT(active,
       //                  ::testing::Pointwise(::testing::Eq(), std::vector<bool>(nroot, false)));
       EXPECT_THAT(solver.errors(),
@@ -285,8 +289,9 @@ TEST(TestIterativeSolver, linear_equations) {
       auto qr = std::make_shared<ArrayHandlerIterable<SimpleArray<double>>>();
       auto qp = std::make_shared<ArrayHandlerIterableSparse<SimpleArray<double>, std::map<size_t, double>>>();
       auto handlers =
-          ArrayHandlers<SimpleArray<double>, SimpleArray<double>, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
-      molpro::linalg::LinearEquations<SimpleArray<double>> solver(rhs, handlers);
+          std::make_shared<ArrayHandlers<SimpleArray<double>, SimpleArray<double>, std::map<size_t, double>>>(
+              rr, qq, pp, rq, rp, qr, qp);
+      auto solver = molpro::linalg::LinearEquations<SimpleArray<double>>(rhs, handlers);
       solver.m_verbosity = 1;
       solver.setThresholds(1e-13);
       if (solver.m_verbosity > 0)
@@ -443,8 +448,8 @@ public:
     auto rp = std::make_shared<ArrayHandlerIterableSparse<ptype, std::map<size_t, double>>>();
     auto qr = std::make_shared<ArrayHandlerIterable<ptype>>();
     auto qp = std::make_shared<ArrayHandlerIterableSparse<ptype, std::map<size_t, double>>>();
-    auto handlers = ArrayHandlers<ptype, ptype, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
-    molpro::linalg::Optimize<ptype> d(handlers, method);
+    auto handlers = std::make_shared<ArrayHandlers<ptype, ptype, std::map<size_t, double>>>(rr, qq, pp, rq, rp, qr, qp);
+    auto d = molpro::linalg::Optimize<ptype>(handlers, method);
     d.m_verbosity = verbosity - 1;
     d.m_options["convergence"] = "residual";
     std::vector<scalar> xxx(2);
@@ -572,8 +577,8 @@ public:
     auto rp = std::make_shared<ArrayHandlerIterableSparse<ptype, std::map<size_t, double>>>();
     auto qr = std::make_shared<ArrayHandlerIterable<ptype>>();
     auto qp = std::make_shared<ArrayHandlerIterableSparse<ptype, std::map<size_t, double>>>();
-    auto handlers = ArrayHandlers<ptype, ptype, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
-    molpro::linalg::Optimize<ptype> d(handlers, "L-BFGS");
+    auto handlers = std::make_shared<ArrayHandlers<ptype, ptype, std::map<size_t, double>>>(rr, qq, pp, rq, rp, qr, qp);
+    auto d = molpro::linalg::Optimize<ptype>(handlers, "L-BFGS");
     //    IterativeSolver::DIIS<ptype> d;
     d.m_verbosity = verbosity - 1;
     d.m_options["convergence"] = "residual";
@@ -666,8 +671,8 @@ public:
     auto rp = std::make_shared<ArrayHandlerIterableSparse<ptype, std::map<size_t, double>>>();
     auto qr = std::make_shared<ArrayHandlerIterable<ptype>>();
     auto qp = std::make_shared<ArrayHandlerIterableSparse<ptype, std::map<size_t, double>>>();
-    auto handlers = ArrayHandlers<ptype, ptype, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
-    molpro::linalg::Optimize<ptype> d(handlers, "L-BFGS");
+    auto handlers = std::make_shared<ArrayHandlers<ptype, ptype, std::map<size_t, double>>>(rr, qq, pp, rq, rp, qr, qp);
+    auto d = molpro::linalg::Optimize<ptype>(handlers, "L-BFGS");
     //    IterativeSolver::DIIS<ptype> d;
     d.m_verbosity = verbosity - 1;
     d.m_options["convergence"] = "residual";
@@ -760,8 +765,8 @@ public:
     auto rp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
     auto qr = std::make_shared<ArrayHandlerIterable<pv>>();
     auto qp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
-    auto handlers = ArrayHandlers<pv, pv, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
-    molpro::linalg::Optimize<pv> solver(handlers, std::regex_replace(method, std::regex("-iterate"), ""));
+    auto handlers = std::make_shared<ArrayHandlers<pv, pv, std::map<size_t, double>>>(rr, qq, pp, rq, rp, qr, qp);
+    auto solver = molpro::linalg::Optimize<pv>(handlers, std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_verbosity = 1;
     solver.m_maxIterations = 50;
     solver.m_thresh = 1e-12;
@@ -798,9 +803,10 @@ public:
       if (upd)
         break;
     }
-    std::cout << "Distance of solution from exact solution: " << std::sqrt(handlers.rr().dot(x, x)) << std::endl;
-    std::cout << "Error=" << solver.errors().front() << " after " << solver.statistics().iterations << " iterations" << std::endl;
-    return std::sqrt(handlers.rr().dot(x, x)) < 1e-5 && solver.errors().front() < 1e-5;
+    std::cout << "Distance of solution from exact solution: " << std::sqrt(handlers->rr().dot(x, x)) << std::endl;
+    std::cout << "Error=" << solver.errors().front() << " after " << solver.statistics().iterations << " iterations"
+              << std::endl;
+    return std::sqrt(handlers->rr().dot(x, x)) < 1e-5 && solver.errors().front() < 1e-5;
   }
 };
 
@@ -870,8 +876,8 @@ public:
     auto rp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
     auto qr = std::make_shared<ArrayHandlerIterable<pv>>();
     auto qp = std::make_shared<ArrayHandlerIterableSparse<pv, std::map<size_t, double>>>();
-    auto handlers = ArrayHandlers<pv, pv, std::map<size_t, double>>{rr, qq, pp, rq, rp, qr, qp};
-    molpro::linalg::Optimize<pv> solver(handlers, std::regex_replace(method, std::regex("-iterate"), ""));
+    auto handlers = std::make_shared<ArrayHandlers<pv, pv, std::map<size_t, double>>>(rr, qq, pp, rq, rp, qr, qp);
+    auto solver = molpro::linalg::Optimize<pv>(handlers, std::regex_replace(method, std::regex("-iterate"), ""));
     solver.m_verbosity = verbosity;
     solver.m_maxIterations = 1000;
     solver.m_thresh = 1e-12;

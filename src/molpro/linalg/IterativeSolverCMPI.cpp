@@ -67,8 +67,9 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   int mpi_rank;
   MPI_Comm_rank(commun, &mpi_rank);
   auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
-  instances.push(std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(
-      LinearEigensystem<Rvector, Qvector, Pvector>(handlers, profiler)));
+  /*instances.push(std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(
+      LinearEigensystem<Rvector, Qvector, Pvector>(handlers, profiler)));*/
+  instances.push(std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers, profiler));
   auto& instance = instances.top();
   instance->m_dimension = n;
   instance->m_roots = nroot;

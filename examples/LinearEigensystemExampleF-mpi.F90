@@ -64,4 +64,5 @@ PROGRAM Linear_Eigensystem_Example
   END IF
   !PRINT *, 'error =', error, ' eigenvalue =', e
   CALL Iterative_Solver_Finalize
+  call MPI_FINALIZE(ierr)
 END PROGRAM Linear_Eigensystem_Example

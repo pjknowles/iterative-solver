@@ -61,6 +61,7 @@ HDF5Handle temp_hdf5_handle_group(const HDF5Handle &handle, const std::string &b
   auto t = HDF5Handle(handle);
   t.open_file(HDF5Handle::Access::read_write);
   t.open_group(group_name);
+  t.close_file();
   if (not t.set_erase_group_on_destroy(true))
     throw std::runtime_error("temp_hdf5_handle_group: failed to set_erase_group_on_destroy on the copy of handle");
   return t;

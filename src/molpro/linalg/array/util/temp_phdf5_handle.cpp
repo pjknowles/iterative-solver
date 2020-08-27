@@ -30,6 +30,7 @@ PHDF5Handle temp_phdf5_handle_group(const PHDF5Handle &handle, const std::string
   auto t = PHDF5Handle(handle);
   t.open_file(HDF5Handle::Access::read_write);
   t.open_group(group_name);
+  t.close_file();
   if (not t.set_erase_group_on_destroy(true)) {
     std::cerr << "temp_phdf5_handle_group: failed to set_erase_group_on_destroy on the copy of handle" << std::endl;
     MPI_Abort(comm, 1);

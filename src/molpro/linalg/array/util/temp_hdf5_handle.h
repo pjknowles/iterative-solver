@@ -24,7 +24,7 @@ HDF5Handle temp_hdf5_handle(const std::string &base_name);
 std::string temp_group_name(const HDF5Handle &handle, const std::string &base_name);
 
 /*!
- * @brief Returns copy of the handle with a temporary group assigned and opened
+ * @brief Returns copy of the handle with a temporary group assigned
  * @param handle handle to modify
  * @param base_name base name of the temporary group. It can be absolute path, or relative to group name of handle
  */

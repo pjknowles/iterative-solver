@@ -268,6 +268,9 @@ TEST_F(HDF5HandleOpenFileCreatF, temp_hdf5_handle_group) {
     auto h2 = temp_hdf5_handle_group(h1, group_name);
     ASSERT_TRUE(h2.erase_group_on_destroy());
     ASSERT_TRUE(hdf5_link_exists(h1.file_id(), group_name) > 0);
+    auto h3 = temp_hdf5_handle_group(h1, group_name);
+    ASSERT_TRUE(h3.erase_group_on_destroy());
+    ASSERT_NE(h3.group_name(), h2.group_name());
   }
   ASSERT_TRUE(hdf5_link_exists(h1.file_id(), group_name) == 0);
 }

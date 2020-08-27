@@ -37,8 +37,8 @@ auto make_handlers() {
   auto handler_rp = std::make_shared<ArrayHandlerDistrSparse<v, std::map<size_t, double>>>();
   auto handler_qr = std::make_shared<ArrayHandlerDistr<v>>();
   auto handler_qp = std::make_shared<ArrayHandlerDistrSparse<v, std::map<size_t, double>>>();
-  auto handlers = ArrayHandlers<v, v, std::map<size_t, double>>{handler_rr, handler_qq, handler_pp, handler_rq,
-                                                                handler_rp, handler_qr, handler_qp};
+  auto handlers = std::make_shared<ArrayHandlers<v, v, std::map<size_t, double>>>(
+      handler_rr, handler_qq, handler_pp, handler_rq, handler_rp, handler_qr, handler_qp);
   return handlers;
 }
 

@@ -131,12 +131,25 @@ TEST_F(PHDF5HandleTestFile, temp_hdf5_handle_group) {
   auto group_name = "/test";
   auto h1 = PHDF5Handle(file_name, mpi_comm);
   h1.open_file(HDF5Handle::Access::read_write);
+  h1.close_file();
   {
     auto h2 = temp_phdf5_handle_group(h1, group_name);
-    auto l = lock.scope();
-    ASSERT_TRUE(h2.erase_group_on_destroy());
-    ASSERT_TRUE(hdf5_link_exists(h2.file_id(), group_name) > 0);
+    h2.open_group();
+    {
+      auto l = lock.scope();
+      ASSERT_TRUE(h2.erase_group_on_destroy());
+      ASSERT_TRUE(hdf5_link_exists(h2.file_id(), group_name) > 0);
+    }
+    auto h3 = temp_phdf5_handle_group(h1, group_name);
+    h3.open_group();
+    {
+      auto l = lock.scope();
+      ASSERT_TRUE(h3.erase_group_on_destroy());
+      ASSERT_TRUE(hdf5_link_exists(h3.file_id(), group_name) > 0);
+      ASSERT_NE(h3.group_name(), h2.group_name());
+    }
   }
+  h1.open_file(HDF5Handle::Access::read_only);
   auto l = lock.scope();
   ASSERT_TRUE(hdf5_link_exists(h1.file_id(), group_name) == 0);
 }

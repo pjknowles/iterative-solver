@@ -97,18 +97,6 @@ TEST_F(DistrArrayHDF5_SetUp, constructor_fhandle_size) {
   }
 }
 
-TEST_F(DistrArrayHDF5_SetUp, constructor_copy) {
-  auto a = DistrArrayHDF5{fhandle_n1, size};
-  DistrArrayHDF5 b{a};
-  ScopeLock l{mpi_comm};
-  EXPECT_EQ(b.file_handle(), a.file_handle());
-  EXPECT_EQ(b.communicator(), a.communicator());
-  EXPECT_EQ(b.size(), a.size());
-  EXPECT_EQ(b.empty(), a.empty());
-  EXPECT_TRUE(b.distribution().compatible(a.distribution()));
-  EXPECT_TRUE(b.compatible(a));
-}
-
 TEST_F(DistrArrayHDF5_SetUp, constructor_move) {
   auto&& a = DistrArrayHDF5{fhandle_n1, size};
   DistrArrayHDF5 b{std::move(a)};

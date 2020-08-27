@@ -38,8 +38,7 @@ public:
   //! Constructor for a blank object. The blank is only useful as a temporary. Move a valid object inside the blank to
   //! make it usable.
   DistrArrayHDF5();
-  //! Copies the array from source. Copies to the memory view if it was allocated, otherwise copies directly from disk.
-  DistrArrayHDF5(const DistrArrayHDF5 &source);
+  DistrArrayHDF5(const DistrArrayHDF5 &source) = delete;
   //! Takes ownership of source content.
   DistrArrayHDF5(DistrArrayHDF5 &&source) noexcept;
 

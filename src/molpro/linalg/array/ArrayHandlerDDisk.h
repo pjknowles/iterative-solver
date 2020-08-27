@@ -15,7 +15,8 @@ public:
   using typename ArrayHandler<AL, AR>::value_type_abs;
   using typename ArrayHandler<AL, AR>::ProxyHandle;
 
-  ArrayHandlerDDisk() : ArrayHandler<AL, AR>(), m_copy_func([](const AR &source) { return AL{source}; }) {}
+  ArrayHandlerDDisk()
+      : ArrayHandler<AL, AR>(), m_copy_func([](const AR &source) { return AL::CreateTempCopy(source); }) {}
 
   /*!
    * @brief Constructor taking a copy function.

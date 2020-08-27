@@ -209,15 +209,11 @@ extern "C" int IterativeSolverAddVector(double* parameters, double* action, doub
   MPI_Comm_rank(ccomm, &mpi_rank);
   for (size_t root = 0; root < instance->m_roots; root++) {
     cc.emplace_back(instance->m_dimension, ccomm);
-    //std::pair<size_t, size_t> ccrange = cc.back().distribution().range(mpi_rank);
-    //size_t ccn = ccrange.second - ccrange.first;
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
     cc.back().allocate_buffer(Span<typename Rvector::value_type>(&parameters[root * instance->m_dimension +
                                                                                                   ccrange.first], ccn));
     gg.emplace_back(instance->m_dimension, ccomm);
-    //std::pair<size_t, size_t> ggrange = gg.back().distribution().range(mpi_rank);
-    //size_t ggn = ggrange.second - ggrange.first;
     auto ggrange = gg.back().distribution().range(mpi_rank);
     auto ggn = ggrange.second - ggrange.first;
     gg.back().allocate_buffer(Span<typename Rvector::value_type>(&action[root * instance->m_dimension +
@@ -233,8 +229,8 @@ extern "C" int IterativeSolverAddVector(double* parameters, double* action, doub
     instance->m_profiler->start("AddVector:Sync");
   for (size_t root = 0; root < instance->m_roots; root++) {
     if (sync) {
-      gather_all(cc[root], ccomm);
-      gather_all(gg[root], ccomm);
+      gather_all(cc[root].distribution(), ccomm, &parameters[root * instance->m_dimension]);
+      gather_all(gg[root].distribution(), ccomm, &action[root * instance->m_dimension]);
     }
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];
@@ -287,8 +283,8 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
     instance->m_profiler->start("Solution:Sync");
   for (size_t root = 0; root < instance->m_roots; root++) {
     if (sync) {
-      gather_all(cc[root], ccomm);
-      gather_all(gg[root], ccomm);
+      gather_all(cc[root].distribution(), ccomm, &parameters[root * instance->m_dimension]);
+      gather_all(gg[root].distribution(), ccomm, &action[root * instance->m_dimension]);
     }
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];

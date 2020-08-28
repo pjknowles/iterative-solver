@@ -385,8 +385,13 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
       ppp.insert(std::pair<size_t, Rvector::value_type>(indices[k], coefficients[k]));
     Pvectors.emplace_back(ppp);
   }
-
+  if (instance.prof != nullptr)
+    instance.prof->start("AddP:Call");
   instance.solver->addP(Pvectors, pp, cc, gg, ccp);
+  if (instance.prof != nullptr)
+    instance.prof->stop("AddP:Call");
+  if (instance.prof != nullptr)
+    instance.prof->start("AddP:Sync");
   for (size_t root = 0; root < instance.solver->m_roots; root++) {
     if (sync) {
       gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
@@ -395,6 +400,10 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }
+  if (instance.prof != nullptr)
+    instance.prof->stop("AddP:Sync");
+  if (instance.prof != nullptr)
+    instance.prof->stop("AddP");
 }
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
@@ -413,31 +422,36 @@ extern "C" void IterativeSolverWorkingSetEigenvalues(double* eigenvalues) {
 
 extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* residual, size_t maximumNumber,
                                           double threshold, size_t* indices, int lmppx) {
-  /*  std::vector<v> cc, gg;
-    auto& instance = instances.top();
-    cc.reserve(instance->m_roots);
-    gg.reserve(instance->m_roots);
-  #ifdef HAVE_MPI_H
-    MPI_Comm ccomm;
-    if (lmppx != 0) {
-      ccomm = MPI_COMM_SELF;
-    } else {
-      ccomm = MPI_COMM_COMPUTE;
-    }
-    for (size_t root = 0; root < instance->m_roots; root++) {
-      cc.emplace_back(&const_cast<double*>(solution)[root * instance->m_dimension], instance->m_dimension, ccomm);
-      gg.emplace_back(&const_cast<double*>(residual)[root * instance->m_dimension], instance->m_dimension, ccomm);
-    }
-  #else
-    for (size_t root = 0; root < instance->m_roots; root++) {
-      cc.emplace_back(&const_cast<double*>(solution)[root * instance->m_dimension], instance->m_dimension);
-      gg.emplace_back(&const_cast<double*>(residual)[root * instance->m_dimension], instance->m_dimension);
-    }
-  #endif
-
-    auto result = instance->suggestP(cc, gg, maximumNumber, threshold);
-    for (size_t i = 0; i < result.size(); i++)
-      indices[i] = result[i];
-    return result.size();*/
-  return 0;
+  std::vector<Rvector> cc, gg;
+  auto& instance = instances.top();
+  if (instance.prof != nullptr)
+    instance.prof->start("EndIter");
+  cc.reserve(instance.solver->m_roots);
+  gg.reserve(instance.solver->m_roots);
+  MPI_Comm ccomm;
+  if (lmppx != 0) {
+    ccomm = MPI_COMM_SELF;
+  } else {
+    ccomm = commun;
+  }
+  int mpi_rank;
+  MPI_Comm_rank(ccomm, &mpi_rank);
+  for (size_t root = 0; root < instance.solver->m_roots; root++) {
+    cc.emplace_back(instance.dimension, ccomm);
+    auto ccrange = cc.back().distribution().range(mpi_rank);
+    auto ccn = ccrange.second - ccrange.first;
+    cc.back().allocate_buffer(
+        Span<Rvector::value_type>(&const_cast<double*>(solution)[root * instance.dimension +
+                                                                                                  ccrange.first], ccn));
+    gg.emplace_back(instance.dimension, ccomm);
+    auto ggrange = gg.back().distribution().range(mpi_rank);
+    auto ggn = ggrange.second - ggrange.first;
+    gg.back().allocate_buffer(
+        Span<Rvector::value_type>(&const_cast<double*>(residual)[root * instance.dimension +
+                                                                                                  ggrange.first], ggn));
+  }
+  auto result = instance.solver->suggestP(cc, gg, maximumNumber, threshold);
+  for (size_t i = 0; i < result.size(); i++)
+    indices[i] = result[i];
+  return result.size();
 }

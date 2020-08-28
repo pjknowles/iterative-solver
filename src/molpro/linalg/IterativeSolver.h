@@ -459,7 +459,13 @@ public:
         std::vector<size_t> indices;
         std::vector<scalar_type> values;
         //        std::tie(indices, values) = solution[kkk].get().select(residual[kkk], maximumNumber, threshold);
-        std::tie(indices, values) = solution[kkk].get().select(solution[kkk], maximumNumber, threshold);
+        auto selection = m_handlers->rr().select_max_dot(maximumNumber, solution[kkk], solution[kkk]);
+        indices.reserve(selection.size());
+        values.reserve(selection.size());
+        for (auto elem : selection) {
+          indices.emplace_back(elem.first);
+          values.emplace_back(elem.second);
+        }
         //             molpro::cout <<"indices.size()="<<indices.size()<<std::endl;
         //             for (auto k=0; k<indices.size(); k++) molpro::cout << "select "<< indices[k] <<" :
         //             "<<values[k]<<std::endl;

@@ -347,52 +347,54 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
 extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices, const double* coefficients,
                                     const double* pp, double* parameters, double* action, double* parametersP,
                                     int lmppx) {
-  /*  std::vector<v> cc, gg;
-    auto& instance = instances.top();
-    std::vector<std::vector<v::value_type>> ccp(instance->m_roots);
-    cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
-    gg.reserve(instance->m_roots);
-  #ifdef HAVE_MPI_H
-    MPI_Comm ccomm;
-    if (lmppx != 0) {
-      ccomm = MPI_COMM_SELF;
-    } else {
-      ccomm = MPI_COMM_COMPUTE;
-    }
-    for (size_t root = 0; root < instance->m_roots; root++) {
-      cc.emplace_back(&parameters[root * instance->m_dimension], instance->m_dimension, ccomm);
-      gg.emplace_back(&action[root * instance->m_dimension], instance->m_dimension, ccomm);
-    }
-  #else
-    for (size_t root = 0; root < instance->m_roots; root++) {
-      cc.emplace_back(&parameters[root * instance->m_dimension], instance->m_dimension);
-      gg.emplace_back(&action[root * instance->m_dimension], instance->m_dimension);
-    }
-  #endif
-    std::vector<std::map<size_t, v::value_type>> Pvectors;
-    Pvectors.reserve(nP);
-    for (size_t p = 0; p < nP; p++) {
-      std::map<size_t, v::value_type> ppp;
-      //    for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
-      //    std::cout << "indices["<<k<<"]="<<indices[k]<<": "<<coefficients[k]<<std::endl;
-      for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
-        ppp.insert(std::pair<size_t, v::value_type>(indices[k], coefficients[k]));
-      Pvectors.emplace_back(ppp);
-    }
+  std::vector<Rvector> cc, gg;
+  auto& instance = instances.top();
+  if (instance.prof != nullptr)
+    instance.prof->start("AddP");
+  cc.reserve(instance.solver->m_roots);
+  gg.reserve(instance.solver->m_roots);
+  std::vector<std::vector<Rvector::value_type>> ccp(instance.solver->m_roots);
+  MPI_Comm ccomm;
+  if (lmppx != 0) {
+    ccomm = MPI_COMM_SELF;
+  } else {
+    ccomm = commun;
+  }
+  int mpi_rank;
+  MPI_Comm_rank(ccomm, &mpi_rank);
+  for (size_t root = 0; root < instance.solver->m_roots; root++) {
+    cc.emplace_back(instance.dimension, ccomm);
+    auto ccrange = cc.back().distribution().range(mpi_rank);
+    auto ccn = ccrange.second - ccrange.first;
+    cc.back().allocate_buffer(
+        Span<Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
+    gg.emplace_back(instance.dimension, ccomm);
+    auto ggrange = gg.back().distribution().range(mpi_rank);
+    auto ggn = ggrange.second - ggrange.first;
+    gg.back().allocate_buffer(
+        Span<Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
+  }
+  std::vector<std::map<size_t, Rvector::value_type>> Pvectors;
+  Pvectors.reserve(nP);
+  for (size_t p = 0; p < nP; p++) {
+    std::map<size_t, Rvector::value_type> ppp;
+    //    for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
+    //    std::cout << "indices["<<k<<"]="<<indices[k]<<": "<<coefficients[k]<<std::endl;
+    for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
+      // Need to check why CLion complains below
+      ppp.insert(std::pair<size_t, Rvector::value_type>(indices[k], coefficients[k]));
+    Pvectors.emplace_back(ppp);
+  }
 
-    instance->addP(Pvectors, pp, cc, gg, ccp);
-    for (size_t root = 0; root < instance->m_roots; root++) {
-  #ifdef HAVE_MPI_H
-      if (!cc[root].synchronised())
-        cc[root].sync();
-      if (!gg[root].synchronised())
-        gg[root].sync();
-  #endif
-      //    cc[root].get(&parameters[root * instance->m_dimension], instance->m_dimension, 0);
-      //    gg[root].get(&action[root * instance->m_dimension], instance->m_dimension, 0);
-      for (size_t i = 0; i < ccp[0].size(); i++)
-        parametersP[root * ccp[0].size() + i] = ccp[root][i];
-    }*/
+  instance.solver->addP(Pvectors, pp, cc, gg, ccp);
+  for (size_t root = 0; root < instance.solver->m_roots; root++) {
+    if (sync) {
+      gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
+      gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
+    }
+    for (size_t i = 0; i < ccp[0].size(); i++)
+      parametersP[root * ccp[0].size() + i] = ccp[root][i];
+  }
 }
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {

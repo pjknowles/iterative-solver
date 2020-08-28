@@ -54,7 +54,7 @@ public:
    * @param dimension size of array. If dataset already exists it will be resized to dimension.
    * @param prof profiler
    */
-  DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, size_t dimension,
+  DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle, size_t dimension,
                  std::shared_ptr<Profiler> prof = nullptr);
   /*!
    * @brief Create a disk array with file and distribution assigned.
@@ -65,7 +65,7 @@ public:
    * @param distribution specifies how array is distributed among processes
    * @param prof profiler
    */
-  DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, std::unique_ptr<Distribution> distribution,
+  DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle, std::unique_ptr<Distribution> distribution,
                  std::shared_ptr<Profiler> prof = nullptr);
   /*!
    * @brief Create a dummy disk array with a file assigned.
@@ -76,7 +76,8 @@ public:
    * @param file_handle handle for opening the HDF5 group where array is/will be stored.
    * @param prof
    */
-  explicit DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, std::shared_ptr<Profiler> prof = nullptr);
+  explicit DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle,
+                          std::shared_ptr<Profiler> prof = nullptr);
   /*!
    * @brief Creates a disk array by copying source to disk.
    * @param source a distributed array

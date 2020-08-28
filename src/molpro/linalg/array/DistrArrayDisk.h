@@ -108,7 +108,7 @@ protected:
   std::unique_ptr<Distribution> m_distribution; //!< describes distribution of array among processes
   using DistrArray::DistrArray;
 
-  DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof);
+  DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm commun);
   DistrArrayDisk();
   DistrArrayDisk(const DistrArrayDisk &source);
   DistrArrayDisk(DistrArrayDisk &&source) noexcept;

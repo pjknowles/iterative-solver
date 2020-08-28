@@ -16,9 +16,8 @@ int mpi_rank(MPI_Comm comm) {
 
 } // namespace
 
-DistrArrayDisk::DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm commun,
-                               std::shared_ptr<molpro::Profiler> prof)
-    : DistrArray(distr->border().second, commun, std::move(prof)), m_distribution(std::move(distr)) {}
+DistrArrayDisk::DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm commun)
+    : DistrArray(distr->border().second, commun), m_distribution(std::move(distr)) {}
 
 DistrArrayDisk::DistrArrayDisk() = default;
 

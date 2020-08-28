@@ -16,25 +16,22 @@ int mpi_size(MPI_Comm comm) {
 }
 } // namespace
 
-DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle,
-                               std::unique_ptr<Distribution> distribution, std::shared_ptr<Profiler> prof)
-    : DistrArrayDisk(std::move(distribution), file_handle->communicator(), std::move(prof)),
-      m_file_handle(std::move(file_handle)) {
+DistrArrayHDF5::DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle,
+                               std::unique_ptr<Distribution> distribution)
+    : DistrArrayDisk(std::move(distribution), file_handle->communicator()),
+      m_file_handle(file_handle) {
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");
 }
 
-DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, size_t dimension,
-                               std::shared_ptr<Profiler> prof)
-    : DistrArrayHDF5(std::move(file_handle),
+DistrArrayHDF5::DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle, size_t dimension)
+    : DistrArrayHDF5(file_handle,
                      std::make_unique<Distribution>(util::make_distribution_spread_remainder<index_type>(
-                         dimension, mpi_size(file_handle->communicator()))),
-                     std::move(prof)) {}
+                         dimension, mpi_size(file_handle->communicator())))) {}
 
-DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, std::shared_ptr<Profiler> prof)
-    : DistrArrayDisk(std::make_unique<Distribution>(std::vector<index_type>{0, 0}), file_handle->communicator(),
-                     std::move(prof)),
-      m_file_handle(std::move(file_handle)) {
+DistrArrayHDF5::DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle)
+    : DistrArrayDisk(std::make_unique<Distribution>(std::vector<index_type>{0, 0}), file_handle->communicator()),
+      m_file_handle(file_handle) {
   m_file_handle->open_group();
   if (m_file_handle->group_is_open() && dataset_exists()) {
     DistrArrayHDF5::open_access();
@@ -49,7 +46,7 @@ DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, s
     if (n < 0)
       DistrArray::error("failed to get dimensions in dataset");
     // create a new array
-    DistrArrayHDF5 t{m_file_handle, dims, std::move(prof)};
+    DistrArrayHDF5 t{m_file_handle, dims};
     swap(*this, t);
     t.m_file_handle.reset();
   }
@@ -57,7 +54,7 @@ DistrArrayHDF5::DistrArrayHDF5(std::shared_ptr<util::PHDF5Handle> file_handle, s
 }
 
 DistrArrayHDF5::DistrArrayHDF5(const DistrArray &source, std::shared_ptr<util::PHDF5Handle> file_handle)
-    : DistrArrayDisk(std::make_unique<Distribution>(source.distribution()), source.communicator(), source.m_prof),
+    : DistrArrayDisk(std::make_unique<Distribution>(source.distribution()), source.communicator()),
       m_file_handle(std::move(file_handle)) {
   if (!source.empty()) {
     DistrArrayHDF5::open_access();
@@ -105,7 +102,6 @@ void swap(DistrArrayHDF5 &x, DistrArrayHDF5 &y) noexcept {
   using std::swap;
   swap(x.m_dimension, y.m_dimension);
   swap(x.m_communicator, y.m_communicator);
-  swap(x.m_prof, y.m_prof);
   swap(x.m_allocated, y.m_allocated);
   swap(x.m_view_buffer, y.m_view_buffer);
   swap(x.m_owned_buffer, y.m_owned_buffer);

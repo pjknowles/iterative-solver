@@ -35,13 +35,17 @@ MPI_Comm commun;
 // FIXME Only top solver is active at any one time. This should be documented somewhere.
 //static std::stack<std::unique_ptr<molpro::linalg::IterativeSolver<Rvector, Qvector, Pvector>>> instances;
 
-struct Instance{
+namespace {
+struct Instance {
   std::unique_ptr<IterativeSolver<Rvector, Qvector, Pvector>> solver;
   // TODO: we should take Profiler out of IterativeSolver
   // std::shared_ptr<Profiler> prof;
   size_t dimension;
+  Instance(std::unique_ptr<IterativeSolver<Rvector, Qvector, Pvector>> solver, size_t dimension) : solver(std::move(solver)),
+  dimension(dimension) {}
 };
-static std::stack<std::unique_ptr<Instance>> instances;
+static std::stack<Instance> instances;
+}
 
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
                                                            double thresh, int verbosity, const char* fname,
@@ -76,16 +80,17 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   int mpi_rank;
   MPI_Comm_rank(commun, &mpi_rank);
   auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
-  instances.push(std::make_unique<Instance>());
+  instances.emplace(std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers, profiler), n);
+  //instances.push(std::make_unique<Instance>());
   auto& instance = instances.top();
-  instance->solver = std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers, profiler);
-  instance->dimension = n;
-  instance->solver->m_roots = nroot;
-  instance->solver->m_thresh = thresh;
-  instance->solver->m_verbosity = verbosity;
+  instance.solver = std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers, profiler);
+  instance.dimension = n;
+  instance.solver->m_roots = nroot;
+  instance.solver->m_thresh = thresh;
+  instance.solver->m_verbosity = verbosity;
   std::vector<Rvector> x;
   std::vector<Rvector> g;
-  for (size_t root = 0; root < instance->solver->m_roots; root++) {
+  for (size_t root = 0; root < instance.solver->m_roots; root++) {
     x.emplace_back(n, commun);
     g.emplace_back(n, commun);
   }
@@ -202,11 +207,11 @@ extern "C" int IterativeSolverAddValue(double* parameters, double value, double*
 extern "C" int IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync, int lmppx) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
-  if (instance->solver->m_profiler != nullptr)
-    instance->solver->m_profiler->start("AddVector");
-  cc.reserve(instance->solver->m_roots); // TODO: should that be size of working set instead?
-  gg.reserve(instance->solver->m_roots);
-  std::vector<std::vector<typename Rvector::value_type>> ccp(instance->solver->m_roots);
+  if (instance.solver->m_profiler != nullptr)
+    instance.solver->m_profiler->start("AddVector");
+  cc.reserve(instance.solver->m_roots); // TODO: should that be size of working set instead?
+  gg.reserve(instance.solver->m_roots);
+  std::vector<std::vector<typename Rvector::value_type>> ccp(instance.solver->m_roots);
   MPI_Comm ccomm;
   if (lmppx != 0) {
     ccomm = MPI_COMM_SELF;
@@ -215,39 +220,39 @@ extern "C" int IterativeSolverAddVector(double* parameters, double* action, doub
   }
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
-  for (size_t root = 0; root < instance->solver->m_roots; root++) {
-    cc.emplace_back(instance->dimension, ccomm);
+  for (size_t root = 0; root < instance.solver->m_roots; root++) {
+    cc.emplace_back(instance.dimension, ccomm);
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
-    cc.back().allocate_buffer(Span<typename Rvector::value_type>(&parameters[root * instance->dimension +
+    cc.back().allocate_buffer(Span<typename Rvector::value_type>(&parameters[root * instance.dimension +
                                                                                                   ccrange.first], ccn));
-    gg.emplace_back(instance->dimension, ccomm);
+    gg.emplace_back(instance.dimension, ccomm);
     auto ggrange = gg.back().distribution().range(mpi_rank);
     auto ggn = ggrange.second - ggrange.first;
-    gg.back().allocate_buffer(Span<typename Rvector::value_type>(&action[root * instance->dimension +
+    gg.back().allocate_buffer(Span<typename Rvector::value_type>(&action[root * instance.dimension +
                                                                                                   ggrange.first], ggn));
   }
-  if (instance->solver->m_profiler != nullptr)
-    instance->solver->m_profiler->start("AddVector:Update");
-  size_t working_set_size = instance->solver->addVector(cc, gg, ccp);
-  if (instance->solver->m_profiler != nullptr)
-    instance->solver->m_profiler->stop("AddVector:Update");
+  if (instance.solver->m_profiler != nullptr)
+    instance.solver->m_profiler->start("AddVector:Update");
+  size_t working_set_size = instance.solver->addVector(cc, gg, ccp);
+  if (instance.solver->m_profiler != nullptr)
+    instance.solver->m_profiler->stop("AddVector:Update");
 
-  if (instance->solver->m_profiler != nullptr)
-    instance->solver->m_profiler->start("AddVector:Sync");
-  for (size_t root = 0; root < instance->solver->m_roots; root++) {
+  if (instance.solver->m_profiler != nullptr)
+    instance.solver->m_profiler->start("AddVector:Sync");
+  for (size_t root = 0; root < instance.solver->m_roots; root++) {
     if (sync) {
-      gather_all(cc[root].distribution(), ccomm, &parameters[root * instance->dimension]);
-      gather_all(gg[root].distribution(), ccomm, &action[root * instance->dimension]);
+      gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
+      gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
     }
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }
-  if (instance->solver->m_profiler != nullptr)
-    instance->solver->m_profiler->stop("AddVector:Sync");
-  if (mpi_rank == 0) instance->solver->report();
-  if (instance->solver->m_profiler != nullptr)
-    instance->solver->m_profiler->stop("AddVector");
+  if (instance.solver->m_profiler != nullptr)
+    instance.solver->m_profiler->stop("AddVector:Sync");
+  if (mpi_rank == 0) instance.solver->report();
+  if (instance.solver->m_profiler != nullptr)
+    instance.solver->m_profiler->stop("AddVector");
   return working_set_size;
 }
 
@@ -255,11 +260,11 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
                                                                                                   int sync, int lmppx) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
-  if (instance->solver->m_profiler != nullptr)
-    instance->solver->m_profiler->start("Solution");
-  cc.reserve(instance->solver->m_roots);
-  gg.reserve(instance->solver->m_roots);
-  std::vector<std::vector<typename Rvector::value_type>> ccp(instance->solver->m_roots);
+  if (instance.solver->m_profiler != nullptr)
+    instance.solver->m_profiler->start("Solution");
+  cc.reserve(instance.solver->m_roots);
+  gg.reserve(instance.solver->m_roots);
+  std::vector<std::vector<typename Rvector::value_type>> ccp(instance.solver->m_roots);
   MPI_Comm ccomm;
   if (lmppx != 0) {
     ccomm = MPI_COMM_SELF;
@@ -268,40 +273,40 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
   }
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
-  for (size_t root = 0; root < instance->solver->m_roots; root++) {
-    cc.emplace_back(instance->dimension, ccomm);
+  for (size_t root = 0; root < instance.solver->m_roots; root++) {
+    cc.emplace_back(instance.dimension, ccomm);
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
-    cc.back().allocate_buffer(Span<typename Rvector::value_type>(&parameters[root * instance->dimension +
+    cc.back().allocate_buffer(Span<typename Rvector::value_type>(&parameters[root * instance.dimension +
                                                                              ccrange.first], ccn));
-    gg.emplace_back(instance->dimension, ccomm);
+    gg.emplace_back(instance.dimension, ccomm);
     auto ggrange = gg.back().distribution().range(mpi_rank);
     auto ggn = ggrange.second - ggrange.first;
-    gg.back().allocate_buffer(Span<typename Rvector::value_type>(&action[root * instance->dimension +
+    gg.back().allocate_buffer(Span<typename Rvector::value_type>(&action[root * instance.dimension +
                                                                          ggrange.first], ggn));
   }
   const std::vector<int> croots(roots, roots+nroot);
-  if (instance->solver->m_profiler != nullptr)
-    instance->solver->m_profiler->start("Solution:Call");
-  instance->solver->solution(croots, cc, gg, ccp);
-  if (instance->solver->m_profiler != nullptr)
-    instance->solver->m_profiler->stop("Solution:Call");
+  if (instance.solver->m_profiler != nullptr)
+    instance.solver->m_profiler->start("Solution:Call");
+  instance.solver->solution(croots, cc, gg, ccp);
+  if (instance.solver->m_profiler != nullptr)
+    instance.solver->m_profiler->stop("Solution:Call");
 
-  if (instance->solver->m_profiler != nullptr)
-    instance->solver->m_profiler->start("Solution:Sync");
-  for (size_t root = 0; root < instance->solver->m_roots; root++) {
+  if (instance.solver->m_profiler != nullptr)
+    instance.solver->m_profiler->start("Solution:Sync");
+  for (size_t root = 0; root < instance.solver->m_roots; root++) {
     if (sync) {
-      gather_all(cc[root].distribution(), ccomm, &parameters[root * instance->dimension]);
-      gather_all(gg[root].distribution(), ccomm, &action[root * instance->dimension]);
+      gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
+      gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
     }
     for (size_t i = 0; i < ccp[0].size(); i++)
       parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }
-  if (instance->solver->m_profiler != nullptr)
-    instance->solver->m_profiler->stop("Solution:Sync");
-  if (mpi_rank == 0) instance->solver->report();
-  if (instance->solver->m_profiler != nullptr)
-    instance->solver->m_profiler->stop("Solution");
+  if (instance.solver->m_profiler != nullptr)
+    instance.solver->m_profiler->stop("Solution:Sync");
+  if (mpi_rank == 0) instance.solver->report();
+  if (instance.solver->m_profiler != nullptr)
+    instance.solver->m_profiler->stop("Solution");
 }
 
 extern "C" int IterativeSolverEndIteration(double* solution, double* residual, double* error, int lmppx) {
@@ -406,14 +411,14 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
   auto& instance = instances.top();
   size_t k = 0;
-  for (const auto& e : instance->solver->eigenvalues())
+  for (const auto& e : instance.solver->eigenvalues())
     eigenvalues[k++] = e;
 }
 
 extern "C" void IterativeSolverWorkingSetEigenvalues(double* eigenvalues) {
   auto& instance = instances.top();
   size_t k = 0;
-  for (const auto& e : instance->solver->working_set_eigenvalues())
+  for (const auto& e : instance.solver->working_set_eigenvalues())
     eigenvalues[k++] = e;
 }
 

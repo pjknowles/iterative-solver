@@ -54,8 +54,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   if (!flag) {
 #ifdef HAVE_PPIDD_H
     PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
-    pcomm = MPI_Comm_f2c(PPIDD_Worker_comm());
-    commun = MPI_Comm_f2c(PPIDD_Worker_comm());
+    comm = MPI_Comm_f2c(PPIDD_Worker_comm());
 #else
     MPI_Init(0, nullptr);
     comm = MPI_COMM_WORLD;
@@ -99,8 +98,7 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
   if (!flag) {
 #ifdef HAVE_PPIDD_H
     PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
-    pcomm = MPI_Comm_f2c(PPIDD_Worker_comm());
-    commun = MPI_Comm_f2c(PPIDD_Worker_comm());
+    comm = MPI_Comm_f2c(PPIDD_Worker_comm());
 #else
     MPI_Init(0, nullptr);
     comm = MPI_COMM_WORLD;

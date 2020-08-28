@@ -1,17 +1,15 @@
 #include "DistrArray.h"
-#include "util.h"
 #include "util/select_max_dot.h"
 #include <algorithm>
 #include <functional>
-#include <molpro/Profiler.h>
+#include <iostream>
 #include <numeric>
 
 namespace molpro {
 namespace linalg {
 namespace array {
 
-DistrArray::DistrArray(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof)
-    : m_dimension(dimension), m_communicator(commun), m_prof(std::move(prof)) {}
+DistrArray::DistrArray(size_t dimension, MPI_Comm commun) : m_dimension(dimension), m_communicator(commun) {}
 
 void DistrArray::sync() const { MPI_Barrier(m_communicator); }
 
@@ -41,7 +39,6 @@ void DistrArray::zero() { fill(0); }
 void DistrArray::fill(DistrArray::value_type val) {
   if (empty())
     error("DistrArray::fill cannot fill empty array");
-  util::ScopeProfiler p{m_prof, "Array::fill"};
   auto lb = local_buffer();
   for (auto& el : *lb)
     el = val;
@@ -55,7 +52,6 @@ void DistrArray::axpy(value_type a, const DistrArray& y) {
     error(name + " cannot use empty arrays");
   if (a == 0)
     return;
-  util::ScopeProfiler p{m_prof, name};
   auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   if (!loc_x->compatible(*loc_y))
@@ -72,7 +68,6 @@ void DistrArray::axpy(value_type a, const DistrArray& y) {
 }
 
 void DistrArray::scal(DistrArray::value_type a) {
-  util::ScopeProfiler p{m_prof, "Array::scal"};
   auto x = local_buffer();
   for (auto& el : *x)
     el *= a;
@@ -81,7 +76,6 @@ void DistrArray::scal(DistrArray::value_type a) {
 void DistrArray::add(const DistrArray& y) { return axpy(1, y); }
 
 void DistrArray::add(DistrArray::value_type a) {
-  util::ScopeProfiler p{m_prof, "Array::add"};
   auto x = local_buffer();
   for (auto& el : *x)
     el += a;
@@ -92,7 +86,6 @@ void DistrArray::sub(const DistrArray& y) { return axpy(-1, y); }
 void DistrArray::sub(DistrArray::value_type a) { return add(-a); }
 
 void DistrArray::recip() {
-  util::ScopeProfiler p{m_prof, "Array::recip"};
   auto x = local_buffer();
   for (auto& el : *x)
     el = 1. / el;
@@ -104,7 +97,6 @@ void DistrArray::times(const DistrArray& y) {
     error(name + " incompatible arrays");
   if (empty() || y.empty())
     error(name + " cannot use empty arrays");
-  util::ScopeProfiler p{m_prof, name};
   auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   if (!loc_x->compatible(*loc_y))
@@ -121,7 +113,6 @@ void DistrArray::times(const DistrArray& y, const DistrArray& z) {
     error(name + " array z is incompatible");
   if (empty() || y.empty() || z.empty())
     error(name + " cannot use empty arrays");
-  util::ScopeProfiler p{m_prof, name};
   auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   auto loc_z = z.local_buffer();
@@ -137,7 +128,6 @@ DistrArray::value_type DistrArray::dot(const DistrArray& y) const {
     error(name + " array x is incompatible");
   if (empty() || y.empty())
     error(name + " calling dot on empty arrays");
-  util::ScopeProfiler p{m_prof, name};
   auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   if (!loc_x->compatible(*loc_y))
@@ -156,7 +146,6 @@ void DistrArray::_divide(const DistrArray& y, const DistrArray& z, DistrArray::v
     error(name + " array z is incompatible");
   if (empty() || y.empty() || z.empty())
     error(name + " calling divide with an empty array");
-  util::ScopeProfiler p{m_prof, name};
   auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   auto loc_z = z.local_buffer();
@@ -248,7 +237,6 @@ std::map<size_t, DistrArray::value_type> DistrArray::select_max_dot(size_t n, co
     error("DistrArray::select_max_dot: arrays are empty");
   if (n > size() || n > y.size())
     error("DistrArray::select_max_dot: n is too large");
-  util::ScopeProfiler p{m_prof, "DistrArray::select_max_dot"};
   auto xbuf = local_buffer();
   auto ybuf = y.local_buffer();
   auto local_selection =
@@ -269,7 +257,6 @@ std::map<size_t, DistrArray::value_type> DistrArray::select_max_dot(size_t n, co
     error(name + " arrays are empty");
   if (n > size() || n > y.size())
     error(" n is too large");
-  util::ScopeProfiler p{m_prof, name};
   auto xbuf = local_buffer();
   auto local_selection = util::select_max_dot_iter_sparse<LocalBuffer, SparseArray, value_type, value_type>(
       std::min(n, xbuf->size()), *xbuf, y);
@@ -284,7 +271,6 @@ template <class Compare>
 std::list<std::pair<unsigned long, double>> extrema(const DistrArray& x, int n) {
   if (x.empty())
     return {};
-  util::ScopeProfiler p{x.m_prof, "Array::extrema"};
   auto buffer = x.local_buffer();
   auto length = buffer->size();
   auto nmin = length > n ? n : length;
@@ -405,7 +391,6 @@ void DistrArray::copy(const DistrArray& y) {
     error(name + " incompatible arrays");
   if (empty() != y.empty())
     error(name + " one of the arrays is empty");
-  util::ScopeProfiler p{m_prof, name};
   auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   if (!loc_x->compatible(*loc_y))
@@ -420,7 +405,6 @@ void DistrArray::copy_patch(const DistrArray& y, DistrArray::index_type start, D
     error(name + " incompatible arrays");
   if (empty() != y.empty())
     error(name + " one of the arrays is empty");
-  util::ScopeProfiler p{m_prof, name};
   auto loc_x = local_buffer();
   auto loc_y = y.local_buffer();
   if (!loc_x->compatible(*loc_y))
@@ -441,7 +425,6 @@ DistrArray::value_type DistrArray::dot(const SparseArray& y) const {
     error(name + " calling dot on empty arrays");
   if (size() < y.rbegin()->first + 1)
     error(name + " sparse array x is incompatible");
-  util::ScopeProfiler p{m_prof, name};
   auto loc_x = local_buffer();
   double res = 0;
   if (loc_x->size() > 0) {
@@ -464,7 +447,6 @@ void DistrArray::axpy(value_type a, const SparseArray& y) {
     error(name + " calling dot on empty arrays");
   if (size() < y.rbegin()->first + 1)
     error(name + " sparse array x is incompatible");
-  util::ScopeProfiler p{m_prof, name};
   auto loc_x = local_buffer();
   if (loc_x->size() > 0) {
     index_type i;

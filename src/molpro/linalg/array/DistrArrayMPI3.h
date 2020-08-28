@@ -39,7 +39,7 @@ public:
    * @param commun MPI communicator
    * @param prof
    */
-  DistrArrayMPI3(size_t dimension, MPI_Comm commun, std::shared_ptr<Profiler> prof = nullptr);
+  DistrArrayMPI3(size_t dimension, MPI_Comm commun);
 
   /*!
    * @brief Creates distributed array using MPI3 RMA routines and specified distribution.
@@ -48,7 +48,7 @@ public:
    * @param commun MPI communicator
    * @param prof
    */
-  DistrArrayMPI3(std::unique_ptr<Distribution> distribution, MPI_Comm commun, std::shared_ptr<Profiler> prof = nullptr);
+  DistrArrayMPI3(std::unique_ptr<Distribution> distribution, MPI_Comm commun);
 
   //! Copy constructor allocates the buffer if source is not empty
   DistrArrayMPI3(const DistrArrayMPI3 &source);

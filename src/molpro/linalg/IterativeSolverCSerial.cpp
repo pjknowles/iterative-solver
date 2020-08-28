@@ -14,11 +14,11 @@ void IterativeSolverOptimizeInitialize(size_t n, double thresh, unsigned int max
 
 void IterativeSolverFinalize() {}
 
-int IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync, int lmppx) {
+size_t IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync, int lmppx) {
   return {};
 }
 
-int IterativeSolverAddValue(double* parameters, double value, double* action, int sync, int lmppx) { return {}; }
+size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync, int lmppx) { return {}; }
 
 int IterativeSolverEndIteration(double* c, double* g, double* error, int lmppx) { return {}; }
 

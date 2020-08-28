@@ -25,7 +25,7 @@ protected:
 
 public:
   DistrArrayGA();
-  DistrArrayGA(size_t dimension, MPI_Comm commun, std::shared_ptr<Profiler> prof = nullptr);
+  DistrArrayGA(size_t dimension, MPI_Comm commun);
   //! Make a copy of source, allocating buffer if necessary.
   DistrArrayGA(const DistrArrayGA &source);
   //! Copy source, allocating buffer if necessary.

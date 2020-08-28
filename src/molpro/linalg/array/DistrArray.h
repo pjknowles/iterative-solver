@@ -11,10 +11,6 @@
 #include <molpro/linalg/array/Span.h>
 
 namespace molpro {
-class Profiler;
-}
-
-namespace molpro {
 namespace linalg {
 namespace array {
 namespace util {
@@ -105,11 +101,10 @@ protected:
   index_type m_dimension = 0;              //!< number of elements in the array
   MPI_Comm m_communicator = MPI_COMM_NULL; //!< Outer communicator
   //! Initializes array without allocating any memory
-  DistrArray(size_t dimension, MPI_Comm commun, std::shared_ptr<molpro::Profiler> prof);
+  DistrArray(size_t dimension, MPI_Comm commun);
   DistrArray() = default;
 
 public:
-  std::shared_ptr<molpro::Profiler> m_prof = nullptr; //!< optional profiler
   virtual ~DistrArray() = default;
 
   //! return a copy of the communicator

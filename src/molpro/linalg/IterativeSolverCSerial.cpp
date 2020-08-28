@@ -4,8 +4,9 @@ void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t 
                                                 double thresh, int verbosity, const char* fname, int64_t fcomm,
                                                 int lmppx) {}
 
-void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes, double thresh,
-                                              unsigned int maxIterations, int verbosity) {}
+void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
+                                              const double* rhs, double aughes, double thresh, int verbosity,
+                                              const char* fname, int64_t fcomm, int lmppx) {}
 
 void IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity) {}
 

@@ -88,37 +88,49 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   std::tie(range_begin, range_end) = x[0].distribution().range(mpi_rank);
 }
 
-extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, const double* rhs, double aughes,
-                                                         double thresh, unsigned int maxIterations, int verbosity) {
-  /*#ifdef HAVE_MPI_H
-    int flag;
-    MPI_Initialized(&flag);
-  #ifdef HAVE_PPIDD_H
-    if (!flag)
-      PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
-  #else
-    if (!flag)
-      MPI_Init(0, nullptr);
-  #endif
-  #endif
-    std::vector<Rvector> rr;
-    rr.reserve(nroot);
-    for (size_t root = 0; root < nroot; root++) {
-      rr.emplace_back(n, MPI_COMM_COMPUTE);
-      rr.back().allocate_buffer(Span<typename Rvector::double>(&const_cast<double*>(rhs)[root * n], n));
-      // rr.push_back(v(const_cast<double*>(&rhs[root * n]),
-      //               n)); // in principle the const_cast is dangerous, but we trust LinearEquations to behave
-    }
-    instances.push(std::make_unique<LinearEquations<Rvector, Qvector, Pvector>>(rr,
-                                                                ArrayHandlers<Rvector, Qvector, Pvector>{}, aughes));
-    // instances.push(std::make_unique<IterativeSolver::LinearEquations<v> >(IterativeSolver::LinearEquations<v>(rr,
-    // aughes)));
-    auto& instance = instances.top();
-    instance->m_dimension = n;
-    instance->m_roots = nroot;
-    instance->m_thresh = thresh;
-    instance->m_maxIterations = maxIterations;
-    instance->m_verbosity = verbosity;*/
+extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
+                                                         const double* rhs, double aughes, double thresh, int verbosity,
+                                                         const char* fname, int64_t fcomm, int lmppx) {
+  std::shared_ptr<Profiler> profiler = nullptr;
+  std::string pname(fname);
+  int flag;
+  MPI_Initialized(&flag);
+  MPI_Comm comm;
+  if (!flag) {
+#ifdef HAVE_PPIDD_H
+    PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
+    pcomm = MPI_Comm_f2c(PPIDD_Worker_comm());
+    commun = MPI_Comm_f2c(PPIDD_Worker_comm());
+#else
+    MPI_Init(0, nullptr);
+    comm = MPI_COMM_WORLD;
+#endif
+  } else if (lmppx != 0) {
+    comm = MPI_COMM_SELF;
+  } else {
+    comm = MPI_Comm_f2c(fcomm);
+  }
+  if (!pname.empty()) {
+    profiler = molpro::ProfilerSingle::instance(pname, comm);
+  }
+  int mpi_rank;
+  MPI_Comm_rank(comm, &mpi_rank);
+  auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
+  std::vector<Rvector> rr;
+  rr.reserve(nroot);
+  for (size_t root = 0; root < nroot; root++) {
+    rr.emplace_back(n, comm);
+    auto rrrange = rr.back().distribution().range(mpi_rank);
+    auto rrn = rrrange.second - rrrange.first;
+    rr.back().allocate_buffer(Span<Rvector::value_type>(&const_cast<double*>(rhs)[root * n +
+                                                                                                  rrrange.first], rrn));
+  }
+  instances.emplace(Instance{std::make_unique<LinearEquations<Rvector, Qvector, Pvector>>(rr, handlers, aughes),
+                                                                                   profiler, n, comm});
+  auto& instance = instances.top();
+  instance.solver->m_roots = nroot;
+  instance.solver->m_thresh = thresh;
+  instance.solver->m_verbosity = verbosity;
 }
 
 extern "C" void IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity) {

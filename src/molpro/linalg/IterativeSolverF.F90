@@ -139,34 +139,52 @@ CONTAINS
   !> \brief Finds the solutions of linear equation systems using a generalisation of Davidson's method, i.e. preconditioned Lanczos
   !> Example of simplest use: @include LinearEquationsExampleF.F90
   !! Example including use of P space: include LinearEquationsExampleF-Pspace.F90
-  SUBROUTINE Iterative_Solver_Linear_Equations_Initialize(nq, nroot, rhs, augmented_hessian, thresh, maxIterations, &
-      verbosity)
+  SUBROUTINE Iterative_Solver_Linear_Equations_Initialize(nq, nroot, rhs, augmented_hessian, thresh, verbosity, &
+                                                           pname, pcomm, lmppx)
     INTEGER, INTENT(in) :: nq !< dimension of matrix
     INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
-    double precision, INTENT(in), DIMENSION(nq, nroot) :: rhs !< the constant right-hand-side of each equation system
-    double precision, INTENT(in), OPTIONAL :: augmented_hessian
+    DOUBLE PRECISION, INTENT(in), DIMENSION(nq, nroot) :: rhs !< the constant right-hand-side of each equation system
+    DOUBLE PRECISION, INTENT(in), OPTIONAL :: augmented_hessian
     !< If zero, solve the inhomogeneous equations unmodified. If 1, solve instead
     !< the augmented hessian problem. Other values scale the augmented hessian damping.
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
-    INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
     INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
+    CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
+    INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
+    LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
     !< One gives a single progress-report line each iteration.
     INTERFACE
-      SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC(nq, nroot, rhs, augmented_hessian, thresh, maxIterations, &
-          verbosity) &
-          BIND(C, name = 'IterativeSolverLinearEquationsInitialize')
+      SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC(nq, nroot, range_begin, range_end, rhs, &
+                                                            augmented_hessian, thresh, verbosity, pname, pcomm, lmppx) &
+                                                            BIND(C, name = 'IterativeSolverLinearEquationsInitialize')
         USE iso_c_binding
         INTEGER(C_size_t), INTENT(in), VALUE :: nq
         INTEGER(C_size_t), INTENT(in), VALUE :: nroot
+        INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
         REAL(c_double), INTENT(in), DIMENSION(*) :: rhs
         REAL(c_double), INTENT(in), VALUE :: augmented_hessian
         REAL(c_double), INTENT(in), VALUE :: thresh
-        INTEGER(C_int), INTENT(in), VALUE :: maxIterations
         INTEGER(C_int), INTENT(in), VALUE :: verbosity
+        CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
+        INTEGER(C_int64_t), INTENT(in), VALUE :: pcomm
+        INTEGER(C_int), INTENT(in), VALUE :: lmppx
       END SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC
     END INTERFACE
-    INTEGER(c_int) :: verbosityC = 0, maxIterationsC = 0
+    INTEGER(c_size_t) :: dummy_range_begin, dummy_range_end
+    INTEGER(c_int) :: verbosityC = 0
     REAL(c_double) :: threshC = 0d0, augmented_hessianC = 0d0
+    CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
+    INTEGER(c_int64_t) :: pcommC
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
+    pcommC = 0
+    IF (PRESENT(pname)) THEN
+      ALLOCATE(pnameC(LEN(pname)+1))
+      CALL c_string_from_f(pname, pnameC)
+    ELSE
+      ALLOCATE(pnameC(1))
+      pnameC(1) = c_null_char
+    ENDIF
     m_nq = INT(nq, kind = c_size_t)
     m_nroot = INT(nroot, kind = c_size_t)
     IF (PRESENT(augmented_hessian)) THEN
@@ -175,14 +193,17 @@ CONTAINS
     IF (PRESENT(thresh)) THEN
       threshC = thresh
     END IF
-    IF (PRESENT(maxIterations)) THEN
-      maxIterationsC = INT(maxIterations, kind = c_int)
-    END IF
     IF (PRESENT(verbosity)) THEN
       verbosityC = INT(verbosity, kind = c_int)
     END IF
-    CALL Iterative_Solver_Linear_Equations_InitializeC(m_nq, m_nroot, rhs, augmented_hessianC, threshC, maxIterationsC, &
-        verbosityC)
+    IF (PRESENT(pcomm)) THEN
+      pcommC = INT(pcomm,kind = c_int64_t)
+    ENDIF
+    IF (PRESENT(lmppx)) THEN
+      IF (lmppx) lmppxC = 1
+    ENDIF
+    CALL Iterative_Solver_Linear_Equations_InitializeC(m_nq, m_nroot, dummy_range_begin, dummy_range_end, &
+                                              rhs, augmented_hessianC, threshC, verbosityC, pnameC, pcommC, lmppxC)
   END SUBROUTINE Iterative_Solver_Linear_Equations_Initialize
 
   !> \brief Optimization

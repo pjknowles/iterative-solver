@@ -8,10 +8,12 @@ void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t ran
                                               const double* rhs, double aughes, double thresh, int verbosity,
                                               const char* fname, int64_t fcomm, int lmppx) {}
 
-void IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity) {}
+void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
+                                              int verbosity, const char* fname, int64_t fcomm, int lmppx) {}
 
-void IterativeSolverOptimizeInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity,
-                                       char* algorithm, int minimize) {}
+void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
+                                                  int verbosity, char* algorithm, int minimize,
+                                                  const char* fname, int64_t fcomm, int lmppx) {}
 
 void IterativeSolverFinalize() {}
 

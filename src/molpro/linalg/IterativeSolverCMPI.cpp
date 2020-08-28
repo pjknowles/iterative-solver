@@ -129,50 +129,80 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
   instance.solver->m_roots = nroot;
   instance.solver->m_thresh = thresh;
   instance.solver->m_verbosity = verbosity;
+  std::tie(range_begin, range_end) = rr[0].distribution().range(mpi_rank);
 }
 
-extern "C" void IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity) {
-  /*#ifdef HAVE_MPI_H
-    int flag;
-    MPI_Initialized(&flag);
-  #ifdef HAVE_PPIDD_H
-    if (!flag)
-      PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
-  #else
-    if (!flag)
-      MPI_Init(0, nullptr);
-  #endif
-  #endif
-    instances.emplace(std::make_unique<DIIS<v>>(make_handlers()));
-    auto& instance = instances.top();
-    instance->m_dimension = n;
-    instance->m_thresh = thresh;
-    instance->m_maxIterations = maxIterations;
-    instance->m_verbosity = verbosity;*/
+extern "C" void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
+                                              int verbosity, const char* fname, int64_t fcomm, int lmppx) {
+  std::shared_ptr<Profiler> profiler = nullptr;
+  std::string pname(fname);
+  int flag;
+  MPI_Initialized(&flag);
+  MPI_Comm comm;
+  if (!flag) {
+#ifdef HAVE_PPIDD_H
+    PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
+    comm = MPI_Comm_f2c(PPIDD_Worker_comm());
+#else
+    MPI_Init(0, nullptr);
+    comm = MPI_COMM_WORLD;
+#endif
+  } else if (lmppx != 0) {
+    comm = MPI_COMM_SELF;
+  } else {
+    comm = MPI_Comm_f2c(fcomm);
+  }
+  if (!pname.empty()) {
+    profiler = molpro::ProfilerSingle::instance(pname, comm);
+  }
+  int mpi_rank;
+  MPI_Comm_rank(comm, &mpi_rank);
+  auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
+  instances.emplace(Instance{std::make_unique<DIIS<Rvector, Qvector>>(handlers), profiler, n, comm});
+  auto& instance = instances.top();
+  instance.solver->m_thresh = thresh;
+  instance.solver->m_verbosity = verbosity;
+  Rvector x(n, comm);
+  std::tie(range_begin, range_end) = x.distribution().range(mpi_rank);
 }
-extern "C" void IterativeSolverOptimizeInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity,
-                                                  char* algorithm, int minimize) {
-  /*#ifdef HAVE_MPI_H
-    int flag;
-    MPI_Initialized(&flag);
-  #ifdef HAVE_PPIDD_H
-    if (!flag)
-      PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
-  #else
-    if (!flag)
-      MPI_Init(0, nullptr);
-  #endif
-  #endif
-    if (*algorithm)
-      instances.emplace(std::make_unique<Optimize<v>>(make_handlers(), algorithm, minimize != 0));
-    else
-      instances.emplace(std::make_unique<Optimize<v>>(make_handlers()));
-    auto& instance = instances.top();
-    instance->m_dimension = n;
-    instance->m_roots = 1;
-    instance->m_thresh = thresh;
-    instance->m_maxIterations = maxIterations;
-    instance->m_verbosity = verbosity;*/
+extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
+                                                  int verbosity, char* algorithm, int minimize,
+                                                  const char* fname, int64_t fcomm, int lmppx) {
+  std::shared_ptr<Profiler> profiler = nullptr;
+  std::string pname(fname);
+  int flag;
+  MPI_Initialized(&flag);
+  MPI_Comm comm;
+  if (!flag) {
+#ifdef HAVE_PPIDD_H
+    PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
+    comm = MPI_Comm_f2c(PPIDD_Worker_comm());
+#else
+    MPI_Init(0, nullptr);
+    comm = MPI_COMM_WORLD;
+#endif
+  } else if (lmppx != 0) {
+    comm = MPI_COMM_SELF;
+  } else {
+    comm = MPI_Comm_f2c(fcomm);
+  }
+  if (!pname.empty()) {
+    profiler = molpro::ProfilerSingle::instance(pname, comm);
+  }
+  int mpi_rank;
+  MPI_Comm_rank(comm, &mpi_rank);
+  auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
+  if (*algorithm)
+    instances.emplace(Instance{std::make_unique<Optimize<Rvector, Qvector>>(handlers, algorithm,
+                                                                                 minimize != 0), profiler, n, comm});
+  else
+    instances.emplace(Instance{std::make_unique<Optimize<Rvector, Qvector>>(handlers), profiler, n, comm});
+  auto& instance = instances.top();
+  instance.solver->m_roots = 1;
+  instance.solver->m_thresh = thresh;
+  instance.solver->m_verbosity = verbosity;
+  Rvector x(n, comm);
+  std::tie(range_begin, range_end) = x.distribution().range(mpi_rank);
 }
 
 extern "C" void IterativeSolverFinalize() { instances.pop(); }

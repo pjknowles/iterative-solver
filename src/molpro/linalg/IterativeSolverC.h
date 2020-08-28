@@ -10,10 +10,12 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
                                                        const double* rhs, double aughes, double thresh, int verbosity,
                                                        const char* fname, int64_t fcomm, int lmppx);
 
-extern "C" void IterativeSolverDIISInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity);
+extern "C" void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
+                                              int verbosity, const char* fname, int64_t fcomm, int lmppx);
 
-extern "C" void IterativeSolverOptimizeInitialize(size_t n, double thresh, unsigned int maxIterations, int verbosity,
-                                                  char* algorithm, int minimize);
+extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
+                                                  int verbosity, char* algorithm, int minimize,
+                                                  const char* fname, int64_t fcomm, int lmppx);
 
 extern "C" void IterativeSolverFinalize();
 

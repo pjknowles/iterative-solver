@@ -209,40 +209,53 @@ CONTAINS
   !> \brief Optimization
   !> through the L-BFGS or related methods.
   !> Example of simplest use: @include OptimizeExampleF.F90
-  SUBROUTINE Iterative_Solver_Optimize_Initialize(nq, thresh, maxIterations, verbosity, algorithm, minimize)
+  SUBROUTINE Iterative_Solver_Optimize_Initialize(nq, thresh, verbosity, algorithm, minimize, pname, pcomm, lmppx)
     INTEGER, INTENT(in) :: nq !< dimension of parameter space
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
-    INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
     INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
     CHARACTER(*), INTENT(in), OPTIONAL :: algorithm !< keyword specifying optimization algorithm
     LOGICAL, INTENT(in), OPTIONAL :: minimize !< whether to minimize (default) or maximize
+    CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
+    INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
+    LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
     !< One gives a single progress-report line each iteration.
     INTERFACE
-      SUBROUTINE Iterative_Solver_Optimize_InitializeC(nq, thresh, maxIterations, verbosity, algorithm, minimize) &
-          BIND(C, name = 'IterativeSolverOptimizeInitialize')
+      SUBROUTINE Iterative_Solver_Optimize_InitializeC(nq, range_begin, range_end, thresh, verbosity, algorithm, &
+                                      minimize, pname, pcomm, lmppx) BIND(C, name = 'IterativeSolverOptimizeInitialize')
         USE iso_c_binding
         INTEGER(C_size_t), INTENT(in), VALUE :: nq
+        INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
         REAL(c_double), INTENT(in), VALUE :: thresh
-        INTEGER(C_int), INTENT(in), VALUE :: maxIterations
         INTEGER(C_int), INTENT(in), VALUE :: verbosity
         INTEGER(C_int), INTENT(in), VALUE :: minimize
         CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: algorithm
+        CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
+        INTEGER(C_int64_t), INTENT(in), VALUE :: pcomm
+        INTEGER(C_int), INTENT(in), VALUE :: lmppx
       END SUBROUTINE Iterative_Solver_Optimize_InitializeC
     END INTERFACE
-    INTEGER(c_int) :: verbosityC, maxIterationsC, minimizeC
+    INTEGER(c_size_t) :: dummy_range_begin, dummy_range_end
+    INTEGER(c_int) :: verbosityC, minimizeC
     REAL(c_double) :: threshC
     CHARACTER(LEN=128) :: algorith
+    CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
+    INTEGER(c_int64_t) :: pcommC
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
+    pcommC = 0
+    IF (PRESENT(pname)) THEN
+      ALLOCATE(pnameC(LEN(pname)+1))
+      CALL c_string_from_f(pname, pnameC)
+    ELSE
+      ALLOCATE(pnameC(1))
+      pnameC(1) = c_null_char
+    ENDIF
     m_nq = INT(nq, kind = c_size_t)
     m_nroot = 1
     IF (PRESENT(thresh)) THEN
       threshC = thresh
     ELSE
       threshC = 0
-    END IF
-    IF (PRESENT(maxIterations)) THEN
-      maxIterationsC = INT(maxIterations, kind = c_int)
-    ELSE
-      maxIterationsC = 0
     END IF
     IF (PRESENT(verbosity)) THEN
       verbosityC = INT(verbosity, kind = c_int)
@@ -258,7 +271,14 @@ CONTAINS
     IF (PRESENT(minimize)) THEN
       IF (.NOT. minimize) minimizeC = 0
     END IF
-    CALL Iterative_Solver_Optimize_InitializeC(m_nq, threshC, maxIterationsC, verbosityC, c_string_c(algorith),minimizeC)
+    IF (PRESENT(pcomm)) THEN
+      pcommC = INT(pcomm,kind = c_int64_t)
+    ENDIF
+    IF (PRESENT(lmppx)) THEN
+      IF (lmppx) lmppxC = 1
+    ENDIF
+    CALL Iterative_Solver_Optimize_InitializeC(m_nq, dummy_range_begin, dummy_range_end, threshC, verbosityC, &
+                                               c_string_c(algorith), minimizeC, pnameC, pcommC, lmppxC)
   CONTAINS
     FUNCTION c_string_c(fstring)
       CHARACTER(*), INTENT(in) :: fstring
@@ -276,24 +296,42 @@ CONTAINS
   !> \brief Accelerated convergence of non-linear equations
   !> through the DIIS or related methods.
   !> Example of simplest use: @include DIISExampleF.F90
-  SUBROUTINE Iterative_Solver_DIIS_Initialize(nq, thresh, maxIterations, verbosity)
+  SUBROUTINE Iterative_Solver_DIIS_Initialize(nq, thresh, verbosity, pname, pcomm, lmppx)
     INTEGER, INTENT(in) :: nq !< dimension of parameter space
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
-    INTEGER, INTENT(in), OPTIONAL :: maxIterations !< maximum number of iterations
     INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
+    CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
+    INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
+    LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
     !< One gives a single progress-report line each iteration.
     INTERFACE
-      SUBROUTINE Iterative_Solver_DIIS_InitializeC(nq, thresh, maxIterations, verbosity) &
-          BIND(C, name = 'IterativeSolverDIISInitialize')
+      SUBROUTINE Iterative_Solver_DIIS_InitializeC(nq, range_begin, range_end, thresh, verbosity, &
+                                          pname, pcomm, lmppx) BIND(C, name = 'IterativeSolverDIISInitialize')
         USE iso_c_binding
         INTEGER(C_size_t), INTENT(in), VALUE :: nq
+        INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
         REAL(c_double), INTENT(in), VALUE :: thresh
-        INTEGER(C_int), INTENT(in), VALUE :: maxIterations
         INTEGER(C_int), INTENT(in), VALUE :: verbosity
+        CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
+        INTEGER(C_int64_t), INTENT(in), VALUE :: pcomm
+        INTEGER(C_int), INTENT(in), VALUE :: lmppx
       END SUBROUTINE Iterative_Solver_DIIS_InitializeC
     END INTERFACE
-    INTEGER(c_int) :: verbosityC, maxIterationsC
+    INTEGER(c_size_t) :: dummy_range_begin, dummy_range_end
+    INTEGER(c_int) :: verbosityC
     REAL(c_double) :: threshC
+    CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
+    INTEGER(c_int64_t) :: pcommC
+    INTEGER(c_int) :: lmppxC
+    lmppxC = 0
+    pcommC = 0
+    IF (PRESENT(pname)) THEN
+      ALLOCATE(pnameC(LEN(pname)+1))
+      CALL c_string_from_f(pname, pnameC)
+    ELSE
+      ALLOCATE(pnameC(1))
+      pnameC(1) = c_null_char
+    ENDIF
     m_nq = INT(nq, kind = c_size_t)
     m_nroot = 1
     IF (PRESENT(thresh)) THEN
@@ -301,17 +339,19 @@ CONTAINS
     ELSE
       threshC = 0
     END IF
-    IF (PRESENT(maxIterations)) THEN
-      maxIterationsC = INT(maxIterations, kind = c_int)
-    ELSE
-      maxIterationsC = 0
-    END IF
     IF (PRESENT(verbosity)) THEN
       verbosityC = INT(verbosity, kind = c_int)
     ELSE
       verbosityC = 0
     END IF
-    CALL Iterative_Solver_DIIS_InitializeC(m_nq, threshC, maxIterationsC, verbosityC)
+    IF (PRESENT(pcomm)) THEN
+      pcommC = INT(pcomm,kind = c_int64_t)
+    ENDIF
+    IF (PRESENT(lmppx)) THEN
+      IF (lmppx) lmppxC = 1
+    ENDIF
+    CALL Iterative_Solver_DIIS_InitializeC(m_nq, dummy_range_begin, dummy_range_end, threshC, verbosityC, &
+                                           pnameC, pcommC, lmppxC)
   END SUBROUTINE Iterative_Solver_DIIS_Initialize
 
   !> \brief Terminate the iterative solver

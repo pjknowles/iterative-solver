@@ -306,51 +306,43 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
 }
 
 extern "C" int IterativeSolverEndIteration(double* solution, double* residual, double* error, int lmppx) {
-  /*  std::vector<v> cc, gg;
-    auto& instance = instances.top();
-    if (instance->m_profiler != nullptr)
-      instance->m_profiler->start("EndIter");
-    cc.reserve(instance->m_roots); // very important for avoiding copying of memory-mapped vectors in emplace_back below
-    gg.reserve(instance->m_roots);
-  #ifdef HAVE_MPI_H
-    MPI_Comm ccomm;
-    if (lmppx != 0) {
-      ccomm = MPI_COMM_SELF;
-    } else {
-      ccomm = MPI_COMM_COMPUTE;
-    }
-    for (size_t root = 0; root < instance->m_roots; root++) {
-      cc.emplace_back(&solution[root * instance->m_dimension], instance->m_dimension, ccomm);
-      gg.emplace_back(&residual[root * instance->m_dimension], instance->m_dimension, ccomm);
-    }
-  #else
-    for (size_t root = 0; root < instance->m_roots; root++) {
-      cc.emplace_back(&solution[root * instance->m_dimension], instance->m_dimension);
-      gg.emplace_back(&residual[root * instance->m_dimension], instance->m_dimension);
-    }
-  #endif
-    if (instance->m_profiler != nullptr)
-      instance->m_profiler->start("EndIter:Body");
-    bool result = instance->endIteration(cc, gg);
-    if (instance->m_profiler != nullptr)
-      instance->m_profiler->stop("EndIter:Body");
-    if (instance->m_profiler != nullptr)
-      instance->m_profiler->start("EndIter:Sync");
-    for (size_t root = 0; root < instance->m_roots; root++) {
-  #ifdef HAVE_MPI_H
-      if (!cc[root].synchronised())
-        cc[root].sync();
-      if (!gg[root].synchronised())
-        gg[root].sync();
-  #endif
-      error[root] = instance->errors()[root];
-    }
-    if (instance->m_profiler != nullptr)
-      instance->m_profiler->stop("EndIter:Sync");
-    if (instance->m_profiler != nullptr)
-      instance->m_profiler->stop("EndIter");
-    return result;*/
-  return 0;
+  std::vector<Rvector> cc, gg;
+  auto& instance = instances.top();
+  if (instance.prof != nullptr)
+    instance.prof->start("EndIter");
+  cc.reserve(instance.solver->m_roots);
+  gg.reserve(instance.solver->m_roots);
+  MPI_Comm ccomm;
+  if (lmppx != 0) {
+    ccomm = MPI_COMM_SELF;
+  } else {
+    ccomm = commun;
+  }
+  int mpi_rank;
+  MPI_Comm_rank(ccomm, &mpi_rank);
+  for (size_t root = 0; root < instance.solver->m_roots; root++) {
+    cc.emplace_back(instance.dimension, ccomm);
+    auto ccrange = cc.back().distribution().range(mpi_rank);
+    auto ccn = ccrange.second - ccrange.first;
+    cc.back().allocate_buffer(
+        Span<typename Rvector::value_type>(&solution[root * instance.dimension + ccrange.first], ccn));
+    gg.emplace_back(instance.dimension, ccomm);
+    auto ggrange = gg.back().distribution().range(mpi_rank);
+    auto ggn = ggrange.second - ggrange.first;
+    gg.back().allocate_buffer(
+        Span<typename Rvector::value_type>(&residual[root * instance.dimension + ggrange.first], ggn));
+  }
+  if (instance.prof != nullptr)
+    instance.prof->start("EndIter:Call");
+  bool result = instance.solver->endIteration(cc, gg);
+  if (instance.prof != nullptr)
+    instance.prof->stop("EndIter:Call");
+  for (size_t root = 0; root < instance.solver->m_roots; root++) {
+    error[root] = instance.solver->errors()[root];
+  }
+  if (instance.prof != nullptr)
+    instance.prof->stop("EndIter");
+  return result;
 }
 
 extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices, const double* coefficients,

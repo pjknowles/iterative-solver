@@ -31,8 +31,6 @@ using Rvector = molpro::linalg::array::DistrArrayMPI3;
 using Qvector = molpro::linalg::array::DistrArrayMPI3;
 using Pvector = std::map<size_t, double>;
 
-MPI_Comm commun;
-
 // FIXME Only top solver is active at any one time. This should be documented somewhere.
 
 namespace {
@@ -40,6 +38,7 @@ struct Instance {
   std::unique_ptr<IterativeSolver<Rvector, Qvector, Pvector>> solver;
   std::shared_ptr<Profiler> prof;
   size_t dimension;
+  MPI_Comm comm;
 };
 std::stack<Instance> instances;
 } // namespace
@@ -51,7 +50,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   std::string pname(fname);
   int flag;
   MPI_Initialized(&flag);
-  MPI_Comm pcomm;
+  MPI_Comm comm;
   if (!flag) {
 #ifdef HAVE_PPIDD_H
     PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
@@ -59,25 +58,23 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
     commun = MPI_Comm_f2c(PPIDD_Worker_comm());
 #else
     MPI_Init(0, nullptr);
-    pcomm = MPI_COMM_WORLD;
-    commun = MPI_COMM_WORLD;
+    comm = MPI_COMM_WORLD;
 #endif
   } else if (lmppx != 0) {
-    pcomm = MPI_COMM_SELF;
-    commun = MPI_COMM_SELF;
+    comm = MPI_COMM_SELF;
   } else {
     // TODO: Check this is safe. Will crash if handle is invalid.
-    pcomm = MPI_Comm_f2c(fcomm);
-    commun = MPI_Comm_f2c(fcomm);
+    comm = MPI_Comm_f2c(fcomm);
   }
   // TODO: what if lmppx != 0 ?
   if (!pname.empty()) {
-    profiler = molpro::ProfilerSingle::instance(pname, pcomm);
+    profiler = molpro::ProfilerSingle::instance(pname, comm);
   }
   int mpi_rank;
-  MPI_Comm_rank(commun, &mpi_rank);
+  MPI_Comm_rank(comm, &mpi_rank);
   auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
-  instances.emplace(Instance{std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers), profiler, n});
+  instances.emplace(Instance{std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers),
+                                                                                    profiler, n, comm});
   auto& instance = instances.top();
   instance.solver->m_roots = nroot;
   instance.solver->m_thresh = thresh;
@@ -85,8 +82,8 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   std::vector<Rvector> x;
   std::vector<Rvector> g;
   for (size_t root = 0; root < instance.solver->m_roots; root++) {
-    x.emplace_back(n, commun);
-    g.emplace_back(n, commun);
+    x.emplace_back(n, comm);
+    g.emplace_back(n, comm);
   }
   std::tie(range_begin, range_end) = x[0].distribution().range(mpi_rank);
 }
@@ -172,12 +169,7 @@ extern "C" void IterativeSolverFinalize() { instances.pop(); }
 
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync, int lmppx) {
   auto& instance = instances.top();
-  MPI_Comm ccomm;
-  if (lmppx != 0) { // OK?
-    ccomm = MPI_COMM_SELF;
-  } else {
-    ccomm = commun;
-  }
+  MPI_Comm ccomm = (lmppx != 0) ? MPI_COMM_SELF : instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
   Rvector ccc(instance.dimension, ccomm);
@@ -205,12 +197,7 @@ extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, d
   cc.reserve(instance.solver->m_roots); // TODO: should that be size of working set instead?
   gg.reserve(instance.solver->m_roots);
   std::vector<std::vector<typename Rvector::value_type>> ccp(instance.solver->m_roots);
-  MPI_Comm ccomm;
-  if (lmppx != 0) {
-    ccomm = MPI_COMM_SELF;
-  } else {
-    ccomm = commun;
-  }
+  MPI_Comm ccomm = (lmppx != 0) ? MPI_COMM_SELF : instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
   for (size_t root = 0; root < instance.solver->m_roots; root++) {
@@ -259,12 +246,7 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
   cc.reserve(instance.solver->m_roots);
   gg.reserve(instance.solver->m_roots);
   std::vector<std::vector<typename Rvector::value_type>> ccp(instance.solver->m_roots);
-  MPI_Comm ccomm;
-  if (lmppx != 0) {
-    ccomm = MPI_COMM_SELF;
-  } else {
-    ccomm = commun;
-  }
+  MPI_Comm ccomm = (lmppx != 0) ? MPI_COMM_SELF : instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
   for (size_t root = 0; root < instance.solver->m_roots; root++) {
@@ -311,12 +293,7 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
     instance.prof->start("EndIter");
   cc.reserve(instance.solver->m_roots);
   gg.reserve(instance.solver->m_roots);
-  MPI_Comm ccomm;
-  if (lmppx != 0) {
-    ccomm = MPI_COMM_SELF;
-  } else {
-    ccomm = commun;
-  }
+  MPI_Comm ccomm = (lmppx != 0) ? MPI_COMM_SELF : instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
   for (size_t root = 0; root < instance.solver->m_roots; root++) {
@@ -354,12 +331,7 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
   cc.reserve(instance.solver->m_roots);
   gg.reserve(instance.solver->m_roots);
   std::vector<std::vector<Rvector::value_type>> ccp(instance.solver->m_roots);
-  MPI_Comm ccomm;
-  if (lmppx != 0) {
-    ccomm = MPI_COMM_SELF;
-  } else {
-    ccomm = commun;
-  }
+  MPI_Comm ccomm = (lmppx != 0) ? MPI_COMM_SELF : instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
   for (size_t root = 0; root < instance.solver->m_roots; root++) {
@@ -428,12 +400,7 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
     instance.prof->start("EndIter");
   cc.reserve(instance.solver->m_roots);
   gg.reserve(instance.solver->m_roots);
-  MPI_Comm ccomm;
-  if (lmppx != 0) {
-    ccomm = MPI_COMM_SELF;
-  } else {
-    ccomm = commun;
-  }
+  MPI_Comm ccomm = (lmppx != 0) ? MPI_COMM_SELF : instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
   for (size_t root = 0; root < instance.solver->m_roots; root++) {

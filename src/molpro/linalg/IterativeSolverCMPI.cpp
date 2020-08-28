@@ -170,35 +170,34 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, double thresh, unsig
 
 extern "C" void IterativeSolverFinalize() { instances.pop(); }
 
-extern "C" int IterativeSolverAddValue(double* parameters, double value, double* action, int sync, int lmppx) {
-  /*  auto& instance = instances.top();
-  #ifdef HAVE_MPI_H
-    MPI_Comm ccomm;
-    if (lmppx != 0) { // OK?
-      ccomm = MPI_COMM_SELF;
-    } else {
-      ccomm = MPI_COMM_COMPUTE;
-    }
-    v ccc(parameters, instance->m_dimension, ccomm);
-    v ggg(action, instance->m_dimension, ccomm);
-  #else
-    v ccc(parameters, instance->m_dimension);
-    v ggg(action, instance->m_dimension);
-  #endif
-    auto result = static_cast<molpro::linalg::Optimize<v>*>(instance.get())->addValue(ccc, value, ggg) ? 1 : 0;
-  #ifdef HAVE_MPI_H
-    if (sync) { // throw an error if communicator was not passed?
-      if (!ccc.synchronised())
-        ccc.sync();
-      if (!ggg.synchronised())
-        ggg.sync();
-    }
-  #endif
-    return result;*/
-  return 0;
+extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync, int lmppx) {
+  auto& instance = instances.top();
+  MPI_Comm ccomm;
+  if (lmppx != 0) { // OK?
+    ccomm = MPI_COMM_SELF;
+  } else {
+    ccomm = commun;
+  }
+  int mpi_rank;
+  MPI_Comm_rank(ccomm, &mpi_rank);
+  Rvector ccc(instance.dimension, ccomm);
+  auto ccrange = ccc.distribution().range(mpi_rank);
+  auto ccn = ccrange.second - ccrange.first;
+  ccc.allocate_buffer(Span<typename Rvector::value_type>(&parameters[ccrange.first], ccn));
+  Rvector ggg(instance.dimension, ccomm);
+  auto ggrange = ggg.distribution().range(mpi_rank);
+  auto ggn = ggrange.second - ggrange.first;
+  ggg.allocate_buffer(Span<typename Rvector::value_type>(&action[ggrange.first], ggn));
+  size_t working_set_size = static_cast<Optimize<Rvector, Qvector>*>(instance.solver.get())->
+                                                     addValue(ccc, value, ggg) ? 1 : 0;
+  if (sync) { // throw an error if communicator was not passed?
+    gather_all(ccc.distribution(), ccomm, &parameters[0]);
+    gather_all(ggg.distribution(), ccomm, &action[0]);
+  }
+  return working_set_size;
 }
 
-extern "C" int IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync, int lmppx) {
+extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync, int lmppx) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   if (instance.prof != nullptr)

@@ -315,7 +315,7 @@ CONTAINS
   !> the subsequent call to Iterative_Solver_End_Iteration()
   FUNCTION Iterative_Solver_Add_Value(value, parameters, action, lmppx)
     USE iso_c_binding
-    LOGICAL :: Iterative_Solver_Add_Value
+    INTEGER :: Iterative_Solver_Add_Value
     DOUBLE PRECISION, INTENT(in) :: value
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
@@ -324,7 +324,7 @@ CONTAINS
       FUNCTION Iterative_Solver_Add_Value_C(value, parameters, action, lsync, lmppx) &
           BIND(C, name = 'IterativeSolverAddValue')
         USE iso_c_binding
-        INTEGER(c_int) Iterative_Solver_Add_Value_C
+        INTEGER(c_size_t) Iterative_Solver_Add_Value_C
         REAL(c_double), VALUE, INTENT(in) :: value
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
@@ -339,12 +339,12 @@ CONTAINS
     IF (PRESENT(lmppx)) THEN
       IF (lmppx) lmppxC = 1
     ENDIF
-    Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action, lsyncC, lmppxC).NE.0
+    Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action, lsyncC, lmppxC)
   END FUNCTION Iterative_Solver_Add_Value
   !
   FUNCTION Iterative_Solver_Add_Value_Nosync(value, parameters, action, lmppx)
     USE iso_c_binding
-    LOGICAL :: Iterative_Solver_Add_Value
+    INTEGER :: Iterative_Solver_Add_Value
     DOUBLE PRECISION, INTENT(in) :: value
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
@@ -353,7 +353,7 @@ CONTAINS
       FUNCTION Iterative_Solver_Add_Value_C(value, parameters, action, lsync, lmppx) &
           BIND(C, name = 'IterativeSolverAddValue')
         USE iso_c_binding
-        INTEGER(c_int) Iterative_Solver_Add_Value_C
+        INTEGER(c_size_t) Iterative_Solver_Add_Value_C
         REAL(c_double), VALUE, INTENT(in) :: value
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
@@ -368,7 +368,7 @@ CONTAINS
     IF (PRESENT(lmppx)) THEN
       IF (lmppx) lmppxC = 1
     ENDIF
-    Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action, lsyncC, lmppxC).NE.0
+    Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action, lsyncC, lmppxC)
   END FUNCTION Iterative_Solver_Add_Value_Nosync
   !
   !> \brief Take, typically, a current solution and residual, add it to the expansion set, and return new solution.

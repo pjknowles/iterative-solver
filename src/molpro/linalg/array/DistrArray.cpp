@@ -172,7 +172,7 @@ namespace util {
 std::map<size_t, double> select_max_dot_broadcast(size_t n, std::map<size_t, double>& local_selection,
                                                   MPI_Comm communicator) {
   auto indices = std::vector<unsigned long>();
-  auto values = std::vector<unsigned long>();
+  auto values = std::vector<double>();
   indices.reserve(n);
   values.reserve(n);
   for (const auto& el : local_selection) {

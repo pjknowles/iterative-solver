@@ -1,5 +1,5 @@
-#ifndef GCI_SRC_MOLPRO_GCI_ARRAY_UTIL_H
-#define GCI_SRC_MOLPRO_GCI_ARRAY_UTIL_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_H
 #include <atomic>
 #include <future>
 #include <memory>
@@ -97,4 +97,4 @@ protected:
 } // namespace linalg
 } // namespace molpro
 
-#endif // GCI_SRC_MOLPRO_GCI_ARRAY_UTIL_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_H

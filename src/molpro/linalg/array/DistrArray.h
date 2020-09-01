@@ -1,5 +1,5 @@
-#ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H
-#define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAY_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAY_H
 #include <cmath>
 #include <cstdlib>
 #include <list>
@@ -318,4 +318,4 @@ std::map<size_t, double> select_max_dot_broadcast(size_t n, std::map<size_t, dou
 } // namespace linalg
 } // namespace molpro
 
-#endif // GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAY_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAY_H

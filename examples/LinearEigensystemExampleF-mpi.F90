@@ -30,9 +30,9 @@ PROGRAM Linear_Eigensystem_Example
   DO i = 1, n
     m(i, i) = 3 * i
   END DO
-  p=Profiler('Benchmark',MPI_COMM_WORLD)
-  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Benchmark', pcomm = MPI_COMM_WORLD, thresh = 1d-7, &
-                                                       verbosity = 1)
+  p=Profiler('Eigensystem_Example', MPI_COMM_WORLD)
+  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Eigensystem_Example', pcomm = MPI_COMM_WORLD, &
+                                                                                  thresh = 1d-7, verbosity = 1)
   c = 0
   DO i = 1, nroot
     c(i, i) = 1;
@@ -51,8 +51,6 @@ PROGRAM Linear_Eigensystem_Example
     ELSE
       EXIT
     END IF
-    !converged = Iterative_Solver_End_Iteration(c, g, error)
-    !IF (converged) EXIT
     IF (rank == 0) THEN
       PRINT *, 'NWORK:', nwork
     END IF
@@ -62,7 +60,6 @@ PROGRAM Linear_Eigensystem_Example
   IF (rank == 0) THEN
     PRINT *, 'Eigenvalues:', e
   END IF
-  !PRINT *, 'error =', error, ' eigenvalue =', e
   CALL Iterative_Solver_Finalize
   call MPI_FINALIZE(ierr)
 END PROGRAM Linear_Eigensystem_Example

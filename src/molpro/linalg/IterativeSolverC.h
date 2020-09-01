@@ -28,9 +28,9 @@ extern "C" size_t IterativeSolverAddValue(double value, double* parameters, doub
 
 extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error, int lmppx);
 
-extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices, const double* coefficients,
+extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices, const double* coefficients,
                                     const double* pp, double* parameters, double* action, double* parametersP,
-                                    int lmppx);
+                                    int lsync, int lmppx);
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues);
 

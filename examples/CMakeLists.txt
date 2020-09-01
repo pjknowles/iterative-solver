@@ -6,7 +6,7 @@ if (FORTRAN
             OptimizeExampleF.F90
             DIISExampleF.F90
             LinearEigensystemExampleF.F90
-            LinearEigensystemExampleF-Pspace.F90
+            LinearEigensystemExampleF-Pspace-mpi.F90
             LinearEigensystemExampleF-Pspace-adaptive.F90
             LinearEquationsExampleF.F90
             )
@@ -24,6 +24,8 @@ if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)
     if (FORTRAN)
         list(APPEND EXAMPLES
                 LinearEigensystemExampleF-mpi.F90
+                LinearEigensystemExampleF-Pspace-mpi.F90
+                LinearEigensystemExampleF-Pspacead-mpi.F90
                 )
     endif ()
 endif ()

@@ -1,6 +1,5 @@
 #include "IterativeSolver.h"
 #include "IterativeSolverC.h"
-#include "OutOfCoreArray.h"
 #include "molpro/ProfilerSingle.h"
 #include <memory>
 #include <mpi.h>
@@ -361,9 +360,9 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
   return result;
 }
 
-extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices, const double* coefficients,
-                                    const double* pp, double* parameters, double* action, double* parametersP,
-                                    int lmppx) {
+extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
+                                      const double* coefficients, const double* pp, double* parameters, double* action,
+                                      double* parametersP, int sync, int lmppx) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   if (instance.prof != nullptr)
@@ -399,7 +398,7 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
   }
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Call");
-  instance.solver->addP(Pvectors, pp, cc, gg, ccp);
+  size_t working_set_size = instance.solver->addP(Pvectors, pp, cc, gg, ccp);
   if (instance.prof != nullptr)
     instance.prof->stop("AddP:Call");
   if (instance.prof != nullptr)
@@ -416,6 +415,7 @@ extern "C" void IterativeSolverAddP(size_t nP, const size_t* offsets, const size
     instance.prof->stop("AddP:Sync");
   if (instance.prof != nullptr)
     instance.prof->stop("AddP");
+  return working_set_size;
 }
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
@@ -448,17 +448,16 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
     cc.back().allocate_buffer(
-        Span<Rvector::value_type>(&const_cast<double*>(solution)[root * instance.dimension +
-                                                                                                  ccrange.first], ccn));
+        Span<Rvector::value_type>(&const_cast<double*>(solution)[root * instance.dimension + ccrange.first], ccn));
     gg.emplace_back(instance.dimension, ccomm);
     auto ggrange = gg.back().distribution().range(mpi_rank);
     auto ggn = ggrange.second - ggrange.first;
     gg.back().allocate_buffer(
-        Span<Rvector::value_type>(&const_cast<double*>(residual)[root * instance.dimension +
-                                                                                                  ggrange.first], ggn));
+        Span<Rvector::value_type>(&const_cast<double*>(residual)[root * instance.dimension + ggrange.first], ggn));
   }
   auto result = instance.solver->suggestP(cc, gg, maximumNumber, threshold);
-  for (size_t i = 0; i < result.size(); i++)
+  for (size_t i = 0; i < result.size(); i++) {
     indices[i] = result[i];
+  }
   return result.size();
 }

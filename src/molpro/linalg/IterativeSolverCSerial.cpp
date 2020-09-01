@@ -25,8 +25,9 @@ size_t IterativeSolverAddValue(double value, double* parameters, double* action,
 
 int IterativeSolverEndIteration(double* c, double* g, double* error, int lmppx) { return {}; }
 
-void IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices, const double* coefficients,
-                         const double* pp, double* parameters, double* action, double* parametersP, int lmppx) {}
+size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices, const double* coefficients,
+                         const double* pp, double* parameters, double* action, double* parametersP, int sync,
+                         int lmppx) {}
 
 void IterativeSolverEigenvalues(double* eigenvalues) {}
 

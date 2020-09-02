@@ -703,8 +703,7 @@ protected:
       m_handlers->rr().fill(0, s);
     const auto nP = m_pspace.size();
     const auto nR = m_current_r.size();
-    //    auto nQ = m_qspace.size();
-    const auto nX = this->m_solution_x.size() / this->m_roots;
+    const auto nX = this->m_solution_x.size() / std::min(int(this->m_roots), int(this->m_n_x));
     const auto nQ =
         nX - nP - nR; // guard against using any vectors added to the Q space since the subspace solution was evaluated
     assert(nQ <= m_qspace.size());
@@ -713,6 +712,8 @@ protected:
     const auto oR = oQ + nQ;
     assert(m_working_set.size() <= solution.size());
     assert(nP == 0 || solutionP.size() == residual.size());
+    if (m_working_set.size() > nX)
+      m_working_set.resize(nX);
     for (size_t kkk = 0; kkk < m_working_set.size(); kkk++) {
       auto root = m_working_set[kkk];
       //      molpro::cout << "working set k=" << kkk << " root=" << root << std::endl;

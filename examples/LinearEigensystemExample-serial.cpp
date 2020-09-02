@@ -31,7 +31,8 @@ void action(size_t nwork, const std::vector<Rvector>& psc, std::vector<Rvector>&
   }
 }
 
-void actionP(size_t nwork, const std::vector<Pvector>& pspace, const std::vector<std::vector<double>> Pcoeff, std::vector<Rvector>& psg) {
+void actionP(size_t nwork, const std::vector<Pvector>& pspace, const std::vector<std::vector<double>> Pcoeff,
+             std::vector<Rvector>& psg) {
   for (size_t k = 0; k < nwork; k++) {
     for (size_t i = 0; i < n; i++)
       for (size_t j = 0; j < pspace.size(); j++)
@@ -64,8 +65,8 @@ int main(int argc, char* argv[]) {
       for (auto i = 0; i < n * n; i++)
         f >> hmat[i];
       //      std::cout << "hmat "<<hmat<<std::endl;
-      //      for (const auto& nP : std::vector<size_t>{0, 1, 3, 5}) {
-      for (const auto& nP : std::vector<size_t>{1}) {
+            for (const auto& nP : std::vector<size_t>{0, 1, 3, 5}) {
+//      for (const auto& nP : std::vector<size_t>{1}) {
         std::vector<double> diagonals;
         diagonals.reserve(n);
         for (auto i = 0; i < n; i++)
@@ -76,7 +77,7 @@ int main(int argc, char* argv[]) {
         std::cout << "P-space dimension = " << nP << std::endl;
         auto handlers = std::make_shared<molpro::linalg::iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>();
         auto solver = molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector>(handlers);
-        solver.m_verbosity = 3;
+        solver.m_verbosity = 1;
         solver.m_roots = nroot;
         solver.m_thresh = 1e-9;
         std::vector<Rvector> g;
@@ -94,10 +95,10 @@ int main(int argc, char* argv[]) {
         }
         for (auto i = 0; i < n; i++)
           diagonals[i] = 1 / (1e-12 + hmat[i + i * n] - d0);
-        std::cout << "diagonal matrix elements " << diagonals << std::endl;
-        auto selection =
-            handlers->rr().select_max_dot( nP, diagonals, diagonals);
-//        molpro::linalg::array::util::select_max_dot<std::vector<double>, std::vector<double>, double, double>( nP, diagonals, diagonals);
+        std::cout << "resolvent " << diagonals << std::endl;
+        auto selection = handlers->rr().select_max_dot(nP, diagonals, diagonals);
+        //        molpro::linalg::array::util::select_max_dot<std::vector<double>, std::vector<double>, double, double>(
+        //        nP, diagonals, diagonals);
         std::vector<Pvector> pspace;
         std::vector<double> hpp;
         hpp.reserve(nP * nP);
@@ -112,24 +113,24 @@ int main(int argc, char* argv[]) {
         }
         std::cout << "hpp" << hpp << std::endl;
         int nwork = solver.m_roots;
-        for (auto iter = 0; iter < 10; iter++) {
+        for (auto iter = 0; iter < 100; iter++) {
           if (iter == 0 && nP > 0) {
             nwork = solver.addP(pspace, hpp.data(), x, g, Pcoeff);
           } else {
             action(nwork, x, g);
-            std::cout << "before addVector x=" << x << std::endl;
-            std::cout << "before addVector g=" << g << std::endl;
+            //            std::cout << "before addVector x=" << x << std::endl;
+            //            std::cout << "before addVector g=" << g << std::endl;
             nwork = solver.addVector(x, g, Pcoeff);
           }
-          std::cout << "nwork=" << nwork << std::endl;
-          std::cout << "after add* x=" << x << std::endl;
-          std::cout << "after add* g=" << g << std::endl;
-          for (const auto& Pcoefff : Pcoeff)
-            std::cout << "after add* Pcoeff column " << Pcoefff << std::endl;
+          //          std::cout << "nwork=" << nwork << std::endl;
+          //          std::cout << "after add* x=" << x << std::endl;
+          //          std::cout << "after add* g=" << g << std::endl;
+//          for (const auto& Pcoefff : Pcoeff)
+            //            std::cout << "after add* Pcoeff column " << Pcoefff << std::endl;
           solver.report();
           if (nwork == 0)
             break;
-          actionP(nwork,pspace,Pcoeff,g);
+          actionP(nwork, pspace, Pcoeff, g);
           update(x, g, nwork, solver.working_set_eigenvalues());
         }
         {

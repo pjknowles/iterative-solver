@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DEFAULT_HANDLER_H
 #include <molpro/linalg/array/ArrayHandlerDDisk.h>
 #include <molpro/linalg/array/ArrayHandlerDDiskDistr.h>
+#include <molpro/linalg/array/ArrayHandlerDDiskSparse.h>
 #include <molpro/linalg/array/ArrayHandlerDefault.h>
 #include <molpro/linalg/array/ArrayHandlerDistr.h>
 #include <molpro/linalg/array/ArrayHandlerDistrDDisk.h>
@@ -53,6 +54,11 @@ struct default_handler<T, S, ArrayFamily::DistributedDisk, ArrayFamily::Distribu
 template <class T, class S>
 struct default_handler<T, S, ArrayFamily::Distributed, ArrayFamily::DistributedDisk> {
   using value = ArrayHandlerDistrDDisk<T, S>;
+};
+
+template <class T, class S>
+struct default_handler<T, S, ArrayFamily::DistributedDisk, ArrayFamily::Sparse> {
+  using value = ArrayHandlerDDiskSparse<T, S>;
 };
 
 template <class T, class S>

@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
       for (auto i = 0; i < n * n; i++)
         f >> hmat[i];
       //      std::cout << "hmat "<<hmat<<std::endl;
-      for (const auto& nP : std::vector<size_t>{0, 1, 3, 5, 9, 15, 23}) {
+      for (const auto& nP : std::vector<size_t>{0, 1, 3, 5, 9}) {
         //      for (const auto& nP : std::vector<size_t>{1}) {
         if (nP > 0 and nP < nroot)
           continue;

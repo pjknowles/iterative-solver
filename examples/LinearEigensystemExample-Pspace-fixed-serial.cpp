@@ -50,7 +50,7 @@ void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t n
 
 int main(int argc, char* argv[]) {
   for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
-    for (const auto& nroot : std::vector<int>{1, 2, 4}) {
+    for (const auto& nroot : std::vector<int>{1, 2, 3}) {
       std::string prefix{argv[0]};
       std::cout << prefix << std::endl;
       if (prefix.find_last_of("/") != std::string::npos)
@@ -143,13 +143,7 @@ int main(int argc, char* argv[]) {
           for (size_t root = 0; root < solver.m_roots; root++) {
             std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] << std::endl;
           }
-          std::cout << solver.statistics().p_creations << " created P vectors"<<std::endl;
-          std::cout << solver.statistics().q_creations << " created Q vectors"<<std::endl;
-          std::cout << solver.statistics().q_deletions << " deleted Q vectors"<<std::endl;
-          std::cout << solver.statistics().r_creations << " created R vectors"<<std::endl;
-          std::cout << solver.statistics().d_creations << " created D vectors"<<std::endl;
-          std::cout << solver.statistics().best_r_creations << " created best R vectors"<<std::endl;
-          std::cout << solver.statistics().current_r_creations << " created current R vectors"<<std::endl;
+          std::cout << solver.statistics() << std::endl;
         }
         {
           auto working_set = solver.working_set();

@@ -106,6 +106,7 @@ public:
         m_action[m_index][i] = resres ? m_handlers->rq().dot(action, vi.second) : m_handlers->rq().dot(vector, vi.second);
     }
     m_metric[m_index][m_index] = m_handlers->rr().dot(vector, vector);
+//    std::cout << "Length of new Q vector "<<m_metric[m_index][m_index]<<std::endl;
     m_action[m_index][m_index] = resres ? m_handlers->rr().dot(action, action) : m_handlers->rr().dot(vector, action);
     m_action_action[m_index][m_index] = m_handlers->rr().dot(action, action); // TODO retire this
     m_metric_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
@@ -152,8 +153,8 @@ public:
       //      std::cout << "dd-1=" << dd - 1 << ", rr-1=" << rr - 1 << ", rd-1=" << rd - 1 << std::endl;
       diff_factor = orthogonalise ? rr / rd : 1;
       auto norm = std::sqrt(std::max(rr - 2 * diff_factor * rd + diff_factor * diff_factor * dd, (decltype(rr))0));
-      if (norm == 0) { // let linear dependence code deal with this exceptional case later
-        scale_factor = 1;
+      if (norm == 0) { // abandon ship
+        return 0;
       } else {
         scale_factor = 1 / norm;
       }

@@ -191,9 +191,11 @@ public:
       assert(m_last_d.size() == m_working_set.size());
       assert(m_last_hd.size() == m_working_set.size());
       for (size_t k = 0; k < m_working_set.size(); k++) {
-        m_statistics.q_creations++;
-        m_qspace.add(parameters[k], action[k], m_last_d[k], m_last_hd[k], m_rhs, m_subspaceMatrixResRes,
-                     m_orthogonalise_Q);
+        if (m_qspace.add(parameters[k], action[k], m_last_d[k], m_last_hd[k], m_rhs, m_subspaceMatrixResRes,
+                         m_orthogonalise_Q) > 0)
+          m_statistics.q_creations++;
+        else
+          std::cout << "Q space vector not created because R-D=0" << std::endl;
       }
       m_last_d.clear();
       m_last_hd.clear();

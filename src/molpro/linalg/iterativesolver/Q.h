@@ -92,18 +92,18 @@ public:
    */
   void add(const Rvector& vector, const Rvector& action, const std::vector<Qvector>& rhs, bool resres = false) {
     for (const auto& vi : (resres ? m_actions : m_vectors)) {
-      m_metric[m_index][vi.first] = m_metric[vi.first][m_index] = m_handlers->rr().dot(vector, vi.second);
-      m_action[vi.first][m_index] = m_handlers->rr().dot(action, vi.second);
+      m_metric[m_index][vi.first] = m_metric[vi.first][m_index] = m_handlers->rq().dot(vector, vi.second);
+      m_action[vi.first][m_index] = m_handlers->rq().dot(action, vi.second);
     }
     for (const auto& vi : m_actions) {
-      m_action_action[m_index][vi.first] = m_action_action[vi.first][m_index] = m_handlers->rr().dot(action, vi.second);
+      m_action_action[m_index][vi.first] = m_action_action[vi.first][m_index] = m_handlers->rq().dot(action, vi.second);
     }
     for (const auto& vi : m_actions) {
       const auto& i = vi.first;
       if (m_hermitian)
         m_action[m_index][i] = m_action[i][m_index];
       else
-        m_action[m_index][i] = resres ? m_handlers->rr().dot(action, vi.second) : m_handlers->rr().dot(vector, vi.second);
+        m_action[m_index][i] = resres ? m_handlers->rq().dot(action, vi.second) : m_handlers->rq().dot(vector, vi.second);
     }
     m_metric[m_index][m_index] = m_handlers->rr().dot(vector, vector);
     m_action[m_index][m_index] = resres ? m_handlers->rr().dot(action, action) : m_handlers->rr().dot(vector, action);

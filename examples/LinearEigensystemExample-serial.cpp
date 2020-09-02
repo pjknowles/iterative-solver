@@ -16,7 +16,7 @@ void action(size_t nwork, const std::vector<Rvector>& psc, std::vector<Rvector>&
     std::fill(psg[k].begin(), psg[k].end(), 0);
     for (size_t i = 0; i < n; i++)
       for (size_t j = 0; j < n; j++)
-        psg[k][j] += hmat[j + i * n] * psc[k][j];
+        psg[k][j] += hmat[j + i * n] * psc[k][i];
   }
 }
 

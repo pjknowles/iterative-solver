@@ -1,5 +1,5 @@
-#ifndef GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYMPI3_H
-#define GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYMPI3_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYMPI3_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYMPI3_H
 #include <molpro/linalg/array/DistrArray.h>
 #include <mpi.h>
 
@@ -52,6 +52,7 @@ public:
 
   //! Copy constructor allocates the buffer if source is not empty
   DistrArrayMPI3(const DistrArrayMPI3 &source);
+  DistrArrayMPI3(const DistrArray &source);
   DistrArrayMPI3(DistrArrayMPI3 &&source) noexcept;
   DistrArrayMPI3 &operator=(const DistrArrayMPI3 &source);
   DistrArrayMPI3 &operator=(DistrArrayMPI3 &&source) noexcept;
@@ -104,4 +105,4 @@ protected:
 } // namespace linalg
 } // namespace molpro
 
-#endif // GCI_SRC_MOLPRO_GCI_ARRAY_DISTRARRAYMPI3_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYMPI3_H

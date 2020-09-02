@@ -18,16 +18,14 @@ int mpi_size(MPI_Comm comm) {
 
 DistrArrayHDF5::DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle,
                                std::unique_ptr<Distribution> distribution)
-    : DistrArrayDisk(std::move(distribution), file_handle->communicator()),
-      m_file_handle(file_handle) {
+    : DistrArrayDisk(std::move(distribution), file_handle->communicator()), m_file_handle(file_handle) {
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");
 }
 
 DistrArrayHDF5::DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle, size_t dimension)
-    : DistrArrayHDF5(file_handle,
-                     std::make_unique<Distribution>(util::make_distribution_spread_remainder<index_type>(
-                         dimension, mpi_size(file_handle->communicator())))) {}
+    : DistrArrayHDF5(file_handle, std::make_unique<Distribution>(util::make_distribution_spread_remainder<index_type>(
+                                      dimension, mpi_size(file_handle->communicator())))) {}
 
 DistrArrayHDF5::DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle)
     : DistrArrayDisk(std::make_unique<Distribution>(std::vector<index_type>{0, 0}), file_handle->communicator()),
@@ -59,7 +57,6 @@ DistrArrayHDF5::DistrArrayHDF5(const DistrArray &source, std::shared_ptr<util::P
   if (!source.empty()) {
     DistrArrayHDF5::open_access();
     DistrArrayHDF5::copy(source);
-    DistrArrayHDF5::close_access();
   }
 }
 

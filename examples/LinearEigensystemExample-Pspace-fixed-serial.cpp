@@ -156,6 +156,7 @@ int main(int argc, char* argv[]) {
           working_set.resize(solver.m_roots);
           std::iota(working_set.begin(), working_set.end(), 0);
           solver.solution(working_set, x, g, Pcoeff);
+          actionP(working_set.size(), pspace, Pcoeff, g);
           std::cout << "Residual norms:";
           for (size_t root = 0; root < solver.m_roots; root++)
             std::cout << " " << std::sqrt(handlers->rr().dot(g[root], g[root]));

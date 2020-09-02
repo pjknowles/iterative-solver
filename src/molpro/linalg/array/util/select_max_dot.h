@@ -69,11 +69,14 @@ auto select_max_dot_iter_sparse(size_t n, const X& x, const Y& y) {
   auto selection = std::priority_queue<select_pair, std::vector<select_pair>, greater<select_pair>>();
   auto iy = begin(y);
   for (size_t i = 0; i < n; ++i, ++iy) {
-    selection.emplace(abs(x[iy->first] * iy->second), iy->first);
+    if (iy->first < x.size())
+      selection.emplace(abs(x[iy->first] * iy->second), iy->first);
   }
   for (auto jy = iy; jy != end(y); ++jy) {
-    selection.emplace(abs(x[jy->first] * jy->second), jy->first);
-    selection.pop();
+    if (jy->first < x.size()) {
+      selection.emplace(abs(x[jy->first] * jy->second), jy->first);
+      selection.pop();
+    }
   }
   auto selection_map = std::map<size_t, value_type_abs>();
   auto m = selection.size();

@@ -242,7 +242,7 @@ public:
       m_h_rr.push_back(std::vector<value_type>(m_working_set.size()));
       m_hh_rr.push_back(std::vector<value_type>(m_working_set.size()));
       for (size_t rhs = 0; rhs < m_rhs.size(); rhs++)
-        m_rhs_r[m][rhs] = m_handlers->rr().dot(parameters[m], m_rhs[rhs]);
+        m_rhs_r[m][rhs] = m_handlers->rq().dot(parameters[m], m_rhs[rhs]);
       for (size_t n = 0; n < m_working_set.size(); n++) {
         m_s_rr[m][n] = m_handlers->rr().dot(parameters[n], parameters[m]);
         m_h_rr[m][n] = m_handlers->rr().dot(action[n], (m_subspaceMatrixResRes ? action[m] : parameters[m]));
@@ -333,8 +333,8 @@ public:
         m_handlers->rr().fill(0, parameters[k].get());
         // FIXME Does this require a copy or is it a move?
         m_statistics.d_creations++;
-        m_last_d.emplace_back(m_current_r[k]);
-        m_last_hd.emplace_back(m_current_v[k]);
+        m_last_d.emplace_back(std::move(m_current_r[k]));
+        m_last_hd.emplace_back(std::move(m_current_v[k]));
       }
     }
     m_current_r.clear();
@@ -756,7 +756,7 @@ protected:
       if (not actionOnly and (m_residual_eigen || (m_residual_rhs && m_augmented_hessian > 0)))
         m_handlers->rr().axpy(-this->m_eval_xx[root], solution[kkk], residual[kkk]);
       if (not actionOnly and m_residual_rhs)
-        m_handlers->rr().axpy(-1, this->m_rhs[root], residual[kkk]);
+        m_handlers->rq().axpy(-1, this->m_rhs[root], residual[kkk]);
     }
   }
 
@@ -932,7 +932,7 @@ public:
     this->m_rhs.reserve(rhs.size());
     for (const auto& v : rhs)
       // FIXME Is this meant to be a copy?
-      this->m_rhs.emplace_back(this->m_handlers->rr().copy(v)); // TODO template-ise these options
+      this->m_rhs.emplace_back(this->m_handlers->qr().copy(v)); // TODO template-ise these options
     //   molpro::cout << "addEquations makes m_rhs.back()="<<this->m_rhs.back()<<std::endl;
   }
   void addEquations(const std::vector<Rvector>& rhs) { addEquations(vectorSet(rhs.begin(), rhs.end())); }

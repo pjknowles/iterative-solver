@@ -87,6 +87,14 @@ DistrArrayMPI3::DistrArrayMPI3(const DistrArrayMPI3& source)
   }
 }
 
+DistrArrayMPI3::DistrArrayMPI3(const DistrArray& source)
+    : DistrArray(source), m_distribution(std::make_unique<Distribution>(source.distribution())) {
+  if (!source.empty()) {
+    DistrArrayMPI3::allocate_buffer();
+    DistrArray::copy(source);
+  }
+}
+
 DistrArrayMPI3::DistrArrayMPI3(DistrArrayMPI3&& source) noexcept
     : DistrArray(source.m_dimension, source.m_communicator), m_win(source.m_win), m_allocated(source.m_allocated),
       m_distribution(std::move(source.m_distribution)) {

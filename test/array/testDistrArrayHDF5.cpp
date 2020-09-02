@@ -136,7 +136,7 @@ TEST_F(DistrArrayHDF5_SetUp, constructor_copy_from_distr_array) {
     EXPECT_EQ(a_disk.file_handle(), fhandle_n1);
     EXPECT_EQ(a_disk.communicator(), a_mem.communicator());
     EXPECT_EQ(a_disk.size(), a_mem.size());
-    EXPECT_TRUE(a_disk.empty());
+    EXPECT_FALSE(a_disk.empty());
     EXPECT_TRUE(a_disk.distribution().compatible(a_mem.distribution()));
   }
   a_disk.open_access();

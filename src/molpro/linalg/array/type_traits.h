@@ -61,20 +61,19 @@ constexpr bool is_distributed_v = is_distributed<T>::value;
 
 //! Checks if class T has a tag marking it as a distributed disk array
 template <class T, typename = void>
-struct is_distributed_disk : std::false_type {};
+struct is_disk : std::false_type {};
 
 template <class T>
-struct is_distributed_disk<T, void_t<typename T::distributed_disk_array>> : std::true_type {};
+struct is_disk<T, void_t<typename T::disk_array>> : std::true_type {};
 
 template <class T>
-constexpr bool is_distributed_disk_v = is_distributed_disk<T>::value;
+constexpr bool is_disk_v = is_disk<T>::value;
 
 //! A tag to distinguish different families for array types, e.g. std::vector<> is iterable, std::map is sparse etc.
 enum class ArrayFamily { None, Iterable, Sparse, Distributed, DistributedDisk };
 
 //! Deduces which family an array type belongs to
-template <class T, bool = is_iterable_v<T>, bool = is_sparse_v<T>, bool = is_distributed_v<T>,
-          bool = is_distributed_disk_v<T>>
+template <class T, bool = is_iterable_v<T>, bool = is_sparse_v<T>, bool = is_distributed_v<T>, bool = is_disk_v<T>>
 struct array_family {
   constexpr auto value() { return ArrayFamily::None; }
 };

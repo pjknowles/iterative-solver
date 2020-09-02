@@ -1,16 +1,21 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <molpro/linalg/array/ArrayHandlerDDisk.h>
 #include <molpro/linalg/array/DistrArrayHDF5.h>
+#include <molpro/linalg/array/DistrArrayMPI3.h>
 #include <molpro/linalg/array/PHDF5Handle.h>
+#include <molpro/linalg/array/default_handler.h>
 #include <molpro/linalg/array/util.h>
 
 #include "data_util.h"
 #include "parallel_util.h"
 
 using molpro::linalg::array::ArrayHandlerDDisk;
+using molpro::linalg::array::ArrayHandlerDDiskDistr;
+using molpro::linalg::array::ArrayHandlerDistrDDisk;
+using molpro::linalg::array::default_handler;
 using molpro::linalg::array::DistrArrayHDF5;
+using molpro::linalg::array::DistrArrayMPI3;
 using molpro::linalg::array::util::file_exists;
 using molpro::linalg::array::util::LockMPI3;
 using molpro::linalg::array::util::PHDF5Handle;
@@ -74,4 +79,19 @@ TEST_F(ArrayHandlerDDiskF, constructor_erase_on_default) {
     auto l = lock.scope();
     ASSERT_FALSE(file_exists(fhandle_n2->file_name()));
   }
+}
+
+TEST(ArrayHandlerDDisk, default_handler) {
+  auto h = default_handler<DistrArrayHDF5, DistrArrayHDF5>::value{};
+  ASSERT_TRUE((std::is_same<decltype(h), ArrayHandlerDDisk<DistrArrayHDF5>>::value));
+}
+
+TEST(ArrayHandlerDDiskDistr, default_handler) {
+  auto h = default_handler<DistrArrayHDF5, DistrArrayMPI3>::value{};
+  ASSERT_TRUE((std::is_same<decltype(h), ArrayHandlerDDiskDistr<DistrArrayHDF5, DistrArrayMPI3>>::value));
+}
+
+TEST(ArrayHandlerDistrDDisk, default_handler) {
+  auto h = default_handler<DistrArrayMPI3, DistrArrayHDF5>::value{};
+  ASSERT_TRUE((std::is_same<decltype(h), ArrayHandlerDistrDDisk<DistrArrayMPI3, DistrArrayHDF5>>::value));
 }

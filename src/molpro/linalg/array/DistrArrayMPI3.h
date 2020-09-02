@@ -52,6 +52,7 @@ public:
 
   //! Copy constructor allocates the buffer if source is not empty
   DistrArrayMPI3(const DistrArrayMPI3 &source);
+  DistrArrayMPI3(const DistrArray &source);
   DistrArrayMPI3(DistrArrayMPI3 &&source) noexcept;
   DistrArrayMPI3 &operator=(const DistrArrayMPI3 &source);
   DistrArrayMPI3 &operator=(DistrArrayMPI3 &&source) noexcept;

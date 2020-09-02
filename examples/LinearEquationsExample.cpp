@@ -44,6 +44,30 @@ constexpr size_t nRoot = 2; // number of equations
 
 scalar matrix(const size_t i, const size_t j) { return (i == j ? alpha * (i + 1) : 0) + i + j; }
 
+template <class T>
+std::ostream& operator<<(std::ostream& o, const std::array<T,n>& v) {
+  bool init{true};
+  for (const auto& element : v) {
+    o << (init ? "{" : " ") << element;
+    init = false;
+  }
+  if (not init)
+    o << "}";
+  return o;
+}
+
+template <class T>
+std::ostream& operator<<(std::ostream& o, const std::vector<T>& v) {
+  bool init{true};
+  for (const auto& element : v) {
+    o << (init ? "{" : " ") << element;
+    init = false;
+  }
+  if (not init)
+    o << "}";
+  return o;
+}
+
 void action(const vectorSet& psx, vectorSet& outputs, size_t nroot) {
   for (size_t k = 0; k < nroot; k++) {
     for (size_t i = 0; i < n; i++) {
@@ -115,9 +139,17 @@ int main(int argc, char* argv[]) {
       ++p;
     }
     std::vector<std::vector<scalar>> Pcoeff(solver.m_roots);
-    for (size_t i = 0; i < solver.m_roots; ++i)
-      Pcoeff[i].resize(nP);
-    auto nwork = solver.addP(pspace, PP.data(), x, g, Pcoeff);
+    size_t nwork;
+    if (nP == 0) {
+      for (size_t i = 0; i < solver.m_roots; ++i)
+        x[i] = b[i];
+      action(x, g, solver.m_roots);
+      nwork = solver.addVector(x, g, Pcoeff);
+    } else {
+      for (size_t i = 0; i < solver.m_roots; ++i)
+        Pcoeff[i].resize(nP);
+      nwork = solver.addP(pspace, PP.data(), x, g, Pcoeff);
+    }
     for (auto iter = 0; iter < 100; iter++) {
       actionP(pspace, Pcoeff, g, nwork);
       update(x, g, nwork);

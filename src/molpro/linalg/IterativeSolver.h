@@ -574,12 +574,14 @@ public:
       molpro::cout << "iteration " << m_statistics.iterations;
       if (not m_values.empty())
         molpro::cout << ", " << m_value_print_name << " = " << m_values.back();
-      if (this->m_roots > 1)
-        molpro::cout << ", error[" << std::max_element(m_errors.cbegin(), m_errors.cend()) - m_errors.cbegin()
-                     << "] = ";
-      else
-        molpro::cout << ", error = ";
-      molpro::cout << *std::max_element(m_errors.cbegin(), m_errors.cend()) << std::endl;
+      if (not m_errors.empty()) {
+        if (this->m_roots > 1)
+          molpro::cout << ", error[" << std::max_element(m_errors.cbegin(), m_errors.cend()) - m_errors.cbegin()
+                       << "] = ";
+        else
+          molpro::cout << ", error = ";
+        molpro::cout << *std::max_element(m_errors.cbegin(), m_errors.cend()) << std::endl;
+      }
     }
   }
 

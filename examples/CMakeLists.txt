@@ -13,7 +13,7 @@ if (FORTRAN
 endif ()
 set(EXAMPLES DIISexample.cpp
         OptimizeExample.cpp
-        LinearEigensystemExample.cpp LinearEigensystemExample-serial.cpp
+        LinearEigensystemExample.cpp LinearEigensystemExample-serial.cpp LinearEigensystemExample-Pspace-fixed-serial.cpp
         LinearEquationsExample.cpp
         ${ITERATIVESOLVER_FORTRAN_EXAMPLES}
         )

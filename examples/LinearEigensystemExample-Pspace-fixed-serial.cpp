@@ -65,8 +65,10 @@ int main(int argc, char* argv[]) {
       for (auto i = 0; i < n * n; i++)
         f >> hmat[i];
       //      std::cout << "hmat "<<hmat<<std::endl;
-            for (const auto& nP : std::vector<size_t>{0, 1, 3, 5}) {
-//      for (const auto& nP : std::vector<size_t>{1}) {
+      for (const auto& nP : std::vector<size_t>{0, 1, 3, 5, 9, 15, 23}) {
+        //      for (const auto& nP : std::vector<size_t>{1}) {
+        if (nP > 0 and nP < nroot)
+          continue;
         std::vector<double> diagonals;
         diagonals.reserve(n);
         for (auto i = 0; i < n; i++)
@@ -95,7 +97,7 @@ int main(int argc, char* argv[]) {
         }
         for (auto i = 0; i < n; i++)
           diagonals[i] = 1 / (1e-12 + hmat[i + i * n] - d0);
-//        std::cout << "resolvent " << diagonals << std::endl;
+        //        std::cout << "resolvent " << diagonals << std::endl;
         auto selection = handlers->rr().select_max_dot(nP, diagonals, diagonals);
         //        molpro::linalg::array::util::select_max_dot<std::vector<double>, std::vector<double>, double, double>(
         //        nP, diagonals, diagonals);
@@ -106,12 +108,12 @@ int main(int argc, char* argv[]) {
         for (const auto& select : selection) {
           pspace.emplace_back();
           pspace.back()[select.first] = 1;
-//          std::cout << "P space element " << select.first << std::endl;
+          //          std::cout << "P space element " << select.first << std::endl;
           for (const auto& select2 : selection) {
             hpp.push_back(hmat[select2.first + n * select.first]);
           }
         }
-//        std::cout << "hpp" << hpp << std::endl;
+        //        std::cout << "hpp" << hpp << std::endl;
         int nwork = solver.m_roots;
         for (auto iter = 0; iter < 100; iter++) {
           if (iter == 0 && nP > 0) {
@@ -125,8 +127,8 @@ int main(int argc, char* argv[]) {
           //          std::cout << "nwork=" << nwork << std::endl;
           //          std::cout << "after add* x=" << x << std::endl;
           //          std::cout << "after add* g=" << g << std::endl;
-//          for (const auto& Pcoefff : Pcoeff)
-            //            std::cout << "after add* Pcoeff column " << Pcoefff << std::endl;
+          //          for (const auto& Pcoefff : Pcoeff)
+          //            std::cout << "after add* Pcoeff column " << Pcoefff << std::endl;
           solver.report();
           if (nwork == 0)
             break;
@@ -141,6 +143,13 @@ int main(int argc, char* argv[]) {
           for (size_t root = 0; root < solver.m_roots; root++) {
             std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] << std::endl;
           }
+          std::cout << solver.statistics().p_creations << " created P vectors"<<std::endl;
+          std::cout << solver.statistics().q_creations << " created Q vectors"<<std::endl;
+          std::cout << solver.statistics().q_deletions << " deleted Q vectors"<<std::endl;
+          std::cout << solver.statistics().r_creations << " created R vectors"<<std::endl;
+          std::cout << solver.statistics().d_creations << " created D vectors"<<std::endl;
+          std::cout << solver.statistics().best_r_creations << " created best R vectors"<<std::endl;
+          std::cout << solver.statistics().current_r_creations << " created current R vectors"<<std::endl;
         }
         {
           auto working_set = solver.working_set();

@@ -298,7 +298,7 @@ public:
         m_qspace.add(parameters[k], action[k], m_rhs, m_subspaceMatrixResRes);
         m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
       }
-      if (m_linear and m_errors[root] < m_thresh) { // converged
+      if (m_linear and (m_errors[root] < m_thresh or m_q_solutions.count(m_working_set[k]) != 0)) { // converged
         //        molpro::cout << "  remove this vector from the working set"<<std::endl;
         //  remove this vector from the working set
         // FIXME Doesn't this cause a copy? Should use swap, without .get

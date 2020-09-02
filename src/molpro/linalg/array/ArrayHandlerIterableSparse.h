@@ -32,24 +32,20 @@ public:
   void fill(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerIterable for unary operations"); };
 
   void axpy(value_type alpha, const AR &x, AL &y) override {
-    if (x.rbegin()->first > y.size())
-      error("ArrayHandlerIterableSparse::axpy() incompatible x and y arrays");
     for (const auto &el_x : x)
-      y[el_x.first] += alpha * el_x.second;
+      if (el_x.first < y.size())
+        y[el_x.first] += alpha * el_x.second;
   };
 
   value_type dot(const AL &x, const AR &y) override {
-    if (y.rbegin()->first > x.size())
-      error("ArrayHandlerIterableSparse::axpy() incompatible x and y arrays");
     value_type tot = 0;
     for (const auto &el_y : y)
-      tot += x[el_y.first] * el_y.second;
+      if (el_y.first < x.size())
+        tot += x[el_y.first] * el_y.second;
     return tot;
   };
 
   std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {
-    if (y.rbegin()->first > x.size())
-      error("ArrayHandlerIterableSparse::select_max_dot() incompatible x and y arrays");
     if (n > x.size() || n > y.size())
       error("ArrayHandlerIterableSparse::select_max_dot() n is too large");
     return util::select_max_dot_iter_sparse<AL, AR, value_type, value_type_abs>(n, x, y);

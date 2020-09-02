@@ -50,7 +50,7 @@ void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t n
 
 int main(int argc, char* argv[]) {
   for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
-    for (const auto& nroot : std::vector<int>{1, 2, 3}) {
+    for (const auto& nroot : std::vector<int>{1, 2}) {
       std::string prefix{argv[0]};
       std::cout << prefix << std::endl;
       if (prefix.find_last_of("/") != std::string::npos)

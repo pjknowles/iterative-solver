@@ -763,7 +763,7 @@ public:
   bool m_residual_eigen;        // whether to subtract eigenvalue*solution when constructing residual
   bool m_residual_rhs;          // whether to subtract rhs when constructing residual
   // whether to use RSPT to construct solution instead of diagonalisation
-  vectorSet m_rhs;
+  std::vector<Qvector> m_rhs;
   size_t m_lastVectorIndex;
   std::vector<scalar_type> m_updateShift;
   size_t m_n_x;                         //!< size of full subspace

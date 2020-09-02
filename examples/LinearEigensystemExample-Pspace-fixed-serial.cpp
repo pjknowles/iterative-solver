@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
         }
         for (auto i = 0; i < n; i++)
           diagonals[i] = 1 / (1e-12 + hmat[i + i * n] - d0);
-        std::cout << "resolvent " << diagonals << std::endl;
+//        std::cout << "resolvent " << diagonals << std::endl;
         auto selection = handlers->rr().select_max_dot(nP, diagonals, diagonals);
         //        molpro::linalg::array::util::select_max_dot<std::vector<double>, std::vector<double>, double, double>(
         //        nP, diagonals, diagonals);

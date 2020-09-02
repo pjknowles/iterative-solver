@@ -1,8 +1,10 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DEFAULT_HANDLER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DEFAULT_HANDLER_H
 #include <molpro/linalg/array/ArrayHandlerDDisk.h>
+#include <molpro/linalg/array/ArrayHandlerDDiskDistr.h>
 #include <molpro/linalg/array/ArrayHandlerDefault.h>
 #include <molpro/linalg/array/ArrayHandlerDistr.h>
+#include <molpro/linalg/array/ArrayHandlerDistrDDisk.h>
 #include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
 #include <molpro/linalg/array/ArrayHandlerIterable.h>
 #include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
@@ -41,6 +43,16 @@ struct default_handler<T, S, ArrayFamily::Iterable, ArrayFamily::Sparse> {
 template <class T, class S>
 struct default_handler<T, S, ArrayFamily::Distributed, ArrayFamily::Sparse> {
   using value = ArrayHandlerDistrSparse<T, S>;
+};
+
+template <class T, class S>
+struct default_handler<T, S, ArrayFamily::DistributedDisk, ArrayFamily::Distributed> {
+  using value = ArrayHandlerDDiskDistr<T, S>;
+};
+
+template <class T, class S>
+struct default_handler<T, S, ArrayFamily::Distributed, ArrayFamily::DistributedDisk> {
+  using value = ArrayHandlerDistrDDisk<T, S>;
 };
 
 template <class T, class S>

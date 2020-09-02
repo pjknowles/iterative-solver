@@ -704,8 +704,7 @@ protected:
     const auto nP = m_pspace.size();
     const auto nR = m_current_r.size();
     //    auto nQ = m_qspace.size();
-    // FIXME Why is this a reference?
-    const auto& nX = this->m_solution_x.size() / this->m_roots;
+    const auto nX = this->m_solution_x.size() / this->m_roots;
     const auto nQ =
         nX - nP - nR; // guard against using any vectors added to the Q space since the subspace solution was evaluated
     assert(nQ <= m_qspace.size());

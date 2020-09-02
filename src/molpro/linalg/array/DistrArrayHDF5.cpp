@@ -57,7 +57,6 @@ DistrArrayHDF5::DistrArrayHDF5(const DistrArray &source, std::shared_ptr<util::P
   if (!source.empty()) {
     DistrArrayHDF5::open_access();
     DistrArrayHDF5::copy(source);
-    DistrArrayHDF5::close_access();
   }
 }
 

@@ -258,6 +258,8 @@ public:
                                     vectorRefSetP parametersP = nullVectorRefSetP<Rvector>,
                                     bool calculateError = true) {
     buildSubspace();
+    if (m_n_x == 0)
+      throw std::runtime_error("Empty subspace; cannot continue");
     solveReducedProblem();
     //    molpro::cout << "update=" << update << std::endl;
     //    calculateResidualConvergence();
@@ -379,6 +381,8 @@ public:
    */
   size_t addP(std::vector<Pvector> Pvectors, const value_type* PP, vectorRefSet parameters, vectorRefSet action,
               vectorRefSetP parametersP) {
+    if (Pvectors.empty() and this->m_qspace.empty())
+      throw std::runtime_error("addP() called with no P vectors, and the Q space is also empty; cannot continue");
     m_statistics.p_creations += Pvectors.size();
     m_pspace.add(Pvectors, PP, m_rhs, m_handlers->pp(), m_handlers->qp());
     m_qspace.refreshP(action.front());
@@ -632,6 +636,8 @@ protected:
         m_h_xx[oP + i + nX * (oP + j)] = m_pspace.action(i, j);
         m_s_xx[oP + i + nX * (oP + j)] = m_pspace.metric(i, j);
       }
+      for (size_t rhs = 0; rhs < m_rhs.size(); rhs++)
+        m_rhs_x[oP + i + nX * rhs] = m_pspace.rhs(i, rhs);
     }
     for (size_t n = 0; n < nR; n++) {
       for (size_t rhs = 0; rhs < m_rhs.size(); rhs++)
@@ -687,6 +693,8 @@ protected:
     if (m_verbosity > 2) {
       iterativesolver::printMatrix(this->m_s_xx, nX, nX, "Subspace overlap");
       iterativesolver::printMatrix(this->m_h_xx, nX, nX, "Subspace matrix");
+      if (this->m_rhs_x.size() > 0)
+        iterativesolver::printMatrix(this->m_rhs_x, nX, this->m_rhs_x.size() / nX, "Subspace RHS");
     }
   }
 

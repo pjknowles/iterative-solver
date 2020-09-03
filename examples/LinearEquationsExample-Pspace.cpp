@@ -39,6 +39,7 @@ using pv = std::vector<scalar>;
 using vectorSet = std::vector<pv>;
 constexpr scalar alpha = 300; // separation of diagonal elements
 constexpr size_t nRoot = 2;   // number of equations
+constexpr size_t nP = nRoot;  // number in initial P-space
 
 scalar matrix(const size_t i, const size_t j) { return (i == j ? alpha * (i + 1) : 0) + i + j; }
 
@@ -76,6 +77,19 @@ void action(const vectorSet& psx, vectorSet& outputs, size_t nroot) {
   }
 }
 
+void actionP(const std::vector<std::map<size_t, scalar>> pspace, const std::vector<std::vector<scalar>>& psx,
+             vectorSet& outputs, size_t nroot) {
+  const size_t nP = pspace.size();
+  for (size_t k = 0; k < nroot; k++) {
+    for (size_t p = 0; p < nP; p++) {
+      for (const auto& pc : pspace[p]) {
+        for (size_t j = 0; j < n; j++)
+          outputs[k][j] += matrix(pc.first, j) * pc.second * psx[k][p];
+      }
+    }
+  }
+}
+
 void update(vectorSet& psc, const vectorSet& psg, size_t nroot) {
   for (size_t k = 0; k < nroot; k++) {
     for (size_t i = 0; i < n; i++)
@@ -107,8 +121,8 @@ int main(int argc, char* argv[]) {
   }
   std::vector<double> augmented_hessian_factors = {0, .001, .01, .1, 1};
   for (const auto& augmented_hessian_factor : augmented_hessian_factors) {
-    //    if (nRoot > 1 and augmented_hessian_factor > 0) // TODO multiroot AH not yet working
-    //      continue;
+    if (nRoot > 1 and augmented_hessian_factor > 0) // TODO multiroot AH not yet working
+      continue;
     std::cout << "Augmented hessian factor = " << augmented_hessian_factor << std::endl;
     auto handlers = std::make_shared<ArrayHandlers<pv, pv, std::map<size_t, double>>>();
     auto solver = molpro::linalg::LinearEquations<pv>(b, handlers, augmented_hessian_factor);
@@ -117,26 +131,36 @@ int main(int argc, char* argv[]) {
     solver.m_thresh = 1e-6;
     size_t p = 0;
     std::vector<scalar> PP;
-    size_t nwork = nRoot;
-    for (size_t root = 0; root < nRoot; root++)
-      x[root] = b[root];
+    std::vector<std::map<size_t, scalar>> pspace(nP);
+    for (auto& pc : pspace) {
+      pc.clear();
+      pc[p] = 1;
+      for (size_t q = 0; q < nP; q++)
+        PP.push_back(matrix(p, q));
+      ++p;
+    }
+    std::vector<std::vector<scalar>> Pcoeff(solver.m_roots);
+    for (size_t i = 0; i < solver.m_roots; ++i)
+      Pcoeff[i].resize(nP);
+    auto nwork = solver.addP(pspace, PP.data(), x, g, Pcoeff);
     for (auto iter = 0; iter < 100; iter++) {
-      //      for (auto v = 0; v < nwork; v++) {
-      //        std::cout << "start of iteration x " << x[v] << std::endl;
-      //        std::cout << "start of iteration g " << g[v] << std::endl;
-      //      }
-      action(x, g, nwork);
-      nwork = solver.addVector(x, g);
-      //      for (auto v = 0; v < nwork; v++) {
-      //        std::cout << "after addVector x " << x[v] << std::endl;
-      //        std::cout << "after addVector g " << g[v] << std::endl;
-      //      }
+//      for (auto v = 0; v < nwork; v++) {
+//        std::cout << "start of iteration x " << x[v] << std::endl;
+//        std::cout << "start of iteration g " << g[v] << std::endl;
+//      }
+      actionP(pspace, Pcoeff, g, nwork);
+//      for (auto v = 0; v < nwork; v++) {
+//        std::cout << "after actionP x " << x[v] << std::endl;
+//        std::cout << "after actionP g " << g[v] << std::endl;
+//      }
       update(x, g, nwork);
-      //      for (auto v = 0; v < nwork; v++) {
-      //        std::cout << "after update x " << x[v] << std::endl;
-      //      }
+//      for (auto v = 0; v < nwork; v++) {
+//        std::cout << "after update x " << x[v] << std::endl;
+//      }
       if (rank == 0)
         solver.report();
+      action(x, g, nwork);
+      nwork = solver.addVector(x, g, Pcoeff);
       if (nwork == 0)
         break;
     }
@@ -148,7 +172,7 @@ int main(int argc, char* argv[]) {
     if (check or print) {
       std::vector<int> roots(solver.m_roots);
       std::iota(roots.begin(), roots.end(), 0);
-      solver.solution(roots, x, g);
+      solver.solution(roots, x, g, Pcoeff);
       if (print) {
         for (size_t root = 0; root < solver.m_roots; root++) {
           std::cout << "Solution:";

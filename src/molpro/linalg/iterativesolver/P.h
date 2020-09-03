@@ -25,6 +25,8 @@ public:
 
   const value_type& action(size_t i, size_t j) const { return m_action[m_vectors.size() * j + i]; }
 
+  const value_type& rhs(size_t i, size_t j) const { return m_rhs[m_vectors.size() * j + i]; }
+
   size_t size() const { return m_vectors.size(); }
 
   const Pvector& operator[](size_t i) const { return m_vectors[i]; }

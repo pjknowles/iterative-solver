@@ -213,6 +213,7 @@ void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_
                            double augmented_hessian, double svdThreshold, int verbosity) {
   const Eigen::Index nX = dimension;
   solution.resize(nX * nroot);
+//  std::cout << "augmented_hessian "<<augmented_hessian<<std::endl;
   if (augmented_hessian > 0) { // Augmented hessian
     Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> subspaceMatrix;
     Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> subspaceOverlap;
@@ -230,6 +231,8 @@ void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_
       }
       subspaceMatrix(nX, nX) = 0;
       subspaceOverlap(nX, nX) = 1;
+//      std::cout << "subspace augmented hessian subspaceMatrix\n"<<subspaceMatrix<<std::endl;
+//      std::cout << "subspace augmented hessian subspaceOverlap\n"<<subspaceOverlap<<std::endl;
 
       Eigen::GeneralizedEigenSolver<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> s(subspaceMatrix,
                                                                                                  subspaceOverlap);
@@ -243,12 +246,14 @@ void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_
       auto Solution = evec.col(imax).real().head(nX) / (augmented_hessian * evec.real()(nX, imax));
       for (auto k = 0; k < nX; k++)
         solution[k + nX * root] = Solution(k);
+//      std::cout << "subspace augmented hessian solution\n"<<Solution<<std::endl;
     }
   } else { // straight solution of linear equations
     Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> subspaceMatrix(matrix.data(), nX, nX);
     Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> RHS(rhs.data(), nX, nroot);
     Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> Solution;
     Solution = subspaceMatrix.householderQr().solve(RHS);
+//    std::cout << "subspace linear equations solution\n"<<Solution<<std::endl;
     for (size_t root = 0; root < nroot; root++)
       for (auto k = 0; k < nX; k++)
         solution[k + nX * root] = Solution(k, root);

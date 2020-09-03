@@ -189,9 +189,11 @@ public:
       assert(m_last_d.size() == m_working_set.size());
       assert(m_last_hd.size() == m_working_set.size());
       for (size_t k = 0; k < m_working_set.size(); k++) {
-        m_statistics.q_creations++;
-        m_qspace.add(parameters[k], action[k], m_last_d[k], m_last_hd[k], m_rhs, m_subspaceMatrixResRes,
-                     m_orthogonalise_Q);
+        if (m_qspace.add(parameters[k], action[k], m_last_d[k], m_last_hd[k], m_rhs, m_subspaceMatrixResRes,
+                         m_orthogonalise_Q) > 0)
+          m_statistics.q_creations++;
+        else
+          std::cout << "Q space vector not created because R-D=0" << std::endl;
       }
       m_last_d.clear();
       m_last_hd.clear();
@@ -254,6 +256,8 @@ public:
                                     vectorRefSetP parametersP = nullVectorRefSetP<Rvector>,
                                     bool calculateError = true) {
     buildSubspace();
+    if (m_n_x == 0)
+      throw std::runtime_error("Empty subspace; cannot continue");
     solveReducedProblem();
     //    molpro::cout << "update=" << update << std::endl;
     //    calculateResidualConvergence();
@@ -296,7 +300,7 @@ public:
         m_qspace.add(parameters[k], action[k], m_rhs, m_subspaceMatrixResRes);
         m_q_solutions[m_working_set[k]] = m_qspace.keys().back();
       }
-      if (m_linear and m_errors[root] < m_thresh) { // converged
+      if (m_linear and (m_errors[root] < m_thresh or m_q_solutions.count(m_working_set[k]) != 0)) { // converged
         //        molpro::cout << "  remove this vector from the working set"<<std::endl;
         //  remove this vector from the working set
         // FIXME Doesn't this cause a copy? Should use swap, without .get
@@ -375,6 +379,8 @@ public:
    */
   size_t addP(std::vector<Pvector> Pvectors, const value_type* PP, vectorRefSet parameters, vectorRefSet action,
               vectorRefSetP parametersP) {
+    if (Pvectors.empty() and this->m_qspace.empty())
+      throw std::runtime_error("addP() called with no P vectors, and the Q space is also empty; cannot continue");
     m_statistics.p_creations += Pvectors.size();
     m_pspace.add(Pvectors, PP, m_rhs, m_handlers->pp(), m_handlers->qp());
     m_qspace.refreshP(action.front());
@@ -575,12 +581,14 @@ public:
       molpro::cout << "iteration " << m_statistics.iterations;
       if (not m_values.empty())
         molpro::cout << ", " << m_value_print_name << " = " << m_values.back();
-      if (this->m_roots > 1)
-        molpro::cout << ", error[" << std::max_element(m_errors.cbegin(), m_errors.cend()) - m_errors.cbegin()
-                     << "] = ";
-      else
-        molpro::cout << ", error = ";
-      molpro::cout << *std::max_element(m_errors.cbegin(), m_errors.cend()) << std::endl;
+      if (not m_errors.empty()) {
+        if (this->m_roots > 1)
+          molpro::cout << ", error[" << std::max_element(m_errors.cbegin(), m_errors.cend()) - m_errors.cbegin()
+                       << "] = ";
+        else
+          molpro::cout << ", error = ";
+        molpro::cout << *std::max_element(m_errors.cbegin(), m_errors.cend()) << std::endl;
+      }
     }
   }
 
@@ -631,6 +639,8 @@ protected:
         m_h_xx[oP + i + nX * (oP + j)] = m_pspace.action(i, j);
         m_s_xx[oP + i + nX * (oP + j)] = m_pspace.metric(i, j);
       }
+      for (size_t rhs = 0; rhs < m_rhs.size(); rhs++)
+        m_rhs_x[oP + i + nX * rhs] = m_pspace.rhs(i, rhs);
     }
     for (size_t n = 0; n < nR; n++) {
       for (size_t rhs = 0; rhs < m_rhs.size(); rhs++)
@@ -686,6 +696,8 @@ protected:
     if (m_verbosity > 2) {
       iterativesolver::printMatrix(this->m_s_xx, nX, nX, "Subspace overlap");
       iterativesolver::printMatrix(this->m_h_xx, nX, nX, "Subspace matrix");
+      if (this->m_rhs_x.size() > 0)
+        iterativesolver::printMatrix(this->m_rhs_x, nX, this->m_rhs_x.size() / nX, "Subspace RHS");
     }
   }
 
@@ -712,9 +724,7 @@ protected:
       m_handlers->rr().fill(0, s);
     const auto nP = m_pspace.size();
     const auto nR = m_current_r.size();
-    //    auto nQ = m_qspace.size();
-    // FIXME Why is this a reference?
-    const auto& nX = this->m_solution_x.size() / this->m_roots;
+    const auto nX = this->m_solution_x.size() / std::min(int(this->m_roots), int(this->m_n_x));
     const auto nQ =
         nX - nP - nR; // guard against using any vectors added to the Q space since the subspace solution was evaluated
     assert(nQ <= m_qspace.size());
@@ -723,6 +733,8 @@ protected:
     const auto oR = oQ + nQ;
     assert(m_working_set.size() <= solution.size());
     assert(nP == 0 || solutionP.size() == residual.size());
+    if (m_working_set.size() > nX)
+      m_working_set.resize(nX);
     for (size_t kkk = 0; kkk < m_working_set.size(); kkk++) {
       auto root = m_working_set[kkk];
       //      molpro::cout << "working set k=" << kkk << " root=" << root << std::endl;

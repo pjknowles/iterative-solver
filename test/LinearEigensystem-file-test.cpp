@@ -214,7 +214,7 @@ TEST(IterativeSolver, file_eigen) {
           //          std::cout << " " << (x[0])[k];
           //        std::cout << std::endl;
         }
-        EXPECT_THAT(solver.errors(), ::testing::Pointwise(::testing::DoubleNear(solver.m_thresh),
+        EXPECT_THAT(solver.errors(), ::testing::Pointwise(::testing::DoubleNear(2*solver.m_thresh),
                                                           std::vector<double>(nroot, double(0))));
         EXPECT_THAT(solver.eigenvalues(),
                     ::testing::Pointwise(::testing::DoubleNear(2e-9),

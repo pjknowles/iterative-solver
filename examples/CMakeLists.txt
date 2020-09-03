@@ -13,8 +13,8 @@ if (FORTRAN
 endif ()
 set(EXAMPLES DIISexample.cpp
         OptimizeExample.cpp
-        LinearEigensystemExample.cpp LinearEigensystemExample-serial.cpp
-        LinearEquationsExample.cpp
+        LinearEigensystemExample.cpp LinearEigensystemExample-serial.cpp LinearEigensystemExample-Pspace-fixed-serial.cpp
+        LinearEquationsExample.cpp LinearEquationsExample-Pspace.cpp
         ${ITERATIVESOLVER_FORTRAN_EXAMPLES}
         )
 if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)

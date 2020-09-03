@@ -51,6 +51,7 @@ public:
   const std::vector<scalar_type>& action_pspace(size_t i) const { return m_action_pspace.at(m_keys[i]); }
 
   size_t size() const { return m_vectors.size(); }
+  bool empty() const { return size() == 0; }
 
   const Qvector& operator[](size_t i) const { return m_vectors.at(m_keys[i]); }
   const Qvector& action(size_t i) const { return m_actions.at(m_keys[i]); }
@@ -103,16 +104,18 @@ public:
       if (m_hermitian)
         m_action[m_index][i] = m_action[i][m_index];
       else
-        m_action[m_index][i] = resres ? m_handlers->rq().dot(action, vi.second) : m_handlers->rq().dot(vector, vi.second);
+        m_action[m_index][i] =
+            resres ? m_handlers->rq().dot(action, vi.second) : m_handlers->rq().dot(vector, vi.second);
     }
     m_metric[m_index][m_index] = m_handlers->rr().dot(vector, vector);
+    //    std::cout << "Length of new Q vector "<<m_metric[m_index][m_index]<<std::endl;
     m_action[m_index][m_index] = resres ? m_handlers->rr().dot(action, action) : m_handlers->rr().dot(vector, action);
     m_action_action[m_index][m_index] = m_handlers->rr().dot(action, action); // TODO retire this
     m_metric_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
     m_action_pspace[m_index] = std::vector<scalar_type>(m_pspace.size());
     for (auto i = 0; i < m_pspace.size(); i++) {
-      m_metric_pspace[m_index][i] = m_handlers->rp().dot(vector,m_pspace[i]);
-      m_action_pspace[m_index][i] = m_handlers->rp().dot(action,m_pspace[i]);
+      m_metric_pspace[m_index][i] = m_handlers->rp().dot(vector, m_pspace[i]);
+      m_action_pspace[m_index][i] = m_handlers->rp().dot(action, m_pspace[i]);
     }
     m_rhs[m_index] = std::vector<scalar_type>();
     for (const auto& rhs1 : rhs)
@@ -152,8 +155,8 @@ public:
       //      std::cout << "dd-1=" << dd - 1 << ", rr-1=" << rr - 1 << ", rd-1=" << rd - 1 << std::endl;
       diff_factor = orthogonalise ? rr / rd : 1;
       auto norm = std::sqrt(std::max(rr - 2 * diff_factor * rd + diff_factor * diff_factor * dd, (decltype(rr))0));
-      if (norm == 0) { // let linear dependence code deal with this exceptional case later
-        scale_factor = 1;
+      if (norm == 0) { // abandon ship
+        return 0;
       } else {
         scale_factor = 1 / norm;
       }

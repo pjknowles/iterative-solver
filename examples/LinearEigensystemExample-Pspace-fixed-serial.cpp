@@ -4,17 +4,6 @@
 #include <molpro/linalg/IterativeSolver.h>
 #include <vector>
 
-template <class T>
-std::ostream& operator<<(std::ostream& o, const std::vector<T>& v) {
-  bool init{true};
-  for (const auto& element : v) {
-    o << (init ? "{" : " ") << element;
-    init = false;
-  }
-  o << "}";
-  return o;
-}
-
 // Find lowest eigensolutions of a matrix obtained from an external file
 using Rvector = std::vector<double>;
 using Qvector = std::vector<double>;
@@ -52,29 +41,18 @@ int main(int argc, char* argv[]) {
   for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
     for (const auto& nroot : std::vector<int>{1, 2}) {
       std::string prefix{argv[0]};
-      std::cout << prefix << std::endl;
       if (prefix.find_last_of("/") != std::string::npos)
         prefix.resize(prefix.find_last_of("/"));
       else
         prefix = ".";
-      std::cout << prefix << std::endl;
       std::ifstream f(prefix + "/examples/" + file + ".hamiltonian");
       f >> n;
       molpro::cout << "\n*** " << file << " (dimension " << n << "), " << nroot << " roots" << std::endl;
       hmat.resize(n * n);
       for (auto i = 0; i < n * n; i++)
         f >> hmat[i];
-      //      std::cout << "hmat "<<hmat<<std::endl;
       for (const auto& nP : std::vector<size_t>{0, 1, 3, 5, 9}) {
-        //      for (const auto& nP : std::vector<size_t>{1}) {
-        if (nP > 0 and nP < nroot)
-          continue;
-        std::vector<double> diagonals;
-        diagonals.reserve(n);
-        for (auto i = 0; i < n; i++)
-          diagonals.push_back(hmat[i + i * n]);
-        //      std::cout << "diagonal matrix elements "<<diagonals<<std::endl;
-        if (nP > n)
+        if ((nP > 0 and nP < nroot) or nP > n)
           continue;
         std::cout << "P-space dimension = " << nP << std::endl;
         auto handlers = std::make_shared<molpro::linalg::iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>();
@@ -85,50 +63,53 @@ int main(int argc, char* argv[]) {
         std::vector<Rvector> g;
         std::vector<Rvector> x;
         std::vector<std::vector<double>> Pcoeff;
-        double d0 = *std::min_element(diagonals.begin(), diagonals.end());
-        for (size_t root = 0; root < solver.m_roots; root++) {
-          x.emplace_back(n);
-          g.emplace_back(n);
-          std::fill(x.back().begin(), x.back().end(), 0);
-          auto guess = std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin(); // initial guess
-          x.back()[guess] = 1;
-          *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
-          Pcoeff.emplace_back(nP);
-        }
-        for (auto i = 0; i < n; i++)
-          diagonals[i] = 1 / (1e-12 + hmat[i + i * n] - d0);
-        //        std::cout << "resolvent " << diagonals << std::endl;
-        auto selection = handlers->rr().select_max_dot(nP, diagonals, diagonals);
-        //        molpro::linalg::array::util::select_max_dot<std::vector<double>, std::vector<double>, double, double>(
-        //        nP, diagonals, diagonals);
         std::vector<Pvector> pspace;
         std::vector<double> hpp;
-        hpp.reserve(nP * nP);
-        size_t p = 0;
-        for (const auto& select : selection) {
-          pspace.emplace_back();
-          pspace.back()[select.first] = 1;
-          //          std::cout << "P space element " << select.first << std::endl;
-          for (const auto& select2 : selection) {
-            hpp.push_back(hmat[select2.first + n * select.first]);
+        {
+          for (size_t root = 0; root < solver.m_roots; root++) {
+            x.emplace_back(n);
+            g.emplace_back(n);
+            Pcoeff.emplace_back(nP);
+          }
+          if (nP == 0) { // need initial guess if no P space
+            Rvector diagonals;
+            diagonals.reserve(n);
+            for (auto i = 0; i < n; i++)
+              diagonals.push_back(hmat[i + i * n]);
+            for (size_t root = 0; root < solver.m_roots; root++) {
+              std::fill(x[root].begin(), x[root].end(), 0);
+              auto guess = std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin(); // initial guess
+              x[root][guess] = 1;
+              *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
+            }
+          } else { // generate P space
+            Rvector resolvent(n);
+            double d0;
+            for (auto i = 0; i < n; i++)
+              d0 = std::min(d0, hmat[i + i * n]);
+            for (auto i = 0; i < n; i++)
+              resolvent[i] = 1 / (1e-12 + hmat[i + i * n] - d0);
+            auto selection = handlers->rr().select_max_dot(nP, resolvent, resolvent);
+            hpp.reserve(nP * nP);
+            size_t p = 0;
+            for (const auto& select : selection) {
+              pspace.emplace_back();
+              pspace.back()[select.first] = 1;
+              //          std::cout << "P space element " << select.first << std::endl;
+              for (const auto& select2 : selection) {
+                hpp.push_back(hmat[select2.first + n * select.first]);
+              }
+            }
           }
         }
-        //        std::cout << "hpp" << hpp << std::endl;
         int nwork = solver.m_roots;
         for (auto iter = 0; iter < 100; iter++) {
           if (iter == 0 && nP > 0) {
             nwork = solver.addP(pspace, hpp.data(), x, g, Pcoeff);
           } else {
             action(nwork, x, g);
-            //            std::cout << "before addVector x=" << x << std::endl;
-            //            std::cout << "before addVector g=" << g << std::endl;
             nwork = solver.addVector(x, g, Pcoeff);
           }
-          //          std::cout << "nwork=" << nwork << std::endl;
-          //          std::cout << "after add* x=" << x << std::endl;
-          //          std::cout << "after add* g=" << g << std::endl;
-          //          for (const auto& Pcoefff : Pcoeff)
-          //            std::cout << "after add* Pcoeff column " << Pcoefff << std::endl;
           solver.report();
           if (nwork == 0)
             break;

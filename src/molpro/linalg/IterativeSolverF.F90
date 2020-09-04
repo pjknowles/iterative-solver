@@ -514,7 +514,7 @@ CONTAINS
   !
   SUBROUTINE Iterative_Solver_Solution(roots, parameters, action, parametersP, lmppx)
     USE iso_c_binding
-    INTEGER, INTENT(inout), DIMENSION(:) :: roots  !< Array containing root indices
+    INTEGER, INTENT(in), DIMENSION(:) :: roots  !< Array containing root indices
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
     DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP  !< p
@@ -524,7 +524,7 @@ CONTAINS
           BIND(C, name = 'IterativeSolverSolution')
         USE iso_c_binding
         INTEGER(c_int), VALUE :: nroot
-        INTEGER(c_int), INTENT(inout), DIMENSION(nroot) :: roots
+        INTEGER(c_int), INTENT(in), DIMENSION(nroot) :: roots
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
         REAL(c_double), DIMENSION(*), INTENT(inout) :: action
         REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
@@ -551,9 +551,6 @@ CONTAINS
     ELSE
       call Iterative_Solver_Solution_C(nroot, rootsC, parameters, action, pdummy, lsyncC, lmppxC)
     END IF
-    DO i = 1, size(roots)
-      roots(i) = int(rootsC(i)) + 1
-    END DO
   END SUBROUTINE
   !
   SUBROUTINE Iterative_Solver_Solution_Nosync(roots, parameters, action, parametersP, lmppx)

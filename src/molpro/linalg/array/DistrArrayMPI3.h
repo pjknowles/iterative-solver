@@ -37,7 +37,6 @@ public:
    *
    * @param dimension overall size of array
    * @param commun MPI communicator
-   * @param prof
    */
   DistrArrayMPI3(size_t dimension, MPI_Comm commun);
 
@@ -46,7 +45,6 @@ public:
    *
    * @param distribution specification of how array is distributed among processes
    * @param commun MPI communicator
-   * @param prof
    */
   DistrArrayMPI3(std::unique_ptr<Distribution> distribution, MPI_Comm commun);
 

@@ -7,4 +7,19 @@ GENERATE_TAGFILE       = @PROJECT_NAME@.tag
 ALLEXTERNALS           = YES
 PROJECT_NUMBER         = @PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@
 USE_MDFILE_AS_MAINPAGE = README.md
-EXAMPLE_PATH           = @CMAKE_CURRENT_SOURCE_DIR@/examples
+EXAMPLE_PATH           = @CMAKE_CURRENT_SOURCE_DIR@/../examples
+
+############################################
+# Various options for customising the output
+############################################
+
+LAYOUT_FILE = @CMAKE_CURRENT_SOURCE_DIR@/DoxygenLayout.xml
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = YES
+HIDE_UNDOC_CLASSES     = YES
+GENERATE_TODOLIST      = NO
+SHOW_USED_FILES        = NO
+SHOW_FILES             = NO
+SHOW_NAMESPACES        = NO
+
+ENUM_VALUES_PER_LINE   = 1

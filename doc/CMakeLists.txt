@@ -6,7 +6,7 @@ foreach (f DoxygenLayout.xml)
 endforeach ()
 
 DependencyManagerDocs_Add(${PROJECT_NAME}
-        FILES ../README.md
+        FILES ../README.md IterativeSolver.dox Arrays.dox
         DOC_URL "https://molpro.gitlab.io/IterativeSolver/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
         DEPENDS Profiler # projects whose documentation has to be built before current project.
         )

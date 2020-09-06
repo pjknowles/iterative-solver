@@ -52,7 +52,6 @@ public:
    *
    * @param file_handle handle for opening the HDF5 group where array is/will be stored.
    * @param dimension size of array. If dataset already exists it will be resized to dimension.
-   * @param prof profiler
    */
   DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle, size_t dimension);
   /*!
@@ -62,7 +61,6 @@ public:
    *
    * @param file_handle handle for opening the HDF5 group where array is/will be stored.
    * @param distribution specifies how array is distributed among processes
-   * @param prof profiler
    */
   DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle, std::unique_ptr<Distribution> distribution);
   /*!
@@ -72,7 +70,6 @@ public:
    * object will be a dummy, still useful for later copying a valid array into it.
    *
    * @param file_handle handle for opening the HDF5 group where array is/will be stored.
-   * @param prof
    */
   explicit DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle);
   /*!

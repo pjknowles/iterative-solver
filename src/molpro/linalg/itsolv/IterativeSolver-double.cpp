@@ -1,4 +1,4 @@
-#include <molpro/linalg/iterativesolver/helper-implementation.h>
+#include <molpro/linalg/itsolv/helper-implementation.h>
 namespace {
 using value_type = double;
 }

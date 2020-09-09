@@ -3,7 +3,7 @@
 #include <Eigen/Dense>
 #include <cmath>
 #include <cstddef>
-#include <molpro/linalg/iterativesolver/helper.h>
+#include <molpro/linalg/itsolv/helper.h>
 
 namespace molpro {
 namespace linalg {

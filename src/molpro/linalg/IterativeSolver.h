@@ -1,11 +1,11 @@
 #ifndef ITERATIVESOLVER_H
 #define ITERATIVESOLVER_H
 #include "molpro/ProfilerSingle.h"
-#include "molpro/linalg/iterativesolver/P.h"
-#include "molpro/linalg/iterativesolver/Q.h"
-#include "molpro/linalg/iterativesolver/Statistics.h"
-#include "molpro/linalg/iterativesolver/helper.h"
-#include <molpro/linalg/iterativesolver/ArrayHandlers.h>
+#include <molpro/linalg/itsolv/ArrayHandlers.h>
+#include <molpro/linalg/itsolv/P.h>
+#include <molpro/linalg/itsolv/Q.h>
+#include <molpro/linalg/itsolv/Statistics.h>
+#include <molpro/linalg/itsolv/helper.h>
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif

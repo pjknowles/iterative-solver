@@ -8,6 +8,8 @@ if (FORTRAN)
     LibraryManager_Append(${PROJECT_NAME} SOURCES IterativeSolverF.F90)
 endif ()
 
+add_subdirectory(itsolv)
+
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_14)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
 

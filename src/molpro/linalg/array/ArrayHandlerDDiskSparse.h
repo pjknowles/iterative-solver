@@ -1,8 +1,8 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDDISKSPARSE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDDISKSPARSE_H
+#include <map>
 #include <molpro/linalg/array/ArrayHandler.h>
 #include <numeric>
-#include <map>
 
 namespace molpro {
 namespace linalg {
@@ -50,6 +50,5 @@ protected:
 } // namespace array
 } // namespace linalg
 } // namespace molpro
-
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDDISKSPARSE_H

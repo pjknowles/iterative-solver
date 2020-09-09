@@ -10,7 +10,7 @@
 
 namespace molpro {
 namespace linalg {
-namespace iterativesolver {
+namespace itsolv {
 
 /*!
  * @brief A class holding a Q space
@@ -244,7 +244,7 @@ public:
     m_keys = keys();
   }
 };
-} // namespace iterativesolver
+} // namespace itsolv
 } // namespace linalg
 } // namespace molpro
 

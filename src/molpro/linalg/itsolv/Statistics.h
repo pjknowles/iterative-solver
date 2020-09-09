@@ -2,7 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_STATISTICS_H_
 namespace molpro {
 namespace linalg {
-namespace iterativesolver {
+namespace itsolv {
 /*!
  * @brief Information about performance of IterativeSolver instance
  */
@@ -33,11 +33,11 @@ inline std::ostream& operator<<(std::ostream& o, const Statistics& statistics) {
     o << statistics.best_r_creations << " best R vectors, ";
   if (statistics.current_r_creations > 0)
     o << statistics.current_r_creations << " current R vectors, ";
-  o<<"\b\b";
+  o << "\b\b";
 
   return o;
 }
-} // namespace iterativesolver
+} // namespace itsolv
 } // namespace linalg
 } // namespace molpro
 

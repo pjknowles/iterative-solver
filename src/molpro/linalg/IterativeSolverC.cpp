@@ -23,7 +23,7 @@ using molpro::linalg::Optimize;
 using molpro::linalg::array::ArrayHandlerDistr;
 using molpro::linalg::array::ArrayHandlerDistrSparse;
 using molpro::linalg::array::ArrayHandlerSparse;
-using molpro::linalg::iterativesolver::ArrayHandlers;
+using molpro::linalg::itsolv::ArrayHandlers;
 
 // C interface to IterativeSolver
 // using v = LinearAlgebra::PagedVector<double>;

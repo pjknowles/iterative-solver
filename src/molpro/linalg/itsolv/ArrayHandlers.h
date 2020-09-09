@@ -5,7 +5,7 @@
 namespace molpro {
 namespace linalg {
 
-namespace iterativesolver {
+namespace itsolv {
 namespace util {
 
 struct ArrayHandlersError : public std::logic_error {
@@ -112,7 +112,7 @@ protected:
   std::shared_ptr<array::ArrayHandler<Q, P>> m_qp;
 };
 
-} // namespace iterativesolver
+} // namespace itsolv
 } // namespace linalg
 } // namespace molpro
 

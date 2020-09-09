@@ -88,7 +88,7 @@ template <class Rvector = std::vector<double>, class Qvector = Rvector,
           class Pvector = std::map<size_t, typename Rvector::value_type>>
 class IterativeSolver {
 public:
-  IterativeSolver(const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
+  IterativeSolver(const std::shared_ptr<itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
                   std::shared_ptr<molpro::Profiler> profiler = nullptr)
       : // clang-format off
       m_handlers(handlers),
@@ -139,10 +139,10 @@ protected:
   using constVectorRefSetP =
       typename std::vector<std::reference_wrapper<const vectorP>>; ///< Container of P-space parameters
   using vectorSetP = typename std::vector<vectorP>;                ///< Container of P-space parameters
-  mutable std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>> m_handlers;
+  mutable std::shared_ptr<itsolv::ArrayHandlers<Rvector, Qvector, Pvector>> m_handlers;
 
 public:
-  std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>> handlers() { return m_handlers; };
+  std::shared_ptr<itsolv::ArrayHandlers<Rvector, Qvector, Pvector>> handlers() { return m_handlers; };
   using scalar_type =
       typename array::ArrayHandler<Rvector, Qvector>::value_type; ///< The type of scalar products of vectors
   std::shared_ptr<molpro::Profiler> m_profiler;
@@ -557,8 +557,8 @@ public:
   ///< - m_options["convergence"]=="step": m_errors() returns the norm of the step in the solution
   ///< - m_options["convergence"]=="residual": m_errors() returns the norm of the residual vector
 protected:
-  iterativesolver::Q<Rvector, Qvector, Pvector, scalar_type> m_qspace;
-  iterativesolver::P<Pvector> m_pspace;
+  itsolv::Q<Rvector, Qvector, Pvector, scalar_type> m_qspace;
+  itsolv::P<Pvector> m_pspace;
   std::vector<Qvector> m_last_d;    ///< optimum solution in last iteration
   std::vector<Qvector> m_last_hd;   ///< action vector corresponding to optimum solution in last iteration
   std::vector<Qvector> m_current_r; ///< current working space TODO can probably eliminate using m_last_d
@@ -668,9 +668,9 @@ protected:
         if (std::abs(m_s_xx[k * (nX + 1)] - 1) < 1e-15)
           m_s_xx[k * (nX + 1)] =
               1; // somehow avoid problems that eigen with Intel 18 get the SVD wrong if near-unit matrix
-      auto del = iterativesolver::propose_singularity_deletion(m_exclude_r_from_redundancy_test ? nX - nR : nX, nX,
-                                                               m_residual_eigen ? m_s_xx.data() : m_h_xx.data(),
-                                                               candidates, nQ > m_maxQ ? 1e6 : m_singularity_threshold);
+      auto del = itsolv::propose_singularity_deletion(m_exclude_r_from_redundancy_test ? nX - nR : nX, nX,
+                                                      m_residual_eigen ? m_s_xx.data() : m_h_xx.data(), candidates,
+                                                      nQ > m_maxQ ? 1e6 : m_singularity_threshold);
       if (del >= 0) {
         if (m_verbosity > 2)
           molpro::cout << "del=" << del << "; remove Q" << del - oQ << std::endl;
@@ -691,17 +691,16 @@ protected:
     if (m_verbosity > 1)
       molpro::cout << "nP=" << nP << ", nQ=" << nQ << ", nR=" << nR << std::endl;
     if (m_verbosity > 2) {
-      iterativesolver::printMatrix(this->m_s_xx, nX, nX, "Subspace overlap");
-      iterativesolver::printMatrix(this->m_h_xx, nX, nX, "Subspace matrix");
+      itsolv::printMatrix(this->m_s_xx, nX, nX, "Subspace overlap");
+      itsolv::printMatrix(this->m_h_xx, nX, nX, "Subspace matrix");
       if (this->m_rhs_x.size() > 0)
-        iterativesolver::printMatrix(this->m_rhs_x, nX, this->m_rhs_x.size() / nX, "Subspace RHS");
+        itsolv::printMatrix(this->m_rhs_x, nX, this->m_rhs_x.size() / nX, "Subspace RHS");
     }
   }
 
 protected:
   void diagonalizeSubspaceMatrix() {
-    iterativesolver::eigenproblem(m_evec_xx, m_eval_xx, m_h_xx, m_s_xx, m_n_x, m_hermitian, m_svdThreshold,
-                                  m_verbosity);
+    itsolv::eigenproblem(m_evec_xx, m_eval_xx, m_h_xx, m_s_xx, m_n_x, m_hermitian, m_svdThreshold, m_verbosity);
   }
 
   /*!
@@ -773,7 +772,7 @@ protected:
   }
 
 public:
-  const iterativesolver::Statistics& statistics() const { return m_statistics; }
+  const itsolv::Statistics& statistics() const { return m_statistics; }
 
 public:
   std::vector<double> m_errors; //!< Error at last iteration
@@ -804,7 +803,7 @@ protected:
                               //!< - 1: standard augmented hessian
 
   bool m_nullify_solution_before_update;
-  iterativesolver::Statistics m_statistics;
+  itsolv::Statistics m_statistics;
 
 public:
   double m_svdThreshold; ///< Threshold for singular-value truncation in linear equation solver.
@@ -836,7 +835,7 @@ public:
   /*!
    * \brief LinearEigensystem
    */
-  explicit LinearEigensystem(const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
+  explicit LinearEigensystem(const std::shared_ptr<itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
                              const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector, Pvector>(handlers, profiler) {
     this->m_residual_rhs = false;
@@ -915,7 +914,7 @@ public:
    * \param profiler optional profiler
    */
   explicit LinearEquations(constVectorRefSet rhs,
-                           const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
+                           const std::shared_ptr<itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
                            double augmented_hessian = 0, const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector, Pvector>(handlers, profiler) {
     this->m_linear = true;
@@ -925,12 +924,12 @@ public:
   }
 
   explicit LinearEquations(const vectorSet& rhs,
-                           const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
+                           const std::shared_ptr<itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
                            double augmented_hessian = 0, const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : LinearEquations(constVectorRefSet(rhs.begin(), rhs.end()), handlers, augmented_hessian, profiler) {}
 
   explicit LinearEquations(const Rvector& rhs,
-                           const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
+                           const std::shared_ptr<itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>& handlers,
                            double augmented_hessian = 0, const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : LinearEquations(constVectorRefSet(1, rhs), handlers, augmented_hessian, profiler) {}
 
@@ -952,9 +951,9 @@ public:
 
 protected:
   bool solveReducedProblem() override {
-    iterativesolver::solve_LinearEquations(this->m_solution_x, this->m_eval_xx, this->m_h_xx, this->m_s_xx,
-                                           this->m_rhs_x, this->m_n_x, this->m_roots, this->m_augmented_hessian,
-                                           this->m_svdThreshold, this->m_verbosity);
+    itsolv::solve_LinearEquations(this->m_solution_x, this->m_eval_xx, this->m_h_xx, this->m_s_xx, this->m_rhs_x,
+                                  this->m_n_x, this->m_roots, this->m_augmented_hessian, this->m_svdThreshold,
+                                  this->m_verbosity);
     return true;
   }
 };
@@ -985,10 +984,9 @@ public:
    * \param handlers group of array handlers for coordinating array operations
    * \param profiler optional profiler
    */
-  explicit Optimize(
-      const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>>& handlers,
-      std::string algorithm = "L-BFGS", bool minimize = true,
-      const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
+  explicit Optimize(const std::shared_ptr<itsolv::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>>& handlers,
+                    std::string algorithm = "L-BFGS", bool minimize = true,
+                    const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector>(handlers, profiler), m_algorithm(std::move(algorithm)), m_minimize(minimize),
         m_strong_Wolfe(true), m_Wolfe_1(0.0001), m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
         m_linesearch_tolerance(0.2), m_linesearch_grow_factor(3), m_linesearch_steplength(0) {
@@ -1230,7 +1228,7 @@ public:
   /*!
    * \brief DIIS
    */
-  DIIS(const std::shared_ptr<iterativesolver::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>>& handlers,
+  DIIS(const std::shared_ptr<itsolv::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>>& handlers,
        const std::shared_ptr<molpro::Profiler>& profiler = nullptr)
       : IterativeSolver<Rvector, Qvector>(handlers, profiler) {
     this->m_residual_rhs = false;
@@ -1251,7 +1249,7 @@ protected:
     if (this->m_roots > 1)
       throw std::logic_error("DIIS does not handle multiple solutions");
 
-    iterativesolver::solve_DIIS(this->m_solution_x, this->m_h_xx, this->m_n_x, this->m_svdThreshold, this->m_verbosity);
+    itsolv::solve_DIIS(this->m_solution_x, this->m_h_xx, this->m_n_x, this->m_svdThreshold, this->m_verbosity);
     return true;
   }
 };

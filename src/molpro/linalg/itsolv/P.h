@@ -5,7 +5,7 @@
 
 namespace molpro {
 namespace linalg {
-namespace iterativesolver {
+namespace itsolv {
 
 template <class Pvector = std::map<size_t, double>>
 class P {
@@ -37,7 +37,8 @@ public:
    * @param Pvectors the vectors to add
    * @param PP Matrix projected onto the existing+new, new P space. It should be provided as a
    * 1-dimensional array, with the existing+new index running fastest.
-   * @param rhs The right hand side of an inhomogeneous equation set. The projection onto the new P vectors will be calculated.
+   * @param rhs The right hand side of an inhomogeneous equation set. The projection onto the new P vectors will be
+   * calculated.
    * @param handle_pp handle between arrays in P space
    * @param handle_qp handle between arrays Q and P space
    * @tparam Qvector Out-of memory vectors to be used for storing the space.
@@ -85,7 +86,7 @@ public:
     m_vectors.clear();
   }
 };
-} // namespace iterativesolver
+} // namespace itsolv
 } // namespace linalg
 } // namespace molpro
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_P_H_

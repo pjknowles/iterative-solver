@@ -12,9 +12,8 @@ namespace itsolv {
 namespace detail {
 
 //! Combines data from P, Q, and R subspaces to form the X subspace
-void build_subspace(SubspaceData<EqnData::H, EqnData::S>& xs, const SubspaceData<EqnData::H, EqnData::S>& rs,
-                    const SubspaceData<EqnData::H, EqnData::S>& qq, const SubspaceData<EqnData::H, EqnData::S>& qr,
-                    const SubspaceData<EqnData::H, EqnData::S>& rq, const SubspaceData<EqnData::H, EqnData::S>& ps) {
+void build_subspace(SubspaceData& xs, const SubspaceData& rs, const SubspaceData& qq, const SubspaceData& qr,
+                    const SubspaceData& rq, const SubspaceData& ps) {
   auto nP = ps.at(EqnData::H).rows();
   auto nQ = qq.at(EqnData::H).rows();
   auto nR = rs.at(EqnData::H).rows();
@@ -38,7 +37,7 @@ struct XSpace {
   using RS = Rs;
   using QS = Qs;
   using PS = Ps;
-  SubspaceData<EqnData::H, EqnData::S> subspace = null_data<EqnData::H, EqnData::S>();
+  SubspaceData subspace = null_data<EqnData::H, EqnData::S>();
 
   //! Make sure that the subspace is well conditioned. Derived classes should implement a strategy
   virtual void check_conditioning(RS& rs, QS& qs, PS& ps) = 0;

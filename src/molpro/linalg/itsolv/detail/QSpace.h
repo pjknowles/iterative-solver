@@ -8,15 +8,15 @@ namespace linalg {
 namespace itsolv {
 namespace detail {
 
-void update_qspace(SubspaceData<EqnData::H, EqnData::S>& qs, const SubspaceData<EqnData::H, EqnData::S>& rs) {}
+template <class R, class Q, class P>
+void update_qspace(SubspaceData& qs, const SubspaceData& rs, IterativeSolver<R, Q, P>& solver) {}
 
 template <class R, class Q, class P>
-void update_qspace(SubspaceData<EqnData::H, EqnData::S, EqnData::rhs>& qs,
-                   const SubspaceData<EqnData::H, EqnData::S, EqnData::rhs>& rs, LinearEigensystem<R, Q, P>& solver) {}
+void update_qspace(SubspaceData& qs, const SubspaceData& rs, LinearEigensystem<R, Q, P>& solver) {}
 
 template <class R, class Q>
 struct QSpace {
-  SubspaceData<EqnData::H, EqnData::S> subspace;
+  SubspaceData subspace = null_data<EqnData::H, EqnData::S>();
 
   template <class P>
   void update(const RSpace<R>& rs, IterativeSolver<R, Q, P>& solver) {
@@ -25,12 +25,13 @@ struct QSpace {
 };
 
 template <class R, class Q>
-struct QSpaceLE {
-  SubspaceData<EqnData::H, EqnData::S, EqnData::rhs> subspace;
+struct QSpaceLE : public QSpace<R, Q> {
+  using QSpace<R, Q>::subspace;
+  QSpaceLE() : QSpace<R, Q>() { subspace = null_data<EqnData::H, EqnData::S>; }
 
   template <class P>
   void update(const RSpace<R>& rs, LinearEigensystem<R, Q, P>& solver) {
-    detail::update_qspace(rs.subspace, solver);
+    QSpaceLE<R, Q>::update(rs, solver);
   }
 };
 

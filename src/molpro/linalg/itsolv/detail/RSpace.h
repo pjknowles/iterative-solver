@@ -9,18 +9,17 @@ namespace itsolv {
 namespace detail {
 
 template <class R, class Q, class P>
-void update_rspace(SubspaceData<EqnData::H, EqnData::S>& rs, const std::vector<R>& parameters,
-                   const std::vector<R>& action);
+void update_rspace(SubspaceData& rs, const std::vector<R>& parameters, const std::vector<R>& action);
 
 template <class R, class Q, class P>
-void update_rspace(SubspaceData<EqnData::H, EqnData::S, EqnData::rhs>& rs, const std::vector<R>& parameters,
-                   const std::vector<R>& action, LinearEigensystem<R, Q, P>& solver);
+void update_rspace_rhs(SubspaceData& rs, const std::vector<R>& parameters, const std::vector<R>& action,
+                       LinearEigensystem<R, Q, P>& solver);
 
 //!
 template <class R>
 class RSpace {
 public:
-  SubspaceData<EqnData::H, EqnData::S> subspace;
+  SubspaceData subspace = null_data<EqnData::H, EqnData::S>();
 
   template <class Q, class P>
   void update(const std::vector<R>& parameters, const std::vector<R>& action, IterativeSolver<R, Q, P>& solver) {
@@ -32,16 +31,16 @@ protected:
 
 //! RSpace for LinearEquations solver
 template <class R>
-class RSpaceLEq {
+class RSpaceLEq : public RSpace<R> {
 public:
-  SubspaceData<EqnData::H, EqnData::S, EqnData::rhs> subspace;
+  using RSpace<R>::subspace;
+  RSpaceLEq() : RSpace<R>() { subspace = null_data<EqnData::H, EqnData::S, EqnData::rhs>; }
 
   template <class Q, class P>
   void update(const std::vector<R>& parameters, const std::vector<R>& action, LinearEquations<R, Q, P>& solver) {
-    detail::update_rspace(subspace, parameters, action, solver);
+    RSpace<R>::update_rspace(subspace, parameters, action, solver);
+    // now update RHS vector
   }
-
-protected:
 };
 
 } // namespace detail

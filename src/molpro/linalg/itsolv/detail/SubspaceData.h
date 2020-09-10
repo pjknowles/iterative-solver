@@ -9,12 +9,11 @@ namespace itsolv {
 namespace detail {
 enum class EqnData { H, S, rhs };
 
-template <EqnData... DataTypes>
 using SubspaceData = std::map<EqnData, Matrix<double>>;
 
 template <EqnData... DataTypes>
 auto null_data() {
-  return SubspaceData<DataTypes...>{std::make_pair<EqnData, Matrix<double>>(DataTypes, {})...};
+  return SubspaceData{std::make_pair<EqnData, Matrix<double>>(DataTypes, {})...};
 }
 } // namespace detail
 } // namespace itsolv

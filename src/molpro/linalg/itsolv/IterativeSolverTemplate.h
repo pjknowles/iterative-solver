@@ -6,7 +6,6 @@ namespace molpro {
 namespace linalg {
 namespace itsolv {
 
-namespace detail {} // namespace detail
 
 /*!
  * @brief Implements common functionality of iterative solvers

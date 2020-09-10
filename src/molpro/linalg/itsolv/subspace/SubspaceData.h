@@ -6,7 +6,7 @@
 namespace molpro {
 namespace linalg {
 namespace itsolv {
-namespace detail {
+namespace subspace {
 enum class EqnData { H, S, rhs };
 
 using SubspaceData = std::map<EqnData, Matrix<double>>;

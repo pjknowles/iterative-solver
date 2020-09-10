@@ -9,7 +9,7 @@
 namespace molpro {
 namespace linalg {
 namespace itsolv {
-namespace detail {
+namespace subspace {
 
 //! Combines data from P, Q, and R subspaces to form the X subspace
 void build_subspace(SubspaceData& xs, const SubspaceData& rs, const SubspaceData& qq, const SubspaceData& qr,
@@ -52,7 +52,7 @@ struct XSpace {
   size_t size() { return data.at(EqnData::H).rows(); }
 
   void build_subspace(const RS& rs, const QS& qs, const PS& ps) {
-    detail::build_subspace(data, rs.data, qs.data, qs.qr(), qs.rq(), ps.data);
+    subspace::build_subspace(data, rs.data, qs.data, qs.qr(), qs.rq(), ps.data);
   }
 };
 

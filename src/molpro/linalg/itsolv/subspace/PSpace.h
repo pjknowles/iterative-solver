@@ -5,7 +5,7 @@
 namespace molpro {
 namespace linalg {
 namespace itsolv {
-namespace detail {
+namespace subspace {
 
 template <class R, class P>
 struct PSpace {};

@@ -6,7 +6,7 @@
 namespace molpro {
 namespace linalg {
 namespace itsolv {
-namespace detail {
+namespace subspace {
 
 /*!
  * @brief Matrix container that allows simple data access, slicing, copying and resizing without loosing data.

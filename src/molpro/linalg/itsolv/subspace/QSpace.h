@@ -7,7 +7,7 @@
 namespace molpro {
 namespace linalg {
 namespace itsolv {
-namespace detail {
+namespace subspace {
 
 namespace qspace {
 

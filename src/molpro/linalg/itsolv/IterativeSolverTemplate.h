@@ -15,17 +15,20 @@ namespace detail {} // namespace detail
  * accepted as policies for managing the subspaces.
  *
  */
-template <class Solver, class RSpace, class QSpace, class PSpace, class XSpace>
+template <class Solver, class XS>
 class IterativeSolverTemplate : public Solver {
 public:
   using typename Solver::scalar_type;
-  using R = typename RSpace::R;
-  using Q = typename QSpace::Q;
-  using P = typename PSpace::P;
+  using RS = typename XS::RS;
+  using QS = typename XS::QS;
+  using PS = typename XS::PS;
+  using R = typename Solver::R;
+  using Q = typename Solver::Q;
+  using P = typename Solver::P;
 
   void add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& parametersP) override {
     m_rspace.update(parameters, action, *this); // allows for passage of extra data from the particular Solver
-    m_qspace.add(m_rspace, *this);
+    m_qspace.update(m_rspace, *this);
     m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
     m_xspace.check_conditioning(m_rspace, m_qspace, m_pspace);
     m_xspace.solve();
@@ -64,17 +67,17 @@ protected:
   //! Updates working sets and adds any converged solution to the q space
   void update_working_set() {}
 
-  void construct_solution(std::vector<typename RSpace::R>& solution) {}
+  void construct_solution(std::vector<R>& solution) {}
 
-  void construct_residual(const std::vector<typename RSpace::R>& solution, std::vector<typename RSpace::R>& residual) {}
+  void construct_residual(const std::vector<R>& solution, std::vector<R>& residual) {}
 
-  void construct_action(std::vector<typename RSpace::R>& action) {}
+  void construct_action(std::vector<typename RS::R>& action) {}
 
-  std::shared_ptr<ArrayHandlers<typename RSpace::R, typename QSpace::Q, typename PSpace::P>> m_handlers;
-  RSpace m_rspace;
-  QSpace m_qspace;
-  PSpace m_pspace;
-  XSpace m_xspace;
+  std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
+  RS m_rspace;
+  QS m_qspace;
+  PS m_pspace;
+  XS m_xspace;
   std::vector<double> m_errors;
   std::vector<int> m_working_set;
   std::shared_ptr<Statistics> m_stats;

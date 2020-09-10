@@ -1,8 +1,8 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_QSPACE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_QSPACE_H
 #include <list>
-#include <molpro/linalg/itsolv/detail/PSpace.h>
-#include <molpro/linalg/itsolv/detail/RSpace.h>
+#include <molpro/linalg/itsolv/subspace/PSpace.h>
+#include <molpro/linalg/itsolv/subspace/RSpace.h>
 
 namespace molpro {
 namespace linalg {

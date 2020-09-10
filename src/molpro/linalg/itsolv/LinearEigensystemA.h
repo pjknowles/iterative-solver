@@ -1,7 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMA_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMA_H
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
-#include <molpro/linalg/itsolv/detail/XSpace.h>
+#include <molpro/linalg/itsolv/subspace/XSpace.h>
 
 namespace molpro {
 namespace linalg {

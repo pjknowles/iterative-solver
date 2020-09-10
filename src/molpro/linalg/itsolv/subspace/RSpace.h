@@ -1,7 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_RSPACE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_RSPACE_H
 #include <molpro/linalg/itsolv/IterativeSolver.h>
-#include <molpro/linalg/itsolv/detail/SubspaceData.h>
+#include <molpro/linalg/itsolv/subspace/SubspaceData.h>
 
 namespace molpro {
 namespace linalg {

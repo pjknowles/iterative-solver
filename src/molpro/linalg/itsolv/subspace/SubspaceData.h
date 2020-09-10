@@ -1,7 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_DETAIL_EQNDATA_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_DETAIL_EQNDATA_H
 #include <map>
-#include <molpro/linalg/itsolv/detail/Matrix.h>
+#include <molpro/linalg/itsolv/subspace/Matrix.h>
 
 namespace molpro {
 namespace linalg {

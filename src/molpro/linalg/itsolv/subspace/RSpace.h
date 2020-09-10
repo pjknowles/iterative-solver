@@ -1,5 +1,5 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_RSPACE_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_RSPACE_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_RSPACE_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_RSPACE_H
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceData.h>
 
@@ -86,4 +86,4 @@ public:
 } // namespace linalg
 } // namespace molpro
 
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_RSPACE_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_RSPACE_H

@@ -1,5 +1,5 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_XSPACE_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_XSPACE_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACE_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACE_H
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/RSpace.h>
@@ -61,4 +61,4 @@ struct XSpace {
 } // namespace linalg
 } // namespace molpro
 
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_XSPACE_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACE_H

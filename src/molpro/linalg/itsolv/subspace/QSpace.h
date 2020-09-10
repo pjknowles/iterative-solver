@@ -1,5 +1,5 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_QSPACE_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_QSPACE_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_QSPACE_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_QSPACE_H
 #include <list>
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/RSpace.h>
@@ -89,4 +89,4 @@ struct QSpaceLE : public QSpace<R, Q, P> {
 } // namespace linalg
 } // namespace molpro
 
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_QSPACE_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_QSPACE_H

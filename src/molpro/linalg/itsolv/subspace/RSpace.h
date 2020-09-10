@@ -24,7 +24,7 @@ class RSpace {
 public:
   using MapRefR = std::map<size_t, std::reference_wrapper<R>>;
 
-  SubspaceData subspace = null_data<EqnData::H, EqnData::S>();
+  SubspaceData data = null_data<EqnData::H, EqnData::S>();
 
   template <class P>
   void update(const std::vector<R>& parameters, const std::vector<R>& action, IterativeSolver<R, Q, P>& solver) {
@@ -37,7 +37,7 @@ public:
     // construct subspace
   }
 
-  size_t size() { return subspace.at(EqnData::H).rows(); }
+  size_t size() { return data.at(EqnData::H).rows(); }
 
   auto& dummy() const {
     assert(!m_params.empty() && "must add parameters to the RSpace first");
@@ -71,12 +71,12 @@ protected:
 template <class R, class Q>
 class RSpaceLEq : public RSpace<R, Q> {
 public:
-  using RSpace<R, Q>::subspace;
-  RSpaceLEq() : RSpace<R, Q>() { subspace = null_data<EqnData::H, EqnData::S, EqnData::rhs>; }
+  using RSpace<R, Q>::data;
+  RSpaceLEq() : RSpace<R, Q>() { data = null_data<EqnData::H, EqnData::S, EqnData::rhs>; }
 
   template <class P>
   void update(const std::vector<R>& parameters, const std::vector<R>& action, LinearEquations<R, Q, P>& solver) {
-    RSpace<R, Q>::update_rspace(subspace, parameters, action, solver);
+    RSpace<R, Q>::update_rspace(data, parameters, action, solver);
     // now update RHS vector
   }
 };

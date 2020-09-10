@@ -34,7 +34,7 @@ void expand_subspace(SubspaceData& qq, SubspaceData& qr, SubspaceData& rq, const
 template <class R, class Q, class P>
 struct QSpace {
   using typename RSpace<R, Q>::VecRefR;
-  SubspaceData subspace = null_data<EqnData::H, EqnData::S>();
+  SubspaceData data = null_data<EqnData::H, EqnData::S>();
 
   void update(const RSpace<R, Q>& rs, IterativeSolver<R, Q, P>& solver) {
     for (auto root : solver.working_set()) {
@@ -45,7 +45,7 @@ struct QSpace {
   }
 
   void add_vector(const R& qparam, const R& qaction, size_t root) {
-    qspace::expand_subspace(subspace, m_qr, m_rq, m_qparams, m_qactions, qparam, qaction);
+    qspace::expand_subspace(data, m_qr, m_rq, m_qparams, m_qactions, qparam, qaction);
     m_qparams.emplace(m_handlers->qr().copy(qparam));
     m_qactions.emplace(m_handlers->qr().copy(qaction));
     m_roots.emplace_back(root);
@@ -78,8 +78,8 @@ protected:
 
 template <class R, class Q, class P>
 struct QSpaceLE : public QSpace<R, Q, P> {
-  using QSpace<R, Q, P>::subspace;
-  QSpaceLE() : QSpace<R, Q, P>() { subspace = null_data<EqnData::H, EqnData::S, EqnData::rhs>; }
+  using QSpace<R, Q, P>::data;
+  QSpaceLE() : QSpace<R, Q, P>() { data = null_data<EqnData::H, EqnData::S, EqnData::rhs>; }
 
   void update(const RSpace<R, Q>& rs, LinearEigensystem<R, Q, P>& solver) { QSpace<R, Q, P>::update(rs, solver); }
 };

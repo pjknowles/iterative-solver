@@ -19,9 +19,9 @@ namespace itsolv {
  * @tparam P
  */
 template <class R, class Q, class P>
-class LinearEigensystemA
-    : public IterativeSolverTemplate<LinearEigensystem<R, Q, P>,
-                                     detail::XSpace<detail::RSpace<R>, detail::QSpace<R, Q>, detail::PSpace<R, P>>> {
+class LinearEigensystemA : public IterativeSolverTemplate<
+                               LinearEigensystem<R, Q, P>,
+                               detail::XSpace<detail::RSpace<R, Q>, detail::QSpace<R, Q, P>, detail::PSpace<R, P>>> {
 public:
   using typename LinearEigensystem<R, Q, P>::scalar_type;
 

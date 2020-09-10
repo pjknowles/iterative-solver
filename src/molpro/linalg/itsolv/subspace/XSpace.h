@@ -37,7 +37,7 @@ struct XSpace {
   using RS = Rs;
   using QS = Qs;
   using PS = Ps;
-  SubspaceData subspace = null_data<EqnData::H, EqnData::S>();
+  SubspaceData data = null_data<EqnData::H, EqnData::S>();
 
   //! Make sure that the subspace is well conditioned. Derived classes should implement a strategy
   virtual void check_conditioning(RS& rs, QS& qs, PS& ps) = 0;
@@ -49,10 +49,10 @@ struct XSpace {
   std::vector<double> solution(size_t i) {}
 
   //! Number of vectors forming the subspace
-  size_t size() { return subspace.at(EqnData::H).rows(); }
+  size_t size() { return data.at(EqnData::H).rows(); }
 
   void build_subspace(const RS& rs, const QS& qs, const PS& ps) {
-    detail::build_subspace(subspace, rs.subspace, qs.subspace, qs.qr(), qs.rq(), ps.subspace);
+    detail::build_subspace(data, rs.data, qs.data, qs.qr(), qs.rq(), ps.data);
   }
 };
 

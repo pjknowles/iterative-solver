@@ -6,7 +6,6 @@ namespace molpro {
 namespace linalg {
 namespace itsolv {
 
-
 /*!
  * @brief Implements common functionality of iterative solvers
  *
@@ -26,11 +25,11 @@ public:
   using P = typename Solver::P;
 
   void add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& parametersP) override {
-    m_rspace.update(parameters, action, *this); // allows for passage of extra data from the particular Solver
-    m_qspace.update(m_rspace, *this);
+    m_rspace.update(parameters, action, *static_cast<Solver*>(this));
+    m_qspace.update(m_rspace, *static_cast<Solver*>(this));
     m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
     m_xspace.check_conditioning(m_rspace, m_qspace, m_pspace);
-    m_xspace.solve();
+    m_xspace.solve(*static_cast<Solver*>(this));
     construct_solution(parameters);
     construct_residual(parameters, action);
     update_errors(action);
@@ -43,7 +42,7 @@ public:
     auto working_set_save = m_working_set;
     m_working_set = roots;
     m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
-    m_xspace.solve();
+    m_xspace.solve(*static_cast<Solver*>(this));
     construct_solution(parameters);
     construct_residual(residual);
     m_working_set = working_set_save;

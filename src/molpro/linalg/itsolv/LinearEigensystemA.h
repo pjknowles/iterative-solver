@@ -1,7 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMA_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMA_H
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
-#include <molpro/linalg/itsolv/subspace/XSpace.h>
+#include <molpro/linalg/itsolv/subspace/XSpaceLinEig.h>
 
 namespace molpro {
 namespace linalg {
@@ -19,10 +19,7 @@ namespace itsolv {
  * @tparam P
  */
 template <class R, class Q, class P>
-class LinearEigensystemA
-    : public IterativeSolverTemplate<
-          LinearEigensystem<R, Q, P>,
-          subspace::XSpace<subspace::RSpace<R, Q>, subspace::QSpace<R, Q, P>, subspace::PSpace<R, P>>> {
+class LinearEigensystemA : public IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpaceLinEig<R, Q, P>> {
 public:
   using typename LinearEigensystem<R, Q, P>::scalar_type;
 

@@ -86,21 +86,42 @@ protected:
   class Slice {
   public:
     Slice(Matrix<T>& matrix, coord_type upper_left, coord_type bottom_right)
-        : mat(matrix), upl(std::move(upper_left)), btr(std::move(bottom_right)) {}
+        : mat(matrix), upl(std::move(upper_left)), btr(std::move(bottom_right)) {
+      if (upl.first > btr.first || upl.second > btr.second)
+        throw std::runtime_error("specified incorrect corners");
+      if (upl.first < 0 || upl.second < 0)
+        throw std::runtime_error("slice is out of range");
+      if (btr.first > matrix.rows() || btr.second > matrix.cols())
+        throw std::runtime_error("slice is out of range");
+    }
     Slice() = delete;
     ~Slice() = default;
     Slice(const Slice&) = delete;
     Slice(Slice&&) noexcept = default;
     Slice& operator=(Slice&&) noexcept = default;
 
-    Slice& operator=(const Slice& right) {}
-    Slice& operator=(const CSlice& right) {}
+    Slice& operator=(const Slice& right) {
+      if (dimensions() != right.dimensions())
+        throw std::runtime_error("attempting to copy slices of different dimensions");
+      for (size_t i = 0; i < dimensions().first; ++i) {
+        for (size_t j = 0; j < dimensions().second; ++j) {
+          mat(upl.first + i, upl.second + j) = right.mat(right.upl.first + i, right.upl.second + j);
+        }
+      }
+      return *this;
+    }
+
+    Slice& operator=(const CSlice& right) {
+      *this = right.m_slice;
+      return *this;
+    }
 
     Slice& operator=(const Matrix<T>& right) {
       *this = right.slice({0, 0}, right.dimensions());
       return *this;
     }
-    const Matrix<T>& M() const { return mat; }
+
+    coord_type dimensions() const { return {btr.first - upl.first, btr.second - upl.second}; }
 
   protected:
     Matrix<T>& mat; //!< matrix being sliced
@@ -110,6 +131,8 @@ protected:
 
   //! Constant slice that cannot be assigned to
   class CSlice {
+    friend Slice;
+
   public:
     CSlice(const Matrix<T>& matrix, coord_type upper_left, coord_type bottom_right)
         : m_slice(const_cast<Matrix<T>&>(matrix), std::move(upper_left), std::move(bottom_right)) {}
@@ -118,8 +141,6 @@ protected:
     CSlice(const CSlice&) = delete;
     CSlice(CSlice&&) noexcept = default;
     CSlice& operator=(CSlice&&) noexcept = default;
-
-    const Matrix<T>& M() const { return m_slice.mat(); }
 
   protected:
     Slice m_slice;

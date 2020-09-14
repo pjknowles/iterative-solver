@@ -64,6 +64,15 @@ TEST_F(MatrixF, slice_copy_empty) {
   ASSERT_THAT(m.data(), Pointwise(Eq(), m_right.data()));
 }
 
+TEST_F(MatrixF, slice_no_params) {
+  auto m_right = m;
+  const double value = 0.1;
+  m_right.fill(value);
+  ASSERT_THAT(m.data(), Pointwise(Ne(), m_right.data()));
+  m.slice() = m_right;
+  ASSERT_THAT(m.data(), Pointwise(Eq(), m_right.data()));
+}
+
 TEST_F(MatrixF, slice_copy_full_matrix) {
   auto m_right = m;
   const double value = 3.14;

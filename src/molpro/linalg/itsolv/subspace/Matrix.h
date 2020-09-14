@@ -54,10 +54,16 @@ public:
     return Slice(*this, std::move(upper_left), std::move(bottom_right));
   }
 
+  //! Access the whole matrix as a slice
+  Slice slice() { return slice({0, 0}, dimensions()); }
+
   //! Access a constant rectangular slice of the matrix.
   CSlice slice(coord_type upper_left, coord_type bottom_right) const {
     return CSlice(*this, std::move(upper_left), std::move(bottom_right));
   }
+
+  //! Access the whole matrix as a slice
+  CSlice slice() const { return slice({0, 0}, dimensions()); }
 
   //! Resize the matrix. The old data is preserved and any new rows/cols are zeroed. @param dims new dimensions
   void resize(const coord_type& dims) {

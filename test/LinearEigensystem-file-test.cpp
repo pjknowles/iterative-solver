@@ -23,7 +23,7 @@ using molpro::linalg::array::ArrayHandler;
 using molpro::linalg::array::ArrayHandlerIterable;
 using molpro::linalg::array::ArrayHandlerIterableSparse;
 using molpro::linalg::array::ArrayHandlerSparse;
-using molpro::linalg::iterativesolver::ArrayHandlers;
+using molpro::linalg::itsolv::ArrayHandlers;
 // Find lowest eigensolution of a matrix obtained from an external file
 // Storage of vectors in-memory via class pv
 using scalar = double;

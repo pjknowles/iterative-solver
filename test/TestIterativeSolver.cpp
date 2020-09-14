@@ -23,7 +23,7 @@ using molpro::linalg::array::ArrayHandler;
 using molpro::linalg::array::ArrayHandlerIterable;
 using molpro::linalg::array::ArrayHandlerIterableSparse;
 using molpro::linalg::array::ArrayHandlerSparse;
-using molpro::linalg::iterativesolver::ArrayHandlers;
+using molpro::linalg::itsolv::ArrayHandlers;
 
 TEST(TestIterativeSolver, small_eigenproblem) {
   for (size_t n = 1; n < 9; n++) {

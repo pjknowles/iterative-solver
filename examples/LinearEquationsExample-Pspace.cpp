@@ -20,7 +20,7 @@
 using molpro::linalg::array::ArrayHandlerIterable;
 using molpro::linalg::array::ArrayHandlerIterableSparse;
 using molpro::linalg::array::ArrayHandlerSparse;
-using molpro::linalg::iterativesolver::ArrayHandlers;
+using molpro::linalg::itsolv::ArrayHandlers;
 
 constexpr bool check = true;
 constexpr bool print = false;

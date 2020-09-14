@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
         if ((nP > 0 and nP < nroot) or nP > n)
           continue;
         std::cout << "P-space dimension = " << nP << std::endl;
-        auto handlers = std::make_shared<molpro::linalg::iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>();
+        auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>();
         auto solver = molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector>(handlers);
         solver.m_verbosity = 1;
         solver.m_roots = nroot;

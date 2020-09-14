@@ -91,8 +91,6 @@ TEST_F(MatrixF, cslice_copy_full_matrix) {
   m.fill(0.);
   m_right.fill(value);
   ASSERT_THAT(m.data(), Pointwise(Ne(), m_right.data()));
-  ASSERT_THROW((m.slice({0, 0}, {1, 1}) = m_right.slice({0, 0}, {2, 2})), std::runtime_error)
-      << "incompatible dimensions";
   const auto const_mat = m_right;
   m.slice({0, 0}, m.dimensions()) = const_mat.slice({0, 0}, m.dimensions());
   ASSERT_THAT(m.data(), Pointwise(Eq(), m_right.data()));
@@ -112,4 +110,16 @@ TEST_F(MatrixF, slice_copy_block) {
     }
   m.slice({0, 0}, {block_row, block_col}) = m_right.slice({0, 0}, m_right.dimensions());
   ASSERT_THAT(m.data(), Pointwise(Eq(), reference));
+}
+
+TEST_F(MatrixF, slice_axpy) {
+  auto m_right = m;
+  const double alpha = 3.14;
+  const double beta = 1.1;
+  const double a = -0.5;
+  m.fill(alpha);
+  m_right.fill(beta);
+  ASSERT_THAT(m.data(), Pointwise(Ne(), m_right.data()));
+  m.slice().axpy(a, m_right.slice());
+  ASSERT_THAT(m.data(), Each(Eq(alpha + a * beta)));
 }

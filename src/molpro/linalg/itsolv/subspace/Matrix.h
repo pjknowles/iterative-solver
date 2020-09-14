@@ -14,7 +14,13 @@ namespace subspace {
 // FIXME Usage of Eigen for matrix would not be as catastrophic now that the headers are separated
 /*!
  * @brief Matrix container that allows simple data access, slicing, copying and resizing without loosing data.
+ *
+ * This is not meant to be a general matrix, or to be very efficient. This is just a utility for internal implementation
+ * of IterativeSolver and it only supports operations that are necessary. Memory management is not done very
+ * efficiently, because for our use subspace matrices are relatively small.
+ *
  * @note Row-major order.
+ *
  * @tparam T
  */
 template <typename T>
@@ -114,6 +120,22 @@ protected:
           mat(upl.first + i, upl.second + j) = right.mat(right.upl.first + i, right.upl.second + j);
         }
       }
+      return *this;
+    }
+
+    Slice& axpy(T a, const Slice& x) {
+      if (dimensions() != x.dimensions())
+        throw std::runtime_error("attempting to copy slices of different dimensions");
+      for (size_t i = 0; i < dimensions().first; ++i) {
+        for (size_t j = 0; j < dimensions().second; ++j) {
+          mat(upl.first + i, upl.second + j) += a * x.mat(x.upl.first + i, x.upl.second + j);
+        }
+      }
+      return *this;
+    }
+
+    Slice& axpy(T a, const CSlice& x) {
+      axpy(a, x.m_slice);
       return *this;
     }
 

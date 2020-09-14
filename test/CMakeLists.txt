@@ -26,3 +26,4 @@ endforeach ()
 file(COPY ../examples/bh.hamiltonian DESTINATION .)
 
 add_subdirectory(array)
+add_subdirectory(itsolv)

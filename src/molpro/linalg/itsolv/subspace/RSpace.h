@@ -60,9 +60,11 @@ public:
         assign_param_to_last[i] = i;
     else
       assign_param_to_last = rspace::assign_new_parameters_to_last(parameters, m_last_params, m_handlers->qr());
+    m_working_set.clear();
     for (const auto& param_to_last : assign_param_to_last) {
       m_params[param_to_last.second] = parameters[param_to_last.first];
       m_actions[param_to_last.second] = actions[param_to_last.first];
+      m_working_set.emplace_back(param_to_last.second);
     }
     for (size_t i = 0; i < m_params.size(); ++i) {
       auto norm = std::sqrt(m_handlers->rr().dot(m_params[i], m_params[i]));
@@ -72,7 +74,6 @@ public:
     }
     data[EqnData::S] = util::overlap(wrap(m_params), m_handlers->rr());
     data[EqnData::H] = util::overlap(wrap(m_params), wrap(m_actions), m_handlers->rr());
-    auto working_set = solver.working_set();
   }
 
   size_t size() { return data.at(EqnData::H).rows(); }

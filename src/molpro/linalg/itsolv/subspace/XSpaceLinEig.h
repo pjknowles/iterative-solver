@@ -12,8 +12,8 @@ namespace itsolv {
 namespace subspace {
 
 template <class R, class Q, class P, typename scalar_type>
-class XSpaceLinEig : public XSpace<RSpace<R, Q>, QSpace<R, Q, P>, PSpace<R, P>> {
-  using XS = XSpace<RSpace<R, Q>, QSpace<R, Q, P>, PSpace<R, P>>;
+class XSpaceLinEig : public XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>> {
+  using XS = XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>>;
 
 public:
   using typename XS::PS;

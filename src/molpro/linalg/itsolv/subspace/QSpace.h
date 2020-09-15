@@ -33,10 +33,10 @@ void expand_subspace(SubspaceData& qq, SubspaceData& qr, SubspaceData& rq, const
 
 template <class R, class Q, class P>
 struct QSpace {
-  using typename RSpace<R, Q>::VecRefR;
+  using typename RSpace<R, Q, P>::VecRefR;
   SubspaceData data = null_data<EqnData::H, EqnData::S>();
 
-  void update(const RSpace<R, Q>& rs, IterativeSolver<R, Q, P>& solver) {
+  void update(const RSpace<R, Q, P>& rs, IterativeSolver<R, Q, P>& solver) {
     for (auto root : solver.working_set()) {
       auto qvecs = rs.dummy();
       update(rs.params().at(root), rs.actions().at(root), rs.last_params().at(root), rs.last_actions().at(root),
@@ -81,10 +81,10 @@ struct QSpaceLE : public QSpace<R, Q, P> {
   using QSpace<R, Q, P>::data;
   QSpaceLE() : QSpace<R, Q, P>() { data = null_data<EqnData::H, EqnData::S, EqnData::rhs>; }
 
-  void update(const RSpace<R, Q>& rs, LinearEigensystem<R, Q, P>& solver) { QSpace<R, Q, P>::update(rs, solver); }
+  void update(const RSpace<R, Q, P>& rs, LinearEigensystem<R, Q, P>& solver) { QSpace<R, Q, P>::update(rs, solver); }
 };
 
-} // namespace detail
+} // namespace subspace
 } // namespace itsolv
 } // namespace linalg
 } // namespace molpro

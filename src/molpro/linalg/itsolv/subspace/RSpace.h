@@ -1,7 +1,10 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_RSPACE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_RSPACE_H
+#include <memory>
+#include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceData.h>
+#include <molpro/linalg/itsolv/subspace/util.h>
 
 namespace molpro {
 namespace linalg {
@@ -16,19 +19,53 @@ void update_rspace(SubspaceData& rs, const std::vector<R>& parameters, const std
 template <class R, class Q, class P>
 void update_rspace_rhs(SubspaceData& rs, const std::vector<R>& parameters, const std::vector<R>& action,
                        LinearEigensystem<R, Q, P>& solver);
+
+//! Assigns new parameters to previous based on maximum of their overlap.
+template <class R, class Q>
+std::map<size_t, size_t> assign_new_parameters_to_last(const std::vector<R>& new_params,
+                                                       const std::map<size_t, Q>& last_params,
+                                                       array::ArrayHandler<Q, R>& handler) {
+  using util::overlap;
+  using util::wrap;
+  assert(new_params.size() >= last_params.size());
+  auto ov = overlap(wrap(last_params), wrap(new_params), handler);
+  auto assign_param_to_last = std::map<size_t, size_t>{};
+  while (!ov.empty()) {
+    auto imax = std::max_element(begin(ov.data()), end(ov.data()));
+    auto ind = ov.to_coord(distance(ov.data().begin(), imax));
+    assign_param_to_last[ind.second] = ind.first;
+    ov.remove_row(ind.first);
+  }
+  assert(assign_param_to_last.size() == last_params.size());
+  return assign_param_to_last;
+}
+
 } // namespace rspace
 
-//!
-template <class R, class Q>
+//! Space for the working set of vectors
+template <class R, class Q, class P>
 class RSpace {
 public:
   using MapRefR = std::map<size_t, std::reference_wrapper<R>>;
 
+  //! Matrix and overlap data mapped to the subspace
   SubspaceData data = null_data<EqnData::H, EqnData::S>();
 
-  template <class P>
-  void update(const std::vector<R>& parameters, const std::vector<R>& action, IterativeSolver<R, Q, P>& solver) {
-    //    detail::update_rspace(subspace, parameters, action);
+  explicit RSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers) : m_handlers(std::move(handlers)) {}
+
+  void update(const std::vector<R>& parameters, const std::vector<R>& actions, IterativeSolver<R, Q, P>& solver) {
+    auto assign_param_to_last = std::map<size_t, size_t>{};
+    if (m_last_params.empty())
+      for (size_t i = 0; i < parameters; ++i)
+        assign_param_to_last[i] = i;
+    else
+      assign_param_to_last = rspace::assign_new_parameters_to_last(parameters, m_last_params, m_handlers->qr());
+    for (const auto& param_to_last : assign_param_to_last) {
+      m_params[param_to_last.second] = parameters[param_to_last.first];
+      m_actions[param_to_last.second] = actions[param_to_last.first];
+    }
+    data[EqnData::S] = util::overlap(m_params, m_handlers->rr());
+    data[EqnData::H] = util::overlap(m_params, m_actions, m_handlers->rr());
     auto working_set = solver.working_set();
     // normalise parameters
     // overlap matrix with previous parameters
@@ -59,6 +96,7 @@ public:
   auto& last_actions() const { return m_last_actions; }
 
 protected:
+  std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::vector<size_t> m_working_set; //!< working set of roots
   MapRefR m_params;                  //!< solutions at this iteration forming the RSpace, mapped to root indices
   MapRefR m_actions;                 //!< action vector corresponding to m_params
@@ -68,20 +106,22 @@ protected:
 };
 
 //! RSpace for LinearEquations solver
-template <class R, class Q>
-class RSpaceLEq : public RSpace<R, Q> {
+template <class R, class Q, class P>
+class RSpaceLEq : public RSpace<R, Q, P> {
 public:
-  using RSpace<R, Q>::data;
-  RSpaceLEq() : RSpace<R, Q>() { data = null_data<EqnData::H, EqnData::S, EqnData::rhs>; }
+  using RSpace<R, Q, P>::data;
 
-  template <class P>
+  explicit RSpaceLEq(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers) : RSpace<R, Q, P>(std::move(handlers)) {
+    data = null_data<EqnData::H, EqnData::S, EqnData::rhs>;
+  }
+
   void update(const std::vector<R>& parameters, const std::vector<R>& action, LinearEquations<R, Q, P>& solver) {
-    RSpace<R, Q>::update_rspace(data, parameters, action, solver);
+    RSpace<R, Q, P>::update_rspace(data, parameters, action, solver);
     // now update RHS vector
   }
 };
 
-} // namespace detail
+} // namespace subspace
 } // namespace itsolv
 } // namespace linalg
 } // namespace molpro

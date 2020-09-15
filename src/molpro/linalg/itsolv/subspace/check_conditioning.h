@@ -12,8 +12,8 @@ namespace subspace {
 namespace xspace {
 
 template <class R, class P, class Q>
-void check_conditioning(XSpace<RSpace<R, Q>, QSpace<R, Q, P>, PSpace<R, P>>& xs, RSpace<R, Q>& rs, QSpace<R, Q, P>& qs,
-                        PSpace<R, P>& ps) {
+void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>>& xs, RSpace<R, Q, P>& rs,
+                        QSpace<R, Q, P>& qs, PSpace<R, P>& ps) {
   // TODO implement and move to a free function
   // get list of candidates for modification
   bool stable = false;

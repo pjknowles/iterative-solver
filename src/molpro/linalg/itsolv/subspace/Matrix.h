@@ -52,6 +52,9 @@ public:
   //! Access the underlying data buffer
   const std::vector<T>& data() const { return m_buffer; }
 
+  //! Returns true if matrix is empty
+  bool empty() const { return size() == 0; }
+
   //! Converts index of 1D data to matrix coordinate
   coord_type to_coord(size_t ind) const {
     if (ind >= size())

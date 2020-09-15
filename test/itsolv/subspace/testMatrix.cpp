@@ -37,10 +37,21 @@ struct MatrixF : ::testing::Test {
         m(i, j) = ij;
   }
 
+  using coord_type = Matrix<double>::coord_type;
   const size_t r = 3;
   const size_t c = 4;
   Matrix<double> m;
 };
+
+TEST_F(MatrixF, to_coord) {
+  ASSERT_EQ(m.to_coord(0), (coord_type{0, 0}));
+  ASSERT_EQ(m.to_coord(1), (coord_type{0, 1}));
+  ASSERT_EQ(m.to_coord(c), (coord_type{1, 0}));
+  ASSERT_EQ(m.to_coord(c + 1), (coord_type{1, 1}));
+  ASSERT_EQ(m.to_coord(2 * c + 2), (coord_type{2, 2}));
+  ASSERT_EQ(m.to_coord(m.size() - 1), (coord_type{r - 1, c - 1}));
+  ASSERT_THROW(m.to_coord(m.size()), std::out_of_range);
+}
 
 TEST_F(MatrixF, fill) {
   const double value = 3.14;

@@ -52,6 +52,15 @@ public:
   //! Access the underlying data buffer
   const std::vector<T>& data() const { return m_buffer; }
 
+  //! Converts index of 1D data to matrix coordinate
+  coord_type to_coord(size_t ind) const {
+    if (ind >= size())
+      throw std::out_of_range("index is larger than size");
+    auto row = ind / m_cols;
+    auto col = ind - row * m_cols;
+    return {row, col};
+  }
+
   //! Sets all elements of matrix to value
   void fill(T value) { std::fill(begin(m_buffer), end(m_buffer), value); }
 

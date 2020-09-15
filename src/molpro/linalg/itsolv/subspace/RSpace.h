@@ -12,14 +12,6 @@ namespace itsolv {
 namespace subspace {
 
 namespace rspace {
-
-template <class R, class Q, class P>
-void update_rspace(SubspaceData& rs, const std::vector<R>& parameters, const std::vector<R>& action);
-
-template <class R, class Q, class P>
-void update_rspace_rhs(SubspaceData& rs, const std::vector<R>& parameters, const std::vector<R>& action,
-                       LinearEigensystem<R, Q, P>& solver);
-
 //! Assigns new parameters to previous based on maximum of their overlap.
 template <class R, class Q>
 std::map<size_t, size_t> assign_new_parameters_to_last(const std::vector<R>& new_params,

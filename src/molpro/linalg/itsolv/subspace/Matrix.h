@@ -97,21 +97,25 @@ public:
   void resize(const coord_type& dims) {
     if (dims == dimensions())
       return;
-    auto m = Matrix<T>(dims);
-    auto upper_left = coord_type{0, 0};
-    auto bottom_right = coord_type{std::min(rows(), m.rows()), std::min(cols(), m.cols())};
-    slice(upper_left, bottom_right) = m.slice(upper_left, bottom_right);
-    std::swap(*this, m);
+    if (dims.second == m_cols) {
+      m_rows = dims.first;
+      m_buffer.resize(size());
+    } else {
+      auto m = Matrix<T>(dims);
+      auto upper_left = coord_type{0, 0};
+      auto bottom_right = coord_type{std::min(rows(), m.rows()), std::min(cols(), m.cols())};
+      slice(upper_left, bottom_right) = m.slice(upper_left, bottom_right);
+      std::swap(*this, m);
+    }
   }
 
   //! removes a row from the matrix @param row index of the row to remove
   void remove_row(index_type row) {
     if (row >= m_rows)
       throw std::runtime_error("row is out of range");
-    auto m = Matrix<T>({m_rows - 1, m_cols});
-    m.slice({0, 0}, {row, m_cols}) = slice({0, 0}, {row, m_cols});
-    m.slice({row, 0}, m.dimensions()) = slice({row + 1, 0}, dimensions());
-    std::swap(*this, m);
+    slice({0, 0}, {row, m_cols}) = slice({0, 0}, {row, m_cols});
+    slice({row, 0}, {m_rows - 1, m_cols}) = slice({row + 1, 0}, dimensions());
+    resize({m_rows - 1, m_cols});
   }
 
   index_type rows() const { return m_rows; }

@@ -76,7 +76,7 @@ public:
     data[EqnData::H] = util::overlap(wrap(m_params), wrap(m_actions), m_handlers->rr());
   }
 
-  size_t size() { return data.at(EqnData::H).rows(); }
+  size_t size() { return m_params.size(); }
 
   auto& dummy() const {
     assert(!m_params.empty() && "must add parameters to the RSpace first");

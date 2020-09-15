@@ -27,6 +27,16 @@ std::vector<std::reference_wrapper<R>> wrap(const std::map<size_t, R>& vec) {
   return w;
 }
 
+//! Takes a map of container references and returns a vector in the same order
+template <class R>
+std::vector<std::reference_wrapper<R>> wrap(const std::map<size_t, std::reference_wrapper<R>>& vec) {
+  auto w = std::vector<std::reference_wrapper<R>>{};
+  for (const auto& v : vec) {
+    w.emplace_back(v.second);
+  }
+  return w;
+}
+
 //! Calculates overlap matrix between left and right vectors
 template <class R, class Q>
 Matrix<double> overlap(const std::vector<std::reference_wrapper<R>>& left,

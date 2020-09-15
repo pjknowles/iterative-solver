@@ -38,7 +38,7 @@ struct OverlapF : ::testing::Test {
 };
 
 TEST_F(OverlapF, null_vectors) {
-  auto m = overlap({}, {}, handler.rr());
+  auto m = overlap<R, R>({}, {}, handler.rr());
   ASSERT_TRUE(m.empty());
 }
 

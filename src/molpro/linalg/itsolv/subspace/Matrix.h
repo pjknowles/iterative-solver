@@ -55,7 +55,12 @@ public:
   //! Sets all elements of matrix to value
   void fill(T value) { std::fill(begin(m_buffer), end(m_buffer), value); }
 
-  //! Access a rectangular slice of the matrix.
+  /*!
+   * @brief Access a rectangular slice of the matrix.
+   * @param upper_left indices of upper left corner
+   * @param bottom_right past the end indices of bottom right corner, so that dimensions of slice were
+   *                     (bottom_right-upper_left)
+   */
   Slice slice(coord_type upper_left, coord_type bottom_right) {
     return Slice(*this, std::move(upper_left), std::move(bottom_right));
   }
@@ -63,7 +68,12 @@ public:
   //! Access the whole matrix as a slice
   Slice slice() { return slice({0, 0}, dimensions()); }
 
-  //! Access a constant rectangular slice of the matrix.
+  /*!
+   * @brief Access a constant rectangular slice of the matrix.
+   * @param upper_left indices of upper left corner
+   * @param bottom_right past the end indices of bottom right corner, so that dimensions of slice were
+   *                     (bottom_right-upper_left)
+   */
   CSlice slice(coord_type upper_left, coord_type bottom_right) const {
     return CSlice(*this, std::move(upper_left), std::move(bottom_right));
   }
@@ -79,6 +89,16 @@ public:
     auto upper_left = coord_type{0, 0};
     auto bottom_right = coord_type{std::min(rows(), m.rows()), std::min(cols(), m.cols())};
     slice(upper_left, bottom_right) = m.slice(upper_left, bottom_right);
+    std::swap(*this, m);
+  }
+
+  //! removes a row from the matrix @param row index of the row to remove
+  void remove_row(index_type row) {
+    if (row >= m_rows)
+      throw std::runtime_error("row is out of range");
+    auto m = Matrix<T>({m_rows - 1, m_cols});
+    m.slice({0, 0}, {row, m_cols}) = slice({0, 0}, {row, m_cols});
+    m.slice({row, 0}, m.dimensions()) = slice({row + 1, 0}, dimensions());
     std::swap(*this, m);
   }
 

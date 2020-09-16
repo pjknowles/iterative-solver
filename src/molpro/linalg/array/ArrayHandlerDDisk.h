@@ -35,6 +35,7 @@ public:
   using ArrayHandler<AL, AR>::error;
 
   AL copy(const AR &source) override { return m_copy_func(source); };
+  void copy(AL &x, const AR &y) override { x.copy(y); };
 
   void scal(value_type alpha, AL &x) override { x.scal(alpha); }
 

@@ -20,6 +20,8 @@ public:
 
   AL copy(const AR &source) override { return AL{source}; };
 
+  void copy(AL &x, const AR &y) override { x = y; };
+
   void scal(value_type alpha, AL &x) override { x.scal(alpha); }
 
   void fill(value_type alpha, AL &x) override { x.fill(alpha); }

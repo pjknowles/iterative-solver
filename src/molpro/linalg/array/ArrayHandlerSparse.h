@@ -21,6 +21,13 @@ public:
 
   AL copy(const AR &source) override { return AL{source.begin(), source.end()}; };
 
+  void copy(AL &x, const AR &y) override {
+    using std::begin;
+    using std::end;
+    x.clear();
+    std::copy(begin(y), end(y), std::inserter(x, x.begin()));
+  };
+
   void scal(value_type alpha, AL &x) override {
     for (auto &el : x)
       el.second *= alpha;

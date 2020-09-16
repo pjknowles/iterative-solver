@@ -10,25 +10,42 @@ namespace itsolv {
 namespace subspace {
 
 namespace qspace {
+/*!
+ * @brief Parameter in the Q space. Can be a difference vector or a converged solution.
+ *
+ * Q space is constructed by appending differences with previous solution, normalised and orthogonalised (w.r.t working
+ * param), and by appending converged solutions.
+ *
+ * \f$ q = \alpha (r - \beta d)\f$
+ *
+ * @note I will assume difference vectors are not orthogonalised to make the maths simpler. I'll work it out later.
+ */
+template <class Q>
+struct QParam {
+  std::unique_ptr<Q> param;          //!< parameter
+  std::unique_ptr<Q> action;         //!< corresponding action
+  size_t root = 0;                   //!< corresponding root index
+  bool converged = false;            //!< whether this is a converged vector
+  double normalisation_constant = 1; //!< scaling constant which makes difference vector normalised, see \f$\alpha\f$
+  double orthogonalisation_constant =
+      1; //!< scaling constant which makes difference vector orthogonal to r, see \f$\beta\f$
 
-template <class R, class Q>
-std::pair<bool, std::pair<double, double>>
-generate_new_q(const std::map<size_t, std::reference_wrapper<R>>& params,
-               const std::map<size_t, std::reference_wrapper<R>>& actions, const std::vector<Q>& old_params,
-               const std::vector<Q>& old_actions, R& qparam, R& qaction, bool do_orthogonalise) {
-  // get diff and scaling constants
-  // abort if needed
-  // form qvec
-}
-
-template <class R, class Q>
-void expand_subspace(SubspaceData& qq, SubspaceData& qr, SubspaceData& rq, const R& param, const R& action,
-                     const std::vector<Q>& params, const std::vector<Q>& actions) {
-  // build qq subspace
-  // build qr subspace
-  // build rq subspace
-}
-
+  //! Merge this difference parameter with x, in a way that preserves the difference property (ability to reconstruct
+  //! previous parameters)
+  void merge(const QParam<Q>& x, array::ArrayHandler<Q, Q>& handler) {
+    if (converged || x.converged)
+      throw std::runtime_error("attempting to merge converged solutions");
+    if (root != x.root)
+      throw std::runtime_error("attempting to merge q vectors from different roots");
+    auto a = normalisation_constant / x.normalisation_constant;
+    handler.axpy(a, *x.param, *param);
+    handler.axpy(a, *x.action, *action);
+    auto dot = handler.dot(*param, *action);
+    normalisation_constant = 1. / std::sqrt(dot);
+    handler.scal(normalisation_constant, *param);
+    handler.scal(normalisation_constant, *action);
+  }
+};
 } // namespace qspace
 
 template <class R, class Q, class P>
@@ -37,51 +54,32 @@ struct QSpace {
   SubspaceData data = null_data<EqnData::H, EqnData::S>();
 
   void update(const RSpace<R, Q, P>& rs, IterativeSolver<R, Q, P>& solver) {
-    for (auto root : solver.working_set()) {
-      auto qvecs = rs.dummy();
-      update(rs.params().at(root), rs.actions().at(root), rs.last_params().at(root), rs.last_actions().at(root),
-             qvecs[0], qvecs[1], m_orthogonalise);
+    m_qr = null_data<EqnData::H, EqnData::S>();
+    m_rq = null_data<EqnData::H, EqnData::S>();
+    auto dummy = rs.dummy(2);
+    for (size_t i = 0; i < rs.working_set().size(); ++i) {
+      // construct difference vector
     }
+    // update subspace data. This has to be done with all new parameters for efficiency.
   }
 
-  void add_vector(const R& qparam, const R& qaction, size_t root) {
-    qspace::expand_subspace(data, m_qr, m_rq, m_qparams, m_qactions, qparam, qaction);
-    m_qparams.emplace(m_handlers->qr().copy(qparam));
-    m_qactions.emplace(m_handlers->qr().copy(qaction));
-    m_roots.emplace_back(root);
+  void add_converged(const R& param, const R& action, size_t root, ArrayHandlers<R, Q, P>& handlers) {
+    auto&& q = qspace::QParam<Q>{std::make_unique<Q>(handlers.qr().copy(param)),
+                                 std::make_unique<Q>(handlers.qr().copy(action)),
+                                 root,
+                                 true,
+                                 1,
+                                 1};
+    m_params.push_back(std::move(q));
+    // update qq
   }
 
 protected:
-  void update(const R& param, const R& action, const Q& last_param, const Q& last_action, R& qparam, R& qaction,
-              size_t root) {
-    auto optional_factors =
-        qspace::generate_new_q(param, action, last_param, last_action, qparam, qaction, m_orthogonalise);
-    if (optional_factors.first) {
-      // store scaling factors
-      add_vector(qparam, qaction, root);
-    }
-  }
-
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   SubspaceData m_qr = null_data<EqnData::H, EqnData::S>(); //!< QxR section of subspace data
   SubspaceData m_rq = null_data<EqnData::H, EqnData::S>(); //!< RxQ section of subspace data
-  std::list<Q> m_qparams;                                  //!< Q vectors forming the subspace
-  std::list<Q> m_qactions;                                 //!< action corresponding to each Q vector
-  std::vector<size_t> m_roots;                             //!< for each q vector stores the corresponding root index
+  std::list<qspace::QParam<Q>> m_params;                   //!< q vectors constructed as differences
   bool m_orthogonalise = true; //!< whether to orthogonalise a new Q vector relative to its R vector
-  /*
-   * Q vectors will be added, than merged or deleted.
-   * The subspace will need to modify the relevant rows and columns
-   * subspace.row(i)
-   */
-};
-
-template <class R, class Q, class P>
-struct QSpaceLE : public QSpace<R, Q, P> {
-  using QSpace<R, Q, P>::data;
-  QSpaceLE() : QSpace<R, Q, P>() { data = null_data<EqnData::H, EqnData::S, EqnData::rhs>; }
-
-  void update(const RSpace<R, Q, P>& rs, LinearEigensystem<R, Q, P>& solver) { QSpace<R, Q, P>::update(rs, solver); }
 };
 
 } // namespace subspace

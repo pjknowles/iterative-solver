@@ -52,10 +52,12 @@ template <class R, class Q, class P>
 struct QSpace {
   using typename RSpace<R, Q, P>::VecRefR;
   SubspaceData data = null_data<EqnData::H, EqnData::S>();
+  SubspaceData qr = null_data<EqnData::H, EqnData::S>(); //!< QxR section of subspace data
+  SubspaceData rq = null_data<EqnData::H, EqnData::S>(); //!< RxQ section of subspace data
 
   void update(const RSpace<R, Q, P>& rs, IterativeSolver<R, Q, P>& solver) {
-    m_qr = null_data<EqnData::H, EqnData::S>();
-    m_rq = null_data<EqnData::H, EqnData::S>();
+    qr = null_data<EqnData::H, EqnData::S>();
+    rq = null_data<EqnData::H, EqnData::S>();
     auto& dummy = rs.dummy(2);
     auto& qparam = dummy[0];
     auto& qaction = dummy[1];
@@ -99,10 +101,8 @@ struct QSpace {
 
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
-  SubspaceData m_qr = null_data<EqnData::H, EqnData::S>(); //!< QxR section of subspace data
-  SubspaceData m_rq = null_data<EqnData::H, EqnData::S>(); //!< RxQ section of subspace data
-  std::list<qspace::QParam<Q>> m_params;                   //!< q vectors constructed as differences
-  bool m_orthogonalise = true; //!< whether to orthogonalise a new Q vector relative to its R vector
+  std::list<qspace::QParam<Q>> m_params; //!< q vectors constructed as differences
+  bool m_orthogonalise = true;           //!< whether to orthogonalise a new Q vector relative to its R vector
 };
 
 } // namespace subspace

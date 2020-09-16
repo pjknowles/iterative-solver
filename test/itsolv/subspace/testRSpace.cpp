@@ -9,6 +9,7 @@ using molpro::linalg::itsolv::Statistics;
 using molpro::linalg::itsolv::subspace::EqnData;
 using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::RSpace;
+using molpro::linalg::itsolv::subspace::rspace::assign_new_parameters_to_last;
 using ::testing::DoubleEq;
 using ::testing::Each;
 using ::testing::Eq;
@@ -107,7 +108,26 @@ TEST_F(RSpaceF, update_same_vector_mulitple_times) {
   for (size_t i = 0; i < 4; ++i) {
     ASSERT_NO_THROW(rspace.update(param, action, solver));
     test_single(rspace, alpha, 1);
+    rspace.update_working_set({0});
   }
+}
+
+TEST_F(RSpaceF, update_working_set) {
+  auto param = std::vector<R>{{1, 2, 3}};
+  const auto alpha = 2.0;
+  auto action = param;
+  for (auto& x : action[0])
+    x *= alpha;
+  ASSERT_NO_THROW(rspace.update(param, action, solver));
+  test_single(rspace, alpha, 1);
+  rspace.update_working_set({0});
+  test_single(rspace, alpha, 1);
+  ASSERT_EQ(rspace.last_params().size(), 1);
+  ASSERT_EQ(rspace.last_actions().size(), 1);
+  rspace.update_working_set({});
+  ASSERT_EQ(rspace.last_params().size(), 0);
+  ASSERT_EQ(rspace.last_actions().size(), 0);
+  ASSERT_EQ(rspace.working_set().size(), 0);
 }
 
 TEST_F(RSpaceF, DISABLED_update_check_ordering) {
@@ -115,8 +135,10 @@ TEST_F(RSpaceF, DISABLED_update_check_ordering) {
   const auto size = param.size();
   ASSERT_NO_THROW(rspace.update(param, param, solver));
   test_single(rspace, 1, size);
+  rspace.update_working_set({0, 1, 2});
   ASSERT_NO_THROW(rspace.update(param, param, solver));
   test_single(rspace, 1, size, "update with the same parameters should leave order unchanged");
+  rspace.update_working_set({0, 1, 2});
   auto param_reverse = param;
   std::swap(param[0], param[2]);
   ASSERT_NO_THROW(rspace.update(param_reverse, param_reverse, solver));

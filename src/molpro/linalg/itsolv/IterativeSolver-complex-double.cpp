@@ -1,10 +1,11 @@
-#include <molpro/linalg/iterativesolver/helper-implementation.h>
+#include <complex>
+#include <molpro/linalg/itsolv/helper-implementation.h>
 namespace {
-using value_type = double;
+using value_type = std::complex<double>;
 }
 namespace molpro {
 namespace linalg {
-namespace iterativesolver {
+namespace itsolv {
 
 template int propose_singularity_deletion<value_type>(size_t n, size_t ndim, const value_type* m,
                                                       const std::vector<size_t>& candidates, double threshold);
@@ -24,6 +25,6 @@ template void solve_LinearEquations<value_type>(std::vector<value_type>& solutio
 
 template void solve_DIIS<value_type>(std::vector<value_type>& solution, const std::vector<value_type>& matrix,
                                      size_t dimension, double svdThreshold, int verbosity);
-} // namespace iterativesolver
+} // namespace itsolv
 } // namespace linalg
 } // namespace molpro

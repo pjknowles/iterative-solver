@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
       diagonals.reserve(n);
       for (auto i = 0; i < n; i++)
         diagonals.push_back(hmat[i + i * n]);
-      auto handlers = std::make_shared<molpro::linalg::iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>();
+      auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>();
       auto solver = molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector>{handlers};
       solver.m_verbosity = 1;
       solver.m_roots = nroot;

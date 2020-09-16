@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
       for (auto i = 0; i < n; i++)
         diagonals.push_back(matrix(i, i));
       auto solver = molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector>(
-          std::make_shared<molpro::linalg::iterativesolver::ArrayHandlers<Rvector, Qvector, Pvector>>());
+          std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>());
       auto handlers = solver.handlers();
       solver.m_verbosity = 1;
       solver.m_roots = nroot;

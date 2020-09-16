@@ -1,13 +1,13 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_H_
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_H_
 #include <complex>
+#include <cstddef>
 #include <molpro/iostream.h>
 #include <vector>
-#include <cstddef>
 
 namespace molpro {
 namespace linalg {
-namespace iterativesolver {
+namespace itsolv {
 template <typename T>
 struct is_complex : std::false_type {};
 
@@ -120,7 +120,7 @@ extern template void solve_LinearEquations<std::complex<double>>(
 extern template void solve_DIIS<std::complex<double>>(std::vector<std::complex<double>>& solution,
                                                       const std::vector<std::complex<double>>& matrix,
                                                       const size_t dimension, double svdThreshold, int verbosity = 0);
-} // namespace iterativesolver
+} // namespace itsolv
 } // namespace linalg
 } // namespace molpro
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_H_

@@ -14,7 +14,7 @@
 #include <molpro/linalg/array/Span.h>
 #include <molpro/linalg/array/util/Distribution.h>
 #include <molpro/linalg/array/util/gather_all.h>
-#include <molpro/linalg/iterativesolver/ArrayHandlers.h>
+#include <molpro/linalg/itsolv/ArrayHandlers.h>
 
 using molpro::Profiler;
 using molpro::linalg::DIIS;
@@ -24,7 +24,7 @@ using molpro::linalg::LinearEquations;
 using molpro::linalg::Optimize;
 using molpro::linalg::array::Span;
 using molpro::linalg::array::util::gather_all;
-using molpro::linalg::iterativesolver::ArrayHandlers;
+using molpro::linalg::itsolv::ArrayHandlers;
 
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
 using Qvector = molpro::linalg::array::DistrArrayMPI3;
@@ -71,8 +71,8 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   int mpi_rank;
   MPI_Comm_rank(comm, &mpi_rank);
   auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
-  instances.emplace(Instance{std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers),
-                                                                                    profiler, n, comm});
+  instances.emplace(
+      Instance{std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers), profiler, n, comm});
   auto& instance = instances.top();
   instance.solver->m_roots = nroot;
   instance.solver->m_thresh = thresh;
@@ -119,11 +119,10 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
     rr.emplace_back(n, comm);
     auto rrrange = rr.back().distribution().range(mpi_rank);
     auto rrn = rrrange.second - rrrange.first;
-    rr.back().allocate_buffer(Span<Rvector::value_type>(&const_cast<double*>(rhs)[root * n +
-                                                                                                  rrrange.first], rrn));
+    rr.back().allocate_buffer(Span<Rvector::value_type>(&const_cast<double*>(rhs)[root * n + rrrange.first], rrn));
   }
-  instances.emplace(Instance{std::make_unique<LinearEquations<Rvector, Qvector, Pvector>>(rr, handlers, aughes),
-                                                                                   profiler, n, comm});
+  instances.emplace(
+      Instance{std::make_unique<LinearEquations<Rvector, Qvector, Pvector>>(rr, handlers, aughes), profiler, n, comm});
   auto& instance = instances.top();
   instance.solver->m_roots = nroot;
   instance.solver->m_thresh = thresh;
@@ -165,8 +164,8 @@ extern "C" void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size
   std::tie(range_begin, range_end) = x.distribution().range(mpi_rank);
 }
 extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
-                                                  int verbosity, char* algorithm, int minimize,
-                                                  const char* fname, int64_t fcomm, int lmppx) {
+                                                  int verbosity, char* algorithm, int minimize, const char* fname,
+                                                  int64_t fcomm, int lmppx) {
   std::shared_ptr<Profiler> profiler = nullptr;
   std::string pname(fname);
   int flag;
@@ -192,8 +191,8 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, 
   MPI_Comm_rank(comm, &mpi_rank);
   auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
   if (*algorithm)
-    instances.emplace(Instance{std::make_unique<Optimize<Rvector, Qvector>>(handlers, algorithm,
-                                                                                 minimize != 0), profiler, n, comm});
+    instances.emplace(
+        Instance{std::make_unique<Optimize<Rvector, Qvector>>(handlers, algorithm, minimize != 0), profiler, n, comm});
   else
     instances.emplace(Instance{std::make_unique<Optimize<Rvector, Qvector>>(handlers), profiler, n, comm});
   auto& instance = instances.top();
@@ -219,8 +218,8 @@ extern "C" size_t IterativeSolverAddValue(double value, double* parameters, doub
   auto ggrange = ggg.distribution().range(mpi_rank);
   auto ggn = ggrange.second - ggrange.first;
   ggg.allocate_buffer(Span<typename Rvector::value_type>(&action[ggrange.first], ggn));
-  size_t working_set_size = static_cast<Optimize<Rvector, Qvector>*>(instance.solver.get())->
-                                                     addValue(ccc, value, ggg) ? 1 : 0;
+  size_t working_set_size =
+      static_cast<Optimize<Rvector, Qvector>*>(instance.solver.get())->addValue(ccc, value, ggg) ? 1 : 0;
   if (sync) { // throw an error if communicator was not passed?
     gather_all(ccc.distribution(), ccomm, &parameters[0]);
     gather_all(ggg.distribution(), ccomm, &action[0]);
@@ -228,7 +227,8 @@ extern "C" size_t IterativeSolverAddValue(double value, double* parameters, doub
   return working_set_size;
 }
 
-extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync, int lmppx) {
+extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync,
+                                           int lmppx) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   if (instance.prof != nullptr)
@@ -377,13 +377,11 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
     cc.emplace_back(instance.dimension, ccomm);
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
-    cc.back().allocate_buffer(
-        Span<Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
+    cc.back().allocate_buffer(Span<Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
     gg.emplace_back(instance.dimension, ccomm);
     auto ggrange = gg.back().distribution().range(mpi_rank);
     auto ggn = ggrange.second - ggrange.first;
-    gg.back().allocate_buffer(
-        Span<Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
+    gg.back().allocate_buffer(Span<Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
   }
   std::vector<std::map<size_t, Rvector::value_type>> Pvectors;
   Pvectors.reserve(nP);

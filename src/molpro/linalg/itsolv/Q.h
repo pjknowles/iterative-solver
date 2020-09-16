@@ -3,14 +3,14 @@
 #include <cmath>
 #include <map>
 #include <memory>
-#include <molpro/linalg/iterativesolver/ArrayHandlers.h>
-#include <molpro/linalg/iterativesolver/P.h>
+#include <molpro/linalg/itsolv/ArrayHandlers.h>
+#include <molpro/linalg/itsolv/P.h>
 //#include <molpro/iostream.h>
 #include <vector>
 
 namespace molpro {
 namespace linalg {
-namespace iterativesolver {
+namespace itsolv {
 
 /*!
  * @brief A class holding a Q space
@@ -244,7 +244,7 @@ public:
     m_keys = keys();
   }
 };
-} // namespace iterativesolver
+} // namespace itsolv
 } // namespace linalg
 } // namespace molpro
 

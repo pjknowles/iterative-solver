@@ -4,11 +4,11 @@
 #include "parallel_util.h"
 #include <molpro/linalg/array/DistrArrayMPI3.h>
 #include <molpro/linalg/array/util.h>
-#include <molpro/linalg/iterativesolver/ArrayHandlers.h>
+#include <molpro/linalg/itsolv/ArrayHandlers.h>
 
 using molpro::linalg::array::DistrArrayMPI3;
 using molpro::linalg::array::util::LockMPI3;
-using molpro::linalg::iterativesolver::ArrayHandlers;
+using molpro::linalg::itsolv::ArrayHandlers;
 using molpro::linalg::test::mpi_comm;
 
 using ::testing::ContainerEq;

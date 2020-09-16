@@ -13,12 +13,13 @@
 #include <molpro/linalg/array/ArrayHandlerIterable.h>
 #include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
 #include <molpro/linalg/array/ArrayHandlerSparse.h>
+#include <molpro/linalg/itsolv/LinearEigensystemA.h>
 
 using molpro::linalg::array::ArrayHandler;
 using molpro::linalg::array::ArrayHandlerIterable;
 using molpro::linalg::array::ArrayHandlerIterableSparse;
 using molpro::linalg::array::ArrayHandlerSparse;
-using molpro::linalg::iterativesolver::ArrayHandlers;
+using molpro::linalg::itsolv::ArrayHandlers;
 namespace molpro {
 namespace linalg {
 

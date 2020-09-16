@@ -56,16 +56,39 @@ struct QSpace {
   void update(const RSpace<R, Q, P>& rs, IterativeSolver<R, Q, P>& solver) {
     m_qr = null_data<EqnData::H, EqnData::S>();
     m_rq = null_data<EqnData::H, EqnData::S>();
-    auto dummy = rs.dummy(2);
+    auto& dummy = rs.dummy(2);
+    auto& qparam = dummy[0];
+    auto& qaction = dummy[1];
     for (size_t i = 0; i < rs.working_set().size(); ++i) {
-      // construct difference vector
+      auto& param = rs.params()[i];
+      auto& action = rs.actions()[i];
+      auto& last_param = rs.last_params()[i];
+      auto& last_action = rs.last_actions()[i];
+      m_handlers->rq().copy(qparam, param);
+      m_handlers->rq().axpy(-1, last_param, qparam);
+      m_handlers->rq().axpy(-1, last_action, qaction);
+      auto qq = m_handlers->rr().dot(qparam, qparam);
+      auto norm = 1. / std::sqrt(qq);
+      // FIXME no orthogonalisation is done
+      // FIXME what do we do if norm is very small?
+      if (norm > 1.0e-14) {
+        m_handlers->rr().scal(norm, qparam);
+        m_handlers->rr().scal(norm, qaction);
+        auto&& q = qspace::QParam<Q>{std::make_unique<Q>(m_handlers.qr().copy(qparam)),
+                                     std::make_unique<Q>(m_handlers.qr().copy(qaction)),
+                                     rs.working_set()[i],
+                                     false,
+                                     norm,
+                                     1};
+        m_params.emplace_back(std::move(q));
+      }
     }
     // update subspace data. This has to be done with all new parameters for efficiency.
   }
 
-  void add_converged(const R& param, const R& action, size_t root, ArrayHandlers<R, Q, P>& handlers) {
-    auto&& q = qspace::QParam<Q>{std::make_unique<Q>(handlers.qr().copy(param)),
-                                 std::make_unique<Q>(handlers.qr().copy(action)),
+  void add_converged(const R& param, const R& action, size_t root) {
+    auto&& q = qspace::QParam<Q>{std::make_unique<Q>(m_handlers.qr().copy(param)),
+                                 std::make_unique<Q>(m_handlers.qr().copy(action)),
                                  root,
                                  true,
                                  1,

@@ -164,6 +164,8 @@ public:
   using value_type_abs = decltype(check_abs<value_type>());
 
   virtual AL copy(const AR &source) = 0;
+  //! Copy content of y into x
+  virtual void copy(AL &x, const AR &y) = 0;
   virtual void scal(value_type alpha, AL &x) = 0;
   virtual void fill(value_type alpha, AL &x) = 0;
   virtual void axpy(value_type alpha, const AR &x, AL &y) = 0;

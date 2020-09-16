@@ -31,10 +31,27 @@ TEST(Matrix, constructor) {
 struct MatrixF : ::testing::Test {
   MatrixF() : m({r, c}){};
 
+  void iota() {
+    for (size_t i = 0, ij = 0; i < m.rows(); ++i)
+      for (size_t j = 0; j < m.cols(); ++j, ++ij)
+        m(i, j) = ij;
+  }
+
+  using coord_type = Matrix<double>::coord_type;
   const size_t r = 3;
   const size_t c = 4;
   Matrix<double> m;
 };
+
+TEST_F(MatrixF, to_coord) {
+  ASSERT_EQ(m.to_coord(0), (coord_type{0, 0}));
+  ASSERT_EQ(m.to_coord(1), (coord_type{0, 1}));
+  ASSERT_EQ(m.to_coord(c), (coord_type{1, 0}));
+  ASSERT_EQ(m.to_coord(c + 1), (coord_type{1, 1}));
+  ASSERT_EQ(m.to_coord(2 * c + 2), (coord_type{2, 2}));
+  ASSERT_EQ(m.to_coord(m.size() - 1), (coord_type{r - 1, c - 1}));
+  ASSERT_THROW(m.to_coord(m.size()), std::out_of_range);
+}
 
 TEST_F(MatrixF, fill) {
   const double value = 3.14;
@@ -43,13 +60,25 @@ TEST_F(MatrixF, fill) {
 }
 
 TEST_F(MatrixF, assignment) {
-  for (size_t i = 0, ij = 0; i < m.rows(); ++i)
-    for (size_t j = 0; j < m.cols(); ++j, ++ij)
-      m(i, j) = ij;
+  iota();
   auto reference = std::vector<double>(m.size());
   std::iota(begin(reference), end(reference), 0.);
   ASSERT_THAT(m.data(), Pointwise(Eq(), reference));
 }
+
+TEST_F(MatrixF, remove_row) {
+  iota();
+  auto ref_remove = std::array<std::vector<double>, 3>{
+      {{4, 5, 6, 7, 8, 9, 10, 11}, {0, 1, 2, 3, 8, 9, 10, 11}, {0, 1, 2, 3, 4, 5, 6, 7}}};
+  auto dimensions = Matrix<double>::coord_type{r - 1, c};
+  for (size_t i = 0; i < 3; ++i) {
+    auto m0 = m;
+    m0.remove_row(i);
+    ASSERT_EQ(m0.dimensions(), dimensions);
+    ASSERT_THAT(m0.data(), Pointwise(Eq(), ref_remove[i])) << "removed row " << i;
+  }
+}
+
 TEST_F(MatrixF, slice_constructor) {
   ASSERT_NO_THROW((m.slice({0, 0}, {0, 0})));
   ASSERT_NO_THROW((m.slice({0, 0}, {r, c})));
@@ -60,8 +89,21 @@ TEST_F(MatrixF, slice_constructor) {
 
 TEST_F(MatrixF, slice_copy_empty) {
   auto m_right = m;
+  m.fill(0);
+  m_right.fill(1);
+  const auto reference = m.data();
   m.slice({0, 0}, {0, 0}) = m_right.slice({0, 0}, {0, 0});
-  ASSERT_THAT(m.data(), Pointwise(Eq(), m_right.data()));
+  ASSERT_THAT(m.data(), Pointwise(Eq(), reference));
+  m.slice({0, 0}, {0, c}) = m_right.slice({0, 0}, {0, c});
+  ASSERT_THAT(m.data(), Pointwise(Eq(), reference));
+  m.slice({0, 0}, {r, 0}) = m_right.slice({0, 0}, {r, 0});
+  ASSERT_THAT(m.data(), Pointwise(Eq(), reference));
+  m.slice({r, 0}, {r, c}) = m_right.slice({r, 0}, {r, c});
+  ASSERT_THAT(m.data(), Pointwise(Eq(), reference));
+  m.slice({0, c}, {r, c}) = m_right.slice({0, c}, {r, c});
+  ASSERT_THAT(m.data(), Pointwise(Eq(), reference));
+  m.slice({r, c}, {r, c}) = m_right.slice({r, c}, {r, c});
+  ASSERT_THAT(m.data(), Pointwise(Eq(), reference));
 }
 
 TEST_F(MatrixF, slice_no_params) {

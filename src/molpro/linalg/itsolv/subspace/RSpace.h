@@ -13,22 +13,27 @@ namespace itsolv {
 namespace subspace {
 
 namespace rspace {
-//! Assigns new parameters to previous based on maximum overlap.
+//! Assigns new parameters to previous based on maximum overlap. Ordering is by increasing root indices.
 template <class R, class Q>
-std::vector<size_t> assign_new_parameters_to_last(const std::vector<R>& new_params, const std::vector<Q>& last_params,
+std::vector<size_t> assign_last_parameters_to_new(const std::vector<Q>& last_params, const std::vector<R>& new_params,
                                                   array::ArrayHandler<Q, R>& handler) {
   using util::overlap;
   using util::wrap;
   assert(new_params.size() >= last_params.size());
   auto ov = overlap(wrap(last_params), wrap(new_params), handler);
-  auto assign_param_to_last = std::vector<size_t>(last_params.size());
-  for (size_t i = 0; i < ov.rows(); ++i) {
+  auto row_to_last = std::vector<size_t>(last_params.size());
+  std::iota(begin(row_to_last), end(row_to_last), size_t{0});
+  auto last_to_new = std::vector<size_t>(last_params.size());
+  while (!ov.empty()) {
     auto imax = std::max_element(begin(ov.data()), end(ov.data()));
-    auto ind = ov.to_coord(distance(ov.data().begin(), imax));
-    assign_param_to_last[ind.first] = ind.second;
-    ov.remove_row(ind.first);
+    auto row_col = ov.to_coord(distance(ov.data().begin(), imax));
+    auto last_ind = row_to_last[row_col.first];
+    auto new_ind = row_col.second;
+    last_to_new[last_ind] = new_ind;
+    ov.remove_row(row_col.first);
+    row_to_last.erase(row_to_last.begin() + row_col.first);
   }
-  return assign_param_to_last;
+  return last_to_new;
 }
 
 } // namespace rspace
@@ -45,16 +50,16 @@ public:
   explicit RSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers) : m_handlers(std::move(handlers)) {}
 
   void update(std::vector<R>& parameters, std::vector<R>& actions, IterativeSolver<R, Q, P>& solver) {
-    auto assign_param_to_last = std::vector<size_t>{};
+    auto ind_last_param_to_new = std::vector<size_t>{};
     if (m_last_params.empty()) {
       m_working_set.resize(parameters.size());
       std::iota(begin(m_working_set), end(m_working_set), size_t{0});
-      assign_param_to_last = m_working_set;
+      ind_last_param_to_new = m_working_set;
     } else
-      assign_param_to_last = rspace::assign_new_parameters_to_last(parameters, m_last_params, m_handlers->qr());
+      ind_last_param_to_new = rspace::assign_last_parameters_to_new(m_last_params, parameters, m_handlers->qr());
     m_params.clear();
     m_actions.clear();
-    for (const auto& param_to_last : assign_param_to_last) {
+    for (const auto& param_to_last : ind_last_param_to_new) {
       m_params.emplace_back(parameters[param_to_last]);
       m_actions.emplace_back(actions[param_to_last]);
     }

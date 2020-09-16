@@ -9,7 +9,7 @@ using molpro::linalg::itsolv::Statistics;
 using molpro::linalg::itsolv::subspace::EqnData;
 using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::RSpace;
-using molpro::linalg::itsolv::subspace::rspace::assign_new_parameters_to_last;
+using molpro::linalg::itsolv::subspace::rspace::assign_last_parameters_to_new;
 using ::testing::DoubleEq;
 using ::testing::Each;
 using ::testing::Eq;
@@ -112,6 +112,22 @@ TEST_F(RSpaceF, update_same_vector_mulitple_times) {
   }
 }
 
+TEST_F(RSpaceF, assign_new_parameters_to_last__stable_ordering) {
+  auto last_param = std::vector<R>{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+  auto assign_param_to_last = assign_last_parameters_to_new(last_param, last_param, handlers->qr());
+  ASSERT_THAT(assign_param_to_last, Pointwise(Eq(), std::vector<size_t>{0, 1, 2}))
+      << "same params should be in ascending order";
+  auto param = last_param;
+  std::swap(param[0], param[2]);
+  assign_param_to_last = assign_last_parameters_to_new(param, last_param, handlers->qr());
+  ASSERT_THAT(assign_param_to_last, Pointwise(Eq(), std::vector<size_t>{2, 1, 0})) << " reversed parameters";
+  param = last_param;
+  std::swap(param[0], param[1]);
+  std::swap(param[1], param[2]);
+  assign_param_to_last = assign_last_parameters_to_new(param, last_param, handlers->qr());
+  ASSERT_THAT(assign_param_to_last, Pointwise(Eq(), std::vector<size_t>{1, 2, 0})) << " cyclic permutation";
+}
+
 TEST_F(RSpaceF, update_working_set) {
   auto param = std::vector<R>{{1, 2, 3}};
   const auto alpha = 2.0;
@@ -130,7 +146,7 @@ TEST_F(RSpaceF, update_working_set) {
   ASSERT_EQ(rspace.working_set().size(), 0);
 }
 
-TEST_F(RSpaceF, DISABLED_update_check_ordering) {
+TEST_F(RSpaceF, update_check_ordering) {
   auto param = std::vector<R>{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
   const auto size = param.size();
   ASSERT_NO_THROW(rspace.update(param, param, solver));
@@ -140,8 +156,9 @@ TEST_F(RSpaceF, DISABLED_update_check_ordering) {
   test_single(rspace, 1, size, "update with the same parameters should leave order unchanged");
   rspace.update_working_set({0, 1, 2});
   auto param_reverse = param;
-  std::swap(param[0], param[2]);
+  std::swap(param_reverse[0], param_reverse[2]);
   ASSERT_NO_THROW(rspace.update(param_reverse, param_reverse, solver));
   ASSERT_EQ(rspace.size(), size);
-  ASSERT_THAT(rspace.working_set(), Pointwise(DoubleEq(), std::vector<size_t>{2, 1, 0}));
+  ASSERT_THAT(rspace.working_set(), Pointwise(DoubleEq(), std::vector<size_t>{0, 1, 2}))
+      << "changing order of input parameters does not change the order of the working set";
 }

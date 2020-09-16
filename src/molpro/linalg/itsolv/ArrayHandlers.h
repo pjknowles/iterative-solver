@@ -113,6 +113,9 @@ protected:
 };
 
 } // namespace itsolv
+namespace iterativesolver {
+using itsolv::ArrayHandlers;
+} // namespace iterativesolver
 } // namespace linalg
 } // namespace molpro
 

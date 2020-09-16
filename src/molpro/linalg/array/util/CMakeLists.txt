@@ -4,7 +4,7 @@ LibraryManager_Append(${PROJECT_NAME}
 if (MPI)
     LibraryManager_Append(${PROJECT_NAME}
             SOURCES DistrFlags.cpp
-            PUBLIC_HEADER DistrFlags.h)
+            PUBLIC_HEADER DistrFlags.h gather_all.h)
     if (LINEARALGEBRA_ARRAY_HDF5)
         LibraryManager_Append(${PROJECT_NAME}
                 SOURCES temp_phdf5_handle.cpp

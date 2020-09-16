@@ -80,7 +80,23 @@ public:
     return *m_dummy;
   }
 
-  //! Returns list of working set of roots. Each element corresponds to element in params.
+  //! Updates working set of vectors. @param working_vector_ind indices of params that are still part of the working set
+  void update_working_set(const std::vector<size_t>& working_vector_ind) {
+    assert(working_vector_ind.size() <= m_params.size());
+    m_last_params.clear();
+    m_last_actions.clear();
+    auto working_set_size = working_vector_ind.size();
+    auto new_working_set = m_working_set;
+    for (size_t i = 0; i < working_set_size; ++i) {
+      m_last_params.emplace_back(m_handlers->qr().copy(m_params.at(working_vector_ind[i])));
+      m_last_actions.emplace_back(m_handlers->qr().copy(m_actions.at(working_vector_ind[i])));
+      new_working_set[i] = m_working_set[working_vector_ind[i]];
+    }
+    new_working_set.resize(working_set_size);
+    m_working_set = new_working_set;
+  }
+
+  //! Returns list of root indices for each working vector. Each element corresponds to element in params.
   auto& working_set() const { return m_working_set; }
 
   auto& params() const { return m_params; }

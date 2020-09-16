@@ -76,12 +76,15 @@ public:
 
   size_t size() { return m_params.size(); }
 
-  auto& dummy() const {
+  /*!
+   * @brief Returns dummy containers that can be used as intermediates. Some parameters must first be assigned.
+   * @param n number of dummy containers required
+   */
+  auto& dummy(size_t n) const {
     assert(!m_params.empty() && "must add parameters to the RSpace first");
-    //    if (m_dummy.empty()){
-    //      m_dummy.emplace_back(std::make_shared<R>(m_handlers->rr().copy(m_params.front())));
-    //      m_dummy.emplace_back(std::make_shared<R>(m_handlers->rr().copy(m_actions.front())));
-    //    }
+    if (n > m_dummy.size())
+      for (size_t i = 0; i < n - m_dummy.size(); ++i)
+        m_dummy.emplace_back(m_handlers->rr().copy(m_params.front()));
     return *m_dummy;
   }
 
@@ -118,9 +121,9 @@ protected:
   std::vector<size_t> m_working_set; //!< working set of roots. Maps references of current params to starting roots
   VecRefR m_params;                  //!< solutions at this iteration forming the RSpace, mapped to root indices
   VecRefR m_actions;                 //!< action vector corresponding to m_params
-  mutable std::vector<std::shared_ptr<R>> m_dummy; //!< A dummy R vector which can be used as an intermediate
-  std::vector<Q> m_last_params;                    //!< parameters from previous iteration, mapped to root indices
-  std::vector<Q> m_last_actions;                   //!< actions from previous iteration, mapped to root indices
+  mutable std::vector<R> m_dummy;    //!< A dummy R vector which can be used as an intermediate
+  std::vector<Q> m_last_params;      //!< parameters from previous iteration, mapped to root indices
+  std::vector<Q> m_last_actions;     //!< actions from previous iteration, mapped to root indices
 };
 
 //! RSpace for LinearEquations solver

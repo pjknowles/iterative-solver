@@ -161,15 +161,23 @@ struct QSpace {
                                m_handlers->rq(), m_handlers->qr());
   }
 
-  void add_converged(const R& param, const R& action, size_t root) {
-    auto&& q = qspace::QParam<Q>{std::make_unique<Q>(m_handlers.qr().copy(param)),
-                                 std::make_unique<Q>(m_handlers.qr().copy(action)),
-                                 root,
-                                 true,
-                                 1,
-                                 1};
-    m_params.push_back(std::move(q));
-    // update qq
+  void add_converged(const VecRefR& params, VecRefR& actions, const std::vector<size_t>& roots) {
+    for (size_t i = 0; i < params.size(); ++i) {
+      auto&& q = qspace::QParam<Q>{std::make_unique<Q>(m_handlers.qr().copy(params[i])),
+                                   std::make_unique<Q>(m_handlers.qr().copy(actions[i])),
+                                   roots[i],
+                                   true,
+                                   1,
+                                   1};
+      m_params.emplace_back(std::move(q));
+    }
+    auto nQ = m_params.size();
+    auto nQnew = params.size();
+    auto nQprev = nQ - nQnew;
+    auto old_params_actions = qspace::wrap_params(m_params.begin(), next(m_params.begin(), nQprev));
+    auto new_params_actions = qspace::wrap_params(next(m_params.begin(), nQprev), m_params.end());
+    qspace::update_qq_subspace(old_params_actions[0], old_params_actions[1], new_params_actions[0],
+                               new_params_actions[1], data, m_handlers->qq());
   }
 
   //! Vector of root indices for r vectors that were used to generate new q vectors. Converged solutions are not

@@ -46,6 +46,69 @@ struct QParam {
     handler.scal(normalisation_constant, *action);
   }
 };
+
+//! Generates vector of reference wrappers to param and action in a range of QParam objects
+template <class Q, class ForwardIt>
+auto wrap_params(ForwardIt begin, ForwardIt end) {
+  using VecRefQ = std::vector<std::reference_wrapper<Q>>;
+  auto param_action = std::array<VecRefQ, 2>{};
+  for (auto it = begin; it != end; ++it) {
+    param_action[0].emplace_back(it->param);
+    param_action[1].emplace_back(it->action);
+  }
+  return param_action;
+}
+
+//! Updates equation data in the QxQ part of the subspace
+template <class Q>
+void update_qq_subspace(const std::vector<std::reference_wrapper<Q>>& old_params,
+                        const std::vector<std::reference_wrapper<Q>>& old_actions,
+                        const std::vector<std::reference_wrapper<Q>>& new_params,
+                        const std::vector<std::reference_wrapper<Q>>& new_actions, SubspaceData& data,
+                        array::ArrayHandler<Q, Q>& handler) {
+  auto nQold = old_params.size();
+  auto nQnew = new_params.size();
+  auto nQ = nQnew + nQold;
+  data[EqnData::S].resize({nQ, nQ});
+  data[EqnData::H].resize({nQ, nQ});
+  auto ov_params_old_new = util::overlap(old_params, new_params, handler);
+  auto ov_actions_old_new = util::overlap(old_actions, new_actions, handler);
+  auto ov_params_new_old = util::overlap(new_params, old_params, handler);
+  auto ov_actions_new_old = util::overlap(new_actions, old_actions, handler);
+  auto ov_params_new_new = util::overlap(new_params, new_params, handler);
+  auto ov_actions_new_new = util::overlap(new_actions, new_actions, handler);
+  data[EqnData::S].slice({nQold, 0}, {nQ, nQold}) = ov_params_new_old;
+  data[EqnData::H].slice({nQold, 0}, {nQ, nQold}) = ov_actions_new_old;
+  data[EqnData::S].slice({0, nQold}, {nQold, nQ}) = ov_params_old_new;
+  data[EqnData::H].slice({0, nQold}, {nQold, nQ}) = ov_actions_old_new;
+  data[EqnData::S].slice({nQold, nQold}, {nQ, nQ}) = ov_params_new_new;
+  data[EqnData::H].slice({nQold, nQold}, {nQ, nQ}) = ov_actions_new_new;
+}
+
+//! Updates equation data in the RxQ part of the subspace
+template <class R, class Q>
+void update_qr_subspace(const std::vector<std::reference_wrapper<Q>>& qparams,
+                        const std::vector<std::reference_wrapper<Q>>& qactions,
+                        const std::vector<std::reference_wrapper<Q>>& rparams,
+                        const std::vector<std::reference_wrapper<Q>>& ractions, SubspaceData& rq, SubspaceData& qr,
+                        array::ArrayHandler<Q, R>& handler_qr, array::ArrayHandler<R, Q>& handler_rq) {
+  auto nQ = qparams.size();
+  auto nR = rparams.size();
+  qr[EqnData::S].resize({nQ, nR});
+  qr[EqnData::H].resize({nQ, nR});
+  rq[EqnData::S].resize({nQ, nR});
+  rq[EqnData::H].resize({nQ, nR});
+  auto ov_params_qr = util::overlap(qparams, rparams, handler_qr);
+  auto ov_actions_qr = util::overlap(qactions, ractions, handler_qr);
+  // FIXME in hermitian cases rq is redundant
+  auto ov_params_rq = util::overlap(rparams, qparams, handler_rq);
+  auto ov_actions_rq = util::overlap(ractions, qactions, handler_rq);
+  qr[EqnData::S].slice() = ov_params_qr;
+  qr[EqnData::H].slice() = ov_actions_qr;
+  rq[EqnData::S].slice() = ov_params_rq;
+  rq[EqnData::H].slice() = ov_actions_rq;
+}
+
 } // namespace qspace
 
 template <class R, class Q, class P>
@@ -87,53 +150,15 @@ struct QSpace {
         m_used_working_set.emplace_back(rs.working_set()[i]);
       }
     }
-    auto old_params = VecRefQ{};
-    auto old_actions = VecRefQ{};
-    auto iq = m_params.begin();
-    auto nR = rs.size();
     auto nQ = m_params.size();
     auto nQprev = nQ - m_used_working_set.size();
-    auto end = std::next(m_params.begin(), nQprev);
-    for (; iq != end; ++iq) {
-      old_params.emplace(*iq->param);
-      old_actions.emplace(*iq->action);
-    }
-    auto new_params = VecRefQ{};
-    auto new_actions = VecRefQ{};
-    for (; iq != m_params.end(); ++iq) {
-      new_params.emplace(*iq->param);
-      new_actions.emplace(*iq->action);
-    }
-    auto all_params = VecRefQ{};
-    auto all_actions = VecRefQ{};
-    for (auto it = m_params.begin(); it != m_params.end(); ++it) {
-      all_params.emplace_back(it->param);
-      all_actions.emplace_back(it->actions);
-    }
-    auto ov_params_old_new = util::overlap(old_params, new_params, m_handlers->qq());
-    auto ov_actions_old_new = util::overlap(old_actions, new_actions, m_handlers->qq());
-    auto ov_params_new_old = util::overlap(new_params, old_params, m_handlers->qq());
-    auto ov_actions_new_old = util::overlap(new_actions, old_actions, m_handlers->qq());
-    auto ov_params_new_new = util::overlap(new_params, new_params, m_handlers->qq());
-    auto ov_actions_new_new = util::overlap(new_actions, new_actions, m_handlers->qq());
-    auto ov_params_qr = util::overlap(all_params, rs.params, m_handlers()->qr());
-    auto ov_actions_qr = util::overlap(all_actions, rs.actions, m_handlers()->qr());
-    // FIXME in hermitian cases rq is redundant
-    auto ov_params_rq = util::overlap(rs.params, all_params, m_handlers()->rq());
-    auto ov_actions_rq = util::overlap(rs.actions, all_actions, m_handlers()->rq());
-    data[EqnData::S].resize({nQ, nQ});
-    data[EqnData::H].resize({nQ, nQ});
-    data[EqnData::S].slice({nQprev, 0}, {nQ, nQprev}) = ov_params_new_old;
-    data[EqnData::H].slice({nQprev, 0}, {nQ, nQprev}) = ov_actions_new_old;
-    data[EqnData::S].slice({0, nQprev}, {nQprev, nQ}) = ov_params_old_new;
-    data[EqnData::H].slice({0, nQprev}, {nQprev, nQ}) = ov_actions_old_new;
-    data[EqnData::S].slice({nQprev, nQprev}, {nQ, nQ}) = ov_params_new_new;
-    qr[EqnData::S].resize({nQ, nR});
-    qr[EqnData::H].resize({nQ, nR});
-    qr[EqnData::S].slice() = ov_params_qr;
-    qr[EqnData::H].slice() = ov_actions_qr;
-    rq[EqnData::S].slice() = ov_params_rq;
-    rq[EqnData::H].slice() = ov_actions_rq;
+    auto all_params_actions = qspace::wrap_params(m_params.begin(), m_params.end());
+    auto old_params_actions = qspace::wrap_params(m_params.begin(), next(m_params.begin(), nQprev));
+    auto new_params_actions = qspace::wrap_params(next(m_params.begin(), nQprev), m_params.end());
+    qspace::update_qq_subspace(old_params_actions[0], old_params_actions[1], new_params_actions[0],
+                               new_params_actions[1], data, m_handlers->qq());
+    qspace::update_qr_subspace(all_params_actions[0], all_params_actions[1], rs.params(), rs.actions(), rq, qr,
+                               m_handlers->rq(), m_handlers->qr());
   }
 
   void add_converged(const R& param, const R& action, size_t root) {

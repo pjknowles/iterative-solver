@@ -111,14 +111,28 @@ void update_qr_subspace(const std::vector<std::reference_wrapper<Q>>& qparams,
 
 } // namespace qspace
 
+/*!
+ * @brief Container for building and managing the Q space parameters.
+ *
+ * **Add description of what Q space is**
+ *
+ * This QSpace is built as difference of current solutions from the previous.
+ * The difference vectors are normalised and can be optionally orthogonalised (not implemented yet).
+ *
+ * **Add documentation on merging or removing subspace elements**
+ *
+ * @tparam R array for R space
+ * @tparam Q array for Q space
+ * @tparam P array for P space
+ */
 template <class R, class Q, class P>
 struct QSpace {
   using typename RSpace<R, Q, P>::VecRefR;
   using VecRefQ = std::vector<std::reference_wrapper<Q>>;
 
-  SubspaceData data = null_data<EqnData::H, EqnData::S>();
-  SubspaceData qr = null_data<EqnData::H, EqnData::S>(); //!< QxR section of subspace data
-  SubspaceData rq = null_data<EqnData::H, EqnData::S>(); //!< RxQ section of subspace data
+  SubspaceData data = null_data<EqnData::H, EqnData::S>(); //!< QxQ block of subspace data
+  SubspaceData qr = null_data<EqnData::H, EqnData::S>();   //!< QxR block of subspace data
+  SubspaceData rq = null_data<EqnData::H, EqnData::S>();   //!< RxQ block of subspace data
 
   void update(const RSpace<R, Q, P>& rs, IterativeSolver<R, Q, P>& solver) {
     auto& dummy = rs.dummy(2);

@@ -123,15 +123,15 @@ void update_qq_subspace(const std::vector<std::reference_wrapper<Q>>& old_params
 template <class R, class Q>
 void update_qr_subspace(const std::vector<std::reference_wrapper<Q>>& qparams,
                         const std::vector<std::reference_wrapper<Q>>& qactions,
-                        const std::vector<std::reference_wrapper<Q>>& rparams,
-                        const std::vector<std::reference_wrapper<Q>>& ractions, SubspaceData& rq, SubspaceData& qr,
+                        const std::vector<std::reference_wrapper<R>>& rparams,
+                        const std::vector<std::reference_wrapper<R>>& ractions, SubspaceData& qr, SubspaceData& rq,
                         array::ArrayHandler<Q, R>& handler_qr, array::ArrayHandler<R, Q>& handler_rq) {
   auto nQ = qparams.size();
   auto nR = rparams.size();
   qr[EqnData::S].resize({nQ, nR});
   qr[EqnData::H].resize({nQ, nR});
-  rq[EqnData::S].resize({nQ, nR});
-  rq[EqnData::H].resize({nQ, nR});
+  rq[EqnData::S].resize({nR, nQ});
+  rq[EqnData::H].resize({nR, nQ});
   auto ov_params_qr = util::overlap(qparams, rparams, handler_qr);
   auto ov_actions_qr = util::overlap(qactions, ractions, handler_qr);
   // FIXME in hermitian cases rq is redundant
@@ -172,8 +172,6 @@ struct QSpace {
 
   void update(const RSpace<R, Q, P>& rs, IterativeSolver<R, Q, P>& solver) {
     auto& dummy = rs.dummy(2);
-    auto& qparam = dummy[0];
-    auto& qaction = dummy[1];
     auto result = qspace::update(dummy[0], dummy[1], rs.params(), rs.actions(), rs.last_params(), rs.last_actions(),
                                  rs.working_set(), m_handlers);
     auto& new_qparams = result.first;
@@ -184,7 +182,7 @@ struct QSpace {
     auto all_params_actions = qspace::wrap_params(m_params.begin(), m_params.end());
     qspace::update_qq_subspace(old_params_actions[0], old_params_actions[1], new_params_actions[0],
                                new_params_actions[1], data, m_handlers->qq());
-    qspace::update_qr_subspace(all_params_actions[0], all_params_actions[1], rs.params(), rs.actions(), rq, qr,
+    qspace::update_qr_subspace(all_params_actions[0], all_params_actions[1], rs.params(), rs.actions(), qr, rq,
                                m_handlers->rq(), m_handlers->qr());
   }
 

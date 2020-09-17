@@ -7,8 +7,12 @@
 using molpro::linalg::itsolv::ArrayHandlers;
 using molpro::linalg::itsolv::subspace::EqnData;
 using molpro::linalg::itsolv::subspace::Matrix;
+using molpro::linalg::itsolv::subspace::null_data;
 using molpro::linalg::itsolv::subspace::QSpace;
+using molpro::linalg::itsolv::subspace::SubspaceData;
 using molpro::linalg::itsolv::subspace::qspace::update;
+using molpro::linalg::itsolv::subspace::qspace::update_qq_subspace;
+using molpro::linalg::itsolv::subspace::qspace::update_qr_subspace;
 using molpro::linalg::itsolv::subspace::util::wrap;
 using ::testing::DoubleEq;
 using ::testing::Each;
@@ -20,6 +24,8 @@ namespace {
 using R = std::vector<double>;
 using Q = R;
 using P = std::map<size_t, double>;
+} // namespace
+
 // Simple test case
 struct QSpaceUpdateF : ::testing::Test {
   auto call_update() {
@@ -45,7 +51,6 @@ struct QSpaceUpdateF : ::testing::Test {
   DummySolver<R, Q, P> solver;
   ArrayHandlers<R, Q, P> handlers;
 };
-} // namespace
 
 TEST_F(QSpaceUpdateF, update_null) {
   auto result = call_update();
@@ -127,4 +132,47 @@ TEST_F(QSpaceUpdateF, update_difference_reproduces_new_params) {
   handlers.rr().axpy(1., last_params.front(), qdiff_params);
   ASSERT_THAT(qdiff_params, Pointwise(DoubleEq(), params.front()))
       << "adding difference vector to last should give back new params";
+}
+
+TEST(QSpaceUpdateSubspace, qq) {
+  auto old_params = std::vector<Q>{{10}, {20}};
+  auto new_params = std::vector<Q>{{1}, {2}, {3}};
+  SubspaceData qq = null_data<EqnData::H, EqnData::S>();
+  //@formatter:off
+  auto reference = std::vector<double>{
+     0,  0, 10, 20, 30,
+     0,  0, 20, 40, 60,
+    10, 20,  1,  2,  3,
+    20, 40,  2,  4,  6,
+    30, 60,  3,  6,  9
+  };
+  //@formatter:on
+  auto handler = ArrayHandlers<R, Q, P>{};
+  update_qq_subspace(wrap(old_params), wrap(old_params), wrap(new_params), wrap(new_params), qq, handler.qq());
+  ASSERT_THAT(qq[EqnData::S].data(), Pointwise(DoubleEq(), reference));
+  ASSERT_THAT(qq[EqnData::H].data(), Pointwise(DoubleEq(), reference));
+}
+
+TEST(QSpaceUpdateSubspace, qr) {
+  auto rparams = std::vector<R>{{10}, {20}};
+  auto qparams = std::vector<Q>{{1}, {2}, {3}};
+  SubspaceData qr = null_data<EqnData::H, EqnData::S>();
+  SubspaceData rq = null_data<EqnData::H, EqnData::S>();
+  //@formatter:off
+  auto reference_qr = std::vector<double>{
+      10, 20,
+      20, 40,
+      30, 60
+  };
+  auto reference_rq = std::vector<double>{
+      10, 20, 30,
+      20, 40, 60
+  };
+  //@formatter:on
+  auto handler = ArrayHandlers<R, Q, P>{};
+  update_qr_subspace(wrap(qparams), wrap(qparams), wrap(rparams), wrap(rparams), qr, rq, handler.qr(), handler.rq());
+  ASSERT_THAT(qr[EqnData::S].data(), Pointwise(DoubleEq(), reference_qr));
+  ASSERT_THAT(qr[EqnData::H].data(), Pointwise(DoubleEq(), reference_qr));
+  ASSERT_THAT(rq[EqnData::S].data(), Pointwise(DoubleEq(), reference_rq));
+  ASSERT_THAT(rq[EqnData::H].data(), Pointwise(DoubleEq(), reference_rq));
 }

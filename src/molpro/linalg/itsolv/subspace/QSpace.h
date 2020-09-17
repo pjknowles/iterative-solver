@@ -53,10 +53,44 @@ auto wrap_params(ForwardIt begin, ForwardIt end) {
   using VecRefQ = std::vector<std::reference_wrapper<Q>>;
   auto param_action = std::array<VecRefQ, 2>{};
   for (auto it = begin; it != end; ++it) {
-    param_action[0].emplace_back(it->param);
-    param_action[1].emplace_back(it->action);
+    param_action[0].emplace_back(*it->param);
+    param_action[1].emplace_back(*it->action);
   }
   return param_action;
+}
+
+//! Generate new difference vectors based on current and last working set
+template <class R, class Q, class P>
+std::pair<std::list<QParam<Q>>, std::vector<size_t>>
+update(R& qparam, R& qaction, const std::vector<std::reference_wrapper<R>>& params,
+       const std::vector<std::reference_wrapper<R>>& actions, const std::vector<std::reference_wrapper<R>>& last_params,
+       const std::vector<std::reference_wrapper<R>>& last_actions, const std::vector<size_t>& working_set,
+       ArrayHandlers<R, Q, P>& handlers) {
+  auto used_working_set = std::vector<size_t>{};
+  auto qparams = std::list<QParam<Q>>{};
+  for (size_t i = 0; i < working_set.size(); ++i) {
+    handlers.rq().copy(qparam, params.at(i));
+    handlers.rq().copy(qaction, actions.at(i));
+    handlers.rq().axpy(-1, last_params.at(i), qparam);
+    handlers.rq().axpy(-1, last_actions.at(i), qaction);
+    auto qq = handlers.rr().dot(qparam, qparam);
+    auto norm = std::sqrt(qq);
+    // FIXME no orthogonalisation is done
+    // FIXME what do we do if norm is very small?
+    if (norm > 1.0e-14) {
+      handlers.rr().scal(1. / norm, qparam);
+      handlers.rr().scal(1. / norm, qaction);
+      auto&& q = qspace::QParam<Q>{std::make_unique<Q>(handlers.qr().copy(qparam)),
+                                   std::make_unique<Q>(handlers.qr().copy(qaction)),
+                                   working_set[i],
+                                   false,
+                                   1. / norm,
+                                   1};
+      qparams.emplace_back(std::move(q));
+      used_working_set.emplace_back(working_set[i]);
+    }
+  }
+  return {std::move(qparams), used_working_set};
 }
 
 //! Updates equation data in the QxQ part of the subspace
@@ -127,7 +161,7 @@ void update_qr_subspace(const std::vector<std::reference_wrapper<Q>>& qparams,
  */
 template <class R, class Q, class P>
 struct QSpace {
-  using typename RSpace<R, Q, P>::VecRefR;
+  using VecRefR = typename RSpace<R, Q, P>::VecRefR;
   using VecRefQ = std::vector<std::reference_wrapper<Q>>;
 
   SubspaceData data = null_data<EqnData::H, EqnData::S>(); //!< QxQ block of subspace data
@@ -140,37 +174,14 @@ struct QSpace {
     auto& dummy = rs.dummy(2);
     auto& qparam = dummy[0];
     auto& qaction = dummy[1];
-    m_used_working_set.clear();
-    for (size_t i = 0; i < rs.working_set().size(); ++i) {
-      auto& param = rs.params()[i];
-      auto& action = rs.actions()[i];
-      auto& last_param = rs.last_params()[i];
-      auto& last_action = rs.last_actions()[i];
-      m_handlers->rq().copy(qparam, param);
-      m_handlers->rq().axpy(-1, last_param, qparam);
-      m_handlers->rq().axpy(-1, last_action, qaction);
-      auto qq = m_handlers->rr().dot(qparam, qparam);
-      auto norm = 1. / std::sqrt(qq);
-      // FIXME no orthogonalisation is done
-      // FIXME what do we do if norm is very small?
-      if (norm > 1.0e-14) {
-        m_handlers->rr().scal(norm, qparam);
-        m_handlers->rr().scal(norm, qaction);
-        auto&& q = qspace::QParam<Q>{std::make_unique<Q>(m_handlers.qr().copy(qparam)),
-                                     std::make_unique<Q>(m_handlers.qr().copy(qaction)),
-                                     rs.working_set()[i],
-                                     false,
-                                     norm,
-                                     1};
-        m_params.emplace_back(std::move(q));
-        m_used_working_set.emplace_back(rs.working_set()[i]);
-      }
-    }
-    auto nQ = m_params.size();
-    auto nQprev = nQ - m_used_working_set.size();
+    auto result = qspace::update(dummy[0], dummy[1], rs.params(), rs.actions(), rs.last_params(), rs.last_actions(),
+                                 rs.working_set(), m_handlers);
+    auto& new_qparams = result.first;
+    m_used_working_set = result.second;
+    auto old_params_actions = qspace::wrap_params(m_params.begin(), m_params.end);
+    auto new_params_actions = qspace::wrap_params(new_qparams.begin(), new_qparams.end());
+    m_params.splice(m_params.end(), new_qparams);
     auto all_params_actions = qspace::wrap_params(m_params.begin(), m_params.end());
-    auto old_params_actions = qspace::wrap_params(m_params.begin(), next(m_params.begin(), nQprev));
-    auto new_params_actions = qspace::wrap_params(next(m_params.begin(), nQprev), m_params.end());
     qspace::update_qq_subspace(old_params_actions[0], old_params_actions[1], new_params_actions[0],
                                new_params_actions[1], data, m_handlers->qq());
     qspace::update_qr_subspace(all_params_actions[0], all_params_actions[1], rs.params(), rs.actions(), rq, qr,

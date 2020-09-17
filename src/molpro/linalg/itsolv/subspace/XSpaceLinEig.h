@@ -41,7 +41,7 @@ public:
     auto nQ = qs.data.at(EqnData::H).rows();
     auto nR = rs.data.at(EqnData::H).rows();
     m_dim = Dimensions(nP, nQ, nR);
-    xspace::build_subspace_HS(data, rs.data, qs.data, qs.qr(), rs.rq(), ps.data, m_dim);
+    xspace::build_subspace_H_S(data, rs.data, qs.data, qs.qr(), rs.rq(), ps.data, m_dim);
   }
 
 protected:

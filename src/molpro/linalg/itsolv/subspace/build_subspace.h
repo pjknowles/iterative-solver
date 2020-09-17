@@ -8,14 +8,19 @@ namespace itsolv {
 namespace subspace {
 namespace xspace {
 struct Dimensions {
-  Dimensions() : Dimensions(0, 0, 0) {}
-  Dimensions(size_t np, size_t nq, size_t nr) : nP(np), nQ(nq), nR(nr), nX(nP + nQ + nR), oP(0), oQ(nP), oR(oQ + nQ) {}
-  size_t nP, nQ, nR, nX, oP, oQ, oR;
+  Dimensions(size_t np, size_t nq, size_t nr) : nP(np), nQ(nq), nR(nr) {}
+  const size_t nP = 0;
+  const size_t nQ = 0;
+  const size_t nR = 0;
+  const size_t nX = nP + nQ + nR;
+  const size_t oP = 0;
+  const size_t oQ = nP;
+  const size_t oR = oQ + nQ;
 };
 
 //! Combines data from P, Q, and R subspaces to form the X subspace
-void build_subspace_HS(SubspaceData& xx, const SubspaceData& rr, const SubspaceData& qq, const SubspaceData& qr,
-                       const SubspaceData& rq, const SubspaceData& pp, const Dimensions& d) {
+void build_subspace_H_S(SubspaceData& xx, const SubspaceData& rr, const SubspaceData& qq, const SubspaceData& qr,
+                        const SubspaceData& rq, const SubspaceData& pp, const Dimensions& d) {
   for (auto e : {EqnData::H, EqnData::S}) {
     xx.at(e).resize({d.nX, d.nX});
     xx.at(e).slice({d.oP, d.oP}, {d.nP, d.nP}) = pp.at(e);

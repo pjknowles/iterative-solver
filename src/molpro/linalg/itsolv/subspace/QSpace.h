@@ -134,6 +134,8 @@ struct QSpace {
   SubspaceData qr = null_data<EqnData::H, EqnData::S>();   //!< QxR block of subspace data
   SubspaceData rq = null_data<EqnData::H, EqnData::S>();   //!< RxQ block of subspace data
 
+  explicit QSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers) : m_handlers(std::move(handlers)) {}
+
   void update(const RSpace<R, Q, P>& rs, IterativeSolver<R, Q, P>& solver) {
     auto& dummy = rs.dummy(2);
     auto& qparam = dummy[0];

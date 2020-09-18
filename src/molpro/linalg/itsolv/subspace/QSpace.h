@@ -63,9 +63,10 @@ auto wrap_params(ForwardIt begin, ForwardIt end) {
 template <class R, class Q, class P>
 std::pair<std::list<QParam<Q>>, std::vector<size_t>>
 update(R& qparam, R& qaction, const std::vector<std::reference_wrapper<R>>& params,
-       const std::vector<std::reference_wrapper<R>>& actions, const std::vector<std::reference_wrapper<R>>& last_params,
-       const std::vector<std::reference_wrapper<R>>& last_actions, const std::vector<size_t>& working_set,
-       ArrayHandlers<R, Q, P>& handlers) {
+       const std::vector<std::reference_wrapper<R>>& actions, const std::vector<Q>& last_params,
+       const std::vector<Q>& last_actions, const std::vector<size_t>& working_set, ArrayHandlers<R, Q, P>& handlers) {
+  assert(params.size() == last_params.size() && params.size() == actions.size() &&
+         last_params.size() == last_actions.size() && "Must provide consistent number of input parameters");
   auto used_working_set = std::vector<size_t>{};
   auto qparams = std::list<QParam<Q>>{};
   for (size_t i = 0; i < working_set.size(); ++i) {
@@ -172,14 +173,14 @@ struct QSpace {
 
   void update(const RSpace<R, Q, P>& rs, IterativeSolver<R, Q, P>& solver) {
     auto& dummy = rs.dummy(2);
-    auto result = qspace::update(dummy[0], dummy[1], rs.params(), rs.actions(), rs.last_params(), rs.last_actions(),
-                                 rs.working_set(), m_handlers);
+    auto result = qspace::update(dummy.at(0), dummy.at(1), rs.params(), rs.actions(), rs.last_params(),
+                                 rs.last_actions(), rs.working_set(), *m_handlers);
     auto& new_qparams = result.first;
     m_used_working_set = result.second;
-    auto old_params_actions = qspace::wrap_params(m_params.begin(), m_params.end);
-    auto new_params_actions = qspace::wrap_params(new_qparams.begin(), new_qparams.end());
+    auto old_params_actions = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
+    auto new_params_actions = qspace::wrap_params<Q>(new_qparams.begin(), new_qparams.end());
     m_params.splice(m_params.end(), new_qparams);
-    auto all_params_actions = qspace::wrap_params(m_params.begin(), m_params.end());
+    auto all_params_actions = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
     qspace::update_qq_subspace(old_params_actions[0], old_params_actions[1], new_params_actions[0],
                                new_params_actions[1], data, m_handlers->qq());
     qspace::update_qr_subspace(all_params_actions[0], all_params_actions[1], rs.params(), rs.actions(), qr, rq,
@@ -199,8 +200,8 @@ struct QSpace {
     auto nQ = m_params.size();
     auto nQnew = params.size();
     auto nQprev = nQ - nQnew;
-    auto old_params_actions = qspace::wrap_params(m_params.begin(), next(m_params.begin(), nQprev));
-    auto new_params_actions = qspace::wrap_params(next(m_params.begin(), nQprev), m_params.end());
+    auto old_params_actions = qspace::wrap_params<Q>(m_params.begin(), next(m_params.begin(), nQprev));
+    auto new_params_actions = qspace::wrap_params<Q>(next(m_params.begin(), nQprev), m_params.end());
     qspace::update_qq_subspace(old_params_actions[0], old_params_actions[1], new_params_actions[0],
                                new_params_actions[1], data, m_handlers->qq());
   }

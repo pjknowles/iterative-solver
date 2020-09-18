@@ -9,6 +9,7 @@ using molpro::linalg::itsolv::subspace::EqnData;
 using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::null_data;
 using molpro::linalg::itsolv::subspace::QSpace;
+using molpro::linalg::itsolv::subspace::RSpace;
 using molpro::linalg::itsolv::subspace::SubspaceData;
 using molpro::linalg::itsolv::subspace::qspace::update;
 using molpro::linalg::itsolv::subspace::qspace::update_qq_subspace;
@@ -37,8 +38,7 @@ struct QSpaceUpdateF : ::testing::Test {
       working_set.resize(params.size());
       std::iota(begin(working_set), end(working_set), size_t{0});
     }
-    return update(qparam, qaction, wrap(params), wrap(actions), wrap(last_params), wrap(last_actions), working_set,
-                  handlers);
+    return update(qparam, qaction, wrap(params), wrap(actions), last_params, last_actions, working_set, handlers);
   }
 
   Q qparam{};
@@ -176,3 +176,33 @@ TEST(QSpaceUpdateSubspace, qr) {
   ASSERT_THAT(rq[EqnData::S].data(), Pointwise(DoubleEq(), reference_rq));
   ASSERT_THAT(rq[EqnData::H].data(), Pointwise(DoubleEq(), reference_rq));
 }
+
+//this is an overkill, but might be useful for other tests
+struct QSpaceEyeF : ::testing::Test {
+  QSpaceEyeF() : qspace(handlers) {}
+
+  void SetUp() override {
+    auto zero = R{0, 0, 0};
+    auto eye = std::vector<R>{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+    auto init_params = std::vector<R>{eye[0], eye[0]};
+    RSpace<R, Q, P> rspace{handlers};
+    rspace.update(init_params, init_params, solver);
+    rspace.update_working_set({0, 1});
+    auto rparams = std::list<std::vector<R>>{
+        {eye[1], eye[1]},
+        {eye[2], eye[2]},
+        {eye[3], eye[3]},
+    };
+    for (auto &p : rparams) {
+      rspace.update(p, p, solver);
+      qspace.update(rspace, solver);
+      rspace.update_working_set({0, 1});
+      ASSERT_EQ(qspace.used_working_set().size(), 2) << "building up q space two roots at a time";
+    }
+  }
+
+  std::shared_ptr<ArrayHandlers<R, Q, P>> handlers = std::make_shared<ArrayHandlers<R, Q, P>>();
+  QSpace<R, Q, P> qspace;
+  std::vector<size_t> working_set = {0, 1};
+  DummySolver<R, Q, P> solver;
+};

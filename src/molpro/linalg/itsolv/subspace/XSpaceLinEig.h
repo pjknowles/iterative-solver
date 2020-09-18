@@ -44,6 +44,8 @@ public:
     xspace::build_subspace_H_S(data, rs.data, qs.data, qs.qr(), rs.rq(), ps.data, m_dim);
   }
 
+  const xspace::Dimensions& dimensions() const override { return m_dim; }
+
 protected:
   xspace::Dimensions m_dim;
   double m_svd_stability_threshold =

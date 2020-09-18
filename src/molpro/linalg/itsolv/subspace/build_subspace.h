@@ -1,23 +1,12 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_BUILD_SUBSPACE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_BUILD_SUBSPACE_H
-#include <molpro/linalg/itsolv/subspace/SubspaceData.h>
+#include <molpro/linalg/itsolv/subspace/XSpace.h>
 
 namespace molpro {
 namespace linalg {
 namespace itsolv {
 namespace subspace {
 namespace xspace {
-struct Dimensions {
-  Dimensions(size_t np, size_t nq, size_t nr) : nP(np), nQ(nq), nR(nr) {}
-  const size_t nP = 0;
-  const size_t nQ = 0;
-  const size_t nR = 0;
-  const size_t nX = nP + nQ + nR;
-  const size_t oP = 0;
-  const size_t oQ = nP;
-  const size_t oR = oQ + nQ;
-};
-
 //! Combines data from P, Q, and R subspaces to form the X subspace
 void build_subspace_H_S(SubspaceData& xx, const SubspaceData& rr, const SubspaceData& qq, const SubspaceData& qr,
                         const SubspaceData& rq, const SubspaceData& pp, const Dimensions& d) {

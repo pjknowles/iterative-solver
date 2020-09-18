@@ -6,6 +6,19 @@ namespace molpro {
 namespace linalg {
 namespace itsolv {
 namespace subspace {
+namespace xspace {
+//! Stores partitioning of XSpace into P, Q and R blocks with sizes and offsets for each one
+struct Dimensions {
+  Dimensions(size_t np, size_t nq, size_t nr) : nP(np), nQ(nq), nR(nr) {}
+  const size_t nP = 0;
+  const size_t nQ = 0;
+  const size_t nR = 0;
+  const size_t nX = nP + nQ + nR;
+  const size_t oP = 0;
+  const size_t oQ = nP;
+  const size_t oR = oQ + nQ;
+};
+} // namespace xspace
 
 //! Base class for XSpace solvers
 template <class Rs, class Qs, class Ps>
@@ -34,6 +47,8 @@ public:
 
   //! Build the subspace matrices H, S etc.
   virtual void build_subspace(RS& rs, QS& qs, PS& ps) = 0;
+
+  virtual const xspace::Dimensions& dimensions() const = 0;
 };
 
 } // namespace subspace

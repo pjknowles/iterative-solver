@@ -210,6 +210,19 @@ struct QSpace {
   //! included.
   auto& used_working_set() const { return m_used_working_set; }
 
+  //! Returns indices of q parameters corresponding to root that can be modified. Converged solutions and latest q
+  //! vector for that root are excluded.
+  auto modification_candidates(size_t root) const {
+    auto candidates = std::vector<size_t>{};
+    size_t i = 0;
+    for (auto it = m_params.begin(); it != m_params.end(); ++it)
+      if (it->root == root)
+        candidates.emplace_back(i++);
+    if (!candidates.empty())
+      candidates.resize(candidates.size() - 1);
+    return candidates;
+  }
+
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::vector<size_t> m_used_working_set; //!< root indices of r vectors that were used to generate new q vectors

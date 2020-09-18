@@ -183,7 +183,7 @@ struct QSpaceEyeF : ::testing::Test {
 
   void SetUp() override {
     auto zero = R{0, 0, 0};
-    auto eye = std::vector<R>{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+    auto eye = std::vector<R>{{1, 0, 0, 0, 0}, {0, 1, 0, 0, 0}, {0, 0, 1, 0, 0}, {0, 0, 0, 1, 0}, {0, 0, 0, 0, 1}};
     auto init_params = std::vector<R>{eye[0], eye[0]};
     RSpace<R, Q, P> rspace{handlers};
     rspace.update(init_params, init_params, solver);
@@ -199,6 +199,12 @@ struct QSpaceEyeF : ::testing::Test {
       rspace.update_working_set({0, 1});
       ASSERT_EQ(qspace.used_working_set().size(), 2) << "building up q space two roots at a time";
     }
+    auto rparams_root_1 = std::vector<R>{eye[4]};
+    rspace.update_working_set({1});
+    rspace.update(rparams_root_1, rparams_root_1, solver);
+    qspace.update(rspace, solver);
+    rspace.update_working_set({0});
+    ASSERT_EQ(qspace.used_working_set().size(), 1) << "only root 1 at the end";
   }
 
   std::shared_ptr<ArrayHandlers<R, Q, P>> handlers = std::make_shared<ArrayHandlers<R, Q, P>>();
@@ -206,3 +212,19 @@ struct QSpaceEyeF : ::testing::Test {
   std::vector<size_t> working_set = {0, 1};
   DummySolver<R, Q, P> solver;
 };
+
+TEST_F(QSpaceEyeF, modification_candidates_null) {
+  auto qs = QSpace<R, Q, P>{handlers};
+  auto candidates = qs.modification_candidates(0);
+  ASSERT_TRUE(candidates.empty());
+}
+
+TEST_F(QSpaceEyeF, modification_candidates) {
+  auto candidates = qspace.modification_candidates(0);
+  ASSERT_FALSE(candidates.empty());
+  auto reference = std::vector<size_t>{0, 1};
+  ASSERT_THAT(candidates, Pointwise(Eq(), reference));
+  reference = std::vector<size_t>{0, 1, 2};
+  candidates = qspace.modification_candidates(1);
+  ASSERT_THAT(candidates, Pointwise(Eq(), reference));
+}

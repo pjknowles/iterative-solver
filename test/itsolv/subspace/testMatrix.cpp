@@ -79,6 +79,52 @@ TEST_F(MatrixF, remove_row) {
   }
 }
 
+TEST_F(MatrixF, remove_col) {
+  iota();
+  const auto columns = std::vector<size_t>{0, 2, 3};
+  //@formatter:off
+  auto ref_remove = std::array<std::vector<double>, 3>{
+      {{1, 2, 3,
+        5, 6, 7,
+        9, 10, 11},
+       {0, 1, 3,
+        4, 5, 7,
+        8, 9, 11},
+       {0, 1, 2,
+        4, 5, 6,
+        8, 9, 10}}};
+  //@formatter:on
+  auto dimensions = Matrix<double>::coord_type{r, c - 1};
+  for (size_t i = 0; i < columns.size(); ++i) {
+    auto m0 = m;
+    m0.remove_col(columns[i]);
+    ASSERT_EQ(m0.dimensions(), dimensions);
+    ASSERT_THAT(m0.data(), Pointwise(Eq(), ref_remove[i])) << "removed column " << columns[i];
+  }
+}
+
+TEST_F(MatrixF, remove_row_col) {
+  iota();
+  const auto row_col = std::vector<std::pair<size_t, size_t>>{{0, 0}, {1, 2}, {2, 3}};
+  //@formatter:off
+  auto ref_remove = std::array<std::vector<double>, 3>{
+      {{5, 6, 7,
+        9, 10,11},
+       {0, 1, 3,
+        8, 9, 11},
+       {0, 1, 2,
+        4, 5, 6,}}};
+  //@formatter:on
+  auto dimensions = Matrix<double>::coord_type{r-1, c - 1};
+  for (size_t i = 0; i < row_col.size(); ++i) {
+    auto m0 = m;
+    m0.remove_row_col(row_col[i].first, row_col[i].second);
+    ASSERT_EQ(m0.dimensions(), dimensions);
+    ASSERT_THAT(m0.data(), Pointwise(Eq(), ref_remove[i]))
+        << "removed row " << row_col[i].first << " and column " << row_col[i].second;
+  }
+}
+
 TEST_F(MatrixF, slice_constructor) {
   ASSERT_NO_THROW((m.slice({0, 0}, {0, 0})));
   ASSERT_NO_THROW((m.slice({0, 0}, {r, c})));

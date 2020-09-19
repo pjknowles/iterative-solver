@@ -114,9 +114,24 @@ public:
   void remove_row(index_type row) {
     if (row >= m_rows)
       throw std::runtime_error("row is out of range");
-    slice({0, 0}, {row, m_cols}) = slice({0, 0}, {row, m_cols});
     slice({row, 0}, {m_rows - 1, m_cols}) = slice({row + 1, 0}, dimensions());
     resize({m_rows - 1, m_cols});
+  }
+
+  //! removes a column from the matrix @param col index of the column to remove
+  void remove_col(index_type col) {
+    if (col >= m_cols)
+      throw std::runtime_error("column is out of range");
+    auto m = Matrix<T>({m_rows, m_cols - 1});
+    m.slice({0, 0}, {m_rows, col}) = slice({0, 0}, {m_rows, col});
+    m.slice({0, col}, {m_rows, m.m_cols}) = slice({0, col + 1}, dimensions());
+    *this = std::move(m);
+  }
+
+  //! removes row and column @param row row incdex @param col column index
+  void remove_row_col(index_type row, index_type col) {
+    remove_col(col);
+    remove_row(row);
   }
 
   index_type rows() const { return m_rows; }

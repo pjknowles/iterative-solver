@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_MATRIX_H
 #include <algorithm>
 #include <cstddef>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 

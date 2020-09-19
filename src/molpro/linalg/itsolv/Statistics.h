@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_STATISTICS_H_
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_STATISTICS_H_
+#include <ostream>
 namespace molpro {
 namespace linalg {
 namespace itsolv {

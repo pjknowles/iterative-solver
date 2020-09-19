@@ -211,3 +211,12 @@ TEST_F(MatrixF, slice_axpy) {
   m.slice().axpy(a, m_right.slice());
   ASSERT_THAT(m.data(), Each(Eq(alpha + a * beta)));
 }
+
+TEST_F(MatrixF, slice_scal) {
+  const double alpha = 3.14;
+  const double a = -0.5;
+  m.fill(alpha);
+  ASSERT_THAT(m.data(), Each(Eq(alpha)));
+  m.slice().scal(a);
+  ASSERT_THAT(m.data(), Each(Eq(alpha * a)));
+}

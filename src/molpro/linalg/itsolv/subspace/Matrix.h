@@ -191,6 +191,13 @@ protected:
       return *this;
     }
 
+    //! Scale all elements of the slice
+    Slice& scal(T a) {
+      for (size_t i = 0; i < dimensions().first; ++i)
+        for (size_t j = 0; j < dimensions().second; ++j)
+          mat(upl.first + i, upl.second + j) *= a;
+    }
+
     Slice& operator=(const CSlice& right) {
       *this = right.m_slice;
       return *this;

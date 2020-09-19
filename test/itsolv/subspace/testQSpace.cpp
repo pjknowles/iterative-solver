@@ -11,6 +11,10 @@ using molpro::linalg::itsolv::subspace::null_data;
 using molpro::linalg::itsolv::subspace::QSpace;
 using molpro::linalg::itsolv::subspace::RSpace;
 using molpro::linalg::itsolv::subspace::SubspaceData;
+using molpro::linalg::itsolv::subspace::qspace::merge_subspace_qq;
+using molpro::linalg::itsolv::subspace::qspace::merge_subspace_qr;
+using molpro::linalg::itsolv::subspace::qspace::merge_subspace_rq;
+using molpro::linalg::itsolv::subspace::qspace::QParam;
 using molpro::linalg::itsolv::subspace::qspace::update;
 using molpro::linalg::itsolv::subspace::qspace::update_qq_subspace;
 using molpro::linalg::itsolv::subspace::qspace::update_qr_subspace;
@@ -227,4 +231,72 @@ TEST_F(QSpaceEyeF, modification_candidates) {
   reference = std::vector<size_t>{1, 3, 5};
   candidates = qspace.modification_candidates(1);
   ASSERT_THAT(candidates, Pointwise(Eq(), reference));
+}
+
+struct QSpaceMergeF : ::testing::Test {
+  QSpaceMergeF() {
+    auto dummy = QParam<Q>{};
+    for (auto d : {EqnData::H, EqnData::S}) {
+      qq[d].resize({nq, nq});
+      qr[d].resize({nq, nr});
+      rq[d].resize({nr, nq});
+      qq[d].fill(alpha);
+      qr[d].fill(alpha);
+      rq[d].fill(alpha);
+    }
+  }
+
+  SubspaceData qq =null_data<EqnData::H,EqnData::S>();
+  SubspaceData qr =null_data<EqnData::H,EqnData::S>();
+  SubspaceData rq =null_data<EqnData::H,EqnData::S>();
+  const size_t nq = 3;
+  const size_t nr = 2;
+  const double alpha = 1.;
+  const double a = 2.;
+  const double b = 3.;
+};
+
+TEST_F(QSpaceMergeF, merge_qq) {
+  const size_t i = 0, j = 1;
+  merge_subspace_qq(i, j, a, b, qq);
+  auto dim_ref = Matrix<double>::coord_type{nq - 1, nq - 1};
+  auto ref_mat = Matrix<double>(dim_ref);
+  ref_mat.fill(alpha);
+  const auto result = a * alpha + b * alpha;
+  const auto diag = result * result;
+  ref_mat.slice({i, 0}, {i + 1, ref_mat.cols()}).fill(result);
+  ref_mat.slice({0, i}, {ref_mat.rows(), i + 1}).fill(result);
+  ref_mat(i,i) = diag;
+  for (auto d : {EqnData::H, EqnData::S}) {
+    ASSERT_EQ(qq[d].dimensions(), dim_ref);
+    ASSERT_THAT(qq[d].data(), Pointwise(DoubleEq(), ref_mat.data()));
+  }
+}
+
+TEST_F(QSpaceMergeF, merge_qr) {
+  const size_t i = 0, j = 1;
+  merge_subspace_qr(i, j, a, b, qr);
+  auto dim_ref = Matrix<double>::coord_type{nq - 1, nr};
+  auto ref_mat = Matrix<double>(dim_ref);
+  const auto result = a * alpha + b * alpha;
+  ref_mat.fill(alpha);
+  ref_mat.slice({i, 0}, {i + 1, ref_mat.cols()}).fill(result);
+  for (auto d : {EqnData::H, EqnData::S}) {
+    ASSERT_EQ(qr[d].dimensions(), dim_ref);
+    ASSERT_THAT(qr[d].data(), Pointwise(DoubleEq(), ref_mat.data()));
+  }
+}
+
+TEST_F(QSpaceMergeF, merge_rq) {
+  const size_t i = 0, j = 1;
+  merge_subspace_rq(i, j, a, b, rq);
+  auto dim_ref = Matrix<double>::coord_type{nr, nq - 1};
+  auto ref_mat = Matrix<double>(dim_ref);
+  const auto result = a * alpha + b * alpha;
+  ref_mat.fill(alpha);
+  ref_mat.slice({0, i}, {ref_mat.rows(), i + 1}).fill(result);
+  for (auto d : {EqnData::H, EqnData::S}) {
+    ASSERT_EQ(rq[d].dimensions(), dim_ref);
+    ASSERT_THAT(rq[d].data(), Pointwise(DoubleEq(), ref_mat.data()));
+  }
 }

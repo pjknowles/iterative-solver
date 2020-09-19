@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_QSPACE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_QSPACE_H
+#include <cassert>
 #include <list>
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/RSpace.h>
@@ -31,8 +32,9 @@ struct QParam {
       1; //!< scaling constant which makes difference vector orthogonal to r, see \f$\beta\f$
 
   //! Merge this difference parameter with x, in a way that preserves the difference property (ability to reconstruct
-  //! previous parameters)
-  void merge(const QParam<Q>& x, array::ArrayHandler<Q, Q>& handler) {
+  //! previous parameters).
+  //! @Returns scaling constants for this and x leading to result, i.e. a and b in \f$ r' = a r + b x \f$
+  std::pair<double, double> merge(const QParam<Q>& x, array::ArrayHandler<Q, Q>& handler) {
     if (converged || x.converged)
       throw std::runtime_error("attempting to merge converged solutions");
     if (root != x.root)
@@ -44,6 +46,7 @@ struct QParam {
     normalisation_constant = 1. / std::sqrt(dot);
     handler.scal(normalisation_constant, *param);
     handler.scal(normalisation_constant, *action);
+    return {normalisation_constant, a * normalisation_constant};
   }
 };
 
@@ -144,6 +147,18 @@ void update_qr_subspace(const std::vector<std::reference_wrapper<Q>>& qparams,
   rq[EqnData::H].slice() = ov_actions_rq;
 }
 
+//! Merges subspace data for q params i and j \f$ q_i^' = a q_i + b q_j \f$
+void merge_subspace_qq(size_t i, size_t j, double a, double b, SubspaceData& qq);
+
+//! Merges subspace data for q params i and j \f$ q_i^' = a q_i + b q_j \f$
+void merge_subspace_qr(size_t i, size_t j, double a, double b, SubspaceData& qr);
+
+//! Merges subspace data for q params i and j \f$ q_i^' = a q_i + b q_j \f$
+void merge_subspace_rq(size_t i, size_t j, double a, double b, SubspaceData& rq);
+
+//! Removes data associates with q parameter i from qq, qr and rq blocks
+void erase_subspace(size_t i, SubspaceData& qq, SubspaceData& qr, SubspaceData& rq);
+
 } // namespace qspace
 
 /*!
@@ -221,6 +236,40 @@ struct QSpace {
     if (!candidates.empty())
       candidates.resize(candidates.size() - 1);
     return candidates;
+  }
+
+  //! Merges a pair of q vectors if they belong to the same root and updates the subspace data
+  void merge(const std::pair<size_t, size_t>& pair) {
+    assert(m_params.size() > pair.first && m_params.size() > pair.second);
+    auto i = std::min(pair.first, pair.second);
+    auto j = std::max(pair.first, pair.second);
+    if (i == j)
+      throw std::runtime_error("attempting to merge the same vector");
+    auto left = std::next(begin(m_params), i);
+    auto right = std::next(begin(m_params), j);
+    auto root = left->root;
+    if (root != right->root)
+      throw std::runtime_error("attempting to merge difference vectors corresponding to different roots");
+    auto first_difference_vector =
+        std::find_if(begin(m_params), end(m_params), [root](const auto& el) { return el.root == root; });
+    if (left == first_difference_vector) {
+      erase(i);
+    } else {
+      double a, b;
+      std::tie(a, b) = left->merge(*right, m_handlers->qq());
+      m_params.erase(right);
+      qspace::merge_subspace_qq(i, j, a, b, data);
+      qspace::merge_subspace_qr(i, j, a, b, qr);
+      qspace::merge_subspace_rq(i, j, a, b, rq);
+    }
+  }
+
+  //! Erases q parameter i. @param i index in the current Q space
+  void erase(size_t i) {
+    assert(m_params.size() > i);
+    m_params.erase(std::next(begin(m_params), i));
+    // remove associated rows and columns from the data
+    qspace::erase_subspace(i, data, qr, rq);
   }
 
 protected:

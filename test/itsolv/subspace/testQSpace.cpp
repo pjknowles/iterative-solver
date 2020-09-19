@@ -222,9 +222,9 @@ TEST_F(QSpaceEyeF, modification_candidates_null) {
 TEST_F(QSpaceEyeF, modification_candidates) {
   auto candidates = qspace.modification_candidates(0);
   ASSERT_FALSE(candidates.empty());
-  auto reference = std::vector<size_t>{0, 1};
+  auto reference = std::vector<size_t>{0, 2};
   ASSERT_THAT(candidates, Pointwise(Eq(), reference));
-  reference = std::vector<size_t>{0, 1, 2};
+  reference = std::vector<size_t>{1, 3, 5};
   candidates = qspace.modification_candidates(1);
   ASSERT_THAT(candidates, Pointwise(Eq(), reference));
 }

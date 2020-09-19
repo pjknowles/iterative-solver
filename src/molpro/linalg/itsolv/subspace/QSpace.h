@@ -215,9 +215,9 @@ struct QSpace {
   auto modification_candidates(size_t root) const {
     auto candidates = std::vector<size_t>{};
     size_t i = 0;
-    for (auto it = m_params.begin(); it != m_params.end(); ++it)
+    for (auto it = m_params.begin(); it != m_params.end(); ++it, ++i)
       if (it->root == root)
-        candidates.emplace_back(i++);
+        candidates.emplace_back(i);
     if (!candidates.empty())
       candidates.resize(candidates.size() - 1);
     return candidates;

@@ -196,6 +196,15 @@ protected:
       for (size_t i = 0; i < dimensions().first; ++i)
         for (size_t j = 0; j < dimensions().second; ++j)
           mat(upl.first + i, upl.second + j) *= a;
+      return *this;
+    }
+
+    //! Fill all elements of the slice with new values
+    Slice& fill(T a) {
+      for (size_t i = 0; i < dimensions().first; ++i)
+        for (size_t j = 0; j < dimensions().second; ++j)
+          mat(upl.first + i, upl.second + j) = a;
+      return *this;
     }
 
     Slice& operator=(const CSlice& right) {

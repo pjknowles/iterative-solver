@@ -10,8 +10,15 @@ MODULE Iterative_Solver
   PUBLIC :: Iterative_Solver_Solution, Iterative_Solver_Solution_Nosync
   PUBLIC :: Iterative_Solver_Add_P, Iterative_Solver_Suggest_P
   PUBLIC :: Iterative_Solver_Eigenvalues, Iterative_Solver_Working_Set_Eigenvalues
+  PUBLIC :: Iterative_Solver_Print_Statistics
   PRIVATE
   INTEGER(c_size_t) :: m_nq, m_nroot
+
+  INTERFACE
+    SUBROUTINE Iterative_Solver_Print_Statistics() BIND (C, name='IterativeSolverPrintStatistics')
+    END SUBROUTINE Iterative_Solver_Print_Statistics
+  END INTERFACE
+
 
 CONTAINS
 
@@ -814,7 +821,6 @@ CONTAINS
     ALLOCATE (Iterative_Solver_Working_Set_Eigenvalues(int(working_set_size, c_size_t)))
     CALL IterativeSolverWorkingSetEigenvalues(Iterative_Solver_Working_Set_Eigenvalues)
   END FUNCTION Iterative_Solver_Working_Set_Eigenvalues
-
   !> @brief Convert from Fortran string to C string
   SUBROUTINE c_string_from_f(fstring, cstring)
     CHARACTER(kind = c_char), DIMENSION(*) :: cstring !< A C char[] big enough to hold the result. No checks are made for overflow.

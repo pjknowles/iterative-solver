@@ -42,6 +42,7 @@ PROGRAM Linear_Equations_Example
     DO i = 1, nroot
       PRINT *, 'solution ', c(1 : MIN(n, 10), i)
     END DO
+    Call Iterative_Solver_Print_Statistics
     CALL Iterative_Solver_Finalize
   ENDDO
 END PROGRAM Linear_Equations_Example

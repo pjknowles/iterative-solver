@@ -49,11 +49,12 @@ void construct_residual(const std::vector<int>& working_set, const std::vector<s
 }
 
 template <class R>
-auto update_errors(const std::vector<int>& working_set, const std::vector<std::reference_wrapper<R>>& residual,
-                   array::ArrayHandler<R, R>& handler) {
-  auto errors = std::vector<double>(working_set.size());
-  for (size_t i = 0; i < working_set.size(); ++i)
-    errors[i] = handler->rr().dot(residual[i], residual[i]);
+auto update_errors(const std::vector<std::reference_wrapper<R>>& residual, array::ArrayHandler<R, R>& handler) {
+  auto errors = std::vector<double>(residual.size());
+  for (size_t i = 0; i < residual.size(); ++i) {
+    auto a = handler->rr().dot(residual[i], residual[i]);
+    errors[i] = std::sqrt(std::abs(a));
+  }
 }
 
 } // namespace detail
@@ -75,6 +76,8 @@ public:
   using R = typename Solver::R;
   using Q = typename Solver::Q;
   using P = typename Solver::P;
+  template <typename T>
+  using VecRef = std::vector<std::reference_wrapper<T>>;
 
   void add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& parametersP) override {
     using subspace::util::wrap;
@@ -94,22 +97,23 @@ public:
     detail::construct_solution(m_working_set, m_rspace.actions(), wrap(dummy), m_qspace.actions(), m_pspace.actions(),
                                m_xspace.dimensions().oR, m_xspace.dimensions().oQ, m_xspace.dimensions().oP,
                                m_xspace.solutions(), *m_handlers);
-    construct_residual(m_working_set, m_rspace.params(), m_rspace.actions(), wrap(dummy), m_xspace.eigenvalues(),
-                       m_handlers->rr());
-    m_errors = detail::update_errors(m_working_set, wrap(dummy), m_handlers->rr());
+    detail::construct_residual(m_working_set, m_rspace.params(), m_rspace.actions(), wrap(dummy),
+                               m_xspace.eigenvalues(), m_handlers->rr());
+    m_errors = detail::update_errors(wrap(dummy), m_handlers->rr());
     update_working_set();
     for (size_t i = 0; i < m_working_set.size(); ++i)
       m_handlers->rr().copy(m_rspace.actions().at(i), dummy.at(i));
-    construct_residual(parameters, action);
+    dummy.clear();
   };
 
+  // FIXME I don't fully understand what this is supposed to be doing and what the input is
   void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {
     auto working_set_save = m_working_set;
     m_working_set = roots;
     m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
     m_xspace.solve(*static_cast<Solver*>(this));
-    construct_solution(parameters);
-    construct_residual(residual);
+//    construct_solution(parameters);
+//    construct_residual(residual);
     m_working_set = working_set_save;
   };
 
@@ -130,7 +134,26 @@ public:
 
 protected:
   //! Updates working sets and adds any converged solution to the q space
-  void update_working_set() {}
+  void update_working_set() {
+    auto ind_still_a_working_param = std::vector<size_t>{};
+    auto converged_roots = std::vector<size_t>{};
+    auto converged_params = VecRef<R>{};
+    auto converged_actions = VecRef<R>{};
+    for (size_t i = 0; i < m_working_set.size(); ++i) {
+      if (m_errors.at(i) < m_convergence_threshold) {
+        converged_roots.emplace_back(m_working_set[i]);
+        converged_params.emplace_back(m_rspace.params().at(i));
+        converged_actions.emplace_back(m_rspace.actions().at(i));
+      } else {
+        ind_still_a_working_param.emplace_back(i);
+      }
+    }
+    m_qspace.add_converged(converged_params, converged_actions, converged_roots);
+    m_rspace.update_working_set(ind_still_a_working_param);
+    auto& new_working_set = m_rspace.working_set();
+    m_working_set.resize(new_working_set.size());
+    std::copy(begin(new_working_set), end(new_working_set), begin(m_working_set));
+  }
 
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   RS m_rspace;
@@ -140,6 +163,7 @@ protected:
   std::vector<double> m_errors;
   std::vector<int> m_working_set;
   size_t m_nroots{0};
+  double m_convergence_threshold{1.0e-10}; //!< errors less than this mark a converged solution
   std::shared_ptr<Statistics> m_stats;
 };
 

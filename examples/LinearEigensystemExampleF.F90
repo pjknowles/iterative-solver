@@ -29,5 +29,6 @@ PROGRAM Linear_Eigensystem_Example
     IF (converged) EXIT
   END DO
   PRINT *, 'error =', error, ' eigenvalue =', e
+  CALL Iterative_Solver_Print_Statistics
   CALL Iterative_Solver_Finalize
 END PROGRAM Linear_Eigensystem_Example

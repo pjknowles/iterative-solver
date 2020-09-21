@@ -38,4 +38,6 @@ extern "C" void IterativeSolverWorkingSetEigenvalues(double* eigenvalues);
 
 extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* residual, size_t maximumNumber,
                                           double threshold, size_t* indices, int lmppx);
+
+extern "C" void IterativeSolverPrintStatistics();
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_ITERATIVESOLVERC_H_

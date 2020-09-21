@@ -37,6 +37,12 @@ public:
 
 public:
   explicit Matrix(coord_type dims) : m_rows(dims.first), m_cols(dims.second), m_buffer(m_rows * m_cols) {}
+  //! Construct a matrix by taking ownership of an existing data buffer which must be of correct size
+  explicit Matrix(std::vector<T>&& data, coord_type dims)
+      : m_rows(dims.first), m_cols(dims.second), m_buffer(std::move(data)) {
+    if (m_buffer.size() != size())
+      throw std::runtime_error("data buffer is of the wrong size");
+  }
   Matrix() = default;
   ~Matrix() = default;
   Matrix(const Matrix<T>&) = default;

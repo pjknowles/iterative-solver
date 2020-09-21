@@ -36,21 +36,24 @@ public:
     if (m_hermitian)
       util::matrix_symmetrize(h);
     auto dim = h.rows();
-    auto evec = std::move(m_evec).data();
+    auto evec = std::vector<scalar_type>{};
     itsolv::eigenproblem(evec, m_eval, h, s, dim, m_hermitian, m_svd_solver_threshold, 0);
     auto n_solutions = evec.size() / dim;
-    m_evec = Matrix<scalar_type>{std::move(evec), {dim, n_solutions}};
+    auto full_matrix = Matrix<scalar_type>{std::move(evec), {dim, n_solutions}};
+    auto nR = solver.working_set().size();
+    full_matrix.resize({dim, nR});
+    m_evec = std::move(full_matrix);
+    m_roots = util::eye_order(m_evec.slice({dim - nR, 0}, {dim, nR}));
   }
 
   const auto& eigenvalues() const { return m_eval; };
 
   const Matrix<scalar_type>& solution() const override { return m_evec; };
 
+  const std::vector<size_t>& roots() const override { return m_roots; };
+
   void build_subspace(RS& rs, QS& qs, PS& ps) override {
-    auto nP = ps.data.at(EqnData::H).rows();
-    auto nQ = qs.data.at(EqnData::H).rows();
-    auto nR = rs.data.at(EqnData::H).rows();
-    m_dim = Dimensions(nP, nQ, nR);
+    m_dim = Dimensions(ps.size(), qs.size(), rs.size());
     xspace::build_subspace_H_S(data, rs.data, qs.data, qs.qr(), rs.rq(), ps.data, m_dim);
   }
 
@@ -65,6 +68,7 @@ protected:
   double m_svd_solver_threshold = 1.0e-14;           //!< threshold to remove the null space during solution
   Matrix<scalar_type> m_evec;                        //!< eigenvectors stored as columns with ascending eigenvalue
   std::vector<scalar_type> m_eval;                   //!< eigenvalues in ascending order
+  std::vector<size_t> m_roots;                       //!< for each solution stores corresponding root index
 };
 
 } // namespace subspace

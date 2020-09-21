@@ -43,8 +43,11 @@ public:
   //! Access solution matrix. Solution vectors are stored as columns
   virtual const Matrix<scalar_type>& solution() const = 0;
 
+  //! Stores root index for each solution
+  virtual const std::vector<size_t>& roots() const = 0;
+
   //! Number of vectors forming the subspace
-  size_t size() { return data.at(EqnData::H).rows(); }
+  size_t size() { return dimensions().nX; }
 
   //! Build the subspace matrices H, S etc.
   virtual void build_subspace(RS& rs, QS& qs, PS& ps) = 0;

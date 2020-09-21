@@ -6,6 +6,7 @@
 
 using molpro::linalg::itsolv::ArrayHandlers;
 using molpro::linalg::itsolv::subspace::Matrix;
+using molpro::linalg::itsolv::subspace::util::eye_order;
 using molpro::linalg::itsolv::subspace::util::overlap;
 using molpro::linalg::itsolv::subspace::util::wrap;
 using ::testing::DoubleEq;
@@ -50,4 +51,37 @@ TEST_F(OverlapF, overlap_one_param) {
 TEST_F(OverlapF, overlap_two_params) {
   auto m = overlap(wrap(x), wrap(x), handler.rr());
   ASSERT_THAT(m.data(), Pointwise(DoubleEq(), ref_overlap.data()));
+}
+
+TEST(EyeOrder, null) {
+  auto m = Matrix<double>{};
+  auto order = eye_order(m);
+  ASSERT_TRUE(order.empty());
+}
+
+TEST(EyeOrder, identity) {
+  auto&& data = std::vector<double>{1, 0, 0, 0, 1, 0, 0, 0, 1};
+  auto m = Matrix<double>{std::move(data), {3, 3}};
+  auto order = eye_order(m);
+  const auto reference = std::vector<size_t>{0, 1, 2};
+  ASSERT_FALSE(order.empty());
+  ASSERT_THAT(order, Pointwise(Eq(), reference)) << "matrix is already identity";
+}
+
+TEST(EyeOrder, identity_circular_shift) {
+  auto&& data = std::vector<double>{0, 1, 0, 0, 0, 1, 1, 0, 0};
+  auto m = Matrix<double>{std::move(data), {3, 3}};
+  auto order = eye_order(m);
+  const auto reference = std::vector<size_t>{2, 0, 1};
+  ASSERT_FALSE(order.empty());
+  ASSERT_THAT(order, Pointwise(Eq(), reference));
+}
+
+TEST(EyeOrder, real_scenario) {
+  auto&& data = std::vector<double>{0.1, 0.5, 0.2, 0.2, 0.1, 0.5, 0.5, 0.2, 0.1};
+  auto m = Matrix<double>{std::move(data), {3, 3}};
+  auto order = eye_order(m);
+  const auto reference = std::vector<size_t>{2, 0, 1};
+  ASSERT_FALSE(order.empty());
+  ASSERT_THAT(order, Pointwise(Eq(), reference));
 }

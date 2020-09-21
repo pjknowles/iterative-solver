@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_QSPACE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_QSPACE_H
+#include <cassert>
 #include <list>
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/RSpace.h>
@@ -31,8 +32,9 @@ struct QParam {
       1; //!< scaling constant which makes difference vector orthogonal to r, see \f$\beta\f$
 
   //! Merge this difference parameter with x, in a way that preserves the difference property (ability to reconstruct
-  //! previous parameters)
-  void merge(const QParam<Q>& x, array::ArrayHandler<Q, Q>& handler) {
+  //! previous parameters).
+  //! @Returns scaling constants for this and x leading to result, i.e. a and b in \f$ r' = a r + b x \f$
+  std::pair<double, double> merge(const QParam<Q>& x, array::ArrayHandler<Q, Q>& handler) {
     if (converged || x.converged)
       throw std::runtime_error("attempting to merge converged solutions");
     if (root != x.root)
@@ -44,6 +46,7 @@ struct QParam {
     normalisation_constant = 1. / std::sqrt(dot);
     handler.scal(normalisation_constant, *param);
     handler.scal(normalisation_constant, *action);
+    return {normalisation_constant, a * normalisation_constant};
   }
 };
 
@@ -63,9 +66,10 @@ auto wrap_params(ForwardIt begin, ForwardIt end) {
 template <class R, class Q, class P>
 std::pair<std::list<QParam<Q>>, std::vector<size_t>>
 update(R& qparam, R& qaction, const std::vector<std::reference_wrapper<R>>& params,
-       const std::vector<std::reference_wrapper<R>>& actions, const std::vector<std::reference_wrapper<R>>& last_params,
-       const std::vector<std::reference_wrapper<R>>& last_actions, const std::vector<size_t>& working_set,
-       ArrayHandlers<R, Q, P>& handlers) {
+       const std::vector<std::reference_wrapper<R>>& actions, const std::vector<Q>& last_params,
+       const std::vector<Q>& last_actions, const std::vector<size_t>& working_set, ArrayHandlers<R, Q, P>& handlers) {
+  assert(params.size() == last_params.size() && params.size() == actions.size() &&
+         last_params.size() == last_actions.size() && "Must provide consistent number of input parameters");
   auto used_working_set = std::vector<size_t>{};
   auto qparams = std::list<QParam<Q>>{};
   for (size_t i = 0; i < working_set.size(); ++i) {
@@ -143,6 +147,18 @@ void update_qr_subspace(const std::vector<std::reference_wrapper<Q>>& qparams,
   rq[EqnData::H].slice() = ov_actions_rq;
 }
 
+//! Merges subspace data for q params i and j \f$ q_i = a q_i + b q_j \f$
+void merge_subspace_qq(size_t i, size_t j, double a, double b, SubspaceData& qq);
+
+//! Merges subspace data for q params i and j \f$ q_i = a q_i + b q_j \f$
+void merge_subspace_qr(size_t i, size_t j, double a, double b, SubspaceData& qr);
+
+//! Merges subspace data for q params i and j \f$ q_i = a q_i + b q_j \f$
+void merge_subspace_rq(size_t i, size_t j, double a, double b, SubspaceData& rq);
+
+//! Removes data associates with q parameter i from qq, qr and rq blocks
+void erase_subspace(size_t i, SubspaceData& qq, SubspaceData& qr, SubspaceData& rq);
+
 } // namespace qspace
 
 /*!
@@ -172,14 +188,14 @@ struct QSpace {
 
   void update(const RSpace<R, Q, P>& rs, IterativeSolver<R, Q, P>& solver) {
     auto& dummy = rs.dummy(2);
-    auto result = qspace::update(dummy[0], dummy[1], rs.params(), rs.actions(), rs.last_params(), rs.last_actions(),
-                                 rs.working_set(), m_handlers);
+    auto result = qspace::update(dummy.at(0), dummy.at(1), rs.params(), rs.actions(), rs.last_params(),
+                                 rs.last_actions(), rs.working_set(), *m_handlers);
     auto& new_qparams = result.first;
     m_used_working_set = result.second;
-    auto old_params_actions = qspace::wrap_params(m_params.begin(), m_params.end);
-    auto new_params_actions = qspace::wrap_params(new_qparams.begin(), new_qparams.end());
+    auto old_params_actions = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
+    auto new_params_actions = qspace::wrap_params<Q>(new_qparams.begin(), new_qparams.end());
     m_params.splice(m_params.end(), new_qparams);
-    auto all_params_actions = qspace::wrap_params(m_params.begin(), m_params.end());
+    auto all_params_actions = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
     qspace::update_qq_subspace(old_params_actions[0], old_params_actions[1], new_params_actions[0],
                                new_params_actions[1], data, m_handlers->qq());
     qspace::update_qr_subspace(all_params_actions[0], all_params_actions[1], rs.params(), rs.actions(), qr, rq,
@@ -199,15 +215,85 @@ struct QSpace {
     auto nQ = m_params.size();
     auto nQnew = params.size();
     auto nQprev = nQ - nQnew;
-    auto old_params_actions = qspace::wrap_params(m_params.begin(), next(m_params.begin(), nQprev));
-    auto new_params_actions = qspace::wrap_params(next(m_params.begin(), nQprev), m_params.end());
+    auto old_params_actions = qspace::wrap_params<Q>(m_params.begin(), next(m_params.begin(), nQprev));
+    auto new_params_actions = qspace::wrap_params<Q>(next(m_params.begin(), nQprev), m_params.end());
     qspace::update_qq_subspace(old_params_actions[0], old_params_actions[1], new_params_actions[0],
                                new_params_actions[1], data, m_handlers->qq());
+  }
+
+  //! Maps root index of converged solution to its index in Q space
+  std::map<size_t, size_t> converged_solutions() const {
+    auto conv_sol = std::map<size_t, size_t>{};
+    size_t i = 0;
+    for (const auto& q : m_params) {
+      if (q.converged)
+        conv_sol[q.root] = i;
+      ++i;
+    }
   }
 
   //! Vector of root indices for r vectors that were used to generate new q vectors. Converged solutions are not
   //! included.
   auto& used_working_set() const { return m_used_working_set; }
+
+  //! Returns indices of q parameters corresponding to root that can be modified. Converged solutions and latest q
+  //! vector for that root are excluded.
+  auto modification_candidates(size_t root) const {
+    auto candidates = std::vector<size_t>{};
+    size_t i = 0;
+    for (auto it = m_params.begin(); it != m_params.end(); ++it, ++i)
+      if (it->root == root)
+        candidates.emplace_back(i);
+    if (!candidates.empty())
+      candidates.resize(candidates.size() - 1);
+    return candidates;
+  }
+
+  //! Merges a pair of q vectors if they belong to the same root and updates the subspace data
+  void merge(const std::pair<size_t, size_t>& pair) {
+    assert(m_params.size() > pair.first && m_params.size() > pair.second);
+    auto i = std::min(pair.first, pair.second);
+    auto j = std::max(pair.first, pair.second);
+    if (i == j)
+      throw std::runtime_error("attempting to merge the same vector");
+    auto left = std::next(begin(m_params), i);
+    auto right = std::next(begin(m_params), j);
+    auto root = left->root;
+    if (root != right->root)
+      throw std::runtime_error("attempting to merge difference vectors corresponding to different roots");
+    auto first_difference_vector =
+        std::find_if(begin(m_params), end(m_params), [root](const auto& el) { return el.root == root; });
+    if (left == first_difference_vector) {
+      erase(i);
+    } else {
+      double a, b;
+      std::tie(a, b) = left->merge(*right, m_handlers->qq());
+      m_params.erase(right);
+      qspace::merge_subspace_qq(i, j, a, b, data);
+      qspace::merge_subspace_qr(i, j, a, b, qr);
+      qspace::merge_subspace_rq(i, j, a, b, rq);
+    }
+  }
+
+  //! Erases q parameter i. @param i index in the current Q space
+  void erase(size_t i) {
+    assert(m_params.size() > i);
+    m_params.erase(std::next(begin(m_params), i));
+    // remove associated rows and columns from the data
+    qspace::erase_subspace(i, data, qr, rq);
+  }
+
+  size_t size() const { return m_params.size(); }
+
+  VecRefQ params() const {
+    auto qparams = VecRefQ{};
+    std::transform(begin(m_params), end(m_params), std::back_inserter(qparams), [](auto& q) { return q.param; });
+  }
+
+  VecRefQ actions() const {
+    auto qactions = VecRefQ{};
+    std::transform(begin(m_params), end(m_params), std::back_inserter(qactions), [](auto& q) { return q.action; });
+  }
 
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;

@@ -41,6 +41,28 @@ int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, con
 }
 
 template <typename value_type>
+std::vector<SVD<value_type>> svd_system(size_t ndim, const array::Span<value_type>& m, double threshold) {
+  assert(m.size() == ndim * ndim);
+  auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), ndim, ndim);
+  auto svd = Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>, Eigen::NoQRPreconditioner>(
+      mat, Eigen::ComputeThinV);
+  auto svd_system = std::list<SVD<value_type>>{};
+  auto sv = svd.singularValues();
+  for (size_t i = ndim - 1; i >= 0; --i) {
+    if (std::abs(sv(i)) < threshold) {
+      auto t = SVD<value_type>{};
+      t.value = sv(i);
+      t.v.reserve(ndim);
+      for (size_t j = 0; j < ndim; ++j) {
+        t.v.emplace_back(svd.matrixV()(j, i));
+      }
+      svd_system.emplace_back(std::move(t));
+    }
+  }
+  return svd_system;
+}
+
+template <typename value_type>
 void printMatrix(const std::vector<value_type>& m, size_t rows, size_t cols, std::string title, std::ostream& s) {
   s << title << "\n"
     << Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), rows, cols) << std::endl;

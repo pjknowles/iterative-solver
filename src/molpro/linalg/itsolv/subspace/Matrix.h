@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_MATRIX_H
 #include <algorithm>
 #include <cstddef>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -36,6 +37,12 @@ public:
 
 public:
   explicit Matrix(coord_type dims) : m_rows(dims.first), m_cols(dims.second), m_buffer(m_rows * m_cols) {}
+  //! Construct a matrix by taking ownership of an existing data buffer which must be of correct size
+  explicit Matrix(std::vector<T>&& data, coord_type dims)
+      : m_rows(dims.first), m_cols(dims.second), m_buffer(std::move(data)) {
+    if (m_buffer.size() != size())
+      throw std::runtime_error("data buffer is of the wrong size");
+  }
   Matrix() = default;
   ~Matrix() = default;
   Matrix(const Matrix<T>&) = default;
@@ -50,7 +57,13 @@ public:
   T operator()(index_type i, index_type j) const { return m_buffer[i * m_cols + j]; }
 
   //! Access the underlying data buffer
-  const std::vector<T>& data() const { return m_buffer; }
+  const std::vector<T>& data() const& { return m_buffer; }
+  //! Access the raw data buffer of an r-value matrix. The matrix is left empty.
+  std::vector<T>&& data() && {
+    m_rows = 0;
+    m_cols = 0;
+    return std::move(m_buffer);
+  }
 
   //! Returns true if matrix is empty
   bool empty() const { return size() == 0; }
@@ -93,6 +106,14 @@ public:
   //! Access the whole matrix as a slice
   CSlice slice() const { return slice({0, 0}, dimensions()); }
 
+  //! Access row slice
+  Slice row(size_t i) { return slice({i, 0}, {i + 1, m_cols}); }
+  CSlice row(size_t i) const { return slice({i, 0}, {i + 1, m_cols}); }
+
+  //! Access column slice
+  Slice col(size_t j) { return slice({0, j}, {m_rows, j + 1}); }
+  CSlice col(size_t j) const { return slice({0, j}, {m_rows, j + 1}); }
+
   //! Resize the matrix. The old data is preserved and any new rows/cols are zeroed. @param dims new dimensions
   void resize(const coord_type& dims) {
     if (dims == dimensions())
@@ -113,9 +134,24 @@ public:
   void remove_row(index_type row) {
     if (row >= m_rows)
       throw std::runtime_error("row is out of range");
-    slice({0, 0}, {row, m_cols}) = slice({0, 0}, {row, m_cols});
     slice({row, 0}, {m_rows - 1, m_cols}) = slice({row + 1, 0}, dimensions());
     resize({m_rows - 1, m_cols});
+  }
+
+  //! removes a column from the matrix @param col index of the column to remove
+  void remove_col(index_type col) {
+    if (col >= m_cols)
+      throw std::runtime_error("column is out of range");
+    auto m = Matrix<T>({m_rows, m_cols - 1});
+    m.slice({0, 0}, {m_rows, col}) = slice({0, 0}, {m_rows, col});
+    m.slice({0, col}, {m_rows, m.m_cols}) = slice({0, col + 1}, dimensions());
+    *this = std::move(m);
+  }
+
+  //! removes row and column @param row row incdex @param col column index
+  void remove_row_col(index_type row, index_type col) {
+    remove_col(col);
+    remove_row(row);
   }
 
   index_type rows() const { return m_rows; }
@@ -159,6 +195,8 @@ protected:
       return *this;
     }
 
+    T& operator()(size_t i, size_t j) { return mat(upl.first + i, upl.second + j); }
+
     Slice& axpy(T a, const Slice& x) {
       if (dimensions() != x.dimensions())
         throw std::runtime_error("attempting to copy slices of different dimensions");
@@ -172,6 +210,22 @@ protected:
 
     Slice& axpy(T a, const CSlice& x) {
       axpy(a, x.m_slice);
+      return *this;
+    }
+
+    //! Scale all elements of the slice
+    Slice& scal(T a) {
+      for (size_t i = 0; i < dimensions().first; ++i)
+        for (size_t j = 0; j < dimensions().second; ++j)
+          mat(upl.first + i, upl.second + j) *= a;
+      return *this;
+    }
+
+    //! Fill all elements of the slice with new values
+    Slice& fill(T a) {
+      for (size_t i = 0; i < dimensions().first; ++i)
+        for (size_t j = 0; j < dimensions().second; ++j)
+          mat(upl.first + i, upl.second + j) = a;
       return *this;
     }
 
@@ -205,6 +259,7 @@ protected:
     CSlice(const CSlice&) = delete;
     CSlice(CSlice&&) noexcept = default;
     CSlice& operator=(CSlice&&) noexcept = default;
+    T operator()(size_t i, size_t j) const { return m_slice(i, j); }
 
   protected:
     Slice m_slice;

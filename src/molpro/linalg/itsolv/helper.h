@@ -2,7 +2,9 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_H_
 #include <complex>
 #include <cstddef>
+#include <list>
 #include <molpro/iostream.h>
+#include <molpro/linalg/array/Span.h>
 #include <vector>
 
 namespace molpro {
@@ -17,6 +19,26 @@ struct is_complex<std::complex<T>> : std::true_type {};
 template <typename value_type>
 int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, const std::vector<size_t>& candidates,
                                  double threshold);
+
+//! Stores a singular value and corresponding left and right singular vectors
+template <typename T>
+struct SVD {
+  using value_type = T;
+  value_type value;
+  std::vector<value_type> u; //!< left singular vector
+  std::vector<value_type> v; //!< right singular vector
+};
+
+/*!
+ * @brief Performs singular value decomposition and returns SVD objects for singular values less than threshold, sorted
+ * in ascending order
+ * @tparam value_type
+ * @param ndim dimension size of a square matrix
+ * @param m row-wise data buffer for a square matrix
+ * @param threshold singular values less than threshold will be returned
+ */
+template <typename value_type>
+std::list<SVD<value_type>> svd_system(size_t ndim, const array::Span<value_type>& m, double threshold);
 
 template <typename value_type>
 void printMatrix(const std::vector<value_type>&, size_t rows, size_t cols, std::string title = "",

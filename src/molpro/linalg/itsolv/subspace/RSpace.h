@@ -82,10 +82,10 @@ public:
    */
   auto& dummy(size_t n) const {
     assert(!m_params.empty() && "must add parameters to the RSpace first");
-    if (n > m_dummy.size())
-      for (size_t i = 0; i < n - m_dummy.size(); ++i)
-        m_dummy.emplace_back(m_handlers->rr().copy(m_params.front()));
-    return *m_dummy;
+    while (m_dummy.size() < n) {
+      m_dummy.emplace_back(m_handlers->rr().copy(m_params.front()));
+    }
+    return m_dummy;
   }
 
   //! Updates working set of vectors. @param working_vector_ind indices of params that are still part of the working set

@@ -35,7 +35,12 @@ public:
   virtual std::vector<size_t> suggest_p(const std::vector<R>& solution, const std::vector<R>& residual,
                                         size_t maximumNumber, double threshold) = 0;
 
+  /*!
+   * @brief Working set of roots that are not yet converged
+   */
   virtual const std::vector<int>& working_set() const = 0;
+  //! Total number of roots we are solving for, including the ones that are already converged
+  virtual size_t n_roots() const = 0;
   virtual const std::vector<scalar_type>& errors() const = 0;
   virtual const Statistics& statistics() const = 0;
 };

@@ -27,11 +27,13 @@ struct DummySolver : IterativeSolver<R, Q, P> {
   };
 
   const std::vector<int>& working_set() const override { return ws; };
+  size_t n_roots() const override { return nr; };
   const std::vector<scalar_type>& errors() const override { return er; };
   const Statistics& statistics() const override { return st; };
   std::vector<int> ws;
   std::vector<scalar_type> er;
   Statistics st;
+  size_t nr{0};
 };
 } // namespace
 

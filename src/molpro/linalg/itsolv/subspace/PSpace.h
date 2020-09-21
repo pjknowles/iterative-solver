@@ -8,9 +8,16 @@ namespace itsolv {
 namespace subspace {
 
 template <class R, class P>
-struct PSpace {};
+struct PSpace {
+  using VecRefP = std::vector<std::reference_wrapper<P>>;
 
-} // namespace detail
+  VecRefP params() const { return {}; }
+  VecRefP actions() const { return {}; }
+
+  size_t size() const { return 0; }
+};
+
+} // namespace subspace
 } // namespace itsolv
 } // namespace linalg
 } // namespace molpro

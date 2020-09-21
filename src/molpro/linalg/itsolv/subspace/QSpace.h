@@ -221,6 +221,17 @@ struct QSpace {
                                new_params_actions[1], data, m_handlers->qq());
   }
 
+  //! Maps root index of converged solution to its index in Q space
+  std::map<size_t, size_t> converged_solutions() const {
+    auto conv_sol = std::map<size_t, size_t>{};
+    size_t i = 0;
+    for (const auto& q : m_params) {
+      if (q.converged)
+        conv_sol[q.root] = i;
+      ++i;
+    }
+  }
+
   //! Vector of root indices for r vectors that were used to generate new q vectors. Converged solutions are not
   //! included.
   auto& used_working_set() const { return m_used_working_set; }

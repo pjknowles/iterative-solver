@@ -19,6 +19,15 @@ void build_subspace_H_S(SubspaceData& xx, const SubspaceData& rr, const Subspace
     xx.at(e).slice({d.oR, d.oR}, {d.oR + d.nR, d.oR + d.nR}) = rr.at(e);
   }
 }
+auto roots_in_subspace(const std::map<size_t, size_t>& converged_solutions, const std::vector<size_t>& working_set,
+                       size_t oQ, size_t oR) {
+  auto roots = std::vector<size_t>(converged_solutions.size() + working_set.size());
+  for (const auto& q : converged_solutions)
+    roots[q.first] = oQ + q.second;
+  for (size_t i = 0; i < working_set.size(); ++i)
+    roots[working_set[i]] = oR + i;
+  return roots;
+}
 
 //! Combines data for the RHS equations in LinearEquations into the X subspace.
 void build_subspace_RHS(SubspaceData& xx, const SubspaceData& rr, const SubspaceData& qq, const SubspaceData& qr,

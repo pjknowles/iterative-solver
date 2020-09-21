@@ -26,6 +26,10 @@ public:
 
   void add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& parametersP) override {
     m_rspace.update(parameters, action, *static_cast<Solver*>(this));
+    m_working_set.clear();
+    std::copy(begin(m_rspace.working_set), end(m_rspace.working_set()), std::back_inserter(m_working_set));
+    if (m_nroots == 0)
+      m_nroots = m_working_set.size();
     m_qspace.update(m_rspace, *static_cast<Solver*>(this));
     m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
     m_xspace.check_conditioning(m_rspace, m_qspace, m_pspace);
@@ -49,12 +53,17 @@ public:
   };
 
   void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
-                std::vector<P>& parametersP) override {}
+                std::vector<P>& parametersP) override {
+    solution(roots, parameters, residual);
+  }
 
   std::vector<size_t> suggest_p(const std::vector<R>& solution, const std::vector<R>& residual, size_t maximumNumber,
-                                double threshold) override {}
+                                double threshold) override {
+    return {};
+  }
 
   const std::vector<int>& working_set() const override { return m_working_set; }
+  size_t n_roots() const override { return 0; }
   const std::vector<scalar_type>& errors() const override { return m_errors; }
   const Statistics& statistics() const override { return *m_stats; }
 
@@ -78,6 +87,7 @@ protected:
   XS m_xspace;
   std::vector<double> m_errors;
   std::vector<int> m_working_set;
+  size_t m_nroots{0};
   std::shared_ptr<Statistics> m_stats;
 };
 

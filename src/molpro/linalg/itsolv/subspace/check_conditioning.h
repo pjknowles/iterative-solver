@@ -45,7 +45,7 @@ void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, S
     auto svd = svd_system(xs.size(), {s.data(), s.size()}, threshold);
     stable = svd.empty();
     if (!svd.empty()) {
-      auto pairs = generate_pairs(candidates);
+      auto pairs = detail::generate_pairs(candidates);
       auto norms = std::vector<double>{};
       for (const auto& p : pairs) {
         const auto oQ = xs.dimensions().oQ;

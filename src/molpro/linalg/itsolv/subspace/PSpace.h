@@ -9,6 +9,10 @@ namespace subspace {
 
 template <class R, class P>
 struct PSpace {
+  using VecRefP = std::vector<std::reference_wrapper<P>>;
+
+  VecRefP params() const { return {}; }
+  VecRefP actions() const { return {}; }
 
   size_t size() const { return 0; }
 };

@@ -285,6 +285,16 @@ struct QSpace {
 
   size_t size() const { return m_params.size(); }
 
+  VecRefQ params() const {
+    auto qparams = VecRefQ{};
+    std::transform(begin(m_params), end(m_params), std::back_inserter(qparams), [](auto& q) { return q.param; });
+  }
+
+  VecRefQ actions() const {
+    auto qactions = VecRefQ{};
+    std::transform(begin(m_params), end(m_params), std::back_inserter(qactions), [](auto& q) { return q.action; });
+  }
+
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::vector<size_t> m_used_working_set; //!< root indices of r vectors that were used to generate new q vectors

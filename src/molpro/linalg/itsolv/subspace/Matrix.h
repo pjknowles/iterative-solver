@@ -187,6 +187,8 @@ protected:
       return *this;
     }
 
+    T& operator()(size_t i,size_t j){return mat(upl.first + i, upl.second + j);}
+
     Slice& axpy(T a, const Slice& x) {
       if (dimensions() != x.dimensions())
         throw std::runtime_error("attempting to copy slices of different dimensions");

@@ -147,13 +147,13 @@ void update_qr_subspace(const std::vector<std::reference_wrapper<Q>>& qparams,
   rq[EqnData::H].slice() = ov_actions_rq;
 }
 
-//! Merges subspace data for q params i and j \f$ q_i^' = a q_i + b q_j \f$
+//! Merges subspace data for q params i and j \f$ q_i = a q_i + b q_j \f$
 void merge_subspace_qq(size_t i, size_t j, double a, double b, SubspaceData& qq);
 
-//! Merges subspace data for q params i and j \f$ q_i^' = a q_i + b q_j \f$
+//! Merges subspace data for q params i and j \f$ q_i = a q_i + b q_j \f$
 void merge_subspace_qr(size_t i, size_t j, double a, double b, SubspaceData& qr);
 
-//! Merges subspace data for q params i and j \f$ q_i^' = a q_i + b q_j \f$
+//! Merges subspace data for q params i and j \f$ q_i = a q_i + b q_j \f$
 void merge_subspace_rq(size_t i, size_t j, double a, double b, SubspaceData& rq);
 
 //! Removes data associates with q parameter i from qq, qr and rq blocks

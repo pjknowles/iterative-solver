@@ -272,6 +272,8 @@ struct QSpace {
     qspace::erase_subspace(i, data, qr, rq);
   }
 
+  size_t size() const { return m_params.size(); }
+
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::vector<size_t> m_used_working_set; //!< root indices of r vectors that were used to generate new q vectors

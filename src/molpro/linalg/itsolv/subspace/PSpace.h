@@ -8,9 +8,12 @@ namespace itsolv {
 namespace subspace {
 
 template <class R, class P>
-struct PSpace {};
+struct PSpace {
 
-} // namespace detail
+  size_t size() const { return 0; }
+};
+
+} // namespace subspace
 } // namespace itsolv
 } // namespace linalg
 } // namespace molpro

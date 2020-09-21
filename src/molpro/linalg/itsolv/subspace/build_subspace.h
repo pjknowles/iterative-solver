@@ -12,7 +12,7 @@ void build_subspace_H_S(SubspaceData& xx, const SubspaceData& rr, const Subspace
                         const SubspaceData& rq, const SubspaceData& pp, const Dimensions& d) {
   for (auto e : {EqnData::H, EqnData::S}) {
     xx.at(e).resize({d.nX, d.nX});
-    xx.at(e).slice({d.oP, d.oP}, {d.nP, d.nP}) = pp.at(e);
+    xx.at(e).slice({d.oP, d.oP}, {d.oP + d.nP, d.oP + d.nP}) = pp.at(e);
     xx.at(e).slice({d.oQ, d.oQ}, {d.oQ + d.nQ, d.oQ + d.nQ}) = qq.at(e);
     xx.at(e).slice({d.oQ, d.oR}, {d.oQ + d.nQ, d.oR + d.nR}) = qr.at(e);
     xx.at(e).slice({d.oR, d.oQ}, {d.oR + d.nR, d.oQ + d.nQ}) = rq.at(e);

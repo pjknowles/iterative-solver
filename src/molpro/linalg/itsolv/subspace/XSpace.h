@@ -21,9 +21,10 @@ struct Dimensions {
 } // namespace xspace
 
 //! Base class for XSpace solvers
-template <class Rs, class Qs, class Ps>
+template <class Rs, class Qs, class Ps, typename ST>
 class XSpace {
 public:
+  using scalar_type = ST;
   using R = typename Rs::R;
   using Q = typename Qs::Q;
   using P = typename Ps::P;
@@ -39,8 +40,8 @@ public:
   //! Solves the underlying problem in the subspace. solver can be used to pass extra parameters defining the problem
   virtual void solve(const IterativeSolver<R, Q, P>& solver) = 0;
 
-  //! Access solution corresponding to root i
-  virtual const std::vector<double>& solution(size_t i) const = 0;
+  //! Access solution matrix. Solution vectors are stored as columns
+  virtual const Matrix<scalar_type>& solution() const = 0;
 
   //! Number of vectors forming the subspace
   size_t size() { return data.at(EqnData::H).rows(); }

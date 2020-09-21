@@ -11,30 +11,40 @@ namespace linalg {
 namespace itsolv {
 namespace subspace {
 
-template <class R, class Q, class P, typename scalar_type>
-class XSpaceLinEig : public XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>> {
-  using XS = XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>>;
+template <class R, class Q, class P, typename ST>
+class XSpaceLinEig : public XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, ST> {
+  using XS = XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, ST>;
 
 public:
   using typename XS::PS;
   using typename XS::QS;
   using typename XS::RS;
+  using typename XS::scalar_type;
   using XS::data;
 
-  void check_conditioning(RS& rs, QS& qs, PS& ps) override { xspace::check_conditioning(*this, rs, qs, ps); }
+  void check_conditioning(RS& rs, QS& qs, PS& ps) override {
+    xspace::check_conditioning(*this, rs, qs, ps, m_svd_stability_threshold);
+  }
 
   void solve(const IterativeSolver<R, Q, P>& solver) override {
     assert("XSpaceLinEig can only be used with LinearEigensystem solver");
   };
 
   void solve(const LinearEigensystem<R, Q, P>& solver) {
-    // itsolv::eigenproblem(m_evec_xx, m_eval_xx, m_h_xx, m_s_xx, m_n_x, m_hermitian, m_svdThreshold, m_verbosity);
+    auto& h = data[EqnData::H].data();
+    auto& s = data[EqnData::H].data();
+    if (m_hermitian)
+      util::matrix_symmetrize(h);
+    auto dim = h.rows();
+    auto evec = std::move(m_evec).data();
+    itsolv::eigenproblem(evec, m_eval, h, s, dim, m_hermitian, m_svd_solver_threshold, 0);
+    auto n_solutions = evec.size() / dim;
+    m_evec = Matrix<scalar_type>{std::move(evec), {dim, n_solutions}};
   }
 
-  std::vector<scalar_type> eigenvalues() const { return {}; };
+  const auto& eigenvalues() const { return m_eval; };
 
-  //! Return solution vector for root i
-  const std::vector<double>& solution(size_t i) const override { return m_solutions.at(i); };
+  const Matrix<scalar_type>& solution() const override { return m_evec; };
 
   void build_subspace(RS& rs, QS& qs, PS& ps) override {
     auto nP = ps.data.at(EqnData::H).rows();
@@ -48,10 +58,13 @@ public:
 
 protected:
   xspace::Dimensions m_dim;
+  bool m_hermitian = false; //!< whether the matrix is Hermitian
   double m_svd_stability_threshold =
       1.0e-4; //!< singular values of overlap matrix larger than this constitute a stable subspace
   std::map<size_t, std::vector<double>> m_solutions; //!< solutions mapped to root index
   double m_svd_solver_threshold = 1.0e-14;           //!< threshold to remove the null space during solution
+  Matrix<scalar_type> m_evec;                        //!< eigenvectors stored as columns with ascending eigenvalue
+  std::vector<scalar_type> m_eval;                   //!< eigenvalues in ascending order
 };
 
 } // namespace subspace

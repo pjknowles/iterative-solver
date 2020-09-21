@@ -71,6 +71,14 @@ Matrix<double> overlap(const std::vector<std::reference_wrapper<R>>& params,
   return m;
 }
 
+template <typename T>
+void matrix_symmetrize(Matrix<T>& mat) {
+  assert(mat.rows() == mat.cols() && "must be a square matrix");
+  for (size_t i = 0; i < mat.rows(); ++i)
+    for (size_t j = 0; j < i; ++j)
+      mat(i, j) = mat(j, i) = 0.5 * (mat(i, j) + mat(j, i));
+}
+
 } // namespace util
 } // namespace subspace
 } // namespace itsolv

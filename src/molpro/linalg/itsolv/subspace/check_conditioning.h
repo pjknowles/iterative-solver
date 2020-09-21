@@ -35,8 +35,8 @@ auto generate_pairs(const std::map<size_t, std::vector<size_t>>& candidates) {
 
 } // namespace detail
 
-template <class R, class P, class Q>
-void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>>& xs, RSpace<R, Q, P>& rs,
+template <class R, class P, class Q, class ST>
+void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, ST>& xs, RSpace<R, Q, P>& rs,
                         QSpace<R, Q, P>& qs, PSpace<R, P>& ps, double threshold) {
   bool stable = false;
   auto candidates = detail::generate_candidates(rs, qs);

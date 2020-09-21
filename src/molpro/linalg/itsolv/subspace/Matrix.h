@@ -57,7 +57,13 @@ public:
   T operator()(index_type i, index_type j) const { return m_buffer[i * m_cols + j]; }
 
   //! Access the underlying data buffer
-  const std::vector<T>& data() const { return m_buffer; }
+  const std::vector<T>& data() const& { return m_buffer; }
+  //! Access the raw data buffer of an r-value matrix. The matrix is left empty.
+  std::vector<T>&& data() && {
+    m_rows = 0;
+    m_cols = 0;
+    return std::move(m_buffer);
+  }
 
   //! Returns true if matrix is empty
   bool empty() const { return size() == 0; }

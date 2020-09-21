@@ -51,7 +51,7 @@ public:
     m_roots = util::eye_order(root_subspace);
   }
 
-  const auto& eigenvalues() const { return m_eval; };
+  const std::vector<scalar_type>& eigenvalues() const override { return m_eval; };
 
   const Matrix<scalar_type>& solution() const override { return m_evec; };
 

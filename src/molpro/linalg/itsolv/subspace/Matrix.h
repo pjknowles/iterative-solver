@@ -106,6 +106,14 @@ public:
   //! Access the whole matrix as a slice
   CSlice slice() const { return slice({0, 0}, dimensions()); }
 
+  //! Access row slice
+  Slice row(size_t i) { return slice({i, 0}, {i + 1, m_cols}); }
+  CSlice row(size_t i) const { return slice({i, 0}, {i + 1, m_cols}); }
+
+  //! Access column slice
+  Slice col(size_t j) { return slice({0, j}, {m_rows, j + 1}); }
+  CSlice col(size_t j) const { return slice({0, j}, {m_rows, j + 1}); }
+
   //! Resize the matrix. The old data is preserved and any new rows/cols are zeroed. @param dims new dimensions
   void resize(const coord_type& dims) {
     if (dims == dimensions())
@@ -187,7 +195,7 @@ protected:
       return *this;
     }
 
-    T& operator()(size_t i,size_t j){return mat(upl.first + i, upl.second + j);}
+    T& operator()(size_t i, size_t j) { return mat(upl.first + i, upl.second + j); }
 
     Slice& axpy(T a, const Slice& x) {
       if (dimensions() != x.dimensions())

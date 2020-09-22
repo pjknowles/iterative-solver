@@ -42,7 +42,7 @@ struct QParam {
     auto a = normalisation_constant / x.normalisation_constant;
     handler.axpy(a, *x.param, *param);
     handler.axpy(a, *x.action, *action);
-    auto dot = handler.dot(*param, *action);
+    auto dot = handler.dot(*param, *param);
     normalisation_constant = 1. / std::sqrt(dot);
     handler.scal(normalisation_constant, *param);
     handler.scal(normalisation_constant, *action);
@@ -112,11 +112,11 @@ void update_qq_subspace(const std::vector<std::reference_wrapper<Q>>& old_params
   data[EqnData::S].resize({nQ, nQ});
   data[EqnData::H].resize({nQ, nQ});
   auto ov_params_old_new = util::overlap(old_params, new_params, handler);
-  auto ov_actions_old_new = util::overlap(old_actions, new_actions, handler);
+  auto ov_actions_old_new = util::overlap(old_params, new_actions, handler);
   auto ov_params_new_old = util::overlap(new_params, old_params, handler);
-  auto ov_actions_new_old = util::overlap(new_actions, old_actions, handler);
+  auto ov_actions_new_old = util::overlap(new_params, old_actions, handler);
   auto ov_params_new_new = util::overlap(new_params, new_params, handler);
-  auto ov_actions_new_new = util::overlap(new_actions, new_actions, handler);
+  auto ov_actions_new_new = util::overlap(new_params, new_actions, handler);
   data[EqnData::S].slice({nQold, 0}, {nQ, nQold}) = ov_params_new_old;
   data[EqnData::H].slice({nQold, 0}, {nQ, nQold}) = ov_actions_new_old;
   data[EqnData::S].slice({0, nQold}, {nQold, nQ}) = ov_params_old_new;
@@ -139,10 +139,10 @@ void update_qr_subspace(const std::vector<std::reference_wrapper<Q>>& qparams,
   rq[EqnData::S].resize({nR, nQ});
   rq[EqnData::H].resize({nR, nQ});
   auto ov_params_qr = util::overlap(qparams, rparams, handler_qr);
-  auto ov_actions_qr = util::overlap(qactions, ractions, handler_qr);
+  auto ov_actions_qr = util::overlap(qparams, ractions, handler_qr);
   // FIXME in hermitian cases rq is redundant
   auto ov_params_rq = util::overlap(rparams, qparams, handler_rq);
-  auto ov_actions_rq = util::overlap(ractions, qactions, handler_rq);
+  auto ov_actions_rq = util::overlap(rparams, qactions, handler_rq);
   qr[EqnData::S].slice() = ov_params_qr;
   qr[EqnData::H].slice() = ov_actions_qr;
   rq[EqnData::S].slice() = ov_params_rq;
@@ -260,8 +260,6 @@ struct QSpace {
     assert(m_params.size() > pair.first && m_params.size() > pair.second);
     auto i = std::min(pair.first, pair.second);
     auto j = std::max(pair.first, pair.second);
-    if (i == j)
-      throw std::runtime_error("attempting to merge the same vector");
     auto left = std::next(begin(m_params), i);
     auto right = std::next(begin(m_params), j);
     auto root = left->root;
@@ -272,6 +270,8 @@ struct QSpace {
     if (left == first_difference_vector) {
       erase(i);
     } else {
+      if (i == j)
+        throw std::runtime_error("attempting to merge the same vector");
       double a, b;
       std::tie(a, b) = left->merge(*right, m_handlers->qq());
       m_params.erase(right);

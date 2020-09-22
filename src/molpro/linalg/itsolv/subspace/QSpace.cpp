@@ -12,10 +12,10 @@ void merge_subspace_qq(size_t i, size_t j, double a, double b, SubspaceData& qq)
     auto rows = qq[d].rows();
     auto cols = qq[d].cols();
     auto diag = a * a * qq[d](i, i) + a * b * qq[d](i, j) + a * b * qq[d](j, i) + b * b * qq[d](j, j);
-    auto row_i = qq[d].slice({i, 0}, {i + 1, cols});
-    auto row_j = qq[d].slice({j, 0}, {j + 1, cols});
-    auto col_i = qq[d].slice({0, i}, {rows, i + 1});
-    auto col_j = qq[d].slice({0, j}, {rows, j + 1});
+    auto row_i = qq[d].row(i);
+    auto row_j = qq[d].row(j);
+    auto col_i = qq[d].col(i);
+    auto col_j = qq[d].col(j);
     row_i.scal(a);
     row_i.axpy(b, row_j);
     col_i.scal(a);

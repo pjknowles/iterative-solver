@@ -118,7 +118,7 @@ public:
   void resize(const coord_type& dims) {
     if (dims == dimensions())
       return;
-    if (dims.first < m_rows && dims.second == m_cols) {
+    if (dims.second == m_cols) {
       m_rows = dims.first;
       m_buffer.resize(size());
     } else {
@@ -145,7 +145,7 @@ public:
     auto m = Matrix<T>({m_rows, m_cols - 1});
     m.slice({0, 0}, {m_rows, col}) = slice({0, 0}, {m_rows, col});
     m.slice({0, col}, {m_rows, m.m_cols}) = slice({0, col + 1}, dimensions());
-    *this = std::move(m);
+    std::swap(*this, m);
   }
 
   //! removes row and column @param row row incdex @param col column index

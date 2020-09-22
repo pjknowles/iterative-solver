@@ -21,15 +21,15 @@ void construct_solution(const std::vector<int>& working_set, std::vector<std::re
   }
   for (size_t i = 0; i < working_set.size(); ++i) {
     handlers.rr().fill(0, params[i]);
-    auto solution = solutions.col(working_set[i]);
+    auto root = working_set[i];
     for (size_t j = 0; j < pparams.size(); ++j) {
-      handlers.rp().axpy(solution(oP + j, 0), pparams.at(j), params.at(i));
+      handlers.rp().axpy(solutions(oP + j, root), pparams.at(j), params.at(i));
     }
     for (size_t j = 0; j < qparams.size(); ++j) {
-      handlers.rq().axpy(solution(oQ + j, 0), qparams.at(j), params.at(i));
+      handlers.rq().axpy(solutions(oQ + j, root), qparams.at(j), params.at(i));
     }
-    for (size_t j = 0; j < dummy.size(); ++j) {
-      handlers.rr().axpy(solution(oR + j, 0), dummy.at(j), params.at(i));
+    for (size_t j = 0; j < working_set.size(); ++j) {
+      handlers.rr().axpy(solutions(oR + j, root), dummy.at(j), params.at(i));
     }
   }
 }

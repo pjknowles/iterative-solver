@@ -40,7 +40,14 @@ void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, S
                         QSpace<R, Q, P>& qs, PSpace<R, P>& ps, double threshold) {
   bool stable = false;
   auto candidates = detail::generate_candidates(rs, qs);
-  while (!stable && !candidates.empty()) {
+  auto empty_candidates = [&candidates]() {
+    bool empty = true;
+    for (const auto& c : candidates) {
+      empty &= c.second.empty();
+    }
+    return empty;
+  };
+  while (!stable && !empty_candidates()) {
     auto& s = xs.data[EqnData::S];
     auto svd = svd_system(xs.size(), array::Span<double>{&s(0, 0), s.size()}, threshold);
     stable = svd.empty();

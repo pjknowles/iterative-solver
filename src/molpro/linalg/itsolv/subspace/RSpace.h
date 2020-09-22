@@ -53,18 +53,19 @@ public:
   explicit RSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers) : m_handlers(std::move(handlers)) {}
 
   void update(std::vector<R>& parameters, std::vector<R>& actions, IterativeSolver<R, Q, P>& solver) {
-    auto ind_last_param_to_new = std::vector<size_t>{};
     if (m_last_params.empty()) {
       m_working_set.resize(parameters.size());
       std::iota(begin(m_working_set), end(m_working_set), size_t{0});
-      ind_last_param_to_new = m_working_set;
-    } else
-      ind_last_param_to_new = rspace::assign_last_parameters_to_new(m_last_params, parameters, m_handlers->qr());
-    m_params.clear();
-    m_actions.clear();
-    for (const auto& param_to_last : ind_last_param_to_new) {
-      m_params.emplace_back(parameters[param_to_last]);
-      m_actions.emplace_back(actions[param_to_last]);
+      for (size_t i = 0; i < m_working_set.size(); ++i) {
+        m_params.emplace_back(m_handlers->rr().copy(parameters[i]));
+        m_actions.emplace_back(m_handlers->rr().copy(actions[i]));
+      }
+    } else {
+      auto ind_last_param_to_new = rspace::assign_last_parameters_to_new(m_last_params, parameters, m_handlers->qr());
+      for (size_t i = 0; i < ind_last_param_to_new.size(); ++i) {
+        m_handlers->rr().copy(m_params[i], parameters[ind_last_param_to_new[i]]);
+        m_handlers->rr().copy(m_actions[i], actions[ind_last_param_to_new[i]]);
+      }
     }
     for (size_t i = 0; i < m_params.size(); ++i) {
       auto norm = std::sqrt(m_handlers->rr().dot(m_params[i], m_params[i]));
@@ -72,8 +73,8 @@ public:
       m_handlers->rr().scal(1.0 / norm, m_params[i]);
       m_handlers->rr().scal(1.0 / norm, m_actions[i]);
     }
-    data[EqnData::S] = util::overlap(m_params, m_handlers->rr());
-    data[EqnData::H] = util::overlap(m_params, m_actions, m_handlers->rr());
+    data[EqnData::S] = util::overlap(util::wrap(m_params), m_handlers->rr());
+    data[EqnData::H] = util::overlap(util::wrap(m_params), util::wrap(m_actions), m_handlers->rr());
     assert(m_working_set.size() == m_params.size());
   }
 
@@ -122,8 +123,8 @@ public:
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::vector<size_t> m_working_set; //!< working set of roots. Maps references of current params to starting roots
-  VecRefR m_params;                  //!< solutions at this iteration forming the RSpace, mapped to root indices
-  VecRefR m_actions;                 //!< action vector corresponding to m_params
+  std::vector<R> m_params;           //!< solutions at this iteration forming the RSpace, mapped to root indices
+  std::vector<R> m_actions;          //!< action vector corresponding to m_params
   mutable std::vector<R> m_dummy;    //!< A dummy R vector which can be used as an intermediate
   std::vector<Q> m_last_params;      //!< parameters from previous iteration, mapped to root indices
   std::vector<Q> m_last_actions;     //!< actions from previous iteration, mapped to root indices

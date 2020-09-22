@@ -65,9 +65,9 @@ auto wrap_params(ForwardIt begin, ForwardIt end) {
 //! Generate new difference vectors based on current and last working set
 template <class R, class Q, class P>
 std::pair<std::list<QParam<Q>>, std::vector<size_t>>
-update(R& qparam, R& qaction, const std::vector<std::reference_wrapper<R>>& params,
-       const std::vector<std::reference_wrapper<R>>& actions, const std::vector<Q>& last_params,
-       const std::vector<Q>& last_actions, const std::vector<size_t>& working_set, ArrayHandlers<R, Q, P>& handlers) {
+update(R& qparam, R& qaction, const std::vector<R>& params, const std::vector<R>& actions,
+       const std::vector<Q>& last_params, const std::vector<Q>& last_actions, const std::vector<size_t>& working_set,
+       ArrayHandlers<R, Q, P>& handlers) {
   if (last_params.empty() || last_actions.empty())
     return {};
   assert(params.size() == last_params.size() && params.size() == actions.size() &&
@@ -128,9 +128,8 @@ void update_qq_subspace(const std::vector<std::reference_wrapper<Q>>& old_params
 //! Updates equation data in the RxQ part of the subspace
 template <class R, class Q>
 void update_qr_subspace(const std::vector<std::reference_wrapper<Q>>& qparams,
-                        const std::vector<std::reference_wrapper<Q>>& qactions,
-                        const std::vector<std::reference_wrapper<R>>& rparams,
-                        const std::vector<std::reference_wrapper<R>>& ractions, SubspaceData& qr, SubspaceData& rq,
+                        const std::vector<std::reference_wrapper<Q>>& qactions, const std::vector<R>& rparams,
+                        const std::vector<R>& ractions, SubspaceData& qr, SubspaceData& rq,
                         array::ArrayHandler<Q, R>& handler_qr, array::ArrayHandler<R, Q>& handler_rq) {
   auto nQ = qparams.size();
   auto nR = rparams.size();
@@ -138,11 +137,11 @@ void update_qr_subspace(const std::vector<std::reference_wrapper<Q>>& qparams,
   qr[EqnData::H].resize({nQ, nR});
   rq[EqnData::S].resize({nR, nQ});
   rq[EqnData::H].resize({nR, nQ});
-  auto ov_params_qr = util::overlap(qparams, rparams, handler_qr);
-  auto ov_actions_qr = util::overlap(qparams, ractions, handler_qr);
+  auto ov_params_qr = util::overlap(qparams, util::wrap(rparams), handler_qr);
+  auto ov_actions_qr = util::overlap(qparams, util::wrap(ractions), handler_qr);
   // FIXME in hermitian cases rq is redundant
-  auto ov_params_rq = util::overlap(rparams, qparams, handler_rq);
-  auto ov_actions_rq = util::overlap(rparams, qactions, handler_rq);
+  auto ov_params_rq = util::overlap(util::wrap(rparams), qparams, handler_rq);
+  auto ov_actions_rq = util::overlap(util::wrap(rparams), qactions, handler_rq);
   qr[EqnData::S].slice() = ov_params_qr;
   qr[EqnData::H].slice() = ov_actions_qr;
   rq[EqnData::S].slice() = ov_params_rq;

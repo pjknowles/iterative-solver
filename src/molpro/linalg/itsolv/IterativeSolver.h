@@ -44,6 +44,7 @@ public:
   virtual void set_n_roots(size_t nroots) = 0;
   virtual const std::vector<scalar_type>& errors() const = 0;
   virtual const Statistics& statistics() const = 0;
+  virtual void report() const = 0;
 };
 
 /*!

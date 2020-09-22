@@ -111,6 +111,7 @@ public:
     update_working_set();
     for (size_t i = 0; i < m_working_set.size(); ++i)
       m_handlers->rr().copy(m_rspace.actions().at(i), dummy.at(i));
+    m_stats->iterations++;
     dummy.clear();
     return m_working_set.size();
   };
@@ -151,6 +152,18 @@ public:
   void set_n_roots(size_t roots) override { m_nroots = roots; }
   const std::vector<scalar_type>& errors() const override { return m_errors; }
   const Statistics& statistics() const override { return *m_stats; }
+
+  void report() const override {
+    molpro::cout << "iteration " << m_stats->iterations;
+    if (not m_errors.empty()) {
+      auto it_max_error = std::max_element(m_errors.cbegin(), m_errors.cend());
+      if (n_roots() > 1)
+        molpro::cout << ", error[" << std::distance(it_max_error, m_errors.cbegin()) << "] = ";
+      else
+        molpro::cout << ", error = ";
+      molpro::cout << *it_max_error << std::endl;
+    }
+  }
 
 protected:
   IterativeSolverTemplate(RS rspace, QS qspace, PS pspace, XS xspace, std::shared_ptr<ArrayHandlers<R, Q, P>> handlers,

@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMA_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMA_H
+#include <iterator>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceLinEig.h>
 
@@ -43,6 +44,15 @@ public:
       eval.emplace_back(this->m_xspace.eigenvalues().at(i));
     }
     return eval;
+  }
+
+  void report() const override {
+    SolverTemplate::report();
+    molpro::cout << "eigenvalues ";
+    auto ev = eigenvalues();
+    molpro::cout << std::fixed << std::setprecision(14);
+    std::copy(begin(ev), end(ev), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
+    molpro::cout << std::defaultfloat << std::endl;
   }
 };
 

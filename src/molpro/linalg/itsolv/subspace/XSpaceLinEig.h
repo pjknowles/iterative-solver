@@ -33,7 +33,7 @@ public:
 
   void solve(const LinearEigensystem<R, Q, P>& solver) {
     auto& h = data[EqnData::H];
-    auto& s = data[EqnData::H];
+    auto& s = data[EqnData::S];
     if (m_hermitian)
       util::matrix_symmetrize(h);
     auto dim = h.rows();
@@ -44,6 +44,7 @@ public:
     auto nroots = solver.n_roots();
     assert(solver.n_roots() == m_roots_in_subspace.size());
     assert(n_solutions >= solver.n_roots());
+    m_eval.resize(nroots);
     m_evec.resize({dim, nroots});
     m_evec.slice() = full_matrix.slice({0, 0}, {dim, nroots});
     auto root_subspace = Matrix<double>({nroots, nroots});

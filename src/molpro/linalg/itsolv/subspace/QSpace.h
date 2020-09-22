@@ -68,6 +68,8 @@ std::pair<std::list<QParam<Q>>, std::vector<size_t>>
 update(R& qparam, R& qaction, const std::vector<std::reference_wrapper<R>>& params,
        const std::vector<std::reference_wrapper<R>>& actions, const std::vector<Q>& last_params,
        const std::vector<Q>& last_actions, const std::vector<size_t>& working_set, ArrayHandlers<R, Q, P>& handlers) {
+  if (last_params.empty() || last_actions.empty())
+    return {};
   assert(params.size() == last_params.size() && params.size() == actions.size() &&
          last_params.size() == last_actions.size() && "Must provide consistent number of input parameters");
   auto used_working_set = std::vector<size_t>{};

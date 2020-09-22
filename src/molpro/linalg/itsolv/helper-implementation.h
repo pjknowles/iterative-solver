@@ -48,7 +48,7 @@ std::list<SVD<value_type>> svd_system(size_t ndim, const array::Span<value_type>
       mat, Eigen::ComputeThinV);
   auto svd_system = std::list<SVD<value_type>>{};
   auto sv = svd.singularValues();
-  for (size_t i = ndim - 1; i >= 0; --i) {
+  for (int i = ndim - 1; i >= 0; --i) {
     if (std::abs(sv(i)) < threshold) {
       auto t = SVD<value_type>{};
       t.value = sv(i);

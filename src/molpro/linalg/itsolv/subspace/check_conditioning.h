@@ -27,8 +27,11 @@ auto generate_pairs(const std::map<size_t, std::vector<size_t>>& candidates) {
   auto pairs = std::vector<std::pair<size_t, size_t>>{};
   for (const auto& root_candidates : candidates) {
     const auto& c = root_candidates.second;
-    for (size_t i = 1; i < c.size(); ++i)
-      pairs.emplace_back(i - 1, i);
+    if (c.size() == 1)
+      pairs.emplace_back(c.front(), c.front());
+    else
+      for (size_t i = 1; i < c.size(); ++i)
+        pairs.emplace_back(c[i - 1], c[i]);
   }
   return pairs;
 };
@@ -57,7 +60,7 @@ void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, S
       for (const auto& p : pairs) {
         const auto oQ = xs.dimensions().oQ;
         const auto& v = svd.front().v;
-        const auto norm = std::abs(v.at(oQ + p.first) * v.at(oQ + p.second));
+        const auto norm = v.at(oQ + p.first) * v.at(oQ + p.first) + v.at(oQ + p.second) * v.at(oQ + p.second);
         norms.emplace_back(norm);
       }
       auto it_max = std::max_element(begin(norms), end(norms));

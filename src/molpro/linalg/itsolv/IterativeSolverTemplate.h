@@ -49,9 +49,10 @@ void construct_residual(const std::vector<int>& working_set, const std::vector<s
 }
 
 template <class R>
-auto update_errors(const std::vector<std::reference_wrapper<R>>& residual, array::ArrayHandler<R, R>& handler) {
-  auto errors = std::vector<double>(residual.size());
-  for (size_t i = 0; i < residual.size(); ++i) {
+auto update_errors(const std::vector<int>& working_set, const std::vector<std::reference_wrapper<R>>& residual,
+                   array::ArrayHandler<R, R>& handler) {
+  auto errors = std::vector<double>(working_set.size());
+  for (size_t i = 0; i < working_set.size(); ++i) {
     auto a = handler.dot(residual[i], residual[i]);
     errors[i] = std::sqrt(std::abs(a));
   }
@@ -92,8 +93,6 @@ public:
     m_rspace.update(parameters, action, *static_cast<Solver*>(this));
     m_working_set.clear();
     std::copy(begin(m_rspace.working_set()), end(m_rspace.working_set()), std::back_inserter(m_working_set));
-    if (m_nroots == 0)
-      m_nroots = m_working_set.size();
     m_qspace.update(m_rspace, *static_cast<Solver*>(this));
     m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
     m_xspace.check_conditioning(m_rspace, m_qspace, m_pspace);
@@ -108,7 +107,7 @@ public:
                                m_xspace.solutions(), *m_handlers);
     detail::construct_residual(m_working_set, m_rspace.params(), m_rspace.actions(), wdummy, m_xspace.eigenvalues(),
                                m_handlers->rr());
-    m_errors = detail::update_errors(wdummy, m_handlers->rr());
+    m_errors = detail::update_errors(m_working_set, wdummy, m_handlers->rr());
     update_working_set();
     for (size_t i = 0; i < m_working_set.size(); ++i)
       m_handlers->rr().copy(m_rspace.actions().at(i), dummy.at(i));
@@ -149,6 +148,7 @@ public:
 
   const std::vector<int>& working_set() const override { return m_working_set; }
   size_t n_roots() const override { return m_nroots; }
+  void set_n_roots(size_t roots) override { m_nroots = roots; }
   const std::vector<scalar_type>& errors() const override { return m_errors; }
   const Statistics& statistics() const override { return *m_stats; }
 

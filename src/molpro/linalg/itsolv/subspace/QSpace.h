@@ -175,8 +175,11 @@ void erase_subspace(size_t i, SubspaceData& qq, SubspaceData& qr, SubspaceData& 
  * @tparam Q array for Q space
  * @tparam P array for P space
  */
-template <class R, class Q, class P>
+template <class Rt, class Qt, class Pt>
 struct QSpace {
+  using R = Rt;
+  using Q = Qt;
+  using P = Pt;
   using VecRefR = typename RSpace<R, Q, P>::VecRefR;
   using VecRefQ = std::vector<std::reference_wrapper<Q>>;
 
@@ -204,8 +207,8 @@ struct QSpace {
 
   void add_converged(const VecRefR& params, VecRefR& actions, const std::vector<size_t>& roots) {
     for (size_t i = 0; i < params.size(); ++i) {
-      auto&& q = qspace::QParam<Q>{std::make_unique<Q>(m_handlers.qr().copy(params[i])),
-                                   std::make_unique<Q>(m_handlers.qr().copy(actions[i])),
+      auto&& q = qspace::QParam<Q>{std::make_unique<Q>(m_handlers->qr().copy(params[i])),
+                                   std::make_unique<Q>(m_handlers->qr().copy(actions[i])),
                                    roots[i],
                                    true,
                                    1,
@@ -230,6 +233,7 @@ struct QSpace {
         conv_sol[q.root] = i;
       ++i;
     }
+    return conv_sol;
   }
 
   //! Vector of root indices for r vectors that were used to generate new q vectors. Converged solutions are not
@@ -287,12 +291,16 @@ struct QSpace {
 
   VecRefQ params() const {
     auto qparams = VecRefQ{};
-    std::transform(begin(m_params), end(m_params), std::back_inserter(qparams), [](auto& q) { return q.param; });
+    std::transform(begin(m_params), end(m_params), std::back_inserter(qparams),
+                   [](auto& q) { return std::ref(*q.param); });
+    return qparams;
   }
 
   VecRefQ actions() const {
     auto qactions = VecRefQ{};
-    std::transform(begin(m_params), end(m_params), std::back_inserter(qactions), [](auto& q) { return q.action; });
+    std::transform(begin(m_params), end(m_params), std::back_inserter(qactions),
+                   [](auto& q) { return std::ref(*q.action); });
+    return qactions;
   }
 
 protected:

@@ -21,6 +21,7 @@ public:
   using typename XS::RS;
   using typename XS::scalar_type;
   using XS::data;
+  XSpaceLinEig() = default;
 
   void check_conditioning(RS& rs, QS& qs, PS& ps) override {
     xspace::check_conditioning(*this, rs, qs, ps, m_svd_stability_threshold);
@@ -31,13 +32,13 @@ public:
   };
 
   void solve(const LinearEigensystem<R, Q, P>& solver) {
-    auto& h = data[EqnData::H].data();
-    auto& s = data[EqnData::H].data();
+    auto& h = data[EqnData::H];
+    auto& s = data[EqnData::H];
     if (m_hermitian)
       util::matrix_symmetrize(h);
     auto dim = h.rows();
     auto evec = std::vector<scalar_type>{};
-    itsolv::eigenproblem(evec, m_eval, h, s, dim, m_hermitian, m_svd_solver_threshold, 0);
+    itsolv::eigenproblem(evec, m_eval, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, 0);
     auto n_solutions = evec.size() / dim;
     auto full_matrix = Matrix<scalar_type>{std::move(evec), {dim, n_solutions}};
     auto nroots = solver.n_roots();
@@ -45,7 +46,7 @@ public:
     assert(n_solutions >= solver.n_roots());
     m_evec.resize({dim, nroots});
     m_evec.slice() = full_matrix.slice({0, 0}, {dim, nroots});
-    auto root_subspace = Matrix<double>(nroots, nroots);
+    auto root_subspace = Matrix<double>({nroots, nroots});
     for (size_t i = 0; i < m_roots_in_subspace.size(); ++i)
       root_subspace.row(i) = m_evec.row(m_roots_in_subspace[i]);
     m_roots = util::eye_order(root_subspace);
@@ -53,13 +54,13 @@ public:
 
   const std::vector<scalar_type>& eigenvalues() const override { return m_eval; };
 
-  const Matrix<scalar_type>& solution() const override { return m_evec; };
+  const Matrix<scalar_type>& solutions() const override { return m_evec; };
 
   const std::vector<size_t>& roots() const override { return m_roots; };
 
   void build_subspace(RS& rs, QS& qs, PS& ps) override {
-    m_dim = Dimensions(ps.size(), qs.size(), rs.size());
-    xspace::build_subspace_H_S(data, rs.data, qs.data, qs.qr(), rs.rq(), ps.data, m_dim);
+    m_dim = xspace::Dimensions(ps.size(), qs.size(), rs.size());
+    xspace::build_subspace_H_S(data, rs.data, qs.data, qs.qr, qs.rq, ps.data, m_dim);
     // TODO make sure that there are checks to ensure converged and working set never overlap
     m_roots_in_subspace = xspace::roots_in_subspace(qs.converged_solutions(), rs.working_set(), m_dim.oQ, m_dim.oR);
   }

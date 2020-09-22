@@ -39,9 +39,12 @@ std::vector<size_t> assign_last_parameters_to_new(const std::vector<Q>& last_par
 } // namespace rspace
 
 //! Space for the working set of vectors
-template <class R, class Q, class P>
+template <class Rt, class Qt, class Pt>
 class RSpace {
 public:
+  using R = Rt;
+  using Q = Qt;
+  using P = Pt;
   using VecRefR = std::vector<std::reference_wrapper<R>>;
 
   //! Matrix and overlap data mapped to the subspace

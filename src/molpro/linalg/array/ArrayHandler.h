@@ -7,6 +7,7 @@
 #include <memory>
 #include <set>
 #include <stdexcept>
+#include <string>
 
 #include <molpro/linalg/array/type_traits.h>
 

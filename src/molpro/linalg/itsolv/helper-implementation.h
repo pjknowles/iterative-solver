@@ -40,8 +40,8 @@ int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, con
   return -1;
 }
 
-template <typename value_type>
-std::vector<SVD<value_type>> svd_system(size_t ndim, const array::Span<value_type>& m, double threshold) {
+template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>
+std::list<SVD<value_type>> svd_system(size_t ndim, const array::Span<value_type>& m, double threshold) {
   assert(m.size() == ndim * ndim);
   auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), ndim, ndim);
   auto svd = Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>, Eigen::NoQRPreconditioner>(
@@ -60,6 +60,11 @@ std::vector<SVD<value_type>> svd_system(size_t ndim, const array::Span<value_typ
     }
   }
   return svd_system;
+}
+
+template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>
+std::list<SVD<value_type>> svd_system(size_t ndim, const array::Span<value_type>& m, double threshold) {
+  assert(false); // Complex not implemented here
 }
 
 template <typename value_type>

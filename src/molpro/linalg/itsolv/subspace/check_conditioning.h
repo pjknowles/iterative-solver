@@ -41,8 +41,8 @@ void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, S
   bool stable = false;
   auto candidates = detail::generate_candidates(rs, qs);
   while (!stable && !candidates.empty()) {
-    const auto& s = xs.data[EqnData::S];
-    auto svd = svd_system(xs.size(), {s.data(), s.size()}, threshold);
+    auto& s = xs.data[EqnData::S];
+    auto svd = svd_system(xs.size(), array::Span<double>{&s(0, 0), s.size()}, threshold);
     stable = svd.empty();
     if (!svd.empty()) {
       auto pairs = detail::generate_pairs(candidates);

@@ -79,6 +79,12 @@ public:
   template <typename T>
   using VecRef = std::vector<std::reference_wrapper<T>>;
 
+  IterativeSolverTemplate() = delete;
+  IterativeSolverTemplate(const IterativeSolverTemplate<Solver, XS>&) = delete;
+  IterativeSolverTemplate(IterativeSolverTemplate<Solver, XS>&&) noexcept = default;
+  IterativeSolverTemplate<Solver, XS>& operator=(const IterativeSolverTemplate<Solver, XS>&) = delete;
+  IterativeSolverTemplate<Solver, XS>& operator=(IterativeSolverTemplate<Solver, XS>&&) noexcept = default;
+
   void add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& parametersP) override {
     using subspace::util::wrap;
     m_rspace.update(parameters, action, *static_cast<Solver*>(this));
@@ -112,8 +118,8 @@ public:
     m_working_set = roots;
     m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
     m_xspace.solve(*static_cast<Solver*>(this));
-//    construct_solution(parameters);
-//    construct_residual(residual);
+    //    construct_solution(parameters);
+    //    construct_residual(residual);
     m_working_set = working_set_save;
   };
 
@@ -128,11 +134,17 @@ public:
   }
 
   const std::vector<int>& working_set() const override { return m_working_set; }
-  size_t n_roots() const override { return 0; }
+  size_t n_roots() const override { return m_nroots; }
   const std::vector<scalar_type>& errors() const override { return m_errors; }
   const Statistics& statistics() const override { return *m_stats; }
 
 protected:
+  IterativeSolverTemplate(std::shared_ptr<RS> rspace, std::shared_ptr<QS> qspace, std::shared_ptr<PS> pspace,
+                          std::shared_ptr<XS> xspace, std::shared_ptr<ArrayHandlers<R, Q, P>> handlers,
+                          std::shared_ptr<Statistics> stats)
+      : m_handlers(std::move(handlers)), m_rspace(std::move(rspace)), m_qspace(std::move(qspace)),
+        m_pspace(std::move(pspace)), m_xspace(std::move(xspace)), m_stats(std::move(stats)) {}
+
   //! Updates working sets and adds any converged solution to the q space
   void update_working_set() {
     auto ind_still_a_working_param = std::vector<size_t>{};

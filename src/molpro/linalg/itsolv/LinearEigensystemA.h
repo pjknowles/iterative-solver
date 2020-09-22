@@ -25,6 +25,13 @@ class LinearEigensystemA : public IterativeSolverTemplate<
 public:
   using typename LinearEigensystem<R, Q, P>::scalar_type;
 
+  LinearEigensystemA(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers)
+      : IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpaceLinEig<R, Q, P, scalar_type>>(
+            std::make_shared(subspace::RSpace<R, Q, P>{handlers}),
+            std::make_shared(subspace::QSpace<R, Q, P>{handlers}), std::make_shared(subspace::PSpace<R, P>{handlers}),
+            std::make_shared(subspace::XSpace<R, Q, P, scalar_type>{}), std::move(handlers),
+            std ::make_shared<Statistics>()) {}
+
   std::vector<scalar_type> eigenvalues() const override { return this->m_xspace.eigenvalues(); };
 };
 

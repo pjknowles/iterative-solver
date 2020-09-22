@@ -23,16 +23,27 @@ class LinearEigensystemA : public IterativeSolverTemplate<
                                LinearEigensystem<R, Q, P>,
                                subspace::XSpaceLinEig<R, Q, P, typename LinearEigensystem<R, Q, P>::scalar_type>> {
 public:
-  using typename LinearEigensystem<R, Q, P>::scalar_type;
+  using SolverTemplate =
+      IterativeSolverTemplate<LinearEigensystem<R, Q, P>,
+                              subspace::XSpaceLinEig<R, Q, P, typename LinearEigensystem<R, Q, P>::scalar_type>>;
+  using typename SolverTemplate::scalar_type;
 
-  LinearEigensystemA(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers)
-      : IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpaceLinEig<R, Q, P, scalar_type>>(
-            std::make_shared(subspace::RSpace<R, Q, P>{handlers}),
-            std::make_shared(subspace::QSpace<R, Q, P>{handlers}), std::make_shared(subspace::PSpace<R, P>{handlers}),
-            std::make_shared(subspace::XSpace<R, Q, P, scalar_type>{}), std::move(handlers),
-            std ::make_shared<Statistics>()) {}
+  explicit LinearEigensystemA(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers)
+      : SolverTemplate(subspace::RSpace<R, Q, P>(handlers), subspace::QSpace<R, Q, P>(handlers),
+                       subspace::PSpace<R, P>(), subspace::XSpaceLinEig<R, Q, P, scalar_type>(), std::move(handlers),
+                       std ::make_shared<Statistics>()) {}
+
+  void set_convergence_threshold(double threshold) { this->m_convergence_threshold = threshold; }
 
   std::vector<scalar_type> eigenvalues() const override { return this->m_xspace.eigenvalues(); };
+
+  std::vector<scalar_type> working_set_eigenvalues() const {
+    auto eval = std::vector<scalar_type>{};
+    for (auto i : this->working_set()) {
+      eval.emplace_back(this->m_xspace.eigenvalues().at(i));
+    }
+    return eval;
+  }
 };
 
 } // namespace itsolv

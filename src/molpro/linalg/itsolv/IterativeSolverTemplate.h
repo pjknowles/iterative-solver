@@ -11,7 +11,7 @@ namespace detail {
 
 template <class R, class Q, class P>
 void construct_solution(const std::vector<int>& working_set, std::vector<std::reference_wrapper<R>>& params,
-                        const std::vector<std::reference_wrapper<R>>& dummy,
+                        std::vector<std::reference_wrapper<R>>& dummy,
                         const std::vector<std::reference_wrapper<Q>>& qparams,
                         const std::vector<std::reference_wrapper<P>>& pparams, size_t oR, size_t oQ, size_t oP,
                         const subspace::Matrix<double>& solutions, ArrayHandlers<R, Q, P>& handlers) {
@@ -41,7 +41,7 @@ void construct_residual(const std::vector<int>& working_set, const std::vector<s
                         array::ArrayHandler<R, R>& handler) {
   assert(residuals.size() >= working_set.size());
   for (size_t i = 0; i < working_set.size(); ++i) {
-    handler.rr().copy(residuals.at(i), actions.at(i));
+    handler.copy(residuals.at(i), actions.at(i));
   }
   for (size_t i = 0; i < working_set.size(); ++i) {
     handler.axpy(-eigvals.at(working_set[i]), solutions.at(i), residuals.at(i));
@@ -52,9 +52,10 @@ template <class R>
 auto update_errors(const std::vector<std::reference_wrapper<R>>& residual, array::ArrayHandler<R, R>& handler) {
   auto errors = std::vector<double>(residual.size());
   for (size_t i = 0; i < residual.size(); ++i) {
-    auto a = handler->rr().dot(residual[i], residual[i]);
+    auto a = handler.dot(residual[i], residual[i]);
     errors[i] = std::sqrt(std::abs(a));
   }
+  return errors;
 }
 
 } // namespace detail
@@ -70,12 +71,13 @@ template <class Solver, class XS>
 class IterativeSolverTemplate : public Solver {
 public:
   using typename Solver::scalar_type;
+  using typename Solver::value_type;
   using RS = typename XS::RS;
   using QS = typename XS::QS;
   using PS = typename XS::PS;
-  using R = typename Solver::R;
-  using Q = typename Solver::Q;
-  using P = typename Solver::P;
+  using R = typename XS::R;
+  using Q = typename XS::Q;
+  using P = typename XS::P;
   template <typename T>
   using VecRef = std::vector<std::reference_wrapper<T>>;
 
@@ -85,11 +87,11 @@ public:
   IterativeSolverTemplate<Solver, XS>& operator=(const IterativeSolverTemplate<Solver, XS>&) = delete;
   IterativeSolverTemplate<Solver, XS>& operator=(IterativeSolverTemplate<Solver, XS>&&) noexcept = default;
 
-  void add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& parametersP) override {
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& parametersP) override {
     using subspace::util::wrap;
     m_rspace.update(parameters, action, *static_cast<Solver*>(this));
     m_working_set.clear();
-    std::copy(begin(m_rspace.working_set), end(m_rspace.working_set()), std::back_inserter(m_working_set));
+    std::copy(begin(m_rspace.working_set()), end(m_rspace.working_set()), std::back_inserter(m_working_set));
     if (m_nroots == 0)
       m_nroots = m_working_set.size();
     m_qspace.update(m_rspace, *static_cast<Solver*>(this));
@@ -97,19 +99,31 @@ public:
     m_xspace.check_conditioning(m_rspace, m_qspace, m_pspace);
     m_xspace.solve(*static_cast<Solver*>(this));
     auto& dummy = m_rspace.dummy(m_working_set.size());
-    detail::construct_solution(m_working_set, m_rspace.params(), wrap(dummy), m_qspace.params(), m_pspace.params(),
+    auto wdummy = wrap(dummy);
+    detail::construct_solution(m_working_set, m_rspace.params(), wdummy, m_qspace.params(), m_pspace.params(),
                                m_xspace.dimensions().oR, m_xspace.dimensions().oQ, m_xspace.dimensions().oP,
                                m_xspace.solutions(), *m_handlers);
-    detail::construct_solution(m_working_set, m_rspace.actions(), wrap(dummy), m_qspace.actions(), m_pspace.actions(),
+    detail::construct_solution(m_working_set, m_rspace.actions(), wdummy, m_qspace.actions(), m_pspace.actions(),
                                m_xspace.dimensions().oR, m_xspace.dimensions().oQ, m_xspace.dimensions().oP,
                                m_xspace.solutions(), *m_handlers);
-    detail::construct_residual(m_working_set, m_rspace.params(), m_rspace.actions(), wrap(dummy),
-                               m_xspace.eigenvalues(), m_handlers->rr());
-    m_errors = detail::update_errors(wrap(dummy), m_handlers->rr());
+    detail::construct_residual(m_working_set, m_rspace.params(), m_rspace.actions(), wdummy, m_xspace.eigenvalues(),
+                               m_handlers->rr());
+    m_errors = detail::update_errors(wdummy, m_handlers->rr());
     update_working_set();
     for (size_t i = 0; i < m_working_set.size(); ++i)
       m_handlers->rr().copy(m_rspace.actions().at(i), dummy.at(i));
     dummy.clear();
+    return m_working_set.size();
+  };
+
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) override {
+    auto p = std::vector<P>{};
+    return add_vector(parameters, action, p);
+  }
+
+  size_t add_p(std::vector<P>& Pvectors, const value_type* PP, std::vector<R>& parameters, std::vector<R>& action,
+               std::vector<P>& parametersP) override {
+    return 0;
   };
 
   // FIXME I don't fully understand what this is supposed to be doing and what the input is
@@ -139,8 +153,7 @@ public:
   const Statistics& statistics() const override { return *m_stats; }
 
 protected:
-  IterativeSolverTemplate(std::shared_ptr<RS> rspace, std::shared_ptr<QS> qspace, std::shared_ptr<PS> pspace,
-                          std::shared_ptr<XS> xspace, std::shared_ptr<ArrayHandlers<R, Q, P>> handlers,
+  IterativeSolverTemplate(RS rspace, QS qspace, PS pspace, XS xspace, std::shared_ptr<ArrayHandlers<R, Q, P>> handlers,
                           std::shared_ptr<Statistics> stats)
       : m_handlers(std::move(handlers)), m_rspace(std::move(rspace)), m_qspace(std::move(qspace)),
         m_pspace(std::move(pspace)), m_xspace(std::move(xspace)), m_stats(std::move(stats)) {}

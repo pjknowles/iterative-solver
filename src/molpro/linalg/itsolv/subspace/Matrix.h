@@ -118,14 +118,14 @@ public:
   void resize(const coord_type& dims) {
     if (dims == dimensions())
       return;
-    if (dims.second == m_cols) {
+    if (dims.first < m_rows && dims.second == m_cols) {
       m_rows = dims.first;
       m_buffer.resize(size());
     } else {
       auto m = Matrix<T>(dims);
       auto upper_left = coord_type{0, 0};
       auto bottom_right = coord_type{std::min(rows(), m.rows()), std::min(cols(), m.cols())};
-      slice(upper_left, bottom_right) = m.slice(upper_left, bottom_right);
+      m.slice(upper_left, bottom_right) = slice(upper_left, bottom_right);
       std::swap(*this, m);
     }
   }

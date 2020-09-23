@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LOGGER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LOGGER_H
 #include <bitset>
+#include <numeric>
 #include <string>
 
 namespace molpro {
@@ -43,9 +44,14 @@ struct Logger {
    * Fatal is always on
    * DataDump is optional
    */
-  enum Level : short { None, Trace, Debug, Info, DataDump, Warn, Error, Fatal };
+  enum Level : short { None, Trace, Debug, Info, Warn, Error, Fatal };
 
   void msg(const std::string& message, Level log_lvl);
+
+  template <typename ForwardIt>
+  void msg(const std::string& message, ForwardIt begin, ForwardIt end, Level log_lvl) {
+    msg(std::accumulate(begin, end, message, [](auto s, auto el) { return s + std::to_string(el) + ", "; }), log_lvl);
+  }
 
   Level max_trace_level = None; //! highest level of trace message that can be logged
   Level max_warn_level = None;  //! highest level of warning/error that can be logged

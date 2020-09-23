@@ -75,25 +75,34 @@ update(R& qparam, R& qaction, const std::vector<R>& params, const std::vector<R>
   auto used_working_set = std::vector<size_t>{};
   auto qparams = std::list<QParam<Q>>{};
   for (size_t i = 0; i < working_set.size(); ++i) {
-    handlers.rq().copy(qparam, params.at(i));
-    handlers.rq().copy(qaction, actions.at(i));
-    handlers.rq().axpy(-1, last_params.at(i), qparam);
-    handlers.rq().axpy(-1, last_actions.at(i), qaction);
-    auto qq = handlers.rr().dot(qparam, qparam);
-    auto norm = std::sqrt(qq);
-    // FIXME no orthogonalisation is done
-    // FIXME what do we do if norm is very small?
-    if (norm > 1.0e-14) {
-      handlers.rr().scal(1. / norm, qparam);
-      handlers.rr().scal(1. / norm, qaction);
-      auto&& q = qspace::QParam<Q>{std::make_unique<Q>(handlers.qr().copy(qparam)),
-                                   std::make_unique<Q>(handlers.qr().copy(qaction)),
-                                   working_set[i],
-                                   false,
-                                   1. / norm,
-                                   1};
-      qparams.emplace_back(std::move(q));
-      used_working_set.emplace_back(working_set[i]);
+    auto rr = handlers.rr().dot(params.at(i), params.at(i));
+    auto rd = handlers.rq().dot(params.at(i), last_params.at(i));
+    auto dd = handlers.qq().dot(last_params.at(i), last_params.at(i));
+    double orthogonalisation_constant;
+    if (std::abs(rd) < 1.0e-14) // new param is orthognal to previous
+      orthogonalisation_constant = 1;
+    else
+      orthogonalisation_constant = rr / rd;
+    auto a = std::pow(rr, 2) - 2 * rd * orthogonalisation_constant + std::pow(dd * orthogonalisation_constant, 2);
+    if (a > 1.0e-14) {
+      handlers.rq().copy(qparam, params.at(i));
+      handlers.rq().copy(qaction, actions.at(i));
+      handlers.rq().axpy(-orthogonalisation_constant, last_params.at(i), qparam);
+      handlers.rq().axpy(-orthogonalisation_constant, last_actions.at(i), qaction);
+      auto qq = handlers.rr().dot(qparam, qparam);
+      auto norm = std::sqrt(qq);
+      if (norm > 1.0e-14) {
+        handlers.rr().scal(1. / norm, qparam);
+        handlers.rr().scal(1. / norm, qaction);
+        auto&& q = qspace::QParam<Q>{std::make_unique<Q>(handlers.qr().copy(qparam)),
+                                     std::make_unique<Q>(handlers.qr().copy(qaction)),
+                                     working_set[i],
+                                     false,
+                                     1. / norm,
+                                     orthogonalisation_constant};
+        qparams.emplace_back(std::move(q));
+        used_working_set.emplace_back(working_set[i]);
+      }
     }
   }
   return {std::move(qparams), used_working_set};
@@ -266,7 +275,7 @@ struct QSpace {
       throw std::runtime_error("attempting to merge difference vectors corresponding to different roots");
     auto first_difference_vector =
         std::find_if(begin(m_params), end(m_params), [root](const auto& el) { return el.root == root; });
-    if (left == first_difference_vector) {
+    if (left == first_difference_vector || i == j) {
       erase(i);
     } else {
       if (i == j)

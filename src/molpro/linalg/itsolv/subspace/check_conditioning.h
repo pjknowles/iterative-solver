@@ -23,15 +23,21 @@ auto generate_candidates(const RS& rs, const QS& qs) {
   return candidates;
 }
 
+// FIXME for now I removed merger pathway.
 auto generate_pairs(const std::map<size_t, std::vector<size_t>>& candidates) {
   auto pairs = std::vector<std::pair<size_t, size_t>>{};
   for (const auto& root_candidates : candidates) {
-    const auto& c = root_candidates.second;
-    if (c.size() == 1)
-      pairs.emplace_back(c.front(), c.front());
-    else
-      for (size_t i = 1; i < c.size(); ++i)
-        pairs.emplace_back(c[i - 1], c[i]);
+    for (const auto& c : root_candidates.second) {
+      pairs.emplace_back(c, c);
+    }
+    if (false) {
+      const auto& c = root_candidates.second;
+      if (c.size() == 1)
+        pairs.emplace_back(c.front(), c.front());
+      else
+        for (size_t i = 1; i < c.size(); ++i)
+          pairs.emplace_back(c[i - 1], c[i]);
+    }
   }
   return pairs;
 };

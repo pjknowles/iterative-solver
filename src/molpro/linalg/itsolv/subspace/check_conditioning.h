@@ -40,7 +40,7 @@ auto generate_pairs(const std::map<size_t, std::vector<size_t>>& candidates) {
 
 template <class R, class P, class Q, class ST>
 void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, ST>& xs, RSpace<R, Q, P>& rs,
-                        QSpace<R, Q, P>& qs, PSpace<R, P>& ps, double threshold) {
+                        QSpace<R, Q, P>& qs, PSpace<R, P>& ps, double svd_threshold, double norm_threshold) {
   bool stable = false;
   auto candidates = detail::generate_candidates(rs, qs);
   auto empty_candidates = [&candidates]() {
@@ -52,7 +52,7 @@ void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, S
   };
   while (!stable && !empty_candidates()) {
     auto& s = xs.data[EqnData::S];
-    auto svd = svd_system(xs.size(), array::Span<double>{&s(0, 0), s.size()}, threshold);
+    auto svd = svd_system(xs.size(), array::Span<double>{&s(0, 0), s.size()}, svd_threshold);
     stable = svd.empty();
     if (!svd.empty()) {
       auto pairs = detail::generate_pairs(candidates);
@@ -65,9 +65,12 @@ void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, S
       }
       auto it_max = std::max_element(begin(norms), end(norms));
       auto i_max = std::distance(begin(norms), it_max);
-      qs.merge(pairs.at(i_max));
-      xs.build_subspace(rs, qs, ps);
-      candidates = detail::generate_candidates(rs, qs);
+      stable = *it_max < norm_threshold;
+      if (*it_max > norm_threshold) {
+        qs.merge(pairs.at(i_max));
+        xs.build_subspace(rs, qs, ps);
+        candidates = detail::generate_candidates(rs, qs);
+      }
     }
   }
 }

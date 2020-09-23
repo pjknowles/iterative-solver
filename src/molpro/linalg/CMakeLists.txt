@@ -70,8 +70,11 @@ endif ()
 
 
 include(LibraryManagerUtils)
+print_target_properties(BLAS::BLAS DEBUG)
 print_target_properties(LAPACK::LAPACK DEBUG)
 print_target_properties(Eigen3::Eigen DEBUG)
+print_target_properties(ga::ga DEBUG)
+print_target_properties(ppidd::ppidd DEBUG)
 print_target_properties(${PROJECT_NAME} DEBUG)
 
 add_subdirectory(array)

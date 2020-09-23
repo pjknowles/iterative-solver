@@ -3,6 +3,7 @@
 
 #include "DummySolver.h"
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
+#include <array>
 
 using molpro::linalg::itsolv::ArrayHandlers;
 using molpro::linalg::itsolv::subspace::EqnData;

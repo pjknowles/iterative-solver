@@ -3,6 +3,7 @@
 
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <numeric>
+#include <array>
 
 using molpro::linalg::itsolv::subspace::Matrix;
 using ::testing::DoubleEq;

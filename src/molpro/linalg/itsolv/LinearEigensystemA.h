@@ -30,10 +30,11 @@ public:
                               subspace::XSpaceLinEig<R, Q, P, typename LinearEigensystem<R, Q, P>::scalar_type>>;
   using typename SolverTemplate::scalar_type;
 
-  explicit LinearEigensystemA(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers)
-      : SolverTemplate(subspace::RSpace<R, Q, P>(handlers), subspace::QSpace<R, Q, P>(handlers),
-                       subspace::PSpace<R, P>(), subspace::XSpaceLinEig<R, Q, P, scalar_type>(), std::move(handlers),
-                       std ::make_shared<Statistics>()) {}
+  explicit LinearEigensystemA(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers,
+                              std::shared_ptr<Logger> logger = std::make_shared<Logger>())
+      : SolverTemplate(subspace::RSpace<R, Q, P>(handlers, logger), subspace::QSpace<R, Q, P>(handlers, logger),
+                       subspace::PSpace<R, P>(), subspace::XSpaceLinEig<R, Q, P, scalar_type>(logger),
+                       std::move(handlers), std::make_shared<Statistics>(), logger) {}
 
   void set_convergence_threshold(double threshold) { this->m_convergence_threshold = threshold; }
 

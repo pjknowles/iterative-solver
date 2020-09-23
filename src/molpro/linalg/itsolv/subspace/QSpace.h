@@ -197,7 +197,8 @@ struct QSpace {
   SubspaceData qr = null_data<EqnData::H, EqnData::S>();   //!< QxR block of subspace data
   SubspaceData rq = null_data<EqnData::H, EqnData::S>();   //!< RxQ block of subspace data
 
-  explicit QSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers) : m_handlers(std::move(handlers)) {}
+  explicit QSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
+      : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
 
   void update(const RSpace<R, Q, P>& rs, IterativeSolver<R, Q, P>& solver) {
     auto& dummy = rs.dummy(2);
@@ -318,6 +319,7 @@ protected:
   std::vector<size_t> m_used_working_set; //!< root indices of r vectors that were used to generate new q vectors
   std::list<qspace::QParam<Q>> m_params;  //!< q vectors constructed as differences
   bool m_orthogonalise = true;            //!< whether to orthogonalise a new Q vector relative to its R vector
+  std::shared_ptr<Logger> m_logger;
 };
 
 } // namespace subspace

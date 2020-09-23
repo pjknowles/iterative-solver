@@ -4,6 +4,7 @@
 #include <memory>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
+#include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceData.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 
@@ -50,7 +51,8 @@ public:
   //! Matrix and overlap data mapped to the subspace
   SubspaceData data = null_data<EqnData::H, EqnData::S>();
 
-  explicit RSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers) : m_handlers(std::move(handlers)) {}
+  explicit RSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
+      : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
 
   void update(std::vector<R>& parameters, std::vector<R>& actions, IterativeSolver<R, Q, P>& solver) {
     if (m_last_params.empty()) {
@@ -122,6 +124,7 @@ public:
 
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
+  std::shared_ptr<Logger> m_logger;
   std::vector<size_t> m_working_set; //!< working set of roots. Maps references of current params to starting roots
   std::vector<R> m_params;           //!< solutions at this iteration forming the RSpace, mapped to root indices
   std::vector<R> m_actions;          //!< action vector corresponding to m_params

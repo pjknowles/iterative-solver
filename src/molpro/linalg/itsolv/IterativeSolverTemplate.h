@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVERTEMPLATE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVERTEMPLATE_H
 #include <molpro/linalg/itsolv/IterativeSolver.h>
+#include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 
@@ -86,9 +87,13 @@ public:
 
   size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& parametersP) override {
     using subspace::util::wrap;
+    m_logger->msg("add_vector::iteration = " + std::to_string(m_stats->iterations), Logger::Trace);
     m_rspace.update(parameters, action, *static_cast<Solver*>(this));
     m_working_set.clear();
     std::copy(begin(m_rspace.working_set()), end(m_rspace.working_set()), std::back_inserter(m_working_set));
+    m_logger->msg(std::accumulate(begin(m_working_set), end(m_working_set),
+                                  "add_vector::working_set = ", [](auto s, auto el) { return s + std::to_string(el); }),
+                  Logger::Debug);
     m_qspace.update(m_rspace, *static_cast<Solver*>(this));
     m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
     m_xspace.check_conditioning(m_rspace, m_qspace, m_pspace);
@@ -157,9 +162,10 @@ public:
 
 protected:
   IterativeSolverTemplate(RS rspace, QS qspace, PS pspace, XS xspace, std::shared_ptr<ArrayHandlers<R, Q, P>> handlers,
-                          std::shared_ptr<Statistics> stats)
+                          std::shared_ptr<Statistics> stats, std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_rspace(std::move(rspace)), m_qspace(std::move(qspace)),
-        m_pspace(std::move(pspace)), m_xspace(std::move(xspace)), m_stats(std::move(stats)) {}
+        m_pspace(std::move(pspace)), m_xspace(std::move(xspace)), m_stats(std::move(stats)),
+        m_logger(std::move(logger)) {}
 
   //! Updates working sets and adds any converged solution to the q space
   void update_working_set() {
@@ -193,6 +199,7 @@ protected:
   size_t m_nroots{0};
   double m_convergence_threshold{1.0e-10}; //!< errors less than this mark a converged solution
   std::shared_ptr<Statistics> m_stats;
+  std::shared_ptr<Logger> m_logger;
 };
 
 } // namespace itsolv

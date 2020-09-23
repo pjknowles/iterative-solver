@@ -21,7 +21,7 @@ public:
   using typename XS::RS;
   using typename XS::scalar_type;
   using XS::data;
-  XSpaceLinEig() = default;
+  explicit XSpaceLinEig(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)){};
 
   void check_conditioning(RS& rs, QS& qs, PS& ps) override {
     xspace::check_conditioning(*this, rs, qs, ps, m_svd_stability_threshold, m_norm_stability_threshold);
@@ -69,6 +69,7 @@ public:
   const xspace::Dimensions& dimensions() const override { return m_dim; }
 
 protected:
+  std::shared_ptr<Logger> m_logger;
   xspace::Dimensions m_dim;
   bool m_hermitian = false; //!< whether the matrix is Hermitian
   double m_svd_stability_threshold =

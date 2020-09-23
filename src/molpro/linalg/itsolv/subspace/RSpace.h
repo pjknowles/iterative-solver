@@ -56,6 +56,7 @@ public:
 
   void update(std::vector<R>& parameters, std::vector<R>& actions, IterativeSolver<R, Q, P>& solver) {
     if (m_last_params.empty()) {
+      m_logger->msg("RSpace::update making first copy of params", Logger::Trace);
       m_working_set.resize(parameters.size());
       std::iota(begin(m_working_set), end(m_working_set), size_t{0});
       for (size_t i = 0; i < m_working_set.size(); ++i) {
@@ -63,6 +64,7 @@ public:
         m_actions.emplace_back(m_handlers->rr().copy(actions[i]));
       }
     } else {
+      m_logger->msg("RSpace::update updating params with new values ", Logger::Trace);
       auto ind_last_param_to_new = rspace::assign_last_parameters_to_new(m_last_params, parameters, m_handlers->qr());
       for (size_t i = 0; i < ind_last_param_to_new.size(); ++i) {
         m_handlers->rr().copy(m_params[i], parameters[ind_last_param_to_new[i]]);
@@ -71,12 +73,17 @@ public:
     }
     for (size_t i = 0; i < m_params.size(); ++i) {
       auto norm = std::sqrt(m_handlers->rr().dot(m_params[i], m_params[i]));
+      m_logger->msg("RSpace::update param index i = " + std::to_string(i) + ", 1./norm = " + std::to_string(norm),
+                    Logger::Debug);
       // FIXME What happens if norm is very large or very small?
       m_handlers->rr().scal(1.0 / norm, m_params[i]);
       m_handlers->rr().scal(1.0 / norm, m_actions[i]);
     }
     data[EqnData::S] = util::overlap(util::wrap(m_params), m_handlers->rr());
     data[EqnData::H] = util::overlap(util::wrap(m_params), util::wrap(m_actions), m_handlers->rr());
+    if (m_logger->data_dump) {
+      // dump S and H matrices
+    }
     assert(m_working_set.size() == m_params.size());
   }
 
@@ -107,6 +114,10 @@ public:
       new_working_set[i] = m_working_set[working_vector_ind[i]];
     }
     new_working_set.resize(working_set_size);
+    m_logger->msg("RSpace::update_working_set old working set = ", begin(m_working_set), end(m_working_set),
+                  Logger::Debug);
+    m_logger->msg("RSpace::update_working_set new working set = ", begin(new_working_set), end(new_working_set),
+                  Logger::Debug);
     m_working_set = new_working_set;
   }
 

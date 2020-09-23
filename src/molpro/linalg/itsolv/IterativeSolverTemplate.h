@@ -91,9 +91,6 @@ public:
     m_rspace.update(parameters, action, *static_cast<Solver*>(this));
     m_working_set.clear();
     std::copy(begin(m_rspace.working_set()), end(m_rspace.working_set()), std::back_inserter(m_working_set));
-    m_logger->msg(std::accumulate(begin(m_working_set), end(m_working_set),
-                                  "add_vector::working_set = ", [](auto s, auto el) { return s + std::to_string(el); }),
-                  Logger::Debug);
     m_qspace.update(m_rspace, *static_cast<Solver*>(this));
     m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
     m_xspace.check_conditioning(m_rspace, m_qspace, m_pspace);
@@ -106,6 +103,7 @@ public:
                                m_xspace.solutions(), *m_handlers);
     detail::construct_residual(m_working_set, parameters, action, action, m_xspace.eigenvalues(), m_handlers->rr());
     m_errors = detail::update_errors(m_working_set, wrap(action), m_handlers->rr());
+    m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace);
     update_working_set();
     m_stats->iterations++;
     return m_working_set.size();
@@ -182,6 +180,8 @@ protected:
         ind_still_a_working_param.emplace_back(i);
       }
     }
+    m_logger->msg("update_working_set::converged_roots = ", begin(converged_roots), end(converged_roots),
+                  Logger::Debug);
     m_qspace.add_converged(converged_params, converged_actions, converged_roots);
     m_rspace.update_working_set(ind_still_a_working_param);
     auto& new_working_set = m_rspace.working_set();

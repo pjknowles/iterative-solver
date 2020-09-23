@@ -67,7 +67,8 @@ template <class R, class Q, class P>
 std::pair<std::list<QParam<Q>>, std::vector<size_t>>
 update(R& qparam, R& qaction, const std::vector<R>& params, const std::vector<R>& actions,
        const std::vector<Q>& last_params, const std::vector<Q>& last_actions, const std::vector<size_t>& working_set,
-       ArrayHandlers<R, Q, P>& handlers) {
+       ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
+  logger.msg("qspace::update", Logger::Trace);
   if (last_params.empty() || last_actions.empty())
     return {};
   assert(params.size() == last_params.size() && params.size() == actions.size() &&
@@ -78,12 +79,20 @@ update(R& qparam, R& qaction, const std::vector<R>& params, const std::vector<R>
     auto rr = handlers.rr().dot(params.at(i), params.at(i));
     auto rd = handlers.rq().dot(params.at(i), last_params.at(i));
     auto dd = handlers.qq().dot(last_params.at(i), last_params.at(i));
+    logger.msg("i = " + std::to_string(i) + " rr = " + std::to_string(rr) + ", rd = " + std::to_string(rd) +
+                   ", dd =" + std::to_string(dd),
+               Logger::Info);
     double orthogonalisation_constant;
-    if (std::abs(rd) < 1.0e-14) // new param is orthognal to previous
+    if (std::abs(rd) < 1.0e-14) {
+      logger.msg("i = " + std::to_string(i) + "new param is orthogonal to previous, rd = " + std::to_string(rd),
+                 Logger::Debug);
       orthogonalisation_constant = 1;
-    else
+    } else
       orthogonalisation_constant = rr / rd;
     auto a = std::pow(rr, 2) - 2 * rd * orthogonalisation_constant + std::pow(dd * orthogonalisation_constant, 2);
+    logger.msg("orthogonalisation_constant =" + std::to_string(orthogonalisation_constant) +
+                   ", a = " + std::to_string(a),
+               Logger::Info);
     if (a > 1.0e-14) {
       handlers.rq().copy(qparam, params.at(i));
       handlers.rq().copy(qaction, actions.at(i));
@@ -91,6 +100,7 @@ update(R& qparam, R& qaction, const std::vector<R>& params, const std::vector<R>
       handlers.rq().axpy(-orthogonalisation_constant, last_actions.at(i), qaction);
       auto qq = handlers.rr().dot(qparam, qparam);
       auto norm = std::sqrt(qq);
+      logger.msg("norm = " + std::to_string(norm), Logger::Info);
       if (norm > 1.0e-14) {
         handlers.rr().scal(1. / norm, qparam);
         handlers.rr().scal(1. / norm, qaction);
@@ -102,6 +112,8 @@ update(R& qparam, R& qaction, const std::vector<R>& params, const std::vector<R>
                                      orthogonalisation_constant};
         qparams.emplace_back(std::move(q));
         used_working_set.emplace_back(working_set[i]);
+      } else {
+        logger.msg("difference vector too small", Logger::Debug);
       }
     }
   }
@@ -201,9 +213,10 @@ struct QSpace {
       : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
 
   void update(const RSpace<R, Q, P>& rs, IterativeSolver<R, Q, P>& solver) {
+    m_logger->msg("QSpace::update", Logger::Trace);
     auto& dummy = rs.dummy(2);
     auto result = qspace::update(dummy.at(0), dummy.at(1), rs.params(), rs.actions(), rs.last_params(),
-                                 rs.last_actions(), rs.working_set(), *m_handlers);
+                                 rs.last_actions(), rs.working_set(), *m_handlers, *m_logger);
     auto& new_qparams = result.first;
     m_used_working_set = result.second;
     auto old_params_actions = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
@@ -214,9 +227,13 @@ struct QSpace {
                                new_params_actions[1], data, m_handlers->qq());
     qspace::update_qr_subspace(all_params_actions[0], all_params_actions[1], rs.params(), rs.actions(), qr, rq,
                                m_handlers->rq(), m_handlers->qr());
+    if (m_logger->data_dump) {
+      // dump subspace matrices
+    }
   }
 
   void add_converged(const VecRefR& params, VecRefR& actions, const std::vector<size_t>& roots) {
+    m_logger->msg("QSpace::update", Logger::Trace);
     for (size_t i = 0; i < params.size(); ++i) {
       auto&& q = qspace::QParam<Q>{std::make_unique<Q>(m_handlers->qr().copy(params[i])),
                                    std::make_unique<Q>(m_handlers->qr().copy(actions[i])),
@@ -266,21 +283,29 @@ struct QSpace {
 
   //! Merges a pair of q vectors if they belong to the same root and updates the subspace data
   void merge(const std::pair<size_t, size_t>& pair) {
+    m_logger->msg("QSpace::merge pairs " + std::to_string(pair.first) + " " + std::to_string(pair.second),
+                  Logger::Debug);
     assert(m_params.size() > pair.first && m_params.size() > pair.second);
     auto i = std::min(pair.first, pair.second);
     auto j = std::max(pair.first, pair.second);
     auto left = std::next(begin(m_params), i);
     auto right = std::next(begin(m_params), j);
     auto root = left->root;
-    if (root != right->root)
-      throw std::runtime_error("attempting to merge difference vectors corresponding to different roots");
+    if (root != right->root) {
+      auto message = "attempting to merge difference vectors corresponding to different roots";
+      m_logger->msg(message, Logger::Fatal);
+      throw std::runtime_error(message);
+    }
     auto first_difference_vector =
         std::find_if(begin(m_params), end(m_params), [root](const auto& el) { return el.root == root; });
     if (left == first_difference_vector || i == j) {
       erase(i);
     } else {
-      if (i == j)
-        throw std::runtime_error("attempting to merge the same vector");
+      if (i == j) {
+        auto message = "attempting to merge the same vector";
+        m_logger->msg(message, Logger::Fatal);
+        throw std::runtime_error(message);
+      }
       double a, b;
       std::tie(a, b) = left->merge(*right, m_handlers->qq());
       m_params.erase(right);

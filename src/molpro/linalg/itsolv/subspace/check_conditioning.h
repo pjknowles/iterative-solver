@@ -46,7 +46,9 @@ auto generate_pairs(const std::map<size_t, std::vector<size_t>>& candidates) {
 
 template <class R, class P, class Q, class ST>
 void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, ST>& xs, RSpace<R, Q, P>& rs,
-                        QSpace<R, Q, P>& qs, PSpace<R, P>& ps, double svd_threshold, double norm_threshold) {
+                        QSpace<R, Q, P>& qs, PSpace<R, P>& ps, double svd_threshold, double norm_threshold,
+                        Logger& logger) {
+  logger.msg("xspace::check_conditioning", Logger::Trace);
   bool stable = false;
   auto candidates = detail::generate_candidates(rs, qs);
   auto empty_candidates = [&candidates]() {
@@ -61,6 +63,10 @@ void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, S
     auto svd = svd_system(xs.size(), array::Span<double>{&s(0, 0), s.size()}, svd_threshold);
     stable = svd.empty();
     if (!svd.empty()) {
+      logger.msg("singular value = " + Logger::scientific(svd.front().value), Logger::Debug);
+      if (logger.data_dump) {
+        logger.msg("singular vector = ", begin(svd.front().v), end(svd.front().v), Logger::Info);
+      }
       auto pairs = detail::generate_pairs(candidates);
       auto norms = std::vector<double>{};
       for (const auto& p : pairs) {

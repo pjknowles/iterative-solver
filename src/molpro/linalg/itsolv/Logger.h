@@ -53,6 +53,9 @@ struct Logger {
     msg(std::accumulate(begin, end, message, [](auto s, auto el) { return s + std::to_string(el) + ", "; }), log_lvl);
   }
 
+  //! Converts double to a string in scientific notation
+  static std::string scientific(double val);
+
   Level max_trace_level = None; //! highest level of trace message that can be logged
   Level max_warn_level = None;  //! highest level of warning/error that can be logged
   bool data_dump = false;       //! whether data dumps are allowed

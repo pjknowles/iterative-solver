@@ -1,6 +1,8 @@
 #include "Logger.h"
 #include <iostream>
 #include <map>
+#include <sstream>
+#include <iomanip>
 
 namespace molpro {
 namespace linalg {
@@ -27,6 +29,13 @@ void Logger::msg(const std::string& message, Level log_lvl) {
   } else if (log_lvl == Fatal) {
     std::cerr << log_level_names[log_lvl] << ": " << message << std::endl;
   }
+}
+
+std::string Logger::scientific(double val) {
+  auto s = std::stringstream{};
+  s << std::scientific;
+  s << val;
+  return s.str();
 }
 
 } // namespace itsolv

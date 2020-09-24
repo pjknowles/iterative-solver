@@ -2,6 +2,8 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_MATRIX_H
 #include <algorithm>
 #include <cstddef>
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -265,6 +267,32 @@ protected:
     Slice m_slice;
   };
 };
+
+template <class Mat>
+std::string as_string(const Mat& m, int precision = 6) {
+  auto s = std::stringstream{};
+  s << std::fixed;
+  s << std::setprecision(precision);
+  auto dims = m.dimensions();
+  if (dims.first * dims.second != 0) {
+    s << "\n[";
+    for (size_t i = 0; i < dims.first; ++i) {
+      s << "[";
+      for (size_t j = 0; j < dims.second; ++j) {
+        s << std::to_string(m(i, j));
+        if (j != dims.second - 1)
+          s << ", ";
+      }
+      s << "]";
+      if (i != dims.first - 1)
+        s << ",\n ";
+    }
+    s << "]";
+  } else {
+    s << "[[]]";
+  }
+  return s.str();
+}
 
 } // namespace subspace
 } // namespace itsolv

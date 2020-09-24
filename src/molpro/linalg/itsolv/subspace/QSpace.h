@@ -90,34 +90,45 @@ update(R& qparam, R& qaction, const std::vector<std::reference_wrapper<R>>& para
       orthogonalisation_constant = 1;
     } else
       orthogonalisation_constant = rr / rd;
-    auto a = std::pow(rr, 2) - 2 * rd * orthogonalisation_constant + std::pow(dd * orthogonalisation_constant, 2);
+    auto scale_factor = rr - 2 * rd * orthogonalisation_constant + dd * std::pow(orthogonalisation_constant, 2);
     logger.msg("orthogonalisation_constant =" + Logger::scientific(orthogonalisation_constant) +
-                   ", a = " + Logger::scientific(a),
+                   ", scale_factor = " + Logger::scientific(scale_factor),
                Logger::Info);
-    //    if (a > 0) {
-    handlers.rq().copy(qparam, params.at(i));
-    handlers.rq().copy(qaction, actions.at(i));
-    handlers.rq().axpy(-orthogonalisation_constant, last_params.at(i), qparam);
-    handlers.rq().axpy(-orthogonalisation_constant, last_actions.at(i), qaction);
-    auto qq = handlers.rr().dot(qparam, qparam);
-    auto norm = std::sqrt(qq);
-    logger.msg("norm = " + Logger::scientific(norm), Logger::Info);
-    if (norm > 1.0e-14) {
-      handlers.rr().scal(1. / norm, qparam);
-      handlers.rr().scal(1. / norm, qaction);
+    scale_factor = std::sqrt(std::max(scale_factor, decltype(rr)(0.)));
+    if (scale_factor > 0) {
+      scale_factor = 1. / scale_factor;
+      handlers.rq().copy(qparam, params.at(i));
+      handlers.rq().copy(qaction, actions.at(i));
+      handlers.rr().scal(scale_factor, qparam);
+      handlers.rr().scal(scale_factor, qaction);
+      handlers.rq().axpy(-scale_factor * orthogonalisation_constant, last_params.at(i), qparam);
+      handlers.rq().axpy(-scale_factor * orthogonalisation_constant, last_actions.at(i), qaction);
+      auto qq = handlers.rr().dot(qparam, qparam);
+      auto norm = std::sqrt(qq);
+      logger.msg("actual norm = " + Logger::scientific(norm), Logger::Info);
+      if (norm > 1.0e-6 && std::abs(1. - norm) > 1.e-2) {
+        // Copied logic from Peter's routine
+        // rescale because of numerical precision problems when vector
+        //    \approx oldvector
+        //    do not do it if the problem is severe, since then action will be inaccurate
+        logger.msg("renormalising difference vector, norm = " + Logger::scientific(norm), Logger::Debug);
+        handlers.rr().scal(1. / norm, qparam);
+        handlers.rr().scal(1. / norm, qaction);
+        scale_factor /= norm;
+      } else if (norm <= 1.0e-6) {
+        logger.msg("difference vector too small to renormalise, norm = " + Logger::scientific(norm), Logger::Debug);
+      }
       auto&& q = qspace::QParam<Q>{std::make_unique<Q>(handlers.qr().copy(qparam)),
                                    std::make_unique<Q>(handlers.qr().copy(qaction)),
                                    working_set[i],
                                    false,
-                                   1. / norm,
+                                   scale_factor,
                                    orthogonalisation_constant};
       qparams.emplace_back(std::move(q));
       used_working_set.emplace_back(working_set[i]);
     } else {
-      logger.msg("difference vector too small, norm = " + Logger::scientific(norm), Logger::Debug);
+      logger.msg("estimated norm is zero, scale_factor = " + std::to_string(scale_factor), Logger::Debug);
     }
-    //      logger.msg("estimated norm is negative, a = " + std::to_string(a), Logger::Debug);
-    //    }
   }
   return {std::move(qparams), used_working_set};
 }

@@ -80,7 +80,7 @@ update(R& qparam, R& qaction, const std::vector<std::reference_wrapper<R>>& para
     auto rr = handlers.rr().dot(params.at(i), params.at(i));
     auto rd = handlers.rq().dot(params.at(i), last_params.at(i));
     auto dd = handlers.qq().dot(last_params.at(i), last_params.at(i));
-    logger.msg("i = " + Logger::scientific(i) + " rr = " + Logger::scientific(rr) + ", rd = " + Logger::scientific(rd) +
+    logger.msg("i = " + std::to_string(i) + " rr = " + Logger::scientific(rr) + ", rd = " + Logger::scientific(rd) +
                    ", dd =" + Logger::scientific(dd),
                Logger::Info);
     double orthogonalisation_constant;
@@ -91,12 +91,12 @@ update(R& qparam, R& qaction, const std::vector<std::reference_wrapper<R>>& para
     } else
       orthogonalisation_constant = rr / rd;
     auto scale_factor = rr - 2 * rd * orthogonalisation_constant + dd * std::pow(orthogonalisation_constant, 2);
-    logger.msg("orthogonalisation_constant =" + Logger::scientific(orthogonalisation_constant) +
-                   ", scale_factor = " + Logger::scientific(scale_factor),
-               Logger::Info);
     scale_factor = std::sqrt(std::max(scale_factor, decltype(rr)(0.)));
     if (scale_factor > 0) {
       scale_factor = 1. / scale_factor;
+      logger.msg("orthogonalisation_constant =" + Logger::scientific(orthogonalisation_constant) +
+                     ", scale_factor = " + Logger::scientific(scale_factor),
+                 Logger::Info);
       handlers.rq().copy(qparam, params.at(i));
       handlers.rq().copy(qaction, actions.at(i));
       handlers.rr().scal(scale_factor, qparam);

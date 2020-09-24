@@ -24,6 +24,7 @@ public:
   explicit XSpaceLinEig(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)){};
 
   void check_conditioning(RS& rs, QS& qs, PS& ps) override {
+    auto nX_on_entry = m_dim.nX;
     m_logger->msg("XSpaceLinEig::check_conditioning size of x space = " + std::to_string(m_dim.nX), Logger::Trace);
     m_logger->msg("size of x space before conditioning = " + std::to_string(m_dim.nX), Logger::Debug);
     if (m_logger->data_dump) {
@@ -33,7 +34,7 @@ public:
     }
     xspace::check_conditioning(*this, rs, qs, ps, m_svd_stability_threshold, m_norm_stability_threshold, *m_logger);
     m_logger->msg("size of x space after conditioning = " + std::to_string(m_dim.nX), Logger::Debug);
-    if (m_logger->data_dump) {
+    if (m_logger->data_dump && m_dim.nX != nX_on_entry) {
       m_logger->msg("Sxx = " + as_string(data[EqnData::S]), Logger::Info);
       m_logger->msg("Hxx = " + as_string(data[EqnData::H]), Logger::Info);
     }

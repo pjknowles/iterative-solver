@@ -12,10 +12,15 @@ namespace detail {
 
 template <class R, class Q, class P>
 void construct_solution(const std::vector<int>& working_set, std::vector<R>& params,
-                        const std::vector<std::reference_wrapper<R>>& rparams,
+                        const std::vector<std::reference_wrapper<R>>& dummy,
                         const std::vector<std::reference_wrapper<Q>>& qparams,
                         const std::vector<std::reference_wrapper<P>>& pparams, size_t oR, size_t oQ, size_t oP,
                         const subspace::Matrix<double>& solutions, ArrayHandlers<R, Q, P>& handlers) {
+  assert(dummy.size() >= params.size());
+  for (size_t i = 0; i < params.size(); ++i) {
+    handlers.rr().copy(dummy.at(i), params.at(i));
+    handlers.rr().fill(0, params.at(i));
+  }
   for (size_t i = 0; i < working_set.size(); ++i) {
     handlers.rr().fill(0, params[i]);
     auto root = working_set[i];
@@ -26,18 +31,18 @@ void construct_solution(const std::vector<int>& working_set, std::vector<R>& par
       handlers.rq().axpy(solutions(root, oQ + j), qparams.at(j), params.at(i));
     }
     for (size_t j = 0; j < working_set.size(); ++j) {
-      handlers.rr().axpy(solutions(root, oR + j), rparams.at(j), params.at(i));
+      handlers.rr().axpy(solutions(root, oR + j), dummy.at(j), params.at(i));
     }
   }
 }
 
 template <class R, typename T>
 void construct_residual(const std::vector<int>& working_set, const std::vector<R>& solutions,
-                        const std::vector<R>& actions, std::vector<R>& residuals, const std::vector<T>& eigvals,
-                        array::ArrayHandler<R, R>& handler) {
+                        const std::vector<R>& actions, std::vector<std::reference_wrapper<R>>& residuals,
+                        const std::vector<T>& eigvals, array::ArrayHandler<R, R>& handler) {
   assert(residuals.size() >= working_set.size());
   for (size_t i = 0; i < working_set.size(); ++i) {
-    if (std::addressof(actions.at(i)) != std::addressof(residuals.at(i)))
+    if (std::addressof(actions.at(i)) != std::addressof(residuals.at(i).get()))
       handler.copy(residuals.at(i), actions.at(i));
   }
   for (size_t i = 0; i < working_set.size(); ++i) {
@@ -95,16 +100,21 @@ public:
     m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
     m_xspace.check_conditioning(m_rspace, m_qspace, m_pspace);
     m_xspace.solve(*static_cast<Solver*>(this));
-    detail::construct_solution(m_working_set, parameters, wrap(m_rspace.params()), m_qspace.params(), m_pspace.params(),
+    auto& dummy = m_rspace.dummy(m_rspace.size());
+    auto wdummy = wrap(dummy);
+    detail::construct_solution(m_working_set, parameters, wdummy, m_qspace.params(), m_pspace.params(),
                                m_xspace.dimensions().oR, m_xspace.dimensions().oQ, m_xspace.dimensions().oP,
                                m_xspace.solutions(), *m_handlers);
-    detail::construct_solution(m_working_set, action, wrap(m_rspace.actions()), m_qspace.actions(), m_pspace.actions(),
+    detail::construct_solution(m_working_set, action, wdummy, m_qspace.actions(), m_pspace.actions(),
                                m_xspace.dimensions().oR, m_xspace.dimensions().oQ, m_xspace.dimensions().oP,
                                m_xspace.solutions(), *m_handlers);
-    detail::construct_residual(m_working_set, parameters, action, action, m_xspace.eigenvalues(), m_handlers->rr());
-    m_errors = detail::update_errors(m_working_set, wrap(action), m_handlers->rr());
+    detail::construct_residual(m_working_set, parameters, action, wdummy, m_xspace.eigenvalues(), m_handlers->rr());
+    m_errors = detail::update_errors(m_working_set, wdummy, m_handlers->rr());
     m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace);
     update_working_set();
+    for (size_t i = 0; i < action.size(); ++i) {
+      m_handlers->rr().copy(action.at(i), dummy.at(i));
+    }
     m_stats->iterations++;
     return m_working_set.size();
   };

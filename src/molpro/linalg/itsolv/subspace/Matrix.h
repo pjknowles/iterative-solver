@@ -271,7 +271,6 @@ protected:
 template <class Mat>
 std::string as_string(const Mat& m, int precision = 6) {
   auto s = std::stringstream{};
-  s << std::fixed;
   s << std::setprecision(precision);
   auto dims = m.dimensions();
   if (dims.first * dims.second != 0) {
@@ -279,7 +278,7 @@ std::string as_string(const Mat& m, int precision = 6) {
     for (size_t i = 0; i < dims.first; ++i) {
       s << "[";
       for (size_t j = 0; j < dims.second; ++j) {
-        s << std::to_string(m(i, j));
+        s << m(i, j);
         if (j != dims.second - 1)
           s << ", ";
       }

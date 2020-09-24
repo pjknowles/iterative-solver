@@ -68,7 +68,7 @@ public:
     if (m_logger->data_dump) {
       m_logger->msg("eigenvalues = ", begin(m_eval), end(m_eval), Logger::Debug);
       m_logger->msg("roots = ", begin(m_roots), end(m_roots), Logger::Debug);
-      m_logger->msg("eigenvectors = " + as_string(m_evec, 10), Logger::Info);
+      m_logger->msg("eigenvectors = " + as_string(m_evec), Logger::Info);
     }
   }
 

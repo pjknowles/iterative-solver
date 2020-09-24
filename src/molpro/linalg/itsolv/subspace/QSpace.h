@@ -93,29 +93,30 @@ update(R& qparam, R& qaction, const std::vector<R>& params, const std::vector<R>
     logger.msg("orthogonalisation_constant =" + std::to_string(orthogonalisation_constant) +
                    ", a = " + std::to_string(a),
                Logger::Info);
-    if (a > 1.0e-14) {
-      handlers.rq().copy(qparam, params.at(i));
-      handlers.rq().copy(qaction, actions.at(i));
-      handlers.rq().axpy(-orthogonalisation_constant, last_params.at(i), qparam);
-      handlers.rq().axpy(-orthogonalisation_constant, last_actions.at(i), qaction);
-      auto qq = handlers.rr().dot(qparam, qparam);
-      auto norm = std::sqrt(qq);
-      logger.msg("norm = " + std::to_string(norm), Logger::Info);
-      if (norm > 1.0e-14) {
-        handlers.rr().scal(1. / norm, qparam);
-        handlers.rr().scal(1. / norm, qaction);
-        auto&& q = qspace::QParam<Q>{std::make_unique<Q>(handlers.qr().copy(qparam)),
-                                     std::make_unique<Q>(handlers.qr().copy(qaction)),
-                                     working_set[i],
-                                     false,
-                                     1. / norm,
-                                     orthogonalisation_constant};
-        qparams.emplace_back(std::move(q));
-        used_working_set.emplace_back(working_set[i]);
-      } else {
-        logger.msg("difference vector too small", Logger::Debug);
-      }
+    //    if (a > 0) {
+    handlers.rq().copy(qparam, params.at(i));
+    handlers.rq().copy(qaction, actions.at(i));
+    handlers.rq().axpy(-orthogonalisation_constant, last_params.at(i), qparam);
+    handlers.rq().axpy(-orthogonalisation_constant, last_actions.at(i), qaction);
+    auto qq = handlers.rr().dot(qparam, qparam);
+    auto norm = std::sqrt(qq);
+    logger.msg("norm = " + std::to_string(norm), Logger::Info);
+    if (norm > 1.0e-14) {
+      handlers.rr().scal(1. / norm, qparam);
+      handlers.rr().scal(1. / norm, qaction);
+      auto&& q = qspace::QParam<Q>{std::make_unique<Q>(handlers.qr().copy(qparam)),
+                                   std::make_unique<Q>(handlers.qr().copy(qaction)),
+                                   working_set[i],
+                                   false,
+                                   1. / norm,
+                                   orthogonalisation_constant};
+      qparams.emplace_back(std::move(q));
+      used_working_set.emplace_back(working_set[i]);
+    } else {
+      logger.msg("difference vector too small, norm = " + std::to_string(1. / norm), Logger::Debug);
     }
+    //      logger.msg("estimated norm is negative, a = " + std::to_string(a), Logger::Debug);
+    //    }
   }
   return {std::move(qparams), used_working_set};
 }

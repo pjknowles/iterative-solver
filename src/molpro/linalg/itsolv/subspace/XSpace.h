@@ -43,7 +43,7 @@ public:
   //! Solves the underlying problem in the subspace. solver can be used to pass extra parameters defining the problem
   virtual void solve(const IterativeSolver<R, Q, P>& solver) = 0;
 
-  //! Access solution matrix. Solution vectors are stored as columns
+  //! Access solution matrix. Solution vectors are stored as rows
   virtual const Matrix<scalar_type>& solutions() const = 0;
 
   // TODO rename this. What does this mean in DIIS or BFGS solvers? How does it relate to the errors?

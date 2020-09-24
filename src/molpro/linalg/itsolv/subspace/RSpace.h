@@ -73,7 +73,7 @@ public:
     }
     for (size_t i = 0; i < m_params.size(); ++i) {
       auto norm = std::sqrt(m_handlers->rr().dot(m_params[i], m_params[i]));
-      m_logger->msg("RSpace::update param index i = " + std::to_string(i) + ", 1./norm = " + std::to_string(norm),
+      m_logger->msg("RSpace::update param index i = " + std::to_string(i) + ", 1./norm = " + Logger::scientific(norm),
                     Logger::Debug);
       // FIXME What happens if norm is very large or very small?
       m_handlers->rr().scal(1.0 / norm, m_params[i]);

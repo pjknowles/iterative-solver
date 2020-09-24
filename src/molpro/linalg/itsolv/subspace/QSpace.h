@@ -79,19 +79,19 @@ update(R& qparam, R& qaction, const std::vector<R>& params, const std::vector<R>
     auto rr = handlers.rr().dot(params.at(i), params.at(i));
     auto rd = handlers.rq().dot(params.at(i), last_params.at(i));
     auto dd = handlers.qq().dot(last_params.at(i), last_params.at(i));
-    logger.msg("i = " + std::to_string(i) + " rr = " + std::to_string(rr) + ", rd = " + std::to_string(rd) +
-                   ", dd =" + std::to_string(dd),
+    logger.msg("i = " + Logger::scientific(i) + " rr = " + Logger::scientific(rr) + ", rd = " + Logger::scientific(rd) +
+                   ", dd =" + Logger::scientific(dd),
                Logger::Info);
     double orthogonalisation_constant;
     if (std::abs(rd) < 1.0e-14) {
-      logger.msg("i = " + std::to_string(i) + "new param is orthogonal to previous, rd = " + std::to_string(rd),
+      logger.msg("i = " + std::to_string(i) + "new param is orthogonal to previous, rd = " + Logger::scientific(rd),
                  Logger::Debug);
       orthogonalisation_constant = 1;
     } else
       orthogonalisation_constant = rr / rd;
     auto a = std::pow(rr, 2) - 2 * rd * orthogonalisation_constant + std::pow(dd * orthogonalisation_constant, 2);
-    logger.msg("orthogonalisation_constant =" + std::to_string(orthogonalisation_constant) +
-                   ", a = " + std::to_string(a),
+    logger.msg("orthogonalisation_constant =" + Logger::scientific(orthogonalisation_constant) +
+                   ", a = " + Logger::scientific(a),
                Logger::Info);
     //    if (a > 0) {
     handlers.rq().copy(qparam, params.at(i));
@@ -100,7 +100,7 @@ update(R& qparam, R& qaction, const std::vector<R>& params, const std::vector<R>
     handlers.rq().axpy(-orthogonalisation_constant, last_actions.at(i), qaction);
     auto qq = handlers.rr().dot(qparam, qparam);
     auto norm = std::sqrt(qq);
-    logger.msg("norm = " + std::to_string(norm), Logger::Info);
+    logger.msg("norm = " + Logger::scientific(norm), Logger::Info);
     if (norm > 1.0e-14) {
       handlers.rr().scal(1. / norm, qparam);
       handlers.rr().scal(1. / norm, qaction);
@@ -113,7 +113,7 @@ update(R& qparam, R& qaction, const std::vector<R>& params, const std::vector<R>
       qparams.emplace_back(std::move(q));
       used_working_set.emplace_back(working_set[i]);
     } else {
-      logger.msg("difference vector too small, norm = " + std::to_string(1. / norm), Logger::Debug);
+      logger.msg("difference vector too small, norm = " + Logger::scientific(norm), Logger::Debug);
     }
     //      logger.msg("estimated norm is negative, a = " + std::to_string(a), Logger::Debug);
     //    }

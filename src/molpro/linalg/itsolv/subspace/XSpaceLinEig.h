@@ -24,15 +24,16 @@ public:
   explicit XSpaceLinEig(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)){};
 
   void check_conditioning(RS& rs, QS& qs, PS& ps) override {
-    m_logger->msg("XSpaceLinEig::check_conditioning", Logger::Trace);
+    m_logger->msg("XSpaceLinEig::check_conditioning size of x space = " + std::to_string(m_dim.nX), Logger::Trace);
+    m_logger->msg("size of x space before conditioning = " + std::to_string(m_dim.nX), Logger::Debug);
     if (m_logger->data_dump) {
       m_logger->msg("on entry", Logger::Info);
       m_logger->msg("Sxx = " + as_string(data[EqnData::S]), Logger::Info);
       m_logger->msg("Hxx = " + as_string(data[EqnData::H]), Logger::Info);
     }
-    xspace::check_conditioning(*this, rs, qs, ps, m_svd_stability_threshold, m_norm_stability_threshold);
+    xspace::check_conditioning(*this, rs, qs, ps, m_svd_stability_threshold, m_norm_stability_threshold, *m_logger);
+    m_logger->msg("size of x space after conditioning = " + std::to_string(m_dim.nX), Logger::Debug);
     if (m_logger->data_dump) {
-      m_logger->msg("on exit", Logger::Info);
       m_logger->msg("Sxx = " + as_string(data[EqnData::S]), Logger::Info);
       m_logger->msg("Hxx = " + as_string(data[EqnData::H]), Logger::Info);
     }
@@ -67,7 +68,7 @@ public:
     if (m_logger->data_dump) {
       m_logger->msg("eigenvalues = ", begin(m_eval), end(m_eval), Logger::Debug);
       m_logger->msg("roots = ", begin(m_roots), end(m_roots), Logger::Debug);
-      m_logger->msg("eigenvectors = " + as_string(m_evec), Logger::Info);
+      m_logger->msg("eigenvectors = " + as_string(m_evec, 10), Logger::Info);
     }
   }
 

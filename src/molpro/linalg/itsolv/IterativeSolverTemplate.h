@@ -36,13 +36,14 @@ void construct_solution(const std::vector<int>& working_set, std::vector<R>& par
   }
 }
 template <class R>
-void normalise(const std::vector<int>& working_set, std::vector<R>& params, array::ArrayHandler<R, R>& handler,
-               Logger& logger) {
+void normalise(const std::vector<int>& working_set, std::vector<R>& params, std::vector<R>& actions,
+               array::ArrayHandler<R, R>& handler, Logger& logger) {
   for (size_t i = 0; i < working_set.size(); ++i) {
-    auto dot = handler.dot(params.at(i), params.at(i));
+    auto dot = std::abs(handler.dot(params.at(i), params.at(i)));
     dot = std::sqrt(std::max(dot, decltype(dot)(0)));
     if (dot > 1.0e-14) {
       handler.scal(1. / dot, params.at(i));
+      handler.scal(1. / dot, actions.at(i));
     } else {
       logger.msg("solution parameter's length is too small, dot = " + Logger::scientific(dot), Logger::Warn);
     }
@@ -118,10 +119,10 @@ public:
     detail::construct_solution(m_working_set, parameters, wdummy, m_qspace.params(), m_pspace.params(),
                                m_xspace.dimensions().oR, m_xspace.dimensions().oQ, m_xspace.dimensions().oP,
                                m_xspace.solutions(), *m_handlers);
-    detail::normalise(m_working_set, parameters, m_handlers->rr(), *m_logger);
     detail::construct_solution(m_working_set, action, wdummy, m_qspace.actions(), m_pspace.actions(),
                                m_xspace.dimensions().oR, m_xspace.dimensions().oQ, m_xspace.dimensions().oP,
                                m_xspace.solutions(), *m_handlers);
+    detail::normalise(m_working_set, parameters, action, m_handlers->rr(), *m_logger);
     detail::construct_residual(m_working_set, parameters, action, wdummy, m_xspace.eigenvalues(), m_handlers->rr());
     m_errors = detail::update_errors(m_working_set, wdummy, m_handlers->rr());
     m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace);

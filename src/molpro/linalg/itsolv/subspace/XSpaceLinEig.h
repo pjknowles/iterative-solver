@@ -24,7 +24,18 @@ public:
   explicit XSpaceLinEig(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)){};
 
   void check_conditioning(RS& rs, QS& qs, PS& ps) override {
+    m_logger->msg("XSpaceLinEig::check_conditioning", Logger::Trace);
+    if (m_logger->data_dump) {
+      m_logger->msg("on entry", Logger::Info);
+      m_logger->msg("Sxx = " + as_string(data[EqnData::S]), Logger::Info);
+      m_logger->msg("Hxx = " + as_string(data[EqnData::H]), Logger::Info);
+    }
     xspace::check_conditioning(*this, rs, qs, ps, m_svd_stability_threshold, m_norm_stability_threshold);
+    if (m_logger->data_dump) {
+      m_logger->msg("on exit", Logger::Info);
+      m_logger->msg("Sxx = " + as_string(data[EqnData::S]), Logger::Info);
+      m_logger->msg("Hxx = " + as_string(data[EqnData::H]), Logger::Info);
+    }
   }
 
   void solve(const IterativeSolver<R, Q, P>& solver) override {
@@ -32,6 +43,7 @@ public:
   };
 
   void solve(const LinearEigensystem<R, Q, P>& solver) {
+    m_logger->msg("XSpaceLinEig::solve", Logger::Trace);
     auto& h = data[EqnData::H];
     auto& s = data[EqnData::S];
     if (m_hermitian)
@@ -51,6 +63,11 @@ public:
     for (size_t i = 0; i < m_roots_in_subspace.size(); ++i)
       root_subspace.row(i) = m_evec.row(m_roots_in_subspace[i]);
     m_roots = util::eye_order(root_subspace);
+    if (m_logger->data_dump) {
+      m_logger->msg("eigenvalues = ", begin(m_eval), end(m_eval), Logger::Debug);
+      m_logger->msg("roots = ", begin(m_roots), end(m_roots), Logger::Debug);
+      m_logger->msg("eigenvectors = " + as_string(m_evec), Logger::Info);
+    }
   }
 
   const std::vector<scalar_type>& eigenvalues() const override { return m_eval; };

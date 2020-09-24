@@ -228,7 +228,12 @@ struct QSpace {
     qspace::update_qr_subspace(all_params_actions[0], all_params_actions[1], rs.params(), rs.actions(), qr, rq,
                                m_handlers->rq(), m_handlers->qr());
     if (m_logger->data_dump) {
-      // dump subspace matrices
+      m_logger->msg("Sqq = " + as_string(data[EqnData::S]), Logger::Info);
+      m_logger->msg("Hqq = " + as_string(data[EqnData::H]), Logger::Info);
+      m_logger->msg("Sqr = " + as_string(qr[EqnData::S]), Logger::Info);
+      m_logger->msg("Hqr = " + as_string(qr[EqnData::H]), Logger::Info);
+      m_logger->msg("Srq = " + as_string(rq[EqnData::S]), Logger::Info);
+      m_logger->msg("Hrq = " + as_string(rq[EqnData::H]), Logger::Info);
     }
   }
 

@@ -82,7 +82,8 @@ public:
     data[EqnData::S] = util::overlap(util::wrap(m_params), m_handlers->rr());
     data[EqnData::H] = util::overlap(util::wrap(m_params), util::wrap(m_actions), m_handlers->rr());
     if (m_logger->data_dump) {
-      // dump S and H matrices
+      m_logger->msg("S = " + as_string(data[EqnData::S]), Logger::Info);
+      m_logger->msg("H = " + as_string(data[EqnData::H]), Logger::Info);
     }
     assert(m_working_set.size() == m_params.size());
   }

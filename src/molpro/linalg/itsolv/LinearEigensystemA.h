@@ -30,11 +30,12 @@ public:
                               subspace::XSpaceLinEig<R, Q, P, typename LinearEigensystem<R, Q, P>::scalar_type>>;
   using typename SolverTemplate::scalar_type;
 
-  explicit LinearEigensystemA(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers,
-                              std::shared_ptr<Logger> logger = std::make_shared<Logger>())
-      : SolverTemplate(subspace::RSpace<R, Q, P>(handlers, logger), subspace::QSpace<R, Q, P>(handlers, logger),
-                       subspace::PSpace<R, P>(), subspace::XSpaceLinEig<R, Q, P, scalar_type>(logger),
-                       std::move(handlers), std::make_shared<Statistics>(), logger) {}
+  explicit LinearEigensystemA(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
+                              std::shared_ptr<Logger> logger_ = std::make_shared<Logger>())
+      : SolverTemplate(subspace::RSpace<R, Q, P>(handlers, logger_), subspace::QSpace<R, Q, P>(handlers, logger_),
+                       subspace::PSpace<R, P>(), subspace::XSpaceLinEig<R, Q, P, scalar_type>(logger_), handlers,
+                       std::make_shared<Statistics>(), logger_),
+        logger(std::move(logger_)) {}
 
   void set_convergence_threshold(double threshold) { this->m_convergence_threshold = threshold; }
 
@@ -56,6 +57,8 @@ public:
     std::copy(begin(ev), end(ev), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
     molpro::cout << std::defaultfloat << std::endl;
   }
+
+  std::shared_ptr<Logger> logger;
 };
 
 } // namespace itsolv

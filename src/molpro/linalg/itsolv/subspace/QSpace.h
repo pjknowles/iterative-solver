@@ -295,6 +295,7 @@ struct QSpace {
   //! included.
   auto& used_working_set() const { return m_used_working_set; }
 
+  // FIXME tracking of roots might not make sense any more and modification candidates might be just the first vectors
   //! Returns indices of q parameters corresponding to root that can be modified. Converged solutions and latest q
   //! vector for that root are excluded.
   auto modification_candidates(size_t root) const {
@@ -306,40 +307,6 @@ struct QSpace {
     if (!candidates.empty())
       candidates.resize(candidates.size() - 1);
     return candidates;
-  }
-
-  //! Merges a pair of q vectors if they belong to the same root and updates the subspace data
-  void merge(const std::pair<size_t, size_t>& pair) {
-    m_logger->msg("QSpace::merge pairs " + std::to_string(pair.first) + " " + std::to_string(pair.second),
-                  Logger::Debug);
-    assert(m_params.size() > pair.first && m_params.size() > pair.second);
-    auto i = std::min(pair.first, pair.second);
-    auto j = std::max(pair.first, pair.second);
-    auto left = std::next(begin(m_params), i);
-    auto right = std::next(begin(m_params), j);
-    auto root = left->root;
-    if (root != right->root) {
-      auto message = "attempting to merge difference vectors corresponding to different roots";
-      m_logger->msg(message, Logger::Fatal);
-      throw std::runtime_error(message);
-    }
-    auto first_difference_vector =
-        std::find_if(begin(m_params), end(m_params), [root](const auto& el) { return el.root == root; });
-    if (left == first_difference_vector || i == j) {
-      erase(i);
-    } else {
-      if (i == j) {
-        auto message = "attempting to merge the same vector";
-        m_logger->msg(message, Logger::Fatal);
-        throw std::runtime_error(message);
-      }
-      double a, b;
-      std::tie(a, b) = left->merge(*right, m_handlers->qq());
-      m_params.erase(right);
-      qspace::merge_subspace_qq(i, j, a, b, data);
-      qspace::merge_subspace_qr(i, j, a, b, qr);
-      qspace::merge_subspace_rq(i, j, a, b, rq);
-    }
   }
 
   //! Erases q parameter i. @param i index in the current Q space

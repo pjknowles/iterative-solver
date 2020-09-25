@@ -92,7 +92,7 @@ update(R& qparam, R& qaction, const std::vector<std::reference_wrapper<R>>& para
       orthogonalisation_constant = rr / rd;
     auto scale_factor = rr - 2 * rd * orthogonalisation_constant + dd * std::pow(orthogonalisation_constant, 2);
     scale_factor = std::sqrt(std::max(scale_factor, decltype(rr)(0.)));
-    scale_factor = 1;
+    scale_factor = scale_factor == 0 ? 0 : 1;
     if (scale_factor > 0) {
       scale_factor = 1. / scale_factor;
       logger.msg("orthogonalisation_constant =" + Logger::scientific(orthogonalisation_constant) +
@@ -107,18 +107,6 @@ update(R& qparam, R& qaction, const std::vector<std::reference_wrapper<R>>& para
       auto qq = handlers.rr().dot(qparam, qparam);
       auto norm = std::sqrt(qq);
       logger.msg("actual norm = " + Logger::scientific(norm), Logger::Info);
-      if (norm > 1.0e-6 && std::abs(1. - norm) > 1.e-2) {
-        // Copied logic from Peter's routine
-        // rescale because of numerical precision problems when vector
-        //    \approx oldvector
-        //    do not do it if the problem is severe, since then action will be inaccurate
-        logger.msg("renormalising difference vector, norm = " + Logger::scientific(norm), Logger::Debug);
-        handlers.rr().scal(1. / norm, qparam);
-        handlers.rr().scal(1. / norm, qaction);
-        scale_factor /= norm;
-      } else if (norm <= 1.0e-6) {
-        logger.msg("difference vector too small to renormalise, norm = " + Logger::scientific(norm), Logger::Debug);
-      }
       auto&& q = qspace::QParam<Q>{std::make_unique<Q>(handlers.qr().copy(qparam)),
                                    std::make_unique<Q>(handlers.qr().copy(qaction)),
                                    working_set[i],

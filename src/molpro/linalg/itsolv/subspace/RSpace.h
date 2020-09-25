@@ -54,7 +54,17 @@ public:
   explicit RSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
 
+  // FIXME are we still tracking roots? Parameters map directly to the previous solutions, but we map solutions to roots
+  /*! Takes a list of parameters and corresponding action vectors
+   * @brief Updates the RSpace. New parameters are stored as d vectors. RSpace consists of previous solutions.
+   *
+   *
+   * @param parameters new preconditioned parameters. Each parameter corresponds to a working set.
+   * @param actions action of matrix on parameters
+   * @param solver overlying solver
+   */
   void update(std::vector<R>& parameters, std::vector<R>& actions, IterativeSolver<R, Q, P>& solver) {
+    // FIXME reordering is unnecessary now
     auto ind_last_param_to_new = std::vector<size_t>{};
     if (m_dparams.empty()) {
       m_logger->msg("RSpace::update making first copy of params", Logger::Trace);
@@ -65,22 +75,16 @@ public:
       m_logger->msg("RSpace::update updating params with new values ", Logger::Trace);
       ind_last_param_to_new = rspace::assign_last_parameters_to_new(m_dparams, parameters, m_handlers->qr());
     }
+    // FIXME new params should be copied to d vectors
     m_params.clear();
     m_actions.clear();
     for (auto i : ind_last_param_to_new) {
-      m_params.emplace_back(parameters.at(i));
-      m_actions.emplace_back(actions.at(i));
+      m_params.emplace_back(m_handlers->rr().copy(parameters.at(i)));
+      m_actions.emplace_back(m_handlers->rr().copy(actions.at(i)));
     }
-    for (size_t i = 0; i < m_params.size(); ++i) {
-      auto norm = std::sqrt(m_handlers->rr().dot(m_params[i], m_params[i]));
-      m_logger->msg("RSpace::update param index i = " + std::to_string(i) + ", 1./norm = " + Logger::scientific(norm),
-                    Logger::Debug);
-      // FIXME What happens if norm is very large or very small?
-      m_handlers->rr().scal(1.0 / norm, m_params[i]);
-      m_handlers->rr().scal(1.0 / norm, m_actions[i]);
-    }
-    data[EqnData::S] = util::overlap(m_params, m_handlers->rr());
-    data[EqnData::H] = util::overlap(m_params, m_actions, m_handlers->rr());
+    // Normalisation is not needed
+    data[EqnData::S] = util::overlap(util::wrap(m_params), m_handlers->rr());
+    data[EqnData::H] = util::overlap(util::wrap(m_params), util::wrap(m_actions), m_handlers->rr());
     if (m_logger->data_dump) {
       m_logger->msg("S = " + as_string(data[EqnData::S]), Logger::Info);
       m_logger->msg("H = " + as_string(data[EqnData::H]), Logger::Info);
@@ -144,8 +148,8 @@ protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::shared_ptr<Logger> m_logger;
   std::vector<size_t> m_working_set; //!< working set of roots. Maps references of current params to starting roots
-  VecRefR m_params;                  //!< solutions at this iteration forming the RSpace, mapped to root indices
-  VecRefR m_actions;                 //!< action vector corresponding to m_params
+  std::vector<R> m_params;           //!< solutions at this iteration forming the RSpace, mapped to root indices
+  std::vector<R> m_actions;          //!< action vector corresponding to m_params
   mutable std::vector<R> m_dummy;    //!< A dummy R vector which can be used as an intermediate
   std::vector<Q> m_dparams;          //!< parameters from previous iteration, mapped to root indices
   std::vector<Q> m_dactions;         //!< actions from previous iteration, mapped to root indices

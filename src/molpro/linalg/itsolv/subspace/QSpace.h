@@ -63,10 +63,10 @@ auto wrap_params(ForwardIt begin, ForwardIt end) {
 }
 
 //! Generate new difference vectors based on current and last working set
-template <class R, class Q, class P>
+template <class R, class RC, class Q, class P>
 std::pair<std::list<QParam<Q>>, std::vector<size_t>>
-update_difference(R& qparam, R& qaction, const std::vector<std::reference_wrapper<R>>& params,
-                  const std::vector<std::reference_wrapper<R>>& actions, const std::vector<Q>& last_params,
+update_difference(R& qparam, R& qaction, const std::vector<std::reference_wrapper<RC>>& params,
+                  const std::vector<std::reference_wrapper<RC>>& actions, const std::vector<Q>& last_params,
                   const std::vector<Q>& last_actions, const std::vector<size_t>& working_set,
                   ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
   logger.msg("qspace::update", Logger::Trace);
@@ -149,11 +149,11 @@ void update_qq_subspace(const std::vector<std::reference_wrapper<Q>>& old_params
 }
 
 //! Updates equation data in the RxQ part of the subspace
-template <class R, class Q>
+template <class R, class RC, class Q>
 void update_qr_subspace(const std::vector<std::reference_wrapper<Q>>& qparams,
                         const std::vector<std::reference_wrapper<Q>>& qactions,
-                        const std::vector<std::reference_wrapper<R>>& rparams,
-                        const std::vector<std::reference_wrapper<R>>& ractions, SubspaceData& qr, SubspaceData& rq,
+                        const std::vector<std::reference_wrapper<RC>>& rparams,
+                        const std::vector<std::reference_wrapper<RC>>& ractions, SubspaceData& qr, SubspaceData& rq,
                         array::ArrayHandler<Q, R>& handler_qr, array::ArrayHandler<R, Q>& handler_rq) {
   auto nQ = qparams.size();
   auto nR = rparams.size();
@@ -218,8 +218,8 @@ struct QSpace {
   void update(const RSpace<R, Q, P>& rs, IterativeSolver<R, Q, P>& solver) {
     m_logger->msg("QSpace::update", Logger::Trace);
     auto& dummy = rs.dummy(2);
-    auto result = qspace::update_difference(dummy.at(0), dummy.at(1), rs.params(), rs.actions(), rs.dparams(),
-                                            rs.dactions(), rs.working_set(), *m_handlers, *m_logger);
+    auto result = qspace::update_difference(dummy.at(0), dummy.at(1), util::wrap(rs.params()), util::wrap(rs.actions()),
+                                            rs.dparams(), rs.dactions(), rs.working_set(), *m_handlers, *m_logger);
     auto& new_qparams = result.first;
     m_used_working_set = result.second;
     auto old_params_actions = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
@@ -228,8 +228,8 @@ struct QSpace {
     auto all_params_actions = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
     qspace::update_qq_subspace(old_params_actions[0], old_params_actions[1], new_params_actions[0],
                                new_params_actions[1], data, m_handlers->qq());
-    qspace::update_qr_subspace(all_params_actions[0], all_params_actions[1], rs.params(), rs.actions(), qr, rq,
-                               m_handlers->rq(), m_handlers->qr());
+    qspace::update_qr_subspace(all_params_actions[0], all_params_actions[1], util::wrap(rs.params()),
+                               util::wrap(rs.actions()), qr, rq, m_handlers->rq(), m_handlers->qr());
     if (m_logger->data_dump) {
       m_logger->msg("Sqq = " + as_string(data[EqnData::S]), Logger::Info);
       m_logger->msg("Hqq = " + as_string(data[EqnData::H]), Logger::Info);

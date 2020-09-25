@@ -57,7 +57,8 @@ void test_single(RSpace& rspace, double alpha, size_t size, const std::string& m
 } // namespace
 
 TEST_F(RSpaceF, update_single) {
-  auto param = std::vector<R>{{1, 2, 3}};
+  const double norm = std::sqrt(1. + 4. + 9.);
+  auto param = std::vector<R>{{1. / norm, 2. / norm, 3. / norm}};
   const auto alpha = 2.0;
   auto action = param;
   for (auto& x : action[0])
@@ -67,7 +68,8 @@ TEST_F(RSpaceF, update_single) {
 }
 
 TEST_F(RSpaceF, update_same_vector_mulitple_times) {
-  auto param = std::vector<R>{{1, 2, 3}};
+  const double norm = std::sqrt(1. + 4. + 9.);
+  auto param = std::vector<R>{{1. / norm, 2. / norm, 3. / norm}};
   const auto alpha = 2.0;
   auto action = param;
   for (auto& x : action[0])
@@ -96,7 +98,8 @@ TEST_F(RSpaceF, assign_new_parameters_to_last__stable_ordering) {
 }
 
 TEST_F(RSpaceF, update_working_set) {
-  auto param = std::vector<R>{{1, 2, 3}};
+  const double norm = std::sqrt(1. + 4. + 9.);
+  auto param = std::vector<R>{{1. / norm, 2. / norm, 3. / norm}};
   const auto alpha = 2.0;
   auto action = param;
   for (auto& x : action[0])

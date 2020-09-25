@@ -9,14 +9,15 @@ namespace subspace {
 namespace xspace {
 //! Stores partitioning of XSpace into P, Q and R blocks with sizes and offsets for each one
 struct Dimensions {
+  Dimensions() = default;
   Dimensions(size_t np, size_t nq, size_t nr) : nP(np), nQ(nq), nR(nr) {}
-  const size_t nP = 0;
-  const size_t nQ = 0;
-  const size_t nR = 0;
-  const size_t nX = nP + nQ + nR;
-  const size_t oP = 0;
-  const size_t oQ = nP;
-  const size_t oR = oQ + nQ;
+  size_t nP = 0;
+  size_t nQ = 0;
+  size_t nR = 0;
+  size_t nX = nP + nQ + nR;
+  size_t oP = 0;
+  size_t oQ = nP;
+  size_t oR = oQ + nQ;
 };
 } // namespace xspace
 
@@ -31,6 +32,8 @@ public:
   using RS = Rs;
   using QS = Qs;
   using PS = Ps;
+  XSpace() = default;
+  virtual ~XSpace() = default;
 
   SubspaceData data = null_data<EqnData::H, EqnData::S>();
 
@@ -40,8 +43,8 @@ public:
   //! Solves the underlying problem in the subspace. solver can be used to pass extra parameters defining the problem
   virtual void solve(const IterativeSolver<R, Q, P>& solver) = 0;
 
-  //! Access solution matrix. Solution vectors are stored as columns
-  virtual const Matrix<scalar_type>& solution() const = 0;
+  //! Access solution matrix. Solution vectors are stored as rows
+  virtual const Matrix<scalar_type>& solutions() const = 0;
 
   // TODO rename this. What does this mean in DIIS or BFGS solvers? How does it relate to the errors?
   virtual const std::vector<scalar_type>& eigenvalues() const = 0;

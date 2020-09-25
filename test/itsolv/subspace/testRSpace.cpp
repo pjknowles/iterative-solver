@@ -5,6 +5,7 @@
 #include <molpro/linalg/itsolv/subspace/RSpace.h>
 
 using molpro::linalg::itsolv::ArrayHandlers;
+using molpro::linalg::itsolv::Logger;
 using molpro::linalg::itsolv::subspace::EqnData;
 using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::RSpace;
@@ -19,9 +20,10 @@ struct RSpaceF : ::testing::Test {
   using R = std::vector<double>;
   using Q = R;
   using P = std::map<size_t, double>;
-  RSpaceF() : handlers(std::make_shared<ArrayHandlers<R, Q, P>>()), rspace(handlers) {}
+  RSpaceF() : handlers(std::make_shared<ArrayHandlers<R, Q, P>>()), rspace(handlers, logger) {}
 
   std::shared_ptr<ArrayHandlers<R, Q, P>> handlers;
+  std::shared_ptr<Logger> logger = std::make_shared<Logger>();
   RSpace<R, Q, P> rspace;
   DummySolver<R, Q, P> solver;
 };

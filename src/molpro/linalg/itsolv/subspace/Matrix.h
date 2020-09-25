@@ -2,6 +2,8 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_MATRIX_H
 #include <algorithm>
 #include <cstddef>
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -125,7 +127,7 @@ public:
       auto m = Matrix<T>(dims);
       auto upper_left = coord_type{0, 0};
       auto bottom_right = coord_type{std::min(rows(), m.rows()), std::min(cols(), m.cols())};
-      slice(upper_left, bottom_right) = m.slice(upper_left, bottom_right);
+      m.slice(upper_left, bottom_right) = slice(upper_left, bottom_right);
       std::swap(*this, m);
     }
   }
@@ -145,7 +147,7 @@ public:
     auto m = Matrix<T>({m_rows, m_cols - 1});
     m.slice({0, 0}, {m_rows, col}) = slice({0, 0}, {m_rows, col});
     m.slice({0, col}, {m_rows, m.m_cols}) = slice({0, col + 1}, dimensions());
-    *this = std::move(m);
+    std::swap(*this, m);
   }
 
   //! removes row and column @param row row incdex @param col column index
@@ -259,12 +261,37 @@ protected:
     CSlice(const CSlice&) = delete;
     CSlice(CSlice&&) noexcept = default;
     CSlice& operator=(CSlice&&) noexcept = default;
-    T operator()(size_t i, size_t j) const { return m_slice(i, j); }
+    T operator()(size_t i, size_t j) const { return const_cast<Slice&>(m_slice)(i, j); }
 
   protected:
     Slice m_slice;
   };
 };
+
+template <class Mat>
+std::string as_string(const Mat& m, int precision = 6) {
+  auto s = std::stringstream{};
+  s << std::setprecision(precision);
+  auto dims = m.dimensions();
+  if (dims.first * dims.second != 0) {
+    s << "\n[";
+    for (size_t i = 0; i < dims.first; ++i) {
+      s << "[";
+      for (size_t j = 0; j < dims.second; ++j) {
+        s << m(i, j);
+        if (j != dims.second - 1)
+          s << ", ";
+      }
+      s << "]";
+      if (i != dims.first - 1)
+        s << ",\n ";
+    }
+    s << "]";
+  } else {
+    s << "[[]]";
+  }
+  return s.str();
+}
 
 } // namespace subspace
 } // namespace itsolv

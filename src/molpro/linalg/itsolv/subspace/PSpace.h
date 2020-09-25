@@ -7,10 +7,13 @@ namespace linalg {
 namespace itsolv {
 namespace subspace {
 
-template <class R, class P>
+template <class Rt, class Pt>
 struct PSpace {
+  using R = Rt;
+  using P = Pt;
   using VecRefP = std::vector<std::reference_wrapper<P>>;
 
+  SubspaceData data = null_data<EqnData::H, EqnData::S>(); //!< PxP block of subspace data
   VecRefP params() const { return {}; }
   VecRefP actions() const { return {}; }
 

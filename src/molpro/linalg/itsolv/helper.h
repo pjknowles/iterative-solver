@@ -37,7 +37,9 @@ struct SVD {
  * @param m row-wise data buffer for a square matrix
  * @param threshold singular values less than threshold will be returned
  */
-template <typename value_type>
+template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t> = nullptr>
+std::list<SVD<value_type>> svd_system(size_t ndim, const array::Span<value_type>& m, double threshold);
+template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int> = 0>
 std::list<SVD<value_type>> svd_system(size_t ndim, const array::Span<value_type>& m, double threshold);
 
 template <typename value_type>
@@ -79,6 +81,8 @@ extern template int propose_singularity_deletion<double>(size_t n, size_t ndim, 
 extern template void printMatrix<double>(const std::vector<double>&, size_t rows, size_t cols, std::string title,
                                          std::ostream& s);
 
+extern template std::list<SVD<double>> svd_system(size_t ndim, const array::Span<double>& m, double threshold);
+
 extern template void eigenproblem<double>(std::vector<double>& eigenvectors, std::vector<double>& eigenvalues,
                                           const std::vector<double>& matrix, const std::vector<double>& metric,
                                           const size_t dimension, bool hermitian, double svdThreshold,
@@ -112,6 +116,9 @@ extern template int propose_singularity_deletion<std::complex<double>>(size_t n,
 
 extern template void printMatrix<std::complex<double>>(const std::vector<std::complex<double>>&, size_t rows,
                                                        size_t cols, std::string title, std::ostream& s);
+
+extern template std::list<SVD<std::complex<double>>> svd_system(size_t ndim, const array::Span<std::complex<double>>& m,
+                                                                double threshold);
 
 extern template void eigenproblem<std::complex<double>>(std::vector<std::complex<double>>& eigenvectors,
                                                         std::vector<std::complex<double>>& eigenvalues,

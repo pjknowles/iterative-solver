@@ -4,6 +4,7 @@
 #include <memory>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
+#include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceData.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 
@@ -39,38 +40,51 @@ std::vector<size_t> assign_last_parameters_to_new(const std::vector<Q>& last_par
 } // namespace rspace
 
 //! Space for the working set of vectors
-template <class R, class Q, class P>
+template <class Rt, class Qt, class Pt>
 class RSpace {
 public:
+  using R = Rt;
+  using Q = Qt;
+  using P = Pt;
   using VecRefR = std::vector<std::reference_wrapper<R>>;
 
   //! Matrix and overlap data mapped to the subspace
   SubspaceData data = null_data<EqnData::H, EqnData::S>();
 
-  explicit RSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers) : m_handlers(std::move(handlers)) {}
+  explicit RSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
+      : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
 
   void update(std::vector<R>& parameters, std::vector<R>& actions, IterativeSolver<R, Q, P>& solver) {
     auto ind_last_param_to_new = std::vector<size_t>{};
     if (m_last_params.empty()) {
+      m_logger->msg("RSpace::update making first copy of params", Logger::Trace);
       m_working_set.resize(parameters.size());
       std::iota(begin(m_working_set), end(m_working_set), size_t{0});
       ind_last_param_to_new = m_working_set;
-    } else
+    } else {
+      m_logger->msg("RSpace::update updating params with new values ", Logger::Trace);
       ind_last_param_to_new = rspace::assign_last_parameters_to_new(m_last_params, parameters, m_handlers->qr());
+    }
     m_params.clear();
     m_actions.clear();
-    for (const auto& param_to_last : ind_last_param_to_new) {
-      m_params.emplace_back(parameters[param_to_last]);
-      m_actions.emplace_back(actions[param_to_last]);
+    for (auto i : ind_last_param_to_new) {
+      m_params.emplace_back(parameters.at(i));
+      m_actions.emplace_back(actions.at(i));
     }
     for (size_t i = 0; i < m_params.size(); ++i) {
       auto norm = std::sqrt(m_handlers->rr().dot(m_params[i], m_params[i]));
+      m_logger->msg("RSpace::update param index i = " + std::to_string(i) + ", 1./norm = " + Logger::scientific(norm),
+                    Logger::Debug);
       // FIXME What happens if norm is very large or very small?
       m_handlers->rr().scal(1.0 / norm, m_params[i]);
       m_handlers->rr().scal(1.0 / norm, m_actions[i]);
     }
     data[EqnData::S] = util::overlap(m_params, m_handlers->rr());
     data[EqnData::H] = util::overlap(m_params, m_actions, m_handlers->rr());
+    if (m_logger->data_dump) {
+      m_logger->msg("S = " + as_string(data[EqnData::S]), Logger::Info);
+      m_logger->msg("H = " + as_string(data[EqnData::H]), Logger::Info);
+    }
     assert(m_working_set.size() == m_params.size());
   }
 
@@ -91,16 +105,26 @@ public:
   //! Updates working set of vectors. @param working_vector_ind indices of params that are still part of the working set
   void update_working_set(const std::vector<size_t>& working_vector_ind) {
     assert(working_vector_ind.size() <= m_params.size());
-    m_last_params.clear();
-    m_last_actions.clear();
-    auto working_set_size = working_vector_ind.size();
-    auto new_working_set = m_working_set;
-    for (size_t i = 0; i < working_set_size; ++i) {
+    auto n_copy = std::min(m_last_params.size(), working_vector_ind.size());
+    auto n_tot = working_vector_ind.size();
+    for (size_t i = 0; i < n_copy; ++i) {
+      m_handlers->qr().copy(m_last_params[i], m_params.at(working_vector_ind[i]));
+      m_handlers->qr().copy(m_last_actions[i], m_actions.at(working_vector_ind[i]));
+    }
+    for (size_t i = n_copy; i < n_tot; ++i) {
       m_last_params.emplace_back(m_handlers->qr().copy(m_params.at(working_vector_ind[i])));
       m_last_actions.emplace_back(m_handlers->qr().copy(m_actions.at(working_vector_ind[i])));
-      new_working_set[i] = m_working_set[working_vector_ind[i]];
     }
-    new_working_set.resize(working_set_size);
+    m_last_params.resize(n_tot);
+    m_last_actions.resize(n_tot);
+    auto new_working_set = std::vector<size_t>{};
+    for (auto ind : working_vector_ind) {
+      new_working_set.emplace_back(m_working_set.at(ind));
+    }
+    m_logger->msg("RSpace::update_working_set old working set = ", begin(m_working_set), end(m_working_set),
+                  Logger::Debug);
+    m_logger->msg("RSpace::update_working_set new working set = ", begin(new_working_set), end(new_working_set),
+                  Logger::Debug);
     m_working_set = new_working_set;
   }
 
@@ -118,6 +142,7 @@ public:
 
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
+  std::shared_ptr<Logger> m_logger;
   std::vector<size_t> m_working_set; //!< working set of roots. Maps references of current params to starting roots
   VecRefR m_params;                  //!< solutions at this iteration forming the RSpace, mapped to root indices
   VecRefR m_actions;                 //!< action vector corresponding to m_params

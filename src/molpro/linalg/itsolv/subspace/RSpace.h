@@ -56,14 +56,14 @@ public:
 
   void update(std::vector<R>& parameters, std::vector<R>& actions, IterativeSolver<R, Q, P>& solver) {
     auto ind_last_param_to_new = std::vector<size_t>{};
-    if (m_last_params.empty()) {
+    if (m_dparams.empty()) {
       m_logger->msg("RSpace::update making first copy of params", Logger::Trace);
       m_working_set.resize(parameters.size());
       std::iota(begin(m_working_set), end(m_working_set), size_t{0});
       ind_last_param_to_new = m_working_set;
     } else {
       m_logger->msg("RSpace::update updating params with new values ", Logger::Trace);
-      ind_last_param_to_new = rspace::assign_last_parameters_to_new(m_last_params, parameters, m_handlers->qr());
+      ind_last_param_to_new = rspace::assign_last_parameters_to_new(m_dparams, parameters, m_handlers->qr());
     }
     m_params.clear();
     m_actions.clear();
@@ -105,18 +105,18 @@ public:
   //! Updates working set of vectors. @param working_vector_ind indices of params that are still part of the working set
   void update_working_set(const std::vector<size_t>& working_vector_ind) {
     assert(working_vector_ind.size() <= m_params.size());
-    auto n_copy = std::min(m_last_params.size(), working_vector_ind.size());
+    auto n_copy = std::min(m_dparams.size(), working_vector_ind.size());
     auto n_tot = working_vector_ind.size();
     for (size_t i = 0; i < n_copy; ++i) {
-      m_handlers->qr().copy(m_last_params[i], m_params.at(working_vector_ind[i]));
-      m_handlers->qr().copy(m_last_actions[i], m_actions.at(working_vector_ind[i]));
+      m_handlers->qr().copy(m_dparams[i], m_params.at(working_vector_ind[i]));
+      m_handlers->qr().copy(m_dactions[i], m_actions.at(working_vector_ind[i]));
     }
     for (size_t i = n_copy; i < n_tot; ++i) {
-      m_last_params.emplace_back(m_handlers->qr().copy(m_params.at(working_vector_ind[i])));
-      m_last_actions.emplace_back(m_handlers->qr().copy(m_actions.at(working_vector_ind[i])));
+      m_dparams.emplace_back(m_handlers->qr().copy(m_params.at(working_vector_ind[i])));
+      m_dactions.emplace_back(m_handlers->qr().copy(m_actions.at(working_vector_ind[i])));
     }
-    m_last_params.resize(n_tot);
-    m_last_actions.resize(n_tot);
+    m_dparams.resize(n_tot);
+    m_dactions.resize(n_tot);
     auto new_working_set = std::vector<size_t>{};
     for (auto ind : working_vector_ind) {
       new_working_set.emplace_back(m_working_set.at(ind));
@@ -135,10 +135,10 @@ public:
   auto& params() { return m_params; }
   auto& actions() const { return m_actions; }
   auto& actions() { return m_actions; }
-  auto& last_params() { return m_last_params; }
-  auto& last_params() const { return m_last_params; }
-  auto& last_actions() { return m_last_actions; }
-  auto& last_actions() const { return m_last_actions; }
+  auto& dparams() { return m_dparams; }
+  auto& dparams() const { return m_dparams; }
+  auto& dactions() { return m_dactions; }
+  auto& dactions() const { return m_dactions; }
 
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
@@ -147,8 +147,8 @@ protected:
   VecRefR m_params;                  //!< solutions at this iteration forming the RSpace, mapped to root indices
   VecRefR m_actions;                 //!< action vector corresponding to m_params
   mutable std::vector<R> m_dummy;    //!< A dummy R vector which can be used as an intermediate
-  std::vector<Q> m_last_params;      //!< parameters from previous iteration, mapped to root indices
-  std::vector<Q> m_last_actions;     //!< actions from previous iteration, mapped to root indices
+  std::vector<Q> m_dparams;          //!< parameters from previous iteration, mapped to root indices
+  std::vector<Q> m_dactions;         //!< actions from previous iteration, mapped to root indices
 };
 
 //! RSpace for LinearEquations solver

@@ -17,7 +17,7 @@ using molpro::linalg::itsolv::subspace::qspace::merge_subspace_qq;
 using molpro::linalg::itsolv::subspace::qspace::merge_subspace_qr;
 using molpro::linalg::itsolv::subspace::qspace::merge_subspace_rq;
 using molpro::linalg::itsolv::subspace::qspace::QParam;
-using molpro::linalg::itsolv::subspace::qspace::update;
+using molpro::linalg::itsolv::subspace::qspace::update_difference;
 using molpro::linalg::itsolv::subspace::qspace::update_qq_subspace;
 using molpro::linalg::itsolv::subspace::qspace::update_qr_subspace;
 using molpro::linalg::itsolv::subspace::util::wrap;
@@ -44,8 +44,8 @@ struct QSpaceUpdateF : ::testing::Test {
       working_set.resize(params.size());
       std::iota(begin(working_set), end(working_set), size_t{0});
     }
-    return update(qparam, qaction, wrap(params), wrap(actions), last_params, last_actions, working_set, handlers,
-                  *logger);
+    return update_difference(qparam, qaction, wrap(params), wrap(actions), last_params, last_actions, working_set,
+                             handlers, *logger);
   }
 
   Q qparam{};

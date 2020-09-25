@@ -105,11 +105,11 @@ TEST_F(RSpaceF, update_working_set) {
   test_single(rspace, alpha, 1);
   rspace.update_working_set({0});
   test_single(rspace, alpha, 1);
-  ASSERT_EQ(rspace.last_params().size(), 1);
-  ASSERT_EQ(rspace.last_actions().size(), 1);
+  ASSERT_EQ(rspace.dparams().size(), 1);
+  ASSERT_EQ(rspace.dactions().size(), 1);
   rspace.update_working_set({});
-  ASSERT_EQ(rspace.last_params().size(), 0);
-  ASSERT_EQ(rspace.last_actions().size(), 0);
+  ASSERT_EQ(rspace.dparams().size(), 0);
+  ASSERT_EQ(rspace.dactions().size(), 0);
   ASSERT_EQ(rspace.working_set().size(), 0);
 }
 

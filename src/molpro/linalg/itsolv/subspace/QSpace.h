@@ -69,7 +69,7 @@ update_difference(R& qparam, R& qaction, const std::vector<std::reference_wrappe
                   const std::vector<std::reference_wrapper<RC>>& actions, const std::vector<Q>& last_params,
                   const std::vector<Q>& last_actions, const std::vector<size_t>& working_set,
                   ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
-  logger.msg("qspace::update", Logger::Trace);
+  logger.msg("qspace::update_difference", Logger::Trace);
   if (last_params.empty() || last_actions.empty())
     return {};
   assert(params.size() == last_params.size() && params.size() == actions.size() &&
@@ -118,6 +118,26 @@ update_difference(R& qparam, R& qaction, const std::vector<std::reference_wrappe
     } else {
       logger.msg("estimated norm is zero, scale_factor = " + std::to_string(scale_factor), Logger::Debug);
     }
+  }
+  return {std::move(qparams), used_working_set};
+}
+//! Generate new difference vectors based on current and last working set
+template <class R, class Q, class P>
+std::pair<std::list<QParam<Q>>, std::vector<size_t>>
+update(const std::vector<Q>& dparams, const std::vector<Q>& dactions, const std::vector<size_t>& working_set,
+       ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
+  logger.msg("qspace::update", Logger::Trace);
+  auto used_working_set = std::vector<size_t>{};
+  auto qparams = std::list<QParam<Q>>{};
+  for (size_t i = 0; i < working_set.size(); ++i) {
+    auto&& q = qspace::QParam<Q>{std::make_unique<Q>(handlers.qr().copy(dparams.at(i))),
+                                 std::make_unique<Q>(handlers.qr().copy(dactions.at(i))),
+                                 working_set[i],
+                                 false,
+                                 1,
+                                 1};
+    qparams.emplace_back(std::move(q));
+    used_working_set.emplace_back(working_set[i]);
   }
   return {std::move(qparams), used_working_set};
 }
@@ -218,8 +238,7 @@ struct QSpace {
   void update(const RSpace<R, Q, P>& rs, IterativeSolver<R, Q, P>& solver) {
     m_logger->msg("QSpace::update", Logger::Trace);
     auto& dummy = rs.dummy(2);
-    auto result = qspace::update_difference(dummy.at(0), dummy.at(1), util::wrap(rs.params()), util::wrap(rs.actions()),
-                                            rs.dparams(), rs.dactions(), rs.working_set(), *m_handlers, *m_logger);
+    auto result = qspace::update(rs.dparams(), rs.dactions(), rs.working_set(), *m_handlers, *m_logger);
     auto& new_qparams = result.first;
     m_used_working_set = result.second;
     auto old_params_actions = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
@@ -326,9 +345,17 @@ struct QSpace {
   //! Erases q parameter i. @param i index in the current Q space
   void erase(size_t i) {
     assert(m_params.size() > i);
-    m_params.erase(std::next(begin(m_params), i));
-    // remove associated rows and columns from the data
-    qspace::erase_subspace(i, data, qr, rq);
+    auto it = std::next(begin(m_params), i);
+    auto first_q_for_root =
+        std::find_if(begin(m_params), end(m_params), [root = it->root](const auto& el) { return el.root == root; });
+    if (it != first_q_for_root) {
+      auto msg = "QSpace::erase removing a q parameter that is not oldest for root =" + std::to_string(it->root);
+      m_logger->msg(msg, Logger::Fatal);
+      throw std::runtime_error(msg);
+    } else {
+      m_params.erase(it);
+      qspace::erase_subspace(i, data, qr, rq);
+    }
   }
 
   size_t size() const { return m_params.size(); }

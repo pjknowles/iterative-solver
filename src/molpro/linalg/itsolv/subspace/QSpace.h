@@ -92,6 +92,7 @@ update(R& qparam, R& qaction, const std::vector<std::reference_wrapper<R>>& para
       orthogonalisation_constant = rr / rd;
     auto scale_factor = rr - 2 * rd * orthogonalisation_constant + dd * std::pow(orthogonalisation_constant, 2);
     scale_factor = std::sqrt(std::max(scale_factor, decltype(rr)(0.)));
+    scale_factor = 1;
     if (scale_factor > 0) {
       scale_factor = 1. / scale_factor;
       logger.msg("orthogonalisation_constant =" + Logger::scientific(orthogonalisation_constant) +

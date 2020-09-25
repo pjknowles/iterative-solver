@@ -124,7 +124,7 @@ TEST_F(QSpaceUpdateF, update_multiple_rspace_zero_last) {
   ASSERT_EQ(used_working_set.size(), params.size());
 }
 
-TEST_F(QSpaceUpdateF, update_difference_reproduces_new_params) {
+TEST_F(QSpaceUpdateF, DISABLED_update_difference_reproduces_new_params) {
   params = {{1, 2, 3}};
   actions = params;
   last_params = {{3, 2, 1}};

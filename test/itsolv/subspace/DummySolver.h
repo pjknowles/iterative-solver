@@ -28,6 +28,8 @@ struct DummySolver : IterativeSolver<R, Q, P> {
 
   const std::vector<int>& working_set() const override { return ws; };
   size_t n_roots() const override { return nr; };
+  void set_n_roots(size_t nroots) override { nr = nroots; };
+  void report() const override{};
   const std::vector<scalar_type>& errors() const override { return er; };
   const Statistics& statistics() const override { return st; };
   std::vector<int> ws;

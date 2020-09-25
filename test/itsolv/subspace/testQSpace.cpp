@@ -2,10 +2,11 @@
 #include <gtest/gtest.h>
 
 #include "DummySolver.h"
-#include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <array>
+#include <molpro/linalg/itsolv/subspace/QSpace.h>
 
 using molpro::linalg::itsolv::ArrayHandlers;
+using molpro::linalg::itsolv::Logger;
 using molpro::linalg::itsolv::subspace::EqnData;
 using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::null_data;
@@ -43,7 +44,8 @@ struct QSpaceUpdateF : ::testing::Test {
       working_set.resize(params.size());
       std::iota(begin(working_set), end(working_set), size_t{0});
     }
-    return update(qparam, qaction, wrap(params), wrap(actions), last_params, last_actions, working_set, handlers);
+    return update(qparam, qaction, wrap(params), wrap(actions), last_params, last_actions, working_set, handlers,
+                  *logger);
   }
 
   Q qparam{};
@@ -55,6 +57,7 @@ struct QSpaceUpdateF : ::testing::Test {
   std::vector<size_t> working_set;
   DummySolver<R, Q, P> solver;
   ArrayHandlers<R, Q, P> handlers;
+  std::shared_ptr<Logger> logger = std::make_shared<Logger>();
 };
 
 TEST_F(QSpaceUpdateF, update_null) {
@@ -184,13 +187,13 @@ TEST(QSpaceUpdateSubspace, qr) {
 
 //this is an overkill, but might be useful for other tests
 struct QSpaceEyeF : ::testing::Test {
-  QSpaceEyeF() : qspace(handlers) {}
+  QSpaceEyeF() : qspace(handlers, logger) {}
 
   void SetUp() override {
     auto zero = R{0, 0, 0};
     auto eye = std::vector<R>{{1, 0, 0, 0, 0}, {0, 1, 0, 0, 0}, {0, 0, 1, 0, 0}, {0, 0, 0, 1, 0}, {0, 0, 0, 0, 1}};
     auto init_params = std::vector<R>{eye[0], eye[0]};
-    RSpace<R, Q, P> rspace{handlers};
+    RSpace<R, Q, P> rspace{handlers, logger};
     rspace.update(init_params, init_params, solver);
     rspace.update_working_set({0, 1});
     auto rparams = std::list<std::vector<R>>{
@@ -213,13 +216,14 @@ struct QSpaceEyeF : ::testing::Test {
   }
 
   std::shared_ptr<ArrayHandlers<R, Q, P>> handlers = std::make_shared<ArrayHandlers<R, Q, P>>();
+  std::shared_ptr<Logger> logger = std::make_shared<Logger>();
   QSpace<R, Q, P> qspace;
   std::vector<size_t> working_set = {0, 1};
   DummySolver<R, Q, P> solver;
 };
 
 TEST_F(QSpaceEyeF, modification_candidates_null) {
-  auto qs = QSpace<R, Q, P>{handlers};
+  auto qs = QSpace<R, Q, P>{handlers, logger};
   auto candidates = qs.modification_candidates(0);
   ASSERT_TRUE(candidates.empty());
 }

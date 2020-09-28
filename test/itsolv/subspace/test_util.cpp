@@ -101,7 +101,7 @@ TEST(gram_schmidt, s_3x3) {
   auto s = Matrix<double>{std::vector<double>{14, 25, 31, 25, 45, 56, 31, 56, 70}, {n, n}};
   auto t = Matrix<double>{};
   auto tref = Matrix<double>{std::vector<double>{1., 0., 0., -25. / 14., 1., 0., 1., -9. / 5., 1.}, {n, n}};
-  auto norm_ref = std::vector<double>{14, 5. / 14., 1. / 5.};
+  auto norm_ref = std::vector<double>{std::sqrt(14.), std::sqrt(5. / 14.), std::sqrt(1. / 5.)};
   auto result = gram_schmidt(s, t);
   ASSERT_EQ(result.size(), n);
   ASSERT_EQ(t.rows(), n);

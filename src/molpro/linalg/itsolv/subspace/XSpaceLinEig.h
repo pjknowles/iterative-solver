@@ -84,7 +84,8 @@ public:
     m_dim = xspace::Dimensions(ps.size(), qs.size(), rs.size());
     xspace::build_subspace_H_S(data, rs.data, qs.data, qs.qr, qs.rq, ps.data, m_dim);
     // TODO make sure that there are checks to ensure converged and working set never overlap
-    m_roots_in_subspace = xspace::roots_in_subspace(qs.converged_solutions(), rs.working_set(), m_dim.oQ, m_dim.oR);
+    m_roots_in_subspace =
+        xspace::roots_in_subspace(qs.converged_solutions(), rs.working_set(), m_dim.nR, m_dim.oQ, m_dim.oR);
   }
 
   const xspace::Dimensions& dimensions() const override { return m_dim; }
@@ -96,7 +97,7 @@ protected:
   double m_svd_stability_threshold =
       1.0e-4; //!< singular values of overlap matrix larger than this constitute a stable subspace
   double m_norm_stability_threshold =
-      0.3; //!< norm contribution from pair of q vectors must be greater than this to trigger removal
+      1.0e-5; //!< norm contribution from pair of q vectors must be greater than this to trigger removal
   double m_svd_solver_threshold = 1.0e-14; //!< threshold to remove the null space during solution
   Matrix<scalar_type>
       m_subspace_transformation;           //!< linear transformation of subspace vectors that leads to stable overlap

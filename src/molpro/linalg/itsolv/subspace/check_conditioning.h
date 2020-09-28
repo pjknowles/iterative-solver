@@ -22,6 +22,17 @@ auto generate_candidates(const RS& rs, const QS& qs) {
   return candidates;
 }
 
+template <class RS, class QS>
+auto generate_candidates_flat_list(const RS& rs, const QS& qs) {
+  auto candidates = std::vector<size_t>{};
+  for (auto root : rs.working_set()) {
+    auto croot = qs.modification_candidates(root);
+    std::copy(begin(croot), end(croot), std::back_inserter(candidates));
+  }
+  std::sort(begin(candidates), end(candidates));
+  return candidates;
+}
+
 // FIXME for now I removed merger pathway.
 auto generate_pairs(const std::map<size_t, std::vector<size_t>>& candidates) {
   auto pairs = std::vector<std::pair<size_t, size_t>>{};
@@ -104,6 +115,7 @@ std::vector<T> gram_schmidt(const Matrix<T>& s, Matrix<T>& l) {
       norm.back() += l(i, j) * l(i, j) * s(j, j);
     }
   }
+  std::transform(begin(norm), end(norm), begin(norm), [](auto el) { return std::sqrt(std::abs(el)); });
   return norm;
 }
 
@@ -145,19 +157,45 @@ void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, S
   }
 }
 
+/*!
+ * @brief Generates linear transformation of X space to an orthogonal subspace and removes any redundant Q vectors.
+ * @param xs X space container
+ * @param rs R space container
+ * @param qs Q space container
+ * @param ps P space container
+ * @param lin_trans  Linear transformation matrix to an orthogonal subspace
+ * @param norm_threshold
+ * @param logger
+ */
 template <class R, class P, class Q, class ST>
 void check_conditioning_gram_schmidt(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, ST>& xs,
-                                         RSpace<R, Q, P>& rs, QSpace<R, Q, P>& qs, PSpace<R, P>& ps,
-                                         Matrix<ST>& lin_trans, double norm_threshold, Logger& logger) {
+                                     RSpace<R, Q, P>& rs, QSpace<R, Q, P>& qs, PSpace<R, P>& ps, Matrix<ST>& lin_trans,
+                                     double norm_threshold, Logger& logger) {
   logger.msg("xspace::check_conditioning_gram_schmidt", Logger::Trace);
-  // select the first vector with norm less than threshold for deletion
-  // repeat until all norms are larger than threshold
-  // This could have been done in one go, but once we encounter a "null" vector the rest of orthogonalisation
-  // accumulates round off error
   bool stable = false;
-  auto candidates = detail::generate_candidates(rs, qs);
-  while (!stable || !detail::empty_candidates(candidates)) {
+  auto candidates = detail::generate_candidates_flat_list(rs, qs);
+  while (!stable && !candidates.empty()) {
     auto& s = xs.data[EqnData::S];
+    auto norm = detail::gram_schmidt(s, lin_trans);
+    if (logger.data_dump)
+      logger.msg("norm after Gram-Schmidt = ", begin(norm), end(norm), Logger::Info);
+    auto it_min = std::find_if(begin(norm), end(norm), [norm_threshold](auto el) { return el < norm_threshold; });
+    size_t imin = norm.size();
+    for (auto c : candidates) {
+      if (norm[c] < norm_threshold) {
+        imin = c;
+        break;
+      }
+    }
+    stable = (imin == norm.size());
+    if (!stable) {
+      logger.msg("removing candidate from q space i =" + std::to_string(imin) +
+                     ", norm = " + Logger::scientific(norm[imin]),
+                 Logger::Debug);
+      qs.erase(imin);
+      xs.build_subspace(rs, qs, ps);
+      candidates = detail::generate_candidates_flat_list(rs, qs);
+    }
   }
 }
 

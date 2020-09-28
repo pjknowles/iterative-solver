@@ -98,9 +98,12 @@ public:
    * @param n number of dummy containers required
    */
   auto& dummy(size_t n) const {
-    assert(!m_params.empty() && "must add parameters to the RSpace first");
+    assert((!m_params.empty() || !m_working_params.empty()) && "must add parameters to the RSpace first");
     while (m_dummy.size() < n) {
-      m_dummy.emplace_back(m_handlers->rr().copy(m_params.front()));
+      if (!m_params.empty())
+        m_dummy.emplace_back(m_handlers->rr().copy(m_params.front()));
+      else
+        m_dummy.emplace_back(m_handlers->rr().copy(m_working_params.front()));
     }
     return m_dummy;
   }

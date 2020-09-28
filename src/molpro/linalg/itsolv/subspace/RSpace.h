@@ -88,12 +88,6 @@ public:
       m_working_params.emplace_back(parameters.at(i));
       m_working_actions.emplace_back(actions.at(i));
     }
-    data[EqnData::S] = util::overlap(util::wrap(m_params), m_handlers->rr());
-    data[EqnData::H] = util::overlap(util::wrap(m_params), util::wrap(m_actions), m_handlers->rr());
-    if (m_logger->data_dump) {
-      m_logger->msg("S = " + as_string(data[EqnData::S]), Logger::Info);
-      m_logger->msg("H = " + as_string(data[EqnData::H]), Logger::Info);
-    }
     assert(m_working_set.size() == m_dparams.size());
   }
 
@@ -138,6 +132,12 @@ public:
     m_logger->msg("RSpace::update_working_set new working set = ", begin(new_working_set), end(new_working_set),
                   Logger::Debug);
     m_working_set = new_working_set;
+    data[EqnData::S] = util::overlap(util::wrap(m_params), m_handlers->rr());
+    data[EqnData::H] = util::overlap(util::wrap(m_params), util::wrap(m_actions), m_handlers->rr());
+    if (m_logger->data_dump) {
+      m_logger->msg("S = " + as_string(data[EqnData::S]), Logger::Info);
+      m_logger->msg("H = " + as_string(data[EqnData::H]), Logger::Info);
+    }
   }
 
   //! Returns list of root indices for each working vector. Each element corresponds to element in params.

@@ -313,16 +313,8 @@ struct QSpace {
   void erase(size_t i) {
     assert(m_params.size() > i);
     auto it = std::next(begin(m_params), i);
-    auto first_q_for_root =
-        std::find_if(begin(m_params), end(m_params), [root = it->root](const auto& el) { return el.root == root; });
-    if (it != first_q_for_root) {
-      auto msg = "QSpace::erase removing a q parameter that is not oldest for root =" + std::to_string(it->root);
-      m_logger->msg(msg, Logger::Fatal);
-      throw std::runtime_error(msg);
-    } else {
-      m_params.erase(it);
-      qspace::erase_subspace(i, data, qr, rq);
-    }
+    m_params.erase(it);
+    qspace::erase_subspace(i, data, qr, rq);
   }
 
   size_t size() const { return m_params.size(); }

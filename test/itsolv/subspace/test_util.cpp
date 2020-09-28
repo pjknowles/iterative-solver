@@ -1,6 +1,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <molpro/linalg/itsolv/subspace/check_conditioning.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <numeric>
 
@@ -9,7 +10,9 @@ using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::util::eye_order;
 using molpro::linalg::itsolv::subspace::util::overlap;
 using molpro::linalg::itsolv::subspace::util::wrap;
+using molpro::linalg::itsolv::subspace::xspace::detail::gram_schmidt;
 using ::testing::DoubleEq;
+using ::testing::DoubleNear;
 using ::testing::Each;
 using ::testing::Eq;
 using ::testing::Ne;
@@ -84,4 +87,29 @@ TEST(EyeOrder, real_scenario) {
   const auto reference = std::vector<size_t>{2, 0, 1};
   ASSERT_FALSE(order.empty());
   ASSERT_THAT(order, Pointwise(Eq(), reference));
+}
+
+TEST(gram_schmidt, null) {
+  auto s = Matrix<double>{};
+  auto t = Matrix<double>{};
+  auto result = gram_schmidt(s, t);
+  ASSERT_TRUE(result.empty());
+}
+
+TEST(gram_schmidt, s_3x3) {
+  const size_t n = 3;
+  auto s = Matrix<double>{std::vector<double>{14, 25, 31, 25, 45, 56, 31, 56, 70}, {n, n}};
+  auto t = Matrix<double>{};
+  auto tref = Matrix<double>{std::vector<double>{1., 0., 0., -25. / 14., 1., 0., 1., -9. / 5., 1.}, {n, n}};
+  auto norm_ref = std::vector<double>{14, 5. / 14., 1. / 5.};
+  auto result = gram_schmidt(s, t);
+  ASSERT_EQ(result.size(), n);
+  ASSERT_EQ(t.rows(), n);
+  ASSERT_EQ(t.cols(), n);
+  for (size_t i = 0; i < t.rows(); ++i)
+    for (size_t j = i + 1; j < t.cols(); ++j)
+      ASSERT_DOUBLE_EQ(t(i, j), 0.) << " Uppert triangular elements must be zero , i=" << std::to_string(i) << " "
+                                    << std::to_string(j);
+  ASSERT_THAT(t.data(), Pointwise(DoubleNear(1.0e-14), tref.data()));
+  ASSERT_THAT(result, Pointwise(DoubleNear(1.0e-13), norm_ref));
 }

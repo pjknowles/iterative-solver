@@ -32,7 +32,8 @@ public:
       m_logger->msg("Sxx = " + as_string(data[EqnData::S]), Logger::Info);
       m_logger->msg("Hxx = " + as_string(data[EqnData::H]), Logger::Info);
     }
-    xspace::check_conditioning(*this, rs, qs, ps, m_svd_stability_threshold, m_norm_stability_threshold, *m_logger);
+    xspace::check_conditioning_gram_schmidt(*this, rs, qs, ps, m_subspace_transformation, m_norm_stability_threshold,
+                                            *m_logger);
     m_logger->msg("size of x space after conditioning = " + std::to_string(m_dim.nX), Logger::Debug);
     if (m_logger->data_dump && m_dim.nX != nX_on_entry) {
       m_logger->msg("Sxx = " + as_string(data[EqnData::S]), Logger::Info);
@@ -96,11 +97,12 @@ protected:
       1.0e-4; //!< singular values of overlap matrix larger than this constitute a stable subspace
   double m_norm_stability_threshold =
       0.3; //!< norm contribution from pair of q vectors must be greater than this to trigger removal
-  std::map<size_t, std::vector<double>> m_solutions; //!< solutions mapped to root index
-  double m_svd_solver_threshold = 1.0e-14;           //!< threshold to remove the null space during solution
-  Matrix<scalar_type> m_evec;                        //!< eigenvectors stored as columns with ascending eigenvalue
-  std::vector<scalar_type> m_eval;                   //!< eigenvalues in ascending order
-  std::vector<size_t> m_roots;                       //!< for each eigenvector stores corresponding root index
+  double m_svd_solver_threshold = 1.0e-14; //!< threshold to remove the null space during solution
+  Matrix<scalar_type>
+      m_subspace_transformation;           //!< linear transformation of subspace vectors that leads to stable overlap
+  Matrix<scalar_type> m_evec;              //!< eigenvectors stored as columns with ascending eigenvalue
+  std::vector<scalar_type> m_eval;         //!< eigenvalues in ascending order
+  std::vector<size_t> m_roots;             //!< for each eigenvector stores corresponding root index
   std::vector<size_t> m_roots_in_subspace; //!< indices of roots in the full subspace. Includes converged roots from
                                            //!< QSpace and working set from RSpace
 };

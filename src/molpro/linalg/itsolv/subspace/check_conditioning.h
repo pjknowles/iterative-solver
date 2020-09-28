@@ -16,7 +16,6 @@ namespace detail {
 template <class RS, class QS>
 auto generate_candidates(const RS& rs, const QS& qs) {
   auto candidates = std::map<size_t, std::vector<size_t>>{};
-  auto working_set = rs.working_set();
   for (auto root : rs.working_set()) {
     candidates[root] = qs.modification_candidates(root);
   }
@@ -40,7 +39,73 @@ auto generate_pairs(const std::map<size_t, std::vector<size_t>>& candidates) {
     }
   }
   return pairs;
-};
+}
+
+bool empty_candidates(const std::map<size_t, std::vector<size_t>>& candidates) {
+  bool empty = true;
+  for (const auto& c : candidates) {
+    empty &= c.second.empty();
+  }
+  return empty;
+}
+
+/*!
+ * @brief Performs Gram-Schmidt orthogonalisation
+ *
+ * For a vector set {v} with overlap matrix \f$ S_{ij}= v_i . v_j \f$, generate a linear transformation L to a new
+ * orthogonal vector set \f$ u_i = \sum_j L_{ij} v_j \f$.
+ *
+ * u_0 = v_0
+ * u_1 = v_1 - <v_1, u_0> / <u_0, u_0>
+ * u_i = v_i -\sum_j=0^{i-1} <v_i, u_j> / <u_j, u_j> u_j
+ *     = v_i -\sum_j=0^{i-1} <v_i, u_j> / <u_j, u_j> \sum_{k=0}^j L_{jk} v_k
+ *     = v_i -\sum_j=0^{i-1} (\sum_{k=0}^{j} W_{ij} / N_{jj} L_{jk}) v_k
+ *
+ * Let the overlap between u and v be, \f$ W_{ij} = <v_i, u_j> \f$
+ *
+ * W_{ij} = <v_i, u_j> = \sum_{k=0}^{j} S_{ik} L_{jk}
+ * N_{ii} = <u_i, u_i>
+ *        = \sum_{k} L_{ik} <v_k, u_i>
+ *        = \sum_{km} L_{ik} L_{im} S_{km}
+ *
+ * L_{0,j} = \delta_{i,j}
+ * L_{i,k} = \delta_{i,k} - (1 + \delta_{i,k})(\sum_{j=0}^{k} W_{ij} / N_{jj} L_{jk})
+ *
+ * @param s overlap matrix
+ * @param l row matrix with linear transformation into orthonormal basis. Upper triangular component is zero.
+ * @returns norms of transformed vectors
+ */
+template <typename T>
+std::vector<T> gram_schmidt(const Matrix<T>& s, Matrix<T>& l) {
+  assert(s.rows() == s.cols());
+  auto n = s.rows();
+  l.fill(0);
+  l.resize({n, n});
+  auto norm = std::vector<double>{};
+  auto w = std::vector<double>{};
+  for (size_t i = 0; i < n; ++i) {
+    w.assign(i, 0.);
+    for (size_t j = 0; j < i; ++j) {
+      for (size_t k = 0; k <= j; ++k) {
+        w[j] += s(i, k) * l(j, k);
+      }
+    }
+    for (size_t j = 0; j < i; ++j) {
+      for (size_t k = 0; k <= j; ++k) {
+        l(i, k) -= w[j] / norm[j] * l(j, k);
+      }
+    }
+    l(i, i) = 1.;
+    norm.emplace_back(0);
+    for (size_t j = 0; j <= i; ++j) {
+      for (size_t k = 0; k < j; ++k) {
+        norm.back() += 2 * l(i, j) * l(i, k) * s(j, k);
+      }
+      norm.back() += l(i, j) * l(i, j) * s(j, j);
+    }
+  }
+  return norm;
+}
 
 } // namespace detail
 
@@ -51,14 +116,7 @@ void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, S
   logger.msg("xspace::check_conditioning", Logger::Trace);
   bool stable = false;
   auto candidates = detail::generate_candidates(rs, qs);
-  auto empty_candidates = [&candidates]() {
-    bool empty = true;
-    for (const auto& c : candidates) {
-      empty &= c.second.empty();
-    }
-    return empty;
-  };
-  while (!stable && !empty_candidates()) {
+  while (!stable && !detail::empty_candidates(candidates)) {
     auto& s = xs.data[EqnData::S];
     auto svd = svd_system(xs.size(), array::Span<double>{&s(0, 0), s.size()}, svd_threshold);
     stable = svd.empty();
@@ -84,6 +142,22 @@ void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, S
         candidates = detail::generate_candidates(rs, qs);
       }
     }
+  }
+}
+
+template <class R, class P, class Q, class ST>
+void check_conditioning_gram_schmidt(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, ST>& xs,
+                                         RSpace<R, Q, P>& rs, QSpace<R, Q, P>& qs, PSpace<R, P>& ps,
+                                         Matrix<ST>& lin_trans, double norm_threshold, Logger& logger) {
+  logger.msg("xspace::check_conditioning_gram_schmidt", Logger::Trace);
+  // select the first vector with norm less than threshold for deletion
+  // repeat until all norms are larger than threshold
+  // This could have been done in one go, but once we encounter a "null" vector the rest of orthogonalisation
+  // accumulates round off error
+  bool stable = false;
+  auto candidates = detail::generate_candidates(rs, qs);
+  while (!stable || !detail::empty_candidates(candidates)) {
+    auto& s = xs.data[EqnData::S];
   }
 }
 

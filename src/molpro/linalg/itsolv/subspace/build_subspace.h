@@ -20,11 +20,11 @@ void build_subspace_H_S(SubspaceData& xx, const SubspaceData& rr, const Subspace
   }
 }
 auto roots_in_subspace(const std::map<size_t, size_t>& converged_solutions, const std::vector<size_t>& working_set,
-                       size_t oQ, size_t oR) {
+                       size_t nR, size_t oQ, size_t oR) {
   auto roots = std::vector<size_t>(converged_solutions.size() + working_set.size());
   for (const auto& q : converged_solutions)
     roots[q.first] = oQ + q.second;
-  for (size_t i = 0; i < working_set.size(); ++i)
+  for (size_t i = 0; i < nR; ++i)
     roots[working_set[i]] = oR + i;
   return roots;
 }

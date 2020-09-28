@@ -79,6 +79,8 @@ public:
         m_handlers->rr().copy(m_dparams.at(i), parameters.at(i));
         m_handlers->rr().copy(m_dactions.at(i), actions.at(i));
       }
+      m_dparams.resize(m_working_set.size());
+      m_dactions.resize(m_working_set.size());
     }
     m_working_params.clear();
     m_working_actions.clear();
@@ -92,7 +94,7 @@ public:
       m_logger->msg("S = " + as_string(data[EqnData::S]), Logger::Info);
       m_logger->msg("H = " + as_string(data[EqnData::H]), Logger::Info);
     }
-    assert(m_working_set.size() == m_params.size());
+    assert(m_working_set.size() == m_dparams.size());
   }
 
   size_t size() { return m_params.size(); }

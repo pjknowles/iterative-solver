@@ -176,7 +176,7 @@ public:
     if (not m_errors.empty()) {
       auto it_max_error = std::max_element(m_errors.cbegin(), m_errors.cend());
       if (n_roots() > 1)
-        molpro::cout << ", error[" << std::distance(it_max_error, m_errors.cbegin()) << "] = ";
+        molpro::cout << ", error[" << std::distance(m_errors.cbegin(), it_max_error) << "] = ";
       else
         molpro::cout << ", error = ";
       molpro::cout << *it_max_error << std::endl;

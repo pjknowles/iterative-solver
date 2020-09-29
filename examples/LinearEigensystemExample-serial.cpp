@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iomanip>
 #include <molpro/linalg/IterativeSolver.h>
+#include <molpro/linalg/itsolv/LinearEigensystemA.h>
 #include <vector>
 
 // Find lowest eigensolutions of a matrix obtained from an external file
@@ -24,7 +25,14 @@ void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t n
             std::vector<double> shift = std::vector<double>()) {
   for (size_t k = 0; k < nwork; k++) {
     for (size_t i = 0; i < n; i++)
-      psc[k][i] -= psg[k][i] / (1e-12 - shift[k] + hmat[i + i * n]);
+      psc[k][i] = psg[k][i] / (1e-12 - shift[k] + hmat[i + i * n]);
+  }
+}
+void normalise(std::vector<Rvector>& psc, size_t nwork, molpro::linalg::array::ArrayHandler<Rvector>& handlers) {
+  for (size_t k = 0; k < nwork; k++) {
+    auto d = handlers.dot(psc[k], psc[k]);
+    auto norm = std::sqrt(std::abs(d));
+    handlers.scal(1. / norm, psc[k]);
   }
 }
 
@@ -49,13 +57,14 @@ int main(int argc, char* argv[]) {
       for (auto i = 0; i < n; i++)
         diagonals.push_back(hmat[i + i * n]);
       auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>();
-      auto solver = molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector>(handlers);
-      solver.m_verbosity = 1;
-      solver.m_roots = nroot;
-      solver.m_thresh = 1e-9;
+      molpro::linalg::itsolv::LinearEigensystemA<Rvector, Qvector, Pvector> solver(handlers);
+      solver.set_n_roots(nroot);
+      solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
+      solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
+      solver.logger->data_dump = false;
       std::vector<Rvector> g;
       std::vector<Rvector> x;
-      for (size_t root = 0; root < solver.m_roots; root++) {
+      for (size_t root = 0; root < solver.n_roots(); root++) {
         x.emplace_back(n);
         g.emplace_back(n);
         std::fill(x.back().begin(), x.back().end(), 0);
@@ -63,37 +72,38 @@ int main(int argc, char* argv[]) {
         x.back()[guess] = 1;
         *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
       }
-      std::vector<std::vector<double>> Pcoeff(solver.m_roots);
-      int nwork = solver.m_roots;
-      for (auto iter = 0; iter < 100; iter++) {
+      std::vector<std::vector<double>> Pcoeff(solver.n_roots());
+      int nwork = solver.n_roots();
+      for (auto iter = 0; iter < 10; iter++) {
         action(nwork, x, g);
-        nwork = solver.addVector(x, g, Pcoeff);
+        nwork = solver.add_vector(x, g);
         solver.report();
         if (nwork == 0)
           break;
         update(x, g, nwork, solver.working_set_eigenvalues());
+        normalise(x, nwork, handlers->rr());
       }
       {
         std::cout << "Error={ ";
         for (const auto& e : solver.errors())
           std::cout << e << " ";
         std::cout << "} after " << solver.statistics().iterations << " iterations" << std::endl;
-        for (size_t root = 0; root < solver.m_roots; root++) {
+        for (size_t root = 0; root < solver.n_roots(); root++) {
           std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] << std::endl;
         }
       }
       {
         auto working_set = solver.working_set();
-        working_set.resize(solver.m_roots);
+        working_set.resize(solver.n_roots());
         std::iota(working_set.begin(), working_set.end(), 0);
         solver.solution(working_set, x, g);
         std::cout << "Residual norms:";
-        for (size_t root = 0; root < solver.m_roots; root++)
+        for (size_t root = 0; root < solver.n_roots(); root++)
           std::cout << " " << std::sqrt(handlers->rr().dot(g[root], g[root]));
         std::cout << std::endl;
         std::cout << "Eigenvector orthonormality:\n";
-        for (size_t root = 0; root < solver.m_roots; root++) {
-          for (size_t soot = 0; soot < solver.m_roots; soot++)
+        for (size_t root = 0; root < solver.n_roots(); root++) {
+          for (size_t soot = 0; soot < solver.n_roots(); soot++)
             std::cout << " " << handlers->rr().dot(x[root], x[soot]);
           std::cout << std::endl;
         }

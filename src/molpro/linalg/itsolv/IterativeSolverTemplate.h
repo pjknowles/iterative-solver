@@ -12,13 +12,11 @@ namespace detail {
 
 template <class R, class Q, class P>
 void construct_solution(const std::vector<int>& working_set, std::vector<R>& params,
-                        const std::vector<std::reference_wrapper<R>>& dummy,
+                        const std::vector<std::reference_wrapper<R>>& rparams,
                         const std::vector<std::reference_wrapper<Q>>& qparams,
                         const std::vector<std::reference_wrapper<P>>& pparams, size_t oR, size_t oQ, size_t oP,
                         const subspace::Matrix<double>& solutions, ArrayHandlers<R, Q, P>& handlers) {
-  assert(dummy.size() >= params.size());
   for (size_t i = 0; i < params.size(); ++i) {
-    handlers.rr().copy(dummy.at(i), params.at(i));
     handlers.rr().fill(0, params.at(i));
   }
   for (size_t i = 0; i < working_set.size(); ++i) {
@@ -30,8 +28,8 @@ void construct_solution(const std::vector<int>& working_set, std::vector<R>& par
     for (size_t j = 0; j < qparams.size(); ++j) {
       handlers.rq().axpy(solutions(root, oQ + j), qparams.at(j), params.at(i));
     }
-    for (size_t j = 0; j < working_set.size(); ++j) {
-      handlers.rr().axpy(solutions(root, oR + j), dummy.at(j), params.at(i));
+    for (size_t j = 0; j < rparams.size(); ++j) {
+      handlers.rr().axpy(solutions(root, oR + j), rparams.at(j), params.at(i));
     }
   }
 }
@@ -114,12 +112,12 @@ public:
     m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
     m_xspace.check_conditioning(m_rspace, m_qspace, m_pspace);
     m_xspace.solve(*static_cast<Solver*>(this));
-    auto& dummy = m_rspace.dummy(m_rspace.size());
+    auto& dummy = m_rspace.dummy(parameters.size());
     auto wdummy = wrap(dummy);
-    detail::construct_solution(m_working_set, parameters, wdummy, m_qspace.params(), m_pspace.params(),
+    detail::construct_solution(m_working_set, parameters, wrap(m_rspace.params()), m_qspace.params(), m_pspace.params(),
                                m_xspace.dimensions().oR, m_xspace.dimensions().oQ, m_xspace.dimensions().oP,
                                m_xspace.solutions(), *m_handlers);
-    detail::construct_solution(m_working_set, action, wdummy, m_qspace.actions(), m_pspace.actions(),
+    detail::construct_solution(m_working_set, action, wrap(m_rspace.actions()), m_qspace.actions(), m_pspace.actions(),
                                m_xspace.dimensions().oR, m_xspace.dimensions().oQ, m_xspace.dimensions().oP,
                                m_xspace.solutions(), *m_handlers);
     detail::normalise(m_working_set, parameters, action, m_handlers->rr(), *m_logger);
@@ -146,13 +144,15 @@ public:
 
   // FIXME I don't fully understand what this is supposed to be doing and what the input is
   void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {
-    auto working_set_save = m_working_set;
-    m_working_set = roots;
-    m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
-    m_xspace.solve(*static_cast<Solver*>(this));
-    //    construct_solution(parameters);
-    //    construct_residual(residual);
-    m_working_set = working_set_save;
+    if (false) {
+      auto working_set_save = m_working_set;
+      m_working_set = roots;
+      m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
+      m_xspace.solve(*static_cast<Solver*>(this));
+      //    construct_solution(parameters);
+      //    construct_residual(residual);
+      m_working_set = working_set_save;
+    }
   };
 
   void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual,

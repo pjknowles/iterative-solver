@@ -157,6 +157,16 @@ void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, S
   }
 }
 
+Matrix<double> copy_in_new_order(const Matrix<double>& mat, const std::vector<size_t>& order) {
+  auto new_mat = Matrix<double>(mat.dimensions());
+  for (size_t i = 0; i < mat.rows(); ++i) {
+    for (size_t j = 0; j < mat.cols(); ++j) {
+      new_mat(i, j) = mat(order[i], order[j]);
+    }
+  }
+  return new_mat;
+}
+
 /*!
  * @brief Generates linear transformation of X space to an orthogonal subspace and removes any redundant Q vectors.
  * @param xs X space container
@@ -175,14 +185,21 @@ void check_conditioning_gram_schmidt(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PS
   bool stable = false;
   auto candidates = detail::generate_candidates_flat_list(rs, qs);
   while (!stable && !candidates.empty()) {
-    auto& s = xs.data[EqnData::S];
+    auto order = std::vector<size_t>{};
+    const auto& dim = xs.dimensions();
+    for (size_t i = 0; i < dim.nP; ++i)
+      order.emplace_back(i + dim.oP);
+    for (size_t i = 0; i < dim.nQ; ++i)
+      order.emplace_back(dim.oQ + (dim.nQ - 1 - i));
+    for (size_t i = 0; i < dim.nR; ++i)
+      order.emplace_back(dim.oR + i);
+    auto s = copy_in_new_order(xs.data[EqnData::S], order);
     auto norm = detail::gram_schmidt(s, lin_trans);
     if (logger.data_dump)
       logger.msg("norm after Gram-Schmidt = ", begin(norm), end(norm), Logger::Info);
-    auto it_min = std::find_if(begin(norm), end(norm), [norm_threshold](auto el) { return el < norm_threshold; });
     size_t imin = norm.size();
     for (auto c : candidates) {
-      if (norm[c] < norm_threshold) {
+      if (norm[order[c]] < norm_threshold) {
         imin = c;
         break;
       }
@@ -190,7 +207,7 @@ void check_conditioning_gram_schmidt(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PS
     stable = (imin == norm.size());
     if (!stable) {
       logger.msg("removing candidate from q space i =" + std::to_string(imin) +
-                     ", norm = " + Logger::scientific(norm[imin]),
+                     ", norm = " + Logger::scientific(norm[order[imin]]),
                  Logger::Debug);
       qs.erase(imin);
       xs.build_subspace(rs, qs, ps);

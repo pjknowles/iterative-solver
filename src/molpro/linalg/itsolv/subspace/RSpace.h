@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_RSPACE_H
 #include <functional>
 #include <memory>
+
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/Logger.h>
@@ -54,9 +55,8 @@ public:
   explicit RSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
 
-  // FIXME are we still tracking roots? Parameters map directly to the previous solutions, but we map solutions to roots
-  /*! Takes a list of parameters and corresponding action vectors
-   * @brief Updates the RSpace. New parameters are stored as d vectors. RSpace consists of previous solutions.
+  /*!
+   * @brief Updates the RSpace with the new parameters.
    *
    *
    * @param parameters new preconditioned parameters. Each parameter corresponds to a working set.
@@ -64,124 +64,63 @@ public:
    * @param solver overlying solver
    */
   void update(std::vector<R>& parameters, std::vector<R>& actions, IterativeSolver<R, Q, P>& solver) {
-    // FIXME reordering is unnecessary now
-    if (m_dparams.empty()) {
-      m_logger->msg("RSpace::update making first copy of params", Logger::Trace);
-      m_working_set.resize(parameters.size());
-      std::iota(begin(m_working_set), end(m_working_set), size_t{0});
-      for (size_t i = 0; i < m_working_set.size(); ++i) {
-        m_dparams.emplace_back(m_handlers->rr().copy(parameters.at(i)));
-        m_dactions.emplace_back(m_handlers->rr().copy(actions.at(i)));
-      }
-    } else {
-      m_logger->msg("RSpace::update updating dparams with new values ", Logger::Trace);
-      for (size_t i = 0; i < m_working_set.size(); ++i) {
-        m_handlers->rr().copy(m_dparams.at(i), parameters.at(i));
-        m_handlers->rr().copy(m_dactions.at(i), actions.at(i));
-      }
-      m_dparams.resize(m_working_set.size());
-      m_dactions.resize(m_working_set.size());
+    m_logger->msg("RSpace::update", Logger::Trace);
+    assert(parameters.size() == actions.size());
+    clear();
+    std::copy_n(begin(parameters), solver.working_set().size(), std::back_inserter(m_params));
+    std::copy_n(begin(actions), solver.working_set().size(), std::back_inserter(m_actions));
+    data[EqnData::S] = util::overlap(m_params, m_handlers->rr());
+    data[EqnData::H] = util::overlap(m_params, m_actions, m_handlers->rr());
+    if (m_logger->data_dump) {
+      m_logger->msg("Srr = " + as_string(data[EqnData::S]), Logger::Info);
+      m_logger->msg("Hrr = " + as_string(data[EqnData::H]), Logger::Info);
     }
-    m_working_params.clear();
-    m_working_actions.clear();
-    for (size_t i = 0; i < m_working_set.size(); ++i) {
-      m_working_params.emplace_back(parameters.at(i));
-      m_working_actions.emplace_back(actions.at(i));
-    }
-    assert(m_working_set.size() == m_dparams.size());
   }
 
+  //! Number of parameters in the subspace
   size_t size() { return m_params.size(); }
+
+  //! Remove all parameters from subspace
+  void clear() {
+    m_params.clear();
+    m_actions.clear();
+    for (auto& datum : data) {
+      datum.second.clear();
+    }
+  }
+
+  //! Remove parameter at index i
+  void erase(size_t i) {
+    m_params.erase(std::next(m_params.begin(), i));
+    m_actions.erase(std::next(m_actions.begin(), i));
+    for (auto& datum : data) {
+      datum.second.remove_row_col(i, i);
+    }
+  }
 
   /*!
    * @brief Returns dummy containers that can be used as intermediates. Some parameters must first be assigned.
    * @param n number of dummy containers required
    */
   auto& dummy(size_t n) const {
-    assert((!m_params.empty() || !m_working_params.empty()) && "must add parameters to the RSpace first");
+    assert((!m_params.empty()) && "must add parameters to the RSpace first");
     while (m_dummy.size() < n) {
-      if (!m_params.empty())
-        m_dummy.emplace_back(m_handlers->rr().copy(m_params.front()));
-      else
-        m_dummy.emplace_back(m_handlers->rr().copy(m_working_params.front()));
+      m_dummy.emplace_back(m_handlers->rr().copy(m_params.front()));
     }
     return m_dummy;
   }
-
-  /*!
-   * @brief Updates working set of vectors. RSpace is populated with current solutions
-   * @param working_vector_ind
-   */
-  void update_working_set(const std::vector<size_t>& working_vector_ind) {
-    assert(working_vector_ind.size() <= m_working_params.size());
-    auto n_copy = std::min(m_params.size(), working_vector_ind.size());
-    auto n_tot = working_vector_ind.size();
-    for (size_t i = 0; i < n_copy; ++i) {
-      m_handlers->rr().copy(m_params[i], m_working_params.at(working_vector_ind[i]));
-      m_handlers->rr().copy(m_actions[i], m_working_actions.at(working_vector_ind[i]));
-    }
-    for (size_t i = n_copy; i < n_tot; ++i) {
-      m_params.emplace_back(m_handlers->rr().copy(m_working_params.at(working_vector_ind[i])));
-      m_actions.emplace_back(m_handlers->rr().copy(m_working_actions.at(working_vector_ind[i])));
-    }
-    m_params.resize(n_tot);
-    m_actions.resize(n_tot);
-    auto new_working_set = std::vector<size_t>{};
-    for (auto ind : working_vector_ind) {
-      new_working_set.emplace_back(m_working_set.at(ind));
-    }
-    m_logger->msg("RSpace::update_working_set old working set = ", begin(m_working_set), end(m_working_set),
-                  Logger::Debug);
-    m_logger->msg("RSpace::update_working_set new working set = ", begin(new_working_set), end(new_working_set),
-                  Logger::Debug);
-    m_working_set = new_working_set;
-    data[EqnData::S] = util::overlap(util::wrap(m_params), m_handlers->rr());
-    data[EqnData::H] = util::overlap(util::wrap(m_params), util::wrap(m_actions), m_handlers->rr());
-    if (m_logger->data_dump) {
-      m_logger->msg("S = " + as_string(data[EqnData::S]), Logger::Info);
-      m_logger->msg("H = " + as_string(data[EqnData::H]), Logger::Info);
-    }
-  }
-
-  //! Returns list of root indices for each working vector. Each element corresponds to element in params.
-  auto& working_set() const { return m_working_set; }
 
   auto& params() const { return m_params; }
   auto& params() { return m_params; }
   auto& actions() const { return m_actions; }
   auto& actions() { return m_actions; }
-  auto& dparams() { return m_dparams; }
-  auto& dparams() const { return m_dparams; }
-  auto& dactions() { return m_dactions; }
-  auto& dactions() const { return m_dactions; }
 
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::shared_ptr<Logger> m_logger;
-  std::vector<size_t> m_working_set; //!< working set of roots. Maps references of current params to starting roots
-  std::vector<R> m_params;           //!< solutions at this iteration forming the RSpace, mapped to root indices
-  std::vector<R> m_actions;          //!< action vector corresponding to m_params
-  VecRefR m_working_params;          //!< references to input parameters
-  VecRefR m_working_actions;         //!< references to input actions
-  mutable std::vector<R> m_dummy;    //!< A dummy R vector which can be used as an intermediate
-  std::vector<Q> m_dparams;          //!< parameters from previous iteration, mapped to root indices
-  std::vector<Q> m_dactions;         //!< actions from previous iteration, mapped to root indices
-};
-
-//! RSpace for LinearEquations solver
-template <class R, class Q, class P>
-class RSpaceLEq : public RSpace<R, Q, P> {
-public:
-  using RSpace<R, Q, P>::data;
-
-  explicit RSpaceLEq(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers) : RSpace<R, Q, P>(std::move(handlers)) {
-    data = null_data<EqnData::H, EqnData::S, EqnData::rhs>;
-  }
-
-  void update(const std::vector<R>& parameters, const std::vector<R>& action, LinearEquations<R, Q, P>& solver) {
-    RSpace<R, Q, P>::update_rspace(data, parameters, action, solver);
-    // now update RHS vector
-  }
+  VecRefR m_params;               //!< parameters from user
+  VecRefR m_actions;              //!< actions corresponding to m_params
+  mutable std::vector<R> m_dummy; //!< A dummy R vector which can be used as an intermediate
 };
 
 } // namespace subspace

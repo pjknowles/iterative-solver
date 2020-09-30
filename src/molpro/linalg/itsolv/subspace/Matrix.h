@@ -70,6 +70,9 @@ public:
   //! Returns true if matrix is empty
   bool empty() const { return size() == 0; }
 
+  //! Clears all elements and sets dimensions to 0
+  void clear() { resize({0, 0}); }
+
   //! Converts index of 1D data to matrix coordinate
   coord_type to_coord(size_t ind) const {
     if (ind >= size())

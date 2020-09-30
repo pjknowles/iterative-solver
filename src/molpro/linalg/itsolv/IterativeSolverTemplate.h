@@ -118,6 +118,7 @@ public:
   using RS = typename XS::RS;
   using QS = typename XS::QS;
   using PS = typename XS::PS;
+  using SS = typename XS::SS;
   using R = typename XS::R;
   using Q = typename XS::Q;
   using P = typename XS::P;
@@ -152,12 +153,17 @@ public:
    */
   size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& parametersP) override {
     using subspace::util::wrap;
-    m_logger->msg("add_vector::iteration = " + std::to_string(m_stats->iterations), Logger::Trace);
+    assert(parameters.size() >= m_working_set.size());
+    assert(action.size() >= m_working_set.size());
+    m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations),
+                  Logger::Trace);
+    m_logger->msg("IterativeSolverTemplate::add_vector  size of {params, actions, working_set} = " +
+                      std::to_string(parameters.size()) + ", " + std::to_string(action.size()) + ", " +
+                      std::to_string(m_working_set.size()) + ", ",
+                  Logger::Debug);
     m_rspace.update(parameters, action, *static_cast<Solver*>(this));
-    m_working_set.clear();
-    std::copy(begin(m_rspace.working_set()), end(m_rspace.working_set()), std::back_inserter(m_working_set));
-    m_qspace.update(m_rspace, *static_cast<Solver*>(this));
-    m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
+    m_qspace.update(m_rspace, m_sspace, *static_cast<Solver*>(this));
+    m_xspace.build_subspace(m_rspace, m_qspace, m_pspace, m_sspace);
     m_xspace.check_conditioning(m_rspace, m_qspace, m_pspace);
     m_xspace.solve(*static_cast<Solver*>(this));
     auto& dummy = m_rspace.dummy(parameters.size());
@@ -191,7 +197,6 @@ public:
     return 0;
   };
 
-  // FIXME I don't fully understand what this is supposed to be doing and what the input is
   /*!
    * @brief Copy the solutions from the S space
    *
@@ -264,6 +269,7 @@ protected:
   RS m_rspace;
   QS m_qspace;
   PS m_pspace;
+  SS m_sspace;
   XS m_xspace;
   std::vector<double> m_errors;
   std::vector<int> m_working_set;

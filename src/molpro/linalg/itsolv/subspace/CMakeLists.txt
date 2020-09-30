@@ -1,3 +1,3 @@
 LibraryManager_Append(${PROJECT_NAME}
-        PUBLIC_HEADER PSpace.h QSpace.h RSpace.h SSpace.h XSpace.h Matrix.h SubspaceData.h
+        PUBLIC_HEADER PSpace.h QSpace.h RSpace.h CSpace.h XSpace.h Matrix.h SubspaceData.h
         )

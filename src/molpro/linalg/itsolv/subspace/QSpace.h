@@ -3,9 +3,9 @@
 #include <cassert>
 #include <list>
 
+#include <molpro/linalg/itsolv/subspace/CSpace.h>
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/RSpace.h>
-#include <molpro/linalg/itsolv/subspace/SSpace.h>
 
 namespace molpro {
 namespace linalg {
@@ -135,7 +135,7 @@ struct QSpace {
 
   // FIXME Need to decide whether to remove rs entirely
   // FIXME Need to calculate subspace data using R vectors
-  void update(const RSpace<R, Q, P>& rs, const SSpace<R, Q, P, double>& ss, IterativeSolver<R, Q, P>& solver) {
+  void update(const RSpace<R, Q, P>& rs, const CSpace<R, Q, P, double>& ss, IterativeSolver<R, Q, P>& solver) {
     m_logger->msg("QSpace::update", Logger::Trace);
     auto new_qparams = std::list<qspace::QParam<Q>>{};
     for (size_t i = 0; i < rs.size(); ++i) {

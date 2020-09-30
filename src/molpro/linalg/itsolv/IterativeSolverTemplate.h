@@ -118,7 +118,7 @@ public:
   using RS = typename XS::RS;
   using QS = typename XS::QS;
   using PS = typename XS::PS;
-  using SS = typename XS::SS;
+  using CS = typename XS::CS;
   using R = typename XS::R;
   using Q = typename XS::Q;
   using P = typename XS::P;
@@ -162,8 +162,8 @@ public:
                       std::to_string(m_working_set.size()) + ", ",
                   Logger::Debug);
     m_rspace.update(parameters, action, *static_cast<Solver*>(this));
-    m_qspace.update(m_rspace, m_sspace, *static_cast<Solver*>(this));
-    m_xspace.build_subspace(m_rspace, m_qspace, m_pspace, m_sspace);
+    m_qspace.update(m_rspace, m_cspace, *static_cast<Solver*>(this));
+    m_xspace.build_subspace(m_rspace, m_qspace, m_pspace, m_cspace);
     m_xspace.check_conditioning(m_rspace, m_qspace, m_pspace);
     m_xspace.solve(*static_cast<Solver*>(this));
     auto& dummy = m_rspace.dummy(parameters.size());
@@ -235,11 +235,11 @@ public:
   }
 
 protected:
-  IterativeSolverTemplate(RS rspace, QS qspace, PS pspace, SS sspace, XS xspace,
+  IterativeSolverTemplate(RS rspace, QS qspace, PS pspace, CS sspace, XS xspace,
                           std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Statistics> stats,
                           std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_rspace(std::move(rspace)), m_qspace(std::move(qspace)),
-        m_pspace(std::move(pspace)), m_sspace(std::move(sspace)), m_xspace(std::move(xspace)),
+        m_pspace(std::move(pspace)), m_cspace(std::move(sspace)), m_xspace(std::move(xspace)),
         m_stats(std::move(stats)), m_logger(std::move(logger)) {}
 
   //! Updates working sets and adds current solutions to the S space
@@ -270,7 +270,7 @@ protected:
   RS m_rspace;
   QS m_qspace;
   PS m_pspace;
-  SS m_sspace;
+  CS m_cspace;
   XS m_xspace;
   std::vector<double> m_errors;
   std::vector<int> m_working_set;

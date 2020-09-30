@@ -1,5 +1,5 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SSPACE_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SSPACE_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_CSPACE_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_CSPACE_H
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceData.h>
@@ -13,7 +13,7 @@ namespace subspace {
 
 //! Space storing best set of solutions
 template <class Rt, class Qt, class Pt, typename ST>
-class SSpace {
+class CSpace {
 public:
   using R = Rt;
   using Q = Qt;
@@ -23,7 +23,7 @@ public:
   //! Matrix and overlap data mapped to the subspace
   SubspaceData data = null_data<EqnData::H, EqnData::S>();
 
-  explicit SSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
+  explicit CSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
 
   void update(int root, const R& param, const R& action, scalar_type error) {}
@@ -46,4 +46,4 @@ protected:
 } // namespace itsolv
 } // namespace linalg
 } // namespace molpro
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SSPACE_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_CSPACE_H

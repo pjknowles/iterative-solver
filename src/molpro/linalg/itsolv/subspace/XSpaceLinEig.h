@@ -58,20 +58,12 @@ public:
     itsolv::eigenproblem(evec, m_eval, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, 0);
     auto n_solutions = evec.size() / dim;
     auto full_matrix = Matrix<scalar_type>{std::move(evec), {n_solutions, dim}};
-    auto nroots = solver.n_roots();
-    assert(solver.n_roots() == m_roots_in_subspace.size());
-    assert(n_solutions >= solver.n_roots());
+    auto nroots = std::min(solver.n_roots(), n_solutions);
     m_eval.resize(nroots);
     m_evec.resize({nroots, dim});
     m_evec.slice() = full_matrix.slice({0, 0}, {nroots, dim});
-    auto root_subspace = Matrix<double>({nroots, nroots});
-    for (size_t i = 0; i < m_roots_in_subspace.size(); ++i)
-      root_subspace.col(i) = m_evec.col(m_roots_in_subspace[i]);
-    // FIXME is this correct?
-    m_roots = util::eye_order(root_subspace);
     if (m_logger->data_dump) {
       m_logger->msg("eigenvalues = ", begin(m_eval), end(m_eval), Logger::Debug);
-      m_logger->msg("roots = ", begin(m_roots), end(m_roots), Logger::Debug);
       m_logger->msg("eigenvectors = " + as_string(m_evec), Logger::Info);
     }
   }

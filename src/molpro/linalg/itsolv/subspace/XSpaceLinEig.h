@@ -20,11 +20,12 @@ public:
   using typename XS::PS;
   using typename XS::QS;
   using typename XS::RS;
+  using typename XS::CS;
   using typename XS::scalar_type;
   using XS::data;
   explicit XSpaceLinEig(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)){};
 
-  void check_conditioning(RS& rs, QS& qs, PS& ps) override {
+  void check_conditioning(RS& rs, QS& qs, PS& ps, CS& cs) override {
     auto nX_on_entry = m_dim.nX;
     m_logger->msg("XSpaceLinEig::check_conditioning size of x space = " + std::to_string(m_dim.nX), Logger::Trace);
     m_logger->msg("size of x space before conditioning = " + std::to_string(m_dim.nX), Logger::Debug);
@@ -33,7 +34,7 @@ public:
       m_logger->msg("Sxx = " + as_string(data[EqnData::S]), Logger::Info);
       m_logger->msg("Hxx = " + as_string(data[EqnData::H]), Logger::Info);
     }
-    xspace::check_conditioning_gram_schmidt(*this, rs, qs, ps, m_subspace_transformation, m_norm_stability_threshold,
+    xspace::check_conditioning_gram_schmidt(*this, rs, qs, ps, cs, m_subspace_transformation, m_norm_stability_threshold,
                                             *m_logger);
     m_logger->msg("size of x space after conditioning = " + std::to_string(m_dim.nX), Logger::Debug);
     if (m_logger->data_dump && m_dim.nX != nX_on_entry) {
@@ -81,12 +82,9 @@ public:
 
   const std::vector<size_t>& roots() const override { return m_roots; };
 
-  void build_subspace(RS& rs, QS& qs, PS& ps) override {
+  void build_subspace(RS& rs, QS& qs, PS& ps, CS& cs) override {
     m_dim = xspace::Dimensions(ps.size(), qs.size(), rs.size());
     xspace::build_subspace_H_S(data, rs.data, qs.data, qs.qr, qs.rq, ps.data, m_dim);
-    // TODO make sure that there are checks to ensure converged and working set never overlap
-    m_roots_in_subspace =
-        xspace::roots_in_subspace(qs.converged_solutions(), rs.working_set(), m_dim.nR, m_dim.oQ, m_dim.oR);
   }
 
   const xspace::Dimensions& dimensions() const override { return m_dim; }
@@ -104,9 +102,6 @@ protected:
       m_subspace_transformation;           //!< linear transformation of subspace vectors that leads to stable overlap
   Matrix<scalar_type> m_evec;              //!< eigenvectors stored as columns with ascending eigenvalue
   std::vector<scalar_type> m_eval;         //!< eigenvalues in ascending order
-  std::vector<size_t> m_roots;             //!< for each eigenvector stores corresponding root index
-  std::vector<size_t> m_roots_in_subspace; //!< indices of roots in the full subspace. Includes converged roots from
-                                           //!< QSpace and working set from RSpace
 };
 
 } // namespace subspace

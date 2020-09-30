@@ -164,7 +164,7 @@ public:
     m_rspace.update(parameters, action, *static_cast<Solver*>(this));
     m_qspace.update(m_rspace, m_cspace, *static_cast<Solver*>(this));
     m_xspace.build_subspace(m_rspace, m_qspace, m_pspace, m_cspace);
-    m_xspace.check_conditioning(m_rspace, m_qspace, m_pspace);
+    m_xspace.check_conditioning(m_rspace, m_qspace, m_pspace, m_cspace);
     m_xspace.solve(*static_cast<Solver*>(this));
     auto& dummy = m_rspace.dummy(parameters.size());
     auto wdummy = wrap(dummy);

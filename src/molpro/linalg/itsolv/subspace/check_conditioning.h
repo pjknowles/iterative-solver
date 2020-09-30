@@ -12,54 +12,6 @@ namespace itsolv {
 namespace subspace {
 namespace xspace {
 namespace detail {
-
-template <class RS, class QS>
-auto generate_candidates(const RS& rs, const QS& qs) {
-  auto candidates = std::map<size_t, std::vector<size_t>>{};
-  for (auto root : rs.working_set()) {
-    candidates[root] = qs.modification_candidates(root);
-  }
-  return candidates;
-}
-
-template <class RS, class QS>
-auto generate_candidates_flat_list(const RS& rs, const QS& qs) {
-  auto candidates = std::vector<size_t>{};
-  for (auto root : rs.working_set()) {
-    auto croot = qs.modification_candidates(root);
-    std::copy(begin(croot), end(croot), std::back_inserter(candidates));
-  }
-  std::sort(begin(candidates), end(candidates));
-  return candidates;
-}
-
-// FIXME for now I removed merger pathway.
-auto generate_pairs(const std::map<size_t, std::vector<size_t>>& candidates) {
-  auto pairs = std::vector<std::pair<size_t, size_t>>{};
-  for (const auto& root_candidates : candidates) {
-    for (const auto& c : root_candidates.second) {
-      pairs.emplace_back(c, c);
-    }
-    if (false) {
-      const auto& c = root_candidates.second;
-      if (c.size() == 1)
-        pairs.emplace_back(c.front(), c.front());
-      else
-        for (size_t i = 1; i < c.size(); ++i)
-          pairs.emplace_back(c[i - 1], c[i]);
-    }
-  }
-  return pairs;
-}
-
-bool empty_candidates(const std::map<size_t, std::vector<size_t>>& candidates) {
-  bool empty = true;
-  for (const auto& c : candidates) {
-    empty &= c.second.empty();
-  }
-  return empty;
-}
-
 /*!
  * @brief Performs Gram-Schmidt orthogonalisation
  *
@@ -121,58 +73,13 @@ std::vector<T> gram_schmidt(const Matrix<T>& s, Matrix<T>& l) {
 
 } // namespace detail
 
-template <class R, class P, class Q, class ST>
-void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, CSpace<R, Q, P, ST>, ST>& xs,
-                        RSpace<R, Q, P>& rs, QSpace<R, Q, P>& qs, PSpace<R, P>& ps, double svd_threshold,
-                        double norm_threshold, Logger& logger) {
-  logger.msg("xspace::check_conditioning", Logger::Trace);
-  bool stable = false;
-  auto candidates = detail::generate_candidates(rs, qs);
-  while (!stable && !detail::empty_candidates(candidates)) {
-    auto& s = xs.data[EqnData::S];
-    auto svd = svd_system(xs.size(), array::Span<double>{&s(0, 0), s.size()}, svd_threshold);
-    stable = svd.empty();
-    if (!svd.empty()) {
-      logger.msg("singular value = " + Logger::scientific(svd.front().value), Logger::Debug);
-      if (logger.data_dump) {
-        logger.msg("singular vector = ", begin(svd.front().v), end(svd.front().v), Logger::Info);
-      }
-      auto pairs = detail::generate_pairs(candidates);
-      auto norms = std::vector<double>{};
-      for (const auto& p : pairs) {
-        const auto oQ = xs.dimensions().oQ;
-        const auto& v = svd.front().v;
-        const auto norm = v.at(oQ + p.first) * v.at(oQ + p.first) + v.at(oQ + p.second) * v.at(oQ + p.second);
-        norms.emplace_back(norm);
-      }
-      auto it_max = std::max_element(begin(norms), end(norms));
-      auto i_max = std::distance(begin(norms), it_max);
-      stable = *it_max < norm_threshold;
-      if (*it_max > norm_threshold) {
-        qs.merge(pairs.at(i_max));
-        xs.build_subspace(rs, qs, ps);
-        candidates = detail::generate_candidates(rs, qs);
-      }
-    }
-  }
-}
-
-Matrix<double> copy_in_new_order(const Matrix<double>& mat, const std::vector<size_t>& order) {
-  auto new_mat = Matrix<double>(mat.dimensions());
-  for (size_t i = 0; i < mat.rows(); ++i) {
-    for (size_t j = 0; j < mat.cols(); ++j) {
-      new_mat(i, j) = mat(order[i], order[j]);
-    }
-  }
-  return new_mat;
-}
-
 /*!
  * @brief Generates linear transformation of X space to an orthogonal subspace and removes any redundant Q vectors.
  * @param xs X space container
  * @param rs R space container
  * @param qs Q space container
  * @param ps P space container
+ * @param cs C space container
  * @param lin_trans  Linear transformation matrix to an orthogonal subspace
  * @param norm_threshold
  * @param logger
@@ -180,38 +87,28 @@ Matrix<double> copy_in_new_order(const Matrix<double>& mat, const std::vector<si
 template <class R, class P, class Q, class ST>
 void check_conditioning_gram_schmidt(
     XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, CSpace<R, Q, P, ST>, ST>& xs, RSpace<R, Q, P>& rs,
-    QSpace<R, Q, P>& qs, PSpace<R, P>& ps, Matrix<ST>& lin_trans, double norm_threshold, Logger& logger) {
+    QSpace<R, Q, P>& qs, PSpace<R, P>& ps, CSpace<R, Q, P, ST> cs, Matrix<ST>& lin_trans, double norm_threshold,
+    Logger& logger) {
   logger.msg("xspace::check_conditioning_gram_schmidt", Logger::Trace);
   bool stable = false;
-  auto candidates = detail::generate_candidates_flat_list(rs, qs);
+  auto candidates = std::vector<size_t>{qs.size()};
+  std::iota(begin(candidates), end(candidates), size_t{xs.dimensions().oQ});
   while (!stable && !candidates.empty()) {
-    auto order = std::vector<size_t>{};
     const auto& dim = xs.dimensions();
-    for (size_t i = 0; i < dim.nP; ++i)
-      order.emplace_back(i + dim.oP);
-    for (size_t i = 0; i < dim.nQ; ++i)
-      order.emplace_back(dim.oQ + (dim.nQ - 1 - i));
-    for (size_t i = 0; i < dim.nR; ++i)
-      order.emplace_back(dim.oR + i);
-    auto s = copy_in_new_order(xs.data[EqnData::S], order);
+    const auto& s = xs.data[EqnData::S];
     auto norm = detail::gram_schmidt(s, lin_trans);
     if (logger.data_dump)
       logger.msg("norm after Gram-Schmidt = ", begin(norm), end(norm), Logger::Info);
-    size_t imin = norm.size();
-    for (auto c : candidates) {
-      if (norm[order[c]] < norm_threshold) {
-        imin = c;
-        break;
-      }
-    }
-    stable = (imin == norm.size());
+    auto imin = std::find_if(begin(candidates), end(candidates),
+                             [&norm, norm_threshold](auto c) { return norm[c] < norm_threshold; });
+    stable = (imin == candidates.end());
     if (!stable) {
-      logger.msg("removing candidate from q space i =" + std::to_string(imin) +
-                     ", norm = " + Logger::scientific(norm[order[imin]]),
+      logger.msg("removing candidate from q space i =" + std::to_string(*imin) +
+                     ", norm = " + Logger::scientific(norm[*imin]),
                  Logger::Debug);
-      qs.erase(imin);
-      xs.build_subspace(rs, qs, ps);
-      candidates = detail::generate_candidates_flat_list(rs, qs);
+      qs.erase(*imin);
+      xs.build_subspace(rs, qs, ps, cs);
+      candidates.resize(qs.size());
     }
   }
 }

@@ -32,6 +32,7 @@ public:
   virtual void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) = 0;
   virtual void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
                         std::vector<P>& parametersP) = 0;
+  virtual void end_iteration(std::vector<R>& parameters, std::vector<R>& action) = 0;
   virtual std::vector<size_t> suggest_p(const std::vector<R>& solution, const std::vector<R>& residual,
                                         size_t maximumNumber, double threshold) = 0;
 
@@ -54,7 +55,7 @@ template <class R, class Q, class P>
 class LinearEigensystem : public IterativeSolver<R, Q, P> {
 public:
   using typename IterativeSolver<R, Q, P>::scalar_type;
-  virtual std::vector<scalar_type> eigenvalues() const = 0; ///< The calculated eigenvalues of the subspace matrix
+  virtual std::vector<scalar_type> eigenvalues() const = 0; //!< The calculated eigenvalues of the subspace matrix
 };
 
 template <class R, class Q, class P>

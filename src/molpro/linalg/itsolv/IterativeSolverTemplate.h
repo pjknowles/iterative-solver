@@ -81,6 +81,34 @@ auto update_errors(const std::vector<int>& working_set, const std::vector<std::r
  * This is the trunk. It has a template of steps that all iterative solvers follow. Variations in implementation are
  * accepted as policies for managing the subspaces.
  *
+ * Examples
+ * ========
+ * We are looking for n roots, but can only keep m < n roots in memory
+ * @code{.cpp}
+ * auto handlers = std::make_shared<ArrayHandlers<R, Q, P>>{};
+ * auto solver = LinearEigensystemA<R, Q, P>{handlers};
+ * solver.set_roots(n);
+ * auto params = std::vector<R>{};
+ * auto actions = std::vector<R>{};
+ * initialize(params);
+ * size_t n_work = 1; // number of working vectors
+ * for (auto i = 0; i < max_it && n_work != 0; ++i){
+ *   // calculate action of the matrix, one parameter at a time
+ *   for (size_t i = 0; i < n_work; ++i){
+ *     apply_matrix(params[i], actions[i]);
+ *   }
+ *   n_work = solver.add_vector(params, actions);
+ *   solver.report();
+ *   if (precondition_manually) {
+ *     apply_preconditioner(params, actions, n_work);
+ *   } else {
+ *     solver.precondition(params[i], actions[i]);
+ *   }
+ *   n_work = solver.end_iteration(params, actions);
+ * }
+ * @endcode
+ *
+ *
  */
 template <class Solver, class XS>
 class IterativeSolverTemplate : public Solver {
@@ -102,6 +130,26 @@ public:
   IterativeSolverTemplate<Solver, XS>& operator=(const IterativeSolverTemplate<Solver, XS>&) = delete;
   IterativeSolverTemplate<Solver, XS>& operator=(IterativeSolverTemplate<Solver, XS>&&) noexcept = default;
 
+  /*!
+   * @brief Adds new parameters and corresponding action to the subspace and solves the corresponding problem.
+   *
+   * New algorithm
+   * -------------
+   *  - The parameters and action will be added to the Q space.
+   *  - The P space, I'm not sure yet.
+   *  - The R space just wraps new parameters.
+   *  - The Q space is updated using R space (e.g. for linear eigenvalue problem just copies params and clears R space).
+   *  - The S space contains best solutions so far (empty on the start).
+   *  - The full X subspace is formed.
+   *  - The X space is checked for conditioning and vectors may be removed depending on implementation.
+   *  - The subspace problem is solved and solutions are stored in the S space.
+   *  - The working set of vectors is made up of vectors with largest errors that are not converged.
+   *
+   * @param parameters new parameters for the R space
+   * @param action corresponding action
+   * @param parametersP ???
+   * @return
+   */
   size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& parametersP) override {
     using subspace::util::wrap;
     m_logger->msg("add_vector::iteration = " + std::to_string(m_stats->iterations), Logger::Trace);
@@ -114,6 +162,7 @@ public:
     m_xspace.solve(*static_cast<Solver*>(this));
     auto& dummy = m_rspace.dummy(parameters.size());
     auto wdummy = wrap(dummy);
+    // FIXME Constructing solution, calculating errors and updating the working space all have to be done in one go
     detail::construct_solution(m_working_set, parameters, wrap(m_rspace.params()), m_qspace.params(), m_pspace.params(),
                                m_xspace.dimensions().oR, m_xspace.dimensions().oQ, m_xspace.dimensions().oP,
                                m_xspace.solutions(), *m_handlers);
@@ -143,17 +192,14 @@ public:
   };
 
   // FIXME I don't fully understand what this is supposed to be doing and what the input is
-  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {
-    if (false) {
-      auto working_set_save = m_working_set;
-      m_working_set = roots;
-      m_xspace.build_subspace(m_rspace, m_qspace, m_pspace);
-      m_xspace.solve(*static_cast<Solver*>(this));
-      //    construct_solution(parameters);
-      //    construct_residual(residual);
-      m_working_set = working_set_save;
-    }
-  };
+  /*!
+   * @brief Copy the solutions from the S space
+   *
+   * @param roots
+   * @param parameters
+   * @param residual
+   */
+  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override{};
 
   void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
                 std::vector<P>& parametersP) override {
@@ -190,7 +236,7 @@ protected:
         m_pspace(std::move(pspace)), m_xspace(std::move(xspace)), m_stats(std::move(stats)),
         m_logger(std::move(logger)) {}
 
-  //! Updates working sets and adds any converged solution to the q space
+  //! Updates working sets and adds current solutions to the S space
   void update_working_set() {
     auto ind_still_a_working_param = std::vector<size_t>{};
     auto converged_roots = std::vector<size_t>{};

@@ -122,9 +122,9 @@ std::vector<T> gram_schmidt(const Matrix<T>& s, Matrix<T>& l) {
 } // namespace detail
 
 template <class R, class P, class Q, class ST>
-void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, ST>& xs, RSpace<R, Q, P>& rs,
-                        QSpace<R, Q, P>& qs, PSpace<R, P>& ps, double svd_threshold, double norm_threshold,
-                        Logger& logger) {
+void check_conditioning(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, SSpace<R, Q, P, ST>, ST>& xs,
+                        RSpace<R, Q, P>& rs, QSpace<R, Q, P>& qs, PSpace<R, P>& ps, double svd_threshold,
+                        double norm_threshold, Logger& logger) {
   logger.msg("xspace::check_conditioning", Logger::Trace);
   bool stable = false;
   auto candidates = detail::generate_candidates(rs, qs);
@@ -178,9 +178,9 @@ Matrix<double> copy_in_new_order(const Matrix<double>& mat, const std::vector<si
  * @param logger
  */
 template <class R, class P, class Q, class ST>
-void check_conditioning_gram_schmidt(XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, ST>& xs,
-                                     RSpace<R, Q, P>& rs, QSpace<R, Q, P>& qs, PSpace<R, P>& ps, Matrix<ST>& lin_trans,
-                                     double norm_threshold, Logger& logger) {
+void check_conditioning_gram_schmidt(
+    XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, SSpace<R, Q, P, ST>, ST>& xs, RSpace<R, Q, P>& rs,
+    QSpace<R, Q, P>& qs, PSpace<R, P>& ps, Matrix<ST>& lin_trans, double norm_threshold, Logger& logger) {
   logger.msg("xspace::check_conditioning_gram_schmidt", Logger::Trace);
   bool stable = false;
   auto candidates = detail::generate_candidates_flat_list(rs, qs);

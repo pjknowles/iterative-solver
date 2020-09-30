@@ -32,6 +32,7 @@ public:
   using RS = Rs;
   using QS = Qs;
   using PS = Ps;
+  using SS = Ss;
   XSpace() = default;
   virtual ~XSpace() = default;
 

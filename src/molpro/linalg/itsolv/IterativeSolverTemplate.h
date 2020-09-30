@@ -235,11 +235,12 @@ public:
   }
 
 protected:
-  IterativeSolverTemplate(RS rspace, QS qspace, PS pspace, XS xspace, std::shared_ptr<ArrayHandlers<R, Q, P>> handlers,
-                          std::shared_ptr<Statistics> stats, std::shared_ptr<Logger> logger)
+  IterativeSolverTemplate(RS rspace, QS qspace, PS pspace, SS sspace, XS xspace,
+                          std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Statistics> stats,
+                          std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_rspace(std::move(rspace)), m_qspace(std::move(qspace)),
-        m_pspace(std::move(pspace)), m_xspace(std::move(xspace)), m_stats(std::move(stats)),
-        m_logger(std::move(logger)) {}
+        m_pspace(std::move(pspace)), m_sspace(std::move(sspace)), m_xspace(std::move(xspace)),
+        m_stats(std::move(stats)), m_logger(std::move(logger)) {}
 
   //! Updates working sets and adds current solutions to the S space
   void update_working_set() {

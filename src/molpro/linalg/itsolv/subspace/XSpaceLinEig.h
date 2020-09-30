@@ -17,10 +17,10 @@ class XSpaceLinEig : public XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P
   using XS = XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, CSpace<R, Q, P, ST>, ST>;
 
 public:
+  using typename XS::CS;
   using typename XS::PS;
   using typename XS::QS;
   using typename XS::RS;
-  using typename XS::CS;
   using typename XS::scalar_type;
   using XS::data;
   explicit XSpaceLinEig(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)){};
@@ -34,8 +34,8 @@ public:
       m_logger->msg("Sxx = " + as_string(data[EqnData::S]), Logger::Info);
       m_logger->msg("Hxx = " + as_string(data[EqnData::H]), Logger::Info);
     }
-    xspace::check_conditioning_gram_schmidt(*this, rs, qs, ps, cs, m_subspace_transformation, m_norm_stability_threshold,
-                                            *m_logger);
+    xspace::check_conditioning_gram_schmidt(*this, rs, qs, ps, cs, m_subspace_transformation,
+                                            m_norm_stability_threshold, *m_logger);
     m_logger->msg("size of x space after conditioning = " + std::to_string(m_dim.nX), Logger::Debug);
     if (m_logger->data_dump && m_dim.nX != nX_on_entry) {
       m_logger->msg("Sxx = " + as_string(data[EqnData::S]), Logger::Info);
@@ -80,11 +80,9 @@ public:
 
   const Matrix<scalar_type>& solutions() const override { return m_evec; };
 
-  const std::vector<size_t>& roots() const override { return m_roots; };
-
   void build_subspace(RS& rs, QS& qs, PS& ps, CS& cs) override {
     m_dim = xspace::Dimensions(ps.size(), qs.size(), rs.size());
-    xspace::build_subspace_H_S(data, rs.data, qs.data, qs.qr, qs.rq, ps.data, m_dim);
+    xspace::build_subspace_H_S(data, ps.data, rs.data, qs.data, cs.data, qs.qr, qs.qc, qs.rq, qs.cq, m_dim);
   }
 
   const xspace::Dimensions& dimensions() const override { return m_dim; }
@@ -93,15 +91,13 @@ protected:
   std::shared_ptr<Logger> m_logger;
   xspace::Dimensions m_dim;
   bool m_hermitian = false; //!< whether the matrix is Hermitian
-  double m_svd_stability_threshold =
-      1.0e-4; //!< singular values of overlap matrix larger than this constitute a stable subspace
   double m_norm_stability_threshold =
-      1.0e-5; //!< norm contribution from pair of q vectors must be greater than this to trigger removal
+      1.0e-5; //!< norm subspace vector after orhtogonalisation must be less than this to trigger removal
   double m_svd_solver_threshold = 1.0e-14; //!< threshold to remove the null space during solution
   Matrix<scalar_type>
-      m_subspace_transformation;           //!< linear transformation of subspace vectors that leads to stable overlap
-  Matrix<scalar_type> m_evec;              //!< eigenvectors stored as columns with ascending eigenvalue
-  std::vector<scalar_type> m_eval;         //!< eigenvalues in ascending order
+      m_subspace_transformation;   //!< linear transformation of subspace vectors that leads to stable overlap
+  Matrix<scalar_type> m_evec;      //!< eigenvectors stored as columns with ascending eigenvalue
+  std::vector<scalar_type> m_eval; //!< eigenvalues in ascending order
 };
 
 } // namespace subspace

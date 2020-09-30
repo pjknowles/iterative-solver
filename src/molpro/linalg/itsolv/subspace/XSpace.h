@@ -52,9 +52,6 @@ public:
   // TODO rename this. What does this mean in DIIS or BFGS solvers? How does it relate to the errors?
   virtual const std::vector<scalar_type>& eigenvalues() const = 0;
 
-  //! Stores root index for each solution
-  virtual const std::vector<size_t>& roots() const = 0;
-
   //! Number of vectors forming the subspace
   size_t size() { return dimensions().nX; }
 

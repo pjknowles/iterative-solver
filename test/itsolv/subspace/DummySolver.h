@@ -25,6 +25,7 @@ struct DummySolver : IterativeSolver<R, Q, P> {
                                 double threshold) override {
     return {};
   };
+  void end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {}
 
   const std::vector<int>& working_set() const override { return ws; };
   size_t n_roots() const override { return nr; };

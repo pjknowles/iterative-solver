@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACELINEIG_H
 #include <cassert>
 #include <molpro/linalg/itsolv/helper.h>
+#include <molpro/linalg/itsolv/subspace/SSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
 #include <molpro/linalg/itsolv/subspace/build_subspace.h>
 #include <molpro/linalg/itsolv/subspace/check_conditioning.h>
@@ -12,8 +13,8 @@ namespace itsolv {
 namespace subspace {
 
 template <class R, class Q, class P, typename ST>
-class XSpaceLinEig : public XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, ST> {
-  using XS = XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, ST>;
+class XSpaceLinEig : public XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, SSpace<R, Q, P, ST>, ST> {
+  using XS = XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, SSpace<R, Q, P, ST>, ST>;
 
 public:
   using typename XS::PS;

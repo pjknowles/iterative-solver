@@ -22,7 +22,7 @@ struct Dimensions {
 } // namespace xspace
 
 //! Base class for XSpace solvers
-template <class Rs, class Qs, class Ps, typename ST>
+template <class Rs, class Qs, class Ps, class Ss, typename ST>
 class XSpace {
 public:
   using scalar_type = ST;

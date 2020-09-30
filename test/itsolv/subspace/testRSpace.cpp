@@ -9,7 +9,6 @@ using molpro::linalg::itsolv::Logger;
 using molpro::linalg::itsolv::subspace::EqnData;
 using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::RSpace;
-using molpro::linalg::itsolv::subspace::rspace::assign_last_parameters_to_new;
 using ::testing::DoubleEq;
 using ::testing::Each;
 using ::testing::Eq;
@@ -82,22 +81,6 @@ TEST_F(RSpaceF, update_same_vector_mulitple_times) {
       test_single(rspace, alpha, 1, 1);
     rspace.update_working_set({0});
   }
-}
-
-TEST_F(RSpaceF, assign_new_parameters_to_last__stable_ordering) {
-  auto last_param = std::vector<R>{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-  auto assign_param_to_last = assign_last_parameters_to_new(last_param, last_param, handlers->qr());
-  ASSERT_THAT(assign_param_to_last, Pointwise(Eq(), std::vector<size_t>{0, 1, 2}))
-      << "same params should be in ascending order";
-  auto param = last_param;
-  std::swap(param[0], param[2]);
-  assign_param_to_last = assign_last_parameters_to_new(param, last_param, handlers->qr());
-  ASSERT_THAT(assign_param_to_last, Pointwise(Eq(), std::vector<size_t>{2, 1, 0})) << " reversed parameters";
-  param = last_param;
-  std::swap(param[0], param[1]);
-  std::swap(param[1], param[2]);
-  assign_param_to_last = assign_last_parameters_to_new(param, last_param, handlers->qr());
-  ASSERT_THAT(assign_param_to_last, Pointwise(Eq(), std::vector<size_t>{1, 2, 0})) << " cyclic permutation";
 }
 
 TEST_F(RSpaceF, update_working_set) {

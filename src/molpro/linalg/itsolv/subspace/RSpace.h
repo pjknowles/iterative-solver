@@ -14,32 +14,6 @@ namespace linalg {
 namespace itsolv {
 namespace subspace {
 
-namespace rspace {
-//! Assigns new parameters to previous based on maximum overlap. Ordering is by increasing root indices.
-template <class R, class Q>
-std::vector<size_t> assign_last_parameters_to_new(const std::vector<Q>& last_params, const std::vector<R>& new_params,
-                                                  array::ArrayHandler<Q, R>& handler) {
-  using util::overlap;
-  using util::wrap;
-  assert(new_params.size() >= last_params.size());
-  auto ov = overlap(wrap(last_params), wrap(new_params), handler);
-  auto row_to_last = std::vector<size_t>(last_params.size());
-  std::iota(begin(row_to_last), end(row_to_last), size_t{0});
-  auto last_to_new = std::vector<size_t>(last_params.size());
-  while (!ov.empty()) {
-    auto imax = std::max_element(begin(ov.data()), end(ov.data()));
-    auto row_col = ov.to_coord(distance(ov.data().begin(), imax));
-    auto last_ind = row_to_last[row_col.first];
-    auto new_ind = row_col.second;
-    last_to_new[last_ind] = new_ind;
-    ov.remove_row(row_col.first);
-    row_to_last.erase(row_to_last.begin() + row_col.first);
-  }
-  return last_to_new;
-}
-
-} // namespace rspace
-
 //! Space for the working set of vectors
 template <class Rt, class Qt, class Pt>
 class RSpace {

@@ -344,30 +344,6 @@ protected:
         m_pspace(std::move(pspace)), m_cspace(std::move(sspace)), m_xspace(std::move(xspace)),
         m_stats(std::move(stats)), m_logger(std::move(logger)) {}
 
-  //! Updates working sets and adds current solutions to the S space
-  void update_working_set() {
-    auto ind_still_a_working_param = std::vector<size_t>{};
-    auto converged_roots = std::vector<size_t>{};
-    auto converged_params = VecRef<R>{};
-    auto converged_actions = VecRef<R>{};
-    for (size_t i = 0; i < m_working_set.size(); ++i) {
-      if (m_errors.at(i) < m_convergence_threshold) {
-        converged_roots.emplace_back(m_working_set[i]);
-        converged_params.emplace_back(m_rspace.params().at(i));
-        converged_actions.emplace_back(m_rspace.actions().at(i));
-      } else {
-        ind_still_a_working_param.emplace_back(i);
-      }
-    }
-    m_logger->msg("update_working_set::converged_roots = ", begin(converged_roots), end(converged_roots),
-                  Logger::Debug);
-    m_qspace.add_converged(converged_params, converged_actions, converged_roots);
-    m_rspace.update_working_set(ind_still_a_working_param);
-    auto& new_working_set = m_rspace.working_set();
-    m_working_set.resize(new_working_set.size());
-    std::copy(begin(new_working_set), end(new_working_set), begin(m_working_set));
-  }
-
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   RS m_rspace;
   QS m_qspace;

@@ -19,7 +19,7 @@ struct Dimensions {
   size_t oP = 0;
   size_t oQ = nP;
   size_t oR = oQ + nQ;
-  size_t oC = oR + nC;
+  size_t oC = oR + nR;
 };
 } // namespace xspace
 

@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVER_H
+#include <functional>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/Statistics.h>
 #include <vector>
@@ -17,6 +18,8 @@ class IterativeSolver {
 public:
   using value_type = typename R::value_type;                          ///< The underlying type of elements of vectors
   using scalar_type = typename array::ArrayHandler<R, Q>::value_type; ///< The type of scalar products of vectors
+  //! Function type for applying matrix to the P space vectors and accumulating result in a residual
+  using fapply_on_p_type = std::function<void(const std::vector<P>&, std::vector<std::reference_wrapper<R>>&)>;
 
   virtual ~IterativeSolver() = default;
   IterativeSolver() = default;
@@ -25,8 +28,8 @@ public:
   IterativeSolver(IterativeSolver<R, Q, P>&&) noexcept = default;
   IterativeSolver<R, Q, P>& operator=(IterativeSolver<R, Q, P>&&) noexcept = default;
 
+  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, fapply_on_p_type& apply_p) = 0;
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) = 0;
-  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& parametersP) = 0;
   virtual size_t add_p(std::vector<P>& Pvectors, const value_type* PP, std::vector<R>& parameters,
                        std::vector<R>& action, std::vector<P>& parametersP) = 0;
   virtual void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) = 0;

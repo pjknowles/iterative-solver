@@ -49,6 +49,20 @@ void construct_solution(std::vector<R>& params, const std::vector<size_t>& roots
   }
 }
 
+template <class R, class P>
+void remove_p_component(std::vector<R>& params, const std::vector<size_t>& roots,
+                        const subspace::Matrix<double>& solutions,
+                        const std::vector<std::reference_wrapper<P>>& pparams, size_t oP,
+                        array::ArrayHandler<R, P>& handler) {
+  assert(params.size() >= roots.size());
+  for (size_t i = 0; i < roots.size(); ++i) {
+    auto root = roots[i];
+    for (size_t j = 0; j < pparams.size(); ++j) {
+      handler.axpy(-solutions(root, oP + j), pparams.at(j), params.at(i));
+    }
+  }
+}
+
 template <class P, typename T>
 auto construct_pspace_vector(const std::vector<size_t>& roots, const subspace::Matrix<T>& solutions,
                              const std::vector<std::reference_wrapper<P>>& pparams, const size_t oP,
@@ -190,14 +204,16 @@ public:
    *
    * @param parameters new parameters for the R space
    * @param action corresponding action
+   * @param pparams P space components of the working set solutions
    * @return
    */
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action,
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& pparams,
                     typename Solver::fapply_on_p_type& apply_p) override {
     using subspace::util::wrap;
     assert(parameters.size() >= m_working_set.size());
     assert(action.size() >= m_working_set.size());
-    m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations),
+    m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations) +
+                      ", apply_p = " + std::to_string(bool(apply_p)),
                   Logger::Trace);
     m_logger->msg("IterativeSolverTemplate::add_vector  size of {params, actions, working_set} = " +
                       std::to_string(parameters.size()) + ", " + std::to_string(action.size()) + ", " +
@@ -210,9 +226,8 @@ public:
     m_xspace.solve(*static_cast<Solver*>(this));
     auto nsol = m_xspace.solutions().rows();
     auto& ev = m_xspace.eigenvalues();
-    m_errors.assign(nsol, 0.);
-    size_t start_sol, end_sol;
     for (const auto& batch : detail::parameter_batches(nsol, parameters.size())) {
+      size_t start_sol, end_sol;
       std::tie(start_sol, end_sol) = batch;
       auto roots = std::vector<size_t>{end_sol - start_sol};
       std::iota(begin(roots), end(roots), start_sol);
@@ -231,18 +246,27 @@ public:
       detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
       auto errors = std::vector<scalar_type>{roots.size(), 0};
       m_cspace.update(roots, parameters, action, errors);
+      if (!apply_p) {
+        detail::remove_p_component(parameters, roots, m_xspace.solutions(), m_pspace.params(), m_xspace.dimensions().oP,
+                                   m_handlers->rp());
+        detail::remove_p_component(action, roots, m_xspace.solutions(), m_pspace.actions(), m_xspace.dimensions().oP,
+                                   m_handlers->rp());
+        detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
+      }
       detail::construct_residual(roots, m_xspace.eigenvalues(), parameters, action, m_handlers->rr());
       detail::update_errors(errors, action, m_handlers->rr());
       m_cspace.update_error(roots, errors);
     }
-    m_working_set = detail::select_working_set(parameters.size(), m_cspace.errors(), m_convergence_threshold);
-    // Copy solutions from cspace and reconstruct residual
+    m_errors = m_cspace.errors();
+    m_working_set = detail::select_working_set(parameters.size(), m_errors, m_convergence_threshold);
     for (size_t i = 0; i < m_working_set.size(); ++i) {
       auto root = m_working_set[i];
       m_handlers->rq().copy(parameters[i], m_cspace.params().at(root));
       m_handlers->rq().copy(action[i], m_cspace.actions().at(root));
     }
     detail::construct_residual(m_working_set, m_xspace.eigenvalues(), parameters, action, m_handlers->rr());
+    pparams = detail::construct_pspace_vector(m_working_set, m_xspace.solutions(), m_pspace.params(),
+                                              m_xspace.dimensions().oP, m_handlers->pp());
     m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace);
     m_stats->iterations++;
     return m_working_set.size();

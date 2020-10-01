@@ -28,7 +28,8 @@ public:
   IterativeSolver(IterativeSolver<R, Q, P>&&) noexcept = default;
   IterativeSolver<R, Q, P>& operator=(IterativeSolver<R, Q, P>&&) noexcept = default;
 
-  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, fapply_on_p_type& apply_p) = 0;
+  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& pparams,
+                            fapply_on_p_type& apply_p) = 0;
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) = 0;
   virtual size_t add_p(std::vector<P>& Pvectors, const value_type* PP, std::vector<R>& parameters,
                        std::vector<R>& action, std::vector<P>& parametersP) = 0;

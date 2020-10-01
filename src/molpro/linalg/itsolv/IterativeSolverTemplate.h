@@ -169,6 +169,7 @@ std::vector<size_t> select_working_set(const size_t nw, const std::vector<T>& er
 template <class Solver, class XS>
 class IterativeSolverTemplate : public Solver {
 public:
+  using typename Solver::fapply_on_p_type;
   using typename Solver::scalar_type;
   using typename Solver::value_type;
   using RS = typename XS::RS;
@@ -187,6 +188,7 @@ public:
   IterativeSolverTemplate<Solver, XS>& operator=(const IterativeSolverTemplate<Solver, XS>&) = delete;
   IterativeSolverTemplate<Solver, XS>& operator=(IterativeSolverTemplate<Solver, XS>&&) noexcept = default;
 
+protected:
   /*!
    * @brief Adds new parameters and corresponding action to the subspace and solves the corresponding problem.
    *
@@ -208,7 +210,7 @@ public:
    * @return
    */
   size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& pparams,
-                    typename Solver::fapply_on_p_type& apply_p) override {
+                    fapply_on_p_type& apply_p) {
     using subspace::util::wrap;
     assert(parameters.size() >= m_working_set.size());
     assert(action.size() >= m_working_set.size());
@@ -272,8 +274,21 @@ public:
     return m_working_set.size();
   }
 
+public:
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, fapply_on_p_type& apply_p) override {
+    auto pparams = std::vector<P>{};
+    return add_vector(parameters, action, pparams, apply_p);
+  }
+
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& pparams) override {
+    auto apply_p = fapply_on_p_type{};
+    return add_vector(parameters, action, pparams, apply_p);
+  }
+
   size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) override {
-    return add_vector(parameters, action, {});
+    auto pparams = std::vector<P>{};
+    auto apply_p = fapply_on_p_type{};
+    return add_vector(parameters, action, pparams, apply_p);
   }
 
   size_t add_p(std::vector<P>& Pvectors, const value_type* PP, std::vector<R>& parameters, std::vector<R>& action,

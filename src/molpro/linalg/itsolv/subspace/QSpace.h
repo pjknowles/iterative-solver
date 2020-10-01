@@ -47,7 +47,7 @@ template <class Q>
 void update_qq_subspace(const std::vector<std::reference_wrapper<Q>>& new_params,
                         const std::vector<std::reference_wrapper<Q>>& new_actions,
                         const std::vector<std::reference_wrapper<Q>>& old_params,
-                        const std::vector<std::reference_wrapper<Q>>& old_actions, SubspaceData& qq_new,
+                        const std::vector<std::reference_wrapper<Q>>& old_actions, const SubspaceData& qq_new,
                         SubspaceData& data, array::ArrayHandler<Q, Q>& handler) {
   auto nQnew = new_params.size();
   auto nQold = old_params.size();
@@ -60,8 +60,8 @@ void update_qq_subspace(const std::vector<std::reference_wrapper<Q>>& new_params
   h.resize({nQ, nQ});
   s.slice({oQold, oQold}, {oQold + nQold, oQold + nQold}) = data[EqnData::S];
   s.slice({oQold, oQold}, {oQold + nQold, oQold + nQold}) = data[EqnData::H];
-  s.slice({oQnew, oQnew}, {oQnew + nQnew, oQnew + nQnew}) = qq_new[EqnData::S];
-  s.slice({oQnew, oQnew}, {oQnew + nQnew, oQnew + nQnew}) = qq_new[EqnData::H];
+  s.slice({oQnew, oQnew}, {oQnew + nQnew, oQnew + nQnew}) = qq_new.at(EqnData::S);
+  s.slice({oQnew, oQnew}, {oQnew + nQnew, oQnew + nQnew}) = qq_new.at(EqnData::H);
   s.slice({oQold, oQnew}, {oQold + nQold, oQnew + nQnew}) = util::overlap(old_params, new_params, handler);
   h.slice({oQold, oQnew}, {oQold + nQold, oQnew + nQnew}) = util::overlap(old_params, new_actions, handler);
   s.slice({oQnew, oQold}, {oQnew + nQnew, oQold + nQold}) = util::overlap(new_params, old_params, handler);
@@ -123,6 +123,7 @@ struct QSpace {
   using Q = Qt;
   using P = Pt;
   using VecRefQ = std::vector<std::reference_wrapper<Q>>;
+  using CVecRefQ = std::vector<std::reference_wrapper<Q>>;
 
   SubspaceData data = null_data<EqnData::H, EqnData::S>(); //!< QxQ block of subspace data
   SubspaceData qr = null_data<EqnData::H, EqnData::S>();   //!< QxR block of subspace data
@@ -135,12 +136,12 @@ struct QSpace {
 
   // FIXME Need to decide whether to remove rs entirely
   // FIXME Need to calculate subspace data using R vectors
-  void update(const RSpace<R, Q, P>& rs, const CSpace<R, Q, P, double>& ss, IterativeSolver<R, Q, P>& solver) {
+  void update(RSpace<R, Q, P>& rs, const CSpace<R, Q, P, double>& ss, IterativeSolver<R, Q, P>& solver) {
     m_logger->msg("QSpace::update", Logger::Trace);
     auto new_qparams = std::list<qspace::QParam<Q>>{};
     for (size_t i = 0; i < rs.size(); ++i) {
-      new_qparams.emplace_back(std::make_unique(m_handlers->qr().copy(rs.params().at(i)),
-                                                m_handlers->qr().copy(rs.actions().at(i)), m_unique_id++));
+      new_qparams.emplace_back(std::make_unique<Q>(m_handlers->qr().copy(rs.params().at(i))),
+                               std::make_unique<Q>(m_handlers->qr().copy(rs.actions().at(i))), m_unique_id++);
     }
     auto old_params_actions = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
     auto new_params_actions = qspace::wrap_params<Q>(new_qparams.begin(), new_qparams.end());
@@ -188,15 +189,29 @@ struct QSpace {
 
   size_t size() const { return m_params.size(); }
 
-  VecRefQ params() const {
+  VecRefQ params() {
     auto qparams = VecRefQ{};
     std::transform(begin(m_params), end(m_params), std::back_inserter(qparams),
                    [](auto& q) { return std::ref(*q.param); });
     return qparams;
   }
 
-  VecRefQ actions() const {
+  CVecRefQ params() const {
+    auto qparams = CVecRefQ{};
+    std::transform(begin(m_params), end(m_params), std::back_inserter(qparams),
+                   [](auto& q) { return std::ref(*q.param); });
+    return qparams;
+  }
+
+  VecRefQ actions() {
     auto qactions = VecRefQ{};
+    std::transform(begin(m_params), end(m_params), std::back_inserter(qactions),
+                   [](auto& q) { return std::ref(*q.action); });
+    return qactions;
+  }
+
+  CVecRefQ actions() const {
+    auto qactions = CVecRefQ{};
     std::transform(begin(m_params), end(m_params), std::back_inserter(qactions),
                    [](auto& q) { return std::ref(*q.action); });
     return qactions;

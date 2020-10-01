@@ -18,6 +18,8 @@ public:
   using R = Rt;
   using Q = Qt;
   using P = Pt;
+  using VecRefQ = std::vector<std::reference_wrapper<Q>>;
+  using CVecRefQ = std::vector<std::reference_wrapper<const Q>>;
   using scalar_type = ST;
 
   //! Matrix and overlap data mapped to the subspace
@@ -33,10 +35,32 @@ public:
   void set_error(int root, scalar_type error) {}
   void set_error(const std::vector<size_t>& roots, const std::vector<scalar_type>& errors) {}
 
-  const auto& params() const { return m_params; };
-  auto& params() { return m_params; };
-  const auto& actions() const { return m_actions; };
-  auto& actions() { return m_actions; };
+  size_t size() const { return m_params.size(); }
+
+  CVecRefQ params() const {
+    auto params = CVecRefQ{};
+    std::transform(begin(m_params), end(m_params), std::back_inserter(params), [](auto& p) { return std::ref(p); });
+    return params;
+  };
+
+  VecRefQ params() {
+    auto params = VecRefQ{};
+    std::transform(begin(m_params), end(m_params), std::back_inserter(params), [](auto& p) { return std::ref(p); });
+    return params;
+  };
+
+  CVecRefQ actions() const {
+    auto actions = CVecRefQ{};
+    std::transform(begin(m_actions), end(m_actions), std::back_inserter(actions), [](auto& p) { return std::ref(p); });
+    return actions;
+  };
+
+  VecRefQ actions() {
+    auto actions = VecRefQ{};
+    std::transform(begin(m_actions), end(m_actions), std::back_inserter(actions), [](auto& p) { return std::ref(p); });
+    return actions;
+  };
+
   const auto& errors() const { return m_errors; };
 
 protected:

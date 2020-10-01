@@ -76,7 +76,8 @@ void update_subspace(const std::vector<std::reference_wrapper<Q>>& qparams,
                      const std::vector<std::reference_wrapper<Q>>& qactions,
                      const std::vector<std::reference_wrapper<R>>& rparams,
                      const std::vector<std::reference_wrapper<R>>& ractions, SubspaceData& qr, SubspaceData& rq,
-                     array::ArrayHandler<Q, R>& handler_qr, array::ArrayHandler<R, Q>& handler_rq) {
+                     array::ArrayHandler<Q, std::decay_t<R>>& handler_qr,
+                     array::ArrayHandler<std::decay_t<R>, Q>& handler_rq) {
   auto nQ = qparams.size();
   auto nR = rparams.size();
   qr[EqnData::S].resize({nQ, nR});
@@ -140,8 +141,9 @@ struct QSpace {
     m_logger->msg("QSpace::update", Logger::Trace);
     auto new_qparams = std::list<qspace::QParam<Q>>{};
     for (size_t i = 0; i < rs.size(); ++i) {
-      new_qparams.emplace_back(std::make_unique<Q>(m_handlers->qr().copy(rs.params().at(i))),
-                               std::make_unique<Q>(m_handlers->qr().copy(rs.actions().at(i))), m_unique_id++);
+      new_qparams.emplace_back(qspace::QParam<Q>{std::make_unique<Q>(m_handlers->qr().copy(rs.params().at(i))),
+                                                 std::make_unique<Q>(m_handlers->qr().copy(rs.actions().at(i))),
+                                                 m_unique_id++});
     }
     auto old_params_actions = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
     auto new_params_actions = qspace::wrap_params<Q>(new_qparams.begin(), new_qparams.end());

@@ -73,7 +73,7 @@ public:
   const Matrix<scalar_type>& solutions() const override { return m_evec; };
 
   void build_subspace(RS& rs, QS& qs, PS& ps, CS& cs) override {
-    m_dim = xspace::Dimensions(ps.size(), qs.size(), rs.size());
+    m_dim = xspace::Dimensions(ps.size(), qs.size(), rs.size(), cs.size());
     xspace::build_subspace_H_S(data, ps.data, rs.data, qs.data, cs.data, qs.qr, qs.qc, qs.rq, qs.cq, m_dim);
   }
 

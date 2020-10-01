@@ -26,7 +26,7 @@ void construct_solution(std::vector<R>& params, const std::vector<size_t>& roots
                         const std::vector<std::reference_wrapper<P>>& pparams,
                         const std::vector<std::reference_wrapper<Q>>& qparams,
                         const std::vector<std::reference_wrapper<R>>& rparams,
-                        const std::vector<std::reference_wrapper<R>>& cparams, size_t oP, size_t oQ, size_t oR,
+                        const std::vector<std::reference_wrapper<Q>>& cparams, size_t oP, size_t oQ, size_t oR,
                         size_t oC, ArrayHandlers<R, Q, P>& handlers) {
   assert(params.size() >= roots.size());
   for (size_t i = 0; i < roots.size(); ++i) {
@@ -64,9 +64,9 @@ void remove_p_component(std::vector<R>& params, const std::vector<size_t>& roots
 }
 
 template <class P, typename T>
-auto construct_pspace_vector(const std::vector<size_t>& roots, const subspace::Matrix<T>& solutions,
-                             const std::vector<std::reference_wrapper<P>>& pparams, const size_t oP,
-                             array::ArrayHandler<P, P>& handler) {
+std::vector<P> construct_pspace_vector(const std::vector<size_t>& roots, const subspace::Matrix<T>& solutions,
+                                       const std::vector<std::reference_wrapper<P>>& pparams, const size_t oP,
+                                       array::ArrayHandler<P, P>& handler) {
   assert(pparams.size() >= roots.size());
   auto pvecs = std::vector<P>{};
   if (!pparams.empty()) {
@@ -124,8 +124,7 @@ std::vector<size_t> select_working_set(const size_t nw, const std::vector<T>& er
   }
   auto working_set = std::vector<size_t>{};
   auto end = (ordered_errors.size() < nw ? ordered_errors.end() : next(begin(ordered_errors), nw));
-  std::transform(begin(ordered_errors), end, std::back_inserter(working_set),
-                 [](const auto& el) { return el->second; });
+  std::transform(begin(ordered_errors), end, std::back_inserter(working_set), [](const auto& el) { return el.second; });
   return working_set;
 }
 
@@ -243,31 +242,35 @@ protected:
                                  *m_handlers);
       auto pvectors = detail::construct_pspace_vector(roots, m_xspace.solutions(), m_pspace.params(),
                                                       m_xspace.dimensions().oP, m_handlers->pp());
-      if (apply_p)
-        apply_p(pvectors, wrap(action));
-      detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
-      auto errors = std::vector<scalar_type>{roots.size(), 0};
+      if (apply_p) {
+        auto waction = wrap(action);
+        apply_p(pvectors, waction);
+      }
+      detail::normalise(roots, parameters, action, m_handlers->rr(), *m_logger);
+      auto errors = std::vector<scalar_type>(roots.size(), 0);
       m_cspace.update(roots, parameters, action, errors);
       if (!apply_p) {
         detail::remove_p_component(parameters, roots, m_xspace.solutions(), m_pspace.params(), m_xspace.dimensions().oP,
                                    m_handlers->rp());
         detail::remove_p_component(action, roots, m_xspace.solutions(), m_pspace.actions(), m_xspace.dimensions().oP,
                                    m_handlers->rp());
-        detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
+        detail::normalise(roots, parameters, action, m_handlers->rr(), *m_logger);
       }
       detail::construct_residual(roots, m_xspace.eigenvalues(), parameters, action, m_handlers->rr());
       detail::update_errors(errors, action, m_handlers->rr());
-      m_cspace.update_error(roots, errors);
+      m_cspace.set_error(roots, errors);
     }
     m_errors = m_cspace.errors();
-    m_working_set = detail::select_working_set(parameters.size(), m_errors, m_convergence_threshold);
+    auto working_set = detail::select_working_set(parameters.size(), m_errors, m_convergence_threshold);
+    m_working_set.resize(working_set.size());
+    std::copy(begin(working_set), end(working_set), begin(m_working_set));
     for (size_t i = 0; i < m_working_set.size(); ++i) {
       auto root = m_working_set[i];
       m_handlers->rq().copy(parameters[i], m_cspace.params().at(root));
       m_handlers->rq().copy(action[i], m_cspace.actions().at(root));
     }
-    detail::construct_residual(m_working_set, m_xspace.eigenvalues(), parameters, action, m_handlers->rr());
-    pparams = detail::construct_pspace_vector(m_working_set, m_xspace.solutions(), m_pspace.params(),
+    detail::construct_residual(working_set, m_xspace.eigenvalues(), parameters, action, m_handlers->rr());
+    pparams = detail::construct_pspace_vector(working_set, m_xspace.solutions(), m_pspace.params(),
                                               m_xspace.dimensions().oP, m_handlers->pp());
     m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace);
     m_stats->iterations++;

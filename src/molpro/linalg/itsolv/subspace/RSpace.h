@@ -52,7 +52,7 @@ public:
   }
 
   //! Number of parameters in the subspace
-  size_t size() { return m_params.size(); }
+  size_t size() const { return m_params.size(); }
 
   //! Remove all parameters from subspace
   void clear() {

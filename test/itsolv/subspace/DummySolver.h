@@ -10,8 +10,12 @@ template <class R, class Q, class P>
 struct DummySolver : IterativeSolver<R, Q, P> {
   using typename IterativeSolver<R, Q, P>::value_type;
   using typename IterativeSolver<R, Q, P>::scalar_type;
+  using typename IterativeSolver<R, Q, P>::fapply_on_p_type;
   size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) override { return 0; };
   size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& parametersP) override {
+    return 0;
+  };
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, fapply_on_p_type& aply_p) override {
     return 0;
   };
   size_t add_p(std::vector<P>& Pvectors, const value_type* PP, std::vector<R>& parameters, std::vector<R>& action,

@@ -59,6 +59,42 @@ void construct_orthonormal_set(VecRef<R>& params, const subspace::Matrix<value_t
   // apply transformation
   // normalise
 }
+/*!
+ * @brief Appends row and column for overlap with params
+ * @param ov overlap matrix
+ * @param params new parameters
+ * @param pparams P space parameters
+ * @param qparams Q space parameters
+ * @param cparams C space parameters
+ * @param oP offset to the start of P parameters
+ * @param oQ offset to the start of Q parameters
+ * @param oC offset to the start of C parameters
+ * @param oN offset to the start of new parameters
+ * @param handlers array handlers
+ * @param logger logger
+ */
+template <class R, class Q, class P, typename value_type>
+void append_overlap_with_r(subspace::Matrix<value_type>& ov, VecRef<R>& params, const CVecRef<P>& pparams,
+                           const CVecRef<Q>& qparams, const CVecRef<Q>& cparams, const size_t oP, const size_t oQ,
+                           const size_t oC, const size_t oN, ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
+  auto nP = pparams.size();
+  auto nQ = qparams.size();
+  auto nC = cparams.size();
+  auto nN = params.size();
+  ov.resize({ov.rows() + nN, ov.cols() + nN});
+  ov.slice({oN, oN}, {oN + nN, oN + nN}) = subspace::util::overlap(params, handlers.rr());
+  ov.slice({oN, oP}, {oN + nN, oP + nP}) = subspace::util::overlap(params, pparams, handlers.rp());
+  ov.slice({oN, oQ}, {oN + nN, oQ + nQ}) = subspace::util::overlap(params, qparams, handlers.rq());
+  ov.slice({oN, oC}, {oN + nN, oC + nC}) = subspace::util::overlap(params, cparams, handlers.rq());
+  auto copy_upper_to_lower = [&ov, oN, nN](size_t oX, size_t nX) {
+    for (size_t i = 0; i < nX; ++i)
+      for (size_t j = 0; j < nN; ++j)
+        ov(oX + i, oN + j) = ov(oN + j, oX + i);
+  };
+  copy_upper_to_lower(oP, nP);
+  copy_upper_to_lower(oQ, nQ);
+  copy_upper_to_lower(oC, nC);
+}
 
 /*!
  * \brief Proposes new parameters for the subspace from the preconditioned residuals.
@@ -96,14 +132,16 @@ size_t propose_rspace(LinearEigensystem<typename QS::R, typename QS::Q, typename
   using value_type = typename QS::value_type;
   using R = typename QS::R;
   auto nw = solver.working_set().size();
-  auto wres = wrap<R>(residuals.begin(), std::next(residuals.begin(), nw));
-  normalise(wres, res_norm_thresh, handlers.rr(), logger);
+  auto wresidual = wrap<R>(residuals.begin(), std::next(residuals.begin(), nw));
+  normalise(wresidual, res_norm_thresh, handlers.rr(), logger);
   auto lin_trans_and_norm =
-      propose_orthonormal_set<R, value_type, value_type_abs>(wres, res_norm_thresh, handlers.rr());
-  construct_orthonormal_set(wres, std::get<0>(lin_trans_and_norm), std::get<1>(lin_trans_and_norm), handlers.rr(),
+      propose_orthonormal_set<R, value_type, value_type_abs>(wresidual, res_norm_thresh, handlers.rr());
+  construct_orthonormal_set(wresidual, std::get<0>(lin_trans_and_norm), std::get<1>(lin_trans_and_norm), handlers.rr(),
                             res_norm_thresh);
-  // Construct overlap matrix for P+Q+C+R subspace
-  // P+Q+C can be obtained from xspace, overlap with R has to be calcualted
+  xspace.build_subspace(rspace, qspace, pspace, cspace);
+  auto ov = xspace.data.at(subspace::EqnData::S);
+  append_overlap_with_r(ov, wresidual, pspace.cparams(), qspace.cparams(), cspace.cparams(), xspace.dimensions().oP,
+                        xspace.dimensions().oQ, xspace.dimensions().oC, xspace.dimensions().nX, handlers, logger);
   // Apply GS procedure on the overlap matrix, suggesting removal of Q space vectors
   // Remove suggest Q vectors
   // Apply linear transformation and normalisation

@@ -3,8 +3,8 @@
 #include <iterator>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/Logger.h>
+#include <molpro/linalg/itsolv/propose_rspace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceLinEig.h>
-#include <molpro/linalg/itsolv/wrap.h>
 
 namespace molpro {
 namespace linalg {
@@ -47,36 +47,15 @@ public:
    * function to propose new Q space parameters orthonormal to the old space. They are returned in parameters so that
    * corresponding actions can be calculated and used in add_vector in the next iteration.
    *
-   * Outline
-   * -------
-   * Basic procedure:
-   *  - Gram-schmidt orthogonalise residuals against the old Q space
-   *  - Ensure that the resultant Q space is not linearly dependent
-   *
-   * Various possibilities:
-   *  1. Residuals are linearly dependent among themselves, worst case scenario there could be duplicates.
-   *  2. Residuals are linearly dependent with the old Q space, orthonormalisation against Q would result in
-   *     almost null vectors.
-   *
-   * Case 1 is handled at the start by normalising residuals and orthogonalising them among themselves. If it results in
-   * vectors with norm less then **threshold** than they are discarded and their action does not need to be evaluated.
-   *
-   * Case 2 is handled during Gram-Schmidt procedure. Residuals are orthogonalised against the old Q space, if one of
-   * them has a small norm than an old q vector with largest overlap is deleted.
-   *
    * @param parameters output new parameters for the subspace.
    * @param residual preconditioned residuals.
    * @return number of significant parameters to calculate the action for
    */
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
-    // The residual should be orthonormal to the new Q space
-    // We can apply Gram-Schmidt procedure to orthogonalise it against the old subspace
-    // That might result in vectors with a very small norm or even exact zero if there are duplicates.
-    // We should identify an old vector that has large overlap with input residual and remove it.
-    // The procedure can be repeated until all residuals have significant norm and the Q space is stable.
-    //
-    // Another possibility is a strong linear dependence among the new residuals themselves, worst case scenario
-    // some may be duplicates.
+    auto r_norm_thresh = 1.0e-14;
+    return detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, this->m_pspace,
+                                  this->m_qspace, this->m_rspace, this->m_cspace, this->m_xspace, *this->m_handlers,
+                                  *this->m_logger, r_norm_thresh);
   }
 
   //! Applies the Davidson preconditioner

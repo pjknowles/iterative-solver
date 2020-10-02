@@ -45,6 +45,14 @@ auto wrap(std::vector<R>& vec) {
   return w;
 }
 
+//! Takes a begin and end iterators and returns a vector of references to each element
+template <class R, class ForwardIt>
+auto wrap(ForwardIt begin, ForwardIt end) {
+  auto w = VecRef<R>{};
+  std::copy(begin, end, std::back_inserter(w));
+  return w;
+}
+
 //! Takes a map of containers and returns a vector of references to each element in the same order
 template <class R>
 auto wrap(const std::map<size_t, R>& vec) {

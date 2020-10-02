@@ -10,8 +10,8 @@
 using molpro::linalg::itsolv::ArrayHandlers;
 using molpro::linalg::itsolv::wrap;
 using molpro::linalg::itsolv::subspace::Matrix;
-using molpro::linalg::itsolv::subspace::detail::gram_schmidt;
 using molpro::linalg::itsolv::subspace::util::eye_order;
+using molpro::linalg::itsolv::subspace::util::gram_schmidt;
 using molpro::linalg::itsolv::subspace::util::overlap;
 using ::testing::DoubleEq;
 using ::testing::DoubleNear;

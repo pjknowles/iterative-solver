@@ -9,8 +9,7 @@ namespace molpro {
 namespace linalg {
 namespace itsolv {
 namespace subspace {
-namespace detail {
-
+namespace util {
 /*!
  * @brief Performs Gram-Schmidt orthogonalisation without normalisation
  *
@@ -69,8 +68,7 @@ std::vector<T> gram_schmidt(const Matrix<T>& s, Matrix<T>& l) {
   std::transform(begin(norm), end(norm), begin(norm), [](auto el) { return std::sqrt(std::abs(el)); });
   return norm;
 }
-
-} // namespace detail
+} // namespace util
 } // namespace subspace
 } // namespace itsolv
 } // namespace linalg

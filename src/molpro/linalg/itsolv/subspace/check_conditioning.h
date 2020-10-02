@@ -36,7 +36,7 @@ void check_conditioning_gram_schmidt(
   while (!stable && !candidates.empty()) {
     const auto& dim = xs.dimensions();
     const auto& s = xs.data[EqnData::S];
-    auto norm = detail::gram_schmidt(s, lin_trans);
+    auto norm = util::gram_schmidt(s, lin_trans);
     if (logger.data_dump)
       logger.msg("norm after Gram-Schmidt = ", begin(norm), end(norm), Logger::Info);
     auto imin = std::find_if(begin(candidates), end(candidates),

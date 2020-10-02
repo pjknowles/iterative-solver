@@ -11,7 +11,7 @@ namespace linalg {
 namespace itsolv {
 namespace subspace {
 
-//! Space storing best set of solutions
+//! Space storing the best set of solutions and their errors
 template <class Rt, class Qt, class Pt, typename ST>
 class CSpace {
 public:
@@ -28,15 +28,53 @@ public:
   explicit CSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
 
-  // TODO Implement CSpace
-  void update(unsigned int root, const R& param, const R& action, scalar_type error) {}
+  //! Adds a solution to the space, overwriting if a solution for the root already exists
+  void update(unsigned int root, const R& param, const R& action, scalar_type error) {
+    if (root >= m_params.size()) {
+      m_params.emplace_back(m_handlers->qr().copy(param));
+      m_params.emplace_back(m_handlers->qr().copy(action));
+      m_errors.emplace_back(error);
+    } else {
+      m_handlers->qr().copy(m_params.at(root), param);
+      m_handlers->qr().copy(m_params.at(root), action);
+      m_errors.at(root) = error;
+    }
+  }
+
+  //! Adds solutions to the space, overwriting if a solution for given root already exists
   void update(const std::vector<unsigned int>& roots, const std::vector<R>& params, const std::vector<R>& actions,
-              const std::vector<scalar_type>& errors) {}
+              const std::vector<scalar_type>& errors) {
+    for (size_t i = 0; i < roots.size(); ++i) {
+      update(roots.at(i), params.at(i), actions.at(i), errors.at(i));
+    }
+  }
 
   void set_error(unsigned int root, scalar_type error) {}
   void set_error(const std::vector<unsigned int>& roots, const std::vector<scalar_type>& errors) {}
 
   size_t size() const { return m_params.size(); }
+
+  //! Removes all vectors and data
+  void clear() {
+    m_params.clear();
+    m_actions.clear();
+    m_errors.clear();
+    for (auto d : data) {
+      d.second.clear();
+    }
+  }
+
+  //! Erases parameter i. @param i index in the current space
+  void erase(size_t i) {
+    assert(m_params.size() > i);
+    auto it = std::next(begin(m_params), i);
+    auto erase_at_i = [i](auto& v) { v.erase(std::next(begin(v), i)); };
+    for (auto& v : {m_params, m_actions, m_errors})
+      erase_at_i(v);
+    for (auto d : {EqnData::H, EqnData::S}) {
+      data.at(d).remove_row_col(i, i);
+    }
+  }
 
   CVecRefQ params() const {
     auto params = CVecRefQ{};

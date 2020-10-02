@@ -67,7 +67,7 @@ public:
    * @param residual preconditioned residuals.
    * @return number of significant parameters to calculate the action for
    */
-  void end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
+  size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
     // The residual should be orthonormal to the new Q space
     // We can apply Gram-Schmidt procedure to orthogonalise it against the old subspace
     // That might result in vectors with a very small norm or even exact zero if there are duplicates.

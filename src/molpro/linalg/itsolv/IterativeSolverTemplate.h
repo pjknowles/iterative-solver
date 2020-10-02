@@ -21,7 +21,7 @@ std::vector<std::pair<size_t, size_t>> parameter_batches(const size_t nsol, cons
 }
 
 template <class R, class Q, class P>
-void construct_solution(std::vector<R>& params, const std::vector<size_t>& roots,
+void construct_solution(std::vector<R>& params, const std::vector<unsigned int>& roots,
                         const subspace::Matrix<double>& solutions,
                         const std::vector<std::reference_wrapper<P>>& pparams,
                         const std::vector<std::reference_wrapper<Q>>& qparams,
@@ -50,7 +50,7 @@ void construct_solution(std::vector<R>& params, const std::vector<size_t>& roots
 }
 
 template <class R, class P>
-void remove_p_component(std::vector<R>& params, const std::vector<size_t>& roots,
+void remove_p_component(std::vector<R>& params, const std::vector<unsigned int>& roots,
                         const subspace::Matrix<double>& solutions,
                         const std::vector<std::reference_wrapper<P>>& pparams, size_t oP,
                         array::ArrayHandler<R, P>& handler) {
@@ -64,7 +64,7 @@ void remove_p_component(std::vector<R>& params, const std::vector<size_t>& roots
 }
 
 template <class P, typename T>
-std::vector<P> construct_pspace_vector(const std::vector<size_t>& roots, const subspace::Matrix<T>& solutions,
+std::vector<P> construct_pspace_vector(const std::vector<unsigned int>& roots, const subspace::Matrix<T>& solutions,
                                        const std::vector<std::reference_wrapper<P>>& pparams, const size_t oP,
                                        array::ArrayHandler<P, P>& handler) {
   assert(pparams.size() >= roots.size());
@@ -83,7 +83,7 @@ std::vector<P> construct_pspace_vector(const std::vector<size_t>& roots, const s
 }
 
 template <class R>
-void normalise(const std::vector<size_t>& roots, std::vector<R>& params, std::vector<R>& actions,
+void normalise(const std::vector<unsigned int>& roots, std::vector<R>& params, std::vector<R>& actions,
                array::ArrayHandler<R, R>& handler, Logger& logger) {
   for (size_t i = 0; i < roots.size(); ++i) {
     auto dot = handler.dot(params.at(i), params.at(i));
@@ -98,8 +98,8 @@ void normalise(const std::vector<size_t>& roots, std::vector<R>& params, std::ve
 }
 
 template <class R, typename T>
-void construct_residual(const std::vector<size_t>& roots, const std::vector<T>& eigvals, const std::vector<R>& params,
-                        std::vector<R>& actions, array::ArrayHandler<R, R>& handler) {
+void construct_residual(const std::vector<unsigned int>& roots, const std::vector<T>& eigvals,
+                        const std::vector<R>& params, std::vector<R>& actions, array::ArrayHandler<R, R>& handler) {
   assert(params.size() >= roots.size());
   for (size_t i = 0; i < roots.size(); ++i) {
     handler.axpy(-eigvals.at(roots[i]), params.at(i), actions.at(i));
@@ -116,13 +116,13 @@ void update_errors(std::vector<T>& errors, const std::vector<R>& residual, array
 }
 
 template <typename T>
-std::vector<size_t> select_working_set(const size_t nw, const std::vector<T>& errors, const T threshold) {
+std::vector<unsigned int> select_working_set(const size_t nw, const std::vector<T>& errors, const T threshold) {
   auto ordered_errors = std::multimap<T, size_t, std::greater<T>>{};
   for (size_t i = 0; i < errors.size(); ++i) {
     if (errors[i] > threshold)
       ordered_errors.emplace(errors[i], i);
   }
-  auto working_set = std::vector<size_t>{};
+  auto working_set = std::vector<unsigned int>{};
   auto end = (ordered_errors.size() < nw ? ordered_errors.end() : next(begin(ordered_errors), nw));
   std::transform(begin(ordered_errors), end, std::back_inserter(working_set), [](const auto& el) { return el.second; });
   return working_set;
@@ -230,7 +230,7 @@ protected:
     for (const auto& batch : detail::parameter_batches(nsol, parameters.size())) {
       size_t start_sol, end_sol;
       std::tie(start_sol, end_sol) = batch;
-      auto roots = std::vector<size_t>{end_sol - start_sol};
+      auto roots = std::vector<unsigned int>(end_sol - start_sol);
       std::iota(begin(roots), end(roots), start_sol);
       detail::construct_solution(parameters, roots, m_xspace.solutions(), m_pspace.params(), m_qspace.params(),
                                  m_rspace.params(), m_cspace.params(), m_xspace.dimensions().oP,
@@ -261,16 +261,14 @@ protected:
       m_cspace.set_error(roots, errors);
     }
     m_errors = m_cspace.errors();
-    auto working_set = detail::select_working_set(parameters.size(), m_errors, m_convergence_threshold);
-    m_working_set.resize(working_set.size());
-    std::copy(begin(working_set), end(working_set), begin(m_working_set));
+    m_working_set = detail::select_working_set(parameters.size(), m_errors, m_convergence_threshold);
     for (size_t i = 0; i < m_working_set.size(); ++i) {
       auto root = m_working_set[i];
       m_handlers->rq().copy(parameters[i], m_cspace.params().at(root));
       m_handlers->rq().copy(action[i], m_cspace.actions().at(root));
     }
-    detail::construct_residual(working_set, m_xspace.eigenvalues(), parameters, action, m_handlers->rr());
-    pparams = detail::construct_pspace_vector(working_set, m_xspace.solutions(), m_pspace.params(),
+    detail::construct_residual(m_working_set, m_xspace.eigenvalues(), parameters, action, m_handlers->rr());
+    pparams = detail::construct_pspace_vector(m_working_set, m_xspace.solutions(), m_pspace.params(),
                                               m_xspace.dimensions().oP, m_handlers->pp());
     m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace);
     m_stats->iterations++;
@@ -294,6 +292,7 @@ public:
     return add_vector(parameters, action, pparams, apply_p);
   }
 
+  // TODO Add P space and solve the subspace problem. This is same as add_vector, but without updating the Q space
   size_t add_p(std::vector<P>& Pvectors, const value_type* PP, std::vector<R>& parameters, std::vector<R>& action,
                std::vector<P>& parametersP) override {
     return 0;
@@ -306,9 +305,10 @@ public:
    * @param parameters
    * @param residual
    */
-  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override{};
+  void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters,
+                std::vector<R>& residual) override{};
 
-  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
+  void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
                 std::vector<P>& parametersP) override {
     solution(roots, parameters, residual);
   }
@@ -318,7 +318,7 @@ public:
     return {};
   }
 
-  const std::vector<int>& working_set() const override { return m_working_set; }
+  const std::vector<unsigned int>& working_set() const override { return m_working_set; }
   size_t n_roots() const override { return m_nroots; }
   void set_n_roots(size_t roots) override { m_nroots = roots; }
   const std::vector<scalar_type>& errors() const override { return m_errors; }
@@ -351,7 +351,7 @@ protected:
   CS m_cspace;
   XS m_xspace;
   std::vector<double> m_errors;
-  std::vector<int> m_working_set;
+  std::vector<unsigned int> m_working_set;
   size_t m_nroots{0};
   double m_convergence_threshold{1.0e-10}; //!< errors less than this mark a converged solution
   std::shared_ptr<Statistics> m_stats;

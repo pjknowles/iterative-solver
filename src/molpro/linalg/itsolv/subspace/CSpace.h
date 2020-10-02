@@ -28,12 +28,13 @@ public:
   explicit CSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
 
-  void update(size_t root, const R& param, const R& action, scalar_type error) {}
-  void update(const std::vector<size_t>& roots, const std::vector<R>& params, const std::vector<R>& actions,
+  // TODO Implement CSpace
+  void update(unsigned int root, const R& param, const R& action, scalar_type error) {}
+  void update(const std::vector<unsigned int>& roots, const std::vector<R>& params, const std::vector<R>& actions,
               const std::vector<scalar_type>& errors) {}
 
-  void set_error(int root, scalar_type error) {}
-  void set_error(const std::vector<size_t>& roots, const std::vector<scalar_type>& errors) {}
+  void set_error(unsigned int root, scalar_type error) {}
+  void set_error(const std::vector<unsigned int>& roots, const std::vector<scalar_type>& errors) {}
 
   size_t size() const { return m_params.size(); }
 

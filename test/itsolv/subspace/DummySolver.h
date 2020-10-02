@@ -22,22 +22,23 @@ struct DummySolver : IterativeSolver<R, Q, P> {
                std::vector<P>& parametersP) override {
     return 0;
   };
-  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override{};
-  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
+  void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters,
+                std::vector<R>& residual) override{};
+  void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
                 std::vector<P>& parametersP) override{};
   std::vector<size_t> suggest_p(const std::vector<R>& solution, const std::vector<R>& residual, size_t maximumNumber,
                                 double threshold) override {
     return {};
   };
-  void end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {}
+  size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override { return 0; }
 
-  const std::vector<int>& working_set() const override { return ws; };
+  const std::vector<unsigned int>& working_set() const override { return ws; };
   size_t n_roots() const override { return nr; };
   void set_n_roots(size_t nroots) override { nr = nroots; };
   void report() const override{};
   const std::vector<scalar_type>& errors() const override { return er; };
   const Statistics& statistics() const override { return st; };
-  std::vector<int> ws;
+  std::vector<unsigned int> ws;
   std::vector<scalar_type> er;
   Statistics st;
   size_t nr{0};

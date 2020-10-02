@@ -85,8 +85,10 @@ public:
   }
 
   CVecRef<R> params() const { return wrap(m_params); }
+  CVecRef<R> cparams() const { return params(); }
   VecRef<R> params() { return m_params; }
   CVecRef<R> actions() const { return wrap(m_actions); }
+  CVecRef<R> cactions() const { return actions(); }
   VecRef<R> actions() { return m_actions; }
 
 protected:

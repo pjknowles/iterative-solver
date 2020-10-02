@@ -199,6 +199,8 @@ struct QSpace {
     return qparams[0];
   }
 
+  CVecRef<Q> cparams() const { return params(); }
+
   VecRef<Q> actions() {
     auto qparams = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
     return qparams[1];
@@ -208,6 +210,8 @@ struct QSpace {
     auto qparams = qspace::cwrap_params<Q>(m_params.begin(), m_params.end());
     return qparams[1];
   }
+
+  CVecRef<Q> cactions() const { return actions(); }
 
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;

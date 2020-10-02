@@ -76,13 +76,11 @@ public:
   }
 
   CVecRef<Q> params() const { return wrap(m_params); };
-
+  CVecRef<Q> cparams() const { return params(); };
   VecRef<Q> params() { return wrap(m_params); };
-
   CVecRef<Q> actions() const { return wrap(m_actions); };
-
+  CVecRef<Q> cactions() const { return actions(); };
   VecRef<Q> actions() { return wrap(m_actions); };
-
   const auto& errors() const { return m_errors; };
 
 protected:

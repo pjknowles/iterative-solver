@@ -121,6 +121,8 @@ struct QSpace {
   using R = Rt;
   using Q = Qt;
   using P = Pt;
+  using value_type = typename array::ArrayHandler<R, R>::value_type;
+  using value_type_abs = typename array::ArrayHandler<R, R>::value_type_abs;
 
   SubspaceData data = null_data<EqnData::H, EqnData::S>(); //!< QxQ block of subspace data
   SubspaceData qr = null_data<EqnData::H, EqnData::S>();   //!< QxR block of subspace data

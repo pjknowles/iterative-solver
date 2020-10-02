@@ -15,6 +15,7 @@ using VecRef = std::vector<std::reference_wrapper<A>>;
 template <class A>
 using CVecRef = std::vector<std::reference_wrapper<const A>>;
 
+//! Decays CV and reference qualifiers same as std::decay, but also decays std::reference_wrapper to its underlying type
 template <class T>
 struct decay {
   using type = std::decay_t<T>;

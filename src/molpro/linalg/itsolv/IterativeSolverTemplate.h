@@ -179,8 +179,6 @@ public:
   using R = typename XS::R;
   using Q = typename XS::Q;
   using P = typename XS::P;
-  template <typename T>
-  using VecRef = std::vector<std::reference_wrapper<T>>;
 
   IterativeSolverTemplate() = delete;
   IterativeSolverTemplate(const IterativeSolverTemplate<Solver, XS>&) = delete;

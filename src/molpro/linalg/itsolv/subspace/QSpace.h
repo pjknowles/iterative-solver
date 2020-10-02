@@ -6,6 +6,7 @@
 #include <molpro/linalg/itsolv/subspace/CSpace.h>
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/RSpace.h>
+#include <molpro/linalg/itsolv/wrap.h>
 
 namespace molpro {
 namespace linalg {
@@ -14,14 +15,7 @@ namespace subspace {
 
 namespace qspace {
 /*!
- * @brief Parameter in the Q space. Can be a difference vector or a converged solution.
- *
- * Q space is constructed by appending differences with previous solution, normalised and orthogonalised (w.r.t working
- * param), and by appending converged solutions.
- *
- * \f$ q = \alpha (r - \beta d)\f$
- *
- * @note I will assume difference vectors are not orthogonalised to make the maths simpler. I'll work it out later.
+ * @brief Parameter in the Q space.
  */
 template <class Q>
 struct QParam {
@@ -32,9 +26,18 @@ struct QParam {
 
 //! Generates vector of reference wrappers to param and action in a range of QParam objects
 template <class Q, class ForwardIt>
+auto cwrap_params(ForwardIt begin, ForwardIt end) {
+  auto param_action = std::array<CVecRef<Q>, 2>{};
+  for (auto it = begin; it != end; ++it) {
+    param_action[0].emplace_back(*it->param);
+    param_action[1].emplace_back(*it->action);
+  }
+  return param_action;
+}
+
+template <class Q, class ForwardIt>
 auto wrap_params(ForwardIt begin, ForwardIt end) {
-  using VecRefQ = std::vector<std::reference_wrapper<Q>>;
-  auto param_action = std::array<VecRefQ, 2>{};
+  auto param_action = std::array<VecRef<Q>, 2>{};
   for (auto it = begin; it != end; ++it) {
     param_action[0].emplace_back(*it->param);
     param_action[1].emplace_back(*it->action);
@@ -44,11 +47,9 @@ auto wrap_params(ForwardIt begin, ForwardIt end) {
 
 //! Prepends equation data for new parameters to the Q subspace data
 template <class Q>
-void update_qq_subspace(const std::vector<std::reference_wrapper<Q>>& new_params,
-                        const std::vector<std::reference_wrapper<Q>>& new_actions,
-                        const std::vector<std::reference_wrapper<Q>>& old_params,
-                        const std::vector<std::reference_wrapper<Q>>& old_actions, const SubspaceData& qq_new,
-                        SubspaceData& data, array::ArrayHandler<Q, Q>& handler) {
+void update_qq_subspace(const CVecRef<Q>& new_params, const CVecRef<Q>& new_actions, const CVecRef<Q>& old_params,
+                        const CVecRef<Q>& old_actions, const SubspaceData& qq_new, SubspaceData& data,
+                        array::ArrayHandler<Q, Q>& handler) {
   auto nQnew = new_params.size();
   auto nQold = old_params.size();
   auto oQnew = 0;
@@ -72,12 +73,9 @@ void update_qq_subspace(const std::vector<std::reference_wrapper<Q>>& new_params
 
 //! Updates equation data in the RxQ part of the subspace
 template <class R, class Q>
-void update_subspace(const std::vector<std::reference_wrapper<Q>>& qparams,
-                     const std::vector<std::reference_wrapper<Q>>& qactions,
-                     const std::vector<std::reference_wrapper<R>>& rparams,
-                     const std::vector<std::reference_wrapper<R>>& ractions, SubspaceData& qr, SubspaceData& rq,
-                     array::ArrayHandler<Q, std::decay_t<R>>& handler_qr,
-                     array::ArrayHandler<std::decay_t<R>, Q>& handler_rq) {
+void update_subspace(const CVecRef<Q>& qparams, const CVecRef<Q>& qactions, const CVecRef<R>& rparams,
+                     const CVecRef<R>& ractions, SubspaceData& qr, SubspaceData& rq,
+                     array::ArrayHandler<Q, R>& handler_qr, array::ArrayHandler<R, Q>& handler_rq) {
   auto nQ = qparams.size();
   auto nR = rparams.size();
   qr[EqnData::S].resize({nQ, nR});
@@ -123,8 +121,6 @@ struct QSpace {
   using R = Rt;
   using Q = Qt;
   using P = Pt;
-  using VecRefQ = std::vector<std::reference_wrapper<Q>>;
-  using CVecRefQ = std::vector<std::reference_wrapper<Q>>;
 
   SubspaceData data = null_data<EqnData::H, EqnData::S>(); //!< QxQ block of subspace data
   SubspaceData qr = null_data<EqnData::H, EqnData::S>();   //!< QxR block of subspace data
@@ -145,14 +141,14 @@ struct QSpace {
                                                  std::make_unique<Q>(m_handlers->qr().copy(rs.actions().at(i))),
                                                  m_unique_id++});
     }
-    auto old_params_actions = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
-    auto new_params_actions = qspace::wrap_params<Q>(new_qparams.begin(), new_qparams.end());
+    auto old_params_actions = qspace::cwrap_params<Q>(m_params.begin(), m_params.end());
+    auto new_params_actions = qspace::cwrap_params<Q>(new_qparams.begin(), new_qparams.end());
     m_params.splice(m_params.begin(), new_qparams);
-    auto all_params_actions = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
+    auto all_params_actions = qspace::cwrap_params<Q>(m_params.begin(), m_params.end());
     qspace::update_qq_subspace(new_params_actions[0], new_params_actions[1], old_params_actions[0],
                                old_params_actions[1], rs.data, data, m_handlers->qq());
     rs.clear();
-    qspace::update_subspace(all_params_actions[0], all_params_actions[1], rs.params(), rs.actions(), qr, rq,
+    qspace::update_subspace(all_params_actions[0], all_params_actions[1], wrap(rs.params()), wrap(rs.actions()), qr, rq,
                             m_handlers->rq(), m_handlers->qr());
     qspace::update_subspace(all_params_actions[0], all_params_actions[1], ss.params(), ss.actions(), qc, cq,
                             m_handlers->qq(), m_handlers->qq());
@@ -191,32 +187,24 @@ struct QSpace {
 
   size_t size() const { return m_params.size(); }
 
-  VecRefQ params() {
-    auto qparams = VecRefQ{};
-    std::transform(begin(m_params), end(m_params), std::back_inserter(qparams),
-                   [](auto& q) { return std::ref(*q.param); });
-    return qparams;
+  VecRef<Q> params() {
+    auto qparams = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
+    return qparams[0];
   }
 
-  CVecRefQ params() const {
-    auto qparams = CVecRefQ{};
-    std::transform(begin(m_params), end(m_params), std::back_inserter(qparams),
-                   [](auto& q) { return std::ref(*q.param); });
-    return qparams;
+  CVecRef<Q> params() const {
+    auto qparams = qspace::cwrap_params<Q>(m_params.begin(), m_params.end());
+    return qparams[0];
   }
 
-  VecRefQ actions() {
-    auto qactions = VecRefQ{};
-    std::transform(begin(m_params), end(m_params), std::back_inserter(qactions),
-                   [](auto& q) { return std::ref(*q.action); });
-    return qactions;
+  VecRef<Q> actions() {
+    auto qparams = qspace::wrap_params<Q>(m_params.begin(), m_params.end());
+    return qparams[1];
   }
 
-  CVecRefQ actions() const {
-    auto qactions = CVecRefQ{};
-    std::transform(begin(m_params), end(m_params), std::back_inserter(qactions),
-                   [](auto& q) { return std::ref(*q.action); });
-    return qactions;
+  CVecRef<Q> actions() const {
+    auto qparams = qspace::cwrap_params<Q>(m_params.begin(), m_params.end());
+    return qparams[1];
   }
 
 protected:

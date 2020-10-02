@@ -8,6 +8,7 @@
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceData.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
+#include <molpro/linalg/itsolv/wrap.h>
 
 namespace molpro {
 namespace linalg {
@@ -21,7 +22,6 @@ public:
   using R = Rt;
   using Q = Qt;
   using P = Pt;
-  using VecRefR = std::vector<std::reference_wrapper<R>>;
 
   //! Matrix and overlap data mapped to the subspace
   SubspaceData data = null_data<EqnData::H, EqnData::S>();
@@ -84,16 +84,16 @@ public:
     return m_dummy;
   }
 
-  auto& params() const { return m_params; }
-  auto& params() { return m_params; }
-  auto& actions() const { return m_actions; }
-  auto& actions() { return m_actions; }
+  CVecRef<R> params() const { return wrap(m_params); }
+  VecRef<R> params() { return m_params; }
+  CVecRef<R> actions() const { return wrap(m_actions); }
+  VecRef<R> actions() { return m_actions; }
 
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::shared_ptr<Logger> m_logger;
-  VecRefR m_params;               //!< parameters from user
-  VecRefR m_actions;              //!< actions corresponding to m_params
+  VecRef<R> m_params;             //!< parameters from user
+  VecRef<R> m_actions;            //!< actions corresponding to m_params
   mutable std::vector<R> m_dummy; //!< A dummy R vector which can be used as an intermediate
 };
 

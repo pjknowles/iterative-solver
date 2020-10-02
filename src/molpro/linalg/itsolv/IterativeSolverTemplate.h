@@ -84,9 +84,10 @@ std::vector<P> construct_pspace_vector(const std::vector<unsigned int>& roots, c
 }
 
 template <class R>
-void normalise(const std::vector<unsigned int>& roots, std::vector<R>& params, std::vector<R>& actions,
+void normalise(const size_t n_roots, std::vector<R>& params, std::vector<R>& actions,
                array::ArrayHandler<R, R>& handler, Logger& logger) {
-  for (size_t i = 0; i < roots.size(); ++i) {
+  assert(params.size() >= n_roots && actions.size() >= n_roots);
+  for (size_t i = 0; i < n_roots; ++i) {
     auto dot = handler.dot(params.at(i), params.at(i));
     dot = std::sqrt(std::abs(dot));
     if (dot > 1.0e-14) {
@@ -244,7 +245,7 @@ protected:
         auto waction = wrap(action);
         apply_p(pvectors, waction);
       }
-      detail::normalise(roots, parameters, action, m_handlers->rr(), *m_logger);
+      detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
       auto errors = std::vector<scalar_type>(roots.size(), 0);
       m_cspace.update(roots, parameters, action, errors);
       if (!apply_p) {
@@ -252,7 +253,7 @@ protected:
                                    m_handlers->rp());
         detail::remove_p_component(action, roots, m_xspace.solutions(), m_pspace.actions(), m_xspace.dimensions().oP,
                                    m_handlers->rp());
-        detail::normalise(roots, parameters, action, m_handlers->rr(), *m_logger);
+        detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
       }
       detail::construct_residual(roots, m_xspace.eigenvalues(), parameters, action, m_handlers->rr());
       detail::update_errors(errors, action, m_handlers->rr());

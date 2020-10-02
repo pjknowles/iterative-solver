@@ -4,6 +4,7 @@
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceLinEig.h>
+#include <molpro/linalg/itsolv/wrap.h>
 
 namespace molpro {
 namespace linalg {

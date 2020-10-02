@@ -3,13 +3,14 @@
 
 #include <molpro/linalg/itsolv/subspace/check_conditioning.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
+#include <molpro/linalg/itsolv/wrap.h>
 #include <numeric>
 
 using molpro::linalg::itsolv::ArrayHandlers;
+using molpro::linalg::itsolv::wrap;
 using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::util::eye_order;
 using molpro::linalg::itsolv::subspace::util::overlap;
-using molpro::linalg::itsolv::subspace::util::wrap;
 using molpro::linalg::itsolv::subspace::xspace::detail::gram_schmidt;
 using ::testing::DoubleEq;
 using ::testing::DoubleNear;

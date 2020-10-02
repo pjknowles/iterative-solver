@@ -10,46 +10,6 @@ namespace itsolv {
 namespace subspace {
 namespace util {
 
-//! Takes a vector of containers and returns a vector of references to each element
-template <class R>
-auto wrap(const std::vector<R>& vec) {
-  auto w = std::vector<std::reference_wrapper<const R>>{};
-  std::copy(begin(vec), end(vec), std::back_inserter(w));
-  return w;
-}
-
-//! Takes a vector of containers and returns a vector of references to each element
-template <class R>
-auto wrap(std::vector<R>& vec) {
-  auto w = std::vector<std::reference_wrapper<R>>{};
-  std::copy(begin(vec), end(vec), std::back_inserter(w));
-  return w;
-}
-
-//! Takes a map of containers and returns a vector of references to each element in the same order
-template <class R>
-auto wrap(const std::map<size_t, R>& vec) {
-  auto w = std::vector<std::reference_wrapper<const R>>{};
-  std::transform(begin(vec), end(vec), std::back_inserter(w), [](const auto& v) { return v.second; });
-  return w;
-}
-
-//! Takes a map of containers and returns a vector of references to each element in the same order
-template <class R>
-auto wrap(std::map<size_t, R>& vec) {
-  auto w = std::vector<std::reference_wrapper<R>>{};
-  std::transform(begin(vec), end(vec), std::back_inserter(w), [](const auto& v) { return v.second; });
-  return w;
-}
-
-//! Takes a map of container references and returns a vector in the same order
-template <class R>
-std::vector<std::reference_wrapper<R>> wrap(const std::map<size_t, std::reference_wrapper<R>>& vec) {
-  auto w = std::vector<std::reference_wrapper<R>>{};
-  std::transform(begin(vec), end(vec), std::back_inserter(w), [](const auto& v) { return v.second; });
-  return w;
-}
-
 //! Calculates overlap matrix between left and right vectors
 template <class R, class Q>
 Matrix<double> overlap(const std::vector<std::reference_wrapper<R>>& left,

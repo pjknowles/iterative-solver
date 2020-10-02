@@ -4,6 +4,7 @@
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
+#include <molpro/linalg/itsolv/wrap.h>
 
 namespace molpro {
 namespace linalg {
@@ -210,7 +211,6 @@ protected:
    */
   size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& pparams,
                     fapply_on_p_type& apply_p) {
-    using subspace::util::wrap;
     assert(parameters.size() >= m_working_set.size());
     assert(action.size() >= m_working_set.size());
     m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations) +

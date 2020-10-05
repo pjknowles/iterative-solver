@@ -138,12 +138,49 @@ auto append_overlap_with_r(subspace::Matrix<value_type> ov, VecRef<R>& params, c
   copy_upper_to_lower(oC, nC);
   return ov;
 }
+/*!
+ * @brief Constructs R parameters approximately orthonormal in the full subspace
+ * @param params output new R parameters
+ * @param residuals input non-orthogonal parameters
+ * @param lin_trans linear transformation in the full subspace
+ * @param norm approximate norm after linear transformation (full subspace)
+ * @param pparams P space parameters
+ * @param qparams Q space parameters
+ * @param cparams C space parameters
+ * @param oP offset to start of P space paramters
+ * @param oQ offset to start of Q space paramters
+ * @param oC offset to start of C space paramters
+ * @param oN offset to start of the new parameters
+ * @param handlers
+ */
 template <class R, class Q, class P, typename value_type, typename value_type_abs>
-void construct_orthonormal_rset(VecRef<R>& params, const subspace::Matrix<value_type>& lin_trans,
-                                const std::vector<value_type_abs>& norm, const CVecRef<P>& pparams,
-                                const CVecRef<Q>& qparams, const CVecRef<Q>& cparams, const size_t oP, const size_t oQ,
-                                const size_t oC, const size_t oN, ArrayHandlers<R, Q, P>& handlers) {
-  // TODO implement
+void construct_orthonormal_Rparams(VecRef<R>& params, VecRef<R>& residuals,
+                                   const subspace::Matrix<value_type>& lin_trans,
+                                   const std::vector<value_type_abs>& norm, const CVecRef<P>& pparams,
+                                   const CVecRef<Q>& qparams, const CVecRef<Q>& cparams, const size_t oP,
+                                   const size_t oQ, const size_t oC, const size_t oN,
+                                   ArrayHandlers<R, Q, P>& handlers) {
+  assert(params.size() == residuals.size());
+  for (size_t i = 0; i < params.size(); ++i) {
+    handlers.rr().copy(params.at(i), residuals.at(i));
+  }
+  for (size_t i = 0; i < params.size(); ++i) {
+    for (size_t j = 0; j < pparams.size(); ++j) {
+      handlers.rp().axpy(lin_trans(oN + i, oP + j), pparams.at(j), params.at(i));
+    }
+    for (size_t j = 0; j < qparams.size(); ++j) {
+      handlers.rq().axpy(lin_trans(oN + i, oQ + j), qparams.at(j), params.at(i));
+    }
+    for (size_t j = 0; j < cparams.size(); ++j) {
+      handlers.rq().axpy(lin_trans(oN + i, oC + j), cparams.at(j), params.at(i));
+    }
+    for (size_t j = 0; j < i; ++j) {
+      handlers.rr().axpy(lin_trans(oN + i, oN + j), residuals.at(j), params.at(i));
+    }
+  }
+  for (size_t i = 0; i < params.size(); ++i) {
+    handlers.rr().scal(1. / norm.at(i), params.at(i));
+  }
 }
 
 template <class R>
@@ -195,20 +232,23 @@ std::vector<unsigned int> propose_rspace(LinearEigensystem<typename QS::R, typen
   std::tie(lin_trans, norm) =
       propose_orthonormal_set<R, value_type, value_type_abs>(wresidual, res_norm_thresh, handlers.rr());
   nW = wresidual.size();
+  auto new_indices = find_ref(residuals, wresidual);
+  auto new_working_set = std::vector<unsigned int>{};
+  auto wparams = VecRef<R>{};
+  for (auto i : new_indices) {
+    wparams.push_back(parameters.at(i));
+    new_working_set.emplace_back(solver.working_set().at(i));
+  }
   construct_orthonormal_set(wresidual, lin_trans, norm, handlers.rr(), res_norm_thresh);
   xspace.build_subspace(rspace, qspace, pspace, cspace);
   auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), wresidual, pspace.cparams(), qspace.cparams(),
                                   cspace.cparams(), xspace.dimensions().oP, xspace.dimensions().oQ,
                                   xspace.dimensions().oC, xspace.dimensions().nX, handlers, logger);
   std::tie(lin_trans, norm) = prepare_orthogonal_rset(ov, qspace, xspace.dimensions().oQ, nW, res_norm_thresh);
-  construct_orthonormal_rset(wresidual, lin_trans, norm, pspace.cparams(), qspace.cparams(), cspace.cparams(),
-                             xspace.dimensions().oP, xspace.dimensions().oQ, xspace.dimensions().oC,
-                             xspace.dimensions().nX, handlers);
-  auto new_indices = find_ref(residuals, wresidual);
-  auto new_working_set = std::vector<unsigned int>{};
-  for (auto i : new_indices) {
-    new_working_set.emplace_back(solver.working_set()[i]);
-  }
+  construct_orthonormal_Rparams(wparams, wresidual, lin_trans, norm, pspace.cparams(), qspace.cparams(),
+                                cspace.cparams(), xspace.dimensions().oP, xspace.dimensions().oQ,
+                                xspace.dimensions().oC, xspace.dimensions().nX, handlers);
+  normalise(wparams, res_norm_thresh, handlers.rr(), logger);
   return new_working_set;
 }
 } // namespace detail

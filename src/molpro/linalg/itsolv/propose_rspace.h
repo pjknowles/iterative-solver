@@ -24,7 +24,7 @@ void normalise(VecRef<R>& params, double thresh, array::ArrayHandler<R, R>& hand
 }
 
 //! Proposes an orthonormal set of vectors, removing any params that are linearly dependent
-//! @returns linear transformation and norm
+//! @returns linear transformation in orthogonal set and norm
 template <class R, typename value_type, typename value_type_abs>
 auto propose_orthonormal_set(VecRef<R>& params, const double norm_thresh, array::ArrayHandler<R, R>& handler) {
   auto lin_trans = subspace::Matrix<value_type>{};
@@ -41,6 +41,7 @@ auto propose_orthonormal_set(VecRef<R>& params, const double norm_thresh, array:
       ov.remove_row_col(i, i);
     }
   }
+  lin_trans = subspace::util::construct_lin_trans_in_orthogonal_set(ov, lin_trans, norm);
   return std::tuple<decltype(lin_trans), decltype(norm)>{lin_trans, norm};
 }
 /*!
@@ -83,18 +84,22 @@ auto prepare_orthogonal_rset(subspace::Matrix<value_type>& overlap, QS& qspace, 
 
 /*!
  * @brief Construct an orthonormal set from params and a linear transformation matrix
+ *
  * @param params vectors to orthonormalise
- * @param lin_trans linear transformation to orthogonal set. Assumed to be from Gram-Schmidt orthogonalisation in lower
- * diagonal form with 1's on diagonal
+ * @param lin_trans Gram Schmidt linear transformation in an orthogonal set, see construct_lin_trans_in_orthogonal_set()
  * @param norm estimated norm of orthogonalised vectors
- * @param norm_thresh threshold for normalisation at the end
  */
 template <class R, typename value_type, typename value_type_abs>
 void construct_orthonormal_set(VecRef<R>& params, const subspace::Matrix<value_type>& lin_trans,
-                               const std::vector<value_type_abs>& norm, array::ArrayHandler<R, R>& handler,
-                               const double norm_thresh) {
-  // apply transformation
-  // normalise
+                               const std::vector<value_type_abs>& norm, array::ArrayHandler<R, R>& handler) {
+  for (size_t i = 0; i < params.size(); ++i) {
+    for (size_t j = 0; j < i; ++j) {
+      handler.axpy(lin_trans(i, j), params.at(j), params.at(i));
+    }
+  }
+  for (size_t i = 0; i < params.size(); ++i) {
+    handler.scal(1. / norm.at(i), params.at(i));
+  }
 }
 /*!
  * @brief Appends row and column for overlap with params

@@ -42,7 +42,7 @@ std::vector<T> gram_schmidt(const Matrix<T>& s, Matrix<T>& l) {
   auto n = s.rows();
   l.fill(0);
   l.resize({n, n});
-  auto norm = std::vector<double>{};
+  auto norm = std::vector<double>(n, 0);
   auto w = std::vector<double>{};
   for (size_t i = 0; i < n; ++i) {
     w.assign(i, 0.);
@@ -57,17 +57,60 @@ std::vector<T> gram_schmidt(const Matrix<T>& s, Matrix<T>& l) {
       }
     }
     l(i, i) = 1.;
-    norm.emplace_back(0);
     for (size_t j = 0; j <= i; ++j) {
       for (size_t k = 0; k < j; ++k) {
-        norm.back() += 2 * l(i, j) * l(i, k) * s(j, k);
+        norm[i] += 2 * l(i, j) * l(i, k) * s(j, k);
       }
-      norm.back() += l(i, j) * l(i, j) * s(j, j);
+      norm[i] += l(i, j) * l(i, j) * s(j, j);
     }
   }
   std::transform(begin(norm), end(norm), begin(norm), [](auto el) { return std::sqrt(std::abs(el)); });
   return norm;
 }
+
+// FIXME This is implicitly constructed in Gram Schmidt and we can make it an opitonal return variable
+/*!
+ * @brief Construct Gram-Schmidt linear transformation in orthogonal vectors
+ *
+ * Let {v} be the original vectors, and {u} their orthogonal set.
+ *
+ * We can construct {u} from {v} using lower triangular linear transformation matrix L
+ * u_0 = v_0
+ * u_1 = v_1 + L_{1,0} v_0
+ * u_i = \sum_{j=0}^i L_{i,j} v_j
+ *
+ * However, we can also construct u_i using v_i and previous {u}, using a lower triangular transformation matrix T,
+ * u_i = v_i - \sum_{j=0}^{i-1} <v_i,u_j> / <u_j, u_j> u_j
+ *     = v_i + \sum_j=0^{i-1} T_{i,j} u_j
+ *
+ * T_{i,j} = - <v_i,u_j> / <u_j, u_j>
+ *         = - \sum_{k=0}^{j} L_{j,k} <v_i,v_k> / <u_j, u_j>
+ *
+ * T_{i,j} = 0 if i >= j
+ *
+ * @param overlap Overlap matrix of original non-orthogonal vectors
+ * @param lin_trans Gram-Schmidt linear transformation to an orthogonal set in terms of original vectors
+ * @param norm norms of orthogonal vectors constructed from lin_trans
+ * @Returns linear transformation set
+ * @return
+ */
+template <typename value_type, typename value_type_abs>
+Matrix<value_type> construct_lin_trans_in_orthogonal_set(const Matrix<value_type>& overlap,
+                                                         const Matrix<value_type>& lin_trans,
+                                                         const std::vector<value_type_abs>& norm) {
+  const auto nrows = lin_trans.rows();
+  const auto ncols = lin_trans.cols();
+  auto t = Matrix<value_type>({nrows, ncols});
+  for (size_t i = 0; i < nrows; ++i) {
+    for (size_t j = 0; j < i; ++j) {
+      for (size_t k = 0; k <= j; ++k) {
+        t(i, j) -= lin_trans(j, k) * overlap(i, k) / std::pow(norm[j], 2);
+      }
+    }
+  }
+  return t;
+}
+
 } // namespace util
 } // namespace subspace
 } // namespace itsolv

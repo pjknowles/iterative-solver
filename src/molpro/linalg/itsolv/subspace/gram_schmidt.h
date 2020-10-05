@@ -53,7 +53,7 @@ std::vector<T> gram_schmidt(const Matrix<T>& s, Matrix<T>& l) {
     }
     for (size_t j = 0; j < i; ++j) {
       for (size_t k = 0; k <= j; ++k) {
-        l(i, k) -= w[j] / norm[j] * l(j, k);
+        l(i, k) -= w[j] / norm[j] * l(j, k); // FIXME skip if norm is too small, simply set to 0
       }
     }
     l(i, i) = 1.;

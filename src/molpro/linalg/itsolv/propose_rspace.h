@@ -23,8 +23,8 @@ void normalise(VecRef<R>& params, double thresh, array::ArrayHandler<R, R>& hand
   }
 }
 
-//! Proposes an orthonormal set of vectors, removing any that are linearly dependent
-//! @returns vector order and linear transformation in that order
+//! Proposes an orthonormal set of vectors, removing any params that are linearly dependent
+//! @returns linear transformation and norm
 template <class R, typename value_type, typename value_type_abs>
 auto propose_orthonormal_set(VecRef<R>& params, const double norm_thresh, array::ArrayHandler<R, R>& handler) {
   auto lin_trans = subspace::Matrix<value_type>{};
@@ -39,6 +39,43 @@ auto propose_orthonormal_set(VecRef<R>& params, const double norm_thresh, array:
       auto it_remove = std::next(begin(params), i);
       params.erase(it_remove);
       ov.remove_row_col(i, i);
+    }
+  }
+  return std::tuple<decltype(lin_trans), decltype(norm)>{lin_trans, norm};
+}
+/*!
+ * @brief Uses overlap matrix to construct an orthogonal set of R params, removing any Q parameters that are linearly
+ *   dependent
+ * @param overlap overlap matrix of current subspace + initial R parameters
+ * @param qspace qspace container
+ * @param oQ offset to the Q parameters in the full subspace
+ * @param nW number of working parameters
+ * @param res_norm_thresh norm threshold for Gram-Schmidt procedure
+ * @return
+ */
+template <class QS, typename value_type, typename value_type_abs>
+auto prepare_orthogonal_rset(subspace::Matrix<value_type>& overlap, QS& qspace, const size_t oQ, const size_t nW,
+                             value_type_abs res_norm_thresh) {
+  auto norm = std::vector<value_type_abs>{};
+  auto lin_trans = subspace::Matrix<value_type>{};
+  for (bool done = false; !done;) {
+    const auto nX = overlap.rows() - nW;
+    const auto nQ = qspace.size();
+    norm = subspace::util::gram_schmidt(overlap, lin_trans);
+    auto it = std::find_if(std::next(begin(norm), nX), end(norm),
+                           [res_norm_thresh](auto el) { return el < res_norm_thresh; });
+    done = (it == end(norm) || nQ == 0);
+    if (!done) {
+      auto i = std::distance(begin(norm), it);
+      // FIXME Not sure whether to just use the overlap or linear transformation matrix
+      auto normalised_transform = std::vector<value_type>{};
+      for (size_t j = 0; j < nQ; ++j) {
+        normalised_transform.emplace_back(lin_trans(i, oQ + j) / std::sqrt(std::abs(overlap(oQ + j, oQ + j))));
+      }
+      auto it_max = std::max_element(begin(normalised_transform), end(normalised_transform));
+      auto iq_erase = std::distance(begin(normalised_transform), it_max);
+      qspace.erase(iq_erase);
+      overlap.remove_row_col(oQ + iq_erase, oQ + iq_erase);
     }
   }
   return std::tuple<decltype(lin_trans), decltype(norm)>{lin_trans, norm};
@@ -143,32 +180,17 @@ std::vector<size_t> propose_rspace(LinearEigensystem<typename QS::R, typename QS
   auto nW = solver.working_set().size();
   auto wresidual = wrap<R>(residuals.begin(), std::next(residuals.begin(), nW));
   normalise(wresidual, res_norm_thresh, handlers.rr(), logger);
-  auto lin_trans_and_norm =
+  auto lin_trans = subspace::Matrix<value_type>{};
+  auto norm = std::vector<value_type_abs>{};
+  std::tie(lin_trans, norm) =
       propose_orthonormal_set<R, value_type, value_type_abs>(wresidual, res_norm_thresh, handlers.rr());
-  construct_orthonormal_set(wresidual, std::get<0>(lin_trans_and_norm), std::get<1>(lin_trans_and_norm), handlers.rr(),
-                            res_norm_thresh);
+  nW = wresidual.size();
+  construct_orthonormal_set(wresidual, lin_trans, norm, handlers.rr(), res_norm_thresh);
   xspace.build_subspace(rspace, qspace, pspace, cspace);
   auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), wresidual, pspace.cparams(), qspace.cparams(),
                                   cspace.cparams(), xspace.dimensions().oP, xspace.dimensions().oQ,
                                   xspace.dimensions().oC, xspace.dimensions().nX, handlers, logger);
-  auto nX = xspace.dimensions().nX;
-  auto oQ = xspace.dimensions().oQ;
-  auto nQ = xspace.dimensions().nQ;
-  auto lin_trans = subspace::Matrix<value_type>{};
-  auto norm = std::vector<value_type_abs>{};
-  for (bool done = false; !done;) {
-    norm = subspace::util::gram_schmidt(ov, lin_trans);
-    auto it = std::find_if(std::next(begin(norm), nX), end(norm),
-                           [res_norm_thresh](auto el) { return el < res_norm_thresh; });
-    done = (it == end(norm) || nQ == 0);
-    if (!done) {
-      auto i = std::distance(begin(norm), it);
-      auto it_max_ov = std::max_element(&ov(i, oQ), &ov(i, oQ + nQ));
-      auto iq_erase = std::distance(&ov(i, oQ), it_max_ov);
-      qspace.erase(iq_erase);
-      ov.remove_row_col(iq_erase, iq_erase);
-    }
-  }
+  std::tie(lin_trans, norm) = prepare_orthogonal_rset(ov, qspace, xspace.dimensions().oQ, nW, res_norm_thresh);
   construct_orthonormal_rset(wresidual, lin_trans, norm, pspace.cparams(), qspace.cparams(), cspace.cparams(),
                              xspace.dimensions().oP, xspace.dimensions().oQ, xspace.dimensions().oC,
                              xspace.dimensions().nX, handlers);

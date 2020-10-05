@@ -167,12 +167,12 @@ void construct_orthonormal_rset(VecRef<R>& params, const subspace::Matrix<value_
  * @return number of significant parameters to calculate the action for
  */
 template <class PS, class QS, class RS, class CS>
-std::vector<size_t> propose_rspace(LinearEigensystem<typename QS::R, typename QS::Q, typename QS::P>& solver,
-                                   std::vector<typename QS::R>& parameters, std::vector<typename QS::R>& residuals,
-                                   PS& pspace, QS& qspace, RS& rspace, CS& cspace,
-                                   subspace::XSpace<RS, QS, PS, CS, typename QS::value_type>& xspace,
-                                   ArrayHandlers<typename QS::R, typename QS::Q, typename QS::P>& handlers,
-                                   Logger& logger, typename QS::value_type_abs res_norm_thresh = 1.0e-14) {
+std::vector<unsigned int> propose_rspace(LinearEigensystem<typename QS::R, typename QS::Q, typename QS::P>& solver,
+                                         std::vector<typename QS::R>& parameters,
+                                         std::vector<typename QS::R>& residuals, PS& pspace, QS& qspace, RS& rspace,
+                                         CS& cspace, subspace::XSpace<RS, QS, PS, CS, typename QS::value_type>& xspace,
+                                         ArrayHandlers<typename QS::R, typename QS::Q, typename QS::P>& handlers,
+                                         Logger& logger, typename QS::value_type_abs res_norm_thresh = 1.0e-14) {
   using value_type_abs = typename QS::value_type_abs;
   using value_type = typename QS::value_type;
   using R = typename QS::R;
@@ -195,7 +195,7 @@ std::vector<size_t> propose_rspace(LinearEigensystem<typename QS::R, typename QS
                              xspace.dimensions().oP, xspace.dimensions().oQ, xspace.dimensions().oC,
                              xspace.dimensions().nX, handlers);
   auto new_indices = find_ref(residuals, wresidual);
-  auto new_working_set = std::vector<size_t>{};
+  auto new_working_set = std::vector<unsigned int>{};
   for (auto i : new_indices) {
     new_working_set.emplace_back(solver.working_set()[i]);
   }

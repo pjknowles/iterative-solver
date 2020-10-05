@@ -53,9 +53,10 @@ public:
    */
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
     auto r_norm_thresh = 1.0e-14;
-    return detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, this->m_pspace,
-                                  this->m_qspace, this->m_rspace, this->m_cspace, this->m_xspace, *this->m_handlers,
-                                  *this->m_logger, r_norm_thresh);
+    this->m_working_set = detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action,
+                                                 this->m_pspace, this->m_qspace, this->m_rspace, this->m_cspace,
+                                                 this->m_xspace, *this->m_handlers, *this->m_logger, r_norm_thresh);
+    return this->working_set().size();
   }
 
   //! Applies the Davidson preconditioner

@@ -141,6 +141,11 @@ void construct_orthonormal_rset(VecRef<R>& params, const subspace::Matrix<value_
   // TODO implement
 }
 
+template <class R>
+std::vector<unsigned int> find_ref(const std::vector<R>& residuals, const VecRef<R>& wresidual) {
+  return {};
+}
+
 /*!
  * \brief Proposes new parameters for the subspace from the preconditioned residuals.
  *

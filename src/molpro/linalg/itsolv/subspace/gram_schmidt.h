@@ -13,6 +13,8 @@ namespace util {
 /*!
  * @brief Performs Gram-Schmidt orthogonalisation without normalisation
  *
+ * Any orthogonal vector with a norm less than threshold is not orthogonalised against.
+ *
  * For a vector set {v} with overlap matrix \f$ S_{ij}= v_i . v_j \f$, generate a linear transformation L to a new
  * orthogonal vector set \f$ u_i = \sum_j L_{ij} v_j \f$.
  *
@@ -34,10 +36,11 @@ namespace util {
  *
  * @param s overlap matrix
  * @param l row matrix with linear transformation into orthonormal basis. Upper triangular component is zero.
+ * @param norm_thresh generated vector with norm less than threshold is not used for subsequent orthogonalisation
  * @returns norms of transformed vectors
  */
 template <typename T>
-std::vector<T> gram_schmidt(const Matrix<T>& s, Matrix<T>& l) {
+std::vector<T> gram_schmidt(const Matrix<T>& s, Matrix<T>& l, double norm_thresh = 1.0e-14) {
   assert(s.rows() == s.cols());
   auto n = s.rows();
   l.fill(0);
@@ -52,8 +55,10 @@ std::vector<T> gram_schmidt(const Matrix<T>& s, Matrix<T>& l) {
       }
     }
     for (size_t j = 0; j < i; ++j) {
-      for (size_t k = 0; k <= j; ++k) {
-        l(i, k) -= w[j] / norm[j] * l(j, k); // FIXME skip if norm is too small, simply set to 0
+      if (norm[j] > norm_thresh) {
+        for (size_t k = 0; k <= j; ++k) {
+          l(i, k) -= w[j] / norm[j] * l(j, k);
+        }
       }
     }
     l(i, i) = 1.;

@@ -60,9 +60,9 @@ void update_qq_subspace(const CVecRef<Q>& new_params, const CVecRef<Q>& new_acti
   s.resize({nQ, nQ});
   h.resize({nQ, nQ});
   s.slice({oQold, oQold}, {oQold + nQold, oQold + nQold}) = data[EqnData::S];
-  s.slice({oQold, oQold}, {oQold + nQold, oQold + nQold}) = data[EqnData::H];
+  h.slice({oQold, oQold}, {oQold + nQold, oQold + nQold}) = data[EqnData::H];
   s.slice({oQnew, oQnew}, {oQnew + nQnew, oQnew + nQnew}) = qq_new.at(EqnData::S);
-  s.slice({oQnew, oQnew}, {oQnew + nQnew, oQnew + nQnew}) = qq_new.at(EqnData::H);
+  h.slice({oQnew, oQnew}, {oQnew + nQnew, oQnew + nQnew}) = qq_new.at(EqnData::H);
   s.slice({oQold, oQnew}, {oQold + nQold, oQnew + nQnew}) = util::overlap(old_params, new_params, handler);
   h.slice({oQold, oQnew}, {oQold + nQold, oQnew + nQnew}) = util::overlap(old_params, new_actions, handler);
   s.slice({oQnew, oQold}, {oQnew + nQnew, oQold + nQold}) = util::overlap(new_params, old_params, handler);

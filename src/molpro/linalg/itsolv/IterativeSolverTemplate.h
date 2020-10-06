@@ -245,8 +245,12 @@ protected:
         apply_p(pvectors, waction);
       }
       detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
+      auto eigvals = std::vector<scalar_type>{};
+      for (auto i : roots)
+        eigvals.emplace_back(ev[i]);
       auto errors = std::vector<scalar_type>(roots.size(), 0);
-      m_cspace.update(roots, parameters, action, errors);
+      m_cspace.update(roots, parameters, action, m_xspace.eigenvalues(), m_xspace.data, m_xspace.solutions(),
+                      m_xspace.dimensions(), errors);
       if (!apply_p) {
         detail::remove_p_component(parameters, roots, m_xspace.solutions(), m_pspace.params(), m_xspace.dimensions().oP,
                                    m_handlers->rp());

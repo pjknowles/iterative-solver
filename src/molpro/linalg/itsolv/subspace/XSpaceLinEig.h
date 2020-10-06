@@ -74,7 +74,7 @@ public:
 
   void build_subspace(RS& rs, QS& qs, PS& ps, CS& cs) override {
     m_dim = xspace::Dimensions(ps.size(), qs.size(), rs.size(), cs.size());
-    xspace::build_subspace_H_S(data, ps.data, rs.data, qs.data, cs.data, qs.qr, qs.qc, qs.rq, qs.cq, m_dim);
+    xspace::build_subspace_H_S(data, ps.data, rs.data, qs.data, cs.data, qs.qr, cs.qc, qs.rq, cs.cq, m_dim);
   }
 
   const xspace::Dimensions& dimensions() const override { return m_dim; }

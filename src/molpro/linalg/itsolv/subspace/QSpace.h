@@ -89,14 +89,11 @@ void update_subspace(const CVecRef<Q>& qparams, const CVecRef<Q>& qactions, cons
 }
 
 //! Removes data associates with q parameter i from qq, qr and rq blocks
-void erase_subspace(size_t i, SubspaceData& qq, SubspaceData& qr, SubspaceData& rq, SubspaceData& qc,
-                    SubspaceData& cq) {
+void erase_subspace(size_t i, SubspaceData& qq, SubspaceData& qr, SubspaceData& rq) {
   for (auto d : {EqnData::S, EqnData::H}) {
     qq[d].remove_row_col(i, i);
     qr[d].remove_row(i);
     rq[d].remove_col(i);
-    qc[d].remove_row(i);
-    cq[d].remove_col(i);
   }
 }
 
@@ -127,8 +124,6 @@ struct QSpace {
   SubspaceData data = null_data<EqnData::H, EqnData::S>(); //!< QxQ block of subspace data
   SubspaceData qr = null_data<EqnData::H, EqnData::S>();   //!< QxR block of subspace data
   SubspaceData rq = null_data<EqnData::H, EqnData::S>();   //!< RxQ block of subspace data
-  SubspaceData qc = null_data<EqnData::H, EqnData::S>();   //!< QxC block of subspace data
-  SubspaceData cq = null_data<EqnData::H, EqnData::S>();   //!< CxQ block of subspace data
 
   explicit QSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
@@ -152,8 +147,6 @@ struct QSpace {
     rs.clear();
     qspace::update_subspace(all_params_actions[0], all_params_actions[1], wrap(rs.params()), wrap(rs.actions()), qr, rq,
                             m_handlers->rq(), m_handlers->qr());
-    qspace::update_subspace(all_params_actions[0], all_params_actions[1], ss.params(), ss.actions(), qc, cq,
-                            m_handlers->qq(), m_handlers->qq());
     if (m_logger->data_dump) {
       m_logger->msg("Sqq = " + as_string(data[EqnData::S]), Logger::Info);
       m_logger->msg("Hqq = " + as_string(data[EqnData::H]), Logger::Info);
@@ -161,10 +154,6 @@ struct QSpace {
       m_logger->msg("Hqr = " + as_string(qr[EqnData::H]), Logger::Info);
       m_logger->msg("Srq = " + as_string(rq[EqnData::S]), Logger::Info);
       m_logger->msg("Hrq = " + as_string(rq[EqnData::H]), Logger::Info);
-      m_logger->msg("Sqc = " + as_string(qc[EqnData::S]), Logger::Info);
-      m_logger->msg("Hqc = " + as_string(qc[EqnData::H]), Logger::Info);
-      m_logger->msg("Scq = " + as_string(cq[EqnData::S]), Logger::Info);
-      m_logger->msg("Hcq = " + as_string(cq[EqnData::H]), Logger::Info);
     }
   }
 
@@ -174,8 +163,6 @@ struct QSpace {
       data[d].clear();
       qr[d].clear();
       rq[d].clear();
-      qc[d].clear();
-      cq[d].clear();
     }
   }
 
@@ -184,7 +171,7 @@ struct QSpace {
     assert(m_params.size() > i);
     auto it = std::next(begin(m_params), i);
     m_params.erase(it);
-    qspace::erase_subspace(i, data, qr, rq, qc, cq);
+    qspace::erase_subspace(i, data, qr, rq);
   }
 
   size_t size() const { return m_params.size(); }

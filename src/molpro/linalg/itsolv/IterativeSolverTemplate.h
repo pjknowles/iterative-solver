@@ -252,7 +252,6 @@ protected:
                                    m_handlers->rp());
         detail::remove_p_component(action, roots, m_xspace.solutions(), m_pspace.actions(), m_xspace.dimensions().oP,
                                    m_handlers->rp());
-        detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
       }
       detail::construct_residual(roots, m_xspace.eigenvalues(), parameters, action, m_handlers->rr());
       detail::update_errors(errors, action, m_handlers->rr());

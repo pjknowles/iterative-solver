@@ -183,11 +183,6 @@ void construct_orthonormal_Rparams(VecRef<R>& params, VecRef<R>& residuals,
   }
 }
 
-template <class R>
-std::vector<unsigned int> find_ref(const std::vector<R>& residuals, const VecRef<R>& wresidual) {
-  return {};
-}
-
 /*!
  * \brief Proposes new parameters for the subspace from the preconditioned residuals.
  *
@@ -234,9 +229,8 @@ std::vector<unsigned int> propose_rspace(LinearEigensystem<typename QS::R, typen
   nW = wresidual.size();
   auto new_indices = find_ref(wresidual, begin(residuals), end(residuals));
   auto new_working_set = std::vector<unsigned int>{};
-  auto wparams = VecRef<R>{};
+  auto wparams = wrap<R>(parameters.begin(), parameters.begin() + nW);
   for (auto i : new_indices) {
-    wparams.push_back(parameters.at(i));
     new_working_set.emplace_back(solver.working_set().at(i));
   }
   construct_orthonormal_set(wresidual, lin_trans, norm, handlers.rr(), res_norm_thresh);

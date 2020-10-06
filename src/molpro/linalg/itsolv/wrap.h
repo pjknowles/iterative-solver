@@ -54,18 +54,18 @@ auto wrap(ForwardIt begin, ForwardIt end) {
 }
 
 //! Takes a map of containers and returns a vector of references to each element in the same order
-template <class R>
-auto wrap(const std::map<size_t, R>& vec) {
+template <typename I, class R>
+auto wrap(const std::map<I, R>& vec) {
   auto w = CVecRef<decay_t<R>>{};
-  std::transform(begin(vec), end(vec), std::back_inserter(w), [](const auto& v) { return v.second; });
+  std::transform(begin(vec), end(vec), std::back_inserter(w), [](const auto& v) { return std::cref(v.second); });
   return w;
 }
 
 //! Takes a map of containers and returns a vector of references to each element in the same order
-template <class R>
-auto wrap(std::map<size_t, R>& vec) {
+template <typename I, class R>
+auto wrap(std::map<I, R>& vec) {
   auto w = VecRef<decay_t<R>>{};
-  std::transform(begin(vec), end(vec), std::back_inserter(w), [](const auto& v) { return v.second; });
+  std::transform(begin(vec), end(vec), std::back_inserter(w), [](auto& v) { return std::ref(v.second); });
   return w;
 }
 

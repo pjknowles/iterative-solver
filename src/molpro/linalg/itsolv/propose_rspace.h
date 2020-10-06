@@ -233,7 +233,7 @@ std::vector<unsigned int> propose_rspace(LinearEigensystem<typename QS::R, typen
   for (auto i : new_indices) {
     new_working_set.emplace_back(solver.working_set().at(i));
   }
-  construct_orthonormal_set(wresidual, lin_trans, norm, handlers.rr(), res_norm_thresh);
+  construct_orthonormal_set(wresidual, lin_trans, norm, handlers.rr());
   xspace.build_subspace(rspace, qspace, pspace, cspace);
   auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), wresidual, pspace.cparams(), qspace.cparams(),
                                   cspace.cparams(), xspace.dimensions().oP, xspace.dimensions().oQ,

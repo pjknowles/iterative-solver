@@ -56,6 +56,7 @@ public:
     this->m_working_set = detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action,
                                                  this->m_pspace, this->m_qspace, this->m_rspace, this->m_cspace,
                                                  this->m_xspace, *this->m_handlers, *this->m_logger, r_norm_thresh);
+    this->m_stats->iterations++;
     return this->working_set().size();
   }
 

@@ -68,7 +68,6 @@ template <class P, typename T>
 std::vector<P> construct_pspace_vector(const std::vector<unsigned int>& roots, const subspace::Matrix<T>& solutions,
                                        const std::vector<std::reference_wrapper<P>>& pparams, const size_t oP,
                                        array::ArrayHandler<P, P>& handler) {
-  assert(pparams.size() >= roots.size());
   auto pvecs = std::vector<P>{};
   if (!pparams.empty()) {
     for (size_t i = 0; i < roots.size(); ++i) {

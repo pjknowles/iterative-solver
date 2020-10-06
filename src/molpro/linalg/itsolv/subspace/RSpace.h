@@ -41,8 +41,8 @@ public:
     m_logger->msg("RSpace::update", Logger::Trace);
     assert(parameters.size() == actions.size());
     clear();
-    std::copy_n(begin(parameters), solver.working_set().size(), std::back_inserter(m_params));
-    std::copy_n(begin(actions), solver.working_set().size(), std::back_inserter(m_actions));
+    std::copy_n(begin(parameters), parameters.size(), std::back_inserter(m_params));
+    std::copy_n(begin(actions), parameters.size(), std::back_inserter(m_actions));
     data[EqnData::S] = util::overlap(m_params, m_handlers->rr());
     data[EqnData::H] = util::overlap(m_params, m_actions, m_handlers->rr());
     if (m_logger->data_dump) {

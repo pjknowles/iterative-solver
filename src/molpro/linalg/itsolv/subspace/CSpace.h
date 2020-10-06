@@ -30,13 +30,13 @@ public:
   //! Adds a solution to the space, overwriting if a solution for the root already exists
   void update(unsigned int root, const R& param, const R& action, scalar_type error) {
     if (root >= m_params.size()) {
-      m_params.emplace_back(m_handlers->qr().copy(param));
-      m_params.emplace_back(m_handlers->qr().copy(action));
-      m_errors.emplace_back(error);
+      m_params.emplace(root, m_handlers->qr().copy(param));
+      m_actions.emplace(root, m_handlers->qr().copy(action));
+      m_errors[root] = error;
     } else {
       m_handlers->qr().copy(m_params.at(root), param);
-      m_handlers->qr().copy(m_params.at(root), action);
-      m_errors.at(root) = error;
+      m_handlers->qr().copy(m_actions.at(root), action);
+      m_errors[root] = error;
     }
   }
 
@@ -75,20 +75,34 @@ public:
     }
   }
 
+  //! Number of solutions stored in C space
+  size_t nroots() const {
+    if (m_errors.empty())
+      return 0;
+    else
+      return m_errors.rbegin().base()->first;
+  }
+
   CVecRef<Q> params() const { return wrap(m_params); };
   CVecRef<Q> cparams() const { return params(); };
   VecRef<Q> params() { return wrap(m_params); };
   CVecRef<Q> actions() const { return wrap(m_actions); };
   CVecRef<Q> cactions() const { return actions(); };
   VecRef<Q> actions() { return wrap(m_actions); };
-  const auto& errors() const { return m_errors; };
+
+  std::vector<scalar_type> errors() const {
+    auto err = std::vector<scalar_type>(nroots());
+    for (const auto& e : m_errors)
+      err.at(e.first) = e.second;
+    return err;
+  };
 
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::shared_ptr<Logger> m_logger;
-  std::vector<Q> m_params;
-  std::vector<Q> m_actions;
-  std::vector<scalar_type> m_errors;
+  std::map<unsigned int, Q> m_params;           //! parameters for root index
+  std::map<unsigned int, Q> m_actions;          //! actions for root index
+  std::map<unsigned int, scalar_type> m_errors; //! errors for root index
 };
 
 } // namespace subspace

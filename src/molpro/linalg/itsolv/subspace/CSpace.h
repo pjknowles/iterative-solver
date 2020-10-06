@@ -48,8 +48,12 @@ public:
     }
   }
 
-  void set_error(unsigned int root, scalar_type error) {}
-  void set_error(const std::vector<unsigned int>& roots, const std::vector<scalar_type>& errors) {}
+  void set_error(unsigned int root, scalar_type error) { m_errors[root] = error; }
+  void set_error(const std::vector<unsigned int>& roots, const std::vector<scalar_type>& errors) {
+    for (size_t i = 0; i < roots.size(); ++i) {
+      set_error(roots[i], errors[i]);
+    }
+  }
 
   size_t size() const { return m_params.size(); }
 

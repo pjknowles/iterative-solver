@@ -232,7 +232,7 @@ std::vector<unsigned int> propose_rspace(LinearEigensystem<typename QS::R, typen
   std::tie(lin_trans, norm) =
       propose_orthonormal_set<R, value_type, value_type_abs>(wresidual, res_norm_thresh, handlers.rr());
   nW = wresidual.size();
-  auto new_indices = find_ref(residuals, wresidual);
+  auto new_indices = find_ref(wresidual, begin(residuals), end(residuals));
   auto new_working_set = std::vector<unsigned int>{};
   auto wparams = VecRef<R>{};
   for (auto i : new_indices) {

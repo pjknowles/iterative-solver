@@ -88,6 +88,35 @@ void update_subspace(const CVecRef<Q>& qparams, const CVecRef<Q>& qactions, cons
   rq[EqnData::H].slice() = util::overlap(rparams, qactions, handler_rq);
 }
 
+//! Updates qc and cq blocks in CSpace
+template <class Q>
+void update_cspace(const CVecRef<Q>& params, const CVecRef<Q>& actions, SubspaceData& qc, SubspaceData& cq,
+                   const CVecRef<Q>& cparams, const CVecRef<Q>& cactions, array::ArrayHandler<Q, Q>& handler) {
+  const auto nQ_new = params.size();
+  const auto nC = cq[EqnData::S].rows();
+  auto cq_new = cq;
+  auto qc_new = qc;
+  for (auto d : {EqnData::S, EqnData::H}) {
+    cq_new[d].resize({cq[d].rows(), cq[d].cols() + nQ_new});
+    cq_new[d].slice({0, nQ_new}, {cq[d].rows(), cq[d].cols() + nQ_new}) = cq[d];
+    qc_new[d].resize({qc[d].rows() + nQ_new, qc[d].cols()});
+    qc_new[d].slice({nQ_new, 0}, {qc[d].rows() + nQ_new, qc[d].cols()}) = qc[d];
+  }
+  auto s_qc = util::overlap(params, cparams, handler);
+  auto h_qc = util::overlap(params, cactions, handler);
+  auto h_cq = util::overlap(cparams, actions, handler);
+  qc_new[EqnData::S].slice({0, 0}, {nQ_new, nC}) = s_qc;
+  qc_new[EqnData::H].slice({0, 0}, {nQ_new, nC}) = h_qc;
+  cq_new[EqnData::H].slice({0, 0}, {nC, nQ_new}) = h_cq;
+  for (size_t i = 0; i < nC; ++i)
+    for (size_t j = 0; j < nQ_new; ++j)
+      cq_new[EqnData::S](i, j) = qc_new[EqnData::S](j, i);
+  for (auto d : {EqnData::S, EqnData::H}) {
+    cq[d] = std::move(cq_new[d]);
+    qc[d] = std::move(qc_new[d]);
+  }
+}
+
 //! Removes data associates with q parameter i from qq, qr and rq blocks
 void erase_subspace(size_t i, SubspaceData& qq, SubspaceData& qr, SubspaceData& rq) {
   for (auto d : {EqnData::S, EqnData::H}) {
@@ -130,7 +159,7 @@ struct QSpace {
 
   // FIXME Need to decide whether to remove rs entirely
   // FIXME Need to calculate subspace data using R vectors
-  void update(RSpace<R, Q, P>& rs, const CSpace<R, Q, P, double>& ss, IterativeSolver<R, Q, P>& solver) {
+  void update(RSpace<R, Q, P>& rs, CSpace<R, Q, P, double>& cs, IterativeSolver<R, Q, P>& solver) {
     m_logger->msg("QSpace::update", Logger::Trace);
     auto new_qparams = std::list<qspace::QParam<Q>>{};
     for (size_t i = 0; i < rs.size(); ++i) {
@@ -147,6 +176,8 @@ struct QSpace {
     rs.clear();
     qspace::update_subspace(all_params_actions[0], all_params_actions[1], wrap(rs.params()), wrap(rs.actions()), qr, rq,
                             m_handlers->rq(), m_handlers->qr());
+    qspace::update_cspace(new_params_actions[0], new_params_actions[1], cs.qc, cs.cq, cs.cparams(), cs.cactions(),
+                          m_handlers->qq());
     if (m_logger->data_dump) {
       m_logger->msg("Sqq = " + as_string(data[EqnData::S]), Logger::Info);
       m_logger->msg("Hqq = " + as_string(data[EqnData::H]), Logger::Info);

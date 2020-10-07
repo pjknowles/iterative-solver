@@ -113,10 +113,10 @@ public:
   //! Erases parameter i. @param i index in the current space
   void erase(size_t i) {
     assert(m_params.size() > i);
-    auto it = std::next(begin(m_params), i);
     auto erase_at_i = [i](auto& v) { v.erase(std::next(begin(v), i)); };
-    for (auto& v : {m_params, m_actions, m_errors})
-      erase_at_i(v);
+    erase_at_i(m_params);
+    erase_at_i(m_actions);
+    erase_at_i(m_errors);
     for (auto d : {EqnData::H, EqnData::S}) {
       data.at(d).remove_row_col(i, i);
     }

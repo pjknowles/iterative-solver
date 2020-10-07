@@ -4,7 +4,7 @@
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
-#include <molpro/linalg/itsolv/subspace/XSpaceLinEig.h>
+#include <molpro/linalg/itsolv/subspace/XSpace.h>
 
 namespace molpro {
 namespace linalg {
@@ -22,21 +22,16 @@ namespace itsolv {
  * @tparam P
  */
 template <class R, class Q, class P>
-class LinearEigensystemA : public IterativeSolverTemplate<
-                               LinearEigensystem<R, Q, P>,
-                               subspace::XSpaceLinEig<R, Q, P, typename LinearEigensystem<R, Q, P>::scalar_type>> {
+class LinearEigensystemA : public IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpace<R, Q, P>> {
 public:
-  using SolverTemplate =
-      IterativeSolverTemplate<LinearEigensystem<R, Q, P>,
-                              subspace::XSpaceLinEig<R, Q, P, typename LinearEigensystem<R, Q, P>::scalar_type>>;
+  using SolverTemplate = IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpace<R, Q, P>>;
   using typename SolverTemplate::scalar_type;
 
   explicit LinearEigensystemA(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
                               std::shared_ptr<Logger> logger_ = std::make_shared<Logger>())
       : SolverTemplate(subspace::RSpace<R, Q, P>(handlers, logger_), subspace::QSpace<R, Q, P>(handlers, logger_),
                        subspace::PSpace<R, P>(), subspace::CSpace<R, Q, P, scalar_type>(handlers, logger_),
-                       subspace::XSpaceLinEig<R, Q, P, scalar_type>(logger_), handlers, std::make_shared<Statistics>(),
-                       logger_),
+                       subspace::XSpace<R, Q, P>(logger_), handlers, std::make_shared<Statistics>(), logger_),
         logger(std::move(logger_)) {}
 
   /*!

@@ -1,5 +1,5 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACELINEIG_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACELINEIG_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACE_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACE_H
 #include <cassert>
 #include <molpro/linalg/itsolv/helper.h>
 #include <molpro/linalg/itsolv/subspace/CSpace.h>
@@ -13,12 +13,12 @@ namespace itsolv {
 namespace subspace {
 
 template <class R, class Q, class P>
-class XSpaceLinEig : public XSpaceI<R, Q, P> {
+class XSpace : public XSpaceI<R, Q, P> {
 public:
   using typename XSpaceI<R, Q, P>::value_type;
   using typename XSpaceI<R, Q, P>::value_type_abs;
 
-  explicit XSpaceLinEig(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)) {
+  explicit XSpace(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)) {
     this->data = null_data<EqnData::H, EqnData::S>();
   };
 
@@ -143,4 +143,4 @@ protected:
 } // namespace itsolv
 } // namespace linalg
 } // namespace molpro
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACELINEIG_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACE_H

@@ -209,12 +209,12 @@ void construct_orthonormal_Rparams(VecRef<R>& params, VecRef<R>& residuals,
  * @return number of significant parameters to calculate the action for
  */
 template <class PS, class QS, class RS, class CS>
-std::vector<unsigned int> propose_rspace(LinearEigensystem<typename QS::R, typename QS::Q, typename QS::P>& solver,
-                                         std::vector<typename QS::R>& parameters,
-                                         std::vector<typename QS::R>& residuals, PS& pspace, QS& qspace, RS& rspace,
-                                         CS& cspace, subspace::XSpace<RS, QS, PS, CS, typename QS::value_type>& xspace,
-                                         ArrayHandlers<typename QS::R, typename QS::Q, typename QS::P>& handlers,
-                                         Logger& logger, typename QS::value_type_abs res_norm_thresh = 1.0e-14) {
+std::vector<unsigned int>
+propose_rspace(LinearEigensystem<typename QS::R, typename QS::Q, typename QS::P>& solver,
+               std::vector<typename QS::R>& parameters, std::vector<typename QS::R>& residuals, PS& pspace, QS& qspace,
+               RS& rspace, CS& cspace, subspace::XSpaceI<typename QS::R, typename QS::Q, typename QS::P>& xspace,
+               ArrayHandlers<typename QS::R, typename QS::Q, typename QS::P>& handlers, Logger& logger,
+               typename QS::value_type_abs res_norm_thresh = 1.0e-14) {
   using value_type_abs = typename QS::value_type_abs;
   using value_type = typename QS::value_type;
   using R = typename QS::R;

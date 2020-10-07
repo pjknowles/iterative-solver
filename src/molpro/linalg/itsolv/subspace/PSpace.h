@@ -13,8 +13,6 @@ struct PSpace {
   using R = Rt;
   using P = Pt;
 
-  SubspaceData data = null_data<EqnData::H, EqnData::S>(); //!< PxP block of subspace data
-
   CVecRef<P> params() const { return {}; }
   CVecRef<P> cparams() const { return params(); }
   VecRef<P> params() { return {}; }
@@ -23,6 +21,8 @@ struct PSpace {
   VecRef<P> actions() { return {}; }
 
   size_t size() const { return 0; }
+
+  void erase(size_t i) {}
 };
 
 } // namespace subspace

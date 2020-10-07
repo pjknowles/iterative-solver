@@ -129,14 +129,7 @@ void erase_subspace(size_t i, SubspaceData& qq, SubspaceData& qr, SubspaceData& 
 } // namespace qspace
 
 /*!
- * @brief Container for building and managing the Q space parameters.
- *
- * **Add description of what Q space is**
- *
- * This QSpace is built as difference of current solutions from the previous.
- * The difference vectors are normalised and can be optionally orthogonalised (not implemented yet).
- *
- * **Add documentation on merging or removing subspace elements**
+ * @brief Container storing the Q space parameters.
  *
  * @tparam R array for R space
  * @tparam Q array for Q space
@@ -150,59 +143,25 @@ struct QSpace {
   using value_type = typename array::ArrayHandler<R, R>::value_type;
   using value_type_abs = typename array::ArrayHandler<R, R>::value_type_abs;
 
-  SubspaceData data = null_data<EqnData::H, EqnData::S>(); //!< QxQ block of subspace data
-  SubspaceData qr = null_data<EqnData::H, EqnData::S>();   //!< QxR block of subspace data
-  SubspaceData rq = null_data<EqnData::H, EqnData::S>();   //!< RxQ block of subspace data
-
   explicit QSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
 
-  // FIXME Need to decide whether to remove rs entirely
-  // FIXME Need to calculate subspace data using R vectors
-  void update(RSpace<R, Q, P>& rs, CSpace<R, Q, P, double>& cs, IterativeSolver<R, Q, P>& solver) {
+  void update(const CVecRef<R>& params, const CVecRef<R>& actions) {
     m_logger->msg("QSpace::update", Logger::Trace);
-    auto new_qparams = std::list<qspace::QParam<Q>>{};
-    for (size_t i = 0; i < rs.size(); ++i) {
-      new_qparams.emplace_back(qspace::QParam<Q>{std::make_unique<Q>(m_handlers->qr().copy(rs.params().at(i))),
-                                                 std::make_unique<Q>(m_handlers->qr().copy(rs.actions().at(i))),
-                                                 m_unique_id++});
-    }
-    auto old_params_actions = qspace::cwrap_params<Q>(m_params.begin(), m_params.end());
-    auto new_params_actions = qspace::cwrap_params<Q>(new_qparams.begin(), new_qparams.end());
-    m_params.splice(m_params.begin(), new_qparams);
-    auto all_params_actions = qspace::cwrap_params<Q>(m_params.begin(), m_params.end());
-    qspace::update_qq_subspace(new_params_actions[0], new_params_actions[1], old_params_actions[0],
-                               old_params_actions[1], rs.data, data, m_handlers->qq());
-    rs.clear();
-    qspace::update_subspace(all_params_actions[0], all_params_actions[1], wrap(rs.params()), wrap(rs.actions()), qr, rq,
-                            m_handlers->rq(), m_handlers->qr());
-    qspace::update_cspace(new_params_actions[0], new_params_actions[1], cs.qc, cs.cq, cs.cparams(), cs.cactions(),
-                          m_handlers->qq());
-    if (m_logger->data_dump) {
-      m_logger->msg("Sqq = " + as_string(data[EqnData::S]), Logger::Info);
-      m_logger->msg("Hqq = " + as_string(data[EqnData::H]), Logger::Info);
-      m_logger->msg("Sqr = " + as_string(qr[EqnData::S]), Logger::Info);
-      m_logger->msg("Hqr = " + as_string(qr[EqnData::H]), Logger::Info);
-      m_logger->msg("Srq = " + as_string(rq[EqnData::S]), Logger::Info);
-      m_logger->msg("Hrq = " + as_string(rq[EqnData::H]), Logger::Info);
+    for (size_t i = 0; i < params.size(); ++i) {
+      m_params.emplace(m_params.begin(),
+                       qspace::QParam<Q>{std::make_unique<Q>(m_handlers->qr().copy(params.at(i))),
+                                         std::make_unique<Q>(m_handlers->qr().copy(actions.at(i))), m_unique_id++});
     }
   }
 
-  void clear() {
-    m_params.clear();
-    for (auto d : {EqnData::H, EqnData::S}) {
-      data[d].clear();
-      qr[d].clear();
-      rq[d].clear();
-    }
-  }
+  void clear() { m_params.clear(); }
 
   //! Erases q parameter i. @param i index in the current Q space
   void erase(size_t i) {
     assert(m_params.size() > i);
     auto it = std::next(begin(m_params), i);
     m_params.erase(it);
-    qspace::erase_subspace(i, data, qr, rq);
   }
 
   size_t size() const { return m_params.size(); }

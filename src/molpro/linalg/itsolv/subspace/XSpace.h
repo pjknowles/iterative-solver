@@ -2,46 +2,76 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACE_H
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceData.h>
+#include <molpro/linalg/itsolv/wrap.h>
 
 namespace molpro {
 namespace linalg {
 namespace itsolv {
 namespace subspace {
 
-//! Base class for XSpace solvers
-template <class Rs, class Qs, class Ps, class Cs, typename ST>
-class XSpace {
+//! Full subspace
+template <class RT, class QT, class PT>
+class XSpaceI {
 public:
-  using scalar_type = ST;
-  using R = typename Rs::R;
-  using Q = typename Qs::Q;
-  using P = typename Ps::P;
-  using RS = Rs;
-  using QS = Qs;
-  using PS = Ps;
-  using CS = Cs;
-  XSpace() = default;
-  virtual ~XSpace() = default;
-
-  SubspaceData data = null_data<EqnData::H, EqnData::S>();
+  using R = RT;
+  using Q = QT;
+  using P = PT;
+  using value_type = typename array::ArrayHandler<R, R>::value_type;
+  using value_type_abs = typename array::ArrayHandler<R, R>::value_type_abs;
+  XSpaceI() = default;
+  virtual ~XSpaceI() = default;
+  SubspaceData data; //!< Equation data in the subspace
 
   //! Ensures that the subspace is well conditioned.
-  virtual void check_conditioning(RS& rs, QS& qs, PS& ps, CS& cs) = 0;
-
-  //! Solves the underlying problem in the subspace. solver can be used to pass extra parameters defining the problem
-  virtual void solve(const IterativeSolver<R, Q, P>& solver) = 0;
+  virtual void check_conditioning() = 0;
 
   //! Access solution matrix. Solution vectors are stored as rows
-  virtual const Matrix<scalar_type>& solutions() const = 0;
+  virtual const Matrix<value_type>& solutions() const = 0;
 
-  // TODO rename this. What does this mean in DIIS or BFGS solvers? How does it relate to the errors?
-  virtual const std::vector<scalar_type>& eigenvalues() const = 0;
+  virtual const std::vector<value_type>& eigenvalues() const = 0;
 
   //! Number of vectors forming the subspace
   size_t size() { return dimensions().nX; }
 
-  //! Build the subspace matrices H, S etc.
-  virtual void build_subspace(RS& rs, QS& qs, PS& ps, CS& cs) = 0;
+  //! Removes parameter i from the full subspace
+  virtual void erase(size_t i) = 0;
+  //! Removes parameter i from Q subspace
+  virtual void eraseq(size_t i) = 0;
+  //! Removes parameter i from P subspace
+  virtual void erasep(size_t i) = 0;
+  //! Removes parameter i from C subspace
+  virtual void erasec(size_t i) = 0;
+
+  //! Adds parameters to the Q space
+  virtual void update_pspace() {}
+
+  //! Adds parameters to the Q space
+  virtual void update_qspace(const std::vector<R>& params, const std::vector<R>& actions) = 0;
+
+  //! Adds solutions to the C space
+  virtual void update_cspace(const std::vector<unsigned int>& roots, const std::vector<R>& params,
+                             const std::vector<R>& actions, const std::vector<value_type>& errors) = 0;
+
+  virtual VecRef<P> paramsp() = 0;
+  virtual VecRef<P> actionsp() = 0;
+  virtual VecRef<Q> paramsq() = 0;
+  virtual VecRef<Q> actionsq() = 0;
+  virtual VecRef<Q> paramsc() = 0;
+  virtual VecRef<Q> actionsc() = 0;
+
+  virtual CVecRef<P> paramsp() const = 0;
+  virtual CVecRef<P> actionsp() const = 0;
+  virtual CVecRef<Q> paramsq() const = 0;
+  virtual CVecRef<Q> actionsq() const = 0;
+  virtual CVecRef<Q> paramsc() const = 0;
+  virtual CVecRef<Q> actionsc() const = 0;
+
+  virtual CVecRef<P> cparamsp() const = 0;
+  virtual CVecRef<P> cactionsp() const = 0;
+  virtual CVecRef<Q> cparamsq() const = 0;
+  virtual CVecRef<Q> cactionsq() const = 0;
+  virtual CVecRef<Q> cparamsc() const = 0;
+  virtual CVecRef<Q> cactionsc() const = 0;
 
   virtual const xspace::Dimensions& dimensions() const = 0;
 };

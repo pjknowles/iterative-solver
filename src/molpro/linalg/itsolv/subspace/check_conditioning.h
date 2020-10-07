@@ -25,10 +25,9 @@ namespace xspace {
  * @param logger
  */
 template <class R, class P, class Q, class ST>
-void check_conditioning_gram_schmidt(
-    XSpace<RSpace<R, Q, P>, QSpace<R, Q, P>, PSpace<R, P>, CSpace<R, Q, P, ST>, ST>& xs, RSpace<R, Q, P>& rs,
-    QSpace<R, Q, P>& qs, PSpace<R, P>& ps, CSpace<R, Q, P, ST> cs, Matrix<ST>& lin_trans, double norm_threshold,
-    Logger& logger) {
+void check_conditioning_gram_schmidt(XSpaceI<R, Q, P>& xs, RSpace<R, Q, P>& rs, QSpace<R, Q, P>& qs, PSpace<R, P>& ps,
+                                     CSpace<R, Q, P, ST> cs, Matrix<ST>& lin_trans, double norm_threshold,
+                                     Logger& logger) {
   logger.msg("xspace::check_conditioning_gram_schmidt", Logger::Trace);
   bool stable = false;
   auto candidates = std::vector<size_t>{qs.size()};
@@ -52,6 +51,10 @@ void check_conditioning_gram_schmidt(
     }
   }
 }
+
+template <class R, class Q, class P, typename value_type, typename value_type_abs>
+void check_conditioning_gram_schmidt(XSpaceI<R, Q, P>& xs, Matrix<value_type>& lin_trans,
+                                     const value_type_abs norm_threshold, Logger& logger) {}
 
 } // namespace xspace
 } // namespace subspace

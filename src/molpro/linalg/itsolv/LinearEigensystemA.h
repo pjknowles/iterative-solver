@@ -28,11 +28,9 @@ public:
   using typename SolverTemplate::scalar_type;
 
   explicit LinearEigensystemA(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
-                              std::shared_ptr<Logger> logger_ = std::make_shared<Logger>())
-      : SolverTemplate(subspace::RSpace<R, Q, P>(handlers, logger_), subspace::QSpace<R, Q, P>(handlers, logger_),
-                       subspace::PSpace<R, P>(), subspace::CSpace<R, Q, P, scalar_type>(handlers, logger_),
-                       subspace::XSpace<R, Q, P>(logger_), handlers, std::make_shared<Statistics>(), logger_),
-        logger(std::move(logger_)) {}
+                              const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
+      : SolverTemplate(subspace::XSpace<R, Q, P>(handlers, logger_), handlers, std::make_shared<Statistics>(), logger_),
+        logger(logger_) {}
 
   /*!
    * \brief Proposes new parameters for the subspace from the preconditioned residuals.
@@ -48,9 +46,11 @@ public:
    */
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
     auto r_norm_thresh = 1.0e-14;
-    this->m_working_set = detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action,
-                                                 this->m_pspace, this->m_qspace, this->m_rspace, this->m_cspace,
-                                                 this->m_xspace, *this->m_handlers, *this->m_logger, r_norm_thresh);
+    //    this->m_working_set = detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters,
+    //    action,
+    //                                                 this->m_xspace.pspace, this->m_xspace.qspace,
+    //                                                 this->m_xspace.cspace, this->m_xspace, *this->m_handlers,
+    //                                                 *this->m_logger, r_norm_thresh);
     this->m_stats->iterations++;
     return this->working_set().size();
   }

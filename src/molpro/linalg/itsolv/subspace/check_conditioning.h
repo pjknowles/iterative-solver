@@ -4,7 +4,7 @@
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/RSpace.h>
-#include <molpro/linalg/itsolv/subspace/XSpace.h>
+#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
 
 namespace molpro {

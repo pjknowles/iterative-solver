@@ -1,6 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_BUILD_SUBSPACE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_BUILD_SUBSPACE_H
-#include <molpro/linalg/itsolv/subspace/XSpace.h>
+#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 
 namespace molpro {
 namespace linalg {

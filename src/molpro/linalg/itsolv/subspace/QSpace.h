@@ -5,7 +5,6 @@
 
 #include <molpro/linalg/itsolv/subspace/CSpace.h>
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
-#include <molpro/linalg/itsolv/subspace/RSpace.h>
 #include <molpro/linalg/itsolv/wrap.h>
 
 namespace molpro {

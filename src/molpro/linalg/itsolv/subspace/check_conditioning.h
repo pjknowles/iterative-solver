@@ -3,7 +3,6 @@
 #include <molpro/linalg/itsolv/helper.h>
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
-#include <molpro/linalg/itsolv/subspace/RSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
 
@@ -25,7 +24,7 @@ namespace xspace {
  * @param logger
  */
 template <class R, class P, class Q, class ST>
-void check_conditioning_gram_schmidt(XSpaceI<R, Q, P>& xs, RSpace<R, Q, P>& rs, QSpace<R, Q, P>& qs, PSpace<R, P>& ps,
+void check_conditioning_gram_schmidt(XSpaceI<R, Q, P>& xs, QSpace<R, Q, P>& qs, PSpace<R, P>& ps,
                                      CSpace<R, Q, P, ST> cs, Matrix<ST>& lin_trans, double norm_threshold,
                                      Logger& logger) {
   logger.msg("xspace::check_conditioning_gram_schmidt", Logger::Trace);
@@ -46,7 +45,7 @@ void check_conditioning_gram_schmidt(XSpaceI<R, Q, P>& xs, RSpace<R, Q, P>& rs, 
                      ", norm = " + Logger::scientific(norm[*imin]),
                  Logger::Debug);
       qs.erase(*imin);
-      xs.build_subspace(rs, qs, ps, cs);
+      xs.build_subspace(qs, ps, cs);
       candidates.resize(qs.size());
     }
   }

@@ -1,10 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_GRAM_SCHMIDT_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_GRAM_SCHMIDT_H
-#include <molpro/linalg/itsolv/helper.h>
-#include <molpro/linalg/itsolv/subspace/PSpace.h>
-#include <molpro/linalg/itsolv/subspace/QSpace.h>
-#include <molpro/linalg/itsolv/subspace/RSpace.h>
-#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
+#include <molpro/linalg/itsolv/subspace/Matrix.h>
 namespace molpro {
 namespace linalg {
 namespace itsolv {

@@ -3,6 +3,7 @@
 #include <limits>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
+#include <molpro/linalg/itsolv/wrap.h>
 
 namespace molpro {
 namespace linalg {
@@ -12,9 +13,7 @@ namespace util {
 
 //! Calculates overlap matrix between left and right vectors
 template <class R, class Q>
-Matrix<double> overlap(const std::vector<std::reference_wrapper<R>>& left,
-                       const std::vector<std::reference_wrapper<Q>>& right,
-                       array::ArrayHandler<std::decay_t<R>, std::decay_t<Q>>& handler) {
+Matrix<double> overlap(const CVecRef<R>& left, const CVecRef<Q>& right, array::ArrayHandler<R, Q>& handler) {
   auto m = Matrix<double>({left.size(), right.size()});
   for (size_t i = 0; i < m.rows(); ++i)
     for (size_t j = 0; j < m.cols(); ++j)
@@ -24,8 +23,7 @@ Matrix<double> overlap(const std::vector<std::reference_wrapper<R>>& left,
 
 //! Calculates overlap matrix for a parameter set. Matrix is symmetric by construction.
 template <class R>
-Matrix<double> overlap(const std::vector<std::reference_wrapper<R>>& params,
-                       array::ArrayHandler<std::decay_t<R>, std::decay_t<R>>& handler) {
+Matrix<double> overlap(const CVecRef<R>& params, array::ArrayHandler<R, R>& handler) {
   auto m = Matrix<double>({params.size(), params.size()});
   for (size_t i = 0; i < m.rows(); ++i)
     for (size_t j = 0; j <= i; ++j)

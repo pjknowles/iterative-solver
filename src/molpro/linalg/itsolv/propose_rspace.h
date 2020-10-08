@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_PROPOSE_RSPACE_H
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
+#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 

@@ -26,8 +26,8 @@ void construct_solution(std::vector<R>& params, const std::vector<unsigned int>&
                         const subspace::Matrix<double>& solutions,
                         const std::vector<std::reference_wrapper<P>>& pparams,
                         const std::vector<std::reference_wrapper<Q>>& qparams,
-                        const std::vector<std::reference_wrapper<Q>>& cparams, size_t oP, size_t oQ,
-                        size_t oC, ArrayHandlers<R, Q, P>& handlers) {
+                        const std::vector<std::reference_wrapper<Q>>& cparams, size_t oP, size_t oQ, size_t oC,
+                        ArrayHandlers<R, Q, P>& handlers) {
   assert(params.size() >= roots.size());
   for (size_t i = 0; i < roots.size(); ++i) {
     handlers.rr().fill(0, params.at(i));
@@ -210,7 +210,7 @@ protected:
                       std::to_string(parameters.size()) + ", " + std::to_string(action.size()) + ", " +
                       std::to_string(m_working_set.size()) + ", ",
                   Logger::Debug);
-    m_xspace.update_qspace(parameters, action);
+    m_xspace.update_qspace(cwrap(parameters), cwrap(action));
     m_xspace.solve(*static_cast<Solver*>(this));
     //    m_xspace.update(wrap(parameters), wrap(action), *static_cast<Solver*>(this));
     //    m_sub_solver.solve(m_xspace);
@@ -238,7 +238,7 @@ protected:
       for (auto i : roots)
         eigvals.emplace_back(ev[i]);
       auto errors = std::vector<scalar_type>(roots.size(), 0);
-      m_xspace.update_cspace(roots, parameters, action, errors);
+      m_xspace.update_cspace(roots, cwrap(parameters), cwrap(action), errors);
       if (!apply_p) {
         detail::remove_p_component(parameters, roots, m_xspace.solutions(), m_xspace.paramsp(),
                                    m_xspace.dimensions().oP, m_handlers->rp());

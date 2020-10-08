@@ -91,8 +91,8 @@ public:
     m_dim = xspace::Dimensions(pspace.size(), qspace.size(), cspace.size());
   }
 
-  void update_cspace(const std::vector<unsigned int>& roots, const std::vector<R>& params,
-                     const std::vector<R>& actions, const std::vector<value_type>& errors) override {
+  void update_cspace(const std::vector<unsigned int>& roots, const CVecRef<R>& params, const CVecRef<R>& actions,
+                     const std::vector<value_type>& errors) override {
     cspace.update(roots, params, actions, m_eval, this->data, m_evec, m_dim, errors);
     // update data
   }

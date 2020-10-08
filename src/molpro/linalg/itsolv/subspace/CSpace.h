@@ -83,7 +83,7 @@ public:
   }
 
   //! Adds solutions to the space, overwriting if a solution for given root already exists, and construct equation data
-  void update(const std::vector<unsigned int>& roots, const std::vector<R>& params, const std::vector<R>& actions,
+  void update(const std::vector<unsigned int>& roots, const CVecRef<R>& params, const CVecRef<R>& actions,
               const std::vector<scalar_type>& eigvals, const SubspaceData& xdata, const Matrix<scalar_type>& solutions,
               const xspace::Dimensions& dims, const std::vector<scalar_type>& errors) {
     for (size_t i = 0; i < roots.size(); ++i) {

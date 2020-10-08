@@ -4,11 +4,17 @@
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
+#include <molpro/linalg/itsolv/subspace/SubspaceSolverLinEig.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
 
 namespace molpro {
 namespace linalg {
 namespace itsolv {
+namespace detail {
+template <class R>
+using SubspaceSolver = subspace::SubspaceSolverLinEig<typename array::ArrayHandler<R, R>::value_type,
+                                                      typename array::ArrayHandler<R, R>::value_type_abs>;
+}
 
 /*!
  * @brief One instance of LinearEigensystem (codename A)
@@ -22,14 +28,17 @@ namespace itsolv {
  * @tparam P
  */
 template <class R, class Q, class P>
-class LinearEigensystemA : public IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpace<R, Q, P>> {
+class LinearEigensystemA
+    : public IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpace<R, Q, P>, detail::SubspaceSolver<R>> {
 public:
-  using SolverTemplate = IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpace<R, Q, P>>;
+  using SolverTemplate =
+      IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpace<R, Q, P>, detail::SubspaceSolver<R>>;
   using typename SolverTemplate::scalar_type;
 
   explicit LinearEigensystemA(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
                               const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
-      : SolverTemplate(subspace::XSpace<R, Q, P>(handlers, logger_), handlers, std::make_shared<Statistics>(), logger_),
+      : SolverTemplate(subspace::XSpace<R, Q, P>(handlers, logger_), detail::SubspaceSolver<R>{logger}, handlers,
+                       std::make_shared<Statistics>(), logger_),
         logger(logger_) {}
 
   /*!
@@ -60,12 +69,12 @@ public:
 
   void set_convergence_threshold(double threshold) { this->m_convergence_threshold = threshold; }
 
-  std::vector<scalar_type> eigenvalues() const override { return this->m_xspace.eigenvalues(); }
+  std::vector<scalar_type> eigenvalues() const override { return this->m_subspace_solver.eigenvalues(); }
 
   std::vector<scalar_type> working_set_eigenvalues() const {
     auto eval = std::vector<scalar_type>{};
     for (auto i : this->working_set()) {
-      eval.emplace_back(this->m_xspace.eigenvalues().at(i));
+      eval.emplace_back(this->m_subspace_solver.eigenvalues().at(i));
     }
     return eval;
   }

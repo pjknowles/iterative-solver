@@ -88,7 +88,7 @@ public:
     auto new_data = xspace::update_qspace_data(params, actions, cparamsp(), cparamsq(), cactionsq(), cparamsc(),
                                                cactionsc(), m_dim, *m_handlers, *m_logger);
     qspace.update(params, actions, new_data.qq, new_data.qx, new_data.xq, m_dim, data);
-    m_dim = xspace::Dimensions(pspace.size(), qspace.size(), 0, cspace.size());
+    m_dim = xspace::Dimensions(pspace.size(), qspace.size(), cspace.size());
   }
 
   void update_cspace(const std::vector<unsigned int>& roots, const std::vector<R>& params,

@@ -201,6 +201,7 @@ protected:
     }
 
     T& operator()(size_t i, size_t j) { return mat(upl.first + i, upl.second + j); }
+    T operator()(size_t i, size_t j) const { return mat(upl.first + i, upl.second + j); }
 
     Slice& axpy(T a, const Slice& x) {
       if (dimensions() != x.dimensions())
@@ -274,7 +275,7 @@ protected:
 };
 
 template <class ML, class MR>
-void transpose_copy(ML& ml, MR& mr) {
+void transpose_copy(ML&& ml, const MR& mr) {
   assert(ml.rows() == mr.cols() && ml.cols() == mr.rows());
   for (size_t i = 0; i < ml.rows(); ++i)
     for (size_t j = 0; j < ml.cols(); ++j)

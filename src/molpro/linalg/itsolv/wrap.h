@@ -45,10 +45,26 @@ auto wrap(std::vector<R>& vec) {
   return w;
 }
 
+//! Takes a vector of containers and returns a vector of references to each element
+template <class R>
+auto cwrap(std::vector<R>& vec) {
+  auto w = CVecRef<decay_t<R>>{};
+  std::copy(begin(vec), end(vec), std::back_inserter(w));
+   return w;
+ }
+
 //! Takes a begin and end iterators and returns a vector of references to each element
 template <class R, class ForwardIt>
 auto wrap(ForwardIt begin, ForwardIt end) {
   auto w = VecRef<R>{};
+  std::copy(begin, end, std::back_inserter(w));
+  return w;
+}
+
+//! Takes a begin and end iterators and returns a vector of references to each element
+template <class R, class ForwardIt>
+auto cwrap(ForwardIt begin, ForwardIt end) {
+  auto w = CVecRef<R>{};
   std::copy(begin, end, std::back_inserter(w));
   return w;
 }
@@ -66,6 +82,14 @@ template <typename I, class R>
 auto wrap(std::map<I, R>& vec) {
   auto w = VecRef<decay_t<R>>{};
   std::transform(begin(vec), end(vec), std::back_inserter(w), [](auto& v) { return std::ref(v.second); });
+  return w;
+}
+
+//! Takes a map of containers and returns a vector of references to each element in the same order
+template <typename I, class R>
+auto cwrap(std::map<I, R>& vec) {
+  auto w = CVecRef<decay_t<R>>{};
+  std::transform(begin(vec), end(vec), std::back_inserter(w), [](auto& v) { return std::cref(v.second); });
   return w;
 }
 

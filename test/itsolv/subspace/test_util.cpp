@@ -9,6 +9,7 @@
 
 using molpro::linalg::itsolv::ArrayHandlers;
 using molpro::linalg::itsolv::wrap;
+using molpro::linalg::itsolv::cwrap;
 using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::util::eye_order;
 using molpro::linalg::itsolv::subspace::util::gram_schmidt;
@@ -49,12 +50,12 @@ TEST_F(OverlapF, null_vectors) {
 }
 
 TEST_F(OverlapF, overlap_one_param) {
-  auto m = overlap(wrap(x), handler.rr());
+  auto m = overlap(cwrap(x), handler.rr());
   ASSERT_THAT(m.data(), Pointwise(DoubleEq(), ref_overlap.data()));
 }
 
 TEST_F(OverlapF, overlap_two_params) {
-  auto m = overlap(wrap(x), wrap(x), handler.rr());
+  auto m = overlap(cwrap(x), cwrap(x), handler.rr());
   ASSERT_THAT(m.data(), Pointwise(DoubleEq(), ref_overlap.data()));
 }
 

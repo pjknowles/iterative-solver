@@ -146,14 +146,40 @@ struct QSpace {
   explicit QSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
 
-  //! Prepends parameters to the start of Q space
-  void update(const CVecRef<R>& params, const CVecRef<R>& actions) {
+  /*!
+   * @brief Prepends parameters to the start of Q space
+   * @param params new parameters
+   * @param actions new actions
+   * @param qq Equation data block between new Q parameters
+   * @param qx data block between new Q parameters and current X space
+   * @param xq data block between current X space and the new Q parameters
+   * @param dims current dimensions
+   * @param old_data current data
+   */
+  void update(const CVecRef<R>& params, const CVecRef<R>& actions, const SubspaceData& qq, const SubspaceData& qx,
+              const SubspaceData& xq, const xspace::Dimensions& dims, SubspaceData& old_data) {
     m_logger->msg("QSpace::update", Logger::Trace);
     auto it_begin = m_params.begin();
     for (size_t i = 0; i < params.size(); ++i) {
       m_params.emplace(it_begin,
                        qspace::QParam<Q>{std::make_unique<Q>(m_handlers->qr().copy(params.at(i))),
                                          std::make_unique<Q>(m_handlers->qr().copy(actions.at(i))), m_unique_id++});
+    }
+    const size_t nQnew = params.size();
+    const auto nXnew = dims.nX + nQnew;
+    auto data = old_data;
+    for (auto d : {EqnData::H, EqnData::S}) {
+      data[d].resize({dims.nX + nQnew, dims.nX + nQnew});
+      data[d].slice({dims.oQ + nQnew, dims.oQ + nQnew}, {data[d].rows(), data[d].cols()}) =
+          old_data[d].slice({dims.oQ, dims.oQ}, {dims.nX, dims.nX});
+      data[d].slice({dims.oQ, dims.oQ}, {dims.oQ + nQnew, dims.oQ + nQnew}) = qq.at(d);
+      data[d].slice({dims.oQ, 0}, {dims.oQ + nQnew, dims.oQ}) = qx.at(d).slice({0, 0}, {nQnew, dims.oQ});
+      data[d].slice({dims.oQ, dims.oQ + nQnew}, {dims.oQ + nQnew, nXnew}) =
+          qx.at(d).slice({0, dims.oQ}, {nQnew, dims.nX});
+      data[d].slice({0, dims.oQ}, {dims.oQ, dims.oQ + nQnew}) = xq.at(d).slice({0, 0}, {dims.oQ, nQnew});
+      data[d].slice({dims.oQ + nQnew, dims.oQ}, {nXnew, dims.oQ + nQnew}) =
+          xq.at(d).slice({dims.oQ, 0}, {dims.nX, nQnew});
+      old_data[d] = data[d];
     }
   }
 

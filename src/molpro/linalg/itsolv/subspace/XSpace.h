@@ -13,21 +13,83 @@ namespace molpro {
 namespace linalg {
 namespace itsolv {
 namespace subspace {
+namespace xspace {
+//! New sections of equation data
+struct NewQData {
+  NewQData(size_t nQnew, size_t nX) {
+    for (auto d : {EqnData::H, EqnData::S}) {
+      qq[d].resize({nQnew, nQnew});
+      qx[d].resize({nQnew, nX});
+      xq[d].resize({nX, nQnew});
+    }
+  }
+
+  SubspaceData qq = null_data<EqnData::H, EqnData::S>(); //!< data block between new paramters
+  SubspaceData qx = null_data<EqnData::H, EqnData::S>(); //!< data block between new parameters and current X space
+  SubspaceData xq = null_data<EqnData::H, EqnData::S>(); //!< data block between current X space and new parameters
+};
+
+//! Returns new sections of equation data
+template <class R, class Q, class P>
+auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, const CVecRef<P>& pparams,
+                        const CVecRef<Q>& qparams, const CVecRef<Q>& qactions, const CVecRef<Q>& cparams,
+                        const CVecRef<Q>& cactions, const Dimensions& dims, ArrayHandlers<R, Q, P>& handlers,
+                        Logger& logger) {
+  auto nQnew = params.size();
+  auto data = NewQData(nQnew, dims.nX);
+  auto& qq = data.qq;
+  auto& qx = data.qx;
+  auto& xq = data.xq;
+  qq[EqnData::S] = util::overlap(params, handlers.rr());
+  qx[EqnData::S].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}) = util::overlap(params, pparams, handlers.rp());
+  qx[EqnData::S].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}) = util::overlap(params, qparams, handlers.rq());
+  qx[EqnData::S].slice({0, dims.oC}, {nQnew, dims.oC + dims.nC}) = util::overlap(params, cparams, handlers.rq());
+  qq[EqnData::H] = util::overlap(params, actions, handlers.rr());
+  qx[EqnData::H].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}) = util::overlap(params, qactions, handlers.rq());
+  qx[EqnData::H].slice({0, dims.oC}, {nQnew, dims.oC + dims.nC}) = util::overlap(params, cactions, handlers.rq());
+  xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}) = util::overlap(pparams, actions, handlers.rp());
+  xq[EqnData::H].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}) = util::overlap(qparams, actions, handlers.qr());
+  xq[EqnData::H].slice({dims.oC, 0}, {dims.oC + dims.nC, nQnew}) = util::overlap(cparams, actions, handlers.qr());
+  transpose_copy(xq[EqnData::S].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}),
+                 qx[EqnData::S].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}));
+  transpose_copy(xq[EqnData::S].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}),
+                 qx[EqnData::S].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}));
+  transpose_copy(xq[EqnData::S].slice({dims.oC, 0}, {dims.oC + dims.nC, nQnew}),
+                 qx[EqnData::S].slice({0, dims.oC}, {nQnew, dims.oC + dims.nC}));
+  // FIXME only works for Hermitian Hamiltonian
+  transpose_copy(qx[EqnData::H].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}),
+                 xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}));
+  if (logger.data_dump) {
+    logger.msg("qspace::update_qspace_data() nQnew = " + std::to_string(nQnew), Logger::Info);
+    logger.msg("Sqq = " + as_string(qq[EqnData::S]), Logger::Info);
+    logger.msg("Hqq = " + as_string(qq[EqnData::H]), Logger::Info);
+    logger.msg("Sqx = " + as_string(qx[EqnData::S]), Logger::Info);
+    logger.msg("Hqx = " + as_string(qx[EqnData::H]), Logger::Info);
+    logger.msg("Sxq = " + as_string(xq[EqnData::S]), Logger::Info);
+    logger.msg("Hxq = " + as_string(xq[EqnData::H]), Logger::Info);
+  }
+  return data;
+}
+
+} // namespace xspace
 
 template <class R, class Q, class P>
 class XSpace : public XSpaceI<R, Q, P> {
 public:
   using typename XSpaceI<R, Q, P>::value_type;
   using typename XSpaceI<R, Q, P>::value_type_abs;
+  using XSpaceI<R, Q, P>::data;
 
   explicit XSpace(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers, const std::shared_ptr<Logger>& logger)
-      : pspace(), qspace(handlers, logger), cspace(handlers, logger), m_logger(logger) {
-    this->data = null_data<EqnData::H, EqnData::S>();
+      : pspace(), qspace(handlers, logger), cspace(handlers, logger), m_handlers(handlers), m_logger(logger) {
+    data = null_data<EqnData::H, EqnData::S>();
   };
 
-  void update_qspace(const std::vector<R>& params, const std::vector<R>& actions) override {
-    qspace.update(wrap(params), wrap(actions));
-    // update data
+  void update_qspace(const CVecRef<R>& params, const CVecRef<R>& actions) override {
+    auto new_data = xspace::update_qspace_data(params, actions, cparamsp(), cparamsq(), cactionsq(), cparamsc(),
+                                               cactionsc(), m_dim, *m_handlers, *m_logger);
+    qspace.update(params, actions, new_data.qq, new_data.qx, new_data.xq, m_dim, data);
+    m_dim = xspace::Dimensions(pspace.size(), qspace.size(), 0, cspace.size());
   }
 
   void update_cspace(const std::vector<unsigned int>& roots, const std::vector<R>& params,
@@ -138,6 +200,7 @@ public:
   CSpace<R, Q, P, value_type> cspace;
 
 protected:
+  std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::shared_ptr<Logger> m_logger;
   xspace::Dimensions m_dim;
   bool m_hermitian = false; //!< whether the matrix is Hermitian

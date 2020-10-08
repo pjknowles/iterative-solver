@@ -6,7 +6,6 @@
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
-#include <molpro/linalg/itsolv/subspace/build_subspace.h>
 #include <molpro/linalg/itsolv/subspace/check_conditioning.h>
 
 namespace molpro {

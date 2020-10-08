@@ -8,8 +8,8 @@
 #include <numeric>
 
 using molpro::linalg::itsolv::ArrayHandlers;
-using molpro::linalg::itsolv::wrap;
 using molpro::linalg::itsolv::cwrap;
+using molpro::linalg::itsolv::wrap;
 using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::util::eye_order;
 using molpro::linalg::itsolv::subspace::util::gram_schmidt;
@@ -57,6 +57,18 @@ TEST_F(OverlapF, overlap_one_param) {
 TEST_F(OverlapF, overlap_two_params) {
   auto m = overlap(cwrap(x), cwrap(x), handler.rr());
   ASSERT_THAT(m.data(), Pointwise(DoubleEq(), ref_overlap.data()));
+}
+
+TEST(Overlap, reverse_params) {
+  using X = std::vector<double>;
+  using Y = std::vector<float>;
+  auto x = std::vector<X>{{1}, {2}, {3}};
+  auto y = std::vector<Y>{{4}, {5}, {6}};
+  auto handler = molpro::linalg::array::create_default_handler<X, Y>();
+  auto handler_reverse = molpro::linalg::array::create_default_handler<Y, X>();
+  auto m = overlap(cwrap(x), cwrap(y), *handler);
+  auto m_reverse = overlap(cwrap(x), cwrap(y), *handler_reverse);
+  ASSERT_THAT(m_reverse.data(), Pointwise(DoubleEq(), m.data()));
 }
 
 TEST(EyeOrder, null) {

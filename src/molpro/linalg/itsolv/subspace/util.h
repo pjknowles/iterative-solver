@@ -10,15 +10,35 @@ namespace linalg {
 namespace itsolv {
 namespace subspace {
 namespace util {
+namespace detail {
+template <class R, class Q, class Z, class W, bool = std::is_same<R, Z>::value, bool = std::is_same<W, Q>::value>
+struct Overlap {
+  static Matrix<double> _(const CVecRef<R>& left, const CVecRef<Q>& right, array::ArrayHandler<Z, W>& handler) {
+    auto m = Matrix<double>({left.size(), right.size()});
+    for (size_t i = 0; i < m.rows(); ++i)
+      for (size_t j = 0; j < m.cols(); ++j)
+        m(i, j) = handler.dot(left[i], right[j]);
+    return m;
+  }
+};
+
+template <class R, class Q, class Z, class W>
+struct Overlap<R, Q, Z, W, false, false> {
+  static Matrix<double> _(const CVecRef<R>& left, const CVecRef<Q>& right, array::ArrayHandler<Z, W>& handler) {
+    auto m = Matrix<double>({left.size(), right.size()});
+    for (size_t i = 0; i < m.rows(); ++i)
+      for (size_t j = 0; j < m.cols(); ++j)
+        m(i, j) = handler.dot(right[j], left[i]);
+    return m;
+  }
+};
+
+} // namespace detail
 
 //! Calculates overlap matrix between left and right vectors
-template <class R, class Q>
-Matrix<double> overlap(const CVecRef<R>& left, const CVecRef<Q>& right, array::ArrayHandler<R, Q>& handler) {
-  auto m = Matrix<double>({left.size(), right.size()});
-  for (size_t i = 0; i < m.rows(); ++i)
-    for (size_t j = 0; j < m.cols(); ++j)
-      m(i, j) = handler.dot(left[i], right[j]);
-  return m;
+template <class R, class Q, class Z, class W>
+Matrix<double> overlap(const CVecRef<R>& left, const CVecRef<Q>& right, array::ArrayHandler<Z, W>& handler) {
+  return detail::Overlap<R, Q, Z, W>::_(left, right, handler);
 }
 
 //! Calculates overlap matrix for a parameter set. Matrix is symmetric by construction.

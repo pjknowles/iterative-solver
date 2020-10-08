@@ -22,14 +22,6 @@ public:
   virtual ~XSpaceI() = default;
   SubspaceData data; //!< Equation data in the subspace
 
-  //! Ensures that the subspace is well conditioned.
-  virtual void check_conditioning() = 0;
-
-  //! Access solution matrix. Solution vectors are stored as rows
-  virtual const Matrix<value_type>& solutions() const = 0;
-
-  virtual const std::vector<value_type>& eigenvalues() const = 0;
-
   //! Number of vectors forming the subspace
   size_t size() { return dimensions().nX; }
 

@@ -6,7 +6,6 @@
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
-#include <molpro/linalg/itsolv/subspace/check_conditioning.h>
 
 namespace molpro {
 namespace linalg {
@@ -156,7 +155,9 @@ public:
   }
 
   //! Uses solutions to update equation data in the subspace
-  void update_cspace_data() { xspace::update_cspace_data(m_evec, m_eval, data, m_dim, *m_logger); }
+  void update_cspace_data(const Matrix<value_type>& evec, const std::vector<value_type>& eval) {
+    xspace::update_cspace_data(evec, eval, data, m_dim, *m_logger);
+  }
 
   //! Updates a solution in C space. Equation data is not modified (see update_cspace_data())
   void update_cspace(const std::vector<unsigned int>& roots, const CVecRef<R>& params, const CVecRef<R>& actions,
@@ -164,55 +165,6 @@ public:
     cspace.update(roots, params, actions, errors);
     m_dim = xspace::Dimensions(pspace.size(), qspace.size(), cspace.size());
   }
-
-  void check_conditioning() override {
-    auto nX_on_entry = m_dim.nX;
-    m_logger->msg("XSpaceLinEig::check_conditioning size of x space = " + std::to_string(m_dim.nX), Logger::Trace);
-    m_logger->msg("size of x space before conditioning = " + std::to_string(m_dim.nX), Logger::Debug);
-    if (m_logger->data_dump) {
-      m_logger->msg("on entry", Logger::Info);
-      m_logger->msg("Sxx = " + as_string(this->data[EqnData::S]), Logger::Info);
-      m_logger->msg("Hxx = " + as_string(this->data[EqnData::H]), Logger::Info);
-    }
-    xspace::check_conditioning_gram_schmidt(*this, m_subspace_transformation, m_norm_stability_threshold, *m_logger);
-    m_logger->msg("size of x space after conditioning = " + std::to_string(m_dim.nX), Logger::Debug);
-    if (m_logger->data_dump && m_dim.nX != nX_on_entry) {
-      m_logger->msg("Sxx = " + as_string(this->data[EqnData::S]), Logger::Info);
-      m_logger->msg("Hxx = " + as_string(this->data[EqnData::H]), Logger::Info);
-    }
-  }
-
-  //! Solves the underlying problem in the subspace. solver can be used to pass extra parameters defining the problem
-  void solve(const IterativeSolver<R, Q, P>& solver) {
-    assert("XSpaceLinEig can only be used with LinearEigensystem solver");
-  }
-
-  //! Solves the linear eigensystem problem in the subspace.
-  void solve(const LinearEigensystem<R, Q, P>& solver) {
-    m_logger->msg("XSpaceLinEig::solve", Logger::Trace);
-    check_conditioning();
-    auto& h = this->data[EqnData::H];
-    auto& s = this->data[EqnData::S];
-    if (m_hermitian)
-      util::matrix_symmetrize(h);
-    auto dim = h.rows();
-    auto evec = std::vector<value_type>{};
-    itsolv::eigenproblem(evec, m_eval, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, 0);
-    auto n_solutions = evec.size() / dim;
-    auto full_matrix = Matrix<value_type>{std::move(evec), {n_solutions, dim}};
-    auto nroots = std::min(solver.n_roots(), n_solutions);
-    m_eval.resize(nroots);
-    m_evec.resize({nroots, dim});
-    m_evec.slice() = full_matrix.slice({0, 0}, {nroots, dim});
-    if (m_logger->data_dump) {
-      m_logger->msg("eigenvalues = ", begin(m_eval), end(m_eval), Logger::Debug);
-      m_logger->msg("eigenvectors = " + as_string(m_evec), Logger::Info);
-    }
-  }
-
-  const std::vector<value_type>& eigenvalues() const override { return m_eval; }
-
-  const Matrix<value_type>& solutions() const override { return m_evec; }
 
   const xspace::Dimensions& dimensions() const override { return m_dim; }
 
@@ -271,13 +223,6 @@ protected:
   std::shared_ptr<Logger> m_logger;
   xspace::Dimensions m_dim;
   bool m_hermitian = false; //!< whether the matrix is Hermitian
-  double m_norm_stability_threshold =
-      1.0e-5; //!< norm subspace vector after orhtogonalisation must be less than this to trigger removal
-  double m_svd_solver_threshold = 1.0e-14; //!< threshold to remove the null space during solution
-  Matrix<value_type>
-      m_subspace_transformation;  //!< linear transformation of subspace vectors that leads to stable overlap
-  Matrix<value_type> m_evec;      //!< eigenvectors stored as columns with ascending eigenvalue
-  std::vector<value_type> m_eval; //!< eigenvalues in ascending order
 };
 
 } // namespace subspace

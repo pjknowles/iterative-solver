@@ -146,10 +146,12 @@ struct QSpace {
   explicit QSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
 
+  //! Prepends parameters to the start of Q space
   void update(const CVecRef<R>& params, const CVecRef<R>& actions) {
     m_logger->msg("QSpace::update", Logger::Trace);
+    auto it_begin = m_params.begin();
     for (size_t i = 0; i < params.size(); ++i) {
-      m_params.emplace(m_params.begin(),
+      m_params.emplace(it_begin,
                        qspace::QParam<Q>{std::make_unique<Q>(m_handlers->qr().copy(params.at(i))),
                                          std::make_unique<Q>(m_handlers->qr().copy(actions.at(i))), m_unique_id++});
     }

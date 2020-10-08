@@ -66,9 +66,7 @@ public:
       : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
 
   //! Adds a solution to the space, overwriting if a solution for the root already exists, and construct equation data
-  void update(const unsigned int root, const R& param, const R& action, const scalar_type eigval,
-              const SubspaceData& xdata, const Matrix<scalar_type>& solutions, const xspace::Dimensions& dims,
-              scalar_type error) {
+  void update(const unsigned int root, const R& param, const R& action, scalar_type error) {
     auto it = m_params.find(root);
     if (it == m_params.end()) {
       m_params.emplace(root, m_handlers->qr().copy(param));
@@ -79,15 +77,13 @@ public:
       m_handlers->qr().copy(m_actions.at(root), action);
       m_errors[root] = error;
     }
-    cspace::update_subspace(root, data, qc, cq, cp, pc, eigval, xdata, solutions, dims);
   }
 
   //! Adds solutions to the space, overwriting if a solution for given root already exists, and construct equation data
   void update(const std::vector<unsigned int>& roots, const CVecRef<R>& params, const CVecRef<R>& actions,
-              const std::vector<scalar_type>& eigvals, const SubspaceData& xdata, const Matrix<scalar_type>& solutions,
-              const xspace::Dimensions& dims, const std::vector<scalar_type>& errors) {
+              const std::vector<scalar_type>& errors) {
     for (size_t i = 0; i < roots.size(); ++i) {
-      update(roots.at(i), params.at(i), actions.at(i), eigvals.at(roots[i]), xdata, solutions, dims, errors.at(i));
+      update(roots.at(i), params.at(i), actions.at(i), errors.at(i));
     }
   }
 

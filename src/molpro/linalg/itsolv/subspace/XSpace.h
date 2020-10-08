@@ -14,8 +14,8 @@ namespace itsolv {
 namespace subspace {
 namespace xspace {
 //! New sections of equation data
-struct NewQData {
-  NewQData(size_t nQnew, size_t nX) {
+struct NewData {
+  NewData(size_t nQnew, size_t nX) {
     for (auto d : {EqnData::H, EqnData::S}) {
       qq[d].resize({nQnew, nQnew});
       qx[d].resize({nQnew, nX});
@@ -35,7 +35,7 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
                         const CVecRef<Q>& cactions, const Dimensions& dims, ArrayHandlers<R, Q, P>& handlers,
                         Logger& logger) {
   auto nQnew = params.size();
-  auto data = NewQData(nQnew, dims.nX);
+  auto data = NewData(nQnew, dims.nX);
   auto& qq = data.qq;
   auto& qx = data.qx;
   auto& xq = data.xq;
@@ -70,6 +70,69 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
   return data;
 }
 
+/*!
+ * @brief Constructs data blocks for new solutions
+ *
+ * Equation data is constructed from the subspace data instead of calculating overlaps among full parameters.
+ * Both approaches would lead to the same round-off error, but working in the subspace is much cheaper.
+ *
+ * Solutions {c} are expressed in the current subspace {x}
+ * c_i = \sum_j C_{i,j} x_j
+ *
+ * S_{i,j} = <c_i, x_j> = \sum_k C_{i,k} <x_k, x_j>
+ * H_{i,j} = <c_i, x_j>_H = \sum_k C_{i,k} <x_k, x_j>_H
+ *
+ * <x_k, x_j>_H = <x_k| H |x_j>
+ */
+template <typename value_type>
+auto update_cspace_data(const Matrix<value_type>& solutions, const std::vector<value_type>& eigenvalues,
+                        SubspaceData& data, const Dimensions& dims, Logger& logger) {
+  const auto nCnew = solutions.size();
+  auto new_data_blocks = NewData{nCnew, dims.nX};
+  auto& cc = new_data_blocks.qq;
+  auto& cx = new_data_blocks.qx;
+  auto& xc = new_data_blocks.xq;
+  for (size_t i = 0; i < nCnew; ++i) {
+    cc[EqnData::S](i, i) = 1;
+    cc[EqnData::H](i, i) = eigenvalues.at(i);
+  }
+  for (size_t i = 0; i < nCnew; ++i) {
+    for (size_t j = 0; j < dims.nX; ++j) {
+      for (size_t k = 0; k < dims.nX; ++k) {
+        cx[EqnData::S](i, j) += solutions(i, k) * data.at(EqnData::S)(k, j);
+        cx[EqnData::H](i, j) += solutions(i, k) * data.at(EqnData::H)(k, j);
+        xc[EqnData::H](j, i) += data.at(EqnData::H)(j, k) * solutions(i, k);
+      }
+      xc[EqnData::S](j, i) = cx[EqnData::S](i, j);
+    }
+  }
+  if (logger.data_dump) {
+    logger.msg("qspace::update_cspace_data() nCnew = " + std::to_string(nCnew), Logger::Info);
+    logger.msg("Scc = " + as_string(cc[EqnData::S]), Logger::Info);
+    logger.msg("Hcc = " + as_string(cc[EqnData::H]), Logger::Info);
+    logger.msg("Scx = " + as_string(cx[EqnData::S]), Logger::Info);
+    logger.msg("Hcx = " + as_string(cx[EqnData::H]), Logger::Info);
+    logger.msg("Sxc = " + as_string(xc[EqnData::S]), Logger::Info);
+    logger.msg("Hxc = " + as_string(xc[EqnData::H]), Logger::Info);
+  }
+  auto new_data = null_data<EqnData::S, EqnData::H>();
+  const auto nXnew = dims.nX + nCnew - dims.nC;
+  for (auto d : {EqnData::S, EqnData::H}) {
+    new_data[d].resize({nXnew, nXnew});
+    new_data[d].slice({0, 0}, {dims.oC, dims.oC}) = data.at(d).slice({0, 0}, {dims.oC, dims.oC});
+    new_data[d].slice({dims.oC + nCnew, dims.oC + nCnew}, {nXnew, nXnew}) =
+        data.at(d).slice({dims.oC + dims.nC, dims.oC + dims.nC}, {dims.nX, dims.nX});
+    new_data[d].slice({dims.oC, dims.oC}, {dims.oC + nCnew, dims.oC + nCnew}) = cc.at(d);
+    new_data[d].slice({dims.oC, 0}, {dims.oC + nCnew, dims.oC}) = cx.at(d).slice({0, 0}, {nCnew, dims.oC});
+    new_data[d].slice({dims.oC, dims.oC + nCnew}, {dims.oC + nCnew, nXnew}) =
+        cx.at(d).slice({0, dims.oC + dims.nC}, {nCnew, dims.nX});
+    new_data[d].slice({0, dims.oC}, {dims.oC, dims.oC + nCnew}) = xc.at(d).slice({0, 0}, {dims.oC, nCnew});
+    new_data[d].slice({dims.oC + nCnew, dims.oC}, {nXnew, dims.oC + nCnew}) =
+        xc.at(d).slice({dims.oC + dims.nC, 0}, {dims.nX, nCnew});
+    data[d] = std::move(new_data[d]);
+  }
+}
+
 } // namespace xspace
 
 template <class R, class Q, class P>
@@ -84,6 +147,7 @@ public:
     data = null_data<EqnData::H, EqnData::S>();
   };
 
+  //! Updata parameters in Q space and corresponding equation data
   void update_qspace(const CVecRef<R>& params, const CVecRef<R>& actions) override {
     auto new_data = xspace::update_qspace_data(params, actions, cparamsp(), cparamsq(), cactionsq(), cparamsc(),
                                                cactionsc(), m_dim, *m_handlers, *m_logger);
@@ -91,10 +155,14 @@ public:
     m_dim = xspace::Dimensions(pspace.size(), qspace.size(), cspace.size());
   }
 
+  //! Uses solutions to update equation data in the subspace
+  void update_cspace_data() { xspace::update_cspace_data(m_evec, m_eval, data, m_dim, *m_logger); }
+
+  //! Updates a solution in C space. Equation data is not modified (see update_cspace_data())
   void update_cspace(const std::vector<unsigned int>& roots, const CVecRef<R>& params, const CVecRef<R>& actions,
                      const std::vector<value_type>& errors) override {
-    cspace.update(roots, params, actions, m_eval, this->data, m_evec, m_dim, errors);
-    // update data
+    cspace.update(roots, params, actions, errors);
+    m_dim = xspace::Dimensions(pspace.size(), qspace.size(), cspace.size());
   }
 
   void check_conditioning() override {
@@ -117,7 +185,7 @@ public:
   //! Solves the underlying problem in the subspace. solver can be used to pass extra parameters defining the problem
   void solve(const IterativeSolver<R, Q, P>& solver) {
     assert("XSpaceLinEig can only be used with LinearEigensystem solver");
-  };
+  }
 
   //! Solves the linear eigensystem problem in the subspace.
   void solve(const LinearEigensystem<R, Q, P>& solver) {
@@ -142,9 +210,9 @@ public:
     }
   }
 
-  const std::vector<value_type>& eigenvalues() const override { return m_eval; };
+  const std::vector<value_type>& eigenvalues() const override { return m_eval; }
 
-  const Matrix<value_type>& solutions() const override { return m_evec; };
+  const Matrix<value_type>& solutions() const override { return m_evec; }
 
   const xspace::Dimensions& dimensions() const override { return m_dim; }
 

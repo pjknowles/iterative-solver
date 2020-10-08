@@ -212,6 +212,7 @@ protected:
                   Logger::Debug);
     m_xspace.update_qspace(cwrap(parameters), cwrap(action));
     m_xspace.solve(*static_cast<Solver*>(this));
+    m_xspace.update_cspace_data();
     //    m_xspace.update(wrap(parameters), wrap(action), *static_cast<Solver*>(this));
     //    m_sub_solver.solve(m_xspace);
     auto nsol = m_xspace.solutions().rows();

@@ -245,6 +245,8 @@ protected:
     }
 
     coord_type dimensions() const { return {btr.first - upl.first, btr.second - upl.second}; }
+    size_t rows() const { return btr.first - upl.first; }
+    size_t cols() const { return btr.second - upl.second; }
 
   protected:
     Matrix<T>& mat; //!< matrix being sliced
@@ -270,6 +272,14 @@ protected:
     Slice m_slice;
   };
 };
+
+template <class ML, class MR>
+void transpose_copy(ML& ml, MR& mr) {
+  assert(ml.rows() == mr.cols() && ml.cols() == mr.rows());
+  for (size_t i = 0; i < ml.rows(); ++i)
+    for (size_t j = 0; j < ml.cols(); ++j)
+      ml(i, j) = mr(j, i);
+}
 
 template <class Mat>
 std::string as_string(const Mat& m, int precision = 6) {

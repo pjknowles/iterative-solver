@@ -12,7 +12,7 @@ namespace itsolv {
 namespace detail {
 
 template <class R>
-void normalise(VecRef<R>& params, double thresh, array::ArrayHandler<R, R>& handler, Logger& logger) {
+void normalise(VecRef<R>& params, array::ArrayHandler<R, R>& handler, Logger& logger, double thresh = 1.0e-14) {
   for (auto& p : params) {
     auto dot = handler.dot(p, p);
     dot = std::sqrt(std::abs(dot));
@@ -27,7 +27,9 @@ void normalise(VecRef<R>& params, double thresh, array::ArrayHandler<R, R>& hand
 //! Proposes an orthonormal set of vectors, removing any params that are linearly dependent
 //! @returns linear transformation in orthogonal set and norm
 template <class R, typename value_type, typename value_type_abs>
-auto propose_orthonormal_set(VecRef<R>& params, const double norm_thresh, array::ArrayHandler<R, R>& handler) {
+auto propose_orthonormal_set(VecRef<R>& params, const double norm_thresh, array::ArrayHandler<R, R>& handler,
+                             Logger& logger) {
+  logger.msg("propose_orthonormal_set()", Logger::Trace);
   auto lin_trans = subspace::Matrix<value_type>{};
   auto norm = std::vector<value_type_abs>{};
   auto ov = subspace::util::overlap(cwrap(params), handler);
@@ -40,6 +42,7 @@ auto propose_orthonormal_set(VecRef<R>& params, const double norm_thresh, array:
       auto it_remove = std::next(begin(params), i);
       params.erase(it_remove);
       ov.remove_row_col(i, i);
+      logger.msg("removed parameter index = " + std::to_string(i), Logger::Info);
     }
   }
   lin_trans = subspace::util::construct_lin_trans_in_orthogonal_set(ov, lin_trans, norm);
@@ -57,28 +60,30 @@ auto propose_orthonormal_set(VecRef<R>& params, const double norm_thresh, array:
  */
 template <class R, class Q, class P, typename value_type, typename value_type_abs>
 auto prepare_orthogonal_rset(subspace::Matrix<value_type>& overlap, subspace::XSpaceI<R, Q, P>& xspace, const size_t nW,
-                             value_type_abs res_norm_thresh) {
+                             Logger& logger, value_type_abs res_norm_thresh) {
+  logger.msg("prepare_orthogonal_rset()", Logger::Trace);
   auto norm = std::vector<value_type_abs>{};
   auto lin_trans = subspace::Matrix<value_type>{};
   for (bool done = false; !done;) {
-    const auto nX = xspace.dimensions().nX;
     const auto nQ = xspace.dimensions().nQ;
     const auto oQ = xspace.dimensions().oQ;
+    const auto oN = oQ + nQ;
     norm = subspace::util::gram_schmidt(overlap, lin_trans, res_norm_thresh);
-    auto it = std::find_if(std::next(begin(norm), nX), end(norm),
+    auto it = std::find_if(std::next(begin(norm), oN), end(norm),
                            [res_norm_thresh](auto el) { return el < res_norm_thresh; });
     done = (it == end(norm) || nQ == 0);
     if (!done) {
       auto i = std::distance(begin(norm), it);
-      // FIXME Not sure whether to just use the overlap or linear transformation matrix
-      auto normalised_transform = std::vector<value_type>{};
+      logger.msg("parameter index i = " + std::to_string(i) + " norm = " + std::to_string(*it), Logger::Info);
+      auto normalised_overlap = std::vector<value_type>{};
       for (size_t j = 0; j < nQ; ++j) {
-        normalised_transform.emplace_back(lin_trans(i, oQ + j) / std::sqrt(std::abs(overlap(oQ + j, oQ + j))));
+        normalised_overlap.emplace_back(std::abs(overlap(i, oQ + j)) / std::sqrt(std::abs(overlap(oQ + j, oQ + j))));
       }
-      auto it_max = std::max_element(begin(normalised_transform), end(normalised_transform));
-      auto iq_erase = std::distance(begin(normalised_transform), it_max);
-      xspace.eraseq(iq_erase);
+      auto it_max = std::max_element(begin(normalised_overlap), end(normalised_overlap));
+      auto iq_erase = std::distance(begin(normalised_overlap), it_max);
       const auto ix = oQ + iq_erase;
+      logger.msg("removing parameter index = " + std::to_string(ix), Logger::Info);
+      xspace.eraseq(iq_erase);
       overlap.remove_row_col(ix, ix);
     }
   }
@@ -106,11 +111,13 @@ void construct_orthonormal_set(VecRef<R>& params, const subspace::Matrix<value_t
 }
 /*!
  * @brief Appends row and column for overlap with params
+ *
+ * Overlap with previous solutions is not included.
+ *
  * @param ov overlap matrix
  * @param params new parameters
  * @param pparams P space parameters
  * @param qparams Q space parameters
- * @param cparams C space parameters
  * @param oP offset to the start of P parameters
  * @param oQ offset to the start of Q parameters
  * @param oC offset to the start of C parameters
@@ -119,18 +126,21 @@ void construct_orthonormal_set(VecRef<R>& params, const subspace::Matrix<value_t
  * @param logger logger
  */
 template <class R, class Q, class P, typename value_type>
-auto append_overlap_with_r(subspace::Matrix<value_type> ov, const CVecRef<R>& params, const CVecRef<P>& pparams,
-                           const CVecRef<Q>& qparams, const CVecRef<Q>& cparams, const size_t oP, const size_t oQ,
-                           const size_t oC, const size_t oN, ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
+auto append_overlap_with_r(const subspace::Matrix<value_type>& overlap, const CVecRef<R>& params,
+                           const CVecRef<P>& pparams, const CVecRef<Q>& qparams,
+                           const subspace::xspace::Dimensions& dims, ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
   auto nP = pparams.size();
   auto nQ = qparams.size();
-  auto nC = cparams.size();
   auto nN = params.size();
-  ov.resize({ov.rows() + nN, ov.cols() + nN});
+  auto nX = nP + nQ + nN;
+  auto oP = 0;
+  auto oQ = oP + nP;
+  auto oN = oQ + nQ;
+  auto ov = overlap;
+  ov.resize({nX, nX}); // solutions are last
   ov.slice({oN, oN}, {oN + nN, oN + nN}) = subspace::util::overlap(params, handlers.rr());
   ov.slice({oN, oP}, {oN + nN, oP + nP}) = subspace::util::overlap(params, pparams, handlers.rp());
   ov.slice({oN, oQ}, {oN + nN, oQ + nQ}) = subspace::util::overlap(params, qparams, handlers.rq());
-  ov.slice({oN, oC}, {oN + nN, oC + nC}) = subspace::util::overlap(params, cparams, handlers.rq());
   auto copy_upper_to_lower = [&ov, oN, nN](size_t oX, size_t nX) {
     for (size_t i = 0; i < nX; ++i)
       for (size_t j = 0; j < nN; ++j)
@@ -138,7 +148,6 @@ auto append_overlap_with_r(subspace::Matrix<value_type> ov, const CVecRef<R>& pa
   };
   copy_upper_to_lower(oP, nP);
   copy_upper_to_lower(oQ, nQ);
-  copy_upper_to_lower(oC, nC);
   return ov;
 }
 /*!
@@ -160,29 +169,30 @@ template <class R, class Q, class P, typename value_type, typename value_type_ab
 void construct_orthonormal_Rparams(VecRef<R>& params, VecRef<R>& residuals,
                                    const subspace::Matrix<value_type>& lin_trans,
                                    const std::vector<value_type_abs>& norm, const CVecRef<P>& pparams,
-                                   const CVecRef<Q>& qparams, const CVecRef<Q>& cparams, const size_t oP,
-                                   const size_t oQ, const size_t oC, const size_t oN,
-                                   ArrayHandlers<R, Q, P>& handlers) {
+                                   const CVecRef<Q>& qparams, ArrayHandlers<R, Q, P>& handlers) {
   assert(params.size() == residuals.size());
-  for (size_t i = 0; i < params.size(); ++i) {
+  auto nP = pparams.size();
+  auto nQ = qparams.size();
+  auto nN = params.size();
+  auto oP = 0;
+  auto oQ = oP + nP;
+  auto oN = oQ + nQ;
+  for (size_t i = 0; i < nN; ++i) {
     handlers.rr().copy(params.at(i), residuals.at(i));
   }
-  for (size_t i = 0; i < params.size(); ++i) {
-    for (size_t j = 0; j < pparams.size(); ++j) {
+  for (size_t i = 0; i < nN; ++i) {
+    for (size_t j = 0; j < nP; ++j) {
       handlers.rp().axpy(lin_trans(oN + i, oP + j), pparams.at(j), params.at(i));
     }
-    for (size_t j = 0; j < qparams.size(); ++j) {
+    for (size_t j = 0; j < nQ; ++j) {
       handlers.rq().axpy(lin_trans(oN + i, oQ + j), qparams.at(j), params.at(i));
-    }
-    for (size_t j = 0; j < cparams.size(); ++j) {
-      handlers.rq().axpy(lin_trans(oN + i, oC + j), cparams.at(j), params.at(i));
     }
     for (size_t j = 0; j < i; ++j) {
       handlers.rr().axpy(lin_trans(oN + i, oN + j), residuals.at(j), params.at(i));
     }
   }
-  for (size_t i = 0; i < params.size(); ++i) {
-    handlers.rr().scal(1. / norm.at(i), params.at(i));
+  for (size_t i = 0; i < nN; ++i) {
+    handlers.rr().scal(1. / norm.at(oN + i), params.at(i));
   }
 }
 
@@ -215,16 +225,16 @@ template <class R, class Q, class P, typename value_type_abs>
 std::vector<unsigned int> propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters,
                                          std::vector<R>& residuals, subspace::XSpaceI<R, Q, P>& xspace,
                                          ArrayHandlers<R, Q, P>& handlers, Logger& logger,
-                                         value_type_abs res_norm_thresh = 1.0e-14) {
+                                         value_type_abs res_norm_thresh = 1.0e-6) {
   using value_type = typename std::decay_t<decltype(xspace)>::value_type;
   logger.msg("itsolv::detail::propose_rspace", Logger::Trace);
   auto nW = solver.working_set().size();
   auto wresidual = wrap<R>(residuals.begin(), std::next(residuals.begin(), nW));
-  normalise(wresidual, res_norm_thresh, handlers.rr(), logger);
+  normalise(wresidual, handlers.rr(), logger);
   auto lin_trans = subspace::Matrix<value_type>{};
   auto norm = std::vector<value_type_abs>{};
   std::tie(lin_trans, norm) =
-      propose_orthonormal_set<R, value_type, value_type_abs>(wresidual, res_norm_thresh, handlers.rr());
+      propose_orthonormal_set<R, value_type, value_type_abs>(wresidual, res_norm_thresh, handlers.rr(), logger);
   nW = wresidual.size();
   auto new_indices = find_ref(wresidual, begin(residuals), end(residuals));
   auto new_working_set = std::vector<unsigned int>{};
@@ -234,13 +244,15 @@ std::vector<unsigned int> propose_rspace(LinearEigensystem<R, Q, P>& solver, std
   }
   construct_orthonormal_set(wresidual, lin_trans, norm, handlers.rr());
   auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
-                                  xspace.cparamsq(), xspace.cparamsc(), xspace.dimensions().oP, xspace.dimensions().oQ,
-                                  xspace.dimensions().oC, xspace.dimensions().nX, handlers, logger);
-  std::tie(lin_trans, norm) = prepare_orthogonal_rset(ov, xspace, nW, res_norm_thresh);
-  construct_orthonormal_Rparams(wparams, wresidual, lin_trans, norm, xspace.cparamsp(), xspace.cparamsq(),
-                                xspace.cparamsc(), xspace.dimensions().oP, xspace.dimensions().oQ,
-                                xspace.dimensions().oC, xspace.dimensions().nX, handlers);
-  normalise(wparams, res_norm_thresh, handlers.rr(), logger);
+                                  xspace.cparamsq(), xspace.dimensions(), handlers, logger);
+  std::tie(lin_trans, norm) = prepare_orthogonal_rset(ov, xspace, nW, logger, res_norm_thresh);
+  if (logger.data_dump) {
+    logger.msg("full overlap = " + subspace::as_string(ov), Logger::Info);
+    logger.msg("linear transformation = " + subspace::as_string(lin_trans), Logger::Info);
+    logger.msg("norm = ", norm.begin(), norm.end(), Logger::Info);
+  }
+  construct_orthonormal_Rparams(wparams, wresidual, lin_trans, norm, xspace.cparamsp(), xspace.cparamsq(), handlers);
+  normalise(wparams, handlers.rr(), logger);
   return new_working_set;
 }
 } // namespace detail

@@ -55,11 +55,8 @@ public:
    */
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
     auto r_norm_thresh = 1.0e-14;
-    //    this->m_working_set = detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters,
-    //    action,
-    //                                                 this->m_xspace.pspace, this->m_xspace.qspace,
-    //                                                 this->m_xspace.cspace, this->m_xspace, *this->m_handlers,
-    //                                                 *this->m_logger, r_norm_thresh);
+    this->m_working_set = detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action,
+                                                 this->m_xspace, *this->m_handlers, *this->m_logger, r_norm_thresh);
     this->m_stats->iterations++;
     return this->working_set().size();
   }

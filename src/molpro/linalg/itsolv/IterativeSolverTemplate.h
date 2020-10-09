@@ -203,8 +203,7 @@ protected:
    */
   size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& pparams,
                     fapply_on_p_type& apply_p) {
-    assert(parameters.size() >= m_working_set.size());
-    assert(action.size() >= m_working_set.size());
+    assert(parameters.size() == action.size());
     m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations) +
                       ", apply_p = " + std::to_string(bool(apply_p)),
                   Logger::Trace);
@@ -212,7 +211,10 @@ protected:
                       std::to_string(parameters.size()) + ", " + std::to_string(action.size()) + ", " +
                       std::to_string(m_working_set.size()) + ", ",
                   Logger::Debug);
-    m_xspace.update_qspace(cwrap(parameters), cwrap(action));
+    auto nW = std::min(m_working_set.size(), parameters.size());
+    auto wparams = cwrap<R>(begin(parameters), begin(parameters) + nW);
+    auto wactions = cwrap<R>(begin(action), begin(action) + nW);
+    m_xspace.update_qspace(wparams, wactions);
     m_subspace_solver.solve(m_xspace, n_roots());
     m_xspace.update_cspace_data(m_subspace_solver.solutions(), m_subspace_solver.eigenvalues());
     auto nsol = m_subspace_solver.size();
@@ -307,9 +309,17 @@ public:
   }
 
   const std::vector<unsigned int>& working_set() const override { return m_working_set; }
+
   size_t n_roots() const override { return m_nroots; }
-  void set_n_roots(size_t roots) override { m_nroots = roots; }
+
+  void set_n_roots(size_t roots) override {
+    m_nroots = roots;
+    m_working_set.resize(roots);
+    std::iota(begin(m_working_set), end(m_working_set), (unsigned int)0);
+  }
+
   const std::vector<scalar_type>& errors() const override { return m_errors; }
+
   const Statistics& statistics() const override { return *m_stats; }
 
   void report() const override {

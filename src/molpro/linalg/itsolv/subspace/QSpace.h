@@ -98,6 +98,10 @@ struct QSpace {
           xq.at(d).slice({dims.oQ, 0}, {dims.nX, nQnew});
       old_data[d] = data[d];
     }
+    if (m_logger->data_dump) {
+      m_logger->msg("S = " + as_string(data.at(EqnData::S)), Logger::Info);
+      m_logger->msg("H = " + as_string(data.at(EqnData::H)), Logger::Info);
+    }
   }
 
   void clear() { m_params.clear(); }

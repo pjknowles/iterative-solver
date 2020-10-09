@@ -148,6 +148,7 @@ public:
 
   //! Updata parameters in Q space and corresponding equation data
   void update_qspace(const CVecRef<R>& params, const CVecRef<R>& actions) override {
+    m_logger->msg("QSpace::update_qspace", Logger::Trace);
     auto new_data = xspace::update_qspace_data(params, actions, cparamsp(), cparamsq(), cactionsq(), cparamsc(),
                                                cactionsc(), m_dim, *m_handlers, *m_logger);
     qspace.update(params, actions, new_data.qq, new_data.qx, new_data.xq, m_dim, data);
@@ -156,12 +157,14 @@ public:
 
   //! Uses solutions to update equation data in the subspace
   void update_cspace_data(const Matrix<value_type>& evec, const std::vector<value_type>& eval) {
+    m_logger->msg("QSpace::update_cspace_data", Logger::Trace);
     xspace::update_cspace_data(evec, eval, data, m_dim, *m_logger);
   }
 
   //! Updates a solution in C space. Equation data is not modified (see update_cspace_data())
   void update_cspace(const std::vector<unsigned int>& roots, const CVecRef<R>& params, const CVecRef<R>& actions,
                      const std::vector<value_type>& errors) override {
+    m_logger->msg("QSpace::update_cspace", Logger::Trace);
     cspace.update(roots, params, actions, errors);
     update_dimensions();
   }

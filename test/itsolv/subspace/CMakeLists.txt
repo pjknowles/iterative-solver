@@ -1,3 +1,1 @@
-add_executable(test-${PROJECT_NAME}-itsolv.exe testMatrix.cpp test_util.cpp testRSpace.cpp testQSpace.cpp)
-target_link_libraries(test-${PROJECT_NAME}-itsolv.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
-gtest_discover_tests(test-${PROJECT_NAME}-itsolv.exe)
+target_sources(test-${PROJECT_NAME}-itsolv.exe PRIVATE testMatrix.cpp test_util.cpp)

@@ -1,15 +1,21 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <molpro/linalg/itsolv/subspace/check_conditioning.h>
+#include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
+#include <molpro/linalg/itsolv/wrap.h>
 #include <numeric>
 
 using molpro::linalg::itsolv::ArrayHandlers;
+using molpro::linalg::itsolv::cwrap;
+using molpro::linalg::itsolv::wrap;
 using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::util::eye_order;
+using molpro::linalg::itsolv::subspace::util::gram_schmidt;
 using molpro::linalg::itsolv::subspace::util::overlap;
-using molpro::linalg::itsolv::subspace::util::wrap;
 using ::testing::DoubleEq;
+using ::testing::DoubleNear;
 using ::testing::Each;
 using ::testing::Eq;
 using ::testing::Ne;
@@ -44,13 +50,25 @@ TEST_F(OverlapF, null_vectors) {
 }
 
 TEST_F(OverlapF, overlap_one_param) {
-  auto m = overlap(wrap(x), handler.rr());
+  auto m = overlap(cwrap(x), handler.rr());
   ASSERT_THAT(m.data(), Pointwise(DoubleEq(), ref_overlap.data()));
 }
 
 TEST_F(OverlapF, overlap_two_params) {
-  auto m = overlap(wrap(x), wrap(x), handler.rr());
+  auto m = overlap(cwrap(x), cwrap(x), handler.rr());
   ASSERT_THAT(m.data(), Pointwise(DoubleEq(), ref_overlap.data()));
+}
+
+TEST(Overlap, reverse_params) {
+  using X = std::vector<double>;
+  using Y = std::vector<float>;
+  auto x = std::vector<X>{{1}, {2}, {3}};
+  auto y = std::vector<Y>{{4}, {5}, {6}};
+  auto handler = molpro::linalg::array::create_default_handler<X, Y>();
+  auto handler_reverse = molpro::linalg::array::create_default_handler<Y, X>();
+  auto m = overlap(cwrap(x), cwrap(y), *handler);
+  auto m_reverse = overlap(cwrap(x), cwrap(y), *handler_reverse);
+  ASSERT_THAT(m_reverse.data(), Pointwise(DoubleEq(), m.data()));
 }
 
 TEST(EyeOrder, null) {
@@ -84,4 +102,49 @@ TEST(EyeOrder, real_scenario) {
   const auto reference = std::vector<size_t>{2, 0, 1};
   ASSERT_FALSE(order.empty());
   ASSERT_THAT(order, Pointwise(Eq(), reference));
+}
+
+TEST(gram_schmidt, null) {
+  auto s = Matrix<double>{};
+  auto t = Matrix<double>{};
+  auto result = gram_schmidt(s, t);
+  ASSERT_TRUE(result.empty());
+}
+
+// params = {{1,2,3},{4,5,6},{7,8,0}}
+TEST(gram_schmidt, s_3x3) {
+  const size_t n = 3;
+  auto s = Matrix<double>{std::vector<double>{14, 25, 31, 25, 45, 56, 31, 56, 70}, {n, n}};
+  auto t = Matrix<double>{};
+  auto tref = Matrix<double>{std::vector<double>{1., 0., 0., -25. / 14., 1., 0., 1., -9. / 5., 1.}, {n, n}};
+  auto norm_ref = std::vector<double>{std::sqrt(14.), std::sqrt(5. / 14.), std::sqrt(1. / 5.)};
+  auto result = gram_schmidt(s, t);
+  ASSERT_EQ(result.size(), n);
+  ASSERT_EQ(t.rows(), n);
+  ASSERT_EQ(t.cols(), n);
+  for (size_t i = 0; i < t.rows(); ++i)
+    for (size_t j = i + 1; j < t.cols(); ++j)
+      ASSERT_DOUBLE_EQ(t(i, j), 0.) << " Uppert triangular elements must be zero , i=" << std::to_string(i) << " "
+                                    << std::to_string(j);
+  ASSERT_THAT(t.data(), Pointwise(DoubleNear(1.0e-14), tref.data()));
+  ASSERT_THAT(result, Pointwise(DoubleNear(1.0e-13), norm_ref));
+}
+
+// params = {{1,0,0,0},{1,1,0,0},{1,1,0,0},{1,1,1,0}}
+TEST(gram_schmidt, s_4x4_duplicate) {
+  const size_t n = 4;
+  auto s = Matrix<double>{std::vector<double>{1, 1, 1, 1, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 3}, {n, n}};
+  auto t = Matrix<double>{};
+  auto tref = Matrix<double>{std::vector<double>{1, 0, 0, 0, -1, 1, 0, 0, 0, -1, 1, 0, 0, -1, 0, 1}, {n, n}};
+  auto norm_ref = std::vector<double>{1, 1, 0, 1};
+  auto result = gram_schmidt(s, t);
+  ASSERT_EQ(result.size(), n);
+  ASSERT_EQ(t.rows(), n);
+  ASSERT_EQ(t.cols(), n);
+  for (size_t i = 0; i < t.rows(); ++i)
+    for (size_t j = i + 1; j < t.cols(); ++j)
+      ASSERT_DOUBLE_EQ(t(i, j), 0.) << " Uppert triangular elements must be zero , i=" << std::to_string(i) << " "
+                                    << std::to_string(j);
+  ASSERT_THAT(t.data(), Pointwise(DoubleNear(1.0e-14), tref.data()));
+  ASSERT_THAT(result, Pointwise(DoubleNear(1.0e-13), norm_ref));
 }

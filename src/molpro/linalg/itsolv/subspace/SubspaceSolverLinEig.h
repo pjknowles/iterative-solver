@@ -8,6 +8,68 @@ namespace molpro {
 namespace linalg {
 namespace itsolv {
 namespace subspace {
+namespace detail {
+// FIXME This can probably be done much better with eigen
+/*!
+ * @brief Transform square matrix to a new basis
+ *
+ * M' = L * (M * L.T)
+ *
+ * @param mat square matrix to transform
+ * @param lin_trans linear transformation to a new basis, row vectors
+ * @returns transformed matrix
+ */
+template <typename T>
+auto transform(const Matrix<T>& mat, const Matrix<T>& lin_trans) {
+  const size_t n = lin_trans.rows();
+  const size_t m = lin_trans.rows();
+  assert(mat.rows() == m && mat.cols() == n);
+  auto mat1 = Matrix<T>({m, n});
+  for (size_t i = 0; i < m; ++i)
+    for (size_t j = 0; j < n; ++j)
+      for (size_t k = 0; k < m; ++k)
+        mat1(i, j) += mat(i, k) * lin_trans(j, k);
+  auto result = Matrix<T>({n, n});
+  for (size_t i = 0; i < n; ++i)
+    for (size_t j = 0; j < n; ++j)
+      for (size_t k = 0; k < m; ++k)
+        result(i, j) += lin_trans(i, k) * mat(k, j);
+  return result;
+}
+
+/*!
+ * @brief Transform solutions back to the original basis
+ * Let solutions be {s}, transformed basis {t} and original basis {x}
+ *
+ * t_i = \sum_j L_{i,j} x_j
+ * s_i = \sum_j C_{i,j} t_j
+ *     = \sum_j C_{i,j} \sum_k L_{j,k} x_k
+ *     = \sum_j C_{i,j} \sum_k L_{j,k} x_k
+ *     = \sum_k K_{i,k} x_k
+ *
+ * K_{i,k} = \sum_j C_{i,j} L_{j,k}
+ *
+ * K = C L
+ *
+ * @param mat
+ * @param lin_trans
+ * @return
+ */
+template <typename T>
+auto transform_solutions(const Matrix<T>& solutions, const Matrix<T>& lin_trans) {
+  const size_t nsol = solutions.rows();
+  const size_t n = lin_trans.rows();
+  const size_t m = lin_trans.cols();
+  assert(solutions.cols() == n);
+  auto result = Matrix<T>({nsol, m});
+  for (size_t i = 0; i < nsol; ++i)
+    for (size_t j = 0; j < m; ++j)
+      for (size_t k = 0; k < n; ++k)
+        result(i, j) += solutions(i, k) * lin_trans(j, k);
+  return result;
+}
+} // namespace detail
+
 template <typename VT, typename VTabs>
 class SubspaceSolverLinEig {
 public:
@@ -38,9 +100,8 @@ public:
   void solve(XSpaceI<R, Q, P>& xspace, const size_t nroots_max) {
     m_logger->msg("SubspaceSolverLinEig::solve", Logger::Trace);
     check_conditioning(xspace);
-    // apply linear transformation
-    auto& h = xspace.data[EqnData::H];
-    auto& s = xspace.data[EqnData::S];
+    auto h = detail::transform(xspace.data[EqnData::H], m_lin_trans);
+    auto s = detail::transform(xspace.data[EqnData::S], m_lin_trans);
     auto dim = h.rows();
     auto evec = std::vector<value_type>{};
     itsolv::eigenproblem(evec, m_eigenvalues, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, 0);
@@ -50,6 +111,7 @@ public:
     m_eigenvalues.resize(nroots);
     m_solutions.resize({nroots, dim});
     m_solutions.slice() = full_matrix.slice({0, 0}, {nroots, dim});
+    m_solutions = detail::transform_solutions(m_solutions, m_lin_trans);
     if (m_logger->data_dump) {
       m_logger->msg("eigenvalues = ", begin(m_eigenvalues), end(m_eigenvalues), Logger::Debug);
       m_logger->msg("eigenvectors = " + as_string(m_solutions), Logger::Info);

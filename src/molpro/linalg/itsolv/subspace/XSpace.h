@@ -151,7 +151,7 @@ public:
     auto new_data = xspace::update_qspace_data(params, actions, cparamsp(), cparamsq(), cactionsq(), cparamsc(),
                                                cactionsc(), m_dim, *m_handlers, *m_logger);
     qspace.update(params, actions, new_data.qq, new_data.qx, new_data.xq, m_dim, data);
-    m_dim = xspace::Dimensions(pspace.size(), qspace.size(), cspace.size());
+    update_dimensions();
   }
 
   //! Uses solutions to update equation data in the subspace
@@ -163,7 +163,7 @@ public:
   void update_cspace(const std::vector<unsigned int>& roots, const CVecRef<R>& params, const CVecRef<R>& actions,
                      const std::vector<value_type>& errors) override {
     cspace.update(roots, params, actions, errors);
-    m_dim = xspace::Dimensions(pspace.size(), qspace.size(), cspace.size());
+    update_dimensions();
   }
 
   const xspace::Dimensions& dimensions() const override { return m_dim; }
@@ -180,17 +180,20 @@ public:
 
   void eraseq(size_t i) override {
     qspace.erase(i);
-    // remove data
+    remove_data(m_dim.oQ + i);
+    update_dimensions();
   }
 
   void erasep(size_t i) override {
     pspace.erase(i);
-    // remove data
+    remove_data(m_dim.oP + i);
+    update_dimensions();
   }
 
   void erasec(size_t i) override {
     cspace.erase(i);
-    // remove data
+    remove_data(m_dim.oC + i);
+    update_dimensions();
   }
 
   VecRef<P> paramsp() override { return pspace.params(); }
@@ -219,6 +222,12 @@ public:
   CSpace<R, Q, P, value_type> cspace;
 
 protected:
+  void update_dimensions() { m_dim = xspace::Dimensions(pspace.size(), qspace.size(), cspace.size()); }
+
+  void remove_data(size_t i) {
+    for (auto d : {EqnData::H, EqnData::S})
+      data[d].remove_row_col(i, i);
+  }
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::shared_ptr<Logger> m_logger;
   xspace::Dimensions m_dim;

@@ -65,7 +65,7 @@ auto transform_solutions(const Matrix<T>& solutions, const Matrix<T>& lin_trans)
   for (size_t i = 0; i < nsol; ++i)
     for (size_t j = 0; j < m; ++j)
       for (size_t k = 0; k < n; ++k)
-        result(i, j) += solutions(i, k) * lin_trans(j, k);
+        result(i, j) += solutions(i, k) * lin_trans(k, j);
   return result;
 }
 } // namespace detail
@@ -128,9 +128,9 @@ protected:
   std::vector<value_type> m_eigenvalues; //!< eigenvalues
   Matrix<value_type> m_lin_trans;        //!< linear transformation to a well conditioned subspace
   std::shared_ptr<Logger> m_logger;
-  value_type_abs m_norm_stability_threshold; //!< norm threshold for Gram Schmidt orthogonalisation
-  value_type_abs m_svd_solver_threshold;     //!< threshold to select null space during SVD in eigenproblem
-  bool m_hermitian = true;                   //!< flags the matrix as Hermitian
+  value_type_abs m_norm_stability_threshold = 1.0e-4; //!< norm threshold for Gram Schmidt orthogonalisation
+  value_type_abs m_svd_solver_threshold = 1.0e-14;    //!< threshold to select null space during SVD in eigenproblem
+  bool m_hermitian = true;                            //!< flags the matrix as Hermitian
 };
 
 } // namespace subspace

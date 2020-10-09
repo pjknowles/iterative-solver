@@ -86,7 +86,7 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
 template <typename value_type>
 auto update_cspace_data(const Matrix<value_type>& solutions, const std::vector<value_type>& eigenvalues,
                         SubspaceData& data, const Dimensions& dims, Logger& logger) {
-  const auto nCnew = solutions.size();
+  const auto nCnew = solutions.rows();
   auto new_data_blocks = NewData{nCnew, dims.nX};
   auto& cc = new_data_blocks.qq;
   auto& cx = new_data_blocks.qx;

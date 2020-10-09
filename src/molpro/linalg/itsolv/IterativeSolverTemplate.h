@@ -215,8 +215,6 @@ protected:
     m_xspace.update_qspace(cwrap(parameters), cwrap(action));
     m_subspace_solver.solve(m_xspace, n_roots());
     m_xspace.update_cspace_data(m_subspace_solver.solutions(), m_subspace_solver.eigenvalues());
-    //    m_xspace.update(wrap(parameters), wrap(action), *static_cast<Solver*>(this));
-    //    m_sub_solver.solve(m_xspace);
     auto nsol = m_subspace_solver.size();
     for (const auto& batch : detail::parameter_batches(nsol, parameters.size())) {
       size_t start_sol, end_sol;
@@ -262,7 +260,6 @@ protected:
     pparams = detail::construct_pspace_vector(m_working_set, m_subspace_solver.solutions(), m_xspace.paramsp(),
                                               m_xspace.dimensions().oP, m_handlers->pp());
     m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace);
-    m_stats->iterations++;
     return m_working_set.size();
   }
 

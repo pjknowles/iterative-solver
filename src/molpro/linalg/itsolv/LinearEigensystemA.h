@@ -37,7 +37,7 @@ public:
 
   explicit LinearEigensystemA(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
                               const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
-      : SolverTemplate(subspace::XSpace<R, Q, P>(handlers, logger_), detail::SubspaceSolver<R>{logger}, handlers,
+      : SolverTemplate(subspace::XSpace<R, Q, P>(handlers, logger_), detail::SubspaceSolver<R>{logger_}, handlers,
                        std::make_shared<Statistics>(), logger_),
         logger(logger_) {}
 

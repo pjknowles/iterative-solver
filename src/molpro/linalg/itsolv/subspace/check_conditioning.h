@@ -13,47 +13,35 @@ namespace subspace {
 namespace xspace {
 
 /*!
- * @brief Generates linear transformation of X space to an orthogonal subspace and removes any redundant Q vectors.
- * @param xs X space container
- * @param rs R space container
- * @param qs Q space container
- * @param ps P space container
- * @param cs C space container
- * @param lin_trans  Linear transformation matrix to an orthogonal subspace
- * @param norm_threshold
- * @param logger
+ * @brief Uses Gram Schmidt procedure to transform to an orthogonal basis, removing parameters with norm less than
+ * threshold from the X space.
+ * @param xs subspace container
+ * @param lin_trans linear transformation matrix to well conditioned basis
+ * @param norm_threshold threshold for removing parameters that become too small
+ * @param logger logger
  */
-template <class R, class P, class Q, class ST>
-void check_conditioning_gram_schmidt(XSpaceI<R, Q, P>& xs, QSpace<R, Q, P>& qs, PSpace<R, P>& ps,
-                                     CSpace<R, Q, P, ST> cs, Matrix<ST>& lin_trans, double norm_threshold,
-                                     Logger& logger) {
-  logger.msg("xspace::check_conditioning_gram_schmidt", Logger::Trace);
-  bool stable = false;
-  auto candidates = std::vector<size_t>{qs.size()};
-  std::iota(begin(candidates), end(candidates), size_t{xs.dimensions().oQ});
-  while (!stable && !candidates.empty()) {
-    const auto& dim = xs.dimensions();
-    const auto& s = xs.data[EqnData::S];
-    auto norm = util::gram_schmidt(s, lin_trans);
-    if (logger.data_dump)
-      logger.msg("norm after Gram-Schmidt = ", begin(norm), end(norm), Logger::Info);
-    auto imin = std::find_if(begin(candidates), end(candidates),
-                             [&norm, norm_threshold](auto c) { return norm[c] < norm_threshold; });
-    stable = (imin == candidates.end());
-    if (!stable) {
-      logger.msg("removing candidate from q space i =" + std::to_string(*imin) +
-                     ", norm = " + Logger::scientific(norm[*imin]),
-                 Logger::Debug);
-      qs.erase(*imin);
-      xs.build_subspace(qs, ps, cs);
-      candidates.resize(qs.size());
-    }
+template <class R, class Q, class P, typename value_type, typename value_type_abs>
+void check_conditioning_gram_schmidt(XSpaceI<R, Q, P>& xspace, Matrix<value_type>& lin_trans,
+                                     const value_type_abs norm_threshold, Logger& logger) {
+  logger.msg("subspace::xspace::check_conditioning_gram_schmidt() ", Logger::Trace);
+  auto norm = util::gram_schmidt(xspace.data[EqnData::S], lin_trans, norm_threshold);
+  if (logger.data_dump)
+    logger.msg("norm after Gram-Schmidt = ", begin(norm), end(norm), Logger::Info);
+  auto remove_qindex = [&norm, &xspace, norm_threshold]() {
+    const auto& dims = xspace.dimensions();
+    auto it_begin = begin(norm) + dims.oQ;
+    auto it_end = begin(norm) + dims.oQ + dims.nQ;
+    auto it = std::find_if(it_begin, it_end, [&](auto el) { return el < norm_threshold; });
+    return std::distance(it_begin, it);
+  };
+  for (auto qremove = remove_qindex(); qremove != xspace.dimensions().nQ; qremove = remove_qindex()) {
+    xspace.eraseq(qremove);
+    const auto ix = xspace.dimensions().oQ + qremove;
+    norm.erase(begin(norm) + ix);
+    lin_trans.remove_row_col(ix, ix);
+    logger.msg("removed parameter index =  " + std::to_string(ix), Logger::Info);
   }
 }
-
-template <class R, class Q, class P, typename value_type, typename value_type_abs>
-void check_conditioning_gram_schmidt(XSpaceI<R, Q, P>& xs, Matrix<value_type>& lin_trans,
-                                     const value_type_abs norm_threshold, Logger& logger) {}
 
 } // namespace xspace
 } // namespace subspace

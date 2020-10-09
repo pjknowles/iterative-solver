@@ -21,18 +21,11 @@ void action(size_t nwork, const std::vector<Rvector>& psc, std::vector<Rvector>&
   }
 }
 
-void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t nwork,
+void update(std::vector<Rvector>& psc, std::vector<Rvector>& psg, size_t nwork,
             std::vector<double> shift = std::vector<double>()) {
   for (size_t k = 0; k < nwork; k++) {
     for (size_t i = 0; i < n; i++)
-      psc[k][i] = psg[k][i] / (1e-12 - shift[k] + hmat[i + i * n]);
-  }
-}
-void normalise(std::vector<Rvector>& psc, size_t nwork, molpro::linalg::array::ArrayHandler<Rvector>& handlers) {
-  for (size_t k = 0; k < nwork; k++) {
-    auto d = handlers.dot(psc[k], psc[k]);
-    auto norm = std::sqrt(std::abs(d));
-    handlers.scal(1. / norm, psc[k]);
+      psg[k][i] *= 1 / (1e-12 - shift[k] + hmat[i + i * n]);
   }
 }
 
@@ -59,6 +52,7 @@ int main(int argc, char* argv[]) {
       auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>();
       molpro::linalg::itsolv::LinearEigensystemA<Rvector, Qvector, Pvector> solver(handlers);
       solver.set_n_roots(nroot);
+      solver.set_convergence_threshold(1.0e-12);
       solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
       solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
       solver.logger->data_dump = false;
@@ -74,14 +68,14 @@ int main(int argc, char* argv[]) {
       }
       std::vector<std::vector<double>> Pcoeff(solver.n_roots());
       int nwork = solver.n_roots();
-      for (auto iter = 0; iter < 10; iter++) {
+      for (auto iter = 0; iter < 100 && nwork != 0; iter++) {
         action(nwork, x, g);
         nwork = solver.add_vector(x, g);
         solver.report();
-        if (nwork == 0)
-          break;
-        update(x, g, nwork, solver.working_set_eigenvalues());
-        normalise(x, nwork, handlers->rr());
+        if (nwork != 0) {
+          update(x, g, nwork, solver.working_set_eigenvalues());
+          solver.end_iteration(x, g);
+        }
       }
       {
         std::cout << "Error={ ";

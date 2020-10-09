@@ -22,8 +22,8 @@ namespace detail {
 template <typename T>
 auto transform(const Matrix<T>& mat, const Matrix<T>& lin_trans) {
   const size_t n = lin_trans.rows();
-  const size_t m = lin_trans.rows();
-  assert(mat.rows() == m && mat.cols() == n);
+  const size_t m = lin_trans.cols();
+  assert(mat.rows() == m && mat.cols() == m);
   auto mat1 = Matrix<T>({m, n});
   for (size_t i = 0; i < m; ++i)
     for (size_t j = 0; j < n; ++j)
@@ -33,7 +33,7 @@ auto transform(const Matrix<T>& mat, const Matrix<T>& lin_trans) {
   for (size_t i = 0; i < n; ++i)
     for (size_t j = 0; j < n; ++j)
       for (size_t k = 0; k < m; ++k)
-        result(i, j) += lin_trans(i, k) * mat(k, j);
+        result(i, j) += lin_trans(i, k) * mat1(k, j);
   return result;
 }
 
@@ -102,6 +102,11 @@ public:
     check_conditioning(xspace);
     auto h = detail::transform(xspace.data[EqnData::H], m_lin_trans);
     auto s = detail::transform(xspace.data[EqnData::S], m_lin_trans);
+    if (m_logger->data_dump) {
+      m_logger->msg("L = " + as_string(m_lin_trans), Logger::Info);
+      m_logger->msg("S = " + as_string(s), Logger::Info);
+      m_logger->msg("H = " + as_string(h), Logger::Info);
+    }
     auto dim = h.rows();
     auto evec = std::vector<value_type>{};
     itsolv::eigenproblem(evec, m_eigenvalues, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, 0);

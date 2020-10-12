@@ -46,7 +46,25 @@ void update_subspace(const unsigned int root, SubspaceData& cc, SubspaceData& qc
 
 } // namespace cspace
 
-//! Space storing the best set of solutions and their errors
+/*!
+ * @brief Space storing the complement of Q necessary to reconstruct previous solutions.
+ *
+ * It consists of linear combinations of deleted Q parameters and maximum size of the space is the number of solutions.
+ * As such, C space accumulates round off error and eventually actions will not map to corresponding parameters
+ * leading to errors in the subspace. Thus C space should be periodically reset.
+ *
+ * Resetting C space
+ * -----------------
+ *  Use C space as new parameters, calculate their exact action and add to Q.
+ *
+ *  Cons: size of C space can be greater than R, so what will happen to the rest of C space?
+ *
+ * This can be done over multiple iterations, as long as no more Q parameters are removed. Thus firstly remove nC
+ * parameters from Q, than start moving C parameters to R params in propose_rspace, until C space is empty. At that
+ * point all of C space was moved into Q and there were no modifications, since size of Q space was within limit and
+ * residual was not used. It should be possible to have a mixed update where new parameters are orthogonalised residuals
+ * and C params.
+ */
 template <class Rt, class Qt, class Pt, typename ST>
 class CSpace {
 public:

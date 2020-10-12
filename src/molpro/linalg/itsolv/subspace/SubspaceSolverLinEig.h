@@ -68,6 +68,17 @@ auto transform_solutions(const Matrix<T>& solutions, const Matrix<T>& lin_trans)
         result(i, j) += solutions(i, k) * lin_trans(k, j);
   return result;
 }
+
+template <typename value_type, typename value_type_abs>
+void normalise_transformation(Matrix<value_type>& m_lin_trans, const std::vector<value_type_abs>& norm,
+                              value_type_abs threshold) {
+  for (size_t i = 0; i < norm.size(); ++i) {
+    if (norm[i] > threshold) {
+      m_lin_trans.row(i).scal(1. / norm[i]);
+    }
+  }
+}
+
 } // namespace detail
 
 template <typename VT, typename VTabs>
@@ -87,9 +98,13 @@ public:
       m_logger->msg("Sxx = " + as_string(xspace.data[EqnData::S]), Logger::Info);
       m_logger->msg("Hxx = " + as_string(xspace.data[EqnData::H]), Logger::Info);
     }
-    xspace::check_conditioning_gram_schmidt(xspace, m_lin_trans, m_norm_stability_threshold, *m_logger);
+    auto norm = xspace::check_conditioning_gram_schmidt(xspace, m_lin_trans, m_norm_stability_threshold, *m_logger);
     nX = xspace.dimensions().nX;
     m_logger->msg("size of x space after conditioning = " + std::to_string(nX), Logger::Debug);
+    if (m_logger->data_dump) {
+      auto n = Matrix<value_type_abs>{std::move(norm), {1, nX}};
+      m_logger->msg("norm = " + as_string(n), Logger::Info);
+    }
     if (m_logger->data_dump && nX != nX_on_entry) {
       m_logger->msg("Sxx = " + as_string(xspace.data[EqnData::S]), Logger::Info);
       m_logger->msg("Hxx = " + as_string(xspace.data[EqnData::H]), Logger::Info);

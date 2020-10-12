@@ -21,7 +21,7 @@ namespace xspace {
  * @param logger logger
  */
 template <class R, class Q, class P, typename value_type, typename value_type_abs>
-void check_conditioning_gram_schmidt(XSpaceI<R, Q, P>& xspace, Matrix<value_type>& lin_trans,
+auto check_conditioning_gram_schmidt(XSpaceI<R, Q, P>& xspace, Matrix<value_type>& lin_trans,
                                      const value_type_abs norm_threshold, Logger& logger) {
   logger.msg("subspace::xspace::check_conditioning_gram_schmidt() ", Logger::Trace);
   auto norm = util::gram_schmidt(xspace.data[EqnData::S], lin_trans, norm_threshold);
@@ -41,6 +41,7 @@ void check_conditioning_gram_schmidt(XSpaceI<R, Q, P>& xspace, Matrix<value_type
     lin_trans.remove_row_col(ix, ix);
     logger.msg("removed parameter index =  " + std::to_string(ix), Logger::Info);
   }
+  return norm;
 }
 
 } // namespace xspace

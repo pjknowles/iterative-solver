@@ -60,7 +60,7 @@ auto propose_orthonormal_set(VecRef<R>& params, const double norm_thresh, array:
  */
 template <class R, class Q, class P, typename value_type, typename value_type_abs>
 auto prepare_orthogonal_rset(subspace::Matrix<value_type>& overlap, subspace::XSpaceI<R, Q, P>& xspace, const size_t nW,
-                             Logger& logger, value_type_abs res_norm_thresh) {
+                             Logger& logger, value_type_abs res_norm_thresh, unsigned int max_size_qspace) {
   logger.msg("prepare_orthogonal_rset()", Logger::Trace);
   auto norm = std::vector<value_type_abs>{};
   auto lin_trans = subspace::Matrix<value_type>{};
@@ -85,6 +85,10 @@ auto prepare_orthogonal_rset(subspace::Matrix<value_type>& overlap, subspace::XS
       logger.msg("removing parameter index = " + std::to_string(ix), Logger::Info);
       xspace.eraseq(iq_erase);
       overlap.remove_row_col(ix, ix);
+    } else if (nQ > max_size_qspace) {
+      xspace.eraseq(nQ - 1);
+      overlap.remove_row_col(oQ + nQ - 1, oQ + nQ - 1);
+      done = false;
     }
   }
   return std::tuple<decltype(lin_trans), decltype(norm)>{lin_trans, norm};
@@ -225,7 +229,7 @@ template <class R, class Q, class P, typename value_type_abs>
 std::vector<unsigned int> propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters,
                                          std::vector<R>& residuals, subspace::XSpaceI<R, Q, P>& xspace,
                                          ArrayHandlers<R, Q, P>& handlers, Logger& logger,
-                                         value_type_abs res_norm_thresh = 1.0e-6) {
+                                         value_type_abs res_norm_thresh, unsigned int max_size_qspace) {
   using value_type = typename std::decay_t<decltype(xspace)>::value_type;
   logger.msg("itsolv::detail::propose_rspace", Logger::Trace);
   auto nW = solver.working_set().size();
@@ -245,7 +249,7 @@ std::vector<unsigned int> propose_rspace(LinearEigensystem<R, Q, P>& solver, std
   construct_orthonormal_set(wresidual, lin_trans, norm, handlers.rr());
   auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
                                   xspace.cparamsq(), xspace.dimensions(), handlers, logger);
-  std::tie(lin_trans, norm) = prepare_orthogonal_rset(ov, xspace, nW, logger, res_norm_thresh);
+  std::tie(lin_trans, norm) = prepare_orthogonal_rset(ov, xspace, nW, logger, res_norm_thresh, max_size_qspace);
   if (logger.data_dump) {
     logger.msg("full overlap = " + subspace::as_string(ov), Logger::Info);
     logger.msg("linear transformation = " + subspace::as_string(lin_trans), Logger::Info);

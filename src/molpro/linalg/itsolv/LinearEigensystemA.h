@@ -54,9 +54,9 @@ public:
    * @return number of significant parameters to calculate the action for
    */
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
-    auto r_norm_thresh = 1.0e-6;
-    this->m_working_set = detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action,
-                                                 this->m_xspace, *this->m_handlers, *this->m_logger, r_norm_thresh);
+    this->m_working_set =
+        detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, this->m_xspace,
+                               *this->m_handlers, *this->m_logger, propose_rspace_norm_thresh, max_size_qspace);
     this->m_stats->iterations++;
     return this->working_set().size();
   }
@@ -86,6 +86,8 @@ public:
   }
 
   std::shared_ptr<Logger> logger;
+  double propose_rspace_norm_thresh = 1e-6; //!< vectors with norm less than threshold can be considered null
+  unsigned int max_size_qspace = std::numeric_limits<unsigned int>::max(); //!< maximum size of Q space
 };
 
 } // namespace itsolv

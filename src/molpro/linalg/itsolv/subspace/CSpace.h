@@ -48,11 +48,9 @@ public:
     if (it == m_params.end()) {
       m_params.emplace(root, m_handlers->qr().copy(param));
       m_actions.emplace(root, m_handlers->qr().copy(action));
-      m_errors[root] = error;
     } else {
       m_handlers->qr().copy(m_params.at(root), param);
       m_handlers->qr().copy(m_actions.at(root), action);
-      m_errors[root] = error;
     }
   }
 
@@ -61,13 +59,6 @@ public:
               const std::vector<scalar_type>& errors) {
     for (size_t i = 0; i < roots.size(); ++i) {
       update(roots.at(i), params.at(i), actions.at(i), errors.at(i));
-    }
-  }
-
-  void set_error(unsigned int root, scalar_type error) { m_errors[root] = error; }
-  void set_error(const std::vector<unsigned int>& roots, const std::vector<scalar_type>& errors) {
-    for (size_t i = 0; i < roots.size(); ++i) {
-      set_error(roots[i], errors[i]);
     }
   }
 
@@ -85,15 +76,6 @@ public:
     auto erase_at_i = [i](auto& v) { v.erase(std::next(begin(v), i)); };
     erase_at_i(m_params);
     erase_at_i(m_actions);
-    erase_at_i(m_errors);
-  }
-
-  //! Number of solutions stored in C space
-  size_t nroots() const {
-    if (m_errors.empty())
-      return 0;
-    else
-      return m_errors.rbegin().base()->first;
   }
 
   CVecRef<Q> params() const { return wrap(m_params); };
@@ -103,19 +85,11 @@ public:
   CVecRef<Q> cactions() const { return actions(); };
   VecRef<Q> actions() { return wrap(m_actions); };
 
-  std::vector<scalar_type> errors() const {
-    auto err = std::vector<scalar_type>(nroots());
-    for (const auto& e : m_errors)
-      err.at(e.first) = e.second;
-    return err;
-  };
-
 protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::shared_ptr<Logger> m_logger;
-  std::map<unsigned int, Q> m_params;           //! parameters for root index
-  std::map<unsigned int, Q> m_actions;          //! actions for root index
-  std::map<unsigned int, scalar_type> m_errors; //! errors for root index
+  std::map<unsigned int, Q> m_params;  //! parameters for root index
+  std::map<unsigned int, Q> m_actions; //! actions for root index
 };
 
 } // namespace subspace

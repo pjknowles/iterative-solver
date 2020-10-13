@@ -132,20 +132,31 @@ public:
     m_solutions.resize({nroots, dim});
     m_solutions.slice() = full_matrix.slice({0, 0}, {nroots, dim});
     m_solutions = detail::transform_solutions(m_solutions, m_lin_trans);
+    m_errors.assign(size(), std::numeric_limits<value_type_abs>::max());
     if (m_logger->data_dump) {
       m_logger->msg("eigenvalues = ", begin(m_eigenvalues), end(m_eigenvalues), Logger::Debug);
       m_logger->msg("eigenvectors = " + as_string(m_solutions), Logger::Info);
     }
   }
 
+  //! Set error value for solution *root*
+  void set_error(unsigned int root, value_type_abs error) { m_errors.at(root) = error; }
+  void set_error(const std::vector<unsigned int>& roots, const std::vector<value_type_abs>& errors) {
+    for (size_t i = 0; i < roots.size(); ++i)
+      set_error(roots[i], errors[i]);
+  }
+
   const Matrix<value_type>& solutions() const { return m_solutions; }
   const std::vector<value_type>& eigenvalues() const { return m_eigenvalues; }
+  const std::vector<value_type_abs>& errors() const { return m_errors; }
 
+  //! Number of solutions
   size_t size() const { return m_solutions.rows(); }
 
 protected:
   Matrix<value_type> m_solutions;        //!< solution matrix with row vectors
   std::vector<value_type> m_eigenvalues; //!< eigenvalues
+  std::vector<value_type_abs> m_errors;  //!< errors in subspace solutions
   Matrix<value_type> m_lin_trans;        //!< linear transformation to a well conditioned subspace
   std::shared_ptr<Logger> m_logger;
   value_type_abs m_norm_stability_threshold = 1.0e-4; //!< norm threshold for Gram Schmidt orthogonalisation

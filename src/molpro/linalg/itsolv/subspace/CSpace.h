@@ -12,40 +12,6 @@ namespace molpro {
 namespace linalg {
 namespace itsolv {
 namespace subspace {
-namespace cspace {
-
-//! Update equation data
-template <typename T>
-void update_subspace(const unsigned int root, SubspaceData& cc, SubspaceData& qc, SubspaceData& cq, SubspaceData& cp,
-                     SubspaceData& pc, const T eigval, const SubspaceData& xdata, const Matrix<T>& solutions,
-                     const xspace::Dimensions& dims) {
-  if (root >= cc[EqnData::S].rows()) {
-    for (auto d : {EqnData::S, EqnData::H}) {
-      cc[d].resize({root + 1, root + 1});
-      qc[d].resize({qc[d].rows(), root + 1});
-      cq[d].resize({root + 1, cq[d].cols()});
-      pc[d].resize({qc[d].rows(), root + 1});
-      cp[d].resize({root + 1, cp[d].cols()});
-    }
-  }
-  cc[EqnData::S](root, root) = 1;
-  cc[EqnData::H](root, root) = eigval;
-  auto update_offdiag = [&solutions, &dims, &xdata, root](SubspaceData& cy, SubspaceData& yc, size_t oY, size_t nY) {
-    for (size_t i = 0; i < nY; ++i) {
-      cy[EqnData::S](root, i) = yc[EqnData::S](i, root) = solutions(root, oY + i);
-      cy[EqnData::H](root, i) = yc[EqnData::H](i, root) = 0;
-      for (size_t j = 0; j < dims.nX; ++j) {
-        cy[EqnData::H](root, i) += solutions(root, j) * xdata.at(EqnData::H)(j, oY + i);
-        yc[EqnData::H](i, root) += xdata.at(EqnData::H)(oY + i, j) * solutions(root, j);
-      }
-    }
-  };
-  update_offdiag(cp, pc, dims.oP, dims.nP);
-  update_offdiag(cq, qc, dims.oQ, dims.nQ);
-}
-
-} // namespace cspace
-
 /*!
  * @brief Space storing the complement of Q necessary to reconstruct previous solutions.
  *
@@ -72,13 +38,6 @@ public:
   using Q = Qt;
   using P = Pt;
   using scalar_type = ST;
-
-  //! Matrix and overlap data mapped to the subspace
-  SubspaceData data = null_data<EqnData::H, EqnData::S>();
-  SubspaceData qc = null_data<EqnData::H, EqnData::S>();
-  SubspaceData cq = null_data<EqnData::H, EqnData::S>();
-  SubspaceData cp = null_data<EqnData::H, EqnData::S>();
-  SubspaceData pc = null_data<EqnData::H, EqnData::S>();
 
   explicit CSpace(std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_logger(std::move(logger)) {}
@@ -118,10 +77,6 @@ public:
   void clear() {
     m_params.clear();
     m_actions.clear();
-    m_errors.clear();
-    for (auto d : data) {
-      d.second.clear();
-    }
   }
 
   //! Erases parameter i. @param i index in the current space
@@ -131,9 +86,6 @@ public:
     erase_at_i(m_params);
     erase_at_i(m_actions);
     erase_at_i(m_errors);
-    for (auto d : {EqnData::H, EqnData::S}) {
-      data.at(d).remove_row_col(i, i);
-    }
   }
 
   //! Number of solutions stored in C space

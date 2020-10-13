@@ -218,6 +218,7 @@ protected:
     m_subspace_solver.solve(m_xspace, n_roots());
     m_xspace.update_cspace_data(m_subspace_solver.solutions(), m_subspace_solver.eigenvalues());
     auto nsol = m_subspace_solver.size();
+    std::vector<std::pair<Q, Q>> temp_solutions{};
     for (const auto& batch : detail::parameter_batches(nsol, parameters.size())) {
       size_t start_sol, end_sol;
       std::tie(start_sol, end_sol) = batch;
@@ -231,34 +232,30 @@ protected:
                                  m_xspace.dimensions().oC, *m_handlers);
       auto pvectors = detail::construct_pspace_vector(roots, m_subspace_solver.solutions(), m_xspace.paramsp(),
                                                       m_xspace.dimensions().oP, m_handlers->pp());
+      detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
       if (apply_p) {
         auto waction = wrap(action);
         apply_p(pvectors, waction);
-      }
-      detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
-      auto eigvals = std::vector<scalar_type>{};
-      for (auto i : roots)
-        eigvals.emplace_back(m_subspace_solver.eigenvalues().at(i));
-      auto errors = std::vector<scalar_type>(roots.size(), 0);
-      m_xspace.update_cspace(roots, cwrap(parameters), cwrap(action), errors);
-      if (!apply_p) {
+      } else {
         detail::remove_p_component(parameters, roots, m_subspace_solver.solutions(), m_xspace.paramsp(),
                                    m_xspace.dimensions().oP, m_handlers->rp());
         detail::remove_p_component(action, roots, m_subspace_solver.solutions(), m_xspace.actionsp(),
                                    m_xspace.dimensions().oP, m_handlers->rp());
       }
       detail::construct_residual(roots, m_subspace_solver.eigenvalues(), parameters, action, m_handlers->rr());
+      auto errors = std::vector<scalar_type>(roots.size(), 0);
       detail::update_errors(errors, action, m_handlers->rr());
-      m_xspace.cspace.set_error(roots, errors);
+      for (size_t i = 0; i < roots.size(); ++i)
+        temp_solutions.emplace_back(m_handlers->qr().copy(parameters[i]), m_handlers->qr().copy(action[i]));
+      m_subspace_solver.set_error(roots, errors);
     }
-    m_errors = m_xspace.cspace.errors();
+    m_errors = m_subspace_solver.errors();
     m_working_set = detail::select_working_set(parameters.size(), m_errors, m_convergence_threshold);
     for (size_t i = 0; i < m_working_set.size(); ++i) {
       auto root = m_working_set[i];
-      m_handlers->rq().copy(parameters[i], m_xspace.paramsc().at(root));
-      m_handlers->rq().copy(action[i], m_xspace.actionsc().at(root));
+      m_handlers->rq().copy(parameters[i], temp_solutions.at(root).first);
+      m_handlers->rq().copy(action[i], temp_solutions.at(root).second);
     }
-    detail::construct_residual(m_working_set, m_subspace_solver.eigenvalues(), parameters, action, m_handlers->rr());
     pparams = detail::construct_pspace_vector(m_working_set, m_subspace_solver.solutions(), m_xspace.paramsp(),
                                               m_xspace.dimensions().oP, m_handlers->pp());
     m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace);

@@ -49,49 +49,76 @@ auto propose_orthonormal_set(VecRef<R>& params, const double norm_thresh, array:
   return std::tuple<decltype(lin_trans), decltype(norm)>{lin_trans, norm};
 }
 /*!
- * @brief Uses overlap matrix to construct an orthogonal set of R params, removing any Q parameters that are linearly
- *   dependent
+ * @brief Uses overlap matrix to construct an orthogonal set of R params, and select Q parameters for removal
+ *
+ *  Linearly dependent Q params are removed based on maximum overlap with proposed R param.
+ *
+ *  When Q space is larger in size than specified limit, than parameters with smallest maximum contribution to all
+ *  solutions are removed.
+ *
  * @param overlap overlap matrix of current subspace + initial R parameters
  * @param qspace qspace container
  * @param oQ offset to the Q parameters in the full subspace
  * @param nW number of working parameters
  * @param res_norm_thresh norm threshold for Gram-Schmidt procedure
- * @return
+ * @return index of q parameters to be removed, linear transformation matrix for constructing R params, and their norm
  */
-template <class R, class Q, class P, typename value_type, typename value_type_abs>
-auto prepare_orthogonal_rset(subspace::Matrix<value_type>& overlap, subspace::XSpaceI<R, Q, P>& xspace, const size_t nW,
-                             Logger& logger, value_type_abs res_norm_thresh, unsigned int max_size_qspace) {
-  logger.msg("prepare_orthogonal_rset()", Logger::Trace);
+template <typename value_type, typename value_type_abs>
+auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> overlap,
+                                                   const subspace::Matrix<value_type>& solutions,
+                                                   const subspace::xspace::Dimensions& dims, Logger& logger,
+                                                   value_type_abs res_norm_thresh, unsigned int max_size_qspace) {
+  assert(solutions.rows() != 0);
+  logger.msg("calculate_transformation_to_orthogonal_rspace()", Logger::Trace);
   auto norm = std::vector<value_type_abs>{};
   auto lin_trans = subspace::Matrix<value_type>{};
+  auto qindices_to_remove = std::vector<unsigned int>{};
+  auto qindices = std::vector<unsigned int>(dims.nQ);
+  std::iota(begin(qindices), end(qindices), 0);
+  auto remove_qspace = [&](size_t oQ, size_t iQ) {
+    auto iQ_glob = qindices.at(iQ);
+    qindices_to_remove.emplace_back(iQ_glob);
+    qindices.erase(begin(qindices) + iQ);
+    overlap.remove_row_col(oQ + iQ, oQ + iQ);
+    logger.msg("removing q parameter = " + std::to_string(iQ_glob), Logger::Info);
+  };
   for (bool done = false; !done;) {
-    const auto nQ = xspace.dimensions().nQ;
-    const auto oQ = xspace.dimensions().oQ;
+    const auto oQ = dims.oQ;
+    const auto nQ = qindices.size();
     const auto oN = oQ + nQ;
     norm = subspace::util::gram_schmidt(overlap, lin_trans, res_norm_thresh);
     auto it = std::find_if(std::next(begin(norm), oN), end(norm),
                            [res_norm_thresh](auto el) { return el < res_norm_thresh; });
-    done = (it == end(norm) || nQ == 0);
-    if (!done) {
+    auto qspace_is_empty = nQ == 0;
+    auto found_singularity = (it == end(norm) && !qspace_is_empty);
+    auto qspace_over_limit = nQ > max_size_qspace;
+    done = !(found_singularity || qspace_over_limit);
+    if (found_singularity) {
       auto i = std::distance(begin(norm), it);
       logger.msg("parameter index i = " + std::to_string(i) + " norm = " + std::to_string(*it), Logger::Info);
       auto normalised_overlap = std::vector<value_type>{};
-      for (size_t j = 0; j < nQ; ++j) {
+      for (size_t j = 0; j < nQ; ++j)
         normalised_overlap.emplace_back(std::abs(overlap(i, oQ + j)) / std::sqrt(std::abs(overlap(oQ + j, oQ + j))));
-      }
       auto it_max = std::max_element(begin(normalised_overlap), end(normalised_overlap));
       auto iq_erase = std::distance(begin(normalised_overlap), it_max);
-      const auto ix = oQ + iq_erase;
-      logger.msg("removing parameter index = " + std::to_string(ix), Logger::Info);
-      xspace.eraseq(iq_erase);
-      overlap.remove_row_col(ix, ix);
-    } else if (nQ > max_size_qspace) {
-      xspace.eraseq(nQ - 1);
-      overlap.remove_row_col(oQ + nQ - 1, oQ + nQ - 1);
-      done = false;
+      remove_qspace(oQ, iq_erase);
+    } else if (qspace_over_limit) {
+      auto max_contrib_to_solution = std::vector<value_type_abs>{};
+      for (auto i : qindices) {
+        const auto nSol = solutions.rows();
+        auto contrib = std::vector<value_type_abs>(nSol);
+        for (size_t j = 0; j < nSol; ++j) {
+          contrib[j] = std::abs(solutions(j, oQ + i));
+        }
+        max_contrib_to_solution.emplace_back(*std::max_element(begin(contrib), end(contrib)));
+      }
+      auto it_min = std::min_element(begin(max_contrib_to_solution), end(max_contrib_to_solution));
+      auto i = std::distance(begin(max_contrib_to_solution), it_min);
+      remove_qspace(oQ, i);
     }
   }
-  return std::tuple<decltype(lin_trans), decltype(norm)>{lin_trans, norm};
+  return std::tuple<decltype(qindices_to_remove), decltype(lin_trans), decltype(norm)>{qindices_to_remove, lin_trans,
+                                                                                       norm};
 }
 
 /*!
@@ -208,7 +235,10 @@ void construct_orthonormal_Rparams(VecRef<R>& params, VecRef<R>& residuals,
  * Basic procedure:
  *  - Gram-schmidt orthonormalise residuals amongst themselves
  *  - Gram-schmidt orthogonalise residuals against the old Q space and current solutions
- *  - Ensure that the resultant Q space is not linearly dependent
+ *  - Ensure that the resultant Q space is not linearly dependent by removing Q parameters with large overlap
+ *  - Ensure that the size of Q space is within limit, by removing Q parameters with smallest contributions to current
+ *    solutions
+ *  - Reconstruct C space
  *
  * Various possibilities:
  *  1. Residuals are linearly dependent among themselves, worst case scenario there could be duplicates.
@@ -225,12 +255,12 @@ void construct_orthonormal_Rparams(VecRef<R>& params, VecRef<R>& residuals,
  * @param residual preconditioned residuals.
  * @return number of significant parameters to calculate the action for
  */
-template <class R, class Q, class P, typename value_type_abs>
+template <class R, class Q, class P, typename value_type, typename value_type_abs>
 std::vector<unsigned int> propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters,
                                          std::vector<R>& residuals, subspace::XSpaceI<R, Q, P>& xspace,
+                                         const subspace::Matrix<value_type>& solutions,
                                          ArrayHandlers<R, Q, P>& handlers, Logger& logger,
                                          value_type_abs res_norm_thresh, unsigned int max_size_qspace) {
-  using value_type = typename std::decay_t<decltype(xspace)>::value_type;
   logger.msg("itsolv::detail::propose_rspace", Logger::Trace);
   auto nW = solver.working_set().size();
   auto wresidual = wrap<R>(residuals.begin(), std::next(residuals.begin(), nW));
@@ -249,12 +279,17 @@ std::vector<unsigned int> propose_rspace(LinearEigensystem<R, Q, P>& solver, std
   construct_orthonormal_set(wresidual, lin_trans, norm, handlers.rr());
   auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
                                   xspace.cparamsq(), xspace.dimensions(), handlers, logger);
-  std::tie(lin_trans, norm) = prepare_orthogonal_rset(ov, xspace, nW, logger, res_norm_thresh, max_size_qspace);
+  auto remove_qspace = std::vector<unsigned int>{};
+  std::tie(remove_qspace, lin_trans, norm) = calculate_transformation_to_orthogonal_rspace(
+      ov, solutions, xspace.dimensions(), logger, res_norm_thresh, max_size_qspace);
   if (logger.data_dump) {
     logger.msg("full overlap = " + subspace::as_string(ov), Logger::Info);
     logger.msg("linear transformation = " + subspace::as_string(lin_trans), Logger::Info);
     logger.msg("norm = ", norm.begin(), norm.end(), Logger::Info);
+    logger.msg("remove Q space indices = ", remove_qspace.begin(), remove_qspace.end(), Logger::Info);
   }
+  // construct the C space based on indices in remove_qspace and the current C space
+  // actually remove the Q space parameters
   construct_orthonormal_Rparams(wparams, wresidual, lin_trans, norm, xspace.cparamsp(), xspace.cparamsq(), handlers);
   normalise(wparams, handlers.rr(), logger);
   return new_working_set;

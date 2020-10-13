@@ -27,7 +27,7 @@ void normalise(VecRef<R>& params, array::ArrayHandler<R, R>& handler, Logger& lo
 //! Proposes an orthonormal set of vectors, removing any params that are linearly dependent
 //! @returns linear transformation in orthogonal set and norm
 template <class R, typename value_type, typename value_type_abs>
-auto propose_orthonormal_set(VecRef<R>& params, const double norm_thresh, array::ArrayHandler<R, R>& handler,
+auto propose_orthonormal_set(VecRef<R> params, const double norm_thresh, array::ArrayHandler<R, R>& handler,
                              Logger& logger) {
   logger.msg("propose_orthonormal_set()", Logger::Trace);
   auto lin_trans = subspace::Matrix<value_type>{};
@@ -46,7 +46,7 @@ auto propose_orthonormal_set(VecRef<R>& params, const double norm_thresh, array:
     }
   }
   lin_trans = subspace::util::construct_lin_trans_in_orthogonal_set(ov, lin_trans, norm);
-  return std::tuple<decltype(lin_trans), decltype(norm)>{lin_trans, norm};
+  return std::tuple<decltype(params), decltype(lin_trans), decltype(norm)>{params, lin_trans, norm};
 }
 /*!
  * @brief Uses overlap matrix to construct an orthogonal set of R params, and select Q parameters for removal
@@ -227,6 +227,18 @@ void construct_orthonormal_Rparams(VecRef<R>& params, VecRef<R>& residuals,
   }
 }
 
+//! Returns new working set based on parameters included in wparams
+template <class R>
+auto get_new_working_set(const std::vector<unsigned int>& working_set, const std::vector<R>& params,
+                         const VecRef<R>& wparams) {
+  auto new_indices = find_ref(wparams, begin(params), end(params));
+  auto new_working_set = std::vector<unsigned int>{};
+  for (auto i : new_indices) {
+    new_working_set.emplace_back(working_set.at(i));
+  }
+  return new_working_set;
+}
+
 /*!
  * \brief Proposes new parameters for the subspace from the preconditioned residuals.
  *
@@ -262,20 +274,12 @@ std::vector<unsigned int> propose_rspace(LinearEigensystem<R, Q, P>& solver, std
                                          ArrayHandlers<R, Q, P>& handlers, Logger& logger,
                                          value_type_abs res_norm_thresh, unsigned int max_size_qspace) {
   logger.msg("itsolv::detail::propose_rspace", Logger::Trace);
-  auto nW = solver.working_set().size();
-  auto wresidual = wrap<R>(residuals.begin(), std::next(residuals.begin(), nW));
+  auto wresidual = wrap<R>(residuals.begin(), residuals.begin() + solver.working_set().size());
   normalise(wresidual, handlers.rr(), logger);
   auto lin_trans = subspace::Matrix<value_type>{};
   auto norm = std::vector<value_type_abs>{};
-  std::tie(lin_trans, norm) =
+  std::tie(wresidual, lin_trans, norm) =
       propose_orthonormal_set<R, value_type, value_type_abs>(wresidual, res_norm_thresh, handlers.rr(), logger);
-  nW = wresidual.size();
-  auto new_indices = find_ref(wresidual, begin(residuals), end(residuals));
-  auto new_working_set = std::vector<unsigned int>{};
-  auto wparams = wrap<R>(parameters.begin(), parameters.begin() + nW);
-  for (auto i : new_indices) {
-    new_working_set.emplace_back(solver.working_set().at(i));
-  }
   construct_orthonormal_set(wresidual, lin_trans, norm, handlers.rr());
   auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
                                   xspace.cparamsq(), xspace.dimensions(), handlers, logger);
@@ -290,6 +294,8 @@ std::vector<unsigned int> propose_rspace(LinearEigensystem<R, Q, P>& solver, std
   }
   // construct the C space based on indices in remove_qspace and the current C space
   // actually remove the Q space parameters
+  auto new_working_set = get_new_working_set(solver.working_set(), residuals, wresidual);
+  auto wparams = wrap<R>(parameters.begin(), parameters.begin() + wresidual.size());
   construct_orthonormal_Rparams(wparams, wresidual, lin_trans, norm, xspace.cparamsp(), xspace.cparamsq(), handlers);
   normalise(wparams, handlers.rr(), logger);
   return new_working_set;

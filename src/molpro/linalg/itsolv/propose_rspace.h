@@ -184,6 +184,82 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
 }
 
 /*!
+ * @brief Constructs overlap matrix of P+Q+R+(projected solutions) subspaces, where Q is without removed parameters
+ * @param solutions_proj solutions matrix with Q deleted + current D space as columns
+ * @param dims dimensions of the current subspace
+ * @param remove_qspace indices of Q parameters to be removed
+ * @param overlap overlap of current subspace P+Q+D+R, including all of the current Q space
+ * @param nR number of new parameters
+ * @return overlap matrix for the subspace P+Q+R+(projected solutions)
+ */
+template <typename value_type>
+auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_type>& solutions_proj,
+                                                const subspace::xspace::Dimensions& dims,
+                                                const std::vector<unsigned int>& remove_qspace,
+                                                const subspace::Matrix<value_type>& overlap, const size_t nR) {
+  const auto nDnew = solutions_proj.size();
+  const auto nQd = remove_qspace.size();
+  const auto nQ = dims.nQ - nQd;
+  auto ov = overlap;
+  for (size_t i = 0; i < dims.nC; ++i) {
+    ov.remove_row_col(dims.oC, dims.oC);
+  }
+  auto is_Qdelete = [&remove_qspace](size_t i) {
+    return std::find(begin(remove_qspace), end(remove_qspace), i) != end(remove_qspace);
+  };
+  for (size_t i = 0, j = 0; i < dims.nQ; ++i) {
+    if (is_Qdelete(i))
+      ov.remove_row_col(dims.oQ + j, dims.oQ + j);
+    else
+      ++j;
+  }
+  const auto oDnew = dims.nP + nQ + nR;
+  ov.resize({oDnew + nDnew, oDnew + nDnew});
+  /*
+   * append overlap with solutions_proj
+   * x_i = \sum_j c_ij v_j
+   * <x_i, v_j> = \sum_k c_ik <v_k, v_j>
+   * <x_i, x_j> = \sum_kl c_ik c_jl <v_k, v_l>
+   */
+  auto accumulate_ov_offdiag = [&](size_t i, size_t j, size_t jj) {
+    for (size_t k = 0; k < nQd; ++k)
+      ov(oDnew + i, j) += solutions_proj(i, k) * overlap(jj, dims.oQ + remove_qspace[k]);
+    for (size_t k = 0; k < dims.nC; ++k)
+      ov(oDnew + i, j) += solutions_proj(i, nQd + k) * overlap(jj, dims.oC + k);
+    ov(j, oDnew + i) = ov(oDnew + i, j);
+  };
+  for (size_t i = 0; i < nDnew; ++i) {
+    for (size_t j = 0; j < dims.nP; ++j)
+      accumulate_ov_offdiag(i, j, dims.oP + j);
+    for (size_t j = 0, jj = 0; j < dims.nQ; ++j)
+      if (!is_Qdelete(j))
+        accumulate_ov_offdiag(i, jj++, dims.oQ + j);
+    for (size_t j = 0; j < nR; ++j)
+      accumulate_ov_offdiag(i, dims.nP + nQ + j, dims.nX + j);
+    for (size_t j = 0; j <= i; ++j) {
+      for (size_t k = 0; k < nQd; ++k) {
+        for (size_t l = 0; l < nQd; ++l)
+          ov(oDnew + i, oDnew + j) += solutions_proj(i, k) * solutions_proj(j, l) *
+                                      overlap(dims.oQ + remove_qspace[k], dims.oQ + remove_qspace[l]);
+        for (size_t l = 0; l < dims.nC; ++l)
+          ov(oDnew + i, oDnew + j) +=
+              solutions_proj(i, k) * solutions_proj(j, nQd + l) * overlap(dims.oQ + remove_qspace[k], dims.oC + l);
+      }
+      for (size_t k = 0; k < dims.nC; ++k) {
+        for (size_t l = 0; l < nQd; ++l)
+          ov(oDnew + i, oDnew + j) +=
+              solutions_proj(i, nQd + k) * solutions_proj(j, l) * overlap(dims.oC + k, dims.oQ + remove_qspace[l]);
+        for (size_t l = 0; l < dims.nC; ++l)
+          ov(oDnew + i, oDnew + j) +=
+              solutions_proj(i, nQd + k) * solutions_proj(j, nQd + l) * overlap(dims.oC + k, dims.oC + l);
+      }
+      ov(oDnew + j, oDnew + i) = ov(oDnew + i, oDnew + j);
+    }
+  }
+  return ov;
+}
+
+/*!
  * @brief Constructs transformation to D space by projecting solutions on to deleted Q (Q_D) and old D space, than
  *  orthogonalising against P+Q+R
  * @param solutions row-wise matrix with solutions in the subspace
@@ -195,13 +271,13 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
 template <typename value_type, typename value_type_abs>
 auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspace::xspace::Dimensions& dims,
                     const std::vector<unsigned int>& remove_qspace, const subspace::Matrix<value_type>& overlap,
-                    value_type_abs norm_thresh) {
+                    const size_t nR, value_type_abs norm_thresh) {
   auto solutions_proj = construct_projected_solution(solutions, dims, remove_qspace, overlap, norm_thresh);
-  // construct overlap of projected solutions with P+Q+R subspace
-  // orthogonalise against the subspace
-  //
+  // construct overlap of projected solutions with the new P+Q+R subspace (excluding Q_D)
+  auto ov = construct_overlap_with_projected_solutions(solutions_proj, dims, remove_qspace, overlap, nR);
   auto lin_trans = subspace::Matrix<value_type>{};
   auto norm = std::vector<value_type_abs>{};
+  // orthogonalise against the subspace
   return std::tuple<decltype(lin_trans), decltype(norm)>{lin_trans, norm};
 }
 
@@ -394,8 +470,10 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
   std::copy(begin(paramsd), end(paramsd), std::back_inserter(params_qd));
   ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wparams), xspace.cparamsp(), params_qd,
                              handlers, logger);
-  std::tie(lin_trans, norm) = propose_dspace(solutions, xspace.dimensions(), remove_qspace, ov, res_norm_thresh);
-  construct_orthonormal_Dparams(xspace, lin_trans, norm, xspace.cparamsp(), xspace.cparamsq(), cwrap(wparams), handlers);
+  std::tie(lin_trans, norm) =
+      propose_dspace(solutions, xspace.dimensions(), remove_qspace, ov, wparams.size(), res_norm_thresh);
+  construct_orthonormal_Dparams(xspace, lin_trans, norm, xspace.cparamsp(), xspace.cparamsq(), cwrap(wparams),
+                                handlers);
   // finally remove Q parameters
   return new_working_set;
 }

@@ -50,8 +50,8 @@ template <class R>
 auto cwrap(std::vector<R>& vec) {
   auto w = CVecRef<decay_t<R>>{};
   std::copy(begin(vec), end(vec), std::back_inserter(w));
-   return w;
- }
+  return w;
+}
 
 //! Takes a begin and end iterators and returns a vector of references to each element
 template <class R, class ForwardIt>
@@ -111,6 +111,28 @@ std::vector<size_t> find_ref(const VecRef<R>& wparams, ForwardIt begin, ForwardI
   }
   return indices;
 }
+
+/*!
+ * @brief Removes indices from a vector
+ * @tparam T value type
+ * @tparam I index type
+ * @param params container
+ * @param indices indices to remove
+ * @return
+ */
+template <typename T, typename I>
+auto remove_elements(std::vector<T> params, const std::vector<I>& indices) {
+  const auto n = params.size();
+  for (size_t i = 0, j = 0; i < n; ++i) {
+    if (std::find(begin(indices), end(indices), i) != end(indices)) {
+      params.erase(begin(params) + j);
+    } else {
+      ++j;
+    }
+  }
+  return params;
+}
+
 } // namespace itsolv
 } // namespace linalg
 } // namespace molpro

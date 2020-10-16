@@ -122,6 +122,106 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
 }
 
 /*!
+ * @brief Projects solution from the full subspace on to Q_{delete} and current D space.
+ * @param solutions solution matrix in the full subspace
+ * @param dims dimensions for partitioning of subspace
+ * @param remove_qspace indices to remove from current Q space and move into Q_{delete}
+ * @param overlap overlap matrix of the current subspace
+ * @param norm_thresh vectors with norm less than this threshold are considered null
+ * @return
+ */
+template <typename value_type, typename value_type_abs>
+auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
+                                  const subspace::xspace::Dimensions& dims,
+                                  const std::vector<unsigned int>& remove_qspace,
+                                  const subspace::Matrix<value_type>& overlap, value_type_abs norm_thresh) {
+  const auto nQd = remove_qspace.size();
+  const auto nSol = solutions.rows();
+  auto solutions_proj = subspace::Matrix<value_type>({nSol, nQd + dims.nC});
+  for (size_t i = 0; i < nSol; ++i) {
+    for (size_t j = 0; j < nQd; ++j) {
+      solutions_proj(i, j) = solutions(i, remove_qspace[j]);
+    }
+    for (size_t j = 0; j < dims.nC; ++j) {
+      solutions_proj(i, nQd + j) = solutions(i, dims.oC + j);
+    }
+  }
+  auto norm_proj = std::vector<value_type_abs>(nSol);
+  for (size_t i = 0; i < nSol; ++i) {
+    for (size_t j = 0; j < nQd; ++j) {
+      for (size_t k = 0; k < j; ++k) {
+        norm_proj[i] += 2. * solutions_proj(i, j) * solutions_proj(i, k) * overlap(remove_qspace[j], remove_qspace[k]);
+      }
+      norm_proj[i] += std::pow(solutions_proj(i, j), 2) * overlap(remove_qspace[j], remove_qspace[j]);
+    }
+    for (size_t j = 0; j < nQd; ++j) {
+      for (size_t k = 0; k < dims.nC; ++k) {
+        norm_proj[i] += 2. * solutions_proj(i, j) * solutions_proj(i, nQd + k) * overlap(remove_qspace[j], dims.oC + k);
+      }
+    }
+    for (size_t j = 0; j < dims.nC; ++j) {
+      for (size_t k = 0; k < j; ++k) {
+        norm_proj[i] += 2. * solutions_proj(nQd + i, nQd + j) * solutions_proj(nQd + i, nQd + k) *
+                        overlap(dims.oC + j, dims.oC + k);
+      }
+      norm_proj[i] += std::pow(solutions_proj(nQd + i, nQd + j), 2) * overlap(dims.oC + j, dims.oC + j);
+    }
+    for (size_t j = 0; j < dims.nC; ++j) {
+      solutions_proj(i, nQd + j) = solutions(i, dims.oC + j);
+    }
+  }
+  for (auto& x : norm_proj)
+    x = std::sqrt(std::abs(x));
+  for (size_t i = 0, j = 0; i < nSol; ++i) {
+    if (norm_proj[i] > norm_thresh) {
+      solutions_proj.row(j).scal(1. / norm_proj[i]);
+      ++j;
+    } else {
+      solutions_proj.remove_row(j);
+    }
+  }
+  return solutions_proj;
+}
+
+/*!
+ * @brief Constructs transformation to D space by projecting solutions on to deleted Q (Q_D) and old D space, than
+ *  orthogonalising against P+Q+R
+ * @param solutions row-wise matrix with solutions in the subspace
+ * @param dims dimensions of the current subspace
+ * @param remove_qspace indices of Q parameters that are deleted in this iteration
+ * @param overlap overlap matrix for current subspace with new R parameters (P + Q + D + R)
+ * @return
+ */
+template <typename value_type, typename value_type_abs>
+auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspace::xspace::Dimensions& dims,
+                    const std::vector<unsigned int>& remove_qspace, const subspace::Matrix<value_type>& overlap,
+                    value_type_abs norm_thresh) {
+  auto solutions_proj = construct_projected_solution(solutions, dims, remove_qspace, overlap, norm_thresh);
+  // construct overlap of projected solutions with P+Q+R subspace
+  // orthogonalise against the subspace
+  //
+  auto lin_trans = subspace::Matrix<value_type>{};
+  auto norm = std::vector<value_type_abs>{};
+  return std::tuple<decltype(lin_trans), decltype(norm)>{lin_trans, norm};
+}
+
+/*!
+ * @brief Applies linear transformation to construct the D space
+ * @param xspace subspace container. New D space is stored in xspace directly
+ * @param lin_trans linear transformation from current subspace to the new D space
+ * @param norm estimated norm of transformed vectors
+ * @param pparams P space parameters
+ * @param qparams Q space parameters
+ * @param rparams R space parameters
+ * @param handlers array handlers
+ */
+template <class R, class Q, class P, typename value_type, typename value_type_abs>
+void construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& lin_trans,
+                                   const std::vector<value_type_abs>& norm, const CVecRef<P>& pparams,
+                                   const CVecRef<Q>& qparams, const CVecRef<Q>& rparams,
+                                   ArrayHandlers<R, Q, P>& handlers) {}
+
+/*!
  * @brief Construct an orthonormal set from params and a linear transformation matrix
  *
  * @param params vectors to orthonormalise
@@ -149,17 +249,13 @@ void construct_orthonormal_set(VecRef<R>& params, const subspace::Matrix<value_t
  * @param params new parameters
  * @param pparams P space parameters
  * @param qparams Q space parameters
- * @param oP offset to the start of P parameters
- * @param oQ offset to the start of Q parameters
- * @param oC offset to the start of C parameters
- * @param oN offset to the start of new parameters
  * @param handlers array handlers
  * @param logger logger
  */
 template <class R, class Q, class P, typename value_type>
 auto append_overlap_with_r(const subspace::Matrix<value_type>& overlap, const CVecRef<R>& params,
-                           const CVecRef<P>& pparams, const CVecRef<Q>& qparams,
-                           const subspace::xspace::Dimensions& dims, ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
+                           const CVecRef<P>& pparams, const CVecRef<Q>& qparams, ArrayHandlers<R, Q, P>& handlers,
+                           Logger& logger) {
   auto nP = pparams.size();
   auto nQ = qparams.size();
   auto nN = params.size();
@@ -189,11 +285,6 @@ auto append_overlap_with_r(const subspace::Matrix<value_type>& overlap, const CV
  * @param norm approximate norm after linear transformation (full subspace)
  * @param pparams P space parameters
  * @param qparams Q space parameters
- * @param cparams C space parameters
- * @param oP offset to start of P space paramters
- * @param oQ offset to start of Q space paramters
- * @param oC offset to start of C space paramters
- * @param oN offset to start of the new parameters
  * @param handlers
  */
 template <class R, class Q, class P, typename value_type, typename value_type_abs>
@@ -268,11 +359,10 @@ auto get_new_working_set(const std::vector<unsigned int>& working_set, const std
  * @return number of significant parameters to calculate the action for
  */
 template <class R, class Q, class P, typename value_type, typename value_type_abs>
-std::vector<unsigned int> propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters,
-                                         std::vector<R>& residuals, subspace::XSpaceI<R, Q, P>& xspace,
-                                         const subspace::Matrix<value_type>& solutions,
-                                         ArrayHandlers<R, Q, P>& handlers, Logger& logger,
-                                         value_type_abs res_norm_thresh, unsigned int max_size_qspace) {
+auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters, std::vector<R>& residuals,
+                    subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& solutions,
+                    ArrayHandlers<R, Q, P>& handlers, Logger& logger, value_type_abs res_norm_thresh,
+                    unsigned int max_size_qspace) {
   logger.msg("itsolv::detail::propose_rspace", Logger::Trace);
   auto wresidual = wrap<R>(residuals.begin(), residuals.begin() + solver.working_set().size());
   normalise(wresidual, handlers.rr(), logger);
@@ -280,9 +370,11 @@ std::vector<unsigned int> propose_rspace(LinearEigensystem<R, Q, P>& solver, std
   auto norm = std::vector<value_type_abs>{};
   std::tie(wresidual, lin_trans, norm) =
       propose_orthonormal_set<R, value_type, value_type_abs>(wresidual, res_norm_thresh, handlers.rr(), logger);
+  // FIXME propose and construct in one go
   construct_orthonormal_set(wresidual, lin_trans, norm, handlers.rr());
+  // propose working space by orthogonalising against P+Q
   auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
-                                  xspace.cparamsq(), xspace.dimensions(), handlers, logger);
+                                  xspace.cparamsq(), handlers, logger);
   auto remove_qspace = std::vector<unsigned int>{};
   std::tie(remove_qspace, lin_trans, norm) = calculate_transformation_to_orthogonal_rspace(
       ov, solutions, xspace.dimensions(), logger, res_norm_thresh, max_size_qspace);
@@ -292,12 +384,19 @@ std::vector<unsigned int> propose_rspace(LinearEigensystem<R, Q, P>& solver, std
     logger.msg("norm = ", norm.begin(), norm.end(), Logger::Info);
     logger.msg("remove Q space indices = ", remove_qspace.begin(), remove_qspace.end(), Logger::Info);
   }
-  // construct the C space based on indices in remove_qspace and the current C space
-  // actually remove the Q space parameters
   auto new_working_set = get_new_working_set(solver.working_set(), residuals, wresidual);
   auto wparams = wrap<R>(parameters.begin(), parameters.begin() + wresidual.size());
-  construct_orthonormal_Rparams(wparams, wresidual, lin_trans, norm, xspace.cparamsp(), xspace.cparamsq(), handlers);
+  auto qparams_new = remove_elements(xspace.cparamsq(), remove_qspace);
+  construct_orthonormal_Rparams(wparams, wresidual, lin_trans, norm, xspace.cparamsp(), qparams_new, handlers);
   normalise(wparams, handlers.rr(), logger);
+  auto params_qd = xspace.cparamsq();
+  auto paramsd = xspace.cparamsc();
+  std::copy(begin(paramsd), end(paramsd), std::back_inserter(params_qd));
+  ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wparams), xspace.cparamsp(), params_qd,
+                             handlers, logger);
+  std::tie(lin_trans, norm) = propose_dspace(solutions, xspace.dimensions(), remove_qspace, ov, res_norm_thresh);
+  construct_orthonormal_Dparams(xspace, lin_trans, norm, xspace.cparamsp(), xspace.cparamsq(), cwrap(wparams), handlers);
+  // finally remove Q parameters
   return new_working_set;
 }
 } // namespace detail

@@ -2,7 +2,6 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACE_H
 #include <cassert>
 #include <molpro/linalg/itsolv/helper.h>
-#include <molpro/linalg/itsolv/subspace/CSpace.h>
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
@@ -68,70 +67,6 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
   }
   return data;
 }
-
-/*!
- * @brief Constructs data blocks for new solutions
- *
- * Equation data is constructed from the subspace data instead of calculating overlaps among full parameters.
- * Both approaches would lead to the same round-off error, but working in the subspace is much cheaper.
- *
- * Solutions {c} are expressed in the current subspace {x}
- * c_i = \sum_j C_{i,j} x_j
- *
- * S_{i,j} = <c_i, x_j> = \sum_k C_{i,k} <x_k, x_j>
- * H_{i,j} = <c_i, x_j>_H = \sum_k C_{i,k} <x_k, x_j>_H
- *
- * <x_k, x_j>_H = <x_k| H |x_j>
- */
-template <typename value_type>
-auto update_cspace_data(const Matrix<value_type>& solutions, const std::vector<value_type>& eigenvalues,
-                        SubspaceData& data, const Dimensions& dims, Logger& logger) {
-  const auto nCnew = solutions.rows();
-  auto new_data_blocks = NewData{nCnew, dims.nX};
-  auto& cc = new_data_blocks.qq;
-  auto& cx = new_data_blocks.qx;
-  auto& xc = new_data_blocks.xq;
-  for (size_t i = 0; i < nCnew; ++i) {
-    cc[EqnData::S](i, i) = 1;
-    cc[EqnData::H](i, i) = eigenvalues.at(i);
-  }
-  for (size_t i = 0; i < nCnew; ++i) {
-    for (size_t j = 0; j < dims.nX; ++j) {
-      for (size_t k = 0; k < dims.nX; ++k) {
-        cx[EqnData::S](i, j) += solutions(i, k) * data.at(EqnData::S)(k, j);
-        cx[EqnData::H](i, j) += solutions(i, k) * data.at(EqnData::H)(k, j);
-        xc[EqnData::H](j, i) += data.at(EqnData::H)(j, k) * solutions(i, k);
-      }
-      xc[EqnData::S](j, i) = cx[EqnData::S](i, j);
-    }
-  }
-  if (logger.data_dump) {
-    logger.msg("qspace::update_cspace_data() nCnew = " + std::to_string(nCnew), Logger::Info);
-    logger.msg("Scc = " + as_string(cc[EqnData::S]), Logger::Info);
-    logger.msg("Hcc = " + as_string(cc[EqnData::H]), Logger::Info);
-    logger.msg("Scx = " + as_string(cx[EqnData::S]), Logger::Info);
-    logger.msg("Hcx = " + as_string(cx[EqnData::H]), Logger::Info);
-    logger.msg("Sxc = " + as_string(xc[EqnData::S]), Logger::Info);
-    logger.msg("Hxc = " + as_string(xc[EqnData::H]), Logger::Info);
-  }
-  auto new_data = null_data<EqnData::S, EqnData::H>();
-  const auto nXnew = dims.nX + nCnew - dims.nC;
-  for (auto d : {EqnData::S, EqnData::H}) {
-    new_data[d].resize({nXnew, nXnew});
-    new_data[d].slice({0, 0}, {dims.oC, dims.oC}) = data.at(d).slice({0, 0}, {dims.oC, dims.oC});
-    new_data[d].slice({dims.oC + nCnew, dims.oC + nCnew}, {nXnew, nXnew}) =
-        data.at(d).slice({dims.oC + dims.nC, dims.oC + dims.nC}, {dims.nX, dims.nX});
-    new_data[d].slice({dims.oC, dims.oC}, {dims.oC + nCnew, dims.oC + nCnew}) = cc.at(d);
-    new_data[d].slice({dims.oC, 0}, {dims.oC + nCnew, dims.oC}) = cx.at(d).slice({0, 0}, {nCnew, dims.oC});
-    new_data[d].slice({dims.oC, dims.oC + nCnew}, {dims.oC + nCnew, nXnew}) =
-        cx.at(d).slice({0, dims.oC + dims.nC}, {nCnew, dims.nX});
-    new_data[d].slice({0, dims.oC}, {dims.oC, dims.oC + nCnew}) = xc.at(d).slice({0, 0}, {dims.oC, nCnew});
-    new_data[d].slice({dims.oC + nCnew, dims.oC}, {nXnew, dims.oC + nCnew}) =
-        xc.at(d).slice({dims.oC + dims.nC, 0}, {dims.nX, nCnew});
-    data[d] = std::move(new_data[d]);
-  }
-}
-
 } // namespace xspace
 
 template <class R, class Q, class P>
@@ -142,8 +77,7 @@ public:
   using XSpaceI<R, Q, P>::data;
 
   explicit XSpace(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers, const std::shared_ptr<Logger>& logger)
-      : pspace(), qspace(handlers, logger), cspace(handlers, logger), dspace(handlers, logger), m_handlers(handlers),
-        m_logger(logger) {
+      : pspace(), qspace(handlers, logger), dspace(handlers, logger), m_handlers(handlers), m_logger(logger) {
     data = null_data<EqnData::H, EqnData::S>();
   };
 
@@ -153,20 +87,6 @@ public:
     auto new_data = xspace::update_qspace_data(params, actions, cparamsp(), cparamsq(), cactionsq(), cparamsd(),
                                                cactionsd(), m_dim, *m_handlers, *m_logger);
     qspace.update(params, actions, new_data.qq, new_data.qx, new_data.xq, m_dim, data);
-    update_dimensions();
-  }
-
-  //! Uses solutions to update equation data in the subspace
-  void update_cspace_data(const Matrix<value_type>& evec, const std::vector<value_type>& eval) {
-    m_logger->msg("QSpace::update_cspace_data", Logger::Trace);
-    xspace::update_cspace_data(evec, eval, data, m_dim, *m_logger);
-  }
-
-  //! Updates a solution in C space. Equation data is not modified (see update_cspace_data())
-  void update_cspace(const std::vector<unsigned int>& roots, const CVecRef<R>& params, const CVecRef<R>& actions,
-                     const std::vector<value_type>& errors) override {
-    m_logger->msg("QSpace::update_cspace", Logger::Trace);
-    cspace.update(roots, params, actions, errors);
     update_dimensions();
   }
 
@@ -224,10 +144,9 @@ public:
   PSpace<R, P> pspace;
   QSpace<R, Q, P> qspace;
   QSpace<R, Q, P> dspace;
-  CSpace<R, Q, P, value_type> cspace;
 
 protected:
-  void update_dimensions() { m_dim = xspace::Dimensions(pspace.size(), qspace.size(), cspace.size()); }
+  void update_dimensions() { m_dim = xspace::Dimensions(pspace.size(), qspace.size(), dspace.size()); }
 
   void remove_data(size_t i) {
     for (auto d : {EqnData::H, EqnData::S})

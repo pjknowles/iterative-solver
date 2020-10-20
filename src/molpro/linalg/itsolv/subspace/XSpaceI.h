@@ -40,10 +40,6 @@ public:
   //! Adds parameters to the Q space
   virtual void update_qspace(const CVecRef<R>& params, const CVecRef<R>& actions) = 0;
 
-  //! Adds solutions to the C space
-  virtual void update_cspace(const std::vector<unsigned int>& roots, const CVecRef<R>& params,
-                             const CVecRef<R>& actions, const std::vector<value_type>& errors) = 0;
-
   virtual VecRef<P> paramsp() = 0;
   virtual VecRef<P> actionsp() = 0;
   virtual VecRef<Q> paramsq() = 0;

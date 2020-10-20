@@ -26,7 +26,7 @@ void construct_solution(std::vector<R>& params, const std::vector<unsigned int>&
                         const subspace::Matrix<double>& solutions,
                         const std::vector<std::reference_wrapper<P>>& pparams,
                         const std::vector<std::reference_wrapper<Q>>& qparams,
-                        const std::vector<std::reference_wrapper<Q>>& cparams, size_t oP, size_t oQ, size_t oC,
+                        const std::vector<std::reference_wrapper<Q>>& dparams, size_t oP, size_t oQ, size_t oD,
                         ArrayHandlers<R, Q, P>& handlers) {
   assert(params.size() >= roots.size());
   for (size_t i = 0; i < roots.size(); ++i) {
@@ -40,8 +40,8 @@ void construct_solution(std::vector<R>& params, const std::vector<unsigned int>&
     for (size_t j = 0; j < qparams.size(); ++j) {
       handlers.rq().axpy(solutions(root, oQ + j), qparams.at(j), params.at(i));
     }
-    for (size_t j = 0; j < cparams.size(); ++j) {
-      handlers.rq().axpy(solutions(root, oC + j), cparams.at(j), params.at(i));
+    for (size_t j = 0; j < dparams.size(); ++j) {
+      handlers.rq().axpy(solutions(root, oD + j), dparams.at(j), params.at(i));
     }
   }
 }
@@ -216,7 +216,6 @@ protected:
     auto wactions = cwrap<R>(begin(action), begin(action) + nW);
     m_xspace.update_qspace(wparams, wactions);
     m_subspace_solver.solve(m_xspace, n_roots());
-    m_xspace.update_cspace_data(m_subspace_solver.solutions(), m_subspace_solver.eigenvalues());
     auto nsol = m_subspace_solver.size();
     std::vector<std::pair<Q, Q>> temp_solutions{};
     for (const auto& batch : detail::parameter_batches(nsol, parameters.size())) {

@@ -333,8 +333,62 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
  */
 template <class R, class Q, class P, typename value_type, typename value_type_abs>
 void construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& lin_trans,
-                                   const std::vector<value_type_abs>& norm, const CVecRef<Q>& rparams,
-                                   ArrayHandlers<R, Q, P>& handlers) {}
+                                   const std::vector<value_type_abs>& norm,
+                                   const std::vector<unsigned int>& remove_qspace, const CVecRef<Q>& rparams,
+                                   ArrayHandlers<R, Q, P>& handlers) {
+  const auto nD = lin_trans.size();
+  const auto nQdelete = remove_qspace.size();
+  const auto qparams = xspace.cparamsq();
+  const auto pparams = xspace.cparamsp();
+  const auto dparams_old = xspace.cparamsd();
+  const auto qactions = xspace.cactionsq();
+  const auto pactions = xspace.cactionsp();
+  const auto dactions_old = xspace.cactionsd();
+  const auto dims = xspace.dimensions();
+  auto dparams = std::vector<Q>{};
+  auto dactions = std::vector<Q>{};
+  // FIXME should have a better way
+  for (size_t i = 0; i < nD; ++i) {
+    dparams.emplace_back(handlers.qq().copy(qparams));
+    dactions.emplace_back(handlers.qq().copy(qactions));
+    dparams.fill(0);
+    dactions.fill(0);
+  }
+  const auto oP = 0;
+  const auto oQ = dims.nP;
+  const auto nR = rparams.size();
+  const auto oR = oQ + dims.nQ - nQdelete;
+  const auto oQdelete = oR + nR;
+  const auto oDold = oQdelete + dims.nD;
+  for (size_t i = 0; i < nD; ++i) {
+    for (size_t j = 0; j < dims.nP; ++j) {
+      handlers.qp().axpy(lin_trans(i, oP + j), pparams.at(j), dparams[i]);
+      handlers.qp().axpy(lin_trans(i, oP + j), pactions.at(j), dactions[i]);
+    }
+    for (size_t j = 0, k = 0; j < dims.nQ; ++j) {
+      if (std::find(begin(remove_qspace), end(remove_qspace), i) == end(remove_qspace)) {
+        handlers.qp().axpy(lin_trans(i, oQ + k), qparams.at(j), dparams[i]);
+        handlers.qp().axpy(lin_trans(i, oQ + k), qactions.at(j), dactions[i]);
+      } else
+        ++k;
+    }
+    for (size_t j = 0; j < nR; ++j) {
+      handlers.qr().axpy(lin_trans(i, oR + j), rparams.at(j), dparams[i]);
+      // FIXME action has to be added to the D space after it has been calculated
+    }
+    for (size_t j = 0; j < nQdelete; ++j) {
+      handlers.qq().axpy(lin_trans(i, oQdelete + j), qparams.at(remove_qspace[j]), dparams[i]);
+      handlers.qq().axpy(lin_trans(i, oQdelete + j), qactions.at(remove_qspace[j]), dactions[i]);
+    }
+    for (size_t j = 0; j < dims.nD; ++j) {
+      handlers.qq().axpy(lin_trans(i, oDold + j), dparams_old.at(j), dparams[i]);
+      handlers.qq().axpy(lin_trans(i, oDold + j), dactions_old.at(j), dactions[i]);
+    }
+  }
+  // construct equation data
+  // update D space in X space, store R component to the new D so that the action can be finished.
+  // normalise
+}
 
 /*!
  * @brief Construct an orthonormal set from params and a linear transformation matrix
@@ -511,7 +565,7 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
                              handlers, logger);
   std::tie(lin_trans, norm) =
       propose_dspace(solutions, xspace.dimensions(), remove_qspace, ov, wparams.size(), res_norm_thresh);
-  construct_orthonormal_Dparams(xspace, lin_trans, norm, remove_qspace, cwrap(wparams), handlers);
+  construct_orthonormal_Dparams(xspace, lin_trans, norm, remove_qspace, cwrap(wparams), handlers, logger);
   // finally remove Q parameters
   return new_working_set;
 }

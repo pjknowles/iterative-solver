@@ -507,7 +507,7 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
   construct_orthonormal_Rparams(wparams, wresidual, lin_trans, norm, xspace.cparamsp(), qparams_new, handlers);
   normalise(wparams, handlers.rr(), logger);
   auto params_qd = xspace.cparamsq();
-  auto paramsd = xspace.cparamsc();
+  auto paramsd = xspace.cparamsd();
   std::copy(begin(paramsd), end(paramsd), std::back_inserter(params_qd));
   ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wparams), xspace.cparamsp(), params_qd,
                              handlers, logger);

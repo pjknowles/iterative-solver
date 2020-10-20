@@ -31,8 +31,8 @@ public:
   virtual void eraseq(size_t i) = 0;
   //! Removes parameter i from P subspace
   virtual void erasep(size_t i) = 0;
-  //! Removes parameter i from C subspace
-  virtual void erasec(size_t i) = 0;
+  //! Removes parameter i from D subspace
+  virtual void erased(size_t i) = 0;
 
   //! Adds parameters to the Q space
   virtual void update_pspace() {}
@@ -48,22 +48,22 @@ public:
   virtual VecRef<P> actionsp() = 0;
   virtual VecRef<Q> paramsq() = 0;
   virtual VecRef<Q> actionsq() = 0;
-  virtual VecRef<Q> paramsc() = 0;
-  virtual VecRef<Q> actionsc() = 0;
+  virtual VecRef<Q> paramsd() = 0;
+  virtual VecRef<Q> actionsd() = 0;
 
   virtual CVecRef<P> paramsp() const = 0;
   virtual CVecRef<P> actionsp() const = 0;
   virtual CVecRef<Q> paramsq() const = 0;
   virtual CVecRef<Q> actionsq() const = 0;
-  virtual CVecRef<Q> paramsc() const = 0;
-  virtual CVecRef<Q> actionsc() const = 0;
+  virtual CVecRef<Q> paramsd() const = 0;
+  virtual CVecRef<Q> actionsd() const = 0;
 
   virtual CVecRef<P> cparamsp() const = 0;
   virtual CVecRef<P> cactionsp() const = 0;
   virtual CVecRef<Q> cparamsq() const = 0;
   virtual CVecRef<Q> cactionsq() const = 0;
-  virtual CVecRef<Q> cparamsc() const = 0;
-  virtual CVecRef<Q> cactionsc() const = 0;
+  virtual CVecRef<Q> cparamsd() const = 0;
+  virtual CVecRef<Q> cactionsd() const = 0;
 
   virtual const xspace::Dimensions& dimensions() const = 0;
 };

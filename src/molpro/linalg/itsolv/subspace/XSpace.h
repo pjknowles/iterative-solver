@@ -30,8 +30,8 @@ struct NewData {
 //! Returns new sections of equation data
 template <class R, class Q, class P>
 auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, const CVecRef<P>& pparams,
-                        const CVecRef<Q>& qparams, const CVecRef<Q>& qactions, const CVecRef<Q>& cparams,
-                        const CVecRef<Q>& cactions, const Dimensions& dims, ArrayHandlers<R, Q, P>& handlers,
+                        const CVecRef<Q>& qparams, const CVecRef<Q>& qactions, const CVecRef<Q>& dparams,
+                        const CVecRef<Q>& dactions, const Dimensions& dims, ArrayHandlers<R, Q, P>& handlers,
                         Logger& logger) {
   auto nQnew = params.size();
   auto data = NewData(nQnew, dims.nX);
@@ -41,13 +41,13 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
   qq[EqnData::S] = util::overlap(params, handlers.rr());
   qx[EqnData::S].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}) = util::overlap(params, pparams, handlers.rp());
   qx[EqnData::S].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}) = util::overlap(params, qparams, handlers.rq());
-  qx[EqnData::S].slice({0, dims.oC}, {nQnew, dims.oC + dims.nC}) = util::overlap(params, cparams, handlers.rq());
+  qx[EqnData::S].slice({0, dims.oC}, {nQnew, dims.oC + dims.nC}) = util::overlap(params, dparams, handlers.rq());
   qq[EqnData::H] = util::overlap(params, actions, handlers.rr());
   qx[EqnData::H].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}) = util::overlap(params, qactions, handlers.rq());
-  qx[EqnData::H].slice({0, dims.oC}, {nQnew, dims.oC + dims.nC}) = util::overlap(params, cactions, handlers.rq());
+  qx[EqnData::H].slice({0, dims.oC}, {nQnew, dims.oC + dims.nC}) = util::overlap(params, dactions, handlers.rq());
   xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}) = util::overlap(pparams, actions, handlers.rp());
   xq[EqnData::H].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}) = util::overlap(qparams, actions, handlers.qr());
-  xq[EqnData::H].slice({dims.oC, 0}, {dims.oC + dims.nC, nQnew}) = util::overlap(cparams, actions, handlers.qr());
+  xq[EqnData::H].slice({dims.oC, 0}, {dims.oC + dims.nC, nQnew}) = util::overlap(dparams, actions, handlers.qr());
   transpose_copy(xq[EqnData::S].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}),
                  qx[EqnData::S].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}));
   transpose_copy(xq[EqnData::S].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}),
@@ -142,15 +142,16 @@ public:
   using XSpaceI<R, Q, P>::data;
 
   explicit XSpace(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers, const std::shared_ptr<Logger>& logger)
-      : pspace(), qspace(handlers, logger), cspace(handlers, logger), m_handlers(handlers), m_logger(logger) {
+      : pspace(), qspace(handlers, logger), cspace(handlers, logger), dspace(handlers, logger), m_handlers(handlers),
+        m_logger(logger) {
     data = null_data<EqnData::H, EqnData::S>();
   };
 
   //! Updata parameters in Q space and corresponding equation data
   void update_qspace(const CVecRef<R>& params, const CVecRef<R>& actions) override {
     m_logger->msg("QSpace::update_qspace", Logger::Trace);
-    auto new_data = xspace::update_qspace_data(params, actions, cparamsp(), cparamsq(), cactionsq(), cparamsc(),
-                                               cactionsc(), m_dim, *m_handlers, *m_logger);
+    auto new_data = xspace::update_qspace_data(params, actions, cparamsp(), cparamsq(), cactionsq(), cparamsd(),
+                                               cactionsd(), m_dim, *m_handlers, *m_logger);
     qspace.update(params, actions, new_data.qq, new_data.qx, new_data.xq, m_dim, data);
     update_dimensions();
   }
@@ -177,7 +178,7 @@ public:
     } else if (m_dim.oQ >= i && i < m_dim.oQ + m_dim.nQ) {
       eraseq(i - m_dim.oQ);
     } else if (m_dim.oC >= i && i < m_dim.oC + m_dim.nC) {
-      erasec(i - m_dim.oC);
+      erased(i - m_dim.oC);
     }
   }
 
@@ -193,8 +194,8 @@ public:
     update_dimensions();
   }
 
-  void erasec(size_t i) override {
-    cspace.erase(i);
+  void erased(size_t i) override {
+    dspace.erase(i);
     remove_data(m_dim.oC + i);
     update_dimensions();
   }
@@ -203,25 +204,26 @@ public:
   VecRef<P> actionsp() override { return pspace.actions(); }
   VecRef<Q> paramsq() override { return qspace.params(); }
   VecRef<Q> actionsq() override { return qspace.actions(); }
-  VecRef<Q> paramsc() override { return cspace.params(); }
-  VecRef<Q> actionsc() override { return cspace.actions(); }
+  VecRef<Q> paramsd() override { return dspace.params(); }
+  VecRef<Q> actionsd() override { return dspace.actions(); }
 
   CVecRef<P> paramsp() const override { return pspace.params(); }
   CVecRef<P> actionsp() const override { return pspace.actions(); }
   CVecRef<Q> paramsq() const override { return qspace.params(); }
   CVecRef<Q> actionsq() const override { return qspace.actions(); }
-  CVecRef<Q> paramsc() const override { return cspace.cparams(); }
-  CVecRef<Q> actionsc() const override { return cspace.cactions(); }
+  CVecRef<Q> paramsd() const override { return dspace.cparams(); }
+  CVecRef<Q> actionsd() const override { return dspace.cactions(); }
 
   CVecRef<P> cparamsp() const override { return pspace.cparams(); }
   CVecRef<P> cactionsp() const override { return pspace.cactions(); }
   CVecRef<Q> cparamsq() const override { return qspace.cparams(); }
   CVecRef<Q> cactionsq() const override { return qspace.cactions(); }
-  CVecRef<Q> cparamsc() const override { return cspace.cparams(); }
-  CVecRef<Q> cactionsc() const override { return cspace.cactions(); }
+  CVecRef<Q> cparamsd() const override { return dspace.cparams(); }
+  CVecRef<Q> cactionsd() const override { return dspace.cactions(); }
 
   PSpace<R, P> pspace;
   QSpace<R, Q, P> qspace;
+  QSpace<R, Q, P> dspace;
   CSpace<R, Q, P, value_type> cspace;
 
 protected:

@@ -190,7 +190,7 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
  * @param remove_qspace indices of Q parameters to be removed
  * @param overlap overlap of current subspace P+Q+D+R, including all of the current Q space
  * @param nR number of new parameters
- * @return overlap matrix for the subspace P+Q+R+(projected solutions)
+ * @return overlap matrix for the subspace P+Q+R+(projected solutions), Q without deleted vectors
  */
 template <typename value_type>
 auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_type>& solutions_proj,
@@ -286,7 +286,7 @@ void remove_null_vectors(subspace::Matrix<value_type>& lin_trans, std::vector<va
  * @param dims dimensions of the current subspace
  * @param remove_qspace indices of Q parameters that are deleted in this iteration
  * @param overlap overlap matrix for current subspace with new R parameters (P + Q + D + R)
- * @return linear transformation to the new D space in terms of P+Q+R+Dold
+ * @return linear transformation to the new D space in terms of P+Q+R+Qdelete+Dold
  */
 template <typename value_type, typename value_type_abs>
 auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspace::xspace::Dimensions& dims,
@@ -304,7 +304,8 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
   const auto nD = norm.size() - nX;
   // Orthogonalised D space is in terms of projected solutions
   // I need to use the old D space instead
-  auto lin_trans_Dold = subspace::Matrix<value_type>({nD, nX + dims.nD});
+  const auto nY = remove_qspace.size() + dims.nD;
+  auto lin_trans_Dold = subspace::Matrix<value_type>({nD, nX + nY});
   lin_trans_Dold.slice({0, 0}, {nD, nX}) = lin_trans.slice({nX, 0}, {nX + nD, nX});
   /*
    * x_i = \sum_j T_ij v_j
@@ -315,7 +316,7 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
    * D_ij = \sum_k T_ik C_kj
    */
   for (size_t i = 0; i < nD; ++i)
-    for (size_t j = 0; j < dims.nD; ++j)
+    for (size_t j = 0; j < nY; ++j)
       for (size_t k = 0; k < nSol; ++k)
         lin_trans_Dold(i, j) += lin_trans(i, k) * solutions_proj(k, j);
   norm.erase(begin(norm), begin(norm) + nX);
@@ -325,17 +326,14 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
 /*!
  * @brief Applies linear transformation to construct the D space
  * @param xspace subspace container. New D space is stored in xspace directly
- * @param lin_trans linear transformation from current subspace to the new D space
+ * @param lin_trans new D space vectors in the subspace (P+Q+R+Qdelete+Dold)
  * @param norm estimated norm of transformed vectors
- * @param pparams P space parameters
- * @param qparams Q space parameters
  * @param rparams R space parameters
  * @param handlers array handlers
  */
 template <class R, class Q, class P, typename value_type, typename value_type_abs>
 void construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& lin_trans,
-                                   const std::vector<value_type_abs>& norm, const CVecRef<P>& pparams,
-                                   const CVecRef<Q>& qparams, const CVecRef<Q>& rparams,
+                                   const std::vector<value_type_abs>& norm, const CVecRef<Q>& rparams,
                                    ArrayHandlers<R, Q, P>& handlers) {}
 
 /*!
@@ -513,8 +511,7 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
                              handlers, logger);
   std::tie(lin_trans, norm) =
       propose_dspace(solutions, xspace.dimensions(), remove_qspace, ov, wparams.size(), res_norm_thresh);
-  construct_orthonormal_Dparams(xspace, lin_trans, norm, xspace.cparamsp(), xspace.cparamsq(), cwrap(wparams),
-                                handlers);
+  construct_orthonormal_Dparams(xspace, lin_trans, norm, remove_qspace, cwrap(wparams), handlers);
   // finally remove Q parameters
   return new_working_set;
 }

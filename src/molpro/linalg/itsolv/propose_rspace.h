@@ -260,13 +260,33 @@ auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_typ
 }
 
 /*!
+ * @brief Remove vectors considered null from the linear transformation matrix.
+ * @param lin_trans linear transformation matrix (row-wise)
+ * @param norm norms of transformed vectors
+ * @param start start row to start screening
+ * @param end exclusive end row to stop screening
+ * @param norm_thresh threshold to decided if the vector is null
+ */
+template <typename value_type, typename value_type_abs>
+void remove_null_vectors(subspace::Matrix<value_type>& lin_trans, std::vector<value_type_abs>& norm, const size_t start,
+                         const size_t end, const value_type_abs norm_thresh) {
+  for (size_t i = start, j = start; i < end; ++i) {
+    if (norm[j] < norm_thresh) {
+      norm.erase(begin(norm) + j);
+      lin_trans.remove_row(j);
+    } else
+      ++j;
+  }
+}
+
+/*!
  * @brief Constructs transformation to D space by projecting solutions on to deleted Q (Q_D) and old D space, than
  *  orthogonalising against P+Q+R
  * @param solutions row-wise matrix with solutions in the subspace
  * @param dims dimensions of the current subspace
  * @param remove_qspace indices of Q parameters that are deleted in this iteration
  * @param overlap overlap matrix for current subspace with new R parameters (P + Q + D + R)
- * @return
+ * @return linear transformation to the new D space in terms of P+Q+R+Dold
  */
 template <typename value_type, typename value_type_abs>
 auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspace::xspace::Dimensions& dims,
@@ -275,9 +295,30 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
   auto solutions_proj = construct_projected_solution(solutions, dims, remove_qspace, overlap, norm_thresh);
   // construct overlap of projected solutions with the new P+Q+R subspace (excluding Q_D)
   auto ov = construct_overlap_with_projected_solutions(solutions_proj, dims, remove_qspace, overlap, nR);
-  auto lin_trans = subspace::Matrix<value_type>{};
-  auto norm = std::vector<value_type_abs>{};
   // orthogonalise against the subspace
+  auto lin_trans = subspace::Matrix<value_type>{};
+  auto norm = subspace::util::gram_schmidt(ov, lin_trans);
+  const auto nSol = solutions_proj.size();
+  const auto nX = norm.size() - nSol;
+  remove_null_vectors(lin_trans, norm, nX, norm.size(), norm_thresh);
+  const auto nD = norm.size() - nX;
+  // Orthogonalised D space is in terms of projected solutions
+  // I need to use the old D space instead
+  auto lin_trans_Dold = subspace::Matrix<value_type>({nD, nX + dims.nC});
+  lin_trans_Dold.slice({0, 0}, {nD, nX}) = lin_trans.slice({nX, 0}, {nX + nD, nX});
+  /*
+   * x_i = \sum_j T_ij v_j
+   * v_i = \sum_j C_ij u_j
+   * x_i = \sum_j \sum_k T_ij C_jk u_k
+   * x_i = \sum_k (\sum_j T_ij C_jk) u_k
+   * x_i = \sum_k D_ik u_k
+   * D_ij = \sum_k T_ik C_kj
+   */
+  for (size_t i = 0; i < nD; ++i)
+    for (size_t j = 0; j < dims.nC; ++j)
+      for (size_t k = 0; k < nSol; ++k)
+        lin_trans_Dold(i, j) += lin_trans(i, k) * solutions_proj(k, j);
+  norm.erase(begin(norm), begin(norm) + nX);
   return std::tuple<decltype(lin_trans), decltype(norm)>{lin_trans, norm};
 }
 

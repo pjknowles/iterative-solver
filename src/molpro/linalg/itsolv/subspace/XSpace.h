@@ -40,19 +40,19 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
   qq[EqnData::S] = util::overlap(params, handlers.rr());
   qx[EqnData::S].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}) = util::overlap(params, pparams, handlers.rp());
   qx[EqnData::S].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}) = util::overlap(params, qparams, handlers.rq());
-  qx[EqnData::S].slice({0, dims.oC}, {nQnew, dims.oC + dims.nC}) = util::overlap(params, dparams, handlers.rq());
+  qx[EqnData::S].slice({0, dims.oD}, {nQnew, dims.oD + dims.nD}) = util::overlap(params, dparams, handlers.rq());
   qq[EqnData::H] = util::overlap(params, actions, handlers.rr());
   qx[EqnData::H].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}) = util::overlap(params, qactions, handlers.rq());
-  qx[EqnData::H].slice({0, dims.oC}, {nQnew, dims.oC + dims.nC}) = util::overlap(params, dactions, handlers.rq());
+  qx[EqnData::H].slice({0, dims.oD}, {nQnew, dims.oD + dims.nD}) = util::overlap(params, dactions, handlers.rq());
   xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}) = util::overlap(pparams, actions, handlers.rp());
   xq[EqnData::H].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}) = util::overlap(qparams, actions, handlers.qr());
-  xq[EqnData::H].slice({dims.oC, 0}, {dims.oC + dims.nC, nQnew}) = util::overlap(dparams, actions, handlers.qr());
+  xq[EqnData::H].slice({dims.oD, 0}, {dims.oD + dims.nD, nQnew}) = util::overlap(dparams, actions, handlers.qr());
   transpose_copy(xq[EqnData::S].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}),
                  qx[EqnData::S].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}));
   transpose_copy(xq[EqnData::S].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}),
                  qx[EqnData::S].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}));
-  transpose_copy(xq[EqnData::S].slice({dims.oC, 0}, {dims.oC + dims.nC, nQnew}),
-                 qx[EqnData::S].slice({0, dims.oC}, {nQnew, dims.oC + dims.nC}));
+  transpose_copy(xq[EqnData::S].slice({dims.oD, 0}, {dims.oD + dims.nD, nQnew}),
+                 qx[EqnData::S].slice({0, dims.oD}, {nQnew, dims.oD + dims.nD}));
   // FIXME only works for Hermitian Hamiltonian
   transpose_copy(qx[EqnData::H].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}),
                  xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}));
@@ -97,8 +97,8 @@ public:
       erasep(i - m_dim.oP);
     } else if (m_dim.oQ >= i && i < m_dim.oQ + m_dim.nQ) {
       eraseq(i - m_dim.oQ);
-    } else if (m_dim.oC >= i && i < m_dim.oC + m_dim.nC) {
-      erased(i - m_dim.oC);
+    } else if (m_dim.oD >= i && i < m_dim.oD + m_dim.nD) {
+      erased(i - m_dim.oD);
     }
   }
 
@@ -116,7 +116,7 @@ public:
 
   void erased(size_t i) override {
     dspace.erase(i);
-    remove_data(m_dim.oC + i);
+    remove_data(m_dim.oD + i);
     update_dimensions();
   }
 

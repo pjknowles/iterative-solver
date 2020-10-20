@@ -225,10 +225,10 @@ protected:
       std::iota(begin(roots), end(roots), start_sol);
       detail::construct_solution(parameters, roots, m_subspace_solver.solutions(), m_xspace.paramsp(),
                                  m_xspace.paramsq(), m_xspace.paramsd(), m_xspace.dimensions().oP,
-                                 m_xspace.dimensions().oQ, m_xspace.dimensions().oC, *m_handlers);
+                                 m_xspace.dimensions().oQ, m_xspace.dimensions().oD, *m_handlers);
       detail::construct_solution(action, roots, m_subspace_solver.solutions(), m_xspace.actionsp(), m_xspace.actionsq(),
                                  m_xspace.actionsd(), m_xspace.dimensions().oP, m_xspace.dimensions().oQ,
-                                 m_xspace.dimensions().oC, *m_handlers);
+                                 m_xspace.dimensions().oD, *m_handlers);
       auto pvectors = detail::construct_pspace_vector(roots, m_subspace_solver.solutions(), m_xspace.paramsp(),
                                                       m_xspace.dimensions().oP, m_handlers->pp());
       detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);

@@ -1,11 +1,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <array>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <numeric>
-#include <array>
 
 using molpro::linalg::itsolv::subspace::Matrix;
+using molpro::linalg::itsolv::subspace::transpose_copy;
 using ::testing::DoubleEq;
 using ::testing::Each;
 using ::testing::Eq;
@@ -220,4 +221,19 @@ TEST_F(MatrixF, slice_scal) {
   ASSERT_THAT(m.data(), Each(Eq(alpha)));
   m.slice().scal(a);
   ASSERT_THAT(m.data(), Each(Eq(alpha * a)));
+}
+
+TEST(Matrix, transpose_copy) {
+  const size_t nr = 4, nc = 3;
+  auto ml = Matrix<double>({nr, nc});
+  auto mr = Matrix<double>({nc, nr});
+  auto mref = Matrix<double>({nr, nc});
+  for (size_t i = 0; i < nr; ++i) {
+    for (size_t j = 0; j < nc; ++j) {
+      mr(j, i) = j;
+      mref(i, j) = j;
+    }
+  }
+  transpose_copy(ml, mr);
+  ASSERT_THAT(ml.data(), Pointwise(Eq(), mref.data()));
 }

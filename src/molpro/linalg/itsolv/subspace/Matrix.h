@@ -70,6 +70,9 @@ public:
   //! Returns true if matrix is empty
   bool empty() const { return size() == 0; }
 
+  //! Clears all elements and sets dimensions to 0
+  void clear() { resize({0, 0}); }
+
   //! Converts index of 1D data to matrix coordinate
   coord_type to_coord(size_t ind) const {
     if (ind >= size())
@@ -198,6 +201,7 @@ protected:
     }
 
     T& operator()(size_t i, size_t j) { return mat(upl.first + i, upl.second + j); }
+    T operator()(size_t i, size_t j) const { return mat(upl.first + i, upl.second + j); }
 
     Slice& axpy(T a, const Slice& x) {
       if (dimensions() != x.dimensions())
@@ -242,6 +246,8 @@ protected:
     }
 
     coord_type dimensions() const { return {btr.first - upl.first, btr.second - upl.second}; }
+    size_t rows() const { return btr.first - upl.first; }
+    size_t cols() const { return btr.second - upl.second; }
 
   protected:
     Matrix<T>& mat; //!< matrix being sliced
@@ -267,6 +273,14 @@ protected:
     Slice m_slice;
   };
 };
+
+template <class ML, class MR>
+void transpose_copy(ML&& ml, const MR& mr) {
+  assert(ml.rows() == mr.cols() && ml.cols() == mr.rows());
+  for (size_t i = 0; i < ml.rows(); ++i)
+    for (size_t j = 0; j < ml.cols(); ++j)
+      ml(i, j) = mr(j, i);
+}
 
 template <class Mat>
 std::string as_string(const Mat& m, int precision = 6) {

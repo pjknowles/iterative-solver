@@ -559,18 +559,17 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
   // propose working space by orthogonalising against P+Q
   auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
                                   xspace.cparamsq(), handlers, logger);
-  auto remove_qspace = std::vector<unsigned int>{};
-  std::tie(remove_qspace, lin_trans, norm) = calculate_transformation_to_orthogonal_rspace(
+  auto q_indices_remove = std::vector<unsigned int>{};
+  std::tie(q_indices_remove, lin_trans, norm) = calculate_transformation_to_orthogonal_rspace(
       ov, solutions, xspace.dimensions(), logger, res_norm_thresh, max_size_qspace);
   if (logger.data_dump) {
     logger.msg("full overlap = " + subspace::as_string(ov), Logger::Info);
     logger.msg("linear transformation = " + subspace::as_string(lin_trans), Logger::Info);
-    logger.msg("norm = ", norm.begin(), norm.end(), Logger::Info);
-    logger.msg("remove Q space indices = ", remove_qspace.begin(), remove_qspace.end(), Logger::Info);
+    logger.msg("norm = ", norm.begin(), norm.end(), Logger::Debug);
+    logger.msg("remove Q space indices = ", q_indices_remove.begin(), q_indices_remove.end(), Logger::Debug);
   }
-  auto new_working_set = get_new_working_set(solver.working_set(), residuals, wresidual);
   auto wparams = wrap<R>(parameters.begin(), parameters.begin() + wresidual.size());
-  auto qparams_new = remove_elements(xspace.cparamsq(), remove_qspace);
+  auto qparams_new = remove_elements(xspace.cparamsq(), q_indices_remove);
   construct_orthonormal_Rparams(wparams, wresidual, lin_trans, norm, xspace.cparamsp(), qparams_new, handlers);
   normalise(wparams, handlers.rr(), logger);
   auto params_qd = xspace.cparamsq();
@@ -578,13 +577,20 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
   std::copy(begin(paramsd), end(paramsd), std::back_inserter(params_qd));
   ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wparams), xspace.cparamsp(), params_qd,
                              handlers, logger);
-  auto lin_trans_D = propose_dspace(solutions, xspace.dimensions(), remove_qspace, ov, wparams.size(), res_norm_thresh);
+  auto lin_trans_D =
+      propose_dspace(solutions, xspace.dimensions(), q_indices_remove, ov, wparams.size(), res_norm_thresh);
   auto dparams = std::vector<Q>{};
   auto dactions = std::vector<Q>{};
   auto lin_trans_D_only_R = subspace::Matrix<value_type>{};
   std::tie(dparams, dactions, lin_trans_D_only_R) =
-      construct_orthonormal_Dparams(xspace, lin_trans_D, remove_qspace, cwrap(wparams), handlers, logger);
-  // finally remove Q parameters
+      construct_orthonormal_Dparams(xspace, lin_trans_D, q_indices_remove, cwrap(wparams), handlers, logger);
+  std::sort(begin(q_indices_remove), end(q_indices_remove));
+  for (size_t i = 0; i < q_indices_remove.size(); ++i)
+    xspace.eraseq(q_indices_remove[i] - i);
+  auto wdparams = wrap(dparams);
+  auto wdactions = wrap(dactions);
+  xspace.update_dspace(wdparams, wdactions, lin_trans_D_only_R);
+  auto new_working_set = get_new_working_set(solver.working_set(), residuals, wresidual);
   return new_working_set;
 }
 } // namespace detail

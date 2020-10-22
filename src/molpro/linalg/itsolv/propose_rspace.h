@@ -320,24 +320,26 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
       for (size_t k = 0; k < nSol; ++k)
         lin_trans_Dold(i, j) += lin_trans(i, k) * solutions_proj(k, j);
   norm.erase(begin(norm), begin(norm) + nX);
-  return std::tuple<decltype(lin_trans), decltype(norm)>{lin_trans, norm};
+  for (size_t i = 0; i < nD; ++i)
+    lin_trans_Dold.row(i).scal(1. / norm[i]);
+  return lin_trans;
 }
 
 /*!
- * @brief Applies linear transformation to construct the D space
+ * @brief Applies linear transformation to partially construct the D space
+ * @note Subsystem Hamiltonian in D space and D space action cannot be constructed until R space action is known.
+ * The missing R space contribution must be added in add_vector.
  * @param xspace subspace container. New D space is stored in xspace directly
  * @param lin_trans new D space vectors in the subspace (P+Q+R+Qdelete+Dold)
- * @param norm estimated norm of transformed vectors
  * @param rparams R space parameters
  * @param handlers array handlers
  */
-template <class R, class Q, class P, typename value_type, typename value_type_abs>
+template <class R, class Q, class P, typename value_type>
 void construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& lin_trans,
-                                   const std::vector<value_type_abs>& norm,
-                                   const std::vector<unsigned int>& remove_qspace, const CVecRef<Q>& rparams,
-                                   ArrayHandlers<R, Q, P>& handlers) {
+                                   const std::vector<unsigned int>& q_indices_remove, const CVecRef<Q>& rparams,
+                                   ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
   const auto nD = lin_trans.size();
-  const auto nQdelete = remove_qspace.size();
+  const auto nQdelete = q_indices_remove.size();
   const auto qparams = xspace.cparamsq();
   const auto pparams = xspace.cparamsp();
   const auto dparams_old = xspace.cparamsd();
@@ -347,38 +349,45 @@ void construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const sub
   const auto dims = xspace.dimensions();
   auto dparams = std::vector<Q>{};
   auto dactions = std::vector<Q>{};
-  // FIXME should have a better way
-  for (size_t i = 0; i < nD; ++i) {
-    dparams.emplace_back(handlers.qq().copy(qparams));
-    dactions.emplace_back(handlers.qq().copy(qactions));
-    dparams.fill(0);
-    dactions.fill(0);
+  {
+    auto qzero = handlers.qq().copy(qparams.front());
+    handlers.qq().fill(0, qzero);
+    for (size_t i = 0; i < nD; ++i) {
+      dparams.emplace_back(handlers.qq().copy(qzero));
+      dactions.emplace_back(handlers.qq().copy(qzero));
+    }
   }
   const auto oP = 0;
   const auto oQ = dims.nP;
+  const auto nQ = dims.nQ - nQdelete;
   const auto nR = rparams.size();
-  const auto oR = oQ + dims.nQ - nQdelete;
+  const auto oR = oQ + nQ;
   const auto oQdelete = oR + nR;
   const auto oDold = oQdelete + dims.nD;
+  auto q_indices_new = std::vector<unsigned int>(nQ);
+  for (size_t j = 0, k = 0; j < dims.nQ; ++j) {
+    if (std::find(begin(q_indices_remove), end(q_indices_remove), j) == end(q_indices_remove)) {
+      q_indices_new[k] = j;
+    } else
+      ++k;
+  }
   for (size_t i = 0; i < nD; ++i) {
     for (size_t j = 0; j < dims.nP; ++j) {
       handlers.qp().axpy(lin_trans(i, oP + j), pparams.at(j), dparams[i]);
       handlers.qp().axpy(lin_trans(i, oP + j), pactions.at(j), dactions[i]);
     }
-    for (size_t j = 0, k = 0; j < dims.nQ; ++j) {
-      if (std::find(begin(remove_qspace), end(remove_qspace), i) == end(remove_qspace)) {
-        handlers.qp().axpy(lin_trans(i, oQ + k), qparams.at(j), dparams[i]);
-        handlers.qp().axpy(lin_trans(i, oQ + k), qactions.at(j), dactions[i]);
-      } else
-        ++k;
+    for (size_t j = 0; j < nQ; ++j) {
+      const auto jj = q_indices_new[j];
+      handlers.qq().axpy(lin_trans(i, oQ + jj), qparams.at(j), dparams[i]);
+      handlers.qq().axpy(lin_trans(i, oQ + jj), qactions.at(j), dactions[i]);
     }
     for (size_t j = 0; j < nR; ++j) {
       handlers.qr().axpy(lin_trans(i, oR + j), rparams.at(j), dparams[i]);
-      // FIXME action has to be added to the D space after it has been calculated
     }
     for (size_t j = 0; j < nQdelete; ++j) {
-      handlers.qq().axpy(lin_trans(i, oQdelete + j), qparams.at(remove_qspace[j]), dparams[i]);
-      handlers.qq().axpy(lin_trans(i, oQdelete + j), qactions.at(remove_qspace[j]), dactions[i]);
+      const auto jj = q_indices_remove[j];
+      handlers.qq().axpy(lin_trans(i, oQdelete + j), qparams.at(jj), dparams[i]);
+      handlers.qq().axpy(lin_trans(i, oQdelete + j), qactions.at(jj), dactions[i]);
     }
     for (size_t j = 0; j < dims.nD; ++j) {
       handlers.qq().axpy(lin_trans(i, oDold + j), dparams_old.at(j), dparams[i]);
@@ -386,8 +395,52 @@ void construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const sub
     }
   }
   // construct equation data
-  // update D space in X space, store R component to the new D so that the action can be finished.
-  // normalise
+  using subspace::EqnData;
+  // align data to the new layout: P+Q+Qdelete+Dold, R block is missing and will need to be calculated in add_vector
+  auto data = xspace.data;
+  for (auto e : {EqnData::H, EqnData::S}) {
+    for (size_t i = 0; i < nQ; ++i) {
+      data[e].row(oQ + i) = xspace.data.at(e).row(q_indices_new[i]);
+      data[e].col(oQ + i) = xspace.data.at(e).col(q_indices_new[i]);
+    }
+    for (size_t i = 0; i < nQdelete; ++i) {
+      data[e].row(oQdelete + i) = xspace.data.at(e).row(q_indices_remove[i]);
+      data[e].col(oQdelete + i) = xspace.data.at(e).col(q_indices_remove[i]);
+    }
+  }
+  auto lin_trans_no_R = subspace::Matrix<value_type>({nD, dims.nX});
+  lin_trans_no_R.slice({0, 0}, {nD, oR}) = lin_trans.slice({0, 0}, {nD, oR});
+  lin_trans_no_R.slice({0, oR}, {nD, dims.nX}) = lin_trans.slice({0, oR + nR}, {nD, dims.nX + nR});
+  auto yd = subspace::null_data<EqnData::H, EqnData::S>();
+  auto dy = subspace::null_data<EqnData::H, EqnData::S>();
+  auto dd = subspace::null_data<EqnData::H, EqnData::S>();
+  for (auto e : {EqnData::H, EqnData::S}) {
+    yd[e].resize({dims.nX, nD});
+    dy[e].resize({nD, dims.nX});
+    dd[e].resize({nD, nD});
+  }
+  /* Equation data
+   * <a, b>_O = <a| O |b>
+   * <x_i, u_j>_O = \sum_k T_ik <u_k, u_j>_O
+   * <u_j, x_i>_O = \sum_k T_ik <u_j, u_k>_O
+   * <x_i, x_j>_O = \sum_k T_jk  <x_i, u_k>_O
+   * <x_i, u_k>_O = \sum_m T_im <u_m, u_k>_O
+   */
+  for (size_t i = 0; i < nD; ++i) {
+    for (size_t j = 0; j < dims.nX; ++j) {
+      for (size_t k = 0; k < dims.nX; ++k) {
+        yd[EqnData::S](j, i) += lin_trans_no_R(i, k) * data.at(EqnData::S)(j, k);
+        yd[EqnData::H](j, i) += lin_trans_no_R(i, k) * data.at(EqnData::H)(j, k);
+        dy[EqnData::H](i, j) += lin_trans_no_R(i, k) * data.at(EqnData::H)(k, j);
+      }
+      dy[EqnData::S](i, j) = yd[EqnData::S](j, i);
+    }
+  }
+  for (auto e : {EqnData::H, EqnData::S})
+    for (size_t i = 0; i < nD; ++i)
+      for (size_t j = 0; j < nD; ++j)
+        for (size_t k = 0; k < dims.nX; ++k)
+          dd[e](i, j) += lin_trans_no_R(j, k) * dy.at(e)(i, k);
 }
 
 /*!
@@ -563,9 +616,8 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
   std::copy(begin(paramsd), end(paramsd), std::back_inserter(params_qd));
   ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wparams), xspace.cparamsp(), params_qd,
                              handlers, logger);
-  std::tie(lin_trans, norm) =
-      propose_dspace(solutions, xspace.dimensions(), remove_qspace, ov, wparams.size(), res_norm_thresh);
-  construct_orthonormal_Dparams(xspace, lin_trans, norm, remove_qspace, cwrap(wparams), handlers, logger);
+  auto lin_trans_D = propose_dspace(solutions, xspace.dimensions(), remove_qspace, ov, wparams.size(), res_norm_thresh);
+  construct_orthonormal_Dparams(xspace, lin_trans_D, remove_qspace, cwrap(wparams), handlers, logger);
   // finally remove Q parameters
   return new_working_set;
 }

@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACE_H
 #include <cassert>
 #include <molpro/linalg/itsolv/helper.h>
+#include <molpro/linalg/itsolv/subspace/DSpace.h>
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
@@ -77,7 +78,7 @@ public:
   using XSpaceI<R, Q, P>::data;
 
   explicit XSpace(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers, const std::shared_ptr<Logger>& logger)
-      : pspace(), qspace(handlers, logger), dspace(handlers, logger), m_handlers(handlers), m_logger(logger) {
+      : pspace(), qspace(handlers, logger), dspace(logger), m_handlers(handlers), m_logger(logger) {
     data = null_data<EqnData::H, EqnData::S>();
   };
 
@@ -88,6 +89,14 @@ public:
                                                cactionsd(), m_dim, *m_handlers, *m_logger);
     qspace.update(params, actions, new_data.qq, new_data.qx, new_data.xq, m_dim, data);
     update_dimensions();
+  }
+
+  //! Clears old D space container and stores new params and actions. @param lin_trans_only_R R space component of D
+  void update_dspace(VecRef<R>& params, VecRef<R>& actions, Matrix<value_type>& lin_trans_only_R) override {
+    dspace.update(params, actions, lin_trans_only_R);
+    update_dimensions();
+    for (auto e : {EqnData::H, EqnData::S})
+      data[e].resize({m_dim.nX, m_dim.nX});
   }
 
   const xspace::Dimensions& dimensions() const override { return m_dim; }
@@ -143,7 +152,7 @@ public:
 
   PSpace<R, P> pspace;
   QSpace<R, Q, P> qspace;
-  QSpace<R, Q, P> dspace;
+  DSpace<Q> dspace;
 
 protected:
   void update_dimensions() { m_dim = xspace::Dimensions(pspace.size(), qspace.size(), dspace.size()); }

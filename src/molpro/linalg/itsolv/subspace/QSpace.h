@@ -3,8 +3,8 @@
 #include <cassert>
 #include <list>
 
-#include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
+#include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/wrap.h>

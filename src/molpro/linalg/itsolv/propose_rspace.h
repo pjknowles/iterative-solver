@@ -400,7 +400,7 @@ auto construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const sub
     }
   }
   auto lin_trans_only_R = subspace::Matrix<value_type>({nD, nR});
-  lin_trans_only_R = lin_trans.slice({0, oR}, {nD, oR + nR});
+  lin_trans_only_R.slice() = lin_trans.slice({0, oR}, {nD, oR + nR});
   return std::tuple<decltype(dparams), decltype(dactions), decltype(lin_trans_only_R)>(dparams, dactions,
                                                                                        lin_trans_only_R);
 }

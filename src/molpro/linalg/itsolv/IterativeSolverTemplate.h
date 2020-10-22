@@ -214,7 +214,7 @@ protected:
     auto nW = std::min(m_working_set.size(), parameters.size());
     auto wparams = cwrap<R>(begin(parameters), begin(parameters) + nW);
     auto wactions = cwrap<R>(begin(action), begin(action) + nW);
-    // FIXME finish constructing D space action
+    m_xspace.complete_dspace_action(wactions);
     m_xspace.update_qspace(wparams, wactions);
     m_subspace_solver.solve(m_xspace, n_roots());
     auto nsol = m_subspace_solver.size();

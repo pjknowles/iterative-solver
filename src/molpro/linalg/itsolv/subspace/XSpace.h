@@ -97,6 +97,12 @@ public:
     update_dimensions();
     for (auto e : {EqnData::H, EqnData::S})
       data[e].resize({m_dim.nX, m_dim.nX});
+    // calculate overlap Equation data blocks
+  }
+
+  void complete_dspace_action(const CVecRef<R>& actions) override {
+    dspace.complete_action(actions, m_handlers.qr());
+    // calculate Hamiltonian equation data blocks
   }
 
   const xspace::Dimensions& dimensions() const override { return m_dim; }

@@ -1,9 +1,9 @@
 #include <unistd.h>
 
 #include <utility>
-#include "DistrArrayFile.h"
-#include "util/Distribution.h"
-#include "util/temp_file.h"
+#include <molpro/linalg/array/DistrArrayFile.h>
+#include <molpro/linalg/array/util/Distribution.h>
+#include <molpro/linalg/array/util/temp_file.h>
 
 namespace molpro {
 namespace linalg {
@@ -19,7 +19,7 @@ int mpi_size(MPI_Comm comm) {
 DistrArrayFile::DistrArrayFile() = default;
 
 DistrArrayFile::DistrArrayFile(DistrArrayFile&& source) noexcept : DistrArrayDisk(std::move(source)),
-                m_file_name(source.m_file_name), m_file(std::move(source.m_file)) {}
+                m_file_name(std::move(source.m_file_name)), m_file(std::move(source.m_file)) {}
                 
 DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::string &base_name) :
                 DistrArrayFile(util::temp_file_name(base_name, ""), dimension, comm){}
@@ -28,7 +28,7 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
                 const std::string& base_name) :
                 DistrArrayFile(util::temp_file_name(base_name, ""), std::move(distribution), comm) {}
                 
-DistrArrayFile::DistrArrayFile(std::string file_name,size_t dimension, MPI_Comm comm) :
+DistrArrayFile::DistrArrayFile(std::string file_name, size_t dimension, MPI_Comm comm) :
                 DistrArrayFile(std::move(file_name),
                 std::make_unique<Distribution>(util::make_distribution_spread_remainder<index_type>(
                 dimension, mpi_size(comm))),comm) {}
@@ -72,7 +72,6 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept{
 }
 
 DistrArrayFile::~DistrArrayFile(){
-  // TODO: any point flushing buffer?
   if (m_file.is_open()) {
     DistrArrayFile::close_access();
   }
@@ -106,18 +105,22 @@ void DistrArrayFile::open_access() {
 }
 void DistrArrayFile::close_access() {
   if (!m_file.is_open()) {
-    error("must provide an existing file stream object before closing access to file disk array");
+    return;
   } else {
     m_file.close();
   }
 }
 
 bool DistrArrayFile::empty() const {
-  auto current = m_file.tellg(); // get current position
-  m_file.seekg(0, std::ios::end);
-  auto res = DistrArrayDisk::empty() && m_file.tellg() == 0;
-  m_file.seekg(current, std::ios::beg); // return back to original position
-  return res;
+  if (!m_file.is_open()) {
+    return true;
+  } else {
+    auto current = m_file.tellg(); // get current position
+    m_file.seekg(0, std::ios::end);
+    auto res = DistrArrayDisk::empty() && m_file.tellg() == 0;
+    m_file.seekg(current, std::ios::beg); // return back to original position
+    return res;
+  }
 }
 
 void DistrArrayFile::erase() {
@@ -180,13 +183,14 @@ void DistrArrayFile::acc(DistrArray::index_type lo, DistrArray::index_type hi, c
   if (lo >= hi)
     return;
   auto disk_copy = get(lo, hi);
-  std::transform(begin(disk_copy), end(disk_copy), data, begin(disk_copy), [](auto &l, auto &r) { return l + r; });
+  std::transform(disk_copy.begin(), disk_copy.end(), data, disk_copy.begin(),
+                  [](auto &l, auto &r) { return l + r; });
   put(lo, hi, &disk_copy[0]);
 }
 
 std::vector<DistrArrayFile::value_type> DistrArrayFile::gather(const std::vector<index_type>& indices) const {
-  auto sz = indices.size();
-  auto data = std::vector<value_type>(sz);
+  std::vector<value_type> data;
+  data.reserve(indices.size());
   int rank;
   MPI_Comm_rank(m_communicator, &rank);
   auto minmax = std::minmax_element(indices.begin(), indices.end());
@@ -220,13 +224,11 @@ void DistrArrayFile::scatter(const std::vector<index_type>& indices, const std::
 
 void DistrArrayFile::scatter_acc(std::vector<index_type>& indices, const std::vector<value_type>& data) {
   auto disk_copy = gather(indices);
-  std::transform(begin(data), end(data), begin(disk_copy), begin(disk_copy), [](auto &l, auto &r) { return l + r; });
+  std::transform(data.begin(), data.end(), disk_copy.begin(), disk_copy.begin(), [](auto &l, auto &r) { return l + r; });
   scatter(indices, disk_copy);
 }
 
 std::vector<DistrArrayFile::value_type> DistrArrayFile::vec() const { return get(0, m_dimension); }
-
-std::string DistrArrayFile::file_name() const { return m_file_name; }
 
 } // namespace array
 } // namespace linalg

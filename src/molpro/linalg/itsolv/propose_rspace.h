@@ -326,16 +326,21 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
 }
 
 /*!
- * @brief Applies linear transformation to partially construct the D space
- * @note Subsystem Hamiltonian in D space and D space action cannot be constructed until R space action is known.
- * The missing R space contribution must be added in add_vector.
+ * @brief Applies linear transformation to construct the D space parameters and corresponding action (without R space
+ * action, since it is not yet known)
+ *
+ * Subsystem Hamiltonian in D space and D space action cannot be constructed until R space action is known.
+ * Thus, it becomes simpler to calculate the subspace equation data using overlap of full vectors instead of subspace
+ * arithmetic.
+ *
  * @param xspace subspace container. New D space is stored in xspace directly
  * @param lin_trans new D space vectors in the subspace (P+Q+R+Qdelete+Dold)
  * @param rparams R space parameters
  * @param handlers array handlers
+ * @returns D space parameters, actions and R space component of the linear transformation matrix
  */
 template <class R, class Q, class P, typename value_type>
-void construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& lin_trans,
+auto construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& lin_trans,
                                    const std::vector<unsigned int>& q_indices_remove, const CVecRef<Q>& rparams,
                                    ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
   const auto nD = lin_trans.size();
@@ -394,53 +399,10 @@ void construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const sub
       handlers.qq().axpy(lin_trans(i, oDold + j), dactions_old.at(j), dactions[i]);
     }
   }
-  // construct equation data
-  using subspace::EqnData;
-  // align data to the new layout: P+Q+Qdelete+Dold, R block is missing and will need to be calculated in add_vector
-  auto data = xspace.data;
-  for (auto e : {EqnData::H, EqnData::S}) {
-    for (size_t i = 0; i < nQ; ++i) {
-      data[e].row(oQ + i) = xspace.data.at(e).row(q_indices_new[i]);
-      data[e].col(oQ + i) = xspace.data.at(e).col(q_indices_new[i]);
-    }
-    for (size_t i = 0; i < nQdelete; ++i) {
-      data[e].row(oQdelete + i) = xspace.data.at(e).row(q_indices_remove[i]);
-      data[e].col(oQdelete + i) = xspace.data.at(e).col(q_indices_remove[i]);
-    }
-  }
-  auto lin_trans_no_R = subspace::Matrix<value_type>({nD, dims.nX});
-  lin_trans_no_R.slice({0, 0}, {nD, oR}) = lin_trans.slice({0, 0}, {nD, oR});
-  lin_trans_no_R.slice({0, oR}, {nD, dims.nX}) = lin_trans.slice({0, oR + nR}, {nD, dims.nX + nR});
-  auto yd = subspace::null_data<EqnData::H, EqnData::S>();
-  auto dy = subspace::null_data<EqnData::H, EqnData::S>();
-  auto dd = subspace::null_data<EqnData::H, EqnData::S>();
-  for (auto e : {EqnData::H, EqnData::S}) {
-    yd[e].resize({dims.nX, nD});
-    dy[e].resize({nD, dims.nX});
-    dd[e].resize({nD, nD});
-  }
-  /* Equation data
-   * <a, b>_O = <a| O |b>
-   * <x_i, u_j>_O = \sum_k T_ik <u_k, u_j>_O
-   * <u_j, x_i>_O = \sum_k T_ik <u_j, u_k>_O
-   * <x_i, x_j>_O = \sum_k T_jk  <x_i, u_k>_O
-   * <x_i, u_k>_O = \sum_m T_im <u_m, u_k>_O
-   */
-  for (size_t i = 0; i < nD; ++i) {
-    for (size_t j = 0; j < dims.nX; ++j) {
-      for (size_t k = 0; k < dims.nX; ++k) {
-        yd[EqnData::S](j, i) += lin_trans_no_R(i, k) * data.at(EqnData::S)(j, k);
-        yd[EqnData::H](j, i) += lin_trans_no_R(i, k) * data.at(EqnData::H)(j, k);
-        dy[EqnData::H](i, j) += lin_trans_no_R(i, k) * data.at(EqnData::H)(k, j);
-      }
-      dy[EqnData::S](i, j) = yd[EqnData::S](j, i);
-    }
-  }
-  for (auto e : {EqnData::H, EqnData::S})
-    for (size_t i = 0; i < nD; ++i)
-      for (size_t j = 0; j < nD; ++j)
-        for (size_t k = 0; k < dims.nX; ++k)
-          dd[e](i, j) += lin_trans_no_R(j, k) * dy.at(e)(i, k);
+  auto lin_trans_only_R = subspace::Matrix<value_type>({nD, nR});
+  lin_trans_only_R = lin_trans.slice({0, oR}, {nD, oR + nR});
+  return std::tuple<decltype(dparams), decltype(dactions), decltype(lin_trans_only_R)>(dparams, dactions,
+                                                                                       lin_trans_only_R);
 }
 
 /*!
@@ -617,7 +579,11 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
   ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wparams), xspace.cparamsp(), params_qd,
                              handlers, logger);
   auto lin_trans_D = propose_dspace(solutions, xspace.dimensions(), remove_qspace, ov, wparams.size(), res_norm_thresh);
-  construct_orthonormal_Dparams(xspace, lin_trans_D, remove_qspace, cwrap(wparams), handlers, logger);
+  auto dparams = std::vector<Q>{};
+  auto dactions = std::vector<Q>{};
+  auto lin_trans_D_only_R = subspace::Matrix<value_type>{};
+  std::tie(dparams, dactions, lin_trans_D_only_R) =
+      construct_orthonormal_Dparams(xspace, lin_trans_D, remove_qspace, cwrap(wparams), handlers, logger);
   // finally remove Q parameters
   return new_working_set;
 }

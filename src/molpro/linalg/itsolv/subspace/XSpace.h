@@ -58,13 +58,35 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
   transpose_copy(qx[EqnData::H].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}),
                  xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}));
   if (logger.data_dump) {
-    logger.msg("qspace::update_qspace_data() nQnew = " + std::to_string(nQnew), Logger::Info);
+    logger.msg("xspace::update_qspace_data() nQnew = " + std::to_string(nQnew), Logger::Info);
     logger.msg("Sqq = " + as_string(qq[EqnData::S]), Logger::Info);
     logger.msg("Hqq = " + as_string(qq[EqnData::H]), Logger::Info);
     logger.msg("Sqx = " + as_string(qx[EqnData::S]), Logger::Info);
     logger.msg("Hqx = " + as_string(qx[EqnData::H]), Logger::Info);
     logger.msg("Sxq = " + as_string(xq[EqnData::S]), Logger::Info);
     logger.msg("Hxq = " + as_string(xq[EqnData::H]), Logger::Info);
+  }
+  return data;
+}
+
+//! Calculates overlap blocks between D space and the rest of the subspace
+template <class Q, class P>
+auto update_dspace_overlap_data(const CVecRef<P>& pparams, const CVecRef<Q>& qparams, const CVecRef<Q>& dparams,
+                                array::ArrayHandler<Q, P>& handler_qp, array::ArrayHandler<Q, Q>& handler_qq,
+                                Logger& logger) {
+  const auto nP = pparams.size();
+  const auto nQ = qparams.size();
+  const auto nX = nP + nQ;
+  auto nD = dparams.size();
+  auto data = NewData(nD, nX);
+  data.qq[EqnData::S].slice() = util::overlap(dparams, handler_qq);
+  data.qx[EqnData::S].slice({0, 0}, {nD, nP}) = util::overlap(dparams, pparams, handler_qp);
+  data.qx[EqnData::S].slice({0, nP}, {nD, nX}) = util::overlap(dparams, qparams, handler_qq);
+  transpose_copy(data.xq[EqnData::S].slice(), data.qx[EqnData::S].slice());
+  if (logger.data_dump) {
+    logger.msg("xspace::update_dspace_overlap_data() nD = " + std::to_string(nD), Logger::Info);
+    logger.msg("Sdd = " + as_string(data.qq[EqnData::S]), Logger::Info);
+    logger.msg("Sdx = " + as_string(data.qx[EqnData::S]), Logger::Info);
   }
   return data;
 }
@@ -97,11 +119,24 @@ public:
     update_dimensions();
     for (auto e : {EqnData::H, EqnData::S})
       data[e].resize({m_dim.nX, m_dim.nX});
-    // calculate overlap Equation data blocks
+    auto new_data = xspace::update_dspace_overlap_data(cparamsp(), cparamsq(), cparamsd(), m_handlers->qp(),
+                                                       m_handlers->qq(), *m_logger);
+    const auto& dd = new_data.qq.at(EqnData::S);
+    const auto& dx = new_data.qx.at(EqnData::S);
+    const auto& xd = new_data.xq.at(EqnData::S);
+    data[EqnData::S].slice({m_dim.oD, m_dim.oD}, {m_dim.oD + m_dim.nD, m_dim.oD + m_dim.nD}) = dd;
+    data[EqnData::S].slice({m_dim.oD, m_dim.oP}, {m_dim.oD + m_dim.nD, m_dim.oP + m_dim.nP}) =
+        dx.slice({0, 0}, {m_dim.nD, m_dim.nP});
+    data[EqnData::S].slice({m_dim.oD, m_dim.oQ}, {m_dim.oD + m_dim.nD, m_dim.oQ + m_dim.nQ}) =
+        dx.slice({0, m_dim.nP}, {m_dim.nD, m_dim.nP + m_dim.nQ});
+    data[EqnData::S].slice({m_dim.oP, m_dim.oD}, {m_dim.oP + m_dim.nP, m_dim.oD + m_dim.nD}) =
+        xd.slice({0, 0}, {m_dim.nP, m_dim.nD});
+    data[EqnData::S].slice({m_dim.oQ, m_dim.oD}, {m_dim.oQ + m_dim.nQ, m_dim.oD + m_dim.nD}) =
+        xd.slice({m_dim.nP, 0}, {m_dim.nP + m_dim.nQ, m_dim.nD});
   }
 
   void complete_dspace_action(const CVecRef<R>& actions) override {
-    dspace.complete_action(actions, m_handlers.qr());
+    dspace.complete_action(actions, m_handlers->qr());
     // calculate Hamiltonian equation data blocks
   }
 

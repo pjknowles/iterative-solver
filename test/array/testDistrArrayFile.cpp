@@ -6,10 +6,12 @@
 #include "parallel_util.h"
 
 #include <molpro/linalg/array/DistrArrayFile.h>
+#include <molpro/linalg/array/util.h>
 #include <molpro/linalg/array/util/Distribution.h>
 
 using molpro::linalg::test::mpi_comm;
 using molpro::linalg::array::DistrArrayFile;
+using molpro::linalg::array::util::LockMPI3;
 
 using ::testing::ContainerEq;
 using ::testing::DoubleEq;
@@ -41,14 +43,27 @@ TEST(DistrArrayFile, constructor_dummy_with_filename) {
 TEST(DistrArrayFile, constructor_fname_size) {
   {
     auto a = DistrArrayFile("test.txt", 100, mpi_comm);
-    EXPECT_EQ(a.size(), 100);
-    ASSERT_TRUE(a.empty());
+    LockMPI3 lock{mpi_comm};
+    {
+      auto l = lock.scope();
+      EXPECT_EQ(a.size(), 100);
+      ASSERT_TRUE(a.empty());
+    }
     a.close_access();
-    ASSERT_FALSE(a.is_file_open());
+    {
+      auto l = lock.scope();
+      ASSERT_FALSE(a.is_file_open());
+    }
     a.open_access();
-    ASSERT_TRUE(a.is_file_open());
+    {
+      auto l = lock.scope();
+      ASSERT_TRUE(a.is_file_open());
+    }
     a.erase();
-    ASSERT_TRUE(a.is_file_open());
+    {
+      auto l = lock.scope();
+      ASSERT_TRUE(a.is_file_open());
+    }
   }
   ASSERT_FALSE(std::fstream{"test.txt"}.is_open());
   ASSERT_TRUE(std::fstream{"test.txt"}.fail());

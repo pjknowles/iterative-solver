@@ -12,6 +12,7 @@
 using molpro::linalg::test::mpi_comm;
 using molpro::linalg::array::DistrArrayFile;
 using molpro::linalg::array::util::LockMPI3;
+using molpro::linalg::array::util::ScopeLock;
 
 using ::testing::ContainerEq;
 using ::testing::DoubleEq;
@@ -67,4 +68,36 @@ TEST(DistrArrayFile, constructor_fname_size) {
   }
   ASSERT_FALSE(std::fstream{"test.txt"}.is_open());
   ASSERT_TRUE(std::fstream{"test.txt"}.fail());
+}
+
+TEST(DistrArrayFile, constructor_move) {
+  auto&& a = DistrArrayFile{"test.txt", 100, mpi_comm};
+  {
+    ScopeLock l{mpi_comm};
+    DistrArrayFile b{std::move(a)};
+    EXPECT_EQ(b.size(), 100);
+    ASSERT_TRUE(b.empty());
+  }
+  ASSERT_FALSE(std::fstream{"test.txt"}.is_open());
+  ASSERT_TRUE(std::fstream{"test.txt"}.fail());
+}
+
+TEST(DistrArrayFile, DISABLED_compatible) {
+  //TODO: CTEST randomly for parallel test
+  auto a = DistrArrayFile{"test.txt", 100, mpi_comm};
+  auto b = DistrArrayFile{"test2.txt", mpi_comm};
+  auto c = DistrArrayFile{};
+  //auto d = DistrArrayFile{"test3.txt", 100, mpi_comm};
+  ScopeLock l{mpi_comm};
+  EXPECT_TRUE(a.compatible(a));
+  EXPECT_TRUE(b.compatible(b));
+  EXPECT_TRUE(c.compatible(c));
+  //EXPECT_TRUE(a.compatible(d));
+  EXPECT_FALSE(a.compatible(b));
+  EXPECT_FALSE(a.compatible(c));
+  EXPECT_FALSE(b.compatible(c));
+  EXPECT_EQ(a.compatible(b), b.compatible(a));
+  EXPECT_EQ(b.compatible(c), c.compatible(b));
+  EXPECT_EQ(a.compatible(c), c.compatible(a));
+  //EXPECT_EQ(a.compatible(d), d.compatible(a));
 }

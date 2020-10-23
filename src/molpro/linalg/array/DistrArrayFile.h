@@ -77,6 +77,8 @@ public:
   void scatter(const std::vector<index_type> &indices, const std::vector<value_type> &data) override;
   void scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data) override;
   std::vector<value_type> vec() const override;
+  //! Check if file is currently open
+  bool is_file_open();
 };
 
 } // namespace array

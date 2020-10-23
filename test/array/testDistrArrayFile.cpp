@@ -44,8 +44,11 @@ TEST(DistrArrayFile, constructor_fname_size) {
     EXPECT_EQ(a.size(), 100);
     ASSERT_TRUE(a.empty());
     a.close_access();
-    ASSERT_FALSE(std::fstream{"test.txt"}.is_open());
-    ASSERT_TRUE(std::fstream{"test.txt"}.fail());
+    ASSERT_FALSE(a.is_file_open());
+    a.open_access();
+    ASSERT_TRUE(a.is_file_open());
+    a.erase();
+    ASSERT_TRUE(a.is_file_open());
   }
   ASSERT_FALSE(std::fstream{"test.txt"}.is_open());
   ASSERT_TRUE(std::fstream{"test.txt"}.fail());

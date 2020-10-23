@@ -129,6 +129,10 @@ void DistrArrayFile::erase() {
   open_access();
 }
 
+bool DistrArrayFile::is_file_open() {
+  return m_file.is_open();
+}
+
 DistrArray::value_type DistrArrayFile::at(DistrArray::index_type ind) const {
   value_type val;
   get(ind, ind + 1, &val);

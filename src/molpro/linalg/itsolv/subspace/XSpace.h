@@ -90,6 +90,46 @@ auto update_dspace_overlap_data(const CVecRef<P>& pparams, const CVecRef<Q>& qpa
   }
   return data;
 }
+
+//! Calculates overlap blocks between D space and the rest of the subspace
+template <class Q, class P>
+auto update_dspace_action_data(const CVecRef<P>& pparams, const CVecRef<Q>& qparams, const CVecRef<Q>& qactions,
+                               const CVecRef<Q>& dparams, const CVecRef<Q>& dactions,
+                               array::ArrayHandler<Q, P>& handler_qp, array::ArrayHandler<Q, Q>& handler_qq,
+                               Logger& logger) {
+  const auto nP = pparams.size();
+  const auto nQ = qparams.size();
+  const auto nX = nP + nQ;
+  auto nD = dparams.size();
+  auto data = NewData(nD, nX);
+  const auto e = EqnData::H;
+  data.qq[e].slice() = util::overlap(dparams, dactions, handler_qq);
+  data.xq[e].slice({0, 0}, {nP, nD}) = util::overlap(pparams, dactions, handler_qp);
+  data.xq[e].slice({nP, 0}, {nX, nD}) = util::overlap(qparams, dactions, handler_qq);
+  data.qx[e].slice({0, nP}, {nD, nX}) = util::overlap(dparams, qactions, handler_qq);
+  transpose_copy(data.qx[e].slice({0, 0}, {nD, nP}), data.xq[e].slice({0, 0}, {nP, nD}));
+  if (logger.data_dump) {
+    logger.msg("xspace::update_dspace_action_data() nD = " + std::to_string(nD), Logger::Info);
+    logger.msg("Hdd = " + as_string(data.qq[e]), Logger::Info);
+    logger.msg("Hdx = " + as_string(data.qx[e]), Logger::Info);
+    logger.msg("Hxd = " + as_string(data.xq[e]), Logger::Info);
+  }
+  return data;
+}
+
+void copy_dspace_eqn_data(const NewData& new_data, SubspaceData& data, const subspace::EqnData e,
+                          const xspace::Dimensions& dims) {
+  const auto& dd = new_data.qq.at(e);
+  const auto& dx = new_data.qx.at(e);
+  const auto& xd = new_data.xq.at(e);
+  data[e].slice({dims.oD, dims.oD}, {dims.oD + dims.nD, dims.oD + dims.nD}) = dd;
+  data[e].slice({dims.oD, dims.oP}, {dims.oD + dims.nD, dims.oP + dims.nP}) = dx.slice({0, 0}, {dims.nD, dims.nP});
+  data[e].slice({dims.oD, dims.oQ}, {dims.oD + dims.nD, dims.oQ + dims.nQ}) =
+      dx.slice({0, dims.nP}, {dims.nD, dims.nP + dims.nQ});
+  data[e].slice({dims.oP, dims.oD}, {dims.oP + dims.nP, dims.oD + dims.nD}) = xd.slice({0, 0}, {dims.nP, dims.nD});
+  data[e].slice({dims.oQ, dims.oD}, {dims.oQ + dims.nQ, dims.oD + dims.nD}) =
+      xd.slice({dims.nP, 0}, {dims.nP + dims.nQ, dims.nD});
+}
 } // namespace xspace
 
 template <class R, class Q, class P>
@@ -121,23 +161,14 @@ public:
       data[e].resize({m_dim.nX, m_dim.nX});
     auto new_data = xspace::update_dspace_overlap_data(cparamsp(), cparamsq(), cparamsd(), m_handlers->qp(),
                                                        m_handlers->qq(), *m_logger);
-    const auto& dd = new_data.qq.at(EqnData::S);
-    const auto& dx = new_data.qx.at(EqnData::S);
-    const auto& xd = new_data.xq.at(EqnData::S);
-    data[EqnData::S].slice({m_dim.oD, m_dim.oD}, {m_dim.oD + m_dim.nD, m_dim.oD + m_dim.nD}) = dd;
-    data[EqnData::S].slice({m_dim.oD, m_dim.oP}, {m_dim.oD + m_dim.nD, m_dim.oP + m_dim.nP}) =
-        dx.slice({0, 0}, {m_dim.nD, m_dim.nP});
-    data[EqnData::S].slice({m_dim.oD, m_dim.oQ}, {m_dim.oD + m_dim.nD, m_dim.oQ + m_dim.nQ}) =
-        dx.slice({0, m_dim.nP}, {m_dim.nD, m_dim.nP + m_dim.nQ});
-    data[EqnData::S].slice({m_dim.oP, m_dim.oD}, {m_dim.oP + m_dim.nP, m_dim.oD + m_dim.nD}) =
-        xd.slice({0, 0}, {m_dim.nP, m_dim.nD});
-    data[EqnData::S].slice({m_dim.oQ, m_dim.oD}, {m_dim.oQ + m_dim.nQ, m_dim.oD + m_dim.nD}) =
-        xd.slice({m_dim.nP, 0}, {m_dim.nP + m_dim.nQ, m_dim.nD});
+    xspace::copy_dspace_eqn_data(new_data, data, EqnData::S, m_dim);
   }
 
   void complete_dspace_action(const CVecRef<R>& actions) override {
     dspace.complete_action(actions, m_handlers->qr());
-    // calculate Hamiltonian equation data blocks
+    auto new_data = xspace::update_dspace_action_data(cparamsp(), cparamsq(), cactionsq(), cparamsd(), cactionsd(),
+                                                      m_handlers->qp(), m_handlers->qq(), *m_logger);
+    xspace::copy_dspace_eqn_data(new_data, data, EqnData::H, m_dim);
   }
 
   const xspace::Dimensions& dimensions() const override { return m_dim; }

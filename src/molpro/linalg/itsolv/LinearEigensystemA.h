@@ -4,6 +4,7 @@
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
+#include <molpro/linalg/itsolv/reset_dspace.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverLinEig.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
 
@@ -49,19 +50,27 @@ public:
    * function to propose new Q space parameters orthonormal to the old space. They are returned in parameters so that
    * corresponding actions can be calculated and used in add_vector in the next iteration.
    *
+   * Every n_reset_D iterations the D space has to be reset. If working set does not cover all solutions than resetting
+   * might have to be done over multiple iterations. During this time, there should be no deletions from the Q space.
+   * This is done by temporarily increasing maximum allowed size of Q space.
+   *
    * @param parameters output new parameters for the subspace.
    * @param residual preconditioned residuals.
    * @return number of significant parameters to calculate the action for
    */
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
-    if ((this->m_stats->iterations + 1) % n_reset_D == 0)
-      // reset_D
-      ;
-    else
+    m_do_reset_dspace.update(this->m_stats->iterations, max_size_qspace, this->m_xspace.dimensions().nD);
+    if (m_do_reset_dspace.value) {
+      // FIXME if remaining D space is less than size of parameters, than we should do a mixed reset and rspace update
+      this->m_working_set = detail::reset_dspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters,
+                                                 this->m_xspace, this->m_subspace_solver.solutions(),
+                                                 reset_dspace_norm_thresh, *this->m_handlers, *this->m_logger);
+    } else {
       this->m_working_set =
           detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, this->m_xspace,
                                  this->m_subspace_solver.solutions(), *this->m_handlers, *this->m_logger,
                                  propose_rspace_norm_thresh, max_size_qspace);
+    }
     this->m_stats->iterations++;
     return this->working_set().size();
   }
@@ -92,9 +101,11 @@ public:
 
   std::shared_ptr<Logger> logger;
   double propose_rspace_norm_thresh = 1e-6; //!< vectors with norm less than threshold can be considered null
-  double construct_Dspace_norm_thresh = 1e-4;
+  double reset_dspace_norm_thresh = 1e-4;   //!< affects whether the full solution is added on reset
   unsigned int max_size_qspace = std::numeric_limits<unsigned int>::max(); //!< maximum size of Q space
   unsigned int n_reset_D = std::numeric_limits<unsigned int>::max();       //!< reset D space every n iterations
+protected:
+  detail::DoReset m_do_reset_dspace; //!< keeps track of when the D space is being reset
 };
 
 } // namespace itsolv

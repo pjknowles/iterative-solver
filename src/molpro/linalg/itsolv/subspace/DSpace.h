@@ -39,10 +39,12 @@ public:
   //! Completes construction of actions by adding R space contributions
   template <class R>
   void complete_action(const CVecRef<R>& ractions, array::ArrayHandler<Q, R>& handler) {
-    assert(ractions.size() == m_lin_trans_R.cols());
-    for (size_t i = 0; i < size(); ++i)
-      for (size_t j = 0; j < ractions.size(); ++j)
-        handler.axpy(m_lin_trans_R(i, j), ractions[j], m_actions[i]);
+    if (size() != 0) {
+      assert(ractions.size() == m_lin_trans_R.cols());
+      for (size_t i = 0; i < size(); ++i)
+        for (size_t j = 0; j < ractions.size(); ++j)
+          handler.axpy(m_lin_trans_R(i, j), ractions[j], m_actions[i]);
+    }
   };
 
   void clear() {
@@ -66,7 +68,7 @@ public:
 
   VecRef<Q> actions() { return wrap(m_actions); }
   CVecRef<Q> actions() const { return wrap(m_actions); }
-  CVecRef<Q> cactions() const { return params(); }
+  CVecRef<Q> cactions() const { return actions(); }
 
 protected:
   std::shared_ptr<Logger> m_logger;

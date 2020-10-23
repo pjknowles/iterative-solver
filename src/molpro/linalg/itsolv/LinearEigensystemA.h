@@ -54,7 +54,7 @@ public:
    * @return number of significant parameters to calculate the action for
    */
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
-    if (this->m_stats->iterations % n_reset_D == 0)
+    if ((this->m_stats->iterations + 1) % n_reset_D == 0)
       // reset_D
       ;
     else

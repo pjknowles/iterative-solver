@@ -9,6 +9,18 @@ namespace molpro {
 namespace linalg {
 namespace array {
 namespace util {
+#ifdef HAVE_MPI_H
+std::string temp_file_name(const std::string& base_name, const std::string& suffix, MPI_Comm comm) {
+  int rank;
+  MPI_Comm_rank(comm, &rank);
+  auto fname = rank != 0 ? "" : temp_file_name(base_name, suffix);
+  int fnamesize = fname.size();
+  MPI_Bcast(&fnamesize, 1, MPI_INT, 0, comm);
+  fname.resize(fnamesize);
+  MPI_Bcast((void*)fname.data(), fnamesize, MPI_CHAR, 0, comm);
+  return fname;
+}
+#endif
 
 std::string temp_file_name(const std::string& base_name, const std::string& suffix) {
   const std::string chars = "01234566789ABCDEFGHIJKLMNOPQRSTUVWXYZ";

@@ -18,7 +18,7 @@ TEST(TempFile, temp_file_name) {
   auto f2 = temp_file_name(body, suffix);
   ASSERT_FALSE(f1.empty());
   ASSERT_FALSE(file_exists(f1));
-  ASSERT_EQ(f1, f2);
+  ASSERT_NE(f1, f2);
   std::ofstream(f1.c_str()).close();
   auto g = GarbageCollector(f1);
   ASSERT_TRUE(file_exists(f1));

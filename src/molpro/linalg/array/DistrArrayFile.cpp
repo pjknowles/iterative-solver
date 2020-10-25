@@ -57,7 +57,9 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
   swap(x.m_file, y.m_file);
 }
 
-DistrArrayFile::~DistrArrayFile() {}
+DistrArrayFile::~DistrArrayFile() {
+  if (m_file.is_open()) m_file.close();
+}
 
 bool DistrArrayFile::compatible(const DistrArrayFile& source) const {
   auto res = DistrArray::compatible(source);
@@ -83,11 +85,7 @@ void DistrArrayFile::open_access() {}
 void DistrArrayFile::close_access() {}
 
 bool DistrArrayFile::empty() const {
-  auto current = m_file.tellg(); // get current position
-  m_file.seekg(0, std::ios::end);
-  auto res = DistrArrayDisk::empty() && m_file.tellg() <= 0;
-  m_file.seekg(current, std::ios::beg); // return back to original position
-  return res;
+  return !m_file.is_open();
 }
 
 void DistrArrayFile::erase() {}

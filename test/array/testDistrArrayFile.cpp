@@ -32,13 +32,9 @@ TEST(DistrArrayFile, constructor_default) {
 }
 
 TEST(DistrArrayFile, constructor_dummy_with_filename) {
-  {
-    auto a = DistrArrayFile(10, mpi_comm);
-    EXPECT_EQ(a.size(), 10);
-    ASSERT_TRUE(a.empty());
-  }
-  ASSERT_FALSE(std::fstream{"test.txt"}.is_open());
-  ASSERT_TRUE(std::fstream{"test.txt"}.fail());
+  auto a = DistrArrayFile(10, mpi_comm);
+  EXPECT_EQ(a.size(), 10);
+  ASSERT_FALSE(a.empty());
 }
 
 TEST(DistrArrayFile, constructor_fname_size) {
@@ -48,7 +44,7 @@ TEST(DistrArrayFile, constructor_fname_size) {
     {
       auto l = lock.scope();
       EXPECT_EQ(a.size(), 100);
-      ASSERT_TRUE(a.empty());
+      ASSERT_FALSE(a.empty());
     }
   }
 }
@@ -94,7 +90,7 @@ TEST(DistrArrayFile, constructor_move) {
     ScopeLock l{mpi_comm};
     DistrArrayFile b{std::move(a)};
     EXPECT_EQ(b.size(), 100);
-    ASSERT_TRUE(b.empty());
+    ASSERT_FALSE(b.empty());
   }
 }
 

@@ -1,9 +1,10 @@
 #include <unistd.h>
 
-#include <utility>
+#include <filesystem>
 #include <molpro/linalg/array/DistrArrayFile.h>
 #include <molpro/linalg/array/util/Distribution.h>
 #include <molpro/linalg/array/util/temp_file.h>
+#include <utility>
 
 namespace molpro {
 namespace linalg {
@@ -18,34 +19,23 @@ int mpi_size(MPI_Comm comm) {
 
 DistrArrayFile::DistrArrayFile() = default;
 
-DistrArrayFile::DistrArrayFile(DistrArrayFile&& source) noexcept : DistrArrayDisk(std::move(source)),
-                m_file_name(std::move(source.m_file_name)), m_file(std::move(source.m_file)) {}
-                
-DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::string &base_name) :
-                DistrArrayFile(util::temp_file_name(base_name, ""), dimension, comm){}
-                
-DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm,
-                const std::string& base_name) :
-                DistrArrayFile(util::temp_file_name(base_name, ""), std::move(distribution), comm) {}
-                
-DistrArrayFile::DistrArrayFile(std::string file_name, size_t dimension, MPI_Comm comm) :
-                DistrArrayFile(std::move(file_name),
-                std::make_unique<Distribution>(util::make_distribution_spread_remainder<index_type>(
-                dimension, mpi_size(comm))),comm) {}
-                    
-DistrArrayFile::DistrArrayFile(std::string file_name, std::unique_ptr<Distribution> distribution, MPI_Comm comm) :
-                DistrArrayDisk(std::move(distribution), comm), m_file_name(std::move(file_name)), m_file(make_file()) {
-  if (m_distribution->border().first != 0)
-    DistrArray::error("Distribution of array must start from 0");
+DistrArrayFile::DistrArrayFile(DistrArrayFile&& source) noexcept
+    : DistrArrayDisk(std::move(source)), m_file(std::move(source.m_file)) {}
+
+DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::string& directory)
+    : DistrArrayFile(std::make_unique<Distribution>(
+                         util::make_distribution_spread_remainder<index_type>(dimension, mpi_size(comm))),
+                     comm, directory) {}
+
+DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm, const std::string& directory)
+    : DistrArrayDisk(std::move(distribution), comm), m_file(make_file(directory)) {
+  //  if (m_distribution->border().first != 0)
+  //    DistrArray::error("Distribution of array must start from 0");
 }
 
-DistrArrayFile::DistrArrayFile(std::string file_name, MPI_Comm comm) :
-                DistrArrayDisk(std::make_unique<Distribution>(std::vector<index_type>{0, 0}), comm),
-                m_file_name(std::move(file_name)), m_file(make_file()) {}
-
-DistrArrayFile::DistrArrayFile(const DistrArray& source) :
-                DistrArrayDisk(std::make_unique<Distribution>(source.distribution()), source.communicator()) {
-  if (!source.empty()){
+DistrArrayFile::DistrArrayFile(const DistrArray& source)
+    : DistrArrayDisk(std::make_unique<Distribution>(source.distribution()), source.communicator()) {
+  if (!source.empty()) {
     DistrArrayFile::open_access();
     DistrArrayFile::copy(source);
   } else {
@@ -53,13 +43,13 @@ DistrArrayFile::DistrArrayFile(const DistrArray& source) :
   }
 }
 
-DistrArrayFile& DistrArrayFile::operator=(DistrArrayFile&& source) noexcept{
+DistrArrayFile& DistrArrayFile::operator=(DistrArrayFile&& source) noexcept {
   DistrArrayFile t{std::move(source)};
   swap(*this, t);
   return *this;
 }
 
-void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept{
+void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
   using std::swap;
   swap(x.m_dimension, y.m_dimension);
   swap(x.m_communicator, y.m_communicator);
@@ -67,17 +57,12 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept{
   swap(x.m_view_buffer, y.m_view_buffer);
   swap(x.m_owned_buffer, y.m_owned_buffer);
   swap(x.m_distribution, y.m_distribution);
-  swap(x.m_file_name, y.m_file_name);
   swap(x.m_file, y.m_file);
 }
 
-DistrArrayFile::~DistrArrayFile(){
-  if (m_file.is_open()) {
-    DistrArrayFile::close_access();
-  }
-}
+DistrArrayFile::~DistrArrayFile() {}
 
-bool DistrArrayFile::compatible(const DistrArrayFile& source) const{
+bool DistrArrayFile::compatible(const DistrArrayFile& source) const {
   auto res = DistrArray::compatible(source);
   if (m_distribution && source.m_distribution)
     res &= m_distribution->compatible(*source.m_distribution);
@@ -86,52 +71,29 @@ bool DistrArrayFile::compatible(const DistrArrayFile& source) const{
   return res;
 }
 
-std::fstream DistrArrayFile::make_file() {
+std::fstream DistrArrayFile::make_file(const std::string& directory) {
   std::fstream file;
-  if (m_file_name.empty()) {
-    m_file_name = util::temp_file_name(".temp_array", "");
-  }
-  file.open(m_file_name.c_str(), std::ios::out | std::ios::binary);
+  std::string file_name =
+      util::temp_file_name(directory + "/", ""); // TODO do this with std::filesystem::path to make more portable
+  file.open(file_name.c_str(), std::ios::out | std::ios::binary);
   file.close();
-  file.open(m_file_name.c_str(), std::ios::out | std::ios::in | std::ios::binary);
-  unlink(m_file_name.c_str());
+  file.open(file_name.c_str(), std::ios::out | std::ios::in | std::ios::binary);
+  unlink(file_name.c_str());
   return file;
 }
 
-void DistrArrayFile::open_access() {
-  if (!m_file.is_open()) {
-    m_file = make_file();
-  }
-}
-void DistrArrayFile::close_access() {
-  if (!m_file.is_open()) {
-    return;
-  } else {
-    m_file.close();
-  }
-}
+void DistrArrayFile::open_access() {}
+void DistrArrayFile::close_access() {}
 
 bool DistrArrayFile::empty() const {
-  if (!m_file.is_open()) {
-    return true;
-  } else {
-    auto current = m_file.tellg(); // get current position
-    m_file.seekg(0, std::ios::end);
-    auto res = DistrArrayDisk::empty() && m_file.tellg() == 0;
-    m_file.seekg(current, std::ios::beg); // return back to original position
-    return res;
-  }
+  auto current = m_file.tellg(); // get current position
+  m_file.seekg(0, std::ios::end);
+  auto res = DistrArrayDisk::empty() && m_file.tellg() <= 0;
+  m_file.seekg(current, std::ios::beg); // return back to original position
+  return res;
 }
 
-void DistrArrayFile::erase() {
-  // Remove file and then re-create it
-  close_access();
-  open_access();
-}
-
-bool DistrArrayFile::is_file_open() {
-  return m_file.is_open();
-}
+void DistrArrayFile::erase() {}
 
 DistrArray::value_type DistrArrayFile::at(DistrArray::index_type ind) const {
   value_type val;
@@ -139,9 +101,7 @@ DistrArray::value_type DistrArrayFile::at(DistrArray::index_type ind) const {
   return val;
 }
 
-void DistrArrayFile::set(DistrArray::index_type ind, DistrArray::value_type val) {
-  put(ind, ind+1, &val);
-}
+void DistrArrayFile::set(DistrArray::index_type ind, DistrArray::value_type val) { put(ind, ind + 1, &val); }
 
 void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, DistrArray::value_type* buf) const {
   if (lo >= hi)
@@ -155,11 +115,12 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
   }
   DistrArray::index_type offset = lo - lo_loc;
   DistrArray::index_type length = hi - lo;
-  m_file.seekg(offset*sizeof(DistrArray::value_type));
-  m_file.read((char*)buf, length*sizeof(DistrArray::value_type));
+  m_file.seekg(offset * sizeof(DistrArray::value_type));
+  m_file.read((char*)buf, length * sizeof(DistrArray::value_type));
 }
 
-std::vector<DistrArrayFile::value_type> DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi) const {
+std::vector<DistrArrayFile::value_type> DistrArrayFile::get(DistrArray::index_type lo,
+                                                            DistrArray::index_type hi) const {
   if (lo >= hi)
     return {};
   auto buf = std::vector<DistrArray::value_type>(hi - lo);
@@ -179,16 +140,15 @@ void DistrArrayFile::put(DistrArray::index_type lo, DistrArray::index_type hi, c
   }
   DistrArray::index_type offset = lo - lo_loc;
   DistrArray::index_type length = hi - lo;
-  m_file.seekp(offset*sizeof(DistrArray::value_type));
-  m_file.write((const char*)data, length*sizeof(DistrArray::value_type));
+  m_file.seekp(offset * sizeof(DistrArray::value_type));
+  m_file.write((const char*)data, length * sizeof(DistrArray::value_type));
 }
 
 void DistrArrayFile::acc(DistrArray::index_type lo, DistrArray::index_type hi, const DistrArray::value_type* data) {
   if (lo >= hi)
     return;
   auto disk_copy = get(lo, hi);
-  std::transform(disk_copy.begin(), disk_copy.end(), data, disk_copy.begin(),
-                  [](auto &l, auto &r) { return l + r; });
+  std::transform(disk_copy.begin(), disk_copy.end(), data, disk_copy.begin(), [](auto& l, auto& r) { return l + r; });
   put(lo, hi, &disk_copy[0]);
 }
 
@@ -228,7 +188,8 @@ void DistrArrayFile::scatter(const std::vector<index_type>& indices, const std::
 
 void DistrArrayFile::scatter_acc(std::vector<index_type>& indices, const std::vector<value_type>& data) {
   auto disk_copy = gather(indices);
-  std::transform(data.begin(), data.end(), disk_copy.begin(), disk_copy.begin(), [](auto &l, auto &r) { return l + r; });
+  std::transform(data.begin(), data.end(), disk_copy.begin(), disk_copy.begin(),
+                 [](auto& l, auto& r) { return l + r; });
   scatter(indices, disk_copy);
 }
 

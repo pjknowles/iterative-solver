@@ -24,21 +24,18 @@ namespace array {
  */
 class DistrArrayFile : public DistrArrayDisk {
 protected:
-  std::string m_file_name; // TODO: is it even needed?
+//  std::string m_file_name; // TODO: is it even needed?
   mutable std::fstream m_file;
   //! creates a file, opens it and @returns m_file fstream
-  std::fstream make_file();
+  std::fstream make_file(const std::string& directory = ".");
 public:
   //! Constructor for a blank object. The blank is only useful as a temporary. Move a valid object inside the blank to
   //! make it usable.
   DistrArrayFile();
   DistrArrayFile(const DistrArrayFile &source) = delete;
   DistrArrayFile(DistrArrayFile &&source) noexcept;
-  DistrArrayFile(size_t dimension, MPI_Comm comm, const std::string &base_name = ".temp_array");
-  DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm, const std::string &base_name = ".temp_array");
-  DistrArrayFile(std::string file_name, size_t dimension, MPI_Comm comm);
-  DistrArrayFile(std::string file_name, std::unique_ptr<Distribution> distribution, MPI_Comm comm);
-  DistrArrayFile(std::string file_name, MPI_Comm comm);
+  DistrArrayFile(size_t dimension, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");
+  DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");
   explicit DistrArrayFile(const DistrArray &source);
   //static DistrArrayFile CreateTempCopy(const DistrArray &source, const std::string &base_name = ".temp_array");
   

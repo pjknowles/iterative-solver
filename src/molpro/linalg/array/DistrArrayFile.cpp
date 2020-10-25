@@ -88,7 +88,7 @@ void DistrArrayFile::open_access() {}
 void DistrArrayFile::close_access() {}
 
 bool DistrArrayFile::empty() const {
-  return m_file.is_open();
+  return !m_file.is_open();
 }
 
 void DistrArrayFile::erase() {}

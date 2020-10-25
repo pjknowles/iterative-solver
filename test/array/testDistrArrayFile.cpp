@@ -53,30 +53,6 @@ TEST(DistrArrayFile, constructor_fname_size) {
   }
 }
 
-#define EXPECT_ITERABLE_DOUBLE_EQ( TYPE, ref, target) \
-{ \
-const TYPE& _ref(ref); \
-const TYPE& _target(target); \
-TYPE::const_iterator tarIter   = _target.begin(); \
-TYPE::const_iterator refIter = _ref.begin(); \
-unsigned int i = 0; \
-while(refIter != _ref.end()) { \
-    if ( tarIter == _target.end() ) { \
-        ADD_FAILURE() << #target \
-            " has a smaller length than " #ref ; \
-        break; \
-    } \
-    EXPECT_DOUBLE_EQ(* refIter, * tarIter) \
-        << "Vectors " #ref  " (refIter) " \
-           "and " #target " (tarIter) " \
-           "differ at index " << i; \
-    ++refIter; ++tarIter; ++i; \
-} \
-EXPECT_TRUE( tarIter == _target.end() ) \
-    << #ref " has a smaller length than " \
-       #target ; \
-}
-
 TEST(DistrArrayFile, writeread) {
   constexpr int n=10;
   std::vector<double> v(n);
@@ -85,7 +61,31 @@ TEST(DistrArrayFile, writeread) {
   a.put(0,n,v.data());
   std::vector<double> w(n);
   a.get(0,n,w.data());
-  EXPECT_ITERABLE_DOUBLE_EQ(std::vector<double>, v, w);
+  EXPECT_THAT(v, Pointwise(::testing::Eq(), w));
+}
+
+TEST(DistrArrayFile, DISABLED_copy) {
+  constexpr int n=10;
+  std::vector<double> v(n);
+  std::iota(v.begin(),v.end(),0.0);
+  auto a = DistrArrayFile(10, mpi_comm);
+//  auto b = a;
+  a.put(0,n,v.data());
+  std::vector<double> w(n);
+//  b.get(0,n,w.data());
+  EXPECT_THAT(v, Pointwise(::testing::Eq(), w));
+}
+
+TEST(DistrArrayFile, move) {
+  constexpr int n=10;
+  std::vector<double> v(n);
+  std::iota(v.begin(),v.end(),0.0);
+  auto a = DistrArrayFile(10, mpi_comm);
+  a.put(0,n,v.data());
+  DistrArrayFile b = std::move(a);
+  std::vector<double> w(n);
+  b.get(0,n,w.data());
+  EXPECT_THAT(v, Pointwise(::testing::Eq(), w));
 }
 
 TEST(DistrArrayFile, constructor_move) {

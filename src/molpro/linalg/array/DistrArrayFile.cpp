@@ -34,12 +34,9 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
 }
 
 DistrArrayFile::DistrArrayFile(const DistrArray& source)
-    : DistrArrayDisk(std::make_unique<Distribution>(source.distribution()), source.communicator()) {
+    : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator()) {
   if (!source.empty()) {
-    DistrArrayFile::open_access();
     DistrArrayFile::copy(source);
-  } else {
-    m_file = make_file();
   }
 }
 

@@ -50,37 +50,45 @@ TEST(DistrArrayFile, constructor_fname_size) {
 }
 
 TEST(DistrArrayFile, writeread) {
-  constexpr int n=10;
+  constexpr int n = 10;
   std::vector<double> v(n);
-  std::iota(v.begin(),v.end(),0.0);
+  std::iota(v.begin(), v.end(), 0.0);
   auto a = DistrArrayFile(10, mpi_comm);
-  a.put(0,n,v.data());
-  std::vector<double> w(n);
-  a.get(0,n,w.data());
+  int mpi_size, mpi_rank;
+  MPI_Comm_rank(mpi_comm, &mpi_rank);
+  MPI_Comm_size(mpi_comm, &mpi_size);
+  auto dist = a.distribution();
+  a.put(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
+  auto w{v};
+  a.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, w.data());
   EXPECT_THAT(v, Pointwise(::testing::Eq(), w));
 }
 
 TEST(DistrArrayFile, DISABLED_copy) {
-  constexpr int n=10;
+  constexpr int n = 10;
   std::vector<double> v(n);
-  std::iota(v.begin(),v.end(),0.0);
+  std::iota(v.begin(), v.end(), 0.0);
   auto a = DistrArrayFile(10, mpi_comm);
-//  auto b = a;
-  a.put(0,n,v.data());
+  //  auto b = a;
+  a.put(0, n, v.data());
   std::vector<double> w(n);
-//  b.get(0,n,w.data());
+  //  b.get(0,n,w.data());
   EXPECT_THAT(v, Pointwise(::testing::Eq(), w));
 }
 
 TEST(DistrArrayFile, move) {
-  constexpr int n=10;
+  constexpr int n = 10;
   std::vector<double> v(n);
-  std::iota(v.begin(),v.end(),0.0);
+  std::iota(v.begin(), v.end(), 0.0);
   auto a = DistrArrayFile(10, mpi_comm);
-  a.put(0,n,v.data());
+  int mpi_size, mpi_rank;
+  MPI_Comm_rank(mpi_comm, &mpi_rank);
+  MPI_Comm_size(mpi_comm, &mpi_size);
+  auto dist = a.distribution();
+  a.put(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
   DistrArrayFile b = std::move(a);
-  std::vector<double> w(n);
-  b.get(0,n,w.data());
+  auto w{v};
+  b.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, w.data());
   EXPECT_THAT(v, Pointwise(::testing::Eq(), w));
 }
 
@@ -96,8 +104,8 @@ TEST(DistrArrayFile, constructor_move) {
 
 TEST(DistrArrayFile, DISABLED_compatible) {
   // TODO: CTEST randomly for parallel test
-  auto a = DistrArrayFile{ 100, mpi_comm};
-  auto b = DistrArrayFile{ 1000, mpi_comm};
+  auto a = DistrArrayFile{100, mpi_comm};
+  auto b = DistrArrayFile{1000, mpi_comm};
   auto c = DistrArrayFile{};
   // auto d = DistrArrayFile{"test3.txt", 100, mpi_comm};
   ScopeLock l{mpi_comm};

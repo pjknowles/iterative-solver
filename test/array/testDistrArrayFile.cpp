@@ -28,7 +28,7 @@ class DistrArrayFile_SetUp : public ::testing::Test {
 
 TEST(DistrArrayFile, constructor_default) {
   auto a = DistrArrayFile();
-  ASSERT_TRUE(a.empty());
+  ASSERT_FALSE(a.empty());
 }
 
 TEST(DistrArrayFile, constructor_dummy_with_filename) {

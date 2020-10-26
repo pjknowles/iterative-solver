@@ -159,6 +159,8 @@ protected:
   std::vector<value_type_abs> m_errors;  //!< errors in subspace solutions
   Matrix<value_type> m_lin_trans;        //!< linear transformation to a well conditioned subspace
   std::shared_ptr<Logger> m_logger;
+
+public:
   value_type_abs m_norm_stability_threshold = 1.0e-4; //!< norm threshold for Gram Schmidt orthogonalisation
   value_type_abs m_svd_solver_threshold = 1.0e-14;    //!< threshold to select null space during SVD in eigenproblem
   bool m_hermitian = true;                            //!< flags the matrix as Hermitian

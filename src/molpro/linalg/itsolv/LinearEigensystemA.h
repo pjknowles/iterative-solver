@@ -40,7 +40,9 @@ public:
                               const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
       : SolverTemplate(subspace::XSpace<R, Q, P>(handlers, logger_), detail::SubspaceSolver<R>{logger_}, handlers,
                        std::make_shared<Statistics>(), logger_),
-        logger(logger_) {}
+        logger(logger_) {
+    this->m_subspace_solver.m_norm_stability_threshold = propose_rspace_norm_thresh;
+  }
 
   /*!
    * \brief Proposes new parameters for the subspace from the preconditioned residuals.

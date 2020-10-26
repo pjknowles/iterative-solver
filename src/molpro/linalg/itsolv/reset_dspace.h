@@ -40,6 +40,45 @@ struct DoReset {
 };
 
 /*!
+ * @brief Construct overlap matrix of P+Q+Solutions subspace
+ * @param solutions matrix in the current subspace with solutions as rows
+ * @param overlap_xx overlap matrix of current subspace (P+Q+D), which spans the solutions
+ * @param dims dimensions of current subspace
+ * @return
+ */
+template <typename value_type>
+auto construct_overlap_with_solutions(const subspace::Matrix<value_type>& solutions,
+                                      const subspace::Matrix<value_type>& overlap_xx,
+                                      const subspace::xspace::Dimensions& dims) {
+  const auto nSol = solutions.rows();
+  const auto nPQ = dims.nP + dims.nQ;
+  const auto oSol = nPQ;
+  auto overlap = overlap_xx;
+  overlap.resize({nPQ + nSol, nPQ + nSol});
+  for (size_t i = 0; i < nSol; ++i) {
+    for (size_t j = 0; j < nPQ; ++j) {
+      value_type v = 0;
+      for (size_t k = 0; k < dims.nX; ++k) {
+        v += solutions(i, k) * overlap_xx(k, j);
+      }
+      overlap(oSol + i, j) = overlap(j, oSol + i) = v;
+    }
+  }
+  for (size_t i = 0; i < nSol; ++i) {
+    for (size_t j = 0; j <= i; ++j) {
+      value_type v = 0;
+      for (size_t k = 0; k < dims.nX; ++k) {
+        for (size_t l = 0; l < dims.nX; ++l) {
+          v += solutions(i, k) * solutions(j, l) * overlap_xx(k, l);
+        }
+      }
+      overlap(oSol + i, oSol + j) = overlap(oSol + j, oSol + i) = v;
+    }
+  }
+  return overlap;
+}
+
+/*!
  * @brief Removes part of D space and uses it as R space so that the exact action can be calculated
  * @param solver linear eigensystem solver
  * @param parameters parameters to propose as R space
@@ -54,8 +93,9 @@ template <class R, class Q, class P, typename value_type, typename value_type_ab
 auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters, subspace::XSpaceI<R, Q, P>& xspace,
                   const subspace::Matrix<value_type>& solutions, value_type_abs norm_thresh,
                   ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
-  // Construct overlap matrix Q+C
-  // Orthogonalise C against Q
+  // Construct overlap matrix P+Q+C
+  auto ov = construct_overlap_with_solutions(solutions, xspace.data.at(subspace::EqnData::S), xspace.dimensions());
+  // Orthogonalise C against P+Q
   // Construct new R and left-over D parameters
   auto new_working_set = solver.working_set();
   return new_working_set;

@@ -51,7 +51,7 @@ public:
    * corresponding actions can be calculated and used in add_vector in the next iteration.
    *
    * Every n_reset_D iterations the D space has to be reset. If working set does not cover all solutions than resetting
-   * might have to be done over multiple iterations. During this time, there should be no deletions from the Q space.
+   * is done over multiple iterations. During this time, there are no deletions from the Q space.
    * This is done by temporarily increasing maximum allowed size of Q space.
    *
    * @param parameters output new parameters for the subspace.
@@ -61,7 +61,6 @@ public:
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
     m_do_reset_dspace.update(this->m_stats->iterations, max_size_qspace, this->m_xspace.dimensions().nD);
     if (m_do_reset_dspace.value) {
-      // FIXME if remaining D space is less than size of parameters, than we should do a mixed reset and rspace update
       this->m_working_set = detail::reset_dspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters,
                                                  this->m_xspace, this->m_subspace_solver.solutions(),
                                                  reset_dspace_norm_thresh, *this->m_handlers, *this->m_logger);

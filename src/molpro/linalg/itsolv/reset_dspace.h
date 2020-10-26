@@ -77,6 +77,7 @@ auto construct_overlap_with_solutions(const subspace::Matrix<value_type>& soluti
   }
   return overlap;
 }
+
 /*!
  * @brief Given linear transformation to R parameters in subspace P+Q+Solutions, transform it to P+Q+D subspace
  *
@@ -150,7 +151,21 @@ auto propose_R_and_D_params(subspace::Matrix<value_type>& lin_trans, std::vector
   return std::make_tuple(lin_trans_R, lin_trans_D);
 }
 
-template <class R, class Q, class P, typename value_type >
+/*!
+ * @brief Constructs the proposed R and D space parameters from the current subspace (P+Q+D)
+ * @param parameters containers for R parameters
+ * @param lin_trans_R proposed R parameters in the current subspace
+ * @param lin_trans_D proposed D parameters in the current subspace
+ * @param pparams P space parameters
+ * @param pactions P space actions
+ * @param qparams Q space parameters
+ * @param qactions Q space actions
+ * @param dparams D space parameters
+ * @param dactions D space actions
+ * @param handlers array handlers
+ * @return new D space parameters and actions
+ */
+template <class R, class Q, class P, typename value_type>
 auto construct_R_and_D_params(std::vector<R>& parameters, const subspace::Matrix<value_type>& lin_trans_R,
                               const subspace::Matrix<value_type>& lin_trans_D, const CVecRef<P>& pparams,
                               const CVecRef<P>& pactions, const CVecRef<Q>& qparams, const CVecRef<Q>& qactions,
@@ -197,6 +212,10 @@ auto construct_R_and_D_params(std::vector<R>& parameters, const subspace::Matrix
 
 /*!
  * @brief Removes part of D space and uses it as R space so that the exact action can be calculated
+ *
+ * D space accumulates round-off error and has to be periodically reset. This entails using part of the subspace
+ * as the new R space, and removing from D. This should be repeated until D space is empty.
+ *
  * @param solver linear eigensystem solver
  * @param parameters parameters to propose as R space
  * @param xspace current X space container

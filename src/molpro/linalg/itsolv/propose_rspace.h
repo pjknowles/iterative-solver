@@ -46,7 +46,7 @@ auto propose_orthonormal_set(VecRef<R> params, const double norm_thresh, array::
     }
   }
   lin_trans = subspace::util::construct_lin_trans_in_orthogonal_set(ov, lin_trans, norm);
-  return std::tuple<decltype(params), decltype(lin_trans), decltype(norm)>{params, lin_trans, norm};
+  return std::make_tuple(params, lin_trans, norm);
 }
 /*!
  * @brief Uses overlap matrix to construct an orthogonal set of R params, and select Q parameters for removal
@@ -369,7 +369,7 @@ auto construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const sub
   const auto nR = rparams.size();
   const auto oR = oQ + nQ;
   const auto oQdelete = oR + nR;
-  const auto oDold = oQdelete + dims.nD;
+  const auto oDold = oQdelete + nQdelete;
   auto q_indices_new = std::vector<unsigned int>(nQ);
   for (size_t j = 0, k = 0; j < dims.nQ; ++j) {
     if (std::find(begin(q_indices_remove), end(q_indices_remove), j) == end(q_indices_remove))
@@ -547,6 +547,10 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
                     ArrayHandlers<R, Q, P>& handlers, Logger& logger, value_type_abs res_norm_thresh,
                     unsigned int max_size_qspace) {
   logger.msg("itsolv::detail::propose_rspace", Logger::Trace);
+  logger.msg("dimensions {nP, nQ, nD, nW} = " + std::to_string(xspace.dimensions().nP) + ", " +
+                 std::to_string(xspace.dimensions().nQ) + ", " + std::to_string(xspace.dimensions().nD) + ", " +
+                 std::to_string(solver.working_set().size()),
+             Logger::Trace);
   auto wresidual = wrap<R>(residuals.begin(), residuals.begin() + solver.working_set().size());
   normalise(wresidual, handlers.rr(), logger);
   auto lin_trans = subspace::Matrix<value_type>{};
@@ -579,7 +583,7 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
   auto lin_trans_D =
       propose_dspace(solutions, xspace.dimensions(), q_indices_remove, ov, wparams.size(), res_norm_thresh);
   if (logger.data_dump) {
-    logger.msg("overlap P+Q+R = " + subspace::as_string(ov), Logger::Info);
+    logger.msg("overlap P+Q+D+R = " + subspace::as_string(ov), Logger::Info);
     logger.msg("D params in subspace = " + subspace::as_string(lin_trans_D), Logger::Info);
   }
   auto dparams = std::vector<Q>{};

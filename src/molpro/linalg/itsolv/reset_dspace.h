@@ -132,26 +132,22 @@ auto propose_R_and_D_params(subspace::Matrix<value_type>& lin_trans, std::vector
   std::sort(std::begin(descending_norm), std::end(descending_norm), std::greater<value_type_abs>{});
   auto order = find_ref(descending_norm, std::begin(norm), std::end(norm));
   auto lin_trans_R = subspace::Matrix<value_type>({nR, nX});
-  auto norm_R = std::vector<value_type_abs>{};
   for (size_t i = 0; i < nR; ++i) {
     const auto ii = order[i];
     if (norm[ii] > norm_thresh) {
       lin_trans_R.row(i) = solutions.row(ii);
-      norm_R.emplace_back(1);
     } else {
       lin_trans_R.row(i) = lin_trans.row(ii);
-      norm_R.emplace_back(norm[ii]);
+      lin_trans_R.row(i).scal(1. / norm[ii]);
     }
   }
   auto lin_trans_D = subspace::Matrix<value_type>({nR, nX});
-  auto norm_D = std::vector<value_type_abs>{};
   for (size_t i = 0; i < nDnew; ++i) {
     const auto ii = order[nR + i];
     lin_trans_D.row(i) = lin_trans.row(ii);
-    norm_D.emplace_back(norm[ii]);
+    lin_trans_D.row(i).scal(1. / norm[ii]);
   }
-  return std::tuple<decltype(lin_trans_R), decltype(norm_R), decltype(lin_trans_D), decltype(norm_D)>{
-      lin_trans_R, norm_R, lin_trans_D, norm_D};
+  return std::make_tuple(lin_trans_R, lin_trans_D);
 }
 
 /*!
@@ -182,8 +178,7 @@ auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters
   const auto nR = std::min(parameters.size(), xspace.dimensions().nD);
   const auto nDnew = nC - nR;
   subspace::Matrix<value_type> lin_trans_R, lin_trans_D;
-  std::vector<value_type_abs> norm_R, norm_D;
-  std::tie(lin_trans_R, norm_R, lin_trans_D, norm_D) =
+  std::tie(lin_trans_R, lin_trans_D) =
       propose_R_and_D_params(lin_trans_orth_sol, norm, solutions, nR, nDnew, norm_thresh);
   // Construct new R and left-over D parameters
   auto new_working_set = solver.working_set();

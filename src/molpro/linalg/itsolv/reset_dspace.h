@@ -106,6 +106,55 @@ auto transform_PQSol_to_PQD_subspace(const subspace::Matrix<value_type>& lin_tra
 }
 
 /*!
+ * @brief Given solutions orthogonalised against P+Q subspace proposes R parameters  and new D parameters.
+ *
+ * The number of solutions could be greater than size of D space (nSol >= nD), and nR <= nD.
+ * Thus, orthogonalised solutions are considered in order of descending norm. By construction, there is at least
+ * nR + nDnew parameters that are not null.
+ *
+ * Parameters for R space are full solutions if the orthogonalised solution has norm greater than norm_thresh.
+ *
+ * @param lin_trans linear transformation to solutions orthogonalised against P+Q subspace
+ * @param norm norm of proposed transformed parameters
+ * @param solutions matrix of solutions in the current P+Q+D subspace
+ * @param nR number of R parameters that will be proposed
+ * @param nDnew number of new D parameters
+ * @param norm_thresh threshold for selecting which solutions can be added fully
+ */
+template <typename value_type, typename value_type_abs>
+auto propose_R_and_D_params(subspace::Matrix<value_type>& lin_trans, std::vector<value_type_abs>& norm,
+                            const subspace::Matrix<value_type>& solutions, const size_t nR, const size_t nDnew,
+                            value_type_abs norm_thresh) {
+  assert(lin_trans.rows() == norm.size());
+  const auto nX = lin_trans.cols();
+  auto wnorm = wrap(norm);
+  auto descending_norm = wnorm;
+  std::sort(std::begin(descending_norm), std::end(descending_norm), std::greater<value_type_abs>{});
+  auto order = find_ref(descending_norm, std::begin(norm), std::end(norm));
+  auto lin_trans_R = subspace::Matrix<value_type>({nR, nX});
+  auto norm_R = std::vector<value_type_abs>{};
+  for (size_t i = 0; i < nR; ++i) {
+    const auto ii = order[i];
+    if (norm[ii] > norm_thresh) {
+      lin_trans_R.row(i) = solutions.row(ii);
+      norm_R.emplace_back(1);
+    } else {
+      lin_trans_R.row(i) = lin_trans.row(ii);
+      norm_R.emplace_back(norm[ii]);
+    }
+  }
+  auto lin_trans_D = subspace::Matrix<value_type>({nR, nX});
+  auto norm_D = std::vector<value_type_abs>{};
+  for (size_t i = 0; i < nDnew; ++i) {
+    const auto ii = order[nR + i];
+    lin_trans_D.row(i) = lin_trans.row(ii);
+    norm_D.emplace_back(norm[ii]);
+  }
+  return std::tuple<decltype(lin_trans_R), decltype(norm_R), decltype(lin_trans_D), decltype(norm_D)>{
+      lin_trans_R, norm_R, lin_trans_D, norm_D};
+}
+
+/*!
  * @brief Removes part of D space and uses it as R space so that the exact action can be calculated
  * @param solver linear eigensystem solver
  * @param parameters parameters to propose as R space
@@ -120,18 +169,22 @@ template <class R, class Q, class P, typename value_type, typename value_type_ab
 auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters, subspace::XSpaceI<R, Q, P>& xspace,
                   const subspace::Matrix<value_type>& solutions, value_type_abs norm_thresh,
                   ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
-  // Construct overlap matrix P+Q+C
   auto overlap = construct_overlap_with_solutions(solutions, xspace.data.at(subspace::EqnData::S), xspace.dimensions());
-  // Orthogonalise C against P+Q
   auto lin_trans = subspace::Matrix<value_type>{};
-  auto norm = subspace::util::gram_schmidt(overlap, lin_trans, norm_thresh);
-  const auto nR = solutions.rows();
+  auto norm = subspace::util::gram_schmidt(overlap, lin_trans, 0);
+  const auto nC = solutions.rows();
   const auto nP = xspace.dimensions().nP;
   const auto nQ = xspace.dimensions().nQ;
   const auto nPQ = nP + nQ;
-  auto lin_trans_R = subspace::Matrix<value_type>({nR, nPQ + nR});
-  lin_trans_R.slice() = lin_trans.slice({nPQ, 0}, lin_trans.dimensions());
-  lin_trans_R = transform_PQSol_to_PQD_subspace(lin_trans_R, solutions, xspace.dimensions());
+  auto lin_trans_orth_sol = subspace::Matrix<value_type>({nC, nPQ + nC});
+  lin_trans_orth_sol.slice() = lin_trans.slice({nPQ, 0}, lin_trans.dimensions());
+  lin_trans_orth_sol = transform_PQSol_to_PQD_subspace(lin_trans_orth_sol, solutions, xspace.dimensions());
+  const auto nR = std::min(parameters.size(), xspace.dimensions().nD);
+  const auto nDnew = nC - nR;
+  subspace::Matrix<value_type> lin_trans_R, lin_trans_D;
+  std::vector<value_type_abs> norm_R, norm_D;
+  std::tie(lin_trans_R, norm_R, lin_trans_D, norm_D) =
+      propose_R_and_D_params(lin_trans_orth_sol, norm, solutions, nR, nDnew, norm_thresh);
   // Construct new R and left-over D parameters
   auto new_working_set = solver.working_set();
   return new_working_set;

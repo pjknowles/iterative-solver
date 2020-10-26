@@ -91,6 +91,10 @@ public:
 
   void report() const override {
     SolverTemplate::report();
+    molpro::cout << "errors " << std::scientific;
+    auto& err = this->m_errors;
+    std::copy(begin(err), end(err), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
+    molpro::cout << std::endl;
     molpro::cout << "eigenvalues ";
     auto ev = eigenvalues();
     molpro::cout << std::fixed << std::setprecision(14);

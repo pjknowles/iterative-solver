@@ -150,6 +150,51 @@ auto propose_R_and_D_params(subspace::Matrix<value_type>& lin_trans, std::vector
   return std::make_tuple(lin_trans_R, lin_trans_D);
 }
 
+template <class R, class Q, class P, typename value_type >
+auto construct_R_and_D_params(std::vector<R>& parameters, const subspace::Matrix<value_type>& lin_trans_R,
+                              const subspace::Matrix<value_type>& lin_trans_D, const CVecRef<P>& pparams,
+                              const CVecRef<P>& pactions, const CVecRef<Q>& qparams, const CVecRef<Q>& qactions,
+                              const CVecRef<Q>& dparams, const CVecRef<Q>& dactions, ArrayHandlers<R, Q, P>& handlers) {
+  const auto nR = lin_trans_R.rows();
+  const auto nDnew = lin_trans_D.rows();
+  const auto nP = pparams.size(), nQ = qparams.size(), nD = dparams.size();
+  std::vector<Q> dparams_new, dactions_new;
+  {
+    auto qzero = handlers.qq().copy(qparams.front());
+    handlers.qq().fill(0, qzero);
+    for (size_t i = 0; i < nDnew; ++i) {
+      dparams_new.emplace_back(handlers.qq().copy(qzero));
+      dactions_new.emplace_back(handlers.qq().copy(qzero));
+    }
+  }
+  for (size_t i = 0; i < nR; ++i) {
+    handlers.rr().fill(0, parameters[i]);
+  }
+  for (size_t i = 0; i < nR; ++i) {
+    for (size_t j = 0; j < nP; ++j)
+      handlers.rp().axpy(lin_trans_R(i, j), pparams[j], parameters[i]);
+    for (size_t j = 0; j < nQ; ++j)
+      handlers.rq().axpy(lin_trans_R(i, nP + j), qparams[j], parameters[i]);
+    for (size_t j = 0; j < nD; ++j)
+      handlers.rq().axpy(lin_trans_R(i, nP + nQ + j), dparams[j], parameters[i]);
+  }
+  for (size_t i = 0; i < nDnew; ++i) {
+    for (size_t j = 0; j < nP; ++j) {
+      handlers.qp().axpy(lin_trans_D(i, j), pparams[j], dparams_new[i]);
+      handlers.qp().axpy(lin_trans_D(i, j), pactions[j], dactions_new[i]);
+    }
+    for (size_t j = 0; j < nQ; ++j) {
+      handlers.qq().axpy(lin_trans_D(i, nP + j), qparams[j], dparams_new[i]);
+      handlers.qq().axpy(lin_trans_D(i, nP + j), qactions[j], dactions_new[i]);
+    }
+    for (size_t j = 0; j < nD; ++j) {
+      handlers.qq().axpy(lin_trans_D(i, nP + nQ + j), dparams[j], dparams_new[i]);
+      handlers.qq().axpy(lin_trans_D(i, nP + nQ + j), dactions[j], dactions_new[i]);
+    }
+  }
+  return std::make_tuple(dparams_new, dactions_new);
+}
+
 /*!
  * @brief Removes part of D space and uses it as R space so that the exact action can be calculated
  * @param solver linear eigensystem solver
@@ -180,10 +225,18 @@ auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters
   subspace::Matrix<value_type> lin_trans_R, lin_trans_D;
   std::tie(lin_trans_R, lin_trans_D) =
       propose_R_and_D_params(lin_trans_orth_sol, norm, solutions, nR, nDnew, norm_thresh);
-  // Construct new R and left-over D parameters
-  auto new_working_set = solver.working_set();
+  std::vector<Q> dparams, dactions;
+  std::tie(dparams, dactions) =
+      construct_R_and_D_params(parameters, lin_trans_R, lin_trans_D, xspace.cparamsp(), xspace.cactionsp(),
+                               xspace.cparamsq(), xspace.cactionsq(), xspace.cparamsd(), xspace.cactionsd(), handlers);
+  auto wdparams = wrap(dparams);
+  auto wdactions = wrap(dactions);
+  xspace.update_dspace(wdparams, wdactions, subspace::Matrix<value_type>({nDnew, nR}));
+  const auto& working_set = solver.working_set();
+  auto new_working_set = std::vector<unsigned int>(std::begin(working_set), std::begin(working_set) + nR);
   return new_working_set;
 }
+
 } // namespace detail
 } // namespace itsolv
 } // namespace linalg

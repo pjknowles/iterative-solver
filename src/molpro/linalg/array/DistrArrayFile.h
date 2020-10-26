@@ -32,13 +32,19 @@ public:
   //! Constructor for a blank object. The blank is only useful as a temporary. Move a valid object inside the blank to
   //! make it usable.
   DistrArrayFile();
-  DistrArrayFile(const DistrArrayFile &source) = delete;
+//  DistrArrayFile(const DistrArrayFile &source) = delete;
+  DistrArrayFile(const DistrArrayFile &source)
+  : DistrArrayFile(source,true)
+  {
+
+  }
   DistrArrayFile(DistrArrayFile &&source) noexcept;
   DistrArrayFile(size_t dimension, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");
   DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");
-  explicit DistrArrayFile(const DistrArray &source);
+  explicit DistrArrayFile(const DistrArray &source, bool delegated=false);
   //static DistrArrayFile CreateTempCopy(const DistrArray &source, const std::string &base_name = ".temp_array");
-  
+
+  DistrArrayFile &operator=(const DistrArray &source) noexcept;
   DistrArrayFile &operator=(const DistrArrayFile &source) = delete;
   DistrArrayFile &operator=(DistrArrayFile &&source) noexcept;
   

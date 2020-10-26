@@ -4,6 +4,7 @@
 #include <molpro/linalg/itsolv/reset_dspace.h>
 
 using molpro::linalg::itsolv::detail::construct_overlap_with_solutions;
+using molpro::linalg::itsolv::detail::transform_PQSol_to_PQD_subspace;
 using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::xspace::Dimensions;
 using ::testing::DoubleEq;
@@ -45,6 +46,30 @@ TEST(reset_dspace, construct_overlap_with_solutions) {
   auto result = construct_overlap_with_solutions(solutions, ov, dims);
   ASSERT_FALSE(result.empty());
   ASSERT_EQ(result.rows(), reference.rows());
-  ASSERT_EQ(result.rows(), reference.cols());
+  ASSERT_EQ(result.cols(), reference.cols());
   ASSERT_THAT(result.data(), Pointwise(DoubleEq(), reference.data()));
+}
+
+TEST(reset_dspace, transform_PQSol_to_PQD_subspace){
+  const auto nP = 2, nQ = 3, nD = 1, nSol = 3;
+  const auto dims = Dimensions{nP, nQ, nD};
+  //@formatter:off
+  const auto solutions = Matrix<double>{{1, 0, 0, 0, 0, 0,
+                                         1, 1, 1, 1, 1, 1,
+                                         0, 0, 0, 0, 0, 0},
+                                        {nSol, dims.nX}};
+  const auto lin_trans_PQSol = Matrix<double>{{0, 1, 0, 1, 0, 1, 2, 3,
+                                               1, 0, 1, 0, 1, 1, 1, 1,
+                                               0, 0, 0, 0, 0, 0, 0, 0},
+                                              {nSol, nP + nQ + nSol}};
+  const auto reference_PQD = Matrix<double>{{1, 2, 1, 2, 1, 1,
+                                             2, 0, 1, 0, 1, 0,
+                                             0, 0, 0, 0, 0, 0},
+                                            {nSol, dims.nX}};
+  //@formatter:on
+  const auto result = transform_PQSol_to_PQD_subspace(lin_trans_PQSol, solutions, dims);
+  ASSERT_FALSE(result.empty());
+  ASSERT_EQ(result.rows(), reference_PQD.rows());
+  ASSERT_EQ(result.cols(), reference_PQD.cols());
+  ASSERT_THAT(result.data(), Pointwise(DoubleEq(), reference_PQD.data()));
 }

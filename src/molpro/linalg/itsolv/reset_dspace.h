@@ -77,6 +77,33 @@ auto construct_overlap_with_solutions(const subspace::Matrix<value_type>& soluti
   }
   return overlap;
 }
+/*!
+ * @brief Given linear transformation to R parameters in subspace P+Q+Solutions, transform it to P+Q+D subspace
+ *
+ * x_i &= \sum_{j \in P+Q} L_ij v_j + \sum_{j \in C} T_ij z_j \\
+ *     &= \sum_{j \in P+Q} L_ij v_j + \sum_{j \in C} \sum_{k \in P+Q+D} T_ij S_jk v_k \\
+ *     &= \sum_{j \in P+Q} L_ij v_j + \sum_{k \in P+Q+D} D_ik v_k \\
+ * D_ik &= \sum_{j \in C} T_ij S_jk
+ *
+ * @param lin_trans transformation to R parameters in subspace P+Q+Solutions
+ * @param solutions solution matrix in current subspace P+Q+D
+ * @param dims dimensions of current subspace
+ * @return linear transformation to R parameters in P+Q+D subspace
+ */
+template <typename value_type>
+auto transform_PQSol_to_PQD_subspace(const subspace::Matrix<value_type>& lin_trans,
+                                     const subspace::Matrix<value_type>& solutions,
+                                     const subspace::xspace::Dimensions& dims) {
+  const auto nR = lin_trans.rows();
+  const auto nP = dims.nP, nQ = dims.nQ, nD = dims.nD, nX = nP + nQ + nD;
+  auto trans_pqd = subspace::Matrix<value_type>({nR, nP + nQ + nD});
+  trans_pqd.slice({0, 0}, {nR, nP + nQ}) = lin_trans.slice({0, 0}, {nR, nP + nQ});
+  for (size_t i = 0; i < nR; ++i)
+    for (size_t j = 0; j < nX; ++j)
+      for (size_t k = 0; k < nR; ++k)
+        trans_pqd(i, j) += lin_trans(i, k) * solutions(k, j);
+  return trans_pqd;
+}
 
 /*!
  * @brief Removes part of D space and uses it as R space so that the exact action can be calculated
@@ -94,8 +121,17 @@ auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters
                   const subspace::Matrix<value_type>& solutions, value_type_abs norm_thresh,
                   ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
   // Construct overlap matrix P+Q+C
-  auto ov = construct_overlap_with_solutions(solutions, xspace.data.at(subspace::EqnData::S), xspace.dimensions());
+  auto overlap = construct_overlap_with_solutions(solutions, xspace.data.at(subspace::EqnData::S), xspace.dimensions());
   // Orthogonalise C against P+Q
+  auto lin_trans = subspace::Matrix<value_type>{};
+  auto norm = subspace::util::gram_schmidt(overlap, lin_trans, norm_thresh);
+  const auto nR = solutions.rows();
+  const auto nP = xspace.dimensions().nP;
+  const auto nQ = xspace.dimensions().nQ;
+  const auto nPQ = nP + nQ;
+  auto lin_trans_R = subspace::Matrix<value_type>({nR, nPQ + nR});
+  lin_trans_R.slice() = lin_trans.slice({nPQ, 0}, lin_trans.dimensions());
+  lin_trans_R = transform_PQSol_to_PQD_subspace(lin_trans_R, solutions, xspace.dimensions());
   // Construct new R and left-over D parameters
   auto new_working_set = solver.working_set();
   return new_working_set;

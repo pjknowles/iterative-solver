@@ -233,9 +233,11 @@ auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_typ
       accumulate_ov_offdiag(i, j, dims.oP + j);
     for (size_t j = 0, jj = 0; j < dims.nQ; ++j)
       if (!is_Qdelete(j))
-        accumulate_ov_offdiag(i, jj++, dims.oQ + j);
+        accumulate_ov_offdiag(i, dims.nP + jj++, dims.oQ + j);
     for (size_t j = 0; j < nR; ++j)
       accumulate_ov_offdiag(i, dims.nP + nQ + j, dims.nX + j);
+  }
+  for (size_t i = 0; i < nDnew; ++i) {
     for (size_t j = 0; j <= i; ++j) {
       for (size_t k = 0; k < nQd; ++k) {
         for (size_t l = 0; l < nQd; ++l)

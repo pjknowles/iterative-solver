@@ -154,7 +154,7 @@ public:
   }
 
   //! Clears old D space container and stores new params and actions. @param lin_trans_only_R R space component of D
-  void update_dspace(VecRef<R>& params, VecRef<R>& actions, Matrix<value_type>& lin_trans_only_R) override {
+  void update_dspace(VecRef<R>& params, VecRef<R>& actions, const Matrix<value_type>& lin_trans_only_R) override {
     dspace.update(params, actions, lin_trans_only_R);
     update_dimensions();
     for (auto e : {EqnData::H, EqnData::S})

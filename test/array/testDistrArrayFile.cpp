@@ -10,6 +10,10 @@
 #include <molpro/linalg/array/util.h>
 #include <molpro/linalg/array/util/Distribution.h>
 
+#ifdef LINEARALGEBRA_ARRAY_MPI3
+#include <molpro/linalg/array/DistrArrayMPI3.h>
+#endif
+
 using molpro::linalg::array::DistrArrayFile;
 using molpro::linalg::array::util::LockMPI3;
 using molpro::linalg::array::util::ScopeLock;
@@ -31,13 +35,7 @@ TEST(DistrArrayFile, constructor_default) {
   ASSERT_TRUE(a.empty());
 }
 
-TEST(DistrArrayFile, constructor_dummy_with_filename) {
-  auto a = DistrArrayFile(10, mpi_comm);
-  EXPECT_EQ(a.size(), 10);
-  ASSERT_FALSE(a.empty());
-}
-
-TEST(DistrArrayFile, constructor_fname_size) {
+TEST(DistrArrayFile, constructor_size) {
   {
     auto a = DistrArrayFile(100, mpi_comm);
     LockMPI3 lock{mpi_comm};
@@ -51,10 +49,10 @@ TEST(DistrArrayFile, constructor_fname_size) {
 
 TEST(DistrArrayFile, writeread) {
   ScopeLock l{mpi_comm};
-  constexpr int n = 10;
+  constexpr int n = 100;
   std::vector<double> v(n);
-  std::iota(v.begin(), v.end(), 0.0);
-  auto a = DistrArrayFile(10, mpi_comm);
+  std::iota(v.begin(), v.end(), 0.5);
+  auto a = DistrArrayFile(100, mpi_comm);
   int mpi_size, mpi_rank;
   MPI_Comm_rank(mpi_comm, &mpi_rank);
   MPI_Comm_size(mpi_comm, &mpi_size);
@@ -65,7 +63,27 @@ TEST(DistrArrayFile, writeread) {
   EXPECT_THAT(v, Pointwise(DoubleEq(), w));
 }
 
-TEST(DistrArrayFile, copy) {
+#ifdef LINEARALGEBRA_ARRAY_MPI3
+TEST(DistrArrayFile, constructor_copy_from_distr_array) {
+  const double val = 0.5;
+  auto a_mem = molpro::linalg::array::DistrArrayMPI3(100, mpi_comm);
+  a_mem.allocate_buffer();
+  a_mem.fill(val);
+  auto a_disk = DistrArrayFile{a_mem};
+  LockMPI3 lock{mpi_comm};
+  auto vec = a_disk.vec();
+  EXPECT_THAT(vec, Each(DoubleEq(val)));
+  {
+    auto l = lock.scope();
+    EXPECT_EQ(a_disk.communicator(), a_mem.communicator());
+    EXPECT_EQ(a_disk.size(), a_mem.size());
+    EXPECT_FALSE(a_disk.empty());
+    EXPECT_TRUE(a_disk.distribution().compatible(a_mem.distribution()));
+  }
+}
+#endif
+
+TEST(DistrArrayFile, DISABLED_copy) {
   ScopeLock l{mpi_comm};
   constexpr int n = 10;
   std::vector<double> v(n);
@@ -77,7 +95,7 @@ TEST(DistrArrayFile, copy) {
   auto dist = a.distribution();
   a.put(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
   std::vector<double> w{v};
-//  auto b = a; // TODO copy constructor not working yet
+  //auto b = a; // TODO copy constructor not working yet
 //  b.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
   EXPECT_THAT(v, Pointwise(DoubleEq(), w));
 //  b = a; // TODO operator=() not working yet

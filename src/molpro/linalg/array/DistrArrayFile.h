@@ -34,8 +34,8 @@ public:
   DistrArrayFile();
   DistrArrayFile(const DistrArrayFile &source) = delete;
   DistrArrayFile(DistrArrayFile &&source) noexcept;
-  DistrArrayFile(size_t dimension, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");
-  DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");
+  explicit DistrArrayFile(size_t dimension, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");
+  explicit DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");
   explicit DistrArrayFile(const DistrArray &source);
   //static DistrArrayFile CreateTempCopy(const DistrArray &source, const std::string &base_name = ".temp_array");
   

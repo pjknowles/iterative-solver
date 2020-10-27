@@ -57,9 +57,7 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
   swap(x.m_file, y.m_file);
 }
 
-DistrArrayFile::~DistrArrayFile() {
-  if (m_file.is_open()) m_file.close();
-}
+DistrArrayFile::~DistrArrayFile() = default;
 
 bool DistrArrayFile::compatible(const DistrArrayFile& source) const {
   auto res = DistrArray::compatible(source);
@@ -101,6 +99,10 @@ void DistrArrayFile::set(DistrArray::index_type ind, DistrArray::value_type val)
 void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, DistrArray::value_type* buf) const {
   if (lo >= hi)
     return;
+  DistrArray::index_type length = hi - lo;
+  int current = m_file.tellg();
+  if (current < length )
+    return;
   int rank;
   MPI_Comm_rank(m_communicator, &rank);
   DistrArray::index_type lo_loc, hi_loc;
@@ -109,7 +111,6 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
     error("Only local array indices can be accessed via DistrArrayFile.get() function");
   }
   DistrArray::index_type offset = lo - lo_loc;
-  DistrArray::index_type length = hi - lo;
   m_file.seekg(offset * sizeof(DistrArray::value_type));
   m_file.read((char*)buf, length * sizeof(DistrArray::value_type));
 }
@@ -188,7 +189,13 @@ void DistrArrayFile::scatter_acc(std::vector<index_type>& indices, const std::ve
   scatter(indices, disk_copy);
 }
 
-std::vector<DistrArrayFile::value_type> DistrArrayFile::vec() const { return get(0, m_dimension); }
+std::vector<DistrArrayFile::value_type> DistrArrayFile::vec() const {
+  int rank;
+  MPI_Comm_rank(m_communicator, &rank);
+  DistrArray::index_type lo_loc, hi_loc;
+  std::tie(lo_loc, hi_loc) = m_distribution->range(rank);
+  return get(lo_loc, hi_loc);
+}
 
 } // namespace array
 } // namespace linalg

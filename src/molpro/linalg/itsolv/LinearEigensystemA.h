@@ -104,11 +104,12 @@ public:
     molpro::cout << std::defaultfloat << std::endl;
   }
 
+  void set_reset_D(size_t n) { m_do_reset_dspace.n_reset_D = n; }
+
   std::shared_ptr<Logger> logger;
   double propose_rspace_norm_thresh = 1e-6; //!< vectors with norm less than threshold can be considered null
   double reset_dspace_norm_thresh = 1e-4;   //!< affects whether the full solution is added on reset
   unsigned int max_size_qspace = std::numeric_limits<unsigned int>::max(); //!< maximum size of Q space
-  unsigned int n_reset_D = std::numeric_limits<unsigned int>::max();       //!< reset D space every n iterations
 protected:
   detail::DoReset m_do_reset_dspace; //!< keeps track of when the D space is being reset
 };

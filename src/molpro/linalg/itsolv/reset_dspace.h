@@ -24,7 +24,7 @@ struct DoReset {
     if ((iter + 1) % n_reset_D == 0) {
       value = true;
       m_save_max_size_qspace = max_size_qspace;
-      max_size_qspace += nD;
+      max_size_qspace = std::max((unsigned int)(max_size_qspace + nD), max_size_qspace);
     }
     if (value && nD == 0) {
       value = false;
@@ -142,7 +142,7 @@ auto propose_R_and_D_params(subspace::Matrix<value_type>& lin_trans, std::vector
       lin_trans_R.row(i).scal(1. / norm[ii]);
     }
   }
-  auto lin_trans_D = subspace::Matrix<value_type>({nR, nX});
+  auto lin_trans_D = subspace::Matrix<value_type>({nDnew, nX});
   for (size_t i = 0; i < nDnew; ++i) {
     const auto ii = order[nR + i];
     lin_trans_D.row(i) = lin_trans.row(ii);
@@ -238,12 +238,13 @@ auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters
   const auto nPQ = nP + nQ;
   auto lin_trans_orth_sol = subspace::Matrix<value_type>({nC, nPQ + nC});
   lin_trans_orth_sol.slice() = lin_trans.slice({nPQ, 0}, lin_trans.dimensions());
+  auto norm_orth_sol = std::vector<value_type_abs>(std::begin(norm) + nPQ, std::begin(norm) + nPQ + nC);
   lin_trans_orth_sol = transform_PQSol_to_PQD_subspace(lin_trans_orth_sol, solutions, xspace.dimensions());
   const auto nR = std::min(parameters.size(), xspace.dimensions().nD);
   const auto nDnew = nC - nR;
   subspace::Matrix<value_type> lin_trans_R, lin_trans_D;
   std::tie(lin_trans_R, lin_trans_D) =
-      propose_R_and_D_params(lin_trans_orth_sol, norm, solutions, nR, nDnew, norm_thresh);
+      propose_R_and_D_params(lin_trans_orth_sol, norm_orth_sol, solutions, nR, nDnew, norm_thresh);
   std::vector<Q> dparams, dactions;
   std::tie(dparams, dactions) =
       construct_R_and_D_params(parameters, lin_trans_R, lin_trans_D, xspace.cparamsp(), xspace.cactionsp(),

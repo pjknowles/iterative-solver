@@ -63,9 +63,10 @@ public:
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
     m_do_reset_dspace.update(this->m_stats->iterations, max_size_qspace, this->m_xspace.dimensions().nD);
     if (m_do_reset_dspace.value) {
-      this->m_working_set = detail::reset_dspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters,
-                                                 this->m_xspace, this->m_subspace_solver.solutions(),
-                                                 reset_dspace_norm_thresh, *this->m_handlers, *this->m_logger);
+      this->m_working_set =
+          detail::reset_dspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, this->m_xspace,
+                               this->m_subspace_solver.solutions(), reset_dspace_norm_thresh,
+                               propose_rspace_norm_thresh, *this->m_handlers, *this->m_logger);
     } else {
       this->m_working_set =
           detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, this->m_xspace,

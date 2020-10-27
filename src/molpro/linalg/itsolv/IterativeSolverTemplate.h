@@ -295,6 +295,12 @@ public:
   void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters,
                 std::vector<R>& residual) override{};
 
+  void solution_params(const std::vector<unsigned int>& roots, std::vector<R>& parameters) override {
+    detail::construct_solution(parameters, roots, m_subspace_solver.solutions(), m_xspace.paramsp(), m_xspace.paramsq(),
+                               m_xspace.paramsd(), m_xspace.dimensions().oP, m_xspace.dimensions().oQ,
+                               m_xspace.dimensions().oD, *m_handlers);
+  };
+
   void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
                 std::vector<P>& parametersP) override {
     solution(roots, parameters, residual);

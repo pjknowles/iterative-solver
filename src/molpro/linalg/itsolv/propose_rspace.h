@@ -5,6 +5,7 @@
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
+#include <molpro/linalg/itsolv/util.h>
 
 namespace molpro {
 namespace linalg {
@@ -262,26 +263,6 @@ auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_typ
 }
 
 /*!
- * @brief Remove vectors considered null from the linear transformation matrix.
- * @param lin_trans linear transformation matrix (row-wise)
- * @param norm norms of transformed vectors
- * @param start start row to start screening
- * @param end exclusive end row to stop screening
- * @param norm_thresh threshold to decided if the vector is null
- */
-template <typename value_type, typename value_type_abs>
-void remove_null_vectors(subspace::Matrix<value_type>& lin_trans, std::vector<value_type_abs>& norm, const size_t start,
-                         const size_t end, const value_type_abs norm_thresh) {
-  for (size_t i = start, j = start; i < end; ++i) {
-    if (norm[j] < norm_thresh) {
-      norm.erase(begin(norm) + j);
-      lin_trans.remove_row(j);
-    } else
-      ++j;
-  }
-}
-
-/*!
  * @brief Constructs transformation to D space by projecting solutions on to deleted Q (Q_D) and old D space, than
  *  orthogonalising against P+Q+R
  * @param solutions row-wise matrix with solutions in the subspace
@@ -302,7 +283,7 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
   auto norm = subspace::util::gram_schmidt(ov, lin_trans);
   const auto nSol = solutions_proj.rows();
   const auto nX = norm.size() - nSol;
-  remove_null_vectors(lin_trans, norm, nX, norm.size(), norm_thresh);
+  util::remove_null_vectors(lin_trans, norm, nX, norm.size(), norm_thresh);
   const auto nD = norm.size() - nX;
   // Orthogonalised D space is in terms of projected solutions
   // I need to use the old D space instead

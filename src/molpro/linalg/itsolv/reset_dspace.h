@@ -229,6 +229,7 @@ template <class R, class Q, class P, typename value_type, typename value_type_ab
 auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters, subspace::XSpaceI<R, Q, P>& xspace,
                   const subspace::Matrix<value_type>& solutions, value_type_abs norm_thresh,
                   ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
+  logger.msg("reset_dspace()", Logger::Trace);
   auto overlap = construct_overlap_with_solutions(solutions, xspace.data.at(subspace::EqnData::S), xspace.dimensions());
   auto lin_trans = subspace::Matrix<value_type>{};
   auto norm = subspace::util::gram_schmidt(overlap, lin_trans, 0);
@@ -245,6 +246,14 @@ auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters
   subspace::Matrix<value_type> lin_trans_R, lin_trans_D;
   std::tie(lin_trans_R, lin_trans_D) =
       propose_R_and_D_params(lin_trans_orth_sol, norm_orth_sol, solutions, nR, nDnew, norm_thresh);
+  logger.msg("nR = " + std::to_string(nR) + ", nDnew = " + std::to_string(nDnew), Logger::Debug);
+  if (logger.data_dump) {
+    logger.msg("S_PQSol = " + subspace::as_string(overlap), Logger::Info);
+    logger.msg("lin_trans (P+Q+Sol) = " + subspace::as_string(lin_trans), Logger::Info);
+    logger.msg("lin_trans (P+Q+D) = " + subspace::as_string(lin_trans_orth_sol), Logger::Info);
+    logger.msg("lin_trans_R = " + subspace::as_string(lin_trans_R), Logger::Info);
+    logger.msg("lin_trans_D = " + subspace::as_string(lin_trans_D), Logger::Info);
+  }
   std::vector<Q> dparams, dactions;
   std::tie(dparams, dactions) =
       construct_R_and_D_params(parameters, lin_trans_R, lin_trans_D, xspace.cparamsp(), xspace.cactionsp(),

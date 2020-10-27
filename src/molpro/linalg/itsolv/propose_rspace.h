@@ -539,6 +539,8 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
   std::tie(wresidual, lin_trans, norm) =
       propose_orthonormal_set<R, value_type, value_type_abs>(wresidual, res_norm_thresh, handlers.rr(), logger);
   // FIXME propose and construct in one go
+  // FIXME for tight norm thresholds accumulation of round-off can result in non-orthogonal parameters. Use modified
+  // Gram Schmidt to construct a strictly orthonormal set
   construct_orthonormal_set(wresidual, lin_trans, norm, handlers.rr());
   // propose working space by orthogonalising against P+Q
   auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),

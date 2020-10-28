@@ -12,7 +12,8 @@ Prof. Peter Knowles at Cardiff University.
 
 Any publications resulting from this work should cite relevant papers in CITE.txt
 
-Documentation is published to [https://molpro.gitlab.io/LinearAlgebra](https://molpro.gitlab.io/LinearAlgebra)
+Documentation is published to 
+[https://molpro.gitlab.io/linearalgebra/latest](https://molpro.gitlab.io/linearalgebra/latest)
 
 
 # List of Contributors

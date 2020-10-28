@@ -138,36 +138,6 @@ auto construct_overlap_RD(const CVecRef<R>& rparams, const CVecRef<Q>& dparams,
 }
 
 /*!
- * @brief Propose transformation to the subspace of D that is orthogonal to current R
- * @param overlap_RD overlap matrix of R+D subspace
- * @param nR size of R space
- * @param norm_thresh_null threshold indicating null space
- */
-template <typename value_type, typename value_type_abs>
-auto propose_remaining_D_space(const subspace::Matrix<value_type>& overlap_RD, const size_t nR,
-                               const value_type_abs norm_thresh_null) {
-  assert(overlap_RD.rows() > nR);
-  const auto nD = overlap_RD.rows() - nR;
-  auto lin_trans = subspace::Matrix<value_type>(overlap_RD.dimensions());
-  auto norm = subspace::util::gram_schmidt(overlap_RD, lin_trans, norm_thresh_null);
-  auto wnorm = wrap(norm);
-  std::sort(std::begin(wnorm) + nR, std::end(wnorm), std::greater<value_type_abs>{});
-  auto order = find_ref(wnorm, begin(norm), end(norm));
-  auto norm_ordered = std::vector<value_type_abs>();
-  std::copy(std::begin(wnorm) + nR, std::end(wnorm), std::back_inserter(norm_ordered));
-  auto lin_trans_ordered = subspace::Matrix<value_type>({nD, nR + nD});
-  for (size_t i = 0; i < nD; ++i) {
-    const auto ii = order.at(nR + i);
-    lin_trans_ordered.row(i) = lin_trans.row(ii);
-  }
-  util::remove_null_vectors(lin_trans_ordered, norm_ordered, 0, lin_trans_ordered.rows(), norm_thresh_null);
-  for (size_t i = 0; i < nD; ++i) {
-    lin_trans_ordered.row(i).scal(1. / norm_ordered[i]);
-  }
-  return lin_trans_ordered;
-}
-
-/*!
  * @brief Construct the rest of R space
  * @param params_remaining wrappers to the remaining R parameter containers
  * @param lin_trans remaining R space in (current R + D) subspace
@@ -178,17 +148,14 @@ auto propose_remaining_D_space(const subspace::Matrix<value_type>& overlap_RD, c
  */
 template <class R, class Q, typename value_type>
 void construct_remaining_R(VecRef<R>& params_remaining, const subspace::Matrix<value_type>& lin_trans,
-                           const CVecRef<R>& rparams, const CVecRef<Q>& dparams, array::ArrayHandler<R, R>& handler_rr,
+                           const CVecRef<Q>& dparams, array::ArrayHandler<R, R>& handler_rr,
                            array::ArrayHandler<R, Q>& handler_rq) {
   for (auto& param : params_remaining)
     handler_rr.fill(0, param);
-  const auto nR = rparams.size();
   const auto nD = dparams.size();
   for (size_t i = 0; i < params_remaining.size(); ++i) {
-    for (size_t j = 0; j < nR; ++j)
-      handler_rr.axpy(lin_trans(i, j), rparams[j], params_remaining[i]);
     for (size_t j = 0; j < nD; ++j)
-      handler_rq.axpy(lin_trans(i, nR + j), dparams[j], params_remaining[i]);
+      handler_rq.axpy(lin_trans(i, j), dparams[j], params_remaining[i]);
   }
   for (auto& param : params_remaining) {
     auto norm = handler_rr.dot(param, param);
@@ -207,11 +174,11 @@ void construct_remaining_R(VecRef<R>& params_remaining, const subspace::Matrix<v
  * @return new D parameters and actions
  */
 template <class R, class Q, typename value_type>
-auto construct_new_D(const subspace::Matrix<value_type>& lin_trans, const CVecRef<R>& rparams,
-                     const CVecRef<Q>& dparams, const CVecRef<Q>& dactions, array::ArrayHandler<Q, Q>& handler_qq,
+auto construct_new_D(const subspace::Matrix<value_type>& lin_trans, const CVecRef<Q>& dparams,
+                     const CVecRef<Q>& dactions, array::ArrayHandler<Q, Q>& handler_qq,
                      array::ArrayHandler<Q, R>& handler_qr) {
   const auto nDnew = lin_trans.rows();
-  const auto nR = rparams.size(), nD = dparams.size();
+  const auto nD = dparams.size();
   std::vector<Q> dparams_new, dactions_new;
   {
     auto qzero = handler_qq.copy(dparams.front());
@@ -222,13 +189,16 @@ auto construct_new_D(const subspace::Matrix<value_type>& lin_trans, const CVecRe
     }
   }
   for (size_t i = 0; i < nDnew; ++i) {
-    for (size_t j = 0; j < nR; ++j) {
-      handler_qr.axpy(lin_trans(i, j), rparams.at(j), dparams_new[i]);
-    }
     for (size_t j = 0; j < nD; ++j) {
-      handler_qq.axpy(lin_trans(i, nR + j), dparams.at(j), dparams_new[i]);
-      handler_qq.axpy(lin_trans(i, nR + j), dactions.at(j), dactions_new[i]);
+      handler_qq.axpy(lin_trans(i, j), dparams.at(j), dparams_new[i]);
+      handler_qq.axpy(lin_trans(i, j), dactions.at(j), dactions_new[i]);
     }
+  }
+  for (size_t i = 0; i < nDnew; ++i) {
+    auto norm = handler_qq.dot(dparams_new[i], dparams_new[i]);
+    norm = std::sqrt(std::abs(norm));
+    handler_qq.scal(1. / norm, dparams_new[i]);
+    handler_qq.scal(1. / norm, dactions_new[i]);
   }
   return std::make_tuple(dparams_new, dactions_new);
 }
@@ -298,51 +268,6 @@ auto transform_PQSol_to_PQD_subspace(const subspace::Matrix<value_type>& lin_tra
       for (size_t k = 0; k < nR; ++k)
         trans_pqd(i, j) += lin_trans(i, k) * solutions(k, j);
   return trans_pqd;
-}
-
-/*!
- * @brief Given solutions orthogonalised against P+Q subspace proposes R parameters  and new D parameters.
- *
- * The number of solutions could be greater than size of D space (nSol >= nD), and nR <= nD.
- * Thus, orthogonalised solutions are considered in order of descending norm. By construction, there is at least
- * nR + nDnew parameters that are not null.
- *
- * Parameters for R space are full solutions if the orthogonalised solution has norm greater than norm_thresh.
- *
- * @param lin_trans linear transformation to solutions orthogonalised against P+Q subspace
- * @param norm norm of proposed transformed parameters
- * @param solutions matrix of solutions in the current P+Q+D subspace
- * @param nR number of R parameters that will be proposed
- * @param nDnew number of new D parameters
- * @param norm_thresh threshold for selecting which solutions can be added fully
- */
-template <typename value_type, typename value_type_abs>
-auto propose_R_and_D_params(subspace::Matrix<value_type>& lin_trans, std::vector<value_type_abs>& norm,
-                            const subspace::Matrix<value_type>& solutions, const size_t nR, const size_t nDnew,
-                            value_type_abs norm_thresh) {
-  assert(lin_trans.rows() == norm.size());
-  const auto nX = lin_trans.cols();
-  auto wnorm = wrap(norm);
-  auto descending_norm = wnorm;
-  std::sort(std::begin(descending_norm), std::end(descending_norm), std::greater<value_type_abs>{});
-  auto order = find_ref(descending_norm, std::begin(norm), std::end(norm));
-  auto lin_trans_R = subspace::Matrix<value_type>({nR, nX});
-  for (size_t i = 0; i < nR; ++i) {
-    const auto ii = order[i];
-    if (norm[ii] > norm_thresh) {
-      lin_trans_R.row(i) = solutions.row(ii);
-    } else {
-      lin_trans_R.row(i) = lin_trans.row(ii);
-      lin_trans_R.row(i).scal(1. / norm[ii]);
-    }
-  }
-  auto lin_trans_D = subspace::Matrix<value_type>({nDnew, nX});
-  for (size_t i = 0; i < nDnew; ++i) {
-    const auto ii = order[nR + i];
-    lin_trans_D.row(i) = lin_trans.row(ii);
-    lin_trans_D.row(i).scal(1. / norm[ii]);
-  }
-  return std::make_tuple(lin_trans_R, lin_trans_D);
 }
 
 /*!
@@ -426,41 +351,51 @@ auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters
                   const subspace::Matrix<value_type>& solutions, value_type_abs norm_thresh_solutions,
                   value_type_abs norm_thresh_null, ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
   logger.msg("reset_dspace()", Logger::Trace);
-  subspace::Matrix<value_type> projected_solutions, overlap;
-  std::tie(projected_solutions, overlap) =
-      construct_projected_solutions(solutions, xspace.data.at(subspace::EqnData::S), xspace.dimensions());
-  auto orth_proj_sol = subspace::Matrix<value_type>{};
-  auto norm = std::vector<value_type_abs>{};
-  std::tie(orth_proj_sol, norm) = construct_orthogonalised_proj_solutions_in_D(projected_solutions, overlap);
   const auto nC = solutions.rows();
   const auto nD = xspace.dimensions().nD;
-  assert(nC >= nD);
   const auto nR = std::min(parameters.size(), xspace.dimensions().nD);
+  assert(nC >= nD);
+  subspace::Matrix<value_type> projected_solutions, overlap;
+  auto orth_proj_sol = subspace::Matrix<value_type>{};
+  auto norm = std::vector<value_type_abs>{};
+  std::tie(projected_solutions, overlap) =
+      construct_projected_solutions(solutions, xspace.data.at(subspace::EqnData::S), xspace.dimensions());
+  std::tie(orth_proj_sol, norm) = construct_orthogonalised_proj_solutions_in_D(projected_solutions, overlap);
   auto full_solutions = select_full_solutions(orth_proj_sol, norm, nR, norm_thresh_solutions);
-  solver.solution_params(full_solutions, parameters);
   const auto nRfull = full_solutions.size();
-  const auto params_full = cwrap<R>(begin(parameters), begin(parameters) + nRfull);
-  const auto oD = xspace.dimensions().oD;
-  auto overlap_DD = subspace::Matrix<value_type>({nD, nD});
-  overlap_DD.slice() = xspace.data.at(subspace::EqnData::S).slice({oD, oD}, {oD + nD, oD + nD});
-  // FIXME R has components of P+Q subspaces which have to be projected out, else their contribution will be brought
-  // into new D
-  auto overlap_RD = construct_overlap_RD(params_full, xspace.cparamsd(), overlap_DD, handlers.rr(), handlers.rq());
-  auto lin_trans_remaining_D_space = propose_remaining_D_space(overlap_RD, nRfull, norm_thresh_null);
-  const auto nRremaining = std::min(nR - nRfull, lin_trans_remaining_D_space.rows());
-  auto params_remaining = wrap<R>(begin(parameters) + nRfull, end(parameters));
-  construct_remaining_R(params_remaining, lin_trans_remaining_D_space, params_full, xspace.cparamsd(), handlers.rr(),
-                        handlers.rq());
-  const auto nDnew = lin_trans_remaining_D_space.rows() - nRremaining;
-  auto lin_trans_new_D = subspace::Matrix<value_type>({nDnew, nRfull + nD});
-  lin_trans_new_D.slice() =
-      lin_trans_remaining_D_space.slice({nRfull + nRremaining, 0}, {nRfull + nRremaining + nDnew, nRfull + nD});
+  // reorder solutions so that full solutions come first.
+  // This ensures that they are orthogonal to the full solutions (assuming D is orthogonal to P+Q)
+  if (!util::is_iota(std::begin(full_solutions), std::end(full_solutions), 0)) {
+    auto new_order = std::vector<unsigned int>(nC);
+    std::iota(begin(new_order), end(new_order), 0);
+    for (size_t i = 0; i < nRfull; ++i)
+      std::swap(new_order[i], new_order.at(full_solutions[i]));
+    std::sort(begin(new_order) + nRfull, end(new_order));
+    auto solutions_full_first = subspace::Matrix<value_type>(solutions.dimensions());
+    for (size_t i = 0; i < nC; ++i)
+      solutions_full_first.row(i) = solutions.row(new_order[i]);
+    std::tie(projected_solutions, overlap) =
+        construct_projected_solutions(solutions, xspace.data.at(subspace::EqnData::S), xspace.dimensions());
+    std::tie(orth_proj_sol, norm) = construct_orthogonalised_proj_solutions_in_D(projected_solutions, overlap);
+    auto full_solutions_new_order = select_full_solutions(orth_proj_sol, norm, nR, norm_thresh_solutions);
+    assert(util::is_iota(std::begin(full_solutions_new_order), std::end(full_solutions_new_order), 0));
+    for (size_t i = 0; i < nC; ++i)
+      full_solutions[new_order[i]] = full_solutions_new_order[i];
+  }
+  solver.solution_params(full_solutions, parameters);
+  util::remove_null_vectors(orth_proj_sol, norm, 0, orth_proj_sol.rows(), norm_thresh_null);
+  const auto nRremaining = std::min(nR - nRfull, orth_proj_sol.rows());
+  const auto nDnew = orth_proj_sol.rows() - nRremaining;
+  auto lin_trans_R = subspace::Matrix<value_type>({nRremaining, nD});
+  auto lin_trans_D = subspace::Matrix<value_type>({nDnew, nD});
+  lin_trans_R.slice({0, 0}, {nRremaining, nD}) = orth_proj_sol.slice({0, 0}, {nRremaining, nD});
+  lin_trans_D.slice({0, 0}, {nDnew, nD}) = orth_proj_sol.slice({nRremaining, 0}, {nRremaining + nDnew, nD});
+  auto params_remaining = wrap<R>(begin(parameters) + nRfull, begin(parameters) + nRfull + nRremaining);
+  construct_remaining_R(params_remaining, lin_trans_R, xspace.cparamsd(), handlers.rr(), handlers.rq());
   std::vector<Q> dparams, dactions;
-  std::tie(dparams, dactions) = construct_new_D(lin_trans_new_D, params_full, xspace.cparamsd(), xspace.cactionsd(),
-                                                handlers.qq(), handlers.qr());
-  // FIXME might need to normalise the new D parameters and corresponding linear transformation
+  std::tie(dparams, dactions) =
+      construct_new_D(lin_trans_D, xspace.cparamsd(), xspace.cactionsd(), handlers.qq(), handlers.qr());
   auto lin_trans_R_component = subspace::Matrix<value_type>({nDnew, nRfull + nRremaining});
-  lin_trans_R_component.slice({0, 0}, {nDnew, nRfull}) = lin_trans_new_D.slice({0, 0}, {nDnew, nRfull});
   auto wdparams = wrap(dparams);
   auto wdactions = wrap(dactions);
   xspace.update_dspace(wdparams, wdactions, lin_trans_R_component);

@@ -30,8 +30,8 @@ void update(std::vector<Rvector>& psc, std::vector<Rvector>& psg, size_t nwork,
 }
 
 int main(int argc, char* argv[]) {
-  for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
-    for (const auto& nroot : std::vector<int>{1, 2, 4}) {
+  for (const auto& file : std::vector<std::string>{"hf"}) {
+    for (const auto& nroot : std::vector<int>{1}) {
       std::string prefix{argv[0]};
       std::cout << prefix << std::endl;
       if (prefix.find_last_of("/") != std::string::npos)
@@ -53,6 +53,9 @@ int main(int argc, char* argv[]) {
       molpro::linalg::itsolv::LinearEigensystemA<Rvector, Qvector, Pvector> solver(handlers);
       solver.set_n_roots(nroot);
       solver.set_convergence_threshold(1.0e-12);
+      solver.propose_rspace_norm_thresh = 1.0e-8;
+      solver.max_size_qspace = 2;
+      solver.set_reset_D(4);
       solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
       solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
       solver.logger->data_dump = false;
@@ -68,7 +71,12 @@ int main(int argc, char* argv[]) {
       }
       std::vector<std::vector<double>> Pcoeff(solver.n_roots());
       int nwork = solver.n_roots();
-      for (auto iter = 0; iter < 100 && nwork != 0; iter++) {
+      for (auto iter = 0; iter < 20 && nwork != 0; iter++) {
+        if (iter == 40) {
+          solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::Info;
+          solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
+          solver.logger->data_dump = true;
+        }
         action(nwork, x, g);
         nwork = solver.add_vector(x, g);
         solver.report();

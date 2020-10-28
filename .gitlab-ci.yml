@@ -57,8 +57,9 @@ clang011:
     - BUILD=build-clang/FORTRAN=1/MPI=1/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && CXX=clang++ cmake -DFORTRAN=0 -DMPI=1 -DPPIDD=1 $OLDPWD && time cmake --build . -j2 && (time ctest || ctest -V)
 pages:
   stage: deploy
-  only:
-    - tags
+#  only:
+#    - tags
+#    - master
   script:
     - PUBLIC=$PWD/public
     - mkdir -p $PUBLIC

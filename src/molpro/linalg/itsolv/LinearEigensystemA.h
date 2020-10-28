@@ -62,7 +62,7 @@ public:
    */
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
     m_do_reset_dspace.update(this->m_stats->iterations, max_size_qspace, this->m_xspace.dimensions().nD);
-    if (m_do_reset_dspace.value) {
+    if (m_do_reset_dspace.value()) {
       this->m_working_set =
           detail::reset_dspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, this->m_xspace,
                                this->m_subspace_solver.solutions(), reset_dspace_norm_thresh,
@@ -105,7 +105,7 @@ public:
     molpro::cout << std::defaultfloat << std::endl;
   }
 
-  void set_reset_D(size_t n) { m_do_reset_dspace.n_reset_D = n; }
+  void set_reset_D(size_t n) { m_do_reset_dspace.set_nreset(n); }
 
   std::shared_ptr<Logger> logger;
   double propose_rspace_norm_thresh = 1e-6; //!< vectors with norm less than threshold can be considered null

@@ -26,6 +26,19 @@ void remove_null_vectors(subspace::Matrix<value_type>& lin_trans, std::vector<va
       ++j;
   }
 }
+
+/*!
+ * @brief Returns true if iterator range contains integers starting with value_start and sequentially incremented by 1,
+ * as in std::iota
+ */
+template <class ForwardIt, class EndIterator, typename Int>
+bool is_iota(ForwardIt it_start, EndIterator it_end, Int value_start) {
+  bool result = true;
+  for (auto it = it_start; it != it_end && result; ++it, ++value_start)
+    result = (*it) == value_start;
+  return result;
+}
+
 } // namespace util
 } // namespace itsolv
 } // namespace linalg

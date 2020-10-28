@@ -29,8 +29,8 @@ DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::strin
 
 DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm, const std::string& directory)
     : DistrArrayDisk(std::move(distribution), comm), m_file(make_file(directory)) {
-  //  if (m_distribution->border().first != 0)
-  //    DistrArray::error("Distribution of array must start from 0");
+    if (m_distribution->border().first != 0)
+      DistrArray::error("Distribution of array must start from 0");
 }
 
 DistrArrayFile::DistrArrayFile(const DistrArray& source)

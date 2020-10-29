@@ -6,10 +6,7 @@
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
-namespace detail {
+namespace molpro::linalg::itsolv::detail {
 
 template <class R>
 void normalise(VecRef<R>& params, array::ArrayHandler<R, R>& handler, Logger& logger, double thresh = 1.0e-14) {
@@ -231,9 +228,7 @@ std::vector<unsigned int> propose_rspace(LinearEigensystem<R, Q, P>& solver, std
   auto nW = solver.working_set().size();
   auto wresidual = wrap<R>(residuals.begin(), std::next(residuals.begin(), nW));
   normalise(wresidual, handlers.rr(), logger);
-  auto lin_trans = subspace::Matrix<value_type>{};
-  auto norm = std::vector<value_type_abs>{};
-  std::tie(lin_trans, norm) =
+  auto [lin_trans, norm] =
       propose_orthonormal_set<R, value_type, value_type_abs>(wresidual, res_norm_thresh, handlers.rr(), logger);
   nW = wresidual.size();
   auto new_indices = find_ref(wresidual, begin(residuals), end(residuals));
@@ -255,9 +250,6 @@ std::vector<unsigned int> propose_rspace(LinearEigensystem<R, Q, P>& solver, std
   normalise(wparams, handlers.rr(), logger);
   return new_working_set;
 }
-} // namespace detail
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv::detail
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_PROPOSE_RSPACE_H

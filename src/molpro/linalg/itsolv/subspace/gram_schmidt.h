@@ -1,11 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_GRAM_SCHMIDT_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_GRAM_SCHMIDT_H
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
-namespace molpro {
-namespace linalg {
-namespace itsolv {
-namespace subspace {
-namespace util {
+namespace molpro::linalg::itsolv::subspace::util {
 /*!
  * @brief Performs Gram-Schmidt orthogonalisation without normalisation
  *
@@ -112,10 +108,6 @@ Matrix<value_type> construct_lin_trans_in_orthogonal_set(const Matrix<value_type
   return t;
 }
 
-} // namespace util
-} // namespace subspace
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv::subspace::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_GRAM_SCHMIDT_H

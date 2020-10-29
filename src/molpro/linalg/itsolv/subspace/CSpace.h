@@ -8,10 +8,7 @@
 
 #include <vector>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
-namespace subspace {
+namespace molpro::linalg::itsolv::subspace {
 namespace cspace {
 
 //! Update equation data
@@ -148,8 +145,5 @@ protected:
   std::map<unsigned int, scalar_type> m_errors; //! errors for root index
 };
 
-} // namespace subspace
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv::subspace
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_CSPACE_H

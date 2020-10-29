@@ -50,8 +50,7 @@
 using MPI_Comm = int;
 #endif
 
-namespace molpro {
-namespace linalg {
+namespace molpro::linalg {
 
 /*!
  * \brief A class that implements a vector container that has the following public features:
@@ -1054,8 +1053,7 @@ public:
   }
 };
 
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg
 template <class scalar, unsigned long N>
 inline std::ostream& operator<<(std::ostream& os, molpro::linalg::PagedArray<scalar, N> const& obj) {
   return os << obj.str();

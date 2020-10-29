@@ -4,9 +4,7 @@
 #include "molpro/linalg/array/DistrArray.h"
 #include "molpro/linalg/array/Span.h"
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 namespace util {
 template <typename Result>
 class Task;
@@ -186,8 +184,6 @@ public:
   std::unique_ptr<util::Task<std::unique_ptr<const LocalBuffer>>> tlocal_buffer() const;
 };
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYDISK_H

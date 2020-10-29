@@ -2,9 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDDISK_H
 #include <molpro/linalg/array/ArrayHandler.h>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 
 template <class AL, class AR = AL>
 class ArrayHandlerDDisk : public ArrayHandler<AL, AR> {
@@ -53,7 +51,5 @@ protected:
   std::function<AL(const AR &)> m_copy_func; //!< function for making a copy
 };
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDDISK_H

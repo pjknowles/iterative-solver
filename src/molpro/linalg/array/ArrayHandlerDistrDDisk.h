@@ -4,9 +4,7 @@
 #include <map>
 #include <molpro/linalg/array/ArrayHandler.h>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 
 template <class AL, class AR = AL>
 class ArrayHandlerDistrDDisk : public ArrayHandler<AL, AR> {
@@ -39,8 +37,6 @@ public:
   }
 };
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDISTRDDISK_H

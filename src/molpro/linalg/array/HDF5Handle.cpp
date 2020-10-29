@@ -6,10 +6,7 @@
 #include <iostream>
 #include <stdexcept>
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 
 const hid_t HDF5Handle::hid_default;
 
@@ -288,7 +285,4 @@ htri_t hdf5_link_exists(hid_t id, std::string path) {
 }
 
 template struct TempHandle<HDF5Handle>;
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util

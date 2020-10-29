@@ -6,10 +6,7 @@
 #include <utility>
 #include <vector>
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 
 /*!
  * @brief Specifies distribution of a contiguous array into non-overlapping chunks
@@ -111,9 +108,6 @@ Distribution<Ind> make_distribution_spread_remainder(size_t dimension, int n_chu
   return {chunk_borders};
 }
 
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_DISTRIBUTION_H

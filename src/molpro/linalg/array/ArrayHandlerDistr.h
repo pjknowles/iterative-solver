@@ -3,9 +3,7 @@
 
 #include <molpro/linalg/array/ArrayHandler.h>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 
 template <class AL, class AR = AL>
 class ArrayHandlerDistr : public ArrayHandler<AL, AR> {
@@ -38,7 +36,5 @@ public:
   }
 };
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDISTR_H

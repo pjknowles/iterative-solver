@@ -10,18 +10,15 @@
 #include <memory>
 #include <type_traits>
 
-#include <molpro/linalg/array/ArrayHandlerIterable.h>
 #include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
 #include <molpro/linalg/array/ArrayHandlerSparse.h>
-#include <molpro/linalg/itsolv/LinearEigensystemA.h>
 
 using molpro::linalg::array::ArrayHandler;
 using molpro::linalg::array::ArrayHandlerIterable;
 using molpro::linalg::array::ArrayHandlerIterableSparse;
 using molpro::linalg::array::ArrayHandlerSparse;
 using molpro::linalg::itsolv::ArrayHandlers;
-namespace molpro {
-namespace linalg {
+namespace molpro::linalg {
 
 TEST(LinearEigensystem, copy_constructor) {
   using R = std::vector<double>;
@@ -511,8 +508,7 @@ void RSPTTest(size_t n, double alpha) { // TODO conversion not finished
                << ", average iterations=" << iterations / sample << ", maximum iterations=" << maxIterations
                << ", nfail=" << nfail << std::endl;
 }
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg
 
 #ifdef ITERATIVESOLVER_FORTRAN
 extern "C" {

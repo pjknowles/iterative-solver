@@ -8,10 +8,7 @@
 #include <utility>
 #include <vector>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
-namespace subspace {
+namespace molpro::linalg::itsolv::subspace {
 
 // FIXME Since we are only supporting a few underlying data types Matrix should not be header only
 // FIXME Usage of Eigen for matrix would not be as catastrophic now that the headers are separated
@@ -307,9 +304,6 @@ std::string as_string(const Mat& m, int precision = 6) {
   return s.str();
 }
 
-} // namespace subspace
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv::subspace
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_MATRIX_H

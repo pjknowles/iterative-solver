@@ -3,10 +3,7 @@
 #include <molpro/linalg/array/HDF5Handle.h>
 #include <string>
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 /*!
  * @brief Returns a handle to a temporary file that will be erased on its destruction
  *
@@ -30,9 +27,6 @@ std::string temp_group_name(const HDF5Handle &handle, const std::string &base_na
  */
 HDF5Handle temp_hdf5_handle_group(const HDF5Handle &handle, const std::string &base_name);
 
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_TEMP_HDF5_HANDLE_H

@@ -1,14 +1,11 @@
 #include "temp_file.h"
+#include <cstdlib>
 #include <fstream>
 #include <functional>
-#include <stdlib.h>
 #include <thread>
 #include <unistd.h>
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 #ifdef HAVE_MPI_H
 std::string temp_file_name(const std::string& base_name, const std::string& suffix, MPI_Comm comm) {
   int rank;
@@ -37,7 +34,4 @@ std::string temp_file_name(const std::string& base_name, const std::string& suff
   return fname;
 }
 
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util

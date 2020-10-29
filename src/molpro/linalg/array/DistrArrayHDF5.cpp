@@ -5,9 +5,7 @@
 #include "PHDF5Handle.h"
 #include "util/TempHandle.h"
 #include "util/temp_phdf5_handle.h"
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 namespace {
 int mpi_size(MPI_Comm comm) {
   int rank;
@@ -64,7 +62,7 @@ DistrArrayHDF5::DistrArrayHDF5() = default;
 
 DistrArrayHDF5::DistrArrayHDF5(DistrArrayHDF5 &&source) noexcept
     : DistrArrayDisk(std::move(source)), m_file_handle(std::move(source.m_file_handle)), m_dataset(source.m_dataset) {
-  source.m_dataset = source.dataset_default;
+  source.m_dataset = DistrArrayHDF5::dataset_default;
 }
 
 DistrArrayHDF5 &DistrArrayHDF5::operator=(DistrArrayHDF5 &&source) noexcept {
@@ -267,6 +265,4 @@ std::shared_ptr<util::PHDF5Handle> DistrArrayHDF5::file_handle() const { return 
 
 hid_t DistrArrayHDF5::dataset() const { return m_dataset; }
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array

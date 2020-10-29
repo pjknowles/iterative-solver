@@ -12,9 +12,7 @@
 #include <molpro/linalg/array/ArrayHandlerSparse.h>
 #include <molpro/linalg/array/type_traits.h>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 
 template <class T, class S, ArrayFamily = array_family_v<T>, ArrayFamily = array_family_v<S>>
 struct default_handler {
@@ -85,7 +83,5 @@ auto create_default_handler() {
   return detail::create_default_handler<T, S>{}();
 }
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DEFAULT_HANDLER_H

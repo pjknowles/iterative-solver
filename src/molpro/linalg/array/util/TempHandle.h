@@ -4,10 +4,7 @@
 #include <memory>
 #include <string>
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 
 //! Static registrar of temporary handles
 template <class HandleType>
@@ -18,9 +15,6 @@ struct TempHandle {
 template <class HandleType>
 std::map<std::string, std::weak_ptr<HandleType>> TempHandle<HandleType>::handles;
 
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_TEMPHANDLE_H

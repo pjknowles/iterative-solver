@@ -1,5 +1,4 @@
 #include "DistrFlags.h"
-#include <stdexcept>
 
 namespace {
 int mpi_rank(MPI_Comm comm) {
@@ -9,10 +8,7 @@ int mpi_rank(MPI_Comm comm) {
 }
 
 } // namespace
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 
 DistrFlags::DistrFlags(MPI_Comm comm, int value) : m_comm{comm} {
   int size_of_type = sizeof(int);
@@ -96,7 +92,4 @@ int DistrFlags::Proxy::replace(int val) {
   return res;
 }
 
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util

@@ -6,9 +6,7 @@
 #include <ga.h>
 #include <string>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 
 namespace {
 int get_communicator_size(MPI_Comm comm) {
@@ -294,6 +292,4 @@ DistrArrayGA::Distribution DistrArrayGA::make_distribution() const {
   return {chunk_borders};
 }
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array

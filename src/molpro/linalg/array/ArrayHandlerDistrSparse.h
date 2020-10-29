@@ -3,9 +3,7 @@
 #include "molpro/linalg/array/ArrayHandler.h"
 #include <numeric>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 template <typename AL, typename AR, bool = has_mapped_type_v<AR>>
 class ArrayHandlerDistrSparse : public ArrayHandler<AL, AR> {};
 
@@ -49,8 +47,6 @@ protected:
   using ArrayHandler<AL, AR>::m_lazy_handles;
 };
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDISTRSPARSE_H

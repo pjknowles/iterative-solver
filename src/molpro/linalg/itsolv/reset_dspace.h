@@ -239,12 +239,12 @@ auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters
     for (size_t i = 0; i < nC; ++i)
       solutions_full_first.row(i) = solutions.row(new_order[i]);
     std::tie(projected_solutions, overlap) =
-        construct_projected_solutions(solutions, xspace.data.at(subspace::EqnData::S), xspace.dimensions());
+        construct_projected_solutions(solutions_full_first, xspace.data.at(subspace::EqnData::S), xspace.dimensions());
     std::tie(orth_proj_sol, norm) = construct_orthogonalised_proj_solutions_in_D(projected_solutions, overlap);
     auto full_solutions_new_order = select_full_solutions(orth_proj_sol, norm, nR, norm_thresh_solutions);
     assert(util::is_iota(std::begin(full_solutions_new_order), std::end(full_solutions_new_order), 0));
-    for (size_t i = 0; i < nC; ++i)
-      full_solutions[new_order[i]] = full_solutions_new_order[i];
+    for (size_t i = 0; i < nRfull; ++i)
+      full_solutions[i] = new_order.at(full_solutions_new_order[i]);
   }
   solver.solution_params(full_solutions, parameters);
   util::remove_null_vectors(orth_proj_sol, norm, 0, orth_proj_sol.rows(), norm_thresh_null);

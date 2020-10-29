@@ -227,9 +227,11 @@ auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters
   std::tie(orth_proj_sol, norm) = construct_orthogonalised_proj_solutions_in_D(projected_solutions, overlap);
   auto full_solutions = select_full_solutions(orth_proj_sol, norm, nR, norm_thresh_solutions);
   const auto nRfull = full_solutions.size();
+  logger.msg("number of full solutions to use = " + std::to_string(nRfull), Logger::Debug);
   // reorder solutions so that full solutions come first.
   // This ensures that they are orthogonal to the full solutions (assuming D is orthogonal to P+Q)
   if (!util::is_iota(std::begin(full_solutions), std::end(full_solutions), 0)) {
+    logger.msg("reordering solutions to ensure full solutions come first ", Logger::Debug);
     auto new_order = std::vector<unsigned int>(nC);
     std::iota(begin(new_order), end(new_order), 0);
     for (size_t i = 0; i < nRfull; ++i)
@@ -266,6 +268,7 @@ auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters
   const auto& working_set = solver.working_set();
   auto new_working_set =
       std::vector<unsigned int>(std::begin(working_set), std::begin(working_set) + nRfull + nRremaining);
+  logger.msg("new working set size =" + std::to_string(new_working_set.size()), Logger::Debug);
   return new_working_set;
 }
 

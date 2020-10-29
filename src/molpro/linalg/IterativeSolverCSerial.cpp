@@ -8,12 +8,11 @@ void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t ran
                                               const double* rhs, double aughes, double thresh, int verbosity,
                                               const char* fname, int64_t fcomm, int lmppx) {}
 
-void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
-                                              int verbosity, const char* fname, int64_t fcomm, int lmppx) {}
+void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size_t range_end, double thresh, int verbosity,
+                                   const char* fname, int64_t fcomm, int lmppx) {}
 
-void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
-                                                  int verbosity, char* algorithm, int minimize,
-                                                  const char* fname, int64_t fcomm, int lmppx) {}
+void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh, int verbosity,
+                                       char* algorithm, int minimize, const char* fname, int64_t fcomm, int lmppx) {}
 
 void IterativeSolverFinalize() {}
 
@@ -26,8 +25,8 @@ size_t IterativeSolverAddValue(double value, double* parameters, double* action,
 int IterativeSolverEndIteration(double* c, double* g, double* error, int lmppx) { return {}; }
 
 size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices, const double* coefficients,
-                         const double* pp, double* parameters, double* action, double* parametersP, int sync,
-                         int lmppx) {}
+                           const double* pp, double* parameters, double* action, double* parametersP, int sync,
+                           int lmppx) {}
 
 void IterativeSolverEigenvalues(double* eigenvalues) {}
 

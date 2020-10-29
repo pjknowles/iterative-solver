@@ -5,9 +5,7 @@
 
 #include "molpro/linalg/array/DistrArrayDisk.h"
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 namespace util {
 class PHDF5Handle;
 }
@@ -143,7 +141,5 @@ public:
   bool dataset_is_open() const;
 };
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYHDF5_H

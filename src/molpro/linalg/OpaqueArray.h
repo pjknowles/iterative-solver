@@ -20,8 +20,7 @@
 #include <unistd.h>
 #include <vector>
 
-namespace molpro {
-namespace linalg {
+namespace molpro::linalg {
 
 /*!
  * \brief A class that implements a vector container that has the following features:
@@ -151,6 +150,5 @@ public:
   }
 };
 
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg
 #endif // OPAQUEVECTOR_H

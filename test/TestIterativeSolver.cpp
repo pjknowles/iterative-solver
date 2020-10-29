@@ -369,7 +369,6 @@ TEST(TestIterativeSolver, linear_equations) {
   }
 }
 
-#include <regex>
 class RosenbrockTest {
 public:
   using ptype = SimpleArray<double>;
@@ -431,7 +430,7 @@ public:
       //      molpro::cout << "Rosenbrock updater, new psc=" << psc << std::endl;
     }
   } _Rosenbrock_updater;
-  bool run(std::string method) {
+  bool run(const std::string& method) {
 
     ptype x(2);
     ptype g(2);

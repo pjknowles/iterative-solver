@@ -6,9 +6,7 @@
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/wrap.h>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
+namespace molpro::linalg::itsolv {
 namespace detail {
 
 std::vector<std::pair<size_t, size_t>> parameter_batches(const size_t nsol, const size_t nparam) {
@@ -66,8 +64,7 @@ std::vector<P> construct_pspace_vector(const std::vector<unsigned int>& roots, c
                                        array::ArrayHandler<P, P>& handler) {
   auto pvecs = std::vector<P>{};
   if (!pparams.empty()) {
-    for (size_t i = 0; i < roots.size(); ++i) {
-      auto root = roots[i];
+    for (unsigned int root : roots) {
       pvecs.emplace_back(handler.copy(pparams.front()));
       handler.scal(solutions(root, oP), pvecs.back());
       for (size_t j = 1; j < pparams.size(); ++j) {
@@ -220,8 +217,7 @@ protected:
     auto nsol = m_subspace_solver.size();
     std::vector<std::pair<Q, Q>> temp_solutions{};
     for (const auto& batch : detail::parameter_batches(nsol, parameters.size())) {
-      size_t start_sol, end_sol;
-      std::tie(start_sol, end_sol) = batch;
+      auto [start_sol, end_sol] = batch;
       auto roots = std::vector<unsigned int>(end_sol - start_sol);
       std::iota(begin(roots), end(roots), start_sol);
       detail::construct_solution(parameters, roots, m_subspace_solver.solutions(), m_xspace.paramsp(),
@@ -354,8 +350,6 @@ protected:
   std::shared_ptr<Logger> m_logger;
 };
 
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVERTEMPLATE_H

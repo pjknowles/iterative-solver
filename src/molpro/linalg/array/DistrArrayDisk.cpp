@@ -2,9 +2,7 @@
 #include "util.h"
 #include "util/Distribution.h"
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 using util::Task;
 namespace {
 
@@ -197,6 +195,4 @@ std::unique_ptr<Task<std::unique_ptr<const DistrArray::LocalBuffer>>> DistrArray
           std::launch::async, [this]() -> auto { return this->local_buffer(); }));
 }
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array

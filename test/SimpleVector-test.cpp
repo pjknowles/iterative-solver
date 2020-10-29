@@ -174,7 +174,7 @@ TEST(SimpleVector, put) {
     //   for (auto i=0; i<w1.mpi_size(); i++) std::cout << "w1: "<<w1[i]<<std::endl;
     auto test2 = 0;
     for (auto k = (i > 1 ? segment_length * mpi_rank : 0);
-         k < (w1.size() && (i > 1 ? (k < segment_length * (mpi_rank + 1)) : true)); k++)
+         k < (!w1.empty() && (i <= 1 || (k < segment_length * (mpi_rank + 1)))); k++)
       test2 += std::fabs(w[k] - w1[k]);
     ASSERT_TRUE(test2 < 1e-15);
 #endif

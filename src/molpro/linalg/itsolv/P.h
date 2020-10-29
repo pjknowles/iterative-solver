@@ -3,9 +3,7 @@
 #include <map>
 #include <molpro/linalg/array/ArrayHandler.h>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
+namespace molpro::linalg::itsolv {
 
 template <class Pvector = std::map<size_t, double>>
 class P {
@@ -19,7 +17,7 @@ protected:
   std::vector<Pvector> m_vectors;
 
 public:
-  P() {}
+  P() = default;
 
   const value_type& metric(size_t i, size_t j) const { return m_metric[m_vectors.size() * j + i]; }
 
@@ -86,7 +84,5 @@ public:
     m_vectors.clear();
   }
 };
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_P_H_

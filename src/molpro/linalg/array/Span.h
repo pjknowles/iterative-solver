@@ -1,9 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_SPAN_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_SPAN_H
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 
 #if __cplusplus >= 202002L
 #include <span>
@@ -99,8 +97,6 @@ auto end(const Span<T>& x) {
   return x.end();
 }
 } // namespace span
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_SPAN_H

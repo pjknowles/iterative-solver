@@ -5,9 +5,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
+namespace molpro::linalg::itsolv {
 
 template <class A>
 using VecRef = std::vector<std::reference_wrapper<A>>;
@@ -133,7 +131,5 @@ auto remove_elements(std::vector<T> params, const std::vector<I>& indices) {
   return params;
 }
 
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_WRAP_H

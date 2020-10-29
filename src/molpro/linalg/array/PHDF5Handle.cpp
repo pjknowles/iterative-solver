@@ -1,10 +1,7 @@
 #include "PHDF5Handle.h"
 #include "util/TempHandle.h"
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 hid_t PHDF5Handle::_open_plist() {
   auto plist_id = H5Pcreate(H5P_FILE_ACCESS);
   H5Pset_fapl_mpio(plist_id, m_comm, MPI_INFO_NULL);
@@ -64,7 +61,4 @@ PHDF5Handle::~PHDF5Handle() {
 }
 
 template struct TempHandle<PHDF5Handle>;
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util

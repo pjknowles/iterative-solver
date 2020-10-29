@@ -20,8 +20,7 @@
 #include <unistd.h>
 #include <vector>
 
-namespace molpro {
-namespace linalg {
+namespace molpro::linalg {
 
 /*!
  * \brief A class that implements a vector container that has the following features:
@@ -212,6 +211,5 @@ public:
   bool operator==(const SimpleArray& other) { return m_buffer == other.m_buffer; }
 };
 
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg
 #endif // SIMPLEVECTOR_H

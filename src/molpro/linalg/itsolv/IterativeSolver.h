@@ -5,9 +5,7 @@
 #include <molpro/linalg/itsolv/Statistics.h>
 #include <vector>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
+namespace molpro::linalg::itsolv {
 
 /*!
  * @brief Base class defining the interface common to all iterative solvers
@@ -87,8 +85,6 @@ public:
 template <class R, class Q, class P>
 class DIIS : public IterativeSolver<R, Q, P> {};
 
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVER_H

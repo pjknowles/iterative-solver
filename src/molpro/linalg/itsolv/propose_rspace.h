@@ -7,10 +7,7 @@
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/util.h>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
-namespace detail {
+namespace molpro::linalg::itsolv::detail {
 
 template <class R>
 void normalise(VecRef<R>& params, array::ArrayHandler<R, R>& handler, Logger& logger, double thresh = 1.0e-14) {
@@ -580,9 +577,6 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
   auto new_working_set = get_new_working_set(solver.working_set(), residuals, wresidual);
   return new_working_set;
 }
-} // namespace detail
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv::detail
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_PROPOSE_RSPACE_H

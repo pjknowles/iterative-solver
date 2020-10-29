@@ -6,9 +6,7 @@
 #include <cstddef>
 #include <numeric>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 namespace util {
 
 template <typename T>
@@ -106,10 +104,8 @@ protected:
     std::copy(begin(source), end(source), begin(result));
     return result;
   }
-}; // namespace linalg
+};
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLE_H

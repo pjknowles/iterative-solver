@@ -176,14 +176,12 @@ TEST(OutOfCoreArray, select) {
     v[i] = 2 * i + 1;
   ocv v0(v.data(), v.size());
   std::vector<double> t(10001);
-  for (size_t i = 0; i < t.size(); ++i)
-    t[i] = 1;
+  for (double& i : t)
+    i = 1;
   ocv v1(t.data(), t.size());
   // ocv v1(v0);
   bool result = true;
-  std::vector<size_t> indices;
-  std::vector<double> values;
-  std::tie(indices, values) = v0.select(v1);
+  auto [indices, values] = v0.select(v1);
   for (size_t i = 0; i < indices.size(); i++) {
     result &= v[indices[i]] == values[i]; // Check indices and values consistent
   }

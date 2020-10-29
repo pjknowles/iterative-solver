@@ -11,9 +11,7 @@
 
 #include <molpro/linalg/array/type_traits.h>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 namespace util {
 
 struct ArrayHandlerError : public std::logic_error {
@@ -367,8 +365,6 @@ public:
   virtual ProxyHandle lazy_handle() = 0;
 };
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLER_H

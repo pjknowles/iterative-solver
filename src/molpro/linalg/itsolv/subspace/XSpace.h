@@ -7,10 +7,7 @@
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
-namespace subspace {
+namespace molpro::linalg::itsolv::subspace {
 namespace xspace {
 //! New sections of equation data
 struct NewData {
@@ -239,8 +236,5 @@ protected:
   bool m_hermitian = false; //!< whether the matrix is Hermitian
 };
 
-} // namespace subspace
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv::subspace
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACE_H

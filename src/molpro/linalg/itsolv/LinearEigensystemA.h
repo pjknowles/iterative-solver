@@ -8,9 +8,7 @@
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverLinEig.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
+namespace molpro::linalg::itsolv {
 namespace detail {
 template <class R>
 using SubspaceSolver = subspace::SubspaceSolverLinEig<typename array::ArrayHandler<R, R>::value_type,
@@ -115,8 +113,6 @@ protected:
   detail::DoReset m_do_reset_dspace; //!< keeps track of when the D space is being reset
 };
 
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMA_H

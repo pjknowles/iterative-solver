@@ -4,9 +4,7 @@
 #include <molpro/linalg/array/util/select_max_dot.h>
 #include <numeric>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 template <typename AL, typename AR, bool = has_mapped_type_v<AR>>
 class ArrayHandlerIterableSparse : public ArrayHandler<AL, AR> {};
 
@@ -59,10 +57,8 @@ protected:
   using ArrayHandler<AL, AR>::error;
   using ArrayHandler<AL, AR>::lazy_handle;
   using ArrayHandler<AL, AR>::m_lazy_handles;
-}; // namespace linalg
+};
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLESPARSE_H

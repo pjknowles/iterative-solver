@@ -4,13 +4,10 @@
 
 #include <cassert>
 #include <iostream>
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 
 PHDF5Handle temp_phdf5_handle(const std::string &base_name, MPI_Comm comm) {
-  auto fname = temp_file_name(base_name, ".hdf5");
+  auto fname = temp_file_name(base_name, ".hdf5", comm);
   auto t = PHDF5Handle(fname, comm);
   bool set_erase_file_on_destroy_succeeded = t.set_erase_file_on_destroy(true);
   assert(set_erase_file_on_destroy_succeeded);
@@ -37,7 +34,4 @@ PHDF5Handle temp_phdf5_handle_group(const PHDF5Handle &handle, const std::string
   }
   return t;
 }
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util

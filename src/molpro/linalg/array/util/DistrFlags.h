@@ -3,10 +3,7 @@
 #include <memory>
 #include <mpi.h>
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 
 /*!
  * @brief Distributed array of integer flags with one flag per process and a locking mechanism to ensure atomic access.
@@ -87,9 +84,6 @@ protected:
     std::shared_ptr<int> m_counter; //!< counter of proxy objects created by overlying DistrFlags object.
   };
 };
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_DISTRFLAGS_H

@@ -4,10 +4,7 @@
 #include <cstdlib>
 #include <queue>
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 
 /*!
  * @brief Select n indices with largest by absolute value contributions to the dot product
@@ -131,9 +128,6 @@ auto select_max_dot_sparse(size_t n, const X& x, const Y& y) {
   }
   return selection_map;
 }
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_SELECT_MAX_DOT_H

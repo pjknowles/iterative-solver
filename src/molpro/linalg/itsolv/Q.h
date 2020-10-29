@@ -5,12 +5,9 @@
 #include <memory>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/P.h>
-//#include <molpro/iostream.h>
 #include <vector>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
+namespace molpro::linalg::itsolv {
 
 /*!
  * @brief A class holding a Q space
@@ -244,8 +241,6 @@ public:
     m_keys = keys();
   }
 };
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_Q_H_

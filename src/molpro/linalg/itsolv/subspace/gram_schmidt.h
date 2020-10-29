@@ -3,11 +3,8 @@
 #include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/wrap.h>
-namespace molpro {
-namespace linalg {
-namespace itsolv {
-namespace subspace {
-namespace util {
+
+namespace molpro::linalg::itsolv::subspace::util {
 /*!
  * @brief Performs Gram-Schmidt orthogonalisation without normalisation
  *
@@ -147,10 +144,6 @@ auto modified_gram_schmidt(VecRef<R>& params, array::ArrayHandler<R, R>& handler
   return null_param_indices;
 }
 
-} // namespace util
-} // namespace subspace
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv::subspace::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_GRAM_SCHMIDT_H

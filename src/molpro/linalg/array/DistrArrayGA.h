@@ -4,9 +4,7 @@
 
 #include "molpro/linalg/array/DistrArray.h"
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 
 /*!
  * @brief Distributed array which uses Global Arrays for managing the array buffer and RMA calls
@@ -71,8 +69,6 @@ protected:
   Distribution make_distribution() const;
 };
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYGA_H

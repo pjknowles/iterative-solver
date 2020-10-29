@@ -3,9 +3,7 @@
 #include <molpro/linalg/array/DistrArray.h>
 #include <mpi.h>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 
 /*!
  * @brief Implementation of distributed array using MPI3 RMA operations
@@ -99,8 +97,6 @@ protected:
   void _gather_scatter(const std::vector<index_type> &indices, std::vector<value_type> &data, RMAType option);
 };
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYMPI3_H

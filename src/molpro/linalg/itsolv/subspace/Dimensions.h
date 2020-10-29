@@ -1,10 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_DIMENSIONS_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_DIMENSIONS_H
-namespace molpro {
-namespace linalg {
-namespace itsolv {
-namespace subspace {
-namespace xspace {
+namespace molpro::linalg::itsolv::subspace::xspace {
 //! Stores partitioning of XSpace into P, Q and R blocks with sizes and offsets for each one
 struct Dimensions {
   Dimensions() = default;
@@ -17,10 +13,6 @@ struct Dimensions {
   size_t oQ = nP;
   size_t oD = oQ + nQ;
 };
-}
-} // namespace subspace
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv::subspace::xspace
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_DIMENSIONS_H

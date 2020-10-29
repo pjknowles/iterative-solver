@@ -6,11 +6,7 @@
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
-namespace subspace {
-namespace xspace {
+namespace molpro::linalg::itsolv::subspace::xspace {
 
 /*!
  * @brief Uses Gram Schmidt procedure to transform to an orthogonal basis, removing parameters with norm less than
@@ -44,9 +40,5 @@ auto check_conditioning_gram_schmidt(XSpaceI<R, Q, P>& xspace, Matrix<value_type
   return norm;
 }
 
-} // namespace xspace
-} // namespace subspace
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv::subspace::xspace
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_CHECK_CONDITIONING_H

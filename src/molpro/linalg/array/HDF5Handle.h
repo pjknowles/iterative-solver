@@ -5,10 +5,7 @@
 #include <string>
 #include <utility>
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 
 /*!
  * @brief Manages opening/closing HDF5 files and groups.
@@ -283,9 +280,6 @@ std::string hdf5_get_file_name(hid_t id);
 htri_t hdf5_link_exists(hid_t id, std::string path);
 
 extern template struct TempHandle<HDF5Handle>;
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_HDF5HANDLE_H

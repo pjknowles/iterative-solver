@@ -1,7 +1,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <molpro/linalg/itsolv/subspace/check_conditioning.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/wrap.h>

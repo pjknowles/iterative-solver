@@ -265,9 +265,8 @@ auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters
   auto wdparams = wrap(dparams);
   auto wdactions = wrap(dactions);
   xspace.update_dspace(wdparams, wdactions, lin_trans_R_component);
-  const auto& working_set = solver.working_set();
-  auto new_working_set =
-      std::vector<unsigned int>(std::begin(working_set), std::begin(working_set) + nRfull + nRremaining);
+  auto new_working_set = std::vector<unsigned int>(nRfull + nRremaining);
+  std::iota(begin(new_working_set), end(new_working_set), 0);
   logger.msg("new working set size =" + std::to_string(new_working_set.size()), Logger::Debug);
   return new_working_set;
 }

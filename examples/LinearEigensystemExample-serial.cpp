@@ -71,8 +71,9 @@ int main(int argc, char* argv[]) {
       }
       std::vector<std::vector<double>> Pcoeff(solver.n_roots());
       int nwork = solver.n_roots();
-      for (auto iter = 0; iter < 20 && nwork != 0; iter++) {
-        if (iter == 40) {
+      bool done = false;
+      for (auto iter = 0; iter < 100 && !done; iter++) {
+        if (iter == 100) {
           solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::Info;
           solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
           solver.logger->data_dump = true;
@@ -80,9 +81,10 @@ int main(int argc, char* argv[]) {
         action(nwork, x, g);
         nwork = solver.add_vector(x, g);
         solver.report();
+        done = nwork == 0;
         if (nwork != 0) {
           update(x, g, nwork, solver.working_set_eigenvalues());
-          solver.end_iteration(x, g);
+          nwork = solver.end_iteration(x, g);
         }
       }
       {

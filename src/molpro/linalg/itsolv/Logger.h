@@ -4,9 +4,7 @@
 #include <numeric>
 #include <string>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
+namespace molpro::linalg::itsolv {
 
 /*!
  * @brief A dummy structured logger.
@@ -61,8 +59,6 @@ struct Logger {
   bool data_dump = false;       //! whether data dumps are allowed
 };
 
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LOGGER_H

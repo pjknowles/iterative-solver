@@ -3,10 +3,7 @@
 #include <molpro/linalg/array/PHDF5Handle.h>
 #include <string>
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 /*!
  * @brief Returns a handle to a temporary file that will be erased on its destruction
  *
@@ -27,9 +24,6 @@ PHDF5Handle temp_phdf5_handle(const std::string &base_name, MPI_Comm comm);
 PHDF5Handle temp_phdf5_handle_group(const PHDF5Handle &handle, const std::string &base_name,
                                     MPI_Comm comm = MPI_COMM_NULL);
 
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_TEMP_PHDF5_HANDLE_H

@@ -6,10 +6,7 @@
 #include <cctype>
 #include <stdexcept>
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 
 HDF5Handle temp_hdf5_handle(const std::string &base_name) {
   auto fname = temp_file_name(base_name, ".hdf5");
@@ -67,7 +64,4 @@ HDF5Handle temp_hdf5_handle_group(const HDF5Handle &handle, const std::string &b
   return t;
 }
 
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util

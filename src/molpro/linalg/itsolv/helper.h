@@ -7,9 +7,7 @@
 #include <molpro/linalg/array/Span.h>
 #include <vector>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
+namespace molpro::linalg::itsolv {
 template <typename T>
 struct is_complex : std::false_type {};
 
@@ -149,7 +147,5 @@ extern template void solve_LinearEquations<std::complex<double>>(
 extern template void solve_DIIS<std::complex<double>>(std::vector<std::complex<double>>& solution,
                                                       const std::vector<std::complex<double>>& matrix,
                                                       const size_t dimension, double svdThreshold, int verbosity = 0);
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_H_

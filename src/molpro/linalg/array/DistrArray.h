@@ -10,9 +10,7 @@
 
 #include <molpro/linalg/array/Span.h>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 namespace util {
 template <typename Ind>
 class Distribution;
@@ -290,8 +288,8 @@ public:
    */
   [[nodiscard]] std::vector<index_type> min_loc_n(int n) const;
 
-  std::map<size_t, value_type> select_max_dot(size_t n, const DistrArray &y) const;
-  std::map<size_t, value_type> select_max_dot(size_t n, const SparseArray &y) const;
+  [[nodiscard]] std::map<size_t, value_type> select_max_dot(size_t n, const DistrArray &y) const;
+  [[nodiscard]] std::map<size_t, value_type> select_max_dot(size_t n, const SparseArray &y) const;
   //! @}
 
   //! Set all local elements to zero.
@@ -314,8 +312,6 @@ template <class Compare>
 std::map<size_t, double> select_max_dot_broadcast(size_t n, std::map<size_t, double> &local_selection,
                                                   MPI_Comm communicator);
 } // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAY_H

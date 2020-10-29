@@ -8,10 +8,7 @@
 
 #include <mpi.h>
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 
 //! Atomic lock allowing only one process to acquire it. Implemented using MPI3 RMA.
 class LockMPI3 {
@@ -92,9 +89,6 @@ protected:
   std::future<Result> m_task; //! Future holding the thread
 };
 
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_H

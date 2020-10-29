@@ -3,9 +3,7 @@
 #include <algorithm>
 #include <string>
 #include <tuple>
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 
 namespace {
 int comm_size(MPI_Comm comm) {
@@ -270,6 +268,4 @@ DistrArrayMPI3::LocalBufferMPI3::LocalBufferMPI3(DistrArrayMPI3& source) {
   MPI_Win_get_attr(source.m_win, MPI_WIN_BASE, &m_buffer, &flag);
 }
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array

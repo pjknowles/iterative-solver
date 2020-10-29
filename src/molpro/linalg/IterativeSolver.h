@@ -1,12 +1,12 @@
 #ifndef ITERATIVESOLVER_H
 #define ITERATIVESOLVER_H
-#include <vector>
 #include <iostream>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/P.h>
 #include <molpro/linalg/itsolv/Q.h>
 #include <molpro/linalg/itsolv/Statistics.h>
 #include <molpro/linalg/itsolv/helper.h>
+#include <vector>
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
@@ -41,8 +41,7 @@
  * vectors is via a potentially opaque interface to copy, scale, scalar product and
  * scalar-times-vector operations only.
  */
-namespace molpro {
-namespace linalg {
+namespace molpro::linalg {
 typedef std::map<std::string, std::string> optionMap;
 template <class T>
 static std::vector<typename T::value_type> nullVectorP;
@@ -483,7 +482,7 @@ public:
       }
     }
     molpro::cout << "result: ";
-    for (auto i : result){
+    for (auto i : result) {
       molpro::cout << "(" << i.first << ", " << i.second << ")";
     }
     molpro::cout << std::endl;
@@ -984,9 +983,8 @@ public:
    * \param minimize If false, a maximum, not minimum, will be sought
    * \param handlers group of array handlers for coordinating array operations
    */
-  explicit Optimize(
-      const std::shared_ptr<itsolv::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>>& handlers,
-      std::string algorithm = "L-BFGS", bool minimize = true)
+  explicit Optimize(const std::shared_ptr<itsolv::ArrayHandlers<Rvector, Qvector, std::map<size_t, double>>>& handlers,
+                    std::string algorithm = "L-BFGS", bool minimize = true)
       : IterativeSolver<Rvector, Qvector>(handlers), m_algorithm(std::move(algorithm)), m_minimize(minimize),
         m_strong_Wolfe(true), m_Wolfe_1(0.0001), m_Wolfe_2(0.9), // recommended values Nocedal and Wright p142
         m_linesearch_tolerance(0.2), m_linesearch_grow_factor(3), m_linesearch_steplength(0) {
@@ -1253,7 +1251,6 @@ protected:
   }
 };
 
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg
 
 #endif // ITERATIVESOLVER_H

@@ -1,12 +1,9 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_GATHER_ALL_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_GATHER_ALL_H
-#include <mpi.h>
 #include <molpro/linalg/array/util/Distribution.h>
+#include <mpi.h>
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 
 /*!
  * @brief Replicate data of a full container on all the processes based on distributed pieces
@@ -27,9 +24,6 @@ void gather_all(const Distribution<size_t>& distr, MPI_Comm commun, double* firs
   MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, first_elem, chunks, displs, MPI_DOUBLE, commun);
 }
 
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_GATHER_ALL_H

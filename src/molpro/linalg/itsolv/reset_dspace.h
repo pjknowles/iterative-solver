@@ -227,7 +227,6 @@ auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters
   std::tie(orth_proj_sol, norm) = construct_orthogonalised_proj_solutions_in_D(projected_solutions, overlap);
   auto full_solutions = select_full_solutions(orth_proj_sol, norm, nR, norm_thresh_solutions);
   const auto nRfull = full_solutions.size();
-  logger.msg("number of full solutions to use = " + std::to_string(nRfull), Logger::Debug);
   // reorder solutions so that full solutions come first.
   // This ensures that they are orthogonal to the full solutions (assuming D is orthogonal to P+Q)
   if (!util::is_iota(std::begin(full_solutions), std::end(full_solutions), 0)) {
@@ -252,10 +251,13 @@ auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters
   util::remove_null_vectors(orth_proj_sol, norm, 0, orth_proj_sol.rows(), norm_thresh_null);
   const auto nRremaining = std::min(nR - nRfull, orth_proj_sol.rows());
   const auto nDnew = orth_proj_sol.rows() - nRremaining;
+  logger.msg("number of {full solutions, remaining R, new D} = " + std::to_string(nRfull) + ", " +
+                 std::to_string(nRremaining) + ", " + std::to_string(nDnew),
+             Logger::Trace);
   auto lin_trans_R = subspace::Matrix<value_type>({nRremaining, nD});
   auto lin_trans_D = subspace::Matrix<value_type>({nDnew, nD});
-  lin_trans_R.slice({0, 0}, {nRremaining, nD}) = orth_proj_sol.slice({0, 0}, {nRremaining, nD});
-  lin_trans_D.slice({0, 0}, {nDnew, nD}) = orth_proj_sol.slice({nRremaining, 0}, {nRremaining + nDnew, nD});
+  lin_trans_R.slice() = orth_proj_sol.slice({0, 0}, {nRremaining, nD});
+  lin_trans_D.slice() = orth_proj_sol.slice({nRremaining, 0}, {nRremaining + nDnew, nD});
   auto params_remaining = wrap<R>(begin(parameters) + nRfull, begin(parameters) + nRfull + nRremaining);
   construct_remaining_R(params_remaining, lin_trans_R, xspace.cparamsd(), handlers.rr(), handlers.rq());
   std::vector<Q> dparams, dactions;

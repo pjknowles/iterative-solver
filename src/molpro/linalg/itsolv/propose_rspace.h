@@ -534,18 +534,15 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
              Logger::Trace);
   auto wresidual = wrap<R>(residuals.begin(), residuals.begin() + solver.working_set().size());
   normalise(wresidual, handlers.rr(), logger);
-  auto lin_trans = subspace::Matrix<value_type>{};
-  auto norm = std::vector<value_type_abs>{};
-  std::tie(wresidual, lin_trans, norm) =
-      propose_orthonormal_set<R, value_type, value_type_abs>(wresidual, res_norm_thresh, handlers.rr(), logger);
-  // FIXME propose and construct in one go
-  // FIXME for tight norm thresholds accumulation of round-off can result in non-orthogonal parameters. Use modified
-  // Gram Schmidt to construct a strictly orthonormal set
-  construct_orthonormal_set(wresidual, lin_trans, norm, handlers.rr());
+  auto null_param_indices = subspace::util::modified_gram_schmidt(wresidual, handlers.rr(), 1.0e-14);
+  for (auto it = null_param_indices.rbegin(); it != null_param_indices.rend(); ++it)
+    wresidual.erase(begin(wresidual) + (*it));
   // propose working space by orthogonalising against P+Q
   auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
                                   xspace.cparamsq(), handlers, logger);
   auto q_indices_remove = std::vector<unsigned int>{};
+  auto lin_trans = subspace::Matrix<value_type>{};
+  auto norm = std::vector<value_type_abs>{};
   std::tie(q_indices_remove, lin_trans, norm) = calculate_transformation_to_orthogonal_rspace(
       ov, solutions, xspace.dimensions(), logger, res_norm_thresh, max_size_qspace);
   if (logger.data_dump) {

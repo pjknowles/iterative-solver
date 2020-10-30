@@ -1,17 +1,13 @@
-//
-// Created by Iakov Polyak on 06/10/2020.
-//
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYFILE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYFILE_H
 
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 
 #include "molpro/linalg/array/DistrArrayDisk.h"
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 
 /*!
  * @brief Distributed array storing the buffer on disk using temporary local files.
@@ -24,10 +20,10 @@ namespace array {
  */
 class DistrArrayFile : public DistrArrayDisk {
 protected:
-//  std::string m_file_name; // TODO: is it even needed?
+  std::filesystem::path m_dir = std::filesystem::current_path();
   mutable std::fstream m_file;
   //! creates a file, opens it and @returns m_file fstream
-  std::fstream make_file(const std::string& directory = ".");
+  std::fstream make_file();
 public:
   //! Constructor for a blank object. The blank is only useful as a temporary. Move a valid object inside the blank to
   //! make it usable.
@@ -37,7 +33,6 @@ public:
   explicit DistrArrayFile(size_t dimension, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");
   explicit DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");
   explicit DistrArrayFile(const DistrArray &source);
-  //static DistrArrayFile CreateTempCopy(const DistrArray &source, const std::string &base_name = ".temp_array");
   
   DistrArrayFile &operator=(const DistrArrayFile &source) = delete;
   DistrArrayFile &operator=(DistrArrayFile &&source) noexcept;
@@ -49,13 +44,13 @@ public:
   
   bool compatible(const DistrArrayFile &source) const;
  
-  //! Opens file for reading and writing
+  //! Dummy
   void open_access() override;
-  //! Closes file TODO: Should it also remove file, or this should be done in a destructor?
+  //! Dummy
   void close_access() override;
   //! @returns true if array is not accessible through file nor memory view. Returns false otherwise.
   bool empty() const override;
-  //! Removes array dataset (file?).
+  //! Dummy
   void erase() override;
   //! @returns element at given index
   value_type at(index_type ind) const override;
@@ -74,12 +69,8 @@ public:
   void scatter(const std::vector<index_type> &indices, const std::vector<value_type> &data) override;
   void scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data) override;
   std::vector<value_type> vec() const override;
-  //! Check if file is currently open
-  bool is_file_open();
 };
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYFILE_H

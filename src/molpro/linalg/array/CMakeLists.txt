@@ -30,7 +30,7 @@ if (MPI)
 
     if (LINEARALGEBRA_ARRAY_MPI3)
         message(STATUS "Building ${PROJECT_NAME} with MPI3 Array")
-        target_compile_definitions(${PROJECT_NAME} PUBLIC LINEARALGEBRA_ARRAY_MPI3)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC LINEARALGEBRA_ARRAY_MPI3 LINEARALGEBRA_ARRAY_FILE)
         LibraryManager_Append(${PROJECT_NAME} SOURCES DistrArrayMPI3.cpp DistrArrayFile.cpp
                                               PUBLIC_HEADER DistrArrayMPI3.h DistrArrayFile.h)
     endif ()

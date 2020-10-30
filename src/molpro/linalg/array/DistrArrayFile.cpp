@@ -1,14 +1,11 @@
 #include <unistd.h>
 
-#include <filesystem>
 #include <molpro/linalg/array/DistrArrayFile.h>
 #include <molpro/linalg/array/util/Distribution.h>
 #include <molpro/linalg/array/util/temp_file.h>
 #include <utility>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 namespace {
 int mpi_size(MPI_Comm comm) {
   int rank;
@@ -20,7 +17,7 @@ int mpi_size(MPI_Comm comm) {
 DistrArrayFile::DistrArrayFile() = default;
 
 DistrArrayFile::DistrArrayFile(DistrArrayFile&& source) noexcept
-    : DistrArrayDisk(std::move(source)), m_file(std::move(source.m_file)) {}
+    : DistrArrayDisk(std::move(source)), m_dir(std::move(source.m_dir)), m_file(std::move(source.m_file)) {}
 
 DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::string& directory)
     : DistrArrayFile(std::make_unique<Distribution>(
@@ -28,7 +25,7 @@ DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::strin
                      comm, directory) {}
 
 DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm, const std::string& directory)
-    : DistrArrayDisk(std::move(distribution), comm), m_file(make_file(directory)) {
+    : DistrArrayDisk(std::move(distribution), comm), m_dir(directory), m_file(make_file()) {
     if (m_distribution->border().first != 0)
       DistrArray::error("Distribution of array must start from 0");
 }
@@ -68,10 +65,10 @@ bool DistrArrayFile::compatible(const DistrArrayFile& source) const {
   return res;
 }
 
-std::fstream DistrArrayFile::make_file(const std::string& directory) {
+std::fstream DistrArrayFile::make_file() {
   std::fstream file;
   std::string file_name =
-      util::temp_file_name(directory + "/", ""); // TODO do this with std::filesystem::path to make more portable
+      util::temp_file_name(m_dir.string() + "/", "");
   file.open(file_name.c_str(), std::ios::out | std::ios::binary);
   file.close();
   file.open(file_name.c_str(), std::ios::out | std::ios::in | std::ios::binary);
@@ -197,6 +194,4 @@ std::vector<DistrArrayFile::value_type> DistrArrayFile::vec() const {
   return get(lo_loc, hi_loc);
 }
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array

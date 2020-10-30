@@ -5,6 +5,7 @@
 #include <molpro/linalg/array/util/temp_file.h>
 #include <utility>
 
+
 namespace molpro::linalg::array {
 namespace {
 int mpi_size(MPI_Comm comm) {
@@ -25,10 +26,14 @@ DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::strin
                      comm, directory) {}
 
 DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm, const std::string& directory)
-    : DistrArrayDisk(std::move(distribution), comm), m_dir(directory), m_file(make_file()) {
+    : DistrArrayDisk(std::move(distribution), comm), m_dir(fs::absolute(fs::path(directory))), m_file(make_file()) {
     if (m_distribution->border().first != 0)
       DistrArray::error("Distribution of array must start from 0");
 }
+
+DistrArrayFile::DistrArrayFile(const DistrArrayFile& source)
+    : DistrArrayDisk(source), m_dir(source.m_dir), m_file(make_file()) {
+  }
 
 DistrArrayFile::DistrArrayFile(const DistrArray& source)
     : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator()) {

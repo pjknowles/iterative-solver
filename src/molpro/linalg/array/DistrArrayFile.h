@@ -9,6 +9,7 @@
 
 namespace molpro::linalg::array {
 
+namespace fs = std::filesystem;
 /*!
  * @brief Distributed array storing the buffer on disk using temporary local files.
  *
@@ -20,7 +21,7 @@ namespace molpro::linalg::array {
  */
 class DistrArrayFile : public DistrArrayDisk {
 protected:
-  std::filesystem::path m_dir = std::filesystem::current_path();
+  fs::path m_dir = fs::current_path();
   mutable std::fstream m_file;
   //! creates a file, opens it and @returns m_file fstream
   std::fstream make_file();
@@ -28,7 +29,7 @@ public:
   //! Constructor for a blank object. The blank is only useful as a temporary. Move a valid object inside the blank to
   //! make it usable.
   DistrArrayFile();
-  DistrArrayFile(const DistrArrayFile &source) = delete;
+  DistrArrayFile(const DistrArrayFile &source);
   DistrArrayFile(DistrArrayFile &&source) noexcept;
   explicit DistrArrayFile(size_t dimension, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");
   explicit DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");

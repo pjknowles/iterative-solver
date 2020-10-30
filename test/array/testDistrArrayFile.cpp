@@ -47,6 +47,26 @@ TEST(DistrArrayFile, constructor_size) {
   }
 }
 
+TEST(DistrArrayFile, constructor_copy) {
+  constexpr int n = 10;
+  std::vector<double> v(n);
+  std::iota(v.begin(), v.end(), 0.5);
+  auto a = DistrArrayFile(10, mpi_comm);
+  int mpi_size, mpi_rank;
+  MPI_Comm_rank(mpi_comm, &mpi_rank);
+  MPI_Comm_size(mpi_comm, &mpi_size);
+  auto dist = a.distribution();
+  a.put(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
+  std::vector<double> w{v};
+  auto b = a;
+  b.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
+  ScopeLock l{mpi_comm};
+  EXPECT_THAT(v, Pointwise(DoubleEq(), w));
+//  b = a; // TODO operator=() not working yet
+//  b.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
+//  EXPECT_THAT(v, Pointwise(DoubleEq(), w));
+}
+
 #ifdef LINEARALGEBRA_ARRAY_MPI3
 TEST(DistrArrayFile, constructor_copy_from_distr_array) {
   const double val = 0.5;
@@ -67,26 +87,6 @@ TEST(DistrArrayFile, constructor_copy_from_distr_array) {
 }
 #endif
 
-TEST(DistrArrayFile, DISABLED_copy) {
-  ScopeLock l{mpi_comm};
-  constexpr int n = 10;
-  std::vector<double> v(n);
-  std::iota(v.begin(), v.end(), 0.5);
-  auto a = DistrArrayFile(10, mpi_comm);
-  int mpi_size, mpi_rank;
-  MPI_Comm_rank(mpi_comm, &mpi_rank);
-  MPI_Comm_size(mpi_comm, &mpi_size);
-  auto dist = a.distribution();
-  a.put(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
-  std::vector<double> w{v};
-  // auto b = a; // TODO copy constructor not working yet
-  // b.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
-  EXPECT_THAT(v, Pointwise(DoubleEq(), w));
-//  b = a; // TODO operator=() not working yet
-//  b.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
-  EXPECT_THAT(v, Pointwise(DoubleEq(), w));
-}
-
 TEST(DistrArrayFile, constructor_move) {
   constexpr int n = 10;
   std::vector<double> v(n);
@@ -98,6 +98,25 @@ TEST(DistrArrayFile, constructor_move) {
   auto dist = a.distribution();
   a.put(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
   DistrArrayFile b = std::move(a);
+  auto w{v};
+  b.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, w.data());
+  ScopeLock l{mpi_comm};
+  EXPECT_EQ(b.size(), 10);
+  EXPECT_THAT(v, Pointwise(DoubleEq(), w));
+}
+
+TEST(DistrArrayFile, assignment_move) {
+  constexpr int n = 10;
+  std::vector<double> v(n);
+  std::iota(v.begin(), v.end(), 0.5);
+  auto a = DistrArrayFile(10, mpi_comm);
+  int mpi_size, mpi_rank;
+  MPI_Comm_rank(mpi_comm, &mpi_rank);
+  MPI_Comm_size(mpi_comm, &mpi_size);
+  auto dist = a.distribution();
+  a.put(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
+  auto b = DistrArrayFile();
+  b = std::move(a);
   auto w{v};
   b.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, w.data());
   ScopeLock l{mpi_comm};

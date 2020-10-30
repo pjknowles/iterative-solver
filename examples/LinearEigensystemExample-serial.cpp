@@ -33,14 +33,14 @@ int main(int argc, char* argv[]) {
   for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
     for (const auto& nroot : std::vector<int>{1, 2, 4, 5}) {
       std::string prefix{argv[0]};
-      std::cout << prefix << std::endl;
       if (prefix.find_last_of("/") != std::string::npos)
         prefix.resize(prefix.find_last_of("/"));
       else
         prefix = ".";
-      std::cout << prefix << std::endl;
       std::ifstream f(prefix + "/examples/" + file + ".hamiltonian");
       f >> n;
+      if (nroot > n)
+        continue;
       molpro::cout << "\n*** " << file << " (dimension " << n << "), " << nroot << " roots" << std::endl;
       hmat.resize(n * n);
       for (auto i = 0; i < n * n; i++)
@@ -92,6 +92,7 @@ int main(int argc, char* argv[]) {
         for (const auto& e : solver.errors())
           std::cout << e << " ";
         std::cout << "} after " << solver.statistics().iterations << " iterations" << std::endl;
+        std::cout << "Statistics: " << solver.statistics() << std::endl;
         for (size_t root = 0; root < solver.n_roots(); root++) {
           std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] << std::endl;
         }

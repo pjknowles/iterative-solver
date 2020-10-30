@@ -121,7 +121,8 @@ public:
     }
     auto dim = h.rows();
     auto evec = std::vector<value_type>{};
-    itsolv::eigenproblem(evec, m_eigenvalues, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, 0);
+    int verbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
+    itsolv::eigenproblem(evec, m_eigenvalues, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, verbosity);
     auto n_solutions = evec.size() / dim;
     auto full_matrix = Matrix<value_type>{std::move(evec), {n_solutions, dim}};
     auto nroots = std::min(nroots_max, n_solutions);

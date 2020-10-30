@@ -2,8 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_ARRAYHANDLERS_H
 #include <molpro/linalg/array/default_handler.h>
 
-namespace molpro {
-namespace linalg {
+namespace molpro::linalg {
 
 namespace itsolv {
 namespace util {
@@ -116,7 +115,6 @@ protected:
 namespace iterativesolver {
 using itsolv::ArrayHandlers;
 } // namespace iterativesolver
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_ARRAYHANDLERS_H

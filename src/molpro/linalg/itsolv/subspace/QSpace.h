@@ -7,10 +7,7 @@
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/wrap.h>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
-namespace subspace {
+namespace molpro::linalg::itsolv::subspace {
 
 namespace qspace {
 /*!
@@ -146,9 +143,6 @@ protected:
   std::list<qspace::QParam<Q>> m_params; //!< q parameter sets with new parameters first
 };
 
-} // namespace subspace
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv::subspace
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_QSPACE_H

@@ -1,9 +1,6 @@
 #include "util.h"
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 
 LockMPI3::LockMPI3(MPI_Comm comm) : m_comm{comm} {
   char* base = nullptr;
@@ -46,7 +43,4 @@ LockMPI3::Proxy::~Proxy() {
   if (!m_deleted)
     m_lock.unlock();
 }
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util

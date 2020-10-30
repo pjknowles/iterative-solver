@@ -5,9 +5,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
+namespace molpro::linalg::itsolv {
 
 template <class A>
 using VecRef = std::vector<std::reference_wrapper<A>>;
@@ -50,8 +48,8 @@ template <class R>
 auto cwrap(std::vector<R>& vec) {
   auto w = CVecRef<decay_t<R>>{};
   std::copy(begin(vec), end(vec), std::back_inserter(w));
-   return w;
- }
+  return w;
+}
 
 //! Takes a begin and end iterators and returns a vector of references to each element
 template <class R, class ForwardIt>
@@ -111,7 +109,5 @@ std::vector<size_t> find_ref(const VecRef<R>& wparams, ForwardIt begin, ForwardI
   }
   return indices;
 }
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_WRAP_H

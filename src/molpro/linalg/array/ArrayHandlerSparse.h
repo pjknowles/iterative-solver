@@ -3,9 +3,7 @@
 #include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/array/util/select_max_dot.h>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 
 /*!
  * @brief Array handler between two sparse arrays (e.g. std::map)
@@ -69,8 +67,6 @@ protected:
   using ArrayHandler<AL, AR>::lazy_handle;
 };
 
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERSPARSE_H

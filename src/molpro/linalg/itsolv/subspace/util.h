@@ -5,11 +5,7 @@
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/wrap.h>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
-namespace subspace {
-namespace util {
+namespace molpro::linalg::itsolv::subspace::util {
 namespace detail {
 template <class R, class Q, class Z, class W, bool = std::is_same<R, Z>::value, bool = std::is_same<W, Q>::value>
 struct Overlap {
@@ -111,10 +107,6 @@ std::vector<size_t> eye_order(const Slice& mat) {
   return order;
 }
 
-} // namespace util
-} // namespace subspace
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv::subspace::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_UTIL_H

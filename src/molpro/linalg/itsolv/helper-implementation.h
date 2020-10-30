@@ -5,9 +5,7 @@
 #include <cstddef>
 #include <molpro/linalg/itsolv/helper.h>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
+namespace molpro::linalg::itsolv {
 
 template <typename value_type>
 int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, const std::vector<size_t>& candidates,
@@ -329,8 +327,6 @@ void solve_DIIS(std::vector<value_type>& solution, const std::vector<value_type>
   }
   solution[nQ] = 1;
 }
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_IMPLEMENTATION_H_

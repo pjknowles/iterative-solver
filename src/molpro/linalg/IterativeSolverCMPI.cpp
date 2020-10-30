@@ -460,6 +460,4 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
   return result.size();
 }
 
-extern "C" void IterativeSolverPrintStatistics() {
-  molpro::cout << instances.top().solver->statistics() << std::endl;
-}
+extern "C" void IterativeSolverPrintStatistics() { molpro::cout << instances.top().solver->statistics() << std::endl; }

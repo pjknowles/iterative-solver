@@ -1,12 +1,10 @@
 #include "Logger.h"
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <sstream>
-#include <iomanip>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
+namespace molpro::linalg::itsolv {
 namespace {
 std::map<Logger::Level, std::string> log_level_names{{Logger::Trace, "Trace"}, {Logger::Debug, "Debug"},
                                                      {Logger::Info, "Info"},   {Logger::Warn, "Warn"},
@@ -38,6 +36,4 @@ std::string Logger::scientific(double val) {
   return s.str();
 }
 
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv

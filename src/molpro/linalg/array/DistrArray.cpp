@@ -5,9 +5,7 @@
 #include <iostream>
 #include <numeric>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 
 DistrArray::DistrArray(size_t dimension, MPI_Comm commun) : m_dimension(dimension), m_communicator(commun) {}
 
@@ -468,6 +466,4 @@ void DistrArray::axpy(value_type a, const SparseArray& y) {
       }
   }
 }
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array

@@ -31,7 +31,7 @@ void update(std::vector<Rvector>& psc, std::vector<Rvector>& psg, size_t nwork,
 
 int main(int argc, char* argv[]) {
   for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
-    for (const auto& nroot : std::vector<int>{1, 2, 4}) {
+    for (const auto& nroot : std::vector<int>{1, 2, 4, 8, 11, 28}) {
       std::string prefix{argv[0]};
       std::cout << prefix << std::endl;
       if (prefix.find_last_of("/") != std::string::npos)
@@ -41,6 +41,7 @@ int main(int argc, char* argv[]) {
       std::cout << prefix << std::endl;
       std::ifstream f(prefix + "/examples/" + file + ".hamiltonian");
       f >> n;
+      if (n > nroot) continue;
       molpro::cout << "\n*** " << file << " (dimension " << n << "), " << nroot << " roots" << std::endl;
       hmat.resize(n * n);
       for (auto i = 0; i < n * n; i++)
@@ -85,6 +86,7 @@ int main(int argc, char* argv[]) {
         for (size_t root = 0; root < solver.n_roots(); root++) {
           std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] << std::endl;
         }
+        std::cout << solver.statistics() <<std::endl;
       }
       {
         auto working_set = solver.working_set();

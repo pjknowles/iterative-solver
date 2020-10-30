@@ -4,10 +4,7 @@
 #include <molpro/linalg/itsolv/subspace/SubspaceData.h>
 #include <molpro/linalg/itsolv/wrap.h>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
-namespace subspace {
+namespace molpro::linalg::itsolv::subspace {
 
 //! Full subspace
 template <class RT, class QT, class PT>
@@ -68,9 +65,6 @@ public:
   virtual const xspace::Dimensions& dimensions() const = 0;
 };
 
-} // namespace subspace
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv::subspace
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACEI_H

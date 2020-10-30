@@ -4,10 +4,7 @@
 #include <molpro/linalg/array/HDF5Handle.h>
 #include <mpi.h>
 
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 /*!
  * @brief HDF5Handle that opens a file in parallel mode. Any operation that needs to open or close a file is collective.
  */
@@ -54,9 +51,6 @@ protected:
 };
 
 extern template struct TempHandle<PHDF5Handle>;
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_PHDF5HANDLE_H

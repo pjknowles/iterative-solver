@@ -4,9 +4,7 @@
 #include <cstdlib>
 #include <type_traits>
 
-namespace molpro {
-namespace linalg {
-namespace array {
+namespace molpro::linalg::array {
 //! Utility for metaprogramming that maps any types to void
 template <class... Ts>
 using void_t = void;
@@ -106,7 +104,5 @@ constexpr auto check_abs() {
   using std::abs;
   return abs(T{});
 }
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_TYPE_TRAITS_H

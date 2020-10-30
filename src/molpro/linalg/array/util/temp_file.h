@@ -4,10 +4,7 @@
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
-namespace molpro {
-namespace linalg {
-namespace array {
-namespace util {
+namespace molpro::linalg::array::util {
 #ifdef HAVE_MPI_H
 /*!
  * @brief Returns random file name for a temporary file
@@ -24,9 +21,6 @@ std::string temp_file_name(const std::string &base_name, const std::string &suff
  */
 std::string temp_file_name(const std::string &base_name, const std::string &suffix);
 
-} // namespace util
-} // namespace array
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::array::util
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_TEMP_FILE_H

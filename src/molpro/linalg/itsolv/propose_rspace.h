@@ -93,7 +93,7 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
     done = !(found_singularity || qspace_over_limit);
     if (found_singularity) {
       auto i = std::distance(begin(norm), it);
-      logger.msg("parameter index i = " + std::to_string(i) + " norm = " + std::to_string(*it), Logger::Info);
+      logger.msg("found singularity in parameter index i = " + std::to_string(i) + " norm = " + std::to_string(*it), Logger::Info);
       auto normalised_overlap = std::vector<value_type>{};
       for (size_t j = 0; j < nQ; ++j)
         normalised_overlap.emplace_back(std::abs(overlap(i, oQ + j)) / std::sqrt(std::abs(overlap(oQ + j, oQ + j))));
@@ -537,10 +537,7 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
   // propose working space by orthogonalising against P+Q
   auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
                                   xspace.cparamsq(), handlers, logger);
-  auto q_indices_remove = std::vector<unsigned int>{};
-  auto lin_trans = subspace::Matrix<value_type>{};
-  auto norm = std::vector<value_type_abs>{};
-  std::tie(q_indices_remove, lin_trans, norm) = calculate_transformation_to_orthogonal_rspace(
+  auto [q_indices_remove, lin_trans, norm] = calculate_transformation_to_orthogonal_rspace(
       ov, solutions, xspace.dimensions(), logger, res_norm_thresh, max_size_qspace);
   if (logger.data_dump) {
     logger.msg("overlap P+Q+Z = " + subspace::as_string(ov), Logger::Info);

@@ -30,8 +30,8 @@ void update(std::vector<Rvector>& psc, std::vector<Rvector>& psg, size_t nwork,
 }
 
 int main(int argc, char* argv[]) {
-  for (const auto& file : std::vector<std::string>{"hf"}) {
-    for (const auto& nroot : std::vector<int>{1}) {
+  for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
+    for (const auto& nroot : std::vector<int>{1, 2, 4, 5}) {
       std::string prefix{argv[0]};
       std::cout << prefix << std::endl;
       if (prefix.find_last_of("/") != std::string::npos)
@@ -53,9 +53,9 @@ int main(int argc, char* argv[]) {
       molpro::linalg::itsolv::LinearEigensystemA<Rvector, Qvector, Pvector> solver(handlers);
       solver.set_n_roots(nroot);
       solver.set_convergence_threshold(1.0e-12);
-      solver.propose_rspace_norm_thresh = 1.0e-8;
-      solver.max_size_qspace = 2;
-      solver.set_reset_D(4);
+      solver.propose_rspace_norm_thresh = 1.0e-14;
+      solver.max_size_qspace = 10;
+      solver.set_reset_D(50);
       solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
       solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
       solver.logger->data_dump = false;
@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
       int nwork = solver.n_roots();
       bool done = false;
       for (auto iter = 0; iter < 100 && !done; iter++) {
-        if (iter == 100) {
+        if (false) {
           solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::Info;
           solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
           solver.logger->data_dump = true;

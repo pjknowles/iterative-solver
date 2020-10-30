@@ -60,12 +60,9 @@ public:
    * @return number of significant parameters to calculate the action for
    */
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
-    m_do_reset_dspace.update(this->m_stats->iterations, max_size_qspace, this->m_xspace.dimensions().nD);
-    if (m_do_reset_dspace.value()) {
-      this->m_working_set =
-          detail::reset_dspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, this->m_xspace,
-                               this->m_subspace_solver.solutions(), reset_dspace_norm_thresh,
-                               propose_rspace_norm_thresh, *this->m_handlers, *this->m_logger);
+    if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace.dimensions())) {
+      this->m_working_set = m_dspace_resetter.run(parameters, this->m_xspace, this->m_subspace_solver.solutions(),
+                                                  *this->m_handlers, *this->m_logger);
     } else {
       this->m_working_set =
           detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, this->m_xspace,
@@ -104,14 +101,15 @@ public:
     molpro::cout << std::defaultfloat << std::endl;
   }
 
-  void set_reset_D(size_t n) { m_do_reset_dspace.set_nreset(n); }
+  //! Set the period in iterations for resetting the D space
+  void set_reset_D(size_t n) { m_dspace_resetter.set_nreset(n); }
 
   std::shared_ptr<Logger> logger;
   double propose_rspace_norm_thresh = 1e-6; //!< vectors with norm less than threshold can be considered null
   double reset_dspace_norm_thresh = 1e-4;   //!< affects whether the full solution is added on reset
   unsigned int max_size_qspace = std::numeric_limits<unsigned int>::max(); //!< maximum size of Q space
 protected:
-  detail::DoReset m_do_reset_dspace; //!< keeps track of when the D space is being reset
+  detail::DSpaceResetter<Q> m_dspace_resetter; //!< resets D space
 };
 
 } // namespace molpro::linalg::itsolv

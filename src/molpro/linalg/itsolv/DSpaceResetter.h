@@ -8,46 +8,6 @@
 #include <molpro/linalg/itsolv/util.h>
 
 namespace molpro::linalg::itsolv::detail {
-//! Utility container managing whether D space resetting is in process
-struct DoReset {
-  DoReset() = default;
-  DoReset(size_t nreset) : m_nreset(nreset) {}
-
-  /*!
-   * @brief Update status of resetting
-   * @param iter current iteration counting from 0
-   * @param max_size_qspace maximum size of Q space threshold stored in the solver
-   * @param nD size of D space
-   * @return whether resetting is on
-   */
-  bool update(const size_t iter, unsigned int& max_size_qspace, const size_t nD) {
-    if ((iter + 1) % m_nreset == 0 && nD > 0) {
-      m_value = true;
-      m_save_max_size_qspace = max_size_qspace;
-      max_size_qspace = std::max((unsigned int)(max_size_qspace + nD), max_size_qspace);
-    }
-    if (m_value && nD == 0) {
-      m_value = false;
-      max_size_qspace = m_save_max_size_qspace;
-    }
-    return m_value;
-  }
-
-  //! Whether D space is in the process of being reset
-  bool value() const { return m_value; }
-
-  //! Set the period of iterations for initiating the reset
-  void set_nreset(size_t nreset) { m_nreset = nreset; }
-  auto get_nreset() const { return m_nreset; }
-
-protected:
-  unsigned int m_nreset = std::numeric_limits<unsigned int>::max(); //!< reset D space every n iterations
-  bool m_value = false;                                             //!< whether in the process of resetting the D space
-  unsigned int m_save_max_size_qspace =
-      std::numeric_limits<unsigned int>::max(); //!< stores original value of max_size_qspace before it was modified by
-  //!< resetting
-};
-
 /*!
  * @brief Resets D space constructing full solutions as the new working set, removing instabilities from Q space, and
  * clearing D space
@@ -60,14 +20,25 @@ protected:
  * @tparam Q
  */
 template <class Q>
-struct DSpaceResetter {
-  DoReset do_reset;             //!< signals when resetting in in process
+class DSpaceResetter {
+protected:
+  unsigned int m_nreset = std::numeric_limits<unsigned int>::max(); //!< reset D space every n iterations
   std::list<Q> solution_params; //!< all current solutions that will be moved to the Q space
 
-  template <class R, class P, typename value_type, typename value_type_abs>
+public:
+  //! Whether reset operation should be run
+  bool do_reset(size_t iter, const subspace::xspace::Dimensions& dims) {
+    return ((iter + 1) % m_nreset == 0 && dims.nD > 0) || !solution_params.empty();
+  }
+
+  void set_nreset(size_t i) { m_nreset = i; }
+  auto get_nreset() const { return m_nreset; }
+
+  //! Run the reset operation
+  template <class R, class P, typename value_type>
   std::vector<unsigned int> run(std::vector<R>& rparams, subspace::XSpaceI<R, Q, P>& xspace,
-                                const subspace::Matrix<value_type>& solutions, value_type_abs norm_thresh_solutions,
-                                value_type_abs norm_thresh_null, ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
+                                const subspace::Matrix<value_type>& solutions, ArrayHandlers<R, Q, P>& handlers,
+                                Logger& logger) {
     logger.msg("DSpaceResetter::run()", Logger::Trace);
     logger.msg("dimensions {nP, nQ, nD, nR} = " + std::to_string(xspace.dimensions().nP) + ", " +
                    std::to_string(xspace.dimensions().nQ) + ", " + std::to_string(xspace.dimensions().nD) + ", " +

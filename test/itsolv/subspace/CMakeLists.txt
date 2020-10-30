@@ -1,1 +1,1 @@
-target_sources(test-${PROJECT_NAME}-itsolv.exe PRIVATE testMatrix.cpp test_util.cpp)
+target_sources(test-${PROJECT_NAME}-itsolv.exe PRIVATE testMatrix.cpp test_util.cpp test_DSpaceResetter.cpp)

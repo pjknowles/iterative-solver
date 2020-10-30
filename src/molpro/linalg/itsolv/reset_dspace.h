@@ -7,50 +7,7 @@
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/util.h>
 
-namespace molpro {
-namespace linalg {
-namespace itsolv {
-namespace detail {
-
-//! Utility container managing whether D space resetting is in process
-struct DoReset {
-  DoReset() = default;
-  DoReset(size_t nreset) : m_nreset(nreset) {}
-
-  /*!
-   * @brief Update status of resetting
-   * @param iter current iteration counting from 0
-   * @param max_size_qspace maximum size of Q space threshold stored in the solver
-   * @param nD size of D space
-   * @return whether resetting is on
-   */
-  bool update(const size_t iter, unsigned int& max_size_qspace, const size_t nD) {
-    if ((iter + 1) % m_nreset == 0 && nD > 0) {
-      m_value = true;
-      m_save_max_size_qspace = max_size_qspace;
-      max_size_qspace = std::max((unsigned int)(max_size_qspace + nD), max_size_qspace);
-    }
-    if (m_value && nD == 0) {
-      m_value = false;
-      max_size_qspace = m_save_max_size_qspace;
-    }
-    return m_value;
-  }
-
-  //! Whether D space is in the process of being reset
-  bool value() const { return m_value; }
-
-  //! Set the period of iterations for initiating the reset
-  void set_nreset(size_t nreset) { m_nreset = nreset; }
-  auto get_nreset() const { return m_nreset; }
-
-protected:
-  unsigned int m_nreset = std::numeric_limits<unsigned int>::max(); //!< reset D space every n iterations
-  bool m_value = false;                                             //!< whether in the process of resetting the D space
-  unsigned int m_save_max_size_qspace =
-      std::numeric_limits<unsigned int>::max(); //!< stores original value of max_size_qspace before it was modified by
-                                                //!< resetting
-};
+namespace molpro::linalg::itsolv::detail {
 
 /*!
  * @brief Constructs solutions projected on to D space and their overlap
@@ -273,8 +230,5 @@ auto reset_dspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters
   return new_working_set;
 }
 
-} // namespace detail
-} // namespace itsolv
-} // namespace linalg
-} // namespace molpro
+} // namespace molpro::linalg::itsolv::detail
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_RESET_DSPACE_H

@@ -8,6 +8,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include <molpro/linalg/array/type_traits.h>
 

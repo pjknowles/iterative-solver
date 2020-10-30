@@ -106,7 +106,6 @@ public:
 
   std::shared_ptr<Logger> logger;
   double propose_rspace_norm_thresh = 1e-6; //!< vectors with norm less than threshold can be considered null
-  double reset_dspace_norm_thresh = 1e-4;   //!< affects whether the full solution is added on reset
   unsigned int max_size_qspace = std::numeric_limits<unsigned int>::max(); //!< maximum size of Q space
 protected:
   detail::DSpaceResetter<Q> m_dspace_resetter; //!< resets D space

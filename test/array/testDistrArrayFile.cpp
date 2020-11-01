@@ -24,10 +24,28 @@ using ::testing::DoubleEq;
 using ::testing::Each;
 using ::testing::Pointwise;
 
-class DistrArrayFile_SetUp : public ::testing::Test {
-  DistrArrayFile_SetUp() = default;
-  void SetUp() override{};
+class DistrArrayFile_Fixture : public ::testing::Test {
+public:
+  DistrArrayFile_Fixture() = default;
+  void SetUp() override{
+    a = DistrArrayFile(size, mpi_comm);
+    auto dist = a.distribution();
+    MPI_Comm_rank(mpi_comm, &mpi_rank);
+    MPI_Comm_size(mpi_comm, &mpi_size);
+    left = dist.range(mpi_rank).first;
+    right = dist.range(mpi_rank).second;
+    for (int i = 0; i < mpi_size; i++) {
+      displs.push_back(dist.range(i).first);
+      chunks.push_back(dist.range(i).second - dist.range(i).first);
+    }
+  };
   void TearDown() override{};
+  const size_t size = 10;
+  int mpi_size, mpi_rank;
+  int left, right;
+  std::vector<int> chunks;
+  std::vector<int> displs;
+  DistrArrayFile a;
 };
 
 TEST(DistrArrayFile, constructor_default) {
@@ -140,18 +158,26 @@ TEST(DistrArrayFile, compatible) {
   EXPECT_EQ(a.compatible(c), c.compatible(a));
 }
 
-TEST(DistrArrayFile, writeread) {
-  ScopeLock l{mpi_comm};
-  constexpr int n = 100;
-  std::vector<double> v(n);
+TEST_F(DistrArrayFile_Fixture, writeread) {
+  std::vector<double> v(size);
   std::iota(v.begin(), v.end(), 0.5);
-  auto a = DistrArrayFile(100, mpi_comm);
-  int mpi_size, mpi_rank;
-  MPI_Comm_rank(mpi_comm, &mpi_rank);
-  MPI_Comm_size(mpi_comm, &mpi_size);
-  auto dist = a.distribution();
-  a.put(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
-  auto w{v};
-  a.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, w.data());
+  a.put(left, right, &(*(v.cbegin() + left)));
+  std::vector<double> w(10, 0);
+  a.get(left, right, &(*(w.begin() + left)));
+  MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, w.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
+  ScopeLock l{mpi_comm};
   EXPECT_THAT(v, Pointwise(DoubleEq(), w));
+}
+
+TEST_F(DistrArrayFile_Fixture, accumulate) {
+  std::vector<double> v(size), w(size), x(size), y(size);
+  std::iota(v.begin(), v.end(), 0.5);
+  std::iota(w.begin(), w.end(), 0.5);
+  std::transform(v.begin(), v.end(), w.begin(), x.begin(), [](auto& l, auto& r){return l + r;});
+  a.put(left, right, &(*(v.cbegin() + left)));
+  a.acc(left, right, &(*(w.begin() + left)));
+  a.get(left, right, &(*(y.begin() + left)));
+  MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, y.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
+  ScopeLock l{mpi_comm};
+  EXPECT_THAT(y, Pointwise(DoubleEq(), x));
 }

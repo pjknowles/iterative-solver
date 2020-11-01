@@ -57,6 +57,7 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
   swap(x.m_owned_buffer, y.m_owned_buffer);
   swap(x.m_distribution, y.m_distribution);
   swap(x.m_file, y.m_file);
+  swap(x.m_dir, y.m_dir);
 }
 
 DistrArrayFile::~DistrArrayFile() = default;

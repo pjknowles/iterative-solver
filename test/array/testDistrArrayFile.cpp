@@ -40,7 +40,7 @@ public:
     }
   };
   void TearDown() override{};
-  const size_t size = 10;
+  const size_t size = 12;
   int mpi_size, mpi_rank;
   int left, right;
   std::vector<int> chunks, displs;
@@ -108,7 +108,7 @@ TEST_F(DistrArrayFile_Fixture, constructor_move) {
   b.get(left, right, &(*(w.begin() + left)));
   MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, w.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
   ScopeLock l{mpi_comm};
-  EXPECT_EQ(b.size(), 10);
+  EXPECT_EQ(b.size(), size);
   EXPECT_THAT(v, Pointwise(DoubleEq(), w));
 }
 
@@ -122,7 +122,7 @@ TEST_F(DistrArrayFile_Fixture, assignment_move) {
   b.get(left, right, &(*(w.begin() + left)));
   MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, w.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
   ScopeLock l{mpi_comm};
-  EXPECT_EQ(b.size(), 10);
+  EXPECT_EQ(b.size(), size);
   EXPECT_THAT(v, Pointwise(DoubleEq(), w));
 }
 
@@ -164,4 +164,57 @@ TEST_F(DistrArrayFile_Fixture, accumulate) {
   MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, y.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
   ScopeLock l{mpi_comm};
   EXPECT_THAT(y, Pointwise(DoubleEq(), x));
+}
+
+TEST_F(DistrArrayFile_Fixture, gather) {
+  std::vector<double> v(size), w(size);
+  int n = -2;
+  std::generate(v.begin(), v.end(), [&n]{ return n+=2; });
+  a.put(left, right, &(*(v.cbegin() + left)));
+  std::vector<DistrArrayFile::index_type> x(size/mpi_size);
+  std::iota(x.begin(), x.end(), left);
+  auto tmp = a.gather(x);
+  for (int i = 0; i < x.size(); i++) {
+    w[left + i] = tmp[i];
+  }
+  MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, w.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
+  ScopeLock l{mpi_comm};
+  EXPECT_THAT(w, Pointwise(DoubleEq(), v));
+}
+
+TEST_F(DistrArrayFile_Fixture, scatter) {
+  std::vector<double> v(size, 0), w(size), y(size);
+  int n = -2;
+  std::generate(w.begin(), w.end(), [&n]{ return n+=2; });
+  a.put(left, right, &(*(v.cbegin() + left)));
+  std::vector<DistrArrayFile::index_type> x(size/mpi_size);
+  std::iota(x.begin(), x.end(), left);
+  std::vector<double> tmp(size/mpi_size);
+  for (int i = 0; i < x.size(); i++) {
+    tmp[i] = w[i + left];
+  }
+  a.scatter(x, tmp);
+  a.get(left, right, &(*(y.begin() + left)));
+  MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, y.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
+  ScopeLock l{mpi_comm};
+  EXPECT_THAT(y, Pointwise(DoubleEq(), w));
+}
+
+TEST_F(DistrArrayFile_Fixture, scatter_acc) {
+  std::vector<double> v(size), w(size), y(size);
+  std::iota(v.begin(), v.end(), 0);
+  int n = -2;
+  std::generate(w.begin(), w.end(), [&n]{ return n+=2; });
+  a.put(left, right, &(*(v.cbegin() + left)));
+  std::vector<DistrArrayFile::index_type> x(size/mpi_size);
+  std::iota(x.begin(), x.end(), left);
+  std::vector<double> tmp(size/mpi_size);
+  for (int i = 0; i < x.size(); i++) {
+    tmp[i] = v[i + left];
+  }
+  a.scatter_acc(x, tmp);
+  a.get(left, right, &(*(y.begin() + left)));
+  MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, y.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
+  ScopeLock l{mpi_comm};
+  EXPECT_THAT(y, Pointwise(DoubleEq(), w));
 }

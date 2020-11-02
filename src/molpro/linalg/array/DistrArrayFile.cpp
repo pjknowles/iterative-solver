@@ -184,7 +184,7 @@ void DistrArrayFile::scatter(const std::vector<index_type>& indices, const std::
     error("Only local array indices can be accessed via DistrArrayFile.gather() function");
   }
   for (auto i : indices) {
-    set(i, data[i]);
+    set(i, data[i-*minmax.first]);
   }
 }
 

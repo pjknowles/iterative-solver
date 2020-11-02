@@ -32,8 +32,8 @@ if (MPI)
             testDistrFlags.cpp
             )
     if (LINEARALGEBRA_ARRAY_MPI3)
-        target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayMPI3.cpp testArrayHandlerDistr.cpp
-                testArrayHandlerDistrSparse.cpp testArrayHandlers.cpp)
+        target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayMPI3.cpp testDistrArrayFile.cpp
+                        testArrayHandlerDistr.cpp testArrayHandlerDistrSparse.cpp testArrayHandlers.cpp)
     endif ()
     if (LINEARALGEBRA_ARRAY_GA)
         target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayGA.cpp)

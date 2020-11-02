@@ -33,6 +33,9 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
 
 DistrArrayFile::DistrArrayFile(const DistrArrayFile& source)
     : DistrArrayDisk(source), m_dir(source.m_dir), m_file(make_file()) {
+    if (!source.empty()){
+    DistrArrayFile::copy(source);
+    }
   }
 
 DistrArrayFile::DistrArrayFile(const DistrArray& source)

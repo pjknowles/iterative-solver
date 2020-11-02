@@ -43,8 +43,7 @@ public:
   const size_t size = 10;
   int mpi_size, mpi_rank;
   int left, right;
-  std::vector<int> chunks;
-  std::vector<int> displs;
+  std::vector<int> chunks, displs;
   DistrArrayFile a;
 };
 
@@ -65,19 +64,14 @@ TEST(DistrArrayFile, constructor_size) {
   }
 }
 
-TEST(DistrArrayFile, constructor_copy) {
-  constexpr int n = 10;
-  std::vector<double> v(n);
+TEST_F(DistrArrayFile_Fixture, constructor_copy) {
+  std::vector<double> v(size);
   std::iota(v.begin(), v.end(), 0.5);
-  auto a = DistrArrayFile(10, mpi_comm);
-  int mpi_size, mpi_rank;
-  MPI_Comm_rank(mpi_comm, &mpi_rank);
-  MPI_Comm_size(mpi_comm, &mpi_size);
-  auto dist = a.distribution();
-  a.put(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
-  std::vector<double> w{v};
+  a.put(left, right, &(*(v.cbegin() + left)));
+  std::vector<double> w(size, 0);
   auto b = a;
-  b.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
+  b.get(left, right, &(*(w.begin() + left)));
+  MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, w.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
   ScopeLock l{mpi_comm};
   EXPECT_THAT(v, Pointwise(DoubleEq(), w));
 //  b = a; // TODO operator=() not working yet
@@ -105,38 +99,28 @@ TEST(DistrArrayFile, constructor_copy_from_distr_array) {
 }
 #endif
 
-TEST(DistrArrayFile, constructor_move) {
-  constexpr int n = 10;
-  std::vector<double> v(n);
+TEST_F(DistrArrayFile_Fixture, constructor_move) {
+  std::vector<double> v(size);
   std::iota(v.begin(), v.end(), 0.5);
-  auto a = DistrArrayFile(10, mpi_comm);
-  int mpi_size, mpi_rank;
-  MPI_Comm_rank(mpi_comm, &mpi_rank);
-  MPI_Comm_size(mpi_comm, &mpi_size);
-  auto dist = a.distribution();
-  a.put(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
+  a.put(left, right, &(*(v.cbegin() + left)));
   DistrArrayFile b = std::move(a);
-  auto w{v};
-  b.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, w.data());
+  std::vector<double> w(size, 0);
+  b.get(left, right, &(*(w.begin() + left)));
+  MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, w.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
   ScopeLock l{mpi_comm};
   EXPECT_EQ(b.size(), 10);
   EXPECT_THAT(v, Pointwise(DoubleEq(), w));
 }
 
-TEST(DistrArrayFile, assignment_move) {
-  constexpr int n = 10;
-  std::vector<double> v(n);
+TEST_F(DistrArrayFile_Fixture, assignment_move) {
+  std::vector<double> v(size);
   std::iota(v.begin(), v.end(), 0.5);
-  auto a = DistrArrayFile(10, mpi_comm);
-  int mpi_size, mpi_rank;
-  MPI_Comm_rank(mpi_comm, &mpi_rank);
-  MPI_Comm_size(mpi_comm, &mpi_size);
-  auto dist = a.distribution();
-  a.put(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
+  a.put(left, right, &(*(v.cbegin() + left)));
   auto b = DistrArrayFile();
   b = std::move(a);
-  auto w{v};
-  b.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, w.data());
+  std::vector<double> w(size, 0);
+  b.get(left, right, &(*(w.begin() + left)));
+  MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, w.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
   ScopeLock l{mpi_comm};
   EXPECT_EQ(b.size(), 10);
   EXPECT_THAT(v, Pointwise(DoubleEq(), w));
@@ -162,7 +146,7 @@ TEST_F(DistrArrayFile_Fixture, writeread) {
   std::vector<double> v(size);
   std::iota(v.begin(), v.end(), 0.5);
   a.put(left, right, &(*(v.cbegin() + left)));
-  std::vector<double> w(10, 0);
+  std::vector<double> w(size, 0);
   a.get(left, right, &(*(w.begin() + left)));
   MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, w.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
   ScopeLock l{mpi_comm};

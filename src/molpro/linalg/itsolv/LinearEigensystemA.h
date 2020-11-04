@@ -1,9 +1,11 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMA_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMA_H
 #include <iterator>
+#include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
+#include <molpro/linalg/itsolv/reset_dspace.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverLinEig.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
 
@@ -37,7 +39,9 @@ public:
                               const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
       : SolverTemplate(subspace::XSpace<R, Q, P>(handlers, logger_), detail::SubspaceSolver<R>{logger_}, handlers,
                        std::make_shared<Statistics>(), logger_),
-        logger(logger_) {}
+        logger(logger_) {
+    this->m_subspace_solver.m_norm_stability_threshold = propose_rspace_norm_thresh;
+  }
 
   /*!
    * \brief Proposes new parameters for the subspace from the preconditioned residuals.
@@ -47,14 +51,24 @@ public:
    * function to propose new Q space parameters orthonormal to the old space. They are returned in parameters so that
    * corresponding actions can be calculated and used in add_vector in the next iteration.
    *
+   * Every n_reset_D iterations the D space has to be reset. If working set does not cover all solutions than resetting
+   * is done over multiple iterations. During this time, there are no deletions from the Q space.
+   * This is done by temporarily increasing maximum allowed size of Q space.
+   *
    * @param parameters output new parameters for the subspace.
    * @param residual preconditioned residuals.
    * @return number of significant parameters to calculate the action for
    */
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
-    auto r_norm_thresh = 1.0e-6;
-    this->m_working_set = detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action,
-                                                 this->m_xspace, *this->m_handlers, *this->m_logger, r_norm_thresh);
+    if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace.dimensions())) {
+      this->m_working_set = m_dspace_resetter.run(parameters, this->m_xspace, this->m_subspace_solver.solutions(),
+                                                  *this->m_handlers, *this->m_logger);
+    } else {
+      this->m_working_set =
+          detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, this->m_xspace,
+                                 this->m_subspace_solver.solutions(), *this->m_handlers, *this->m_logger,
+                                 propose_rspace_norm_thresh, max_size_qspace);
+    }
     this->m_stats->iterations++;
     return this->working_set().size();
   }
@@ -76,6 +90,10 @@ public:
 
   void report() const override {
     SolverTemplate::report();
+    molpro::cout << "errors " << std::scientific;
+    auto& err = this->m_errors;
+    std::copy(begin(err), end(err), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
+    molpro::cout << std::endl;
     molpro::cout << "eigenvalues ";
     auto ev = eigenvalues();
     molpro::cout << std::fixed << std::setprecision(14);
@@ -83,7 +101,14 @@ public:
     molpro::cout << std::defaultfloat << std::endl;
   }
 
+  //! Set the period in iterations for resetting the D space
+  void set_reset_D(size_t n) { m_dspace_resetter.set_nreset(n); }
+
   std::shared_ptr<Logger> logger;
+  double propose_rspace_norm_thresh = 1e-6; //!< vectors with norm less than threshold can be considered null
+  unsigned int max_size_qspace = std::numeric_limits<unsigned int>::max(); //!< maximum size of Q space
+protected:
+  detail::DSpaceResetter<Q> m_dspace_resetter; //!< resets D space
 };
 
 } // namespace molpro::linalg::itsolv

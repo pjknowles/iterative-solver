@@ -7,8 +7,24 @@
 
 namespace molpro::linalg::itsolv::subspace::util {
 namespace detail {
-template <class R, class Q, class Z, class W, bool = std::is_same<R, Z>::value, bool = std::is_same<W, Q>::value>
-struct Overlap {
+
+//! Checks that type T1 is same as one of T2, Ts ...
+template <typename T1, typename T2, typename... Ts>
+struct is_one_of {
+  static constexpr bool value = std::is_same<T1, T2>::value || is_one_of<T1, Ts...>::value;
+};
+
+template <typename T1, typename T2>
+struct is_one_of<T1, T2> {
+  static constexpr bool value = std::is_same<T1, T2>::value;
+};
+
+template <class R, class Q, class Z, class W, bool = is_one_of<Z, R, Q>::value&& is_one_of<W, R, Q>::value,
+          bool = std::is_same<R, Z>::value, bool = std::is_same<W, Q>::value>
+struct Overlap {};
+
+template <class R, class Q, class Z, class W>
+struct Overlap<R, Q, Z, W, true, true, true> {
   static Matrix<double> _(const CVecRef<R>& left, const CVecRef<Q>& right, array::ArrayHandler<Z, W>& handler) {
     auto m = Matrix<double>({left.size(), right.size()});
     for (size_t i = 0; i < m.rows(); ++i)
@@ -19,7 +35,7 @@ struct Overlap {
 };
 
 template <class R, class Q, class Z, class W>
-struct Overlap<R, Q, Z, W, false, false> {
+struct Overlap<R, Q, Z, W, true, false, false> {
   static Matrix<double> _(const CVecRef<R>& left, const CVecRef<Q>& right, array::ArrayHandler<Z, W>& handler) {
     auto m = Matrix<double>({left.size(), right.size()});
     for (size_t i = 0; i < m.rows(); ++i)
@@ -29,11 +45,14 @@ struct Overlap<R, Q, Z, W, false, false> {
   }
 };
 
+template <class R, class Q, class Z, class W>
+constexpr bool Z_and_W_are_one_of_R_and_Q = detail::is_one_of<Z, R, Q>::value&& detail::is_one_of<W, R, Q>::value;
 } // namespace detail
 
 //! Calculates overlap matrix between left and right vectors
 template <class R, class Q, class Z, class W>
-Matrix<double> overlap(const CVecRef<R>& left, const CVecRef<Q>& right, array::ArrayHandler<Z, W>& handler) {
+auto overlap(const CVecRef<R>& left, const CVecRef<Q>& right, array::ArrayHandler<Z, W>& handler)
+    -> std::enable_if_t<detail::Z_and_W_are_one_of_R_and_Q<R, Q, Z, W>, Matrix<double>> {
   return detail::Overlap<R, Q, Z, W>::_(left, right, handler);
 }
 

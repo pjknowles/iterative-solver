@@ -31,17 +31,16 @@ void update(std::vector<Rvector>& psc, std::vector<Rvector>& psg, size_t nwork,
 
 int main(int argc, char* argv[]) {
   for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
-    for (const auto& nroot : std::vector<int>{1, 2, 4, 8, 11, 28}) {
+    for (const auto& nroot : std::vector<int>{1, 2, 4, 5}) {
       std::string prefix{argv[0]};
-      std::cout << prefix << std::endl;
       if (prefix.find_last_of("/") != std::string::npos)
         prefix.resize(prefix.find_last_of("/"));
       else
         prefix = ".";
-      std::cout << prefix << std::endl;
       std::ifstream f(prefix + "/examples/" + file + ".hamiltonian");
       f >> n;
-      if (n > nroot) continue;
+      if (nroot > n)
+        continue;
       molpro::cout << "\n*** " << file << " (dimension " << n << "), " << nroot << " roots" << std::endl;
       hmat.resize(n * n);
       for (auto i = 0; i < n * n; i++)
@@ -54,6 +53,9 @@ int main(int argc, char* argv[]) {
       molpro::linalg::itsolv::LinearEigensystemA<Rvector, Qvector, Pvector> solver(handlers);
       solver.set_n_roots(nroot);
       solver.set_convergence_threshold(1.0e-12);
+      solver.propose_rspace_norm_thresh = 1.0e-14;
+      solver.max_size_qspace = 10;
+      solver.set_reset_D(50);
       solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
       solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
       solver.logger->data_dump = false;
@@ -69,13 +71,20 @@ int main(int argc, char* argv[]) {
       }
       std::vector<std::vector<double>> Pcoeff(solver.n_roots());
       int nwork = solver.n_roots();
-      for (auto iter = 0; iter < 100 && nwork != 0; iter++) {
+      bool done = false;
+      for (auto iter = 0; iter < 100 && !done; iter++) {
+        if (false) {
+          solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::Info;
+          solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
+          solver.logger->data_dump = true;
+        }
         action(nwork, x, g);
         nwork = solver.add_vector(x, g);
         solver.report();
+        done = nwork == 0;
         if (nwork != 0) {
           update(x, g, nwork, solver.working_set_eigenvalues());
-          solver.end_iteration(x, g);
+          nwork = solver.end_iteration(x, g);
         }
       }
       {
@@ -83,10 +92,10 @@ int main(int argc, char* argv[]) {
         for (const auto& e : solver.errors())
           std::cout << e << " ";
         std::cout << "} after " << solver.statistics().iterations << " iterations" << std::endl;
+        std::cout << "Statistics: " << solver.statistics() << std::endl;
         for (size_t root = 0; root < solver.n_roots(); root++) {
           std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] << std::endl;
         }
-        std::cout << solver.statistics() <<std::endl;
       }
       {
         auto working_set = solver.working_set();

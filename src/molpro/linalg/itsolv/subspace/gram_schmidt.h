@@ -1,6 +1,9 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_GRAM_SCHMIDT_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_GRAM_SCHMIDT_H
+#include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
+#include <molpro/linalg/itsolv/wrap.h>
+
 namespace molpro::linalg::itsolv::subspace::util {
 /*!
  * @brief Performs Gram-Schmidt orthogonalisation without normalisation
@@ -106,6 +109,39 @@ Matrix<value_type> construct_lin_trans_in_orthogonal_set(const Matrix<value_type
     }
   }
   return t;
+}
+
+/*!
+ * @brief Apply modified Gram-Schmidt procedure to orthonormalise parameters
+ *
+ * New vectors with norm less than threshold are considered null and are not normalised.
+ * Their indices in params are returned.
+ *
+ * @tparam R
+ * @tparam value_type_abs
+ * @param params
+ * @param handler
+ * @param null_thresh
+ * @return indices of parameters that became null after GS procedure
+ */
+template <class R, typename value_type_abs>
+auto modified_gram_schmidt(VecRef<R>& params, array::ArrayHandler<R, R>& handler, value_type_abs null_thresh) {
+  auto null_param_indices = std::vector<size_t>{};
+  const size_t n = params.size();
+  for (size_t i = 0; i < n; ++i) {
+    auto norm = handler.dot(params[i], params[i]);
+    norm = std::sqrt(std::abs(norm));
+    if (norm > null_thresh) {
+      handler.scal(1. / norm, params[i]);
+      for (size_t j = i + 1; j < n; ++j) {
+        auto ov = handler.dot(params[i], params[j]);
+        handler.axpy(-ov, params[i], params[j]);
+      }
+    } else {
+      null_param_indices.emplace_back(i);
+    }
+  }
+  return null_param_indices;
 }
 
 } // namespace molpro::linalg::itsolv::subspace::util

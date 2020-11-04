@@ -3,7 +3,9 @@
 
 #include <molpro/linalg/itsolv/wrap.h>
 
+using molpro::linalg::itsolv::cwrap;
 using molpro::linalg::itsolv::find_ref;
+using molpro::linalg::itsolv::remove_elements;
 using molpro::linalg::itsolv::wrap;
 using ::testing::Eq;
 using ::testing::Pointwise;
@@ -40,4 +42,13 @@ TEST(wrap, find_ref_some) {
   auto ref_indices = std::vector<size_t>{1, 3};
   ASSERT_FALSE(indices.empty());
   ASSERT_THAT(indices, Pointwise(Eq(), ref_indices));
+}
+
+TEST(wrap, remove_elements) {
+  auto params = std::vector<int>{1, 2, 3, 4, 5, 6};
+  auto indices = std::vector<size_t>{0, 2, 3, 5};
+  auto params_ref = std::vector<int>{2, 5};
+  auto result = remove_elements(params, indices);
+  ASSERT_EQ(result.size(), params_ref.size());
+  ASSERT_THAT(result, Pointwise(Eq(), params_ref));
 }

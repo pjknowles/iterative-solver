@@ -33,6 +33,8 @@ public:
                        std::vector<R>& action, std::vector<P>& parametersP) = 0;
   virtual void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters,
                         std::vector<R>& residual) = 0;
+  //! Constructs parameters of selected roots
+  virtual void solution_params(const std::vector<unsigned int>& roots, std::vector<R>& parameters) = 0;
   virtual void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
                         std::vector<P>& parametersP) = 0;
   virtual size_t end_iteration(std::vector<R>& parameters, std::vector<R>& residual) = 0;

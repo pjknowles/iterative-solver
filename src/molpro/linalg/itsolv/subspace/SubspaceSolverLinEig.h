@@ -65,6 +65,17 @@ auto transform_solutions(const Matrix<T>& solutions, const Matrix<T>& lin_trans)
         result(i, j) += solutions(i, k) * lin_trans(k, j);
   return result;
 }
+
+template <typename value_type, typename value_type_abs>
+void normalise_transformation(Matrix<value_type>& m_lin_trans, const std::vector<value_type_abs>& norm,
+                              value_type_abs threshold) {
+  for (size_t i = 0; i < norm.size(); ++i) {
+    if (norm[i] > threshold) {
+      m_lin_trans.row(i).scal(1. / norm[i]);
+    }
+  }
+}
+
 } // namespace detail
 
 template <typename VT, typename VTabs>
@@ -84,9 +95,13 @@ public:
       m_logger->msg("Sxx = " + as_string(xspace.data[EqnData::S]), Logger::Info);
       m_logger->msg("Hxx = " + as_string(xspace.data[EqnData::H]), Logger::Info);
     }
-    xspace::check_conditioning_gram_schmidt(xspace, m_lin_trans, m_norm_stability_threshold, *m_logger);
+    auto norm = xspace::check_conditioning_gram_schmidt(xspace, m_lin_trans, m_norm_stability_threshold, *m_logger);
     nX = xspace.dimensions().nX;
     m_logger->msg("size of x space after conditioning = " + std::to_string(nX), Logger::Debug);
+    if (m_logger->data_dump) {
+      auto n = Matrix<value_type_abs>{std::move(norm), {1, nX}};
+      m_logger->msg("norm = " + as_string(n), Logger::Info);
+    }
     if (m_logger->data_dump && nX != nX_on_entry) {
       m_logger->msg("Sxx = " + as_string(xspace.data[EqnData::S]), Logger::Info);
       m_logger->msg("Hxx = " + as_string(xspace.data[EqnData::H]), Logger::Info);
@@ -106,7 +121,8 @@ public:
     }
     auto dim = h.rows();
     auto evec = std::vector<value_type>{};
-    itsolv::eigenproblem(evec, m_eigenvalues, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, 0);
+    int verbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
+    itsolv::eigenproblem(evec, m_eigenvalues, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, verbosity);
     auto n_solutions = evec.size() / dim;
     auto full_matrix = Matrix<value_type>{std::move(evec), {n_solutions, dim}};
     auto nroots = std::min(nroots_max, n_solutions);
@@ -114,22 +130,35 @@ public:
     m_solutions.resize({nroots, dim});
     m_solutions.slice() = full_matrix.slice({0, 0}, {nroots, dim});
     m_solutions = detail::transform_solutions(m_solutions, m_lin_trans);
+    m_errors.assign(size(), std::numeric_limits<value_type_abs>::max());
     if (m_logger->data_dump) {
       m_logger->msg("eigenvalues = ", begin(m_eigenvalues), end(m_eigenvalues), Logger::Debug);
       m_logger->msg("eigenvectors = " + as_string(m_solutions), Logger::Info);
     }
   }
 
+  //! Set error value for solution *root*
+  void set_error(unsigned int root, value_type_abs error) { m_errors.at(root) = error; }
+  void set_error(const std::vector<unsigned int>& roots, const std::vector<value_type_abs>& errors) {
+    for (size_t i = 0; i < roots.size(); ++i)
+      set_error(roots[i], errors[i]);
+  }
+
   const Matrix<value_type>& solutions() const { return m_solutions; }
   const std::vector<value_type>& eigenvalues() const { return m_eigenvalues; }
+  const std::vector<value_type_abs>& errors() const { return m_errors; }
 
+  //! Number of solutions
   size_t size() const { return m_solutions.rows(); }
 
 protected:
   Matrix<value_type> m_solutions;        //!< solution matrix with row vectors
   std::vector<value_type> m_eigenvalues; //!< eigenvalues
+  std::vector<value_type_abs> m_errors;  //!< errors in subspace solutions
   Matrix<value_type> m_lin_trans;        //!< linear transformation to a well conditioned subspace
   std::shared_ptr<Logger> m_logger;
+
+public:
   value_type_abs m_norm_stability_threshold = 1.0e-4; //!< norm threshold for Gram Schmidt orthogonalisation
   value_type_abs m_svd_solver_threshold = 1.0e-14;    //!< threshold to select null space during SVD in eigenproblem
   bool m_hermitian = true;                            //!< flags the matrix as Hermitian

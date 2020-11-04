@@ -12,6 +12,7 @@ using molpro::linalg::itsolv::wrap;
 using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::util::eye_order;
 using molpro::linalg::itsolv::subspace::util::gram_schmidt;
+using molpro::linalg::itsolv::subspace::util::modified_gram_schmidt;
 using molpro::linalg::itsolv::subspace::util::overlap;
 using ::testing::DoubleEq;
 using ::testing::DoubleNear;
@@ -146,4 +147,25 @@ TEST(gram_schmidt, s_4x4_duplicate) {
                                     << std::to_string(j);
   ASSERT_THAT(t.data(), Pointwise(DoubleNear(1.0e-14), tref.data()));
   ASSERT_THAT(result, Pointwise(DoubleNear(1.0e-13), norm_ref));
+}
+
+TEST(modified_gram_schmidt, size_4x4) {
+  using value_type = double;
+  using R = std::vector<value_type>;
+  auto params = std::vector<R>{{{1., 1., 1., 1.},
+                                {1., 1. / 5., 1. / 10., 1. / 15.},
+                                {1. / 3., 1. / 6., 1. / 9., 1. / 12.},
+                                {1. / 2., 1. / 4., 1. / 6., 1. / 8.}}};
+  auto ref_params =
+      std::vector<R>{{{0.5, 0.5, 0.5, 0.5},
+                      {0.858898629520365, -0.184826287365142, -0.3152919019758303, -0.3587804401793933},
+                      {-0.1096025454090415, 0.783967708523809, -0.06699956264207202, -0.6073656004726955}}};
+  auto wparams = wrap(params);
+  auto handler = molpro::linalg::array::create_default_handler<R, R>();
+  auto null_params = modified_gram_schmidt(wparams, *handler, 1.0e-14);
+  ASSERT_EQ(null_params.size(), 1);
+  ASSERT_EQ(null_params[0], 3);
+  for (size_t i = 0; i < params.size() - 1; ++i) {
+    ASSERT_THAT(params[i], Pointwise(DoubleNear(1.0e-14), ref_params[i])) << "parameters i =" << std::to_string(i);
+  }
 }

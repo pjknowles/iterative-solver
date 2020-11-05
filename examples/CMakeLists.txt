@@ -20,6 +20,7 @@ set(EXAMPLES DIISexample.cpp
 if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)
     list(APPEND EXAMPLES
             LinearEigensystemExample-mpi.cpp
+            LinearEigensystemExample_new-mpi.cpp
             )
     if (FORTRAN)
         list(APPEND EXAMPLES

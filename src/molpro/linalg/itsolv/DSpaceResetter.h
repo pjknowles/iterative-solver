@@ -55,7 +55,7 @@ public:
       util::construct_solutions(wrap<Q>(begin(solution_params), end(solution_params)), roots, solutions,
                                 xspace.cparamsp(), xspace.cparamsq(), xspace.cparamsd(), dims.oP, dims.oQ, dims.oD,
                                 handlers.qq(), handlers.qp(), handlers.qq());
-      VecRef<R> null_params, null_actions;
+      VecRef<Q> null_params, null_actions;
       xspace.update_dspace(null_params, null_actions, {});
     }
     const auto nR = std::min(rparams.size(), solution_params.size());

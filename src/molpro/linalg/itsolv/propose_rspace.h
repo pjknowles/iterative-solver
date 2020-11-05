@@ -93,7 +93,8 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
     done = !(found_singularity || qspace_over_limit);
     if (found_singularity) {
       auto i = std::distance(begin(norm), it);
-      logger.msg("found singularity in parameter index i = " + std::to_string(i) + " norm = " + std::to_string(*it), Logger::Info);
+      logger.msg("found singularity in parameter index i = " + std::to_string(i) + " norm = " + std::to_string(*it),
+                 Logger::Info);
       auto normalised_overlap = std::vector<value_type>{};
       for (size_t j = 0; j < nQ; ++j)
         normalised_overlap.emplace_back(std::abs(overlap(i, oQ + j)) / std::sqrt(std::abs(overlap(oQ + j, oQ + j))));
@@ -320,7 +321,7 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
  */
 template <class R, class Q, class P, typename value_type>
 auto construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& lin_trans,
-                                   const std::vector<unsigned int>& q_indices_remove, const CVecRef<Q>& rparams,
+                                   const std::vector<unsigned int>& q_indices_remove, const CVecRef<R>& rparams,
                                    ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
   const auto nD = lin_trans.rows();
   const auto nQdelete = q_indices_remove.size();
@@ -378,8 +379,7 @@ auto construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const sub
   }
   auto lin_trans_only_R = subspace::Matrix<value_type>({nD, nR});
   lin_trans_only_R.slice() = lin_trans.slice({0, oR}, {nD, oR + nR});
-  return std::tuple<decltype(dparams), decltype(dactions), decltype(lin_trans_only_R)>(dparams, dactions,
-                                                                                       lin_trans_only_R);
+  return std::make_tuple(std::move(dparams), std::move(dactions), lin_trans_only_R);
 }
 
 /*!
@@ -560,10 +560,7 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
     logger.msg("overlap P+Q+D+R = " + subspace::as_string(ov), Logger::Info);
     logger.msg("D params in subspace = " + subspace::as_string(lin_trans_D), Logger::Info);
   }
-  auto dparams = std::vector<Q>{};
-  auto dactions = std::vector<Q>{};
-  auto lin_trans_D_only_R = subspace::Matrix<value_type>{};
-  std::tie(dparams, dactions, lin_trans_D_only_R) =
+  auto [dparams, dactions, lin_trans_D_only_R] =
       construct_orthonormal_Dparams(xspace, lin_trans_D, q_indices_remove, cwrap(wparams), handlers, logger);
   std::sort(begin(q_indices_remove), end(q_indices_remove));
   for (size_t i = 0; i < q_indices_remove.size(); ++i)

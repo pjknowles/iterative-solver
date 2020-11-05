@@ -11,8 +11,8 @@
 
 // Find lowest eigensolutions of a matrix obtained from an external file
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
-using Qvector = molpro::linalg::array::DistrArrayHDF5;
-// using Qvector = molpro::linalg::array::DistrArrayMPI3;
+//using Qvector = molpro::linalg::array::DistrArrayHDF5;
+using Qvector = molpro::linalg::array::DistrArrayMPI3;
 using Pvector = std::map<size_t, double>;
 int n; // dimension of problem
 constexpr bool collective_algorithm = false;
@@ -46,15 +46,28 @@ void action(size_t nwork, const std::vector<Rvector>& psc, std::vector<Rvector>&
   }
 }
 
+//void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t nwork,
+//            std::vector<double> shift = std::vector<double>()) {
+//  for (size_t k = 0; k < nwork; k++) {
+//    auto range = psg[k].distribution().range(mpi_rank);
+//    assert(psg[k].compatible(psc[k]));
+//    auto c_chunk = psc[k].local_buffer();
+//    const auto g_chunk = psg[k].local_buffer();
+//    for (size_t i = range.first; i < range.second; i++) {
+//      (*c_chunk)[i - range.first] -= (*g_chunk)[i - range.first] / (1e-12 - shift[k] + hmat[i + i * n]);
+//    }
+//  }
+//}
+
 void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t nwork,
             std::vector<double> shift = std::vector<double>()) {
   for (size_t k = 0; k < nwork; k++) {
     auto range = psg[k].distribution().range(mpi_rank);
     assert(psg[k].compatible(psc[k]));
-    auto c_chunk = psc[k].local_buffer();
+    //auto c_chunk = psc[k].local_buffer();
     const auto g_chunk = psg[k].local_buffer();
     for (size_t i = range.first; i < range.second; i++) {
-      (*c_chunk)[i - range.first] -= (*g_chunk)[i - range.first] / (1e-12 - shift[k] + hmat[i + i * n]);
+      (*g_chunk)[i - range.first] *= 1 / (1e-12 - shift[k] + hmat[i + i * n]);
     }
   }
 }
@@ -64,7 +77,7 @@ int main(int argc, char* argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
   for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
-    for (const auto& nroot : std::vector<int>{1, 2, 4}) {
+    for (const auto& nroot : std::vector<int>{1, 2, 4, 5}) {
       if (mpi_rank == 0) {
         std::string prefix{argv[0]};
         std::cout << prefix << std::endl;
@@ -131,6 +144,7 @@ int main(int argc, char* argv[]) {
         for (const auto& e : solver.errors())
           std::cout << e << " ";
         std::cout << "} after " << solver.statistics().iterations << " iterations" << std::endl;
+        std::cout << "Statistics: " << solver.statistics() << std::endl;
         for (size_t root = 0; root < solver.n_roots(); root++) {
           std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] << std::endl;
         }
@@ -161,8 +175,8 @@ int main(int argc, char* argv[]) {
             std::cout << std::endl;
         }
       }
-      if (mpi_rank == 0)
-        std::cout << solver.statistics() << std::endl;
+      //if (mpi_rank == 0)
+      //  std::cout << solver.statistics() << std::endl;
     }
   }
   MPI_Finalize();

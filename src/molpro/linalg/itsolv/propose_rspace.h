@@ -272,13 +272,21 @@ auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_typ
 template <typename value_type, typename value_type_abs>
 auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspace::xspace::Dimensions& dims,
                     const std::vector<unsigned int>& remove_qspace, const subspace::Matrix<value_type>& overlap,
-                    const size_t nR, value_type_abs norm_thresh) {
+                    const size_t nR, value_type_abs norm_thresh, Logger& logger) {
+  logger.msg("propose_dspace()", Logger::Trace);
   auto solutions_proj = construct_projected_solution(solutions, dims, remove_qspace, overlap, norm_thresh);
+  if (logger.data_dump)
+    logger.msg("projected solutions = " + as_string(solutions_proj), Logger::Info);
   // construct overlap of projected solutions with the new P+Q+R subspace (excluding Q_D)
   auto ov = construct_overlap_with_projected_solutions(solutions_proj, dims, remove_qspace, overlap, nR);
   // orthogonalise against the subspace
   auto lin_trans = subspace::Matrix<value_type>{};
   auto norm = subspace::util::gram_schmidt(ov, lin_trans);
+  if (logger.data_dump) {
+    logger.msg("overlap with P+Q+R = " + as_string(ov), Logger::Info);
+    logger.msg("lin_trans = " + as_string(lin_trans), Logger::Info);
+    logger.msg("norm = ", begin(norm), end(norm), Logger::Info);
+  }
   const auto nSol = solutions_proj.rows();
   const auto nX = norm.size() - nSol;
   util::remove_null_vectors(lin_trans, norm, nX, norm.size(), norm_thresh);
@@ -302,6 +310,9 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
         lin_trans_Dold(i, nX + j) += lin_trans(nX + i, nX + k) * solutions_proj(k, j);
   for (size_t i = 0; i < nD; ++i)
     lin_trans_Dold.row(i).scal(1. / norm[nX + i]);
+  if (logger.data_dump) {
+    logger.msg("lin_trans using old D = " + as_string(lin_trans_Dold), Logger::Info);
+  }
   return lin_trans_Dold;
 }
 
@@ -555,16 +566,16 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
   ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wparams), xspace.cparamsp(), params_qd,
                              handlers, logger);
   auto lin_trans_D =
-      propose_dspace(solutions, xspace.dimensions(), q_indices_remove, ov, wparams.size(), res_norm_thresh);
+      propose_dspace(solutions, xspace.dimensions(), q_indices_remove, ov, wparams.size(), res_norm_thresh, logger);
   if (logger.data_dump) {
     logger.msg("overlap P+Q+D+R = " + subspace::as_string(ov), Logger::Info);
     logger.msg("D params in subspace = " + subspace::as_string(lin_trans_D), Logger::Info);
   }
   auto [dparams, dactions, lin_trans_D_only_R] =
       construct_orthonormal_Dparams(xspace, lin_trans_D, q_indices_remove, cwrap(wparams), handlers, logger);
-  std::sort(begin(q_indices_remove), end(q_indices_remove));
-  for (size_t i = 0; i < q_indices_remove.size(); ++i)
-    xspace.eraseq(q_indices_remove[i] - i);
+  std::sort(begin(q_indices_remove), end(q_indices_remove), std::greater());
+  for (auto iq : q_indices_remove)
+    xspace.eraseq(iq);
   auto wdparams = wrap(dparams);
   auto wdactions = wrap(dactions);
   xspace.update_dspace(wdparams, wdactions, lin_trans_D_only_R);

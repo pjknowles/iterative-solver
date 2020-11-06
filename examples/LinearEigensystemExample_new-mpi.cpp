@@ -11,8 +11,7 @@
 
 // Find lowest eigensolutions of a matrix obtained from an external file
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
-//using Qvector = molpro::linalg::array::DistrArrayHDF5;
-using Qvector = molpro::linalg::array::DistrArrayMPI3;
+using Qvector = molpro::linalg::array::DistrArrayHDF5;
 using Pvector = std::map<size_t, double>;
 int n; // dimension of problem
 constexpr bool collective_algorithm = false;

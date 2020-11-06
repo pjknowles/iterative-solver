@@ -290,7 +290,7 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
   const auto nSol = solutions_proj.rows();
   const auto nX = norm.size() - nSol;
   util::remove_null_vectors(lin_trans, norm, nX, norm.size(), norm_thresh);
-  const auto nD = norm.size() - nX;
+  auto nD = norm.size() - nX;
   // Orthogonalised D space is in terms of projected solutions
   // I need to use the old D space instead
   const auto nY = remove_qspace.size() + dims.nD;
@@ -310,6 +310,17 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
         lin_trans_Dold(i, nX + j) += lin_trans(nX + i, nX + k) * solutions_proj(k, j);
   for (size_t i = 0; i < nD; ++i)
     lin_trans_Dold.row(i).scal(1. / norm[nX + i]);
+  const auto nDmax = std::max(remove_qspace.size(), dims.nD);
+  while (nD > nDmax) {
+    auto it = std::min_element(std::begin(norm) + nX, std::end(norm));
+    auto i = std::distance(std::begin(norm) + nX, it);
+    logger.msg("nD > nDmax, {nD, nDmax} = " + std::to_string(nD) + ", " + std::to_string(nDmax), Logger::Debug);
+    logger.msg("erase i, norm = " + std::to_string(i) + ", " + std::to_string(*it), Logger::Debug);
+    norm.erase(it);
+    lin_trans_Dold.remove_row(i);
+    --nD;
+  }
+  logger.msg("nD = " + std::to_string(nD), Logger::Debug);
   if (logger.data_dump) {
     logger.msg("lin_trans using old D = " + as_string(lin_trans_Dold), Logger::Info);
   }

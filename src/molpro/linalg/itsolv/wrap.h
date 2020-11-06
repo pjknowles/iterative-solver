@@ -1,7 +1,10 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_WRAP_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_WRAP_H
+#include <algorithm>
 #include <functional>
+#include <iterator>
 #include <limits>
+#include <map>
 #include <type_traits>
 #include <vector>
 
@@ -47,7 +50,7 @@ auto wrap(std::vector<R>& vec) {
 template <class R>
 auto cwrap(std::vector<R>& vec) {
   auto w = CVecRef<decay_t<R>>{};
-  std::copy(begin(vec), end(vec), std::back_inserter(w));
+  std::transform(begin(vec), end(vec), std::back_inserter(w), [](const auto& el) { return std::cref(el); });
   return w;
 }
 

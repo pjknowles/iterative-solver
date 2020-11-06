@@ -45,26 +45,11 @@ void action(size_t nwork, const std::vector<Rvector>& psc, std::vector<Rvector>&
   }
 }
 
-//void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t nwork,
-//            std::vector<double> shift = std::vector<double>()) {
-//  for (size_t k = 0; k < nwork; k++) {
-//    auto range = psg[k].distribution().range(mpi_rank);
-//    assert(psg[k].compatible(psc[k]));
-//    auto c_chunk = psc[k].local_buffer();
-//    const auto g_chunk = psg[k].local_buffer();
-//    for (size_t i = range.first; i < range.second; i++) {
-//      (*c_chunk)[i - range.first] -= (*g_chunk)[i - range.first] / (1e-12 - shift[k] + hmat[i + i * n]);
-//    }
-//  }
-//}
-
-void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t nwork,
+void update(std::vector<Rvector>& psg, size_t nwork,
             std::vector<double> shift = std::vector<double>()) {
   for (size_t k = 0; k < nwork; k++) {
     auto range = psg[k].distribution().range(mpi_rank);
-    assert(psg[k].compatible(psc[k]));
-    //auto c_chunk = psc[k].local_buffer();
-    const auto g_chunk = psg[k].local_buffer();
+    auto g_chunk = psg[k].local_buffer();
     for (size_t i = range.first; i < range.second; i++) {
       (*g_chunk)[i - range.first] *= 1 / (1e-12 - shift[k] + hmat[i + i * n]);
     }
@@ -134,7 +119,7 @@ int main(int argc, char* argv[]) {
           solver.report();
         done = nwork == 0;
         if (nwork != 0) {
-          update(x, g, nwork, solver.working_set_eigenvalues());
+          update(g, nwork, solver.working_set_eigenvalues());
           nwork = solver.end_iteration(x, g);
         }
       }

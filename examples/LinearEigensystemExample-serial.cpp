@@ -30,8 +30,8 @@ void update(std::vector<Rvector>& psc, std::vector<Rvector>& psg, size_t nwork,
 }
 
 int main(int argc, char* argv[]) {
-  for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
-    for (const auto& nroot : std::vector<int>{1, 2, 4, 5}) {
+  for (const auto& file : std::vector<std::string>{"bh"}) {
+    for (const auto& nroot : std::vector<int>{4}) {
       std::string prefix{argv[0]};
       if (prefix.find_last_of("/") != std::string::npos)
         prefix.resize(prefix.find_last_of("/"));
@@ -56,9 +56,9 @@ int main(int argc, char* argv[]) {
       solver.propose_rspace_norm_thresh = 1.0e-14;
       solver.max_size_qspace = 10;
       solver.set_reset_D(50);
-      solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
+      solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::Info;
       solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
-      solver.logger->data_dump = false;
+      solver.logger->data_dump = true;
       std::vector<Rvector> g;
       std::vector<Rvector> x;
       for (size_t root = 0; root < solver.n_roots(); root++) {
@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
       std::vector<std::vector<double>> Pcoeff(solver.n_roots());
       int nwork = solver.n_roots();
       bool done = false;
-      for (auto iter = 0; iter < 100 && !done; iter++) {
+      for (auto iter = 0; iter < 10 && !done; iter++) {
         if (false) {
           solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::Info;
           solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;

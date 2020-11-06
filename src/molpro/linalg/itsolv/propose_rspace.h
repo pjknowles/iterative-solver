@@ -116,8 +116,7 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
       remove_qspace(oQ, i);
     }
   }
-  return std::tuple<decltype(qindices_to_remove), decltype(lin_trans), decltype(norm)>{qindices_to_remove, lin_trans,
-                                                                                       norm};
+  return std::make_tuple(qindices_to_remove, lin_trans, norm);
 }
 
 /*!
@@ -149,13 +148,16 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
   for (size_t i = 0; i < nSol; ++i) {
     for (size_t j = 0; j < nQd; ++j) {
       for (size_t k = 0; k < j; ++k) {
-        norm_proj[i] += 2. * solutions_proj(i, j) * solutions_proj(i, k) * overlap(remove_qspace[j], remove_qspace[k]);
+        norm_proj[i] += 2. * solutions_proj(i, j) * solutions_proj(i, k) *
+                        overlap(dims.oQ + remove_qspace[j], dims.oQ + remove_qspace[k]);
       }
-      norm_proj[i] += std::pow(solutions_proj(i, j), 2) * overlap(remove_qspace[j], remove_qspace[j]);
+      norm_proj[i] +=
+          std::pow(solutions_proj(i, j), 2) * overlap(dims.oQ + remove_qspace[j], dims.oQ + remove_qspace[j]);
     }
     for (size_t j = 0; j < nQd; ++j) {
       for (size_t k = 0; k < dims.nD; ++k) {
-        norm_proj[i] += 2. * solutions_proj(i, j) * solutions_proj(i, nQd + k) * overlap(remove_qspace[j], dims.oD + k);
+        norm_proj[i] +=
+            2. * solutions_proj(i, j) * solutions_proj(i, nQd + k) * overlap(dims.oQ + remove_qspace[j], dims.oD + k);
       }
     }
     for (size_t j = 0; j < dims.nD; ++j) {
@@ -164,9 +166,6 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
                         overlap(dims.oD + j, dims.oD + k);
       }
       norm_proj[i] += std::pow(solutions_proj(nQd + i, nQd + j), 2) * overlap(dims.oD + j, dims.oD + j);
-    }
-    for (size_t j = 0; j < dims.nD; ++j) {
-      solutions_proj(i, nQd + j) = solutions(i, dims.oD + j);
     }
   }
   for (auto& x : norm_proj)

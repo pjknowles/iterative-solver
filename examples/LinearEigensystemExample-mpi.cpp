@@ -1,17 +1,17 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
-#include <molpro/linalg/IterativeSolver.h>
 #include <molpro/linalg/array/DistrArrayHDF5.h>
 #include <molpro/linalg/array/DistrArrayMPI3.h>
 #include <molpro/linalg/array/util/Distribution.h>
+#include <molpro/linalg/IterativeSolver.h>
+#include <molpro/linalg/itsolv/LinearEigensystemA.h>
 #include <mpi.h>
 #include <vector>
 
 // Find lowest eigensolutions of a matrix obtained from an external file
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
 using Qvector = molpro::linalg::array::DistrArrayHDF5;
-// using Qvector = molpro::linalg::array::DistrArrayMPI3;
 using Pvector = std::map<size_t, double>;
 int n; // dimension of problem
 constexpr bool collective_algorithm = false;
@@ -45,15 +45,13 @@ void action(size_t nwork, const std::vector<Rvector>& psc, std::vector<Rvector>&
   }
 }
 
-void update(std::vector<Rvector>& psc, const std::vector<Rvector>& psg, size_t nwork,
+void update(std::vector<Rvector>& psg, size_t nwork,
             std::vector<double> shift = std::vector<double>()) {
   for (size_t k = 0; k < nwork; k++) {
     auto range = psg[k].distribution().range(mpi_rank);
-    assert(psg[k].compatible(psc[k]));
-    auto c_chunk = psc[k].local_buffer();
-    const auto g_chunk = psg[k].local_buffer();
+    auto g_chunk = psg[k].local_buffer();
     for (size_t i = range.first; i < range.second; i++) {
-      (*c_chunk)[i - range.first] -= (*g_chunk)[i - range.first] / (1e-12 - shift[k] + hmat[i + i * n]);
+      (*g_chunk)[i - range.first] *= 1 / (1e-12 - shift[k] + hmat[i + i * n]);
     }
   }
 }
@@ -63,7 +61,7 @@ int main(int argc, char* argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
   for (const auto& file : std::vector<std::string>{"hf", "bh"}) {
-    for (const auto& nroot : std::vector<int>{1, 2, 4}) {
+    for (const auto& nroot : std::vector<int>{1, 2, 4, 5}) {
       if (mpi_rank == 0) {
         std::string prefix{argv[0]};
         std::cout << prefix << std::endl;
@@ -89,13 +87,18 @@ int main(int argc, char* argv[]) {
       for (auto i = 0; i < n; i++)
         diagonals.push_back(hmat[i + i * n]);
       auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>();
-      auto solver = molpro::linalg::LinearEigensystem<Rvector, Qvector, Pvector>{handlers};
-      solver.m_verbosity = 1;
-      solver.m_roots = nroot;
-      solver.m_thresh = 1e-9;
+      molpro::linalg::itsolv::LinearEigensystemA<Rvector, Qvector, Pvector> solver(handlers);
+      solver.set_n_roots(nroot);
+      solver.set_convergence_threshold(1.0e-12);
+      solver.propose_rspace_norm_thresh = 1.0e-14;
+      solver.max_size_qspace = 10;
+      solver.set_reset_D(50);
+      solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
+      solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
+      solver.logger->data_dump = false;
       std::vector<Rvector> g;
       std::vector<Rvector> x;
-      for (size_t root = 0; root < solver.m_roots; root++) {
+      for (size_t root = 0; root < solver.n_roots(); root++) {
         x.emplace_back(n, MPI_COMM_WORLD);
         g.emplace_back(n, MPI_COMM_WORLD);
         x.back().allocate_buffer();
@@ -106,32 +109,38 @@ int main(int argc, char* argv[]) {
           x.back().set(guess, 1);
         *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
       }
-      std::vector<std::vector<double>> Pcoeff(solver.m_roots);
-      int nwork = solver.m_roots;
-      for (auto iter = 0; iter < 100 && nwork > 0; iter++) {
+      std::vector<std::vector<double>> Pcoeff(solver.n_roots());
+      int nwork = solver.n_roots();
+      bool done = false;
+      for (auto iter = 0; iter < 100 && !done; iter++) {
         action(nwork, x, g);
-        nwork = solver.addVector(x, g, Pcoeff);
+        nwork = solver.add_vector(x, g);
         if (mpi_rank == 0)
           solver.report();
-        update(x, g, nwork, solver.working_set_eigenvalues());
+        done = nwork == 0;
+        if (nwork != 0) {
+          update(g, nwork, solver.working_set_eigenvalues());
+          nwork = solver.end_iteration(x, g);
+        }
       }
       if (mpi_rank == 0) {
         std::cout << "Error={ ";
         for (const auto& e : solver.errors())
           std::cout << e << " ";
         std::cout << "} after " << solver.statistics().iterations << " iterations" << std::endl;
-        for (size_t root = 0; root < solver.m_roots; root++) {
+        std::cout << "Statistics: " << solver.statistics() << std::endl;
+        for (size_t root = 0; root < solver.n_roots(); root++) {
           std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] << std::endl;
         }
       }
       {
         auto working_set = solver.working_set();
-        working_set.resize(solver.m_roots);
+        working_set.resize(solver.n_roots());
         std::iota(working_set.begin(), working_set.end(), 0);
         solver.solution(working_set, x, g);
         if (mpi_rank == 0)
           std::cout << "Residual norms:";
-        for (size_t root = 0; root < solver.m_roots; root++) {
+        for (size_t root = 0; root < solver.n_roots(); root++) {
           auto result = std::sqrt(handlers->rr().dot(g[root], g[root]));
           if (mpi_rank == 0)
             std::cout << " " << result;
@@ -140,8 +149,8 @@ int main(int argc, char* argv[]) {
           std::cout << std::endl;
         if (mpi_rank == 0)
           std::cout << "Eigenvector orthonormality:\n";
-        for (size_t root = 0; root < solver.m_roots; root++) {
-          for (size_t soot = 0; soot < solver.m_roots; soot++) {
+        for (size_t root = 0; root < solver.n_roots(); root++) {
+          for (size_t soot = 0; soot < solver.n_roots(); soot++) {
             auto result = handlers->rr().dot(x[root], x[soot]);
             if (mpi_rank == 0)
               std::cout << " " << result;
@@ -150,8 +159,8 @@ int main(int argc, char* argv[]) {
             std::cout << std::endl;
         }
       }
-      if (mpi_rank == 0)
-        std::cout << solver.statistics() << std::endl;
+      //if (mpi_rank == 0)
+      //  std::cout << solver.statistics() << std::endl;
     }
   }
   MPI_Finalize();

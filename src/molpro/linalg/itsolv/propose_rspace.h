@@ -132,7 +132,9 @@ template <typename value_type, typename value_type_abs>
 auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
                                   const subspace::xspace::Dimensions& dims,
                                   const std::vector<unsigned int>& remove_qspace,
-                                  const subspace::Matrix<value_type>& overlap, value_type_abs norm_thresh) {
+                                  const subspace::Matrix<value_type>& overlap, value_type_abs norm_thresh,
+                                  Logger& logger) {
+  logger.msg("construct_projected_solution", Logger::Trace);
   const auto nQd = remove_qspace.size();
   const auto nSol = solutions.rows();
   auto solutions_proj = subspace::Matrix<value_type>({nSol, nQd + dims.nD});
@@ -143,6 +145,9 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
     for (size_t j = 0; j < dims.nD; ++j) {
       solutions_proj(i, nQd + j) = solutions(i, dims.oD + j);
     }
+  }
+  if (logger.data_dump) {
+    logger.msg("projected solution befor normalisation = " + as_string(solutions_proj), Logger::Info);
   }
   auto norm_proj = std::vector<value_type_abs>(nSol);
   for (size_t i = 0; i < nSol; ++i) {
@@ -177,6 +182,10 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
     } else {
       solutions_proj.remove_row(j);
     }
+  }
+  if (logger.data_dump) {
+    logger.msg("norm_proj = ", std::begin(norm_proj), std::end(norm_proj), Logger::Info);
+    logger.msg("projected solution after normalisation = " + as_string(solutions_proj), Logger::Info);
   }
   return solutions_proj;
 }
@@ -273,7 +282,7 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
                     const std::vector<unsigned int>& remove_qspace, const subspace::Matrix<value_type>& overlap,
                     const size_t nR, value_type_abs norm_thresh, Logger& logger) {
   logger.msg("propose_dspace()", Logger::Trace);
-  auto solutions_proj = construct_projected_solution(solutions, dims, remove_qspace, overlap, norm_thresh);
+  auto solutions_proj = construct_projected_solution(solutions, dims, remove_qspace, overlap, norm_thresh, logger);
   if (logger.data_dump)
     logger.msg("projected solutions = " + as_string(solutions_proj), Logger::Info);
   // construct overlap of projected solutions with the new P+Q+R subspace (excluding Q_D)

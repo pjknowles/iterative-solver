@@ -140,37 +140,37 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
   auto solutions_proj = subspace::Matrix<value_type>({nSol, nQd + dims.nD});
   for (size_t i = 0; i < nSol; ++i) {
     for (size_t j = 0; j < nQd; ++j) {
-      solutions_proj(i, j) = solutions(i, remove_qspace[j]);
+      solutions_proj(i, j) = solutions(i, dims.oQ + remove_qspace[j]);
     }
     for (size_t j = 0; j < dims.nD; ++j) {
       solutions_proj(i, nQd + j) = solutions(i, dims.oD + j);
     }
   }
-  if (logger.data_dump) {
-    logger.msg("projected solution befor normalisation = " + as_string(solutions_proj), Logger::Info);
-  }
-  auto norm_proj = std::vector<value_type_abs>(nSol);
+  logger.msg("nSol, nQd, nD " + std::to_string(nSol) + ", " + std::to_string(nQd) + ", " + std::to_string(dims.nD),
+             Logger::Debug);
+  /*
+   * x_i = \sum_j C_ij u_j
+   * <x_i, x_i> = \sum_j \sum_k C_ij C_ik <u_j, u_k>
+   */
+  auto norm_proj = std::vector<value_type_abs>(nSol, 0.);
   for (size_t i = 0; i < nSol; ++i) {
     for (size_t j = 0; j < nQd; ++j) {
-      for (size_t k = 0; k < j; ++k) {
-        norm_proj[i] += 2. * solutions_proj(i, j) * solutions_proj(i, k) *
+      for (size_t k = 0; k < nQd; ++k) {
+        norm_proj[i] += solutions_proj(i, j) * solutions_proj(i, k) *
                         overlap(dims.oQ + remove_qspace[j], dims.oQ + remove_qspace[k]);
       }
-      norm_proj[i] +=
-          std::pow(solutions_proj(i, j), 2) * overlap(dims.oQ + remove_qspace[j], dims.oQ + remove_qspace[j]);
-    }
-    for (size_t j = 0; j < nQd; ++j) {
       for (size_t k = 0; k < dims.nD; ++k) {
         norm_proj[i] +=
-            2. * solutions_proj(i, j) * solutions_proj(i, nQd + k) * overlap(dims.oQ + remove_qspace[j], dims.oD + k);
+            solutions_proj(i, j) * solutions_proj(i, nQd + k) * overlap(dims.oQ + remove_qspace[j], dims.oD + k);
       }
     }
     for (size_t j = 0; j < dims.nD; ++j) {
-      for (size_t k = 0; k < j; ++k) {
-        norm_proj[i] += 2. * solutions_proj(nQd + i, nQd + j) * solutions_proj(nQd + i, nQd + k) *
-                        overlap(dims.oD + j, dims.oD + k);
+      for (size_t k = 0; k < dims.nD; ++k) {
+        norm_proj[i] += solutions_proj(i, nQd + j) * solutions_proj(i, nQd + k) * overlap(dims.oD + j, dims.oD + k);
       }
-      norm_proj[i] += std::pow(solutions_proj(nQd + i, nQd + j), 2) * overlap(dims.oD + j, dims.oD + j);
+      for (size_t k = 0; k < nQd; ++k) {
+        norm_proj[i] += solutions_proj(i, nQd + j) * solutions_proj(i, k) * overlap(dims.oD + j, dims.oQ + k);
+      }
     }
   }
   for (auto& x : norm_proj)

@@ -8,6 +8,31 @@
 #include <molpro/linalg/itsolv/util.h>
 
 namespace molpro::linalg::itsolv::detail {
+//! Removes Q parameters that have smallest contribution to any solution until Q space size is within limit
+template <class R, class Q, class P, typename value_type>
+void resize_qspace(subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& solutions,
+                   int m_max_Qsize_after_reset, Logger& logger) {
+  logger.msg("resize_qspace()", Logger::Trace);
+  auto nQ = xspace.dimensions().nQ;
+  const auto oQ = xspace.dimensions().oQ;
+  const auto nSol = solutions.rows();
+  auto qindices = std::vector<size_t>(nQ);
+  std::iota(begin(qindices), end(qindices), size_t{oQ});
+  while (xspace.dimensions().nQ > m_max_Qsize_after_reset) {
+    auto min_max_contrib_to_solutions = std::pair<value_type, size_t>{};
+    for (size_t i = 0; i < qindices.size(); ++i) {
+      auto contrib = std::vector<value_type>(nSol);
+      for (size_t j = 0; j < nSol; ++j)
+        contrib[j] = std::abs(solutions(j, oQ + qindices[i]));
+      auto max_contrib = std::pair{*std::max_element(begin(contrib), end(contrib)), i};
+      if (min_max_contrib_to_solutions > max_contrib)
+        std::swap(min_max_contrib_to_solutions, max_contrib);
+    }
+    const auto iQdelete = min_max_contrib_to_solutions.second;
+    xspace.eraseq(iQdelete);
+    qindices.erase(begin(qindices) + iQdelete);
+  }
+}
 /*!
  * @brief Resets D space constructing full solutions as the new working set, removing instabilities from Q space, and
  * clearing D space
@@ -37,9 +62,15 @@ public:
     return ((iter + 1) % m_nreset == 0 && dims.nD > 0) || !solution_params.empty();
   }
 
-  void set_nreset(size_t i) { m_nreset = i; }
+  void set_nreset(size_t i) {
+    assert(i >= 0);
+    m_nreset = i;
+  }
   auto get_nreset() const { return m_nreset; }
-  void set_max_Qsize(size_t i) { m_max_Qsize_after_reset = i; }
+  void set_max_Qsize(size_t i) {
+    assert(i >= 0);
+    m_max_Qsize_after_reset = i;
+  }
   auto get_max_Qsize() const { return m_max_Qsize_after_reset; }
 
   //! Run the reset operation
@@ -84,6 +115,8 @@ public:
                  Logger::Debug);
     }
     // FIXME It might be prudent to double check that the subspace is stable and remove more Q vectors if it is not
+    if (xspace.dimensions().nQ > m_max_Qsize_after_reset)
+      resize_qspace(xspace, solutions, m_max_Qsize_after_reset, logger);
     auto new_working_set = std::vector<unsigned int>(nR);
     std::iota(begin(new_working_set), end(new_working_set), 0);
     return new_working_set;

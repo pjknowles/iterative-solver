@@ -22,8 +22,8 @@ namespace molpro::linalg::itsolv::detail {
 template <class Q>
 class DSpaceResetter {
 protected:
-  unsigned int m_nreset = std::numeric_limits<unsigned int>::max(); //!< reset D space every n iterations
-  std::list<Q> solution_params; //!< all current solutions that will be moved to the Q space
+  int m_nreset = std::numeric_limits<int>::max(); //!< reset D space every n iterations
+  std::list<Q> solution_params;                   //!< all current solutions that will be moved to the Q space
 
 public:
   //! Whether reset operation should be run

@@ -19,7 +19,7 @@ void resize_qspace(subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<va
   auto qindices = std::vector<size_t>(nQ);
   std::iota(begin(qindices), end(qindices), size_t{oQ});
   while (xspace.dimensions().nQ > m_max_Qsize_after_reset) {
-    auto min_max_contrib_to_solutions = std::pair<value_type, size_t>{};
+    auto min_max_contrib_to_solutions = std::pair<value_type, size_t>{std::numeric_limits<value_type>::max(), 0};
     for (size_t i = 0; i < qindices.size(); ++i) {
       auto contrib = std::vector<value_type>(nSol);
       for (size_t j = 0; j < nSol; ++j)

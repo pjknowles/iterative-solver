@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACEI_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACEI_H
+#include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceData.h>
 #include <molpro/linalg/itsolv/wrap.h>

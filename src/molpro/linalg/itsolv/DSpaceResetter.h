@@ -17,15 +17,21 @@ namespace molpro::linalg::itsolv::detail {
  * that iteration with the other possibly showing larger errors than before. By the end of resetting, all previous
  * solutions will be in the Q space and previous energies and residuals will be reproduced.
  *
+ * After resetting, the size of Q space can be reduced. The maximum size can be controlled via set_max_Qsize().
+ *
  * @tparam Q
  */
 template <class Q>
 class DSpaceResetter {
 protected:
-  int m_nreset = std::numeric_limits<int>::max(); //!< reset D space every n iterations
-  std::list<Q> solution_params;                   //!< all current solutions that will be moved to the Q space
+  int m_nreset = std::numeric_limits<int>::max();                //!< reset D space every n iterations
+  int m_max_Qsize_after_reset = std::numeric_limits<int>::max(); //!< maximum size of Q space after reset
+  std::list<Q> solution_params; //!< all current solutions that will be moved to the Q space
 
 public:
+  DSpaceResetter() = default;
+  DSpaceResetter(int nreset, int max_Qsize) : m_nreset{nreset}, m_max_Qsize_after_reset{max_Qsize} {}
+
   //! Whether reset operation should be run
   bool do_reset(size_t iter, const subspace::xspace::Dimensions& dims) {
     return ((iter + 1) % m_nreset == 0 && dims.nD > 0) || !solution_params.empty();
@@ -33,6 +39,8 @@ public:
 
   void set_nreset(size_t i) { m_nreset = i; }
   auto get_nreset() const { return m_nreset; }
+  void set_max_Qsize(size_t i) { m_max_Qsize_after_reset = i; }
+  auto get_max_Qsize() const { return m_max_Qsize_after_reset; }
 
   //! Run the reset operation
   template <class R, class P, typename value_type>

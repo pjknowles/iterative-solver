@@ -102,6 +102,8 @@ public:
 
   //! Set the period in iterations for resetting the D space
   void set_reset_D(size_t n) { m_dspace_resetter.set_nreset(n); }
+  //! Set the maximum size of Q space after resetting the D space
+  void set_reset_D_maxQ_size(size_t n) { m_dspace_resetter.set_max_Qsize(n); }
 
   std::shared_ptr<Logger> logger;
   double propose_rspace_norm_thresh = 1e-6; //!< vectors with norm less than threshold can be considered null

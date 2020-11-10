@@ -11,6 +11,12 @@ namespace molpro::linalg::itsolv {
 /*!
  * @brief Base class defining the interface common to all iterative solvers
  *
+ * @tparam R container for "working-set" vectors. These are typically implemented in memory, and are created by the
+ * client program. R vectors are never created inside IterativeSolver.
+ * @tparam Q container for other vectors. These are typically implemented on backing store and/or distributed across
+ * processors.  IterativeSolver constructs a number of instances of Q containers to store history.
+ * @tparam P a class that specifies the definition of a single P-space vector, which is a strictly sparse vector in the
+ * underlying space.
  */
 template <class R, class Q, class P>
 class IterativeSolver {
@@ -32,6 +38,17 @@ public:
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, fapply_on_p_type& apply_p) = 0;
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& pparams) = 0;
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) = 0;
+  /*!
+ * \brief Add P-space vectors to the expansion set for linear methods.
+ * \param Pparams the vectors to add. Each Pvector specifies a sparse vector in the underlying space
+ * \param pp_action_matrix Matrix projected onto the existing+new, new P space. It should be provided as a
+ * 1-dimensional array, with the existing+new index running fastest.
+ * \param parameters Used as scratch working space
+ * \param action  On exit, the  residual of the interpolated solution.
+ * The contribution from the new, and any existing, P parameters is missing, and should be added in subsequently.
+ * \param parametersP On exit, the interpolated solution projected onto the P space.
+ * \return The number of vectors contained in parameters, action, parametersP
+ */
   virtual size_t add_p(const std::vector<P>& pparams, const array::Span<value_type>& pp_action_matrix,
                        std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& parametersP) = 0;
   virtual void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters,

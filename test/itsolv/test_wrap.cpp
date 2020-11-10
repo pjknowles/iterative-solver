@@ -72,10 +72,38 @@ TEST(wrap, iterable_container__const_list) {
   ASSERT_THAT(wparams, Pointwise(Eq(), params));
 }
 
+TEST(cwrap, iterable_container__list) {
+  const auto params = std::list<int>{1, 2, 3, 4, 5, 6};
+  auto wparams = cwrap<int>(params);
+  ASSERT_TRUE(std::is_const_v<decltype(wparams)::value_type::type>);
+  ASSERT_EQ(wparams.size(), params.size());
+  ASSERT_THAT(wparams, Pointwise(Eq(), params));
+}
+
 TEST(cwrap, iterable_container__const_list) {
   const auto params = std::list<int>{1, 2, 3, 4, 5, 6};
   auto wparams = cwrap<int>(params);
   ASSERT_TRUE(std::is_const_v<decltype(wparams)::value_type::type>);
   ASSERT_EQ(wparams.size(), params.size());
   ASSERT_THAT(wparams, Pointwise(Eq(), params));
+}
+
+TEST(cwrap, VecRef_to_CVecRef) {
+  auto params = std::vector<int>{1, 2, 3, 4, 5, 6};
+  auto wparams = wrap(params);
+  auto cwparams = cwrap(wparams);
+  ASSERT_TRUE(std::is_const_v<decltype(cwparams)::value_type::type>);
+  ASSERT_THAT(wparams, Pointwise(Eq(), params));
+  ASSERT_THAT(cwparams, Pointwise(Eq(), params));
+  ASSERT_THAT(cwparams, Pointwise(Eq(), wparams));
+}
+
+TEST(cwrap, const_VecRef_to_CVecRef) {
+  auto params = std::vector<int>{1, 2, 3, 4, 5, 6};
+  const auto wparams = wrap(params);
+  auto cwparams = cwrap(wparams);
+  ASSERT_TRUE(std::is_const_v<decltype(cwparams)::value_type::type>);
+  ASSERT_THAT(wparams, Pointwise(Eq(), params));
+  ASSERT_THAT(cwparams, Pointwise(Eq(), params));
+  ASSERT_THAT(cwparams, Pointwise(Eq(), wparams));
 }

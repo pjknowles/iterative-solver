@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVER_H
+#include <molpro/linalg/array/Span.h>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/Statistics.h>
 #include <molpro/linalg/itsolv/wrap.h>
@@ -31,8 +32,8 @@ public:
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, fapply_on_p_type& apply_p) = 0;
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& pparams) = 0;
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) = 0;
-  virtual size_t add_p(std::vector<P>& Pvectors, const value_type* PP, std::vector<R>& parameters,
-                       std::vector<R>& action, std::vector<VectorP>& parametersP) = 0;
+  virtual size_t add_p(const std::vector<P>& pparams, const array::Span<value_type>& pp_action_matrix,
+                       std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& parametersP) = 0;
   virtual void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters,
                         std::vector<R>& residual) = 0;
   //! Constructs parameters of selected roots

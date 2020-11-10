@@ -205,11 +205,6 @@ public:
                                m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
   };
 
-  void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
-                std::vector<P>& parametersP) override {
-    solution(roots, parameters, residual);
-  }
-
   std::vector<size_t> suggest_p(const std::vector<R>& solution, const std::vector<R>& residual, size_t maximumNumber,
                                 double threshold) override {
     return {};

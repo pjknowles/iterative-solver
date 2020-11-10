@@ -39,24 +39,22 @@ public:
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& pparams) = 0;
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) = 0;
   /*!
- * \brief Add P-space vectors to the expansion set for linear methods.
- * \param Pparams the vectors to add. Each Pvector specifies a sparse vector in the underlying space
- * \param pp_action_matrix Matrix projected onto the existing+new, new P space. It should be provided as a
- * 1-dimensional array, with the existing+new index running fastest.
- * \param parameters Used as scratch working space
- * \param action  On exit, the  residual of the interpolated solution.
- * The contribution from the new, and any existing, P parameters is missing, and should be added in subsequently.
- * \param parametersP On exit, the interpolated solution projected onto the P space.
- * \return The number of vectors contained in parameters, action, parametersP
- */
+   * \brief Add P-space vectors to the expansion set for linear methods.
+   * \param Pparams the vectors to add. Each Pvector specifies a sparse vector in the underlying space
+   * \param pp_action_matrix Matrix projected onto the existing+new, new P space. It should be provided as a
+   * 1-dimensional array, with the existing+new index running fastest.
+   * \param parameters Used as scratch working space
+   * \param action  On exit, the  residual of the interpolated solution.
+   * The contribution from the new, and any existing, P parameters is missing, and should be added in subsequently.
+   * \param parametersP On exit, the interpolated solution projected onto the P space.
+   * \return The number of vectors contained in parameters, action, parametersP
+   */
   virtual size_t add_p(const std::vector<P>& pparams, const array::Span<value_type>& pp_action_matrix,
                        std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& parametersP) = 0;
   virtual void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters,
                         std::vector<R>& residual) = 0;
   //! Constructs parameters of selected roots
   virtual void solution_params(const std::vector<unsigned int>& roots, std::vector<R>& parameters) = 0;
-  virtual void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
-                        std::vector<P>& parametersP) = 0;
   virtual size_t end_iteration(std::vector<R>& parameters, std::vector<R>& residual) = 0;
   virtual std::vector<size_t> suggest_p(const std::vector<R>& solution, const std::vector<R>& residual,
                                         size_t maximumNumber, double threshold) = 0;

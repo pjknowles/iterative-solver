@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <molpro/linalg/itsolv/wrap.h>
+#include <molpro/linalg/itsolv/wrap_util.h>
 
 #include <list>
 
@@ -12,13 +13,13 @@ using molpro::linalg::itsolv::wrap;
 using ::testing::Eq;
 using ::testing::Pointwise;
 
-TEST(wrap, find_ref_empty) {
+TEST(wrap_util, find_ref_empty) {
   auto params = std::vector<int>{};
   auto result = find_ref(wrap(params), begin(params), end(params));
   ASSERT_TRUE(result.empty());
 }
 
-TEST(wrap, find_ref_all) {
+TEST(wrap_util, find_ref_all) {
   auto params = std::vector<int>{1, 2, 3, 4};
   auto indices = find_ref(wrap(params), begin(params), end(params));
   auto ref_indices = std::vector<size_t>{0, 1, 2, 3};
@@ -26,7 +27,7 @@ TEST(wrap, find_ref_all) {
   ASSERT_THAT(indices, Pointwise(Eq(), ref_indices));
 }
 
-TEST(wrap, find_ref_all_const) {
+TEST(wrap_util, find_ref_all_const) {
   const auto params = std::vector<int>{1, 2, 3, 4};
   auto indices = find_ref(wrap(params), begin(params), end(params));
   auto ref_indices = std::vector<size_t>{0, 1, 2, 3};
@@ -34,7 +35,7 @@ TEST(wrap, find_ref_all_const) {
   ASSERT_THAT(indices, Pointwise(Eq(), ref_indices));
 }
 
-TEST(wrap, find_ref_some) {
+TEST(wrap_util, find_ref_some) {
   auto params = std::vector<int>{1, 2, 3, 4, 5};
   auto wparams = wrap(params);
   wparams.erase(wparams.begin());
@@ -46,7 +47,7 @@ TEST(wrap, find_ref_some) {
   ASSERT_THAT(indices, Pointwise(Eq(), ref_indices));
 }
 
-TEST(wrap, remove_elements) {
+TEST(wrap_util, remove_elements) {
   auto params = std::vector<int>{1, 2, 3, 4, 5, 6};
   auto indices = std::vector<size_t>{0, 2, 3, 5};
   auto params_ref = std::vector<int>{2, 5};

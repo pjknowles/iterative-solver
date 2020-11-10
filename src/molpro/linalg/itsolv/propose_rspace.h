@@ -6,6 +6,7 @@
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/util.h>
+#include <molpro/linalg/itsolv/wrap_util.h>
 
 namespace molpro::linalg::itsolv::detail {
 

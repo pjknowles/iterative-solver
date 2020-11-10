@@ -27,14 +27,14 @@ namespace molpro::linalg::itsolv {
  * @tparam P
  */
 template <class R, class Q, class P>
-class LinearEigensystemA : public IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpace<R, Q, P>> {
+class LinearEigensystemA : public IterativeSolverTemplate<LinearEigensystem, R, Q, P> {
 public:
-  using SolverTemplate = IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpace<R, Q, P>>;
+  using SolverTemplate = IterativeSolverTemplate<LinearEigensystem, R, Q, P>;
   using typename SolverTemplate::scalar_type;
 
   explicit LinearEigensystemA(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
                               const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
-      : SolverTemplate(subspace::XSpace<R, Q, P>(handlers, logger_),
+      : SolverTemplate(std::make_shared<subspace::XSpace<R, Q, P>>(handlers, logger_),
                        std::static_pointer_cast<subspace::SubspaceSolverI<R, Q, P>>(
                            std::make_shared<subspace::SubspaceSolverLinEig<R, Q, P>>(logger_)),
                        handlers, std::make_shared<Statistics>(), logger_),
@@ -61,12 +61,12 @@ public:
    * @return number of significant parameters to calculate the action for
    */
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
-    if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace.dimensions())) {
-      this->m_working_set = m_dspace_resetter.run(parameters, this->m_xspace, this->m_subspace_solver->solutions(),
+    if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace->dimensions())) {
+      this->m_working_set = m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->solutions(),
                                                   *this->m_handlers, *this->m_logger);
     } else {
       this->m_working_set =
-          detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, this->m_xspace,
+          detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, *this->m_xspace,
                                  this->m_subspace_solver->solutions(), *this->m_handlers, *this->m_logger,
                                  propose_rspace_norm_thresh, max_size_qspace);
     }

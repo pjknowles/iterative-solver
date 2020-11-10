@@ -182,9 +182,11 @@ public:
   }
 
   // TODO Add P space and solve the subspace problem. This is same as add_vector, but without updating the Q space
-  size_t add_p(std::vector<P>& Pvectors, const value_type* PP, std::vector<R>& parameters, std::vector<R>& action,
-               std::vector<VectorP>& parametersP) override {
-    return 0;
+  size_t add_p(const std::vector<P>& pparams, const array::Span<value_type>& pp_action_matrix,
+               std::vector<R>& parameters, std::vector<R>& actions, std::vector<VectorP>& parametersP) override {
+    m_xspace->update_pspace(cwrap(pparams), pp_action_matrix);
+    auto apply_p = fapply_on_p_type{};
+    return solve_and_generate_working_set(wrap(parameters), wrap(actions), parametersP, apply_p);
   };
 
   /*!

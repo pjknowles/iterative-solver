@@ -60,21 +60,16 @@ void remove_p_component(std::vector<R>& params, const std::vector<unsigned int>&
   }
 }
 
-template <class P, typename T>
-std::vector<P> construct_pspace_vector(const std::vector<unsigned int>& roots, const subspace::Matrix<T>& solutions,
-                                       const std::vector<std::reference_wrapper<P>>& pparams, const size_t oP,
-                                       array::ArrayHandler<P, P>& handler) {
-  auto pvecs = std::vector<P>{};
-  if (!pparams.empty()) {
-    for (unsigned int root : roots) {
-      pvecs.emplace_back(handler.copy(pparams.front()));
-      handler.scal(solutions(root, oP), pvecs.back());
-      for (size_t j = 1; j < pparams.size(); ++j) {
-        handler.axpy(solutions(root, oP + j), pparams[j], pvecs.back());
-      }
-    }
+template <typename T>
+std::vector<std::vector<T>> construct_vectorP(const std::vector<unsigned int>& roots,
+                                              const subspace::Matrix<T>& solutions, const size_t oP, const size_t nP) {
+  auto vectorP = std::vector<std::vector<T>>{};
+  for (auto root : roots) {
+    vectorP.emplace_back();
+    for (size_t j = 0; j < nP; ++j)
+      vectorP.back().push_back(solutions(root, oP + j));
   }
-  return pvecs;
+  return vectorP;
 }
 
 template <class R>
@@ -135,6 +130,7 @@ public:
   using typename Solver<R, Q, P>::fapply_on_p_type;
   using typename Solver<R, Q, P>::scalar_type;
   using typename Solver<R, Q, P>::value_type;
+  using typename Solver<R, Q, P>::VectorP;
 
   IterativeSolverTemplate() = delete;
   IterativeSolverTemplate(const IterativeSolverTemplate<Solver, R, Q, P>&) = delete;
@@ -151,7 +147,7 @@ protected:
    * @param pparams P space components of the working set solutions
    * @return
    */
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& pparams,
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& pparams,
                     fapply_on_p_type& apply_p) {
     assert(parameters.size() == action.size());
     m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations) +
@@ -180,12 +176,12 @@ protected:
       detail::construct_solution(action, roots, m_subspace_solver->solutions(), m_xspace->actionsp(),
                                  m_xspace->actionsq(), m_xspace->actionsd(), m_xspace->dimensions().oP,
                                  m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
-      auto pvectors = detail::construct_pspace_vector(roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
-                                                      m_xspace->dimensions().oP, m_handlers->pp());
+      auto pvectors = detail::construct_vectorP(roots, m_subspace_solver->solutions(), m_xspace->dimensions().oP,
+                                                m_xspace->dimensions().nP);
       detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
       if (apply_p) {
         auto waction = wrap(action);
-        apply_p(pvectors, waction);
+        apply_p(pvectors, m_xspace->cparamsp(), waction);
       } else {
         detail::remove_p_component(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
                                    m_xspace->dimensions().oP, m_handlers->rp());
@@ -206,32 +202,32 @@ protected:
       m_handlers->rq().copy(parameters[i], temp_solutions.at(root).first);
       m_handlers->rq().copy(action[i], temp_solutions.at(root).second);
     }
-    pparams = detail::construct_pspace_vector(m_working_set, m_subspace_solver->solutions(), m_xspace->paramsp(),
-                                              m_xspace->dimensions().oP, m_handlers->pp());
+    pparams = detail::construct_vectorP(m_working_set, m_subspace_solver->solutions(), m_xspace->dimensions().oP,
+                                        m_xspace->dimensions().nP);
     m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace);
     return m_working_set.size();
   }
 
 public:
   size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, fapply_on_p_type& apply_p) override {
-    auto pparams = std::vector<P>{};
+    auto pparams = std::vector<VectorP>{};
     return add_vector(parameters, action, pparams, apply_p);
   }
 
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& pparams) override {
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& pparams) override {
     auto apply_p = fapply_on_p_type{};
     return add_vector(parameters, action, pparams, apply_p);
   }
 
   size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) override {
-    auto pparams = std::vector<P>{};
+    auto pparams = std::vector<VectorP>{};
     auto apply_p = fapply_on_p_type{};
     return add_vector(parameters, action, pparams, apply_p);
   }
 
   // TODO Add P space and solve the subspace problem. This is same as add_vector, but without updating the Q space
   size_t add_p(std::vector<P>& Pvectors, const value_type* PP, std::vector<R>& parameters, std::vector<R>& action,
-               std::vector<P>& parametersP) override {
+               std::vector<VectorP>& parametersP) override {
     return 0;
   };
 

@@ -51,10 +51,9 @@ public:
    */
   virtual size_t add_p(const std::vector<P>& pparams, const array::Span<value_type>& pp_action_matrix,
                        std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& parametersP) = 0;
-  virtual void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters,
-                        std::vector<R>& residual) = 0;
+  virtual void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) = 0;
   //! Constructs parameters of selected roots
-  virtual void solution_params(const std::vector<unsigned int>& roots, std::vector<R>& parameters) = 0;
+  virtual void solution_params(const std::vector<int>& roots, std::vector<R>& parameters) = 0;
   virtual size_t end_iteration(std::vector<R>& parameters, std::vector<R>& residual) = 0;
   virtual std::vector<size_t> suggest_p(const std::vector<R>& solution, const std::vector<R>& residual,
                                         size_t maximumNumber, double threshold) = 0;
@@ -62,7 +61,7 @@ public:
   /*!
    * @brief Working set of roots that are not yet converged
    */
-  virtual const std::vector<unsigned int>& working_set() const = 0;
+  virtual const std::vector<int>& working_set() const = 0;
   //! Total number of roots we are solving for, including the ones that are already converged
   virtual size_t n_roots() const = 0;
   virtual void set_n_roots(size_t nroots) = 0;

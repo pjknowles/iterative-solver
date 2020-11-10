@@ -3,6 +3,8 @@
 
 #include <molpro/linalg/itsolv/wrap.h>
 
+#include <list>
+
 using molpro::linalg::itsolv::cwrap;
 using molpro::linalg::itsolv::find_ref;
 using molpro::linalg::itsolv::remove_elements;
@@ -51,4 +53,28 @@ TEST(wrap, remove_elements) {
   auto result = remove_elements(params, indices);
   ASSERT_EQ(result.size(), params_ref.size());
   ASSERT_THAT(result, Pointwise(Eq(), params_ref));
+}
+
+TEST(wrap, iterable_container__list) {
+  auto params = std::list<int>{1, 2, 3, 4, 5, 6};
+  auto wparams = wrap<int>(params);
+  ASSERT_FALSE(std::is_const_v<decltype(wparams)::value_type::type>);
+  ASSERT_EQ(wparams.size(), params.size());
+  ASSERT_THAT(wparams, Pointwise(Eq(), params));
+}
+
+TEST(wrap, iterable_container__const_list) {
+  const auto params = std::list<int>{1, 2, 3, 4, 5, 6};
+  auto wparams = wrap<int>(params);
+  ASSERT_TRUE(std::is_const_v<decltype(wparams)::value_type::type>);
+  ASSERT_EQ(wparams.size(), params.size());
+  ASSERT_THAT(wparams, Pointwise(Eq(), params));
+}
+
+TEST(cwrap, iterable_container__const_list) {
+  const auto params = std::list<int>{1, 2, 3, 4, 5, 6};
+  auto wparams = cwrap<int>(params);
+  ASSERT_TRUE(std::is_const_v<decltype(wparams)::value_type::type>);
+  ASSERT_EQ(wparams.size(), params.size());
+  ASSERT_THAT(wparams, Pointwise(Eq(), params));
 }

@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERLINEIG_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERLINEIG_H
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
+#include <molpro/linalg/itsolv/subspace/SubspaceSolverI.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 #include <molpro/linalg/itsolv/subspace/check_conditioning.h>
 
@@ -78,14 +79,17 @@ void normalise_transformation(Matrix<value_type>& m_lin_trans, const std::vector
 
 } // namespace detail
 
-template <typename VT, typename VTabs>
-class SubspaceSolverLinEig {
+template <class RT, class QT, class PT>
+class SubspaceSolverLinEig : public SubspaceSolverI<RT, QT, PT> {
 public:
-  using value_type = VT;
-  using value_type_abs = VTabs;
+  using value_type = typename SubspaceSolverI<RT, QT, PT>::value_type;
+  using value_type_abs = typename SubspaceSolverI<RT, QT, PT>::value_type_abs;
+  using R = typename SubspaceSolverI<RT, QT, PT>::R;
+  using Q = typename SubspaceSolverI<RT, QT, PT>::Q;
+  using P = typename SubspaceSolverI<RT, QT, PT>::P;
+
   explicit SubspaceSolverLinEig(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)) {}
 
-  template <class R, class Q, class P>
   void check_conditioning(XSpaceI<R, Q, P>& xspace) {
     auto nX_on_entry = xspace.dimensions().nX;
     auto nX = xspace.dimensions().nX;
@@ -108,8 +112,7 @@ public:
     }
   }
 
-  template <class R, class Q, class P>
-  void solve(XSpaceI<R, Q, P>& xspace, const size_t nroots_max) {
+  void solve(XSpaceI<R, Q, P>& xspace, const size_t nroots_max) override {
     m_logger->msg("SubspaceSolverLinEig::solve", Logger::Trace);
     check_conditioning(xspace);
     auto h = detail::transform(xspace.data[EqnData::H], m_lin_trans);
@@ -138,18 +141,18 @@ public:
   }
 
   //! Set error value for solution *root*
-  void set_error(unsigned int root, value_type_abs error) { m_errors.at(root) = error; }
-  void set_error(const std::vector<unsigned int>& roots, const std::vector<value_type_abs>& errors) {
+  void set_error(unsigned int root, value_type_abs error) override { m_errors.at(root) = error; }
+  void set_error(const std::vector<unsigned int>& roots, const std::vector<value_type_abs>& errors) override {
     for (size_t i = 0; i < roots.size(); ++i)
       set_error(roots[i], errors[i]);
   }
 
-  const Matrix<value_type>& solutions() const { return m_solutions; }
-  const std::vector<value_type>& eigenvalues() const { return m_eigenvalues; }
-  const std::vector<value_type_abs>& errors() const { return m_errors; }
+  const Matrix<value_type>& solutions() const override { return m_solutions; }
+  const std::vector<value_type>& eigenvalues() const override { return m_eigenvalues; }
+  const std::vector<value_type_abs>& errors() const override { return m_errors; }
 
   //! Number of solutions
-  size_t size() const { return m_solutions.rows(); }
+  size_t size() const override { return m_solutions.rows(); }
 
 protected:
   Matrix<value_type> m_solutions;        //!< solution matrix with row vectors

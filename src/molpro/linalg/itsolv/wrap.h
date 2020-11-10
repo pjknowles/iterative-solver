@@ -1,10 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_WRAP_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_WRAP_H
-#include <algorithm>
 #include <functional>
 #include <iterator>
-#include <limits>
-#include <map>
 #include <type_traits>
 #include <vector>
 
@@ -34,7 +31,8 @@ using decay_t = typename decay<T>::type;
 template <class R>
 auto wrap(const std::vector<R>& vec) {
   auto w = CVecRef<decay_t<R>>{};
-  std::copy(begin(vec), end(vec), std::back_inserter(w));
+  for (const auto& v : vec)
+    w.emplace_back(std::cref(v));
   return w;
 }
 
@@ -42,23 +40,33 @@ auto wrap(const std::vector<R>& vec) {
 template <class R>
 auto wrap(std::vector<R>& vec) {
   auto w = VecRef<decay_t<R>>{};
-  std::copy(begin(vec), end(vec), std::back_inserter(w));
+  for (auto& v : vec)
+    w.emplace_back(std::ref(v));
+  return w;
+}
+
+//! Takes a vector of containers and returns a vector of references to each element
+template <class R>
+auto cwrap(const std::vector<R>& vec) {
+  auto w = CVecRef<decay_t<R>>{};
+  for (const auto& v : vec)
+    w.emplace_back(std::cref(v));
   return w;
 }
 
 //! Takes a vector of containers and returns a vector of references to each element
 template <class R>
 auto cwrap(std::vector<R>& vec) {
-  auto w = CVecRef<decay_t<R>>{};
-  std::transform(begin(vec), end(vec), std::back_inserter(w), [](const auto& el) { return std::cref(el); });
-  return w;
+  const auto& cvec = vec;
+  return cwrap<R>(cvec);
 }
 
 //! Takes a begin and end iterators and returns a vector of references to each element
 template <class R, class ForwardIt>
 auto wrap(ForwardIt begin, ForwardIt end) {
   auto w = VecRef<R>{};
-  std::copy(begin, end, std::back_inserter(w));
+  for (auto it = begin; it != end; ++it)
+    w.emplace_back(std::ref(*it));
   return w;
 }
 
@@ -66,72 +74,60 @@ auto wrap(ForwardIt begin, ForwardIt end) {
 template <class R, class ForwardIt>
 auto cwrap(ForwardIt begin, ForwardIt end) {
   auto w = CVecRef<R>{};
-  std::copy(begin, end, std::back_inserter(w));
-  return w;
-}
-
-//! Takes a map of containers and returns a vector of references to each element in the same order
-template <typename I, class R>
-auto wrap(const std::map<I, R>& vec) {
-  auto w = CVecRef<decay_t<R>>{};
-  std::transform(begin(vec), end(vec), std::back_inserter(w), [](const auto& v) { return std::cref(v.second); });
-  return w;
-}
-
-//! Takes a map of containers and returns a vector of references to each element in the same order
-template <typename I, class R>
-auto wrap(std::map<I, R>& vec) {
-  auto w = VecRef<decay_t<R>>{};
-  std::transform(begin(vec), end(vec), std::back_inserter(w), [](auto& v) { return std::ref(v.second); });
-  return w;
-}
-
-//! Takes a map of containers and returns a vector of references to each element in the same order
-template <typename I, class R>
-auto cwrap(std::map<I, R>& vec) {
-  auto w = CVecRef<decay_t<R>>{};
-  std::transform(begin(vec), end(vec), std::back_inserter(w), [](auto& v) { return std::cref(v.second); });
+  for (auto it = begin; it != end; ++it)
+    w.emplace_back(std::cref(*it));
   return w;
 }
 
 /*!
- * @brief Given wrapped references in wparams and a range of original parameters [begin, end), returns
- * indices of paramters that are wrapped in this range.
- * @param wparams wrapped references to subset of params
- * @param begin start of range of original paramaters
- * @param end end of range of original paramaters
+ * @brief Wraps references for each parameter in an iterable container that implements begin()/end()
+ * @tparam IterableContainer should have begin()/end() either as free or member functions
+ * @tparam R element type
+ * @param parameters parameters to wrap
+ * @return vector of constant references to each element in parameters
  */
-template <typename R, typename ForwardIt>
-std::vector<size_t> find_ref(const VecRef<R>& wparams, ForwardIt begin, ForwardIt end) {
-  auto indices = std::vector<size_t>{};
-  for (auto it = begin; it != end; ++it) {
-    auto it_found = std::find_if(std::begin(wparams), std::end(wparams),
-                                 [&it](const auto& w) { return std::addressof(w.get()) == std::addressof(*it); });
-    if (it_found != std::end(wparams))
-      indices.emplace_back(std::distance(begin, it));
-  }
-  return indices;
+template <class R, class IterableContainer>
+auto wrap(const IterableContainer& parameters) {
+  using std::begin;
+  using std::end;
+  auto w = CVecRef<R>{};
+  for (auto it = begin(parameters); it != end(parameters); ++it)
+    w.emplace_back(std::cref(*it));
+  return w;
 }
 
 /*!
- * @brief Removes indices from a vector
- * @tparam T value type
- * @tparam I index type
- * @param params container
- * @param indices indices to remove
- * @return
+ * @brief Wraps references for each parameter in an iterable container that implements begin()/end()
+ * @tparam IterableContainer should have begin()/end() either as free or member functions
+ * @tparam R element type
+ * @param parameters parameters to wrap
+ * @return vector of references to each element in parameters
  */
-template <typename T, typename I>
-auto remove_elements(std::vector<T> params, const std::vector<I>& indices) {
-  const auto n = params.size();
-  for (size_t i = 0, j = 0; i < n; ++i) {
-    if (std::find(begin(indices), end(indices), i) != end(indices)) {
-      params.erase(begin(params) + j);
-    } else {
-      ++j;
-    }
-  }
-  return params;
+template <class R, class IterableContainer>
+auto wrap(IterableContainer& parameters) {
+  using std::begin;
+  using std::end;
+  auto w = VecRef<R>{};
+  for (auto it = begin(parameters); it != end(parameters); ++it)
+    w.emplace_back(std::ref(*it));
+  return w;
+}
+
+/*!
+ * @brief Wraps references for each parameter in an iterable container that implements begin()/end()
+ * @tparam IterableContainer should have begin()/end() either as free or member functions
+ * @tparam R element type
+ * @param parameters parameters to wrap
+ * @return vector of constant references to each element in parameters
+ */
+template <class R, class IterableContainer>
+auto cwrap(IterableContainer& parameters) {
+  using std::begin;
+  using std::end;
+  auto w = CVecRef<R>{};
+  for (auto it = begin(parameters); it != end(parameters); ++it)
+    w.emplace_back(std::cref(*it));
+  return w;
 }
 
 } // namespace molpro::linalg::itsolv

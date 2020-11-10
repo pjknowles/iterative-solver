@@ -1,5 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACEI_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACEI_H
+#include <molpro/linalg/array/ArrayHandler.h>
+#include <molpro/linalg/array/Span.h>
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceData.h>
 #include <molpro/linalg/itsolv/wrap.h>
@@ -31,8 +33,8 @@ public:
   //! Removes parameter i from D subspace
   virtual void erased(size_t i) = 0;
 
-  //! Adds parameters to the Q space
-  virtual void update_pspace() {}
+  //! Adds parameters to the P space
+  virtual void update_pspace(const CVecRef<P>& params, const array::Span<value_type>& pp_action_matrix) = 0;
 
   //! Adds parameters to the Q space
   virtual void update_qspace(const CVecRef<R>& params, const CVecRef<R>& actions) = 0;

@@ -162,10 +162,12 @@ public:
   }
 
   void complete_dspace_action(const CVecRef<R>& actions) override {
-    dspace.complete_action(actions, m_handlers->qr());
-    auto new_data = xspace::update_dspace_action_data(cparamsp(), cparamsq(), cactionsq(), cparamsd(), cactionsd(),
-                                                      m_handlers->qp(), m_handlers->qq(), *m_logger);
-    xspace::copy_dspace_eqn_data(new_data, data, EqnData::H, m_dim);
+    if (!dspace.action_is_complete()) {
+      dspace.complete_action(actions, m_handlers->qr());
+      auto new_data = xspace::update_dspace_action_data(cparamsp(), cparamsq(), cactionsq(), cparamsd(), cactionsd(),
+                                                        m_handlers->qp(), m_handlers->qq(), *m_logger);
+      xspace::copy_dspace_eqn_data(new_data, data, EqnData::H, m_dim);
+    }
   }
 
   const xspace::Dimensions& dimensions() const override { return m_dim; }

@@ -1,8 +1,8 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVER_H
-#include <functional>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/Statistics.h>
+#include <molpro/linalg/itsolv/wrap.h>
 #include <vector>
 
 namespace molpro::linalg::itsolv {
@@ -16,8 +16,10 @@ class IterativeSolver {
 public:
   using value_type = typename R::value_type;                          ///< The underlying type of elements of vectors
   using scalar_type = typename array::ArrayHandler<R, Q>::value_type; ///< The type of scalar products of vectors
+  using VectorP = std::vector<value_type>; //!< type for vectors projected on to P space, each element is a coefficient
+                                           //!< for the corresponding P space parameter
   //! Function type for applying matrix to the P space vectors and accumulating result in a residual
-  using fapply_on_p_type = std::function<void(const std::vector<P>&, std::vector<std::reference_wrapper<R>>&)>;
+  using fapply_on_p_type = std::function<void(const std::vector<VectorP>&, const CVecRef<P>&, const VecRef<R>&)>;
 
   virtual ~IterativeSolver() = default;
   IterativeSolver() = default;
@@ -27,10 +29,10 @@ public:
   IterativeSolver<R, Q, P>& operator=(IterativeSolver<R, Q, P>&&) noexcept = default;
 
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, fapply_on_p_type& apply_p) = 0;
-  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<P>& pparams) = 0;
+  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& pparams) = 0;
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) = 0;
   virtual size_t add_p(std::vector<P>& Pvectors, const value_type* PP, std::vector<R>& parameters,
-                       std::vector<R>& action, std::vector<P>& parametersP) = 0;
+                       std::vector<R>& action, std::vector<VectorP>& parametersP) = 0;
   virtual void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters,
                         std::vector<R>& residual) = 0;
   //! Constructs parameters of selected roots

@@ -127,39 +127,7 @@ std::vector<unsigned int> select_working_set(const size_t nw, const std::vector<
 } // namespace detail
 
 /*!
- * @brief Implements common functionality of iterative solvers
- *
- * This is the trunk. It has a template of steps that all iterative solvers follow. Variations in implementation are
- * accepted as policies for managing the subspaces.
- *
- * Examples
- * ========
- * We are looking for n roots, but can only keep m < n roots in memory
- * @code{.cpp}
- * auto handlers = std::make_shared<ArrayHandlers<R, Q, P>>{};
- * auto solver = LinearEigensystemA<R, Q, P>{handlers};
- * solver.set_roots(n);
- * auto params = std::vector<R>{};
- * auto actions = std::vector<R>{};
- * initialize(params);
- * size_t n_work = 1; // number of working vectors
- * for (auto i = 0; i < max_it && n_work != 0; ++i){
- *   // calculate action of the matrix, one parameter at a time
- *   for (size_t i = 0; i < n_work; ++i){
- *     apply_matrix(params[i], actions[i]);
- *   }
- *   n_work = solver.add_vector(params, actions);
- *   solver.report();
- *   if (precondition_manually) {
- *     apply_preconditioner(params, actions, n_work);
- *   } else {
- *     solver.precondition(params[i], actions[i]);
- *   }
- *   n_work = solver.end_iteration(params, actions);
- * }
- * @endcode
- *
- *
+ * @brief Implements functionality common to all iterative solvers
  */
 template <template <class, class, class> class Solver, class R, class Q, class P>
 class IterativeSolverTemplate : public Solver<R, Q, P> {
@@ -177,18 +145,6 @@ public:
 protected:
   /*!
    * @brief Adds new parameters and corresponding action to the subspace and solves the corresponding problem.
-   *
-   * New algorithm
-   * -------------
-   *  - The parameters and action will be added to the Q space.
-   *  - The P space, I'm not sure yet.
-   *  - The R space just wraps new parameters.
-   *  - The Q space is updated using R space (e.g. for linear eigenvalue problem just copies params and clears R space).
-   *  - The S space contains best solutions so far (empty on the start).
-   *  - The full X subspace is formed.
-   *  - The X space is checked for conditioning and vectors may be removed depending on implementation.
-   *  - The subspace problem is solved and solutions are stored in the S space.
-   *  - The working set of vectors is made up of vectors with largest errors that are not converged.
    *
    * @param parameters new parameters for the R space
    * @param action corresponding action

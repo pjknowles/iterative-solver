@@ -9,18 +9,13 @@
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
 
 namespace molpro::linalg::itsolv {
-// namespace detail {
-// template <class R>
-// using SubspaceSolver = subspace::SubspaceSolverLinEig<typename array::ArrayHandler<R, R>::value_type,
-//                                                      typename array::ArrayHandler<R, R>::value_type_abs>;
-//}
 
 /*!
- * @brief One instance of LinearEigensystem (codename A)
+ * @brief One specific implementation of LinearEigensystem (codename A)
  *
- * This is the leaf and it selects which policies to use.
+ * This implementation uses our own D-space algorithm.
  *
- * It should implement any left-over methods.
+ * TODO add more documentation and examples
  *
  * @tparam R
  * @tparam Q

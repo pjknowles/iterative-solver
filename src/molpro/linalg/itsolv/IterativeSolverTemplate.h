@@ -3,6 +3,7 @@
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
+#include <molpro/linalg/itsolv/subspace/SubspaceSolverI.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/wrap.h>
 
@@ -159,7 +160,7 @@ std::vector<unsigned int> select_working_set(const size_t nw, const std::vector<
  *
  *
  */
-template <class Solver, class XS, class SubspaceSolver>
+template <class Solver, class XS>
 class IterativeSolverTemplate : public Solver {
 public:
   using typename Solver::fapply_on_p_type;
@@ -170,12 +171,10 @@ public:
   using P = typename XS::P;
 
   IterativeSolverTemplate() = delete;
-  IterativeSolverTemplate(const IterativeSolverTemplate<Solver, XS, SubspaceSolver>&) = delete;
-  IterativeSolverTemplate(IterativeSolverTemplate<Solver, XS, SubspaceSolver>&&) noexcept = default;
-  IterativeSolverTemplate<Solver, XS, SubspaceSolver>&
-  operator=(const IterativeSolverTemplate<Solver, XS, SubspaceSolver>&) = delete;
-  IterativeSolverTemplate<Solver, XS, SubspaceSolver>&
-  operator=(IterativeSolverTemplate<Solver, XS, SubspaceSolver>&&) noexcept = default;
+  IterativeSolverTemplate(const IterativeSolverTemplate<Solver, XS>&) = delete;
+  IterativeSolverTemplate(IterativeSolverTemplate<Solver, XS>&&) noexcept = default;
+  IterativeSolverTemplate<Solver, XS>& operator=(const IterativeSolverTemplate<Solver, XS>&) = delete;
+  IterativeSolverTemplate<Solver, XS>& operator=(IterativeSolverTemplate<Solver, XS>&&) noexcept = default;
 
 protected:
   /*!
@@ -214,46 +213,46 @@ protected:
     m_stats->r_creations += parameters.size();
     m_xspace.complete_dspace_action(wactions);
     m_xspace.update_qspace(wparams, wactions);
-    m_subspace_solver.solve(m_xspace, n_roots());
-    auto nsol = m_subspace_solver.size();
+    m_subspace_solver->solve(m_xspace, n_roots());
+    auto nsol = m_subspace_solver->size();
     std::vector<std::pair<Q, Q>> temp_solutions{};
     for (const auto& batch : detail::parameter_batches(nsol, parameters.size())) {
       auto [start_sol, end_sol] = batch;
       auto roots = std::vector<unsigned int>(end_sol - start_sol);
       std::iota(begin(roots), end(roots), start_sol);
-      detail::construct_solution(parameters, roots, m_subspace_solver.solutions(), m_xspace.paramsp(),
+      detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace.paramsp(),
                                  m_xspace.paramsq(), m_xspace.paramsd(), m_xspace.dimensions().oP,
                                  m_xspace.dimensions().oQ, m_xspace.dimensions().oD, *m_handlers);
-      detail::construct_solution(action, roots, m_subspace_solver.solutions(), m_xspace.actionsp(), m_xspace.actionsq(),
-                                 m_xspace.actionsd(), m_xspace.dimensions().oP, m_xspace.dimensions().oQ,
-                                 m_xspace.dimensions().oD, *m_handlers);
-      auto pvectors = detail::construct_pspace_vector(roots, m_subspace_solver.solutions(), m_xspace.paramsp(),
+      detail::construct_solution(action, roots, m_subspace_solver->solutions(), m_xspace.actionsp(),
+                                 m_xspace.actionsq(), m_xspace.actionsd(), m_xspace.dimensions().oP,
+                                 m_xspace.dimensions().oQ, m_xspace.dimensions().oD, *m_handlers);
+      auto pvectors = detail::construct_pspace_vector(roots, m_subspace_solver->solutions(), m_xspace.paramsp(),
                                                       m_xspace.dimensions().oP, m_handlers->pp());
       detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
       if (apply_p) {
         auto waction = wrap(action);
         apply_p(pvectors, waction);
       } else {
-        detail::remove_p_component(parameters, roots, m_subspace_solver.solutions(), m_xspace.paramsp(),
+        detail::remove_p_component(parameters, roots, m_subspace_solver->solutions(), m_xspace.paramsp(),
                                    m_xspace.dimensions().oP, m_handlers->rp());
-        detail::remove_p_component(action, roots, m_subspace_solver.solutions(), m_xspace.actionsp(),
+        detail::remove_p_component(action, roots, m_subspace_solver->solutions(), m_xspace.actionsp(),
                                    m_xspace.dimensions().oP, m_handlers->rp());
       }
-      detail::construct_residual(roots, m_subspace_solver.eigenvalues(), parameters, action, m_handlers->rr());
+      detail::construct_residual(roots, m_subspace_solver->eigenvalues(), parameters, action, m_handlers->rr());
       auto errors = std::vector<scalar_type>(roots.size(), 0);
       detail::update_errors(errors, action, m_handlers->rr());
       for (size_t i = 0; i < roots.size(); ++i)
         temp_solutions.emplace_back(m_handlers->qr().copy(parameters[i]), m_handlers->qr().copy(action[i]));
-      m_subspace_solver.set_error(roots, errors);
+      m_subspace_solver->set_error(roots, errors);
     }
-    m_errors = m_subspace_solver.errors();
+    m_errors = m_subspace_solver->errors();
     m_working_set = detail::select_working_set(parameters.size(), m_errors, m_convergence_threshold);
     for (size_t i = 0; i < m_working_set.size(); ++i) {
       auto root = m_working_set[i];
       m_handlers->rq().copy(parameters[i], temp_solutions.at(root).first);
       m_handlers->rq().copy(action[i], temp_solutions.at(root).second);
     }
-    pparams = detail::construct_pspace_vector(m_working_set, m_subspace_solver.solutions(), m_xspace.paramsp(),
+    pparams = detail::construct_pspace_vector(m_working_set, m_subspace_solver->solutions(), m_xspace.paramsp(),
                                               m_xspace.dimensions().oP, m_handlers->pp());
     m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace);
     return m_working_set.size();
@@ -293,9 +292,9 @@ public:
                 std::vector<R>& residual) override{};
 
   void solution_params(const std::vector<unsigned int>& roots, std::vector<R>& parameters) override {
-    detail::construct_solution(parameters, roots, m_subspace_solver.solutions(), m_xspace.paramsp(), m_xspace.paramsq(),
-                               m_xspace.paramsd(), m_xspace.dimensions().oP, m_xspace.dimensions().oQ,
-                               m_xspace.dimensions().oD, *m_handlers);
+    detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace.paramsp(),
+                               m_xspace.paramsq(), m_xspace.paramsd(), m_xspace.dimensions().oP,
+                               m_xspace.dimensions().oQ, m_xspace.dimensions().oD, *m_handlers);
   };
 
   void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
@@ -335,14 +334,15 @@ public:
   }
 
 protected:
-  IterativeSolverTemplate(XS xspace, SubspaceSolver solver, std::shared_ptr<ArrayHandlers<R, Q, P>> handlers,
-                          std::shared_ptr<Statistics> stats, std::shared_ptr<Logger> logger)
+  IterativeSolverTemplate(XS xspace, std::shared_ptr<subspace::SubspaceSolverI<R, Q, P>> solver,
+                          std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Statistics> stats,
+                          std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_xspace(std::move(xspace)), m_subspace_solver(std::move(solver)),
         m_stats(std::move(stats)), m_logger(std::move(logger)) {}
 
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   XS m_xspace;
-  SubspaceSolver m_subspace_solver;
+  std::shared_ptr<subspace::SubspaceSolverI<R, Q, P>> m_subspace_solver;
   std::vector<double> m_errors;
   std::vector<unsigned int> m_working_set;
   size_t m_nroots{0};

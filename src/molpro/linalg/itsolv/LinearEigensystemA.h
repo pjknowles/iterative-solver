@@ -9,11 +9,11 @@
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
 
 namespace molpro::linalg::itsolv {
-namespace detail {
-template <class R>
-using SubspaceSolver = subspace::SubspaceSolverLinEig<typename array::ArrayHandler<R, R>::value_type,
-                                                      typename array::ArrayHandler<R, R>::value_type_abs>;
-}
+// namespace detail {
+// template <class R>
+// using SubspaceSolver = subspace::SubspaceSolverLinEig<typename array::ArrayHandler<R, R>::value_type,
+//                                                      typename array::ArrayHandler<R, R>::value_type_abs>;
+//}
 
 /*!
  * @brief One instance of LinearEigensystem (codename A)
@@ -27,19 +27,21 @@ using SubspaceSolver = subspace::SubspaceSolverLinEig<typename array::ArrayHandl
  * @tparam P
  */
 template <class R, class Q, class P>
-class LinearEigensystemA
-    : public IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpace<R, Q, P>, detail::SubspaceSolver<R>> {
+class LinearEigensystemA : public IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpace<R, Q, P>> {
 public:
-  using SolverTemplate =
-      IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpace<R, Q, P>, detail::SubspaceSolver<R>>;
+  using SolverTemplate = IterativeSolverTemplate<LinearEigensystem<R, Q, P>, subspace::XSpace<R, Q, P>>;
   using typename SolverTemplate::scalar_type;
 
   explicit LinearEigensystemA(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
                               const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
-      : SolverTemplate(subspace::XSpace<R, Q, P>(handlers, logger_), detail::SubspaceSolver<R>{logger_}, handlers,
-                       std::make_shared<Statistics>(), logger_),
+      : SolverTemplate(subspace::XSpace<R, Q, P>(handlers, logger_),
+                       std::static_pointer_cast<subspace::SubspaceSolverI<R, Q, P>>(
+                           std::make_shared<subspace::SubspaceSolverLinEig<R, Q, P>>(logger_)),
+                       handlers, std::make_shared<Statistics>(), logger_),
         logger(logger_) {
-    this->m_subspace_solver.m_norm_stability_threshold = propose_rspace_norm_thresh;
+    auto* subspace_solver_lin_eig =
+        static_cast<subspace::SubspaceSolverLinEig<R, Q, P>*>(this->m_subspace_solver.get());
+    subspace_solver_lin_eig->m_norm_stability_threshold = propose_rspace_norm_thresh;
   }
 
   /*!
@@ -60,12 +62,12 @@ public:
    */
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
     if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace.dimensions())) {
-      this->m_working_set = m_dspace_resetter.run(parameters, this->m_xspace, this->m_subspace_solver.solutions(),
+      this->m_working_set = m_dspace_resetter.run(parameters, this->m_xspace, this->m_subspace_solver->solutions(),
                                                   *this->m_handlers, *this->m_logger);
     } else {
       this->m_working_set =
           detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, this->m_xspace,
-                                 this->m_subspace_solver.solutions(), *this->m_handlers, *this->m_logger,
+                                 this->m_subspace_solver->solutions(), *this->m_handlers, *this->m_logger,
                                  propose_rspace_norm_thresh, max_size_qspace);
     }
     this->m_stats->iterations++;
@@ -77,12 +79,12 @@ public:
 
   void set_convergence_threshold(double threshold) { this->m_convergence_threshold = threshold; }
 
-  std::vector<scalar_type> eigenvalues() const override { return this->m_subspace_solver.eigenvalues(); }
+  std::vector<scalar_type> eigenvalues() const override { return this->m_subspace_solver->eigenvalues(); }
 
   std::vector<scalar_type> working_set_eigenvalues() const {
     auto eval = std::vector<scalar_type>{};
     for (auto i : this->working_set()) {
-      eval.emplace_back(this->m_subspace_solver.eigenvalues().at(i));
+      eval.emplace_back(this->m_subspace_solver->eigenvalues().at(i));
     }
     return eval;
   }

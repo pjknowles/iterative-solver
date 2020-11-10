@@ -47,11 +47,18 @@ auto wrap(std::vector<R>& vec) {
 
 //! Takes a vector of containers and returns a vector of references to each element
 template <class R>
-auto cwrap(std::vector<R>& vec) {
+auto cwrap(const std::vector<R>& vec) {
   auto w = CVecRef<decay_t<R>>{};
   for (const auto& v : vec)
     w.emplace_back(std::cref(v));
   return w;
+}
+
+//! Takes a vector of containers and returns a vector of references to each element
+template <class R>
+auto cwrap(std::vector<R>& vec) {
+  const auto& cvec = vec;
+  return cwrap<R>(cvec);
 }
 
 //! Takes a begin and end iterators and returns a vector of references to each element

@@ -161,6 +161,20 @@ public:
     xspace::copy_dspace_eqn_data(new_data, data, EqnData::S, m_dim);
   }
 
+  // FIXME this must be called when XSpace is empty
+  void update_pspace(const CVecRef<P>& params, const array::Span<value_type>& pp_action_matrix) override {
+    assert(m_dim.nX == 0);
+    pspace.update(params, m_handlers->pp());
+    update_dimensions();
+    const size_t nP = m_dim.nP;
+    data[EqnData::S].resize({nP, nP});
+    data[EqnData::H].resize({nP, nP});
+    data[EqnData::S].slice() = util::overlap(params, m_handlers->pp());
+    for (size_t i = 0, ij = 0; i < nP; ++i)
+      for (size_t j = 0; j < nP; ++j, ++ij)
+        data[EqnData::H](i, j) = pp_action_matrix[ij];
+  }
+
   void complete_dspace_action(const CVecRef<R>& actions) override {
     if (!dspace.action_is_complete()) {
       dspace.complete_action(actions, m_handlers->qr());

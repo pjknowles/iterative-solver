@@ -26,6 +26,7 @@ class LinearEigensystemA : public IterativeSolverTemplate<LinearEigensystem, R, 
 public:
   using SolverTemplate = IterativeSolverTemplate<LinearEigensystem, R, Q, P>;
   using typename SolverTemplate::scalar_type;
+  using IterativeSolverTemplate<LinearEigensystem, R, Q, P>::report;
 
   explicit LinearEigensystemA(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
                               const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
@@ -55,7 +56,7 @@ public:
    * @param residual preconditioned residuals.
    * @return number of significant parameters to calculate the action for
    */
-  size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
+  size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
     if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace->dimensions())) {
       this->m_working_set = m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->solutions(),
                                                   *this->m_handlers, *this->m_logger);
@@ -68,15 +69,16 @@ public:
     this->m_stats->iterations++;
     return this->working_set().size();
   }
+  size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
+    return end_iteration(wrap(parameters), wrap(action));
+  }
 
   //! Applies the Davidson preconditioner
   void precondition(std::vector<R>& parameters, std::vector<R>& action) const {}
 
-  void set_convergence_threshold(double threshold) { this->m_convergence_threshold = threshold; }
-
   std::vector<scalar_type> eigenvalues() const override { return this->m_subspace_solver->eigenvalues(); }
 
-  std::vector<scalar_type> working_set_eigenvalues() const {
+  std::vector<scalar_type> working_set_eigenvalues() const override {
     auto eval = std::vector<scalar_type>{};
     for (auto i : this->working_set()) {
       eval.emplace_back(this->m_subspace_solver->eigenvalues().at(i));
@@ -84,17 +86,17 @@ public:
     return eval;
   }
 
-  void report() const override {
-    SolverTemplate::report();
-    molpro::cout << "errors " << std::scientific;
+  void report(std::ostream& cout) const override {
+    SolverTemplate::report(cout);
+    cout << "errors " << std::scientific;
     auto& err = this->m_errors;
     std::copy(begin(err), end(err), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
-    molpro::cout << std::endl;
-    molpro::cout << "eigenvalues ";
+    cout << std::endl;
+    cout << "eigenvalues ";
     auto ev = eigenvalues();
-    molpro::cout << std::fixed << std::setprecision(14);
+    cout << std::fixed << std::setprecision(14);
     std::copy(begin(ev), end(ev), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
-    molpro::cout << std::defaultfloat << std::endl;
+    cout << std::defaultfloat << std::endl;
   }
 
   //! Set the period in iterations for resetting the D space
@@ -104,7 +106,7 @@ public:
 
   std::shared_ptr<Logger> logger;
   double propose_rspace_norm_thresh = 1e-6; //!< vectors with norm less than threshold can be considered null
-  unsigned int max_size_qspace = std::numeric_limits<unsigned int>::max(); //!< maximum size of Q space
+  int max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space
 protected:
   detail::DSpaceResetter<Q> m_dspace_resetter; //!< resets D space
 };

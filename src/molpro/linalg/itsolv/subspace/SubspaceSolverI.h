@@ -32,13 +32,13 @@ struct SubspaceSolverI {
    * @param root solution index
    * @param error value of the error
    */
-  virtual void set_error(unsigned int root, value_type_abs error) = 0;
+  virtual void set_error(int root, value_type_abs error) = 0;
   /*!
    * @brief Update errors for a group of roots
    * @param roots group of roots
    * @param errors errors corresponding to each root
    */
-  virtual void set_error(const std::vector<unsigned int>& roots, const std::vector<value_type_abs>& errors) = 0;
+  virtual void set_error(const std::vector<int>& roots, const std::vector<value_type_abs>& errors) = 0;
   //! Access solutions from the last solve() call
   virtual const Matrix<value_type>& solutions() const = 0;
   //! Access eigenvalues from the last solve() call

@@ -1,7 +1,6 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
-#include <molpro/linalg/IterativeSolver.h>
 #include <molpro/linalg/itsolv/LinearEigensystemA.h>
 #include <vector>
 

@@ -266,6 +266,7 @@ public:
   void report() const override { report(std::cout); }
 
   void set_convergence_threshold(double thresh) override { m_convergence_threshold = thresh; }
+  double convergence_threshold() const override {return m_convergence_threshold;}
 
 protected:
   IterativeSolverTemplate(std::shared_ptr<subspace::XSpaceI<R, Q, P>> xspace,

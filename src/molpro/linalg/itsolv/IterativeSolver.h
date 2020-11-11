@@ -105,6 +105,8 @@ public:
 
   //! Sets the convergence threshold
   virtual void set_convergence_threshold(double thresh) = 0;
+  //! Reports the convergence threshold
+  virtual double convergence_threshold() const = 0;
   // FIXME Missing parameters: SVD threshold
 };
 

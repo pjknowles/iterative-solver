@@ -85,6 +85,9 @@ public:
   virtual void report(std::ostream& cout) const = 0;
   //! Writes a report to std::cout
   virtual void report() const = 0;
+
+  //! Sets the convergence threshold
+  virtual void set_convergence_threshold(double thresh) = 0;
 };
 
 /*!

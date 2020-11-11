@@ -76,8 +76,6 @@ public:
   //! Applies the Davidson preconditioner
   void precondition(std::vector<R>& parameters, std::vector<R>& action) const {}
 
-  void set_convergence_threshold(double threshold) { this->m_convergence_threshold = threshold; }
-
   std::vector<scalar_type> eigenvalues() const override { return this->m_subspace_solver->eigenvalues(); }
 
   std::vector<scalar_type> working_set_eigenvalues() const {

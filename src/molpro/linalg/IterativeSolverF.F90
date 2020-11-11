@@ -519,29 +519,26 @@ CONTAINS
         END IF
     END FUNCTION Iterative_Solver_Add_Vector_Nosync
     !
-    SUBROUTINE Iterative_Solver_Solution(roots, parameters, action, parametersP, lmppx)
+    SUBROUTINE Iterative_Solver_Solution(roots, parameters, action, lmppx)
         USE iso_c_binding
         INTEGER, INTENT(in), DIMENSION(:) :: roots  !< Array containing root indices
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP  !< p
         LOGICAL, INTENT(in), OPTIONAL :: lmppx  !< Whether communicator should be MPI_COMM_SELF
         INTERFACE
-            SUBROUTINE Iterative_Solver_Solution_C(nroot, roots, parameters, action, parametersP, lsync, lmppx) &
+            SUBROUTINE Iterative_Solver_Solution_C(nroot, roots, parameters, action, lsync, lmppx) &
                     BIND(C, name = 'IterativeSolverSolution')
                 USE iso_c_binding
                 INTEGER(c_int), VALUE :: nroot
                 INTEGER(c_int), INTENT(in), DIMENSION(nroot) :: roots
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: action
-                REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
                 INTEGER(c_int), INTENT(in), VALUE :: lsync
                 INTEGER(c_int), INTENT(in), VALUE :: lmppx
             END SUBROUTINE
         END INTERFACE
         INTEGER(c_int), DIMENSION(SIZE(roots)) :: rootsC
         INTEGER(c_int) :: nroot
-        DOUBLE PRECISION, DIMENSION(0) :: pdummy
         INTEGER(c_int) :: lsyncC
         INTEGER(c_int) :: lmppxC
         lmppxC = 0
@@ -553,36 +550,29 @@ CONTAINS
         DO i = 1, size(roots)
             rootsC(i) = INT(roots(i), kind = c_int)
         ENDDO
-        IF (PRESENT(parametersP)) THEN
-            call Iterative_Solver_Solution_C(nroot, rootsC, parameters, action, parametersP, lsyncC, lmppxC)
-        ELSE
-            call Iterative_Solver_Solution_C(nroot, rootsC, parameters, action, pdummy, lsyncC, lmppxC)
-        END IF
+        call Iterative_Solver_Solution_C(nroot, rootsC, parameters, action, lsyncC, lmppxC)
     END SUBROUTINE
     !
-    SUBROUTINE Iterative_Solver_Solution_Nosync(roots, parameters, action, parametersP, lmppx)
+    SUBROUTINE Iterative_Solver_Solution_Nosync(roots, parameters, action, lmppx)
         USE iso_c_binding
         INTEGER, INTENT(inout), DIMENSION(:) :: roots  !< Array containing root indices
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout), OPTIONAL :: parametersP  !< p
         LOGICAL, INTENT(in), OPTIONAL :: lmppx  !< Whether communicator should be MPI_COMM_SELF
         INTERFACE
-            SUBROUTINE Iterative_Solver_Solution_C(nroot, roots, parameters, action, parametersP, lsync, lmppx) &
+            SUBROUTINE Iterative_Solver_Solution_C(nroot, roots, parameters, action, lsync, lmppx) &
                     BIND(C, name = 'IterativeSolverSolution')
                 USE iso_c_binding
                 INTEGER(c_int), VALUE :: nroot
                 INTEGER(c_int), INTENT(inout), DIMENSION(nroot) :: roots
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: action
-                REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
                 INTEGER(c_int), INTENT(in), VALUE :: lsync
                 INTEGER(c_int), INTENT(in), VALUE :: lmppx
             END SUBROUTINE
         END INTERFACE
         INTEGER(c_int), DIMENSION(SIZE(roots)) :: rootsC
         INTEGER(c_int) :: nroot
-        DOUBLE PRECISION, DIMENSION(0) :: pdummy
         INTEGER(c_int) :: lsyncC
         INTEGER(c_int) :: lmppxC
         lmppxC = 0
@@ -594,11 +584,7 @@ CONTAINS
         DO i = 1, size(roots)
             rootsC(i) = INT(roots(i), kind = c_int)
         ENDDO
-        IF (PRESENT(parametersP)) THEN
-            call Iterative_Solver_Solution_C(nroot, rootsC, parameters, action, parametersP, lsyncC, lmppxC)
-        ELSE
-            call Iterative_Solver_Solution_C(nroot, rootsC, parameters, action, pdummy, lsyncC, lmppxC)
-        END IF
+        call Iterative_Solver_Solution_C(nroot, rootsC, parameters, action, lsyncC, lmppxC)
         DO i = 1, size(roots)
             roots(i) = int(rootsC(i)) + 1
         END DO

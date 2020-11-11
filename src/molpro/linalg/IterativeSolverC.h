@@ -22,7 +22,7 @@ extern "C" void IterativeSolverFinalize();
 extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync,
                                            int lmppx);
 
-extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameters, double* action, double* parametersP,
+extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameters, double* action,
                                         int sync, int lmppx);
 
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync, int lmppx);

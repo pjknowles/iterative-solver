@@ -18,14 +18,12 @@
 #include <molpro/linalg/array/util/gather_all.h>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
-#include <molpro/linalg/itsolv/subspace/SubspaceSolverLinEig.h>
-#include <molpro/linalg/itsolv/subspace/XSpace.h>
 
 using molpro::Profiler;
 using molpro::linalg::itsolv::IterativeSolver;
 using molpro::linalg::itsolv::LinearEigensystem;
 using molpro::linalg::itsolv::LinearEquations;
-using molpro::linalg::itsolv::DIIS;
+using molpro::linalg::itsolv::NonLinearEquations;
 using molpro::linalg::itsolv::Optimize;
 using molpro::linalg::array::Span;
 using molpro::linalg::array::util::gather_all;
@@ -81,7 +79,8 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
       Instance{std::make_unique<LinearEigensystemA<Rvector, Qvector, Pvector>>(handlers), profiler, n, comm});
   auto& instance = instances.top();
   instance.solver->set_n_roots(nroot);
-  LinearEigensystemA<Rvector, Qvector, Pvector>* solver_cast = dynamic_cast<LinearEigensystemA<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  LinearEigensystemA<Rvector, Qvector, Pvector>* solver_cast = dynamic_cast<LinearEigensystemA<Rvector, Qvector,
+                                                                              Pvector>*>(instance.solver.get());
   if (solver_cast) {
     solver_cast->set_convergence_threshold(1.0e-12);
     solver_cast->propose_rspace_norm_thresh = 1.0e-14;
@@ -103,6 +102,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
                                                          const double* rhs, double aughes, double thresh, int verbosity,
                                                          const char* fname, int64_t fcomm, int lmppx) {
+/*
   std::shared_ptr<Profiler> profiler = nullptr;
   std::string pname(fname);
   int flag;
@@ -142,10 +142,12 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
   //instance.solver->m_thresh = thresh;
   //instance.solver->m_verbosity = verbosity;
   std::tie(range_begin, range_end) = rr[0].distribution().range(mpi_rank);
+  */
 }
 
 extern "C" void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
                                               int verbosity, const char* fname, int64_t fcomm, int lmppx) {
+/*
   std::shared_ptr<Profiler> profiler = nullptr;
   std::string pname(fname);
   int flag;
@@ -176,10 +178,13 @@ extern "C" void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size
   //instance.solver->m_verbosity = verbosity;
   Rvector x(n, comm);
   std::tie(range_begin, range_end) = x.distribution().range(mpi_rank);
+  */
 }
+
 extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
                                                   int verbosity, char* algorithm, int minimize, const char* fname,
                                                   int64_t fcomm, int lmppx) {
+/*
   std::shared_ptr<Profiler> profiler = nullptr;
   std::string pname(fname);
   int flag;
@@ -215,31 +220,33 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, 
   //instance.solver->m_verbosity = verbosity;
   Rvector x(n, comm);
   std::tie(range_begin, range_end) = x.distribution().range(mpi_rank);
+  */
 }
 
 extern "C" void IterativeSolverFinalize() { instances.pop(); }
 
-//extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync, int lmppx) {
-//  auto& instance = instances.top();
-//  MPI_Comm ccomm = (lmppx != 0) ? MPI_COMM_SELF : instance.comm;
-//  int mpi_rank;
-//  MPI_Comm_rank(ccomm, &mpi_rank);
-//  Rvector ccc(instance.dimension, ccomm);
-//  auto ccrange = ccc.distribution().range(mpi_rank);
-//  auto ccn = ccrange.second - ccrange.first;
-//  ccc.allocate_buffer(Span<typename Rvector::value_type>(&parameters[ccrange.first], ccn));
-//  Rvector ggg(instance.dimension, ccomm);
-//  auto ggrange = ggg.distribution().range(mpi_rank);
-//  auto ggn = ggrange.second - ggrange.first;
-//  ggg.allocate_buffer(Span<typename Rvector::value_type>(&action[ggrange.first], ggn));
-//  size_t working_set_size =
-//      static_cast<Optimize<Rvector, Qvector>*>(instance.solver.get())->addValue(ccc, value, ggg) ? 1 : 0;
-//  if (sync) { // throw an error if communicator was not passed?
-//    gather_all(ccc.distribution(), ccomm, &parameters[0]);
-//    gather_all(ggg.distribution(), ccomm, &action[0]);
-//  }
-//  return working_set_size;
-//}
+extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync, int lmppx) {
+/*  auto& instance = instances.top();
+  MPI_Comm ccomm = (lmppx != 0) ? MPI_COMM_SELF : instance.comm;
+  int mpi_rank;
+  MPI_Comm_rank(ccomm, &mpi_rank);
+  Rvector ccc(instance.dimension, ccomm);
+  auto ccrange = ccc.distribution().range(mpi_rank);
+  auto ccn = ccrange.second - ccrange.first;
+  ccc.allocate_buffer(Span<typename Rvector::value_type>(&parameters[ccrange.first], ccn));
+  Rvector ggg(instance.dimension, ccomm);
+  auto ggrange = ggg.distribution().range(mpi_rank);
+  auto ggn = ggrange.second - ggrange.first;
+  ggg.allocate_buffer(Span<typename Rvector::value_type>(&action[ggrange.first], ggn));
+  size_t working_set_size =
+      static_cast<Optimize<Rvector, Qvector>*>(instance.solver.get())->addValue(ccc, value, ggg) ? 1 : 0;
+  if (sync) { // throw an error if communicator was not passed?
+    gather_all(ccc.distribution(), ccomm, &parameters[0]);
+    gather_all(ggg.distribution(), ccomm, &action[0]);
+  }
+  return working_set_size;*/
+  return 0;
+}
 
 extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync,
                                            int lmppx) {
@@ -290,7 +297,7 @@ extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, d
   return working_set_size;
 }
 
-extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameters, double* action, double* parametersP,
+extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameters, double* action,
                                         int sync, int lmppx) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
@@ -298,7 +305,6 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
     instance.prof->start("Solution");
   cc.reserve(instance.solver->n_roots());
   gg.reserve(instance.solver->n_roots());
-  std::vector<std::vector<typename Rvector::value_type>> ccp(instance.solver->n_roots());
   MPI_Comm ccomm = (lmppx != 0) ? MPI_COMM_SELF : instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
@@ -317,7 +323,7 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
   const std::vector<int> croots(roots, roots + nroot);
   if (instance.prof != nullptr)
     instance.prof->start("Solution:Call");
-  instance.solver->solution(croots, cc, gg, ccp);
+  instance.solver->solution(croots, cc, gg);
   if (instance.prof != nullptr)
     instance.prof->stop("Solution:Call");
 
@@ -328,8 +334,6 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
       gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
       gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
     }
-    for (size_t i = 0; i < ccp[0].size(); i++)
-      parametersP[root * ccp[0].size() + i] = ccp[root][i];
   }
   if (instance.prof != nullptr)
     instance.prof->stop("Solution:Sync");
@@ -397,20 +401,23 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
     auto ggn = ggrange.second - ggrange.first;
     gg.back().allocate_buffer(Span<Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
   }
-  std::vector<std::map<size_t, Rvector::value_type>> Pvectors;
+  std::vector<Pvector> Pvectors;
   Pvectors.reserve(nP);
   for (size_t p = 0; p < nP; p++) {
-    std::map<size_t, Rvector::value_type> ppp;
+    //std::map<size_t, Rvector::value_type> ppp;
+    Pvector ppp;
     //    for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
     //    std::cout << "indices["<<k<<"]="<<indices[k]<<": "<<coefficients[k]<<std::endl;
     for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
-      // Need to check why CLion complains below
       ppp.insert(std::pair<size_t, Rvector::value_type>(indices[k], coefficients[k]));
     Pvectors.emplace_back(ppp);
   }
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Call");
-  size_t working_set_size = instance.solver->add_p(Pvectors, pp, cc, gg, ccp);
+  size_t working_set_size = instance.solver->add_p(molpro::linalg::itsolv::cwrap(Pvectors),
+                                              Span<Rvector::value_type>(&const_cast<double*>(pp)[0], nP*nP),
+                                              molpro::linalg::itsolv::wrap(cc),
+                                              molpro::linalg::itsolv::wrap(gg), ccp);
   if (instance.prof != nullptr)
     instance.prof->stop("AddP:Call");
   if (instance.prof != nullptr)
@@ -433,7 +440,8 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
   auto& instance = instances.top();
   size_t k = 0;
-  LinearEigensystemA<Rvector, Qvector, Pvector>* solver_cast = dynamic_cast<LinearEigensystemA<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  LinearEigensystemA<Rvector, Qvector, Pvector>* solver_cast = dynamic_cast<LinearEigensystemA<Rvector, Qvector,
+                                                                              Pvector>*>(instance.solver.get());
   if (solver_cast) {
     for (const auto& e : solver_cast->eigenvalues())
       eigenvalues[k++] = e;
@@ -443,7 +451,8 @@ extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
 extern "C" void IterativeSolverWorkingSetEigenvalues(double* eigenvalues) {
   auto& instance = instances.top();
   size_t k = 0;
-  LinearEigensystemA<Rvector, Qvector, Pvector>* solver_cast = dynamic_cast<LinearEigensystemA<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  LinearEigensystemA<Rvector, Qvector, Pvector>* solver_cast = dynamic_cast<LinearEigensystemA<Rvector, Qvector,
+                                                                              Pvector>*>(instance.solver.get());
   if (solver_cast) {
     for (const auto& e : solver_cast->working_set_eigenvalues())
       eigenvalues[k++] = e;
@@ -473,7 +482,8 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
     gg.back().allocate_buffer(
         Span<Rvector::value_type>(&const_cast<double*>(residual)[root * instance.dimension + ggrange.first], ggn));
   }
-  auto result = instance.solver->suggest_p(cc, gg, maximumNumber, threshold);
+  auto result = instance.solver->suggest_p(molpro::linalg::itsolv::cwrap(cc), molpro::linalg::itsolv::cwrap(gg),
+                                           maximumNumber, threshold);
   for (size_t i = 0; i < result.size(); i++) {
     indices[i] = result[i];
   }

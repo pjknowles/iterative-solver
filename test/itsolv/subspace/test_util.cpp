@@ -1,6 +1,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/wrap.h>
@@ -9,6 +10,7 @@
 using molpro::linalg::itsolv::ArrayHandlers;
 using molpro::linalg::itsolv::cwrap;
 using molpro::linalg::itsolv::wrap;
+using molpro::linalg::itsolv::detail::parameter_batches;
 using molpro::linalg::itsolv::subspace::Matrix;
 using molpro::linalg::itsolv::subspace::util::eye_order;
 using molpro::linalg::itsolv::subspace::util::gram_schmidt;
@@ -168,4 +170,19 @@ TEST(modified_gram_schmidt, size_4x4) {
   for (size_t i = 0; i < params.size() - 1; ++i) {
     ASSERT_THAT(params[i], Pointwise(DoubleNear(1.0e-14), ref_params[i])) << "parameters i =" << std::to_string(i);
   }
+}
+
+TEST(parameter_batches, simple) {
+  auto batches = parameter_batches(3, 3);
+  auto batches_ref = std::vector<std::pair<size_t, size_t>>{{0, 3}};
+  ASSERT_THAT(batches, Pointwise(Eq(), batches_ref));
+  batches = parameter_batches(2, 3);
+  batches_ref = std::vector<std::pair<size_t, size_t>>{{0, 2}};
+  ASSERT_THAT(batches, Pointwise(Eq(), batches_ref));
+  batches = parameter_batches(9, 3);
+  batches_ref = std::vector<std::pair<size_t, size_t>>{{0, 3}, {3, 6}, {6, 9}};
+  ASSERT_THAT(batches, Pointwise(Eq(), batches_ref));
+  batches = parameter_batches(4, 3);
+  batches_ref = std::vector<std::pair<size_t, size_t>>{{0, 3}, {3, 4}};
+  ASSERT_THAT(batches, Pointwise(Eq(), batches_ref));
 }

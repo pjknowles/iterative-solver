@@ -4,6 +4,7 @@
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/Statistics.h>
 #include <molpro/linalg/itsolv/wrap.h>
+#include <ostream>
 #include <vector>
 
 namespace molpro::linalg::itsolv {
@@ -78,6 +79,9 @@ public:
   virtual void set_n_roots(size_t nroots) = 0;
   virtual const std::vector<scalar_type>& errors() const = 0;
   virtual const Statistics& statistics() const = 0;
+  //! Writes a report to cout output stream
+  virtual void report(std::ostream& cout) const = 0;
+  //! Writes a report to std::cout
   virtual void report() const = 0;
 };
 

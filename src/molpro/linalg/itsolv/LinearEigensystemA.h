@@ -26,6 +26,7 @@ class LinearEigensystemA : public IterativeSolverTemplate<LinearEigensystem, R, 
 public:
   using SolverTemplate = IterativeSolverTemplate<LinearEigensystem, R, Q, P>;
   using typename SolverTemplate::scalar_type;
+  using IterativeSolverTemplate<LinearEigensystem, R, Q, P>::report;
 
   explicit LinearEigensystemA(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
                               const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
@@ -87,17 +88,17 @@ public:
     return eval;
   }
 
-  void report() const override {
-    SolverTemplate::report();
-    molpro::cout << "errors " << std::scientific;
+  void report(std::ostream& cout) const override {
+    SolverTemplate::report(cout);
+    cout << "errors " << std::scientific;
     auto& err = this->m_errors;
     std::copy(begin(err), end(err), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
-    molpro::cout << std::endl;
-    molpro::cout << "eigenvalues ";
+    cout << std::endl;
+    cout << "eigenvalues ";
     auto ev = eigenvalues();
-    molpro::cout << std::fixed << std::setprecision(14);
+    cout << std::fixed << std::setprecision(14);
     std::copy(begin(ev), end(ev), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
-    molpro::cout << std::defaultfloat << std::endl;
+    cout << std::defaultfloat << std::endl;
   }
 
   //! Set the period in iterations for resetting the D space

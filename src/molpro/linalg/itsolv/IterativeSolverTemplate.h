@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVERTEMPLATE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVERTEMPLATE_H
+#include <iostream>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
@@ -246,17 +247,19 @@ public:
 
   const Statistics& statistics() const override { return *m_stats; }
 
-  void report() const override {
-    molpro::cout << "iteration " << m_stats->iterations;
+  void report(std::ostream& cout) const override {
+    cout << "iteration " << m_stats->iterations;
     if (not m_errors.empty()) {
       auto it_max_error = std::max_element(m_errors.cbegin(), m_errors.cend());
       if (n_roots() > 1)
-        molpro::cout << ", error[" << std::distance(m_errors.cbegin(), it_max_error) << "] = ";
+        cout << ", error[" << std::distance(m_errors.cbegin(), it_max_error) << "] = ";
       else
-        molpro::cout << ", error = ";
-      molpro::cout << *it_max_error << std::endl;
+        cout << ", error = ";
+      cout << *it_max_error << std::endl;
     }
   }
+
+  void report() const override { report(std::cout); }
 
 protected:
   IterativeSolverTemplate(std::shared_ptr<subspace::XSpaceI<R, Q, P>> xspace,

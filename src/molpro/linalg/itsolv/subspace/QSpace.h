@@ -74,7 +74,7 @@ struct QSpace {
    * @param old_data current data
    */
   void update(const CVecRef<R>& params, const CVecRef<R>& actions, const SubspaceData& qq, const SubspaceData& qx,
-              const SubspaceData& xq, const xspace::Dimensions& dims, SubspaceData& old_data) {
+              const SubspaceData& xq, const Dimensions& dims, SubspaceData& old_data) {
     m_logger->msg("QSpace::update", Logger::Trace);
     auto it_begin = m_params.begin();
     for (size_t i = 0; i < params.size(); ++i) {

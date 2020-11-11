@@ -182,16 +182,16 @@ public:
     return add_vector(parameters, action, pparams, apply_p);
   }
 
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions, fapply_on_p_type& apply_p) {
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions, fapply_on_p_type& apply_p) override {
     return add_vector(wrap(parameters), wrap(actions), apply_p);
   }
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions, std::vector<VectorP>& pparams) {
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions, std::vector<VectorP>& pparams) override {
     return add_vector(wrap(parameters), wrap(actions), pparams);
   }
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions) {
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions) override {
     return add_vector(wrap(parameters), wrap(actions));
   }
-  size_t add_vector(R& parameters, R& actions) {
+  size_t add_vector(R& parameters, R& actions) override {
     auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
     auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
     return add_vector(wparams, wactions);

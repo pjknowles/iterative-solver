@@ -75,7 +75,7 @@ public:
 
   //! Run the reset operation
   template <class R, class P, typename value_type>
-  std::vector<int> run(std::vector<R>& rparams, subspace::XSpaceI<R, Q, P>& xspace,
+  std::vector<int> run(const VecRef<R>& rparams, subspace::XSpaceI<R, Q, P>& xspace,
                        const subspace::Matrix<value_type>& solutions, ArrayHandlers<R, Q, P>& handlers,
                        Logger& logger) {
     logger.msg("DSpaceResetter::run()", Logger::Trace);
@@ -88,7 +88,7 @@ public:
     if (solution_params.empty() && !rparams.empty()) {
       logger.msg("constructing solutions", Logger::Debug);
       for (size_t i = 0; i < nC; ++i)
-        solution_params.emplace_back(util::construct_zeroed_copy(rparams.front(), handlers.qr()));
+        solution_params.emplace_back(util::construct_zeroed_copy(rparams.front().get(), handlers.qr()));
       auto roots = std::vector<int>(nC);
       std::iota(begin(roots), end(roots), 0);
       util::construct_solutions(wrap<Q>(begin(solution_params), end(solution_params)), roots, solutions,

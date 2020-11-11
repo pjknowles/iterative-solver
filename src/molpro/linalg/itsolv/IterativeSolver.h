@@ -35,9 +35,16 @@ public:
   IterativeSolver(IterativeSolver<R, Q, P>&&) noexcept = default;
   IterativeSolver<R, Q, P>& operator=(IterativeSolver<R, Q, P>&&) noexcept = default;
 
+  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action, fapply_on_p_type& apply_p) = 0;
+  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action, std::vector<VectorP>& pparams) = 0;
+  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action) = 0;
+
+  // FIXME this should be removed in favour of VecRef interface
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, fapply_on_p_type& apply_p) = 0;
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& pparams) = 0;
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) = 0;
+  virtual size_t add_vector(R& parameters, R& action) = 0;
+
   /*!
    * \brief Add P-space vectors to the expansion set for linear methods.
    * \param Pparams the vectors to add. Each Pvector specifies a sparse vector in the underlying space
@@ -49,14 +56,18 @@ public:
    * \param parametersP On exit, the interpolated solution projected onto the P space.
    * \return The number of vectors contained in parameters, action, parametersP
    */
-  virtual size_t add_p(const std::vector<P>& pparams, const array::Span<value_type>& pp_action_matrix,
-                       std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& parametersP) = 0;
-  virtual void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) = 0;
+  virtual size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix,
+                       const VecRef<R>& parameters, const VecRef<R>& action, std::vector<VectorP>& parametersP) = 0;
+  virtual void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) = 0;
   //! Constructs parameters of selected roots
+  virtual void solution_params(const std::vector<int>& roots, const VecRef<R>& parameters) = 0;
+  virtual size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& residual) = 0;
+  virtual std::vector<size_t> suggest_p(const CVecRef<R>& solution, const CVecRef<R>& residual, size_t maximumNumber,
+                                        double threshold) = 0;
+
+  virtual void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) = 0;
   virtual void solution_params(const std::vector<int>& roots, std::vector<R>& parameters) = 0;
-  virtual size_t end_iteration(std::vector<R>& parameters, std::vector<R>& residual) = 0;
-  virtual std::vector<size_t> suggest_p(const std::vector<R>& solution, const std::vector<R>& residual,
-                                        size_t maximumNumber, double threshold) = 0;
+  virtual size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) = 0;
 
   /*!
    * @brief Working set of roots that are not yet converged

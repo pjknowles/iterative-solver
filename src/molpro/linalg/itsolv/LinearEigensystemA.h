@@ -55,7 +55,7 @@ public:
    * @param residual preconditioned residuals.
    * @return number of significant parameters to calculate the action for
    */
-  size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
+  size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
     if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace->dimensions())) {
       this->m_working_set = m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->solutions(),
                                                   *this->m_handlers, *this->m_logger);
@@ -67,6 +67,9 @@ public:
     }
     this->m_stats->iterations++;
     return this->working_set().size();
+  }
+  size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
+    return end_iteration(wrap(parameters), wrap(action));
   }
 
   //! Applies the Davidson preconditioner

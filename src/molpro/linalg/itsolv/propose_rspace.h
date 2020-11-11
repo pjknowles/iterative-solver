@@ -131,8 +131,7 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
  */
 template <typename value_type, typename value_type_abs>
 auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
-                                  const subspace::xspace::Dimensions& dims,
-                                  const std::vector<int>& remove_qspace,
+                                  const subspace::xspace::Dimensions& dims, const std::vector<int>& remove_qspace,
                                   const subspace::Matrix<value_type>& overlap, value_type_abs norm_thresh,
                                   Logger& logger) {
   logger.msg("construct_projected_solution", Logger::Trace);
@@ -280,8 +279,8 @@ auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_typ
  */
 template <typename value_type, typename value_type_abs>
 auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspace::xspace::Dimensions& dims,
-                    const std::vector<int>& remove_qspace, const subspace::Matrix<value_type>& overlap,
-                    const size_t nR, value_type_abs norm_thresh, Logger& logger) {
+                    const std::vector<int>& remove_qspace, const subspace::Matrix<value_type>& overlap, const size_t nR,
+                    value_type_abs norm_thresh, Logger& logger) {
   logger.msg("propose_dspace()", Logger::Trace);
   auto solutions_proj = construct_projected_solution(solutions, dims, remove_qspace, overlap, norm_thresh, logger);
   if (logger.data_dump)
@@ -512,9 +511,8 @@ void construct_orthonormal_Rparams(VecRef<R>& params, VecRef<R>& residuals,
 
 //! Returns new working set based on parameters included in wparams
 template <class R>
-auto get_new_working_set(const std::vector<int>& working_set, const std::vector<R>& params,
-                         const VecRef<R>& wparams) {
-  auto new_indices = find_ref(wparams, begin(params), end(params));
+auto get_new_working_set(const std::vector<int>& working_set, const CVecRef<R>& params, const CVecRef<R>& wparams) {
+  auto new_indices = find_ref(wparams, params);
   auto new_working_set = std::vector<int>{};
   for (auto i : new_indices) {
     new_working_set.emplace_back(working_set.at(i));
@@ -551,7 +549,7 @@ auto get_new_working_set(const std::vector<int>& working_set, const std::vector<
  * @return number of significant parameters to calculate the action for
  */
 template <class R, class Q, class P, typename value_type, typename value_type_abs>
-auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters, std::vector<R>& residuals,
+auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& parameters, const VecRef<R>& residuals,
                     subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& solutions,
                     ArrayHandlers<R, Q, P>& handlers, Logger& logger, value_type_abs res_norm_thresh,
                     int max_size_qspace) {
@@ -599,7 +597,7 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
   auto wdparams = wrap(dparams);
   auto wdactions = wrap(dactions);
   xspace.update_dspace(wdparams, wdactions, lin_trans_D_only_R);
-  auto new_working_set = get_new_working_set(solver.working_set(), residuals, wresidual);
+  auto new_working_set = get_new_working_set(solver.working_set(), cwrap(residuals), cwrap(wresidual));
   return new_working_set;
 }
 } // namespace molpro::linalg::itsolv::detail

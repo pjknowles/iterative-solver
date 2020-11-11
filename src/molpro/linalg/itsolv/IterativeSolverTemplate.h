@@ -146,7 +146,7 @@ protected:
    * @param pparams P space components of the working set solutions
    * @return
    */
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions, std::vector<VectorP>& pparams,
+  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions, std::vector<VectorP>& pparams,
                     fapply_on_p_type& apply_p) {
     m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations) +
                       ", apply_p = " + std::to_string(bool(apply_p)),
@@ -156,37 +156,52 @@ protected:
                       std::to_string(m_working_set.size()) + ", ",
                   Logger::Debug);
     auto nW = std::min(m_working_set.size(), parameters.size());
-    auto wparams = cwrap<R>(begin(parameters), begin(parameters) + nW);
-    auto wactions = cwrap<R>(begin(actions), begin(actions) + nW);
+    auto wparams = wrap<R>(begin(parameters), begin(parameters) + nW);
+    auto wactions = wrap<R>(begin(actions), begin(actions) + nW);
     m_stats->r_creations += nW;
-    m_xspace->complete_dspace_action(wactions);
-    m_xspace->update_qspace(wparams, wactions);
-    return solve_and_generate_working_set(wrap(parameters), wrap(actions), pparams, apply_p);
+    m_xspace->complete_dspace_action(cwrap(wactions));
+    m_xspace->update_qspace(cwrap(wparams), cwrap(wactions));
+    return solve_and_generate_working_set(parameters, actions, pparams, apply_p);
   }
 
 public:
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, fapply_on_p_type& apply_p) override {
+  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action, fapply_on_p_type& apply_p) override {
     auto pparams = std::vector<VectorP>{};
     return add_vector(parameters, action, pparams, apply_p);
   }
 
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& pparams) override {
+  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action, std::vector<VectorP>& pparams) override {
     auto apply_p = fapply_on_p_type{};
     return add_vector(parameters, action, pparams, apply_p);
   }
 
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) override {
+  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action) override {
     auto pparams = std::vector<VectorP>{};
     auto apply_p = fapply_on_p_type{};
     return add_vector(parameters, action, pparams, apply_p);
+  }
+
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions, fapply_on_p_type& apply_p) {
+    return add_vector(wrap(parameters), wrap(actions), apply_p);
+  }
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions, std::vector<VectorP>& pparams) {
+    return add_vector(wrap(parameters), wrap(actions), pparams);
+  }
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions) {
+    return add_vector(wrap(parameters), wrap(actions));
+  }
+  size_t add_vector(R& parameters, R& actions) {
+    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
+    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
+    return add_vector(wparams, wactions);
   }
 
   // TODO Add P space and solve the subspace problem. This is same as add_vector, but without updating the Q space
-  size_t add_p(const std::vector<P>& pparams, const array::Span<value_type>& pp_action_matrix,
-               std::vector<R>& parameters, std::vector<R>& actions, std::vector<VectorP>& parametersP) override {
-    m_xspace->update_pspace(cwrap(pparams), pp_action_matrix);
+  size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix, const VecRef<R>& parameters,
+               const VecRef<R>& actions, std::vector<VectorP>& parametersP) override {
+    m_xspace->update_pspace(pparams, pp_action_matrix);
     auto apply_p = fapply_on_p_type{};
-    return solve_and_generate_working_set(wrap(parameters), wrap(actions), parametersP, apply_p);
+    return solve_and_generate_working_set(parameters, actions, parametersP, apply_p);
   };
 
   /*!
@@ -196,15 +211,23 @@ public:
    * @param parameters
    * @param residual
    */
-  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override{};
+  void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) override{};
+
+  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {
+    return solution(roots, wrap(parameters), wrap(residual));
+  }
 
   void solution_params(const std::vector<int>& roots, std::vector<R>& parameters) override {
-    detail::construct_solution(wrap(parameters), roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
+    return solution_params(roots, wrap(parameters));
+  }
+
+  void solution_params(const std::vector<int>& roots, const VecRef<R>& parameters) override {
+    detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
                                m_xspace->paramsq(), m_xspace->paramsd(), m_xspace->dimensions().oP,
                                m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
   };
 
-  std::vector<size_t> suggest_p(const std::vector<R>& solution, const std::vector<R>& residual, size_t maximumNumber,
+  std::vector<size_t> suggest_p(const CVecRef<R>& solution, const CVecRef<R>& residual, size_t maximumNumber,
                                 double threshold) override {
     return {};
   }

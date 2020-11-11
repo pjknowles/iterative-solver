@@ -97,7 +97,10 @@ template <class R, class Q, class P>
 class LinearEigensystem : public IterativeSolver<R, Q, P> {
 public:
   using typename IterativeSolver<R, Q, P>::scalar_type;
-  virtual std::vector<scalar_type> eigenvalues() const = 0; //!< The calculated eigenvalues of the subspace matrix
+  //! The calculated eigenvalues of the subspace matrix
+  virtual std::vector<scalar_type> eigenvalues() const = 0;
+  //! The calculated eigenvalues for roots in the working set
+  virtual std::vector<scalar_type> working_set_eigenvalues() const = 0;
 };
 
 template <class R, class Q, class P>

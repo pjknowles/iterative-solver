@@ -58,7 +58,7 @@ TEST(wrap_util, remove_elements) {
 
 TEST(wrap, iterable_container__list) {
   auto params = std::list<int>{1, 2, 3, 4, 5, 6};
-  auto wparams = wrap<int>(params);
+  auto wparams = wrap(params);
   ASSERT_FALSE(std::is_const_v<decltype(wparams)::value_type::type>);
   ASSERT_EQ(wparams.size(), params.size());
   ASSERT_THAT(wparams, Pointwise(Eq(), params));
@@ -66,7 +66,7 @@ TEST(wrap, iterable_container__list) {
 
 TEST(wrap, iterable_container__const_list) {
   const auto params = std::list<int>{1, 2, 3, 4, 5, 6};
-  auto wparams = wrap<int>(params);
+  auto wparams = wrap(params);
   ASSERT_TRUE(std::is_const_v<decltype(wparams)::value_type::type>);
   ASSERT_EQ(wparams.size(), params.size());
   ASSERT_THAT(wparams, Pointwise(Eq(), params));
@@ -74,7 +74,7 @@ TEST(wrap, iterable_container__const_list) {
 
 TEST(cwrap, iterable_container__list) {
   const auto params = std::list<int>{1, 2, 3, 4, 5, 6};
-  auto wparams = cwrap<int>(params);
+  auto wparams = cwrap(params);
   ASSERT_TRUE(std::is_const_v<decltype(wparams)::value_type::type>);
   ASSERT_EQ(wparams.size(), params.size());
   ASSERT_THAT(wparams, Pointwise(Eq(), params));
@@ -82,7 +82,7 @@ TEST(cwrap, iterable_container__list) {
 
 TEST(cwrap, iterable_container__const_list) {
   const auto params = std::list<int>{1, 2, 3, 4, 5, 6};
-  auto wparams = cwrap<int>(params);
+  auto wparams = cwrap(params);
   ASSERT_TRUE(std::is_const_v<decltype(wparams)::value_type::type>);
   ASSERT_EQ(wparams.size(), params.size());
   ASSERT_THAT(wparams, Pointwise(Eq(), params));

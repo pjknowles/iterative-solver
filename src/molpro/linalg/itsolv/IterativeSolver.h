@@ -59,13 +59,30 @@ public:
    */
   virtual size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix,
                        const VecRef<R>& parameters, const VecRef<R>& action, std::vector<VectorP>& parametersP) = 0;
+
+  // FIXME Is this needed?
+  virtual void clearP() = 0;
+
   //! Construct solution and residual for a given set of roots
   virtual void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) = 0;
+
   //! Constructs parameters of selected roots
   virtual void solution_params(const std::vector<int>& roots, const VecRef<R>& parameters) = 0;
+
   //! Behaviour depends on the solver
   virtual size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& residual) = 0;
-  virtual std::vector<size_t> suggest_p(const CVecRef<R>& solution, const CVecRef<R>& residual, size_t maximumNumber,
+
+  /*!
+   * \brief Get the solver's suggestion of which degrees of freedom would be best
+   * to add to the P-space.
+   * \param solution Current solution
+   * \param residual Current residual
+   * \param max_number Suggest no more than this number
+   * \param threshold Suggest only axes for which the current residual and update
+   * indicate an energy improvement in the next iteration of this amount or more.
+   * \return
+   */
+  virtual std::vector<size_t> suggest_p(const CVecRef<R>& solution, const CVecRef<R>& residual, size_t max_number,
                                         double threshold) = 0;
 
   virtual void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) = 0;
@@ -88,6 +105,7 @@ public:
 
   //! Sets the convergence threshold
   virtual void set_convergence_threshold(double thresh) = 0;
+  // FIXME Missing parameters: SVD threshold
 };
 
 /*!
@@ -109,21 +127,35 @@ public:
   using typename IterativeSolver<R, Q, P>::scalar_type;
   //! eigenvalues of augmented Hessian method, if it was used
   virtual std::vector<scalar_type> eigenvalues() const = 0;
-  void addEquations(const std::vector<R>& rhs) = 0;
-  std::vector<Q>& rhs() = 0;
-
-protected:
-  std::vector<Q> m_rhs;
+  void add_equations(const std::vector<R>& rhs) = 0;
+  void add_equations(const R& rhs) = 0;
+  virtual const std::vector<Q>& rhs() const = 0;
 };
 
+//! Optimises to a stationary point using methods such as L-BFGS
 template <class R, class Q, class P>
 class Optimize : public IterativeSolver<R, Q, P> {
 public:
-  virtual bool end_iteration(std::vector<R>& solution, std::vector<R>& residual) = 0;
+  using typename IterativeSolver<R, Q, P>::value_type;
+  using typename IterativeSolver<R, Q, P>::scalar_type;
+  // FIXME Description of return is unclear
+  /*!
+   * \brief Take a current solution, objective function value and residual, and return new solution.
+   * \param parameters On input, the current solution. On exit, the interpolated solution vector.
+   * \param value The value of the objective function for parameters.
+   * \param residual On input, the residual for parameters. On exit, the expected (non-linear) residual of the
+   * interpolated parameters.
+   * \return whether it is expected that the client should make an update, based on the
+   * returned parameters and residual, before the subsequent call to endIteration()
+   */
+  virtual size_t add_value(R& parameters, value_type value, R& residual) = 0;
+  // FIXME need getter for values
+  // FIXME Are there any other parameters that we need?
 };
 
+//! Solves non-linear system of equations using methods such as DIIS
 template <class R, class Q, class P>
-class DIIS : public IterativeSolver<R, Q, P> {};
+class NonLinearEquations : public IterativeSolver<R, Q, P> {};
 
 } // namespace molpro::linalg::itsolv
 

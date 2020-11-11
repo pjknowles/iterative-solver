@@ -197,13 +197,15 @@ public:
     return add_vector(wparams, wactions);
   }
 
-  // TODO Add P space and solve the subspace problem. This is same as add_vector, but without updating the Q space
+  // FIXME Currently only works if called on an empty subspace. Either enforce it or generalise.
   size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix, const VecRef<R>& parameters,
                const VecRef<R>& actions, std::vector<VectorP>& parametersP) override {
     m_xspace->update_pspace(pparams, pp_action_matrix);
     auto apply_p = fapply_on_p_type{};
     return solve_and_generate_working_set(parameters, actions, parametersP, apply_p);
   };
+
+  void clearP() override {}
 
   void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) override {
     detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
@@ -229,7 +231,8 @@ public:
                                m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
   };
 
-  std::vector<size_t> suggest_p(const CVecRef<R>& solution, const CVecRef<R>& residual, size_t maximumNumber,
+  // TODO Implement this
+  std::vector<size_t> suggest_p(const CVecRef<R>& solution, const CVecRef<R>& residual, size_t max_number,
                                 double threshold) override {
     return {};
   }

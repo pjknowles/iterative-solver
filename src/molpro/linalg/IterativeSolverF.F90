@@ -595,16 +595,18 @@ CONTAINS
     !> \param residual The residual after interpolation.
     !> \param error Error indicator for each sought root.
     !> \return .TRUE. if convergence reached for all roots
-    LOGICAL FUNCTION Iterative_Solver_End_Iteration(solution, residual, error, lmppx)
+    FUNCTION Iterative_Solver_End_Iteration(solution, residual, error, lmppx)
         USE iso_c_binding
+        INTEGER :: Iterative_Solver_End_Iteration
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: error
         LOGICAL, INTENT(in), OPTIONAL :: lmppx
         INTERFACE
-            INTEGER(c_int) FUNCTION Iterative_Solver_End_Iteration_C(solution, residual, error, lmppx) &
+            FUNCTION Iterative_Solver_End_Iteration_C(solution, residual, error, lmppx) &
                     BIND(C, name = 'IterativeSolverEndIteration')
                 USE iso_c_binding
+                INTEGER(c_int) Iterative_Solver_End_Iteration_C
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: solution
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: residual
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: error
@@ -616,8 +618,7 @@ CONTAINS
         IF (PRESENT(lmppx)) THEN
             if (lmppx) lmppxC = 1
         ENDIF
-        Iterative_Solver_End_Iteration = &
-                Iterative_Solver_End_Iteration_C(solution, residual, error, lmppxC) /= 0
+        Iterative_Solver_End_Iteration = Iterative_Solver_End_Iteration_C(solution, residual, error, lmppxC)
     END FUNCTION Iterative_Solver_End_Iteration
 
     !> \brief add P-space vectors to the expansion set, and return new solution.

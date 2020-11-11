@@ -45,9 +45,11 @@ PROGRAM Linear_Eigensystem_Example
       we = Iterative_Solver_Working_Set_Eigenvalues(nwork)
       DO root = 1, nwork
         DO j = 1, n
-          c(j, root) = c(j, root) - g(j, root) / (m(j, j) - we(root) + 1e-15)
+          !c(j, root) = c(j, root) - g(j, root) / (m(j, j) - we(root) + 1e-15)
+          g(j, root) = g(j, root) * 1.0d0 / (m(j, j) - we(root) + 1e-15)
         END DO
       END DO
+      nwork = Iterative_Solver_End_Iteration(c, g, error)
     ELSE
       EXIT
     END IF

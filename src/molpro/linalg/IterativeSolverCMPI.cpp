@@ -285,8 +285,10 @@ extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, d
       gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
       gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
     }
-    for (size_t i = 0; i < ccp[0].size(); i++)
-      parametersP[root * ccp[0].size() + i] = ccp[root][i];
+    if (ccp.size() > 0 ) {
+      for (size_t i = 0; i < ccp[0].size(); i++)
+        parametersP[root * ccp[0].size() + i] = ccp[root][i];
+    }
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Sync");
@@ -367,12 +369,12 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
   }
   if (instance.prof != nullptr)
     instance.prof->start("EndIter:Call");
-  bool result = instance.solver->end_iteration(cc, gg);
+  int result = instance.solver->end_iteration(cc, gg);
   if (instance.prof != nullptr)
     instance.prof->stop("EndIter:Call");
-  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
+  /*for (size_t root = 0; root < instance.solver->n_roots(); root++) {
     error[root] = instance.solver->errors()[root];
-  }
+  }*/
   if (instance.prof != nullptr)
     instance.prof->stop("EndIter");
   return result;

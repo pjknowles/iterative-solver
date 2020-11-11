@@ -205,14 +205,15 @@ public:
     return solve_and_generate_working_set(parameters, actions, parametersP, apply_p);
   };
 
-  /*!
-   * @brief Copy the solutions from the S space
-   *
-   * @param roots
-   * @param parameters
-   * @param residual
-   */
-  void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) override{};
+  void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) override {
+    detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
+                               m_xspace->paramsq(), m_xspace->paramsd(), m_xspace->dimensions().oP,
+                               m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
+    detail::construct_solution(residual, roots, m_subspace_solver->solutions(), m_xspace->actionsp(),
+                               m_xspace->actionsq(), m_xspace->actionsd(), m_xspace->dimensions().oP,
+                               m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
+    detail::construct_residual(roots, m_subspace_solver->eigenvalues(), cwrap(parameters), residual, m_handlers->rr());
+  };
 
   void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {
     return solution(roots, wrap(parameters), wrap(residual));

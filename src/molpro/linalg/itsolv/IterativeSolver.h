@@ -59,9 +59,11 @@ public:
    */
   virtual size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix,
                        const VecRef<R>& parameters, const VecRef<R>& action, std::vector<VectorP>& parametersP) = 0;
+  //! Construct solution and residual for a given set of roots
   virtual void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) = 0;
   //! Constructs parameters of selected roots
   virtual void solution_params(const std::vector<int>& roots, const VecRef<R>& parameters) = 0;
+  //! Behaviour depends on the solver
   virtual size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& residual) = 0;
   virtual std::vector<size_t> suggest_p(const CVecRef<R>& solution, const CVecRef<R>& residual, size_t maximumNumber,
                                         double threshold) = 0;

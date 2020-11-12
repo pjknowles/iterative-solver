@@ -8,9 +8,30 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 include(GoogleTest)
+
+if (NOT TARGET Eigen3::Eigen)
+    message(VERBOSE "Eigen3::Eigen is not yet a target")
+    find_package(Eigen3 3.3.0 QUIET)
+    if (EIGEN3_FOUND)
+        message(STATUS "Eigen3 found on system")
+    else ()
+        message(STATUS "Eigen3::Eigen not found on system, and will be downloaded")
+        include(FetchContent)
+        FetchContent_Declare(eigen3
+                GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+                GIT_TAG 3.3.7
+                )
+        FetchContent_MakeAvailable(eigen3)
+        add_library(Eigen3::Eigen ALIAS eigen)
+    endif ()
+else ()
+    message(STATUS "LinearAlgebra: Eigen3::Eigen target already defined")
+endif ()
+
 foreach (t IterativeSolver-test TestIterativeSolver PagedVector-test OutOfCoreArray-test SimpleVector-test LinearEigensystem-file-test)
     add_executable(${t}.exe ${t}.cpp test.h)
     target_link_libraries(${t}.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)# ${MPI_CXX_LIBRARIES})
+    target_link_libraries(${t}.exe PUBLIC Eigen3::Eigen)
     gtest_discover_tests(${t}.exe)
     if (MPI)
         # in principle this should be configured at runtime but it seems cmake/ctest support is not yet there to do it simply

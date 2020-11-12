@@ -152,7 +152,7 @@ public:
    * \return whether it is expected that the client should make an update, based on the
    * returned parameters and residual, before the subsequent call to endIteration()
    */
-  virtual size_t add_value(R& parameters, value_type value, R& residual) = 0;
+  virtual bool add_value(R& parameters, value_type value, R& residual) = 0;
   // FIXME need getter for values
   // FIXME Are there any other parameters that we need?
 };

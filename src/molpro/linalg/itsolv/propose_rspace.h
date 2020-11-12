@@ -86,24 +86,23 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
   };
   for (bool found_singularity = true; found_singularity;) {
     const auto nQ = qindices.size();
-    const auto oN = oQ + nQ;
-    norm = subspace::util::gram_schmidt(overlap, lin_trans, res_norm_thresh);
-    auto it = std::find_if(std::next(begin(norm), oN), end(norm),
-                           [res_norm_thresh](auto el) { return el < res_norm_thresh; });
+    auto svd_sys_check = svd_system(overlap.rows(), array::Span(&overlap(0, 0), overlap.size()), 0.01);
+    auto svd_sys = svd_system(overlap.rows(), array::Span(&overlap(0, 0), overlap.size()), res_norm_thresh);
     auto qspace_is_empty = nQ == 0;
-    found_singularity = (it != end(norm) && !qspace_is_empty);
-    // FIXME using GS to find singularity is not very stable and later on SVD fails
-    // FIXME we should instead use SVD here already with the same threshold as in SubspaceSolver
-    // FIXME GS can be done last when we know that the subspace is stable
+    found_singularity = (!svd_sys.empty() && !qspace_is_empty);
     if (found_singularity) {
-      auto i = std::distance(begin(norm), it);
-      logger.msg("found singularity in parameter index i = " + std::to_string(i) + " norm = " + std::to_string(*it),
-                 Logger::Info);
-      auto normalised_overlap = std::vector<value_type>{};
-      for (size_t j = 0; j < nQ; ++j)
-        normalised_overlap.emplace_back(std::abs(overlap(i, oQ + j)) / std::sqrt(std::abs(overlap(oQ + j, oQ + j))));
-      auto it_max = std::max_element(begin(normalised_overlap), end(normalised_overlap));
-      auto iq_erase = std::distance(begin(normalised_overlap), it_max);
+      auto sing_val_from_q = std::vector<value_type_abs>(nQ);
+      for (size_t i = 0; i < nQ; ++i)
+        sing_val_from_q[i] = std::abs(svd_sys.front().v.at(oQ + i));
+      auto it_max = std::max_element(begin(sing_val_from_q), end(sing_val_from_q));
+      auto iq_erase = std::distance(begin(sing_val_from_q), it_max);
+      {
+        std::stringstream sv;
+        sv << std::setprecision(3) << svd_sys.front().value;
+        logger.msg("found singularity due to Q parameter index = " + std::to_string(iq_erase) + ", singular value = " +
+                       sv.str() + ", SVD right vector contribution = " + std::to_string(*it_max),
+                   Logger::Debug);
+      }
       remove_qspace(iq_erase);
     }
   }

@@ -153,8 +153,6 @@ public:
    * returned parameters and residual, before the subsequent call to endIteration()
    */
   virtual bool add_value(R& parameters, value_type value, R& residual) = 0;
-  // FIXME need getter for values
-  // FIXME Are there any other parameters that we need?
 };
 
 //! Solves non-linear system of equations using methods such as DIIS

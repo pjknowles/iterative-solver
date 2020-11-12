@@ -320,7 +320,7 @@ protected:
     }
     pparams = detail::construct_vectorP(m_working_set, m_subspace_solver->solutions(), m_xspace->dimensions().oP,
                                         m_xspace->dimensions().nP);
-    m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace);
+    m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace, 6);
     return m_working_set.size();
   }
 

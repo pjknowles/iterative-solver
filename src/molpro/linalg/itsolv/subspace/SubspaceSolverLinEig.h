@@ -135,7 +135,7 @@ public:
     m_solutions = detail::transform_solutions(m_solutions, m_lin_trans);
     m_errors.assign(size(), std::numeric_limits<value_type_abs>::max());
     if (m_logger->data_dump) {
-      m_logger->msg("eigenvalues = ", begin(m_eigenvalues), end(m_eigenvalues), Logger::Debug);
+      m_logger->msg("eigenvalues = ", begin(m_eigenvalues), end(m_eigenvalues), Logger::Debug, 10);
       m_logger->msg("eigenvectors = " + as_string(m_solutions), Logger::Info);
     }
   }

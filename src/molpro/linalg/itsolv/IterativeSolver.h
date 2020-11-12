@@ -3,6 +3,7 @@
 #include <molpro/linalg/array/Span.h>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/Statistics.h>
+#include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/wrap.h>
 #include <ostream>
 #include <vector>
@@ -107,6 +108,7 @@ public:
   virtual void set_convergence_threshold(double thresh) = 0;
   //! Reports the convergence threshold
   virtual double convergence_threshold() const = 0;
+  virtual const subspace::Dimensions& dimensions() const = 0;
   // FIXME Missing parameters: SVD threshold
 };
 

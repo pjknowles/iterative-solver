@@ -30,20 +30,20 @@ using decay_t = typename decay<T>::type;
 //! Takes a begin and end iterators and returns a vector of references to each element
 template <class R, class ForwardIt>
 auto wrap(ForwardIt begin, ForwardIt end) {
-  using T = decltype(*begin);
-  auto w = VecRef<decay_t<T>>{};
+  using T = decay_t<decay_t<decltype(*begin)>>;
+  auto w = VecRef<T>{};
   for (auto it = begin; it != end; ++it)
-    w.emplace_back(std::ref(*it));
+    w.push_back(std::ref(*it));
   return w;
 }
 
 //! Takes a begin and end iterators and returns a vector of references to each element
 template <class R, class ForwardIt>
 auto cwrap(ForwardIt begin, ForwardIt end) {
-  using T = decltype(*begin);
-  auto w = CVecRef<decay_t<T>>{};
+  using T = decay_t<decay_t<decltype(*begin)>>;
+  auto w = CVecRef<T>{};
   for (auto it = begin; it != end; ++it)
-    w.emplace_back(std::cref(*it));
+    w.push_back(std::cref(*it));
   return w;
 }
 

@@ -6,12 +6,30 @@
 
 #include <list>
 
+using molpro::linalg::itsolv::CVecRef;
 using molpro::linalg::itsolv::cwrap;
+using molpro::linalg::itsolv::decay;
+using molpro::linalg::itsolv::decay_t;
 using molpro::linalg::itsolv::find_ref;
 using molpro::linalg::itsolv::remove_elements;
+using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::wrap;
 using ::testing::Eq;
 using ::testing::Pointwise;
+
+struct CompareEqualRefWrap {
+  template <typename T, typename R>
+  bool operator()(const std::reference_wrapper<T> &l, const std::reference_wrapper<R> &r) {
+    return std::addressof(l.get()) == std::addressof(r.get());
+  }
+};
+
+struct CompareEqualVecRef {
+  template <typename T, typename R>
+  bool operator()(const VecRef<T> &l, const VecRef<R> &r) {
+    return std::equal(begin(l), end(l), begin(r), CompareEqualRefWrap{});
+  }
+};
 
 TEST(wrap_util, find_ref_empty) {
   auto params = std::vector<int>{};
@@ -106,4 +124,29 @@ TEST(cwrap, const_VecRef_to_CVecRef) {
   ASSERT_THAT(wparams, Pointwise(Eq(), params));
   ASSERT_THAT(cwparams, Pointwise(Eq(), params));
   ASSERT_THAT(cwparams, Pointwise(Eq(), wparams));
+  ASSERT_TRUE(CompareEqualVecRef{}(wparams, cwparams));
+}
+
+TEST(cwrap, forward_iterator) {
+  auto params = std::vector<int>{1, 2, 3, 4, 5, 6};
+  VecRef<int> wparams = wrap<int>(begin(params), end(params));
+  ASSERT_EQ(wparams.size(), params.size());
+  ASSERT_THAT(wparams, Pointwise(Eq(), params));
+}
+
+TEST(cwrap, const_forward_iterator) {
+  const auto params = std::vector<int>{1, 2, 3, 4, 5, 6};
+  CVecRef<int> wparams = cwrap<int>(begin(params), end(params));
+  ASSERT_TRUE(std::is_const_v<decltype(wparams)::value_type::type>);
+  ASSERT_EQ(wparams.size(), params.size());
+  ASSERT_THAT(wparams, Pointwise(Eq(), params));
+}
+
+TEST(cwrap, forward_iterator_on_VecRef) {
+  auto params = std::vector<int>{1, 2, 3, 4, 5, 6};
+  VecRef<int> wparams = wrap<int>(begin(params), end(params));
+  VecRef<int> wparams2 = wrap<int>(begin(wparams), end(wparams));
+  ASSERT_EQ(wparams.size(), wparams2.size());
+  ASSERT_THAT(wparams2, Pointwise(Eq(), wparams));
+  ASSERT_TRUE(CompareEqualVecRef{}(wparams2, wparams));
 }

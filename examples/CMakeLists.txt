@@ -24,7 +24,6 @@ if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)
     if (FORTRAN)
         list(APPEND EXAMPLES
                 LinearEigensystemExampleF-mpi.F90
-                LinearEigensystemExampleF-Pspace-mpi.F90
                 )
     endif ()
 endif ()

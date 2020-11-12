@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_PROPOSE_RSPACE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_PROPOSE_RSPACE_H
 #include <molpro/linalg/itsolv/IterativeSolver.h>
+#include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
@@ -65,14 +66,14 @@ auto propose_orthonormal_set(VecRef<R> params, const double norm_thresh, array::
 template <typename value_type, typename value_type_abs>
 auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> overlap,
                                                    const subspace::Matrix<value_type>& solutions,
-                                                   const subspace::xspace::Dimensions& dims, Logger& logger,
-                                                   value_type_abs res_norm_thresh, unsigned int max_size_qspace) {
+                                                   const subspace::Dimensions& dims, Logger& logger,
+                                                   value_type_abs res_norm_thresh, int max_size_qspace) {
   assert(solutions.rows() != 0);
   logger.msg("calculate_transformation_to_orthogonal_rspace()", Logger::Trace);
   auto norm = std::vector<value_type_abs>{};
   auto lin_trans = subspace::Matrix<value_type>{};
-  auto qindices_to_remove = std::vector<unsigned int>{};
-  auto qindices = std::vector<unsigned int>(dims.nQ);
+  auto qindices_to_remove = std::vector<int>{};
+  auto qindices = std::vector<int>(dims.nQ);
   std::iota(begin(qindices), end(qindices), 0);
   auto remove_qspace = [&](size_t oQ, size_t iQ) {
     auto iQ_glob = qindices.at(iQ);
@@ -130,11 +131,9 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
  * @return
  */
 template <typename value_type, typename value_type_abs>
-auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
-                                  const subspace::xspace::Dimensions& dims,
-                                  const std::vector<unsigned int>& remove_qspace,
-                                  const subspace::Matrix<value_type>& overlap, value_type_abs norm_thresh,
-                                  Logger& logger) {
+auto construct_projected_solution(const subspace::Matrix<value_type>& solutions, const subspace::Dimensions& dims,
+                                  const std::vector<int>& remove_qspace, const subspace::Matrix<value_type>& overlap,
+                                  value_type_abs norm_thresh, Logger& logger) {
   logger.msg("construct_projected_solution", Logger::Trace);
   const auto nQd = remove_qspace.size();
   const auto nSol = solutions.rows();
@@ -202,8 +201,7 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
  */
 template <typename value_type>
 auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_type>& solutions_proj,
-                                                const subspace::xspace::Dimensions& dims,
-                                                const std::vector<unsigned int>& remove_qspace,
+                                                const subspace::Dimensions& dims, const std::vector<int>& remove_qspace,
                                                 const subspace::Matrix<value_type>& overlap, const size_t nR) {
   const auto nDnew = solutions_proj.rows();
   const auto nQd = remove_qspace.size();
@@ -279,9 +277,9 @@ auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_typ
  * @return linear transformation to the new D space in terms of P+Q+R+Qdelete+Dold
  */
 template <typename value_type, typename value_type_abs>
-auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspace::xspace::Dimensions& dims,
-                    const std::vector<unsigned int>& remove_qspace, const subspace::Matrix<value_type>& overlap,
-                    const size_t nR, value_type_abs norm_thresh, Logger& logger) {
+auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspace::Dimensions& dims,
+                    const std::vector<int>& remove_qspace, const subspace::Matrix<value_type>& overlap, const size_t nR,
+                    value_type_abs norm_thresh, Logger& logger) {
   logger.msg("propose_dspace()", Logger::Trace);
   auto solutions_proj = construct_projected_solution(solutions, dims, remove_qspace, overlap, norm_thresh, logger);
   if (logger.data_dump)
@@ -352,7 +350,7 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
  */
 template <class R, class Q, class P, typename value_type>
 auto construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& lin_trans,
-                                   const std::vector<unsigned int>& q_indices_remove, const CVecRef<R>& rparams,
+                                   const std::vector<int>& q_indices_remove, const CVecRef<R>& rparams,
                                    ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
   const auto nD = lin_trans.rows();
   const auto nQdelete = q_indices_remove.size();
@@ -380,7 +378,7 @@ auto construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const sub
   const auto oR = oQ + nQ;
   const auto oQdelete = oR + nR;
   const auto oDold = oQdelete + nQdelete;
-  auto q_indices_new = std::vector<unsigned int>(nQ);
+  auto q_indices_new = std::vector<int>(nQ);
   for (size_t j = 0, k = 0; j < dims.nQ; ++j) {
     if (std::find(begin(q_indices_remove), end(q_indices_remove), j) == end(q_indices_remove))
       q_indices_new[k++] = j;
@@ -512,10 +510,9 @@ void construct_orthonormal_Rparams(VecRef<R>& params, VecRef<R>& residuals,
 
 //! Returns new working set based on parameters included in wparams
 template <class R>
-auto get_new_working_set(const std::vector<unsigned int>& working_set, const std::vector<R>& params,
-                         const VecRef<R>& wparams) {
-  auto new_indices = find_ref(wparams, begin(params), end(params));
-  auto new_working_set = std::vector<unsigned int>{};
+auto get_new_working_set(const std::vector<int>& working_set, const CVecRef<R>& params, const CVecRef<R>& wparams) {
+  auto new_indices = find_ref(wparams, params);
+  auto new_working_set = std::vector<int>{};
   for (auto i : new_indices) {
     new_working_set.emplace_back(working_set.at(i));
   }
@@ -551,10 +548,10 @@ auto get_new_working_set(const std::vector<unsigned int>& working_set, const std
  * @return number of significant parameters to calculate the action for
  */
 template <class R, class Q, class P, typename value_type, typename value_type_abs>
-auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& parameters, std::vector<R>& residuals,
+auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& parameters, const VecRef<R>& residuals,
                     subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& solutions,
                     ArrayHandlers<R, Q, P>& handlers, Logger& logger, value_type_abs res_norm_thresh,
-                    unsigned int max_size_qspace) {
+                    int max_size_qspace) {
   logger.msg("itsolv::detail::propose_rspace", Logger::Trace);
   logger.msg("dimensions {nP, nQ, nD, nW} = " + std::to_string(xspace.dimensions().nP) + ", " +
                  std::to_string(xspace.dimensions().nQ) + ", " + std::to_string(xspace.dimensions().nD) + ", " +
@@ -599,7 +596,7 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, std::vector<R>& paramete
   auto wdparams = wrap(dparams);
   auto wdactions = wrap(dactions);
   xspace.update_dspace(wdparams, wdactions, lin_trans_D_only_R);
-  auto new_working_set = get_new_working_set(solver.working_set(), residuals, wresidual);
+  auto new_working_set = get_new_working_set(solver.working_set(), cwrap(residuals), cwrap(wresidual));
   return new_working_set;
 }
 } // namespace molpro::linalg::itsolv::detail

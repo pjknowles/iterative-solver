@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_DSPACERESETTER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_DSPACERESETTER_H
 #include <molpro/linalg/itsolv/IterativeSolver.h>
+#include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
@@ -58,7 +59,7 @@ public:
   DSpaceResetter(int nreset, int max_Qsize) : m_nreset{nreset}, m_max_Qsize_after_reset{max_Qsize} {}
 
   //! Whether reset operation should be run
-  bool do_reset(size_t iter, const subspace::xspace::Dimensions& dims) {
+  bool do_reset(size_t iter, const subspace::Dimensions& dims) {
     return ((iter + 1) % m_nreset == 0 && dims.nD > 0) || !solution_params.empty();
   }
 
@@ -75,9 +76,9 @@ public:
 
   //! Run the reset operation
   template <class R, class P, typename value_type>
-  std::vector<unsigned int> run(std::vector<R>& rparams, subspace::XSpaceI<R, Q, P>& xspace,
-                                const subspace::Matrix<value_type>& solutions, ArrayHandlers<R, Q, P>& handlers,
-                                Logger& logger) {
+  std::vector<int> run(const VecRef<R>& rparams, subspace::XSpaceI<R, Q, P>& xspace,
+                       const subspace::Matrix<value_type>& solutions, ArrayHandlers<R, Q, P>& handlers,
+                       Logger& logger) {
     logger.msg("DSpaceResetter::run()", Logger::Trace);
     logger.msg("dimensions {nP, nQ, nD, nR} = " + std::to_string(xspace.dimensions().nP) + ", " +
                    std::to_string(xspace.dimensions().nQ) + ", " + std::to_string(xspace.dimensions().nD) + ", " +
@@ -88,8 +89,8 @@ public:
     if (solution_params.empty() && !rparams.empty()) {
       logger.msg("constructing solutions", Logger::Debug);
       for (size_t i = 0; i < nC; ++i)
-        solution_params.emplace_back(util::construct_zeroed_copy(rparams.front(), handlers.qr()));
-      auto roots = std::vector<unsigned int>(nC);
+        solution_params.emplace_back(util::construct_zeroed_copy(rparams.front().get(), handlers.qr()));
+      auto roots = std::vector<int>(nC);
       std::iota(begin(roots), end(roots), 0);
       util::construct_solutions(wrap<Q>(begin(solution_params), end(solution_params)), roots, solutions,
                                 xspace.cparamsp(), xspace.cparamsq(), xspace.cparamsd(), dims.oP, dims.oQ, dims.oD,
@@ -117,7 +118,7 @@ public:
     // FIXME It might be prudent to double check that the subspace is stable and remove more Q vectors if it is not
     if (xspace.dimensions().nQ > m_max_Qsize_after_reset)
       resize_qspace(xspace, solutions, m_max_Qsize_after_reset, logger);
-    auto new_working_set = std::vector<unsigned int>(nR);
+    auto new_working_set = std::vector<int>(nR);
     std::iota(begin(new_working_set), end(new_working_set), 0);
     return new_working_set;
   }

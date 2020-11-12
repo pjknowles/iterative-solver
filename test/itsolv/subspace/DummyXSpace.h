@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_TEST_ITSOLV_SUBSPACE_DUMMYXSPACE_H
 #define LINEARALGEBRA_TEST_ITSOLV_SUBSPACE_DUMMYXSPACE_H
 
+#include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 
 using molpro::linalg::itsolv::CVecRef;
@@ -56,9 +57,9 @@ struct DummyXSpace : public molpro::linalg::itsolv::subspace::XSpaceI<R, Q, P> {
   CVecRef<Q> cparamsd() const override { return CVecRef<Q>{}; }
   CVecRef<Q> cactionsd() const override { return CVecRef<Q>{}; }
 
-  const molpro::linalg::itsolv::subspace::xspace::Dimensions& dimensions() const override { return dims; }
+  const molpro::linalg::itsolv::subspace::Dimensions& dimensions() const override { return dims; }
 
-  molpro::linalg::itsolv::subspace::xspace::Dimensions dims;
+  molpro::linalg::itsolv::subspace::Dimensions dims;
 };
 } // namespace
 

@@ -26,6 +26,23 @@ std::vector<size_t> find_ref(const VecRef<R>& wparams, ForwardIt begin, ForwardI
 }
 
 /*!
+ * @brief Given two wrapped references returns indices of parameters that are in both sets
+ * @param wparams first set of references
+ * @param wparams_ref second set of references
+ */
+template <typename R>
+std::vector<size_t> find_ref(const CVecRef<R>& wparams, const CVecRef<R>& wparams_ref) {
+  auto indices = std::vector<size_t>{};
+  for (auto it = wparams_ref.cbegin(); it != wparams_ref.cend(); ++it) {
+    auto it_found = std::find_if(std::begin(wparams), std::end(wparams),
+                                 [&it](const auto& w) { return std::addressof(w.get()) == std::addressof(it->get()); });
+    if (it_found != std::end(wparams))
+      indices.emplace_back(std::distance(wparams_ref.cbegin(), it));
+  }
+  return indices;
+}
+
+/*!
  * @brief Removes indices from a vector
  * @tparam T value type
  * @tparam I index type

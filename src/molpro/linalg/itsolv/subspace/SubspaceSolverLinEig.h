@@ -141,8 +141,8 @@ public:
   }
 
   //! Set error value for solution *root*
-  void set_error(unsigned int root, value_type_abs error) override { m_errors.at(root) = error; }
-  void set_error(const std::vector<unsigned int>& roots, const std::vector<value_type_abs>& errors) override {
+  void set_error(int root, value_type_abs error) override { m_errors.at(root) = error; }
+  void set_error(const std::vector<int>& roots, const std::vector<value_type_abs>& errors) override {
     for (size_t i = 0; i < roots.size(); ++i)
       set_error(roots[i], errors[i]);
   }

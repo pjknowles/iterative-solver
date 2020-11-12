@@ -3,7 +3,9 @@
 #include <molpro/linalg/array/Span.h>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/Statistics.h>
+#include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/wrap.h>
+#include <ostream>
 #include <vector>
 
 namespace molpro::linalg::itsolv {
@@ -35,42 +37,79 @@ public:
   IterativeSolver(IterativeSolver<R, Q, P>&&) noexcept = default;
   IterativeSolver<R, Q, P>& operator=(IterativeSolver<R, Q, P>&&) noexcept = default;
 
+  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action, fapply_on_p_type& apply_p) = 0;
+  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action, std::vector<VectorP>& pparams) = 0;
+  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action) = 0;
+
+  // FIXME this should be removed in favour of VecRef interface
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, fapply_on_p_type& apply_p) = 0;
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& pparams) = 0;
   virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) = 0;
+  virtual size_t add_vector(R& parameters, R& action) = 0;
+
   /*!
- * \brief Add P-space vectors to the expansion set for linear methods.
- * \param Pparams the vectors to add. Each Pvector specifies a sparse vector in the underlying space
- * \param pp_action_matrix Matrix projected onto the existing+new, new P space. It should be provided as a
- * 1-dimensional array, with the existing+new index running fastest.
- * \param parameters Used as scratch working space
- * \param action  On exit, the  residual of the interpolated solution.
- * The contribution from the new, and any existing, P parameters is missing, and should be added in subsequently.
- * \param parametersP On exit, the interpolated solution projected onto the P space.
- * \return The number of vectors contained in parameters, action, parametersP
- */
-  virtual size_t add_p(const std::vector<P>& pparams, const array::Span<value_type>& pp_action_matrix,
-                       std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& parametersP) = 0;
-  virtual void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters,
-                        std::vector<R>& residual) = 0;
+   * \brief Add P-space vectors to the expansion set for linear methods.
+   * \param Pparams the vectors to add. Each Pvector specifies a sparse vector in the underlying space
+   * \param pp_action_matrix Matrix projected onto the existing+new, new P space. It should be provided as a
+   * 1-dimensional array, with the existing+new index running fastest.
+   * \param parameters Used as scratch working space
+   * \param action  On exit, the  residual of the interpolated solution.
+   * The contribution from the new, and any existing, P parameters is missing, and should be added in subsequently.
+   * \param parametersP On exit, the interpolated solution projected onto the P space.
+   * \return The number of vectors contained in parameters, action, parametersP
+   */
+  virtual size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix,
+                       const VecRef<R>& parameters, const VecRef<R>& action, std::vector<VectorP>& parametersP) = 0;
+
+  // FIXME Is this needed?
+  virtual void clearP() = 0;
+
+  //! Construct solution and residual for a given set of roots
+  virtual void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) = 0;
+
   //! Constructs parameters of selected roots
-  virtual void solution_params(const std::vector<unsigned int>& roots, std::vector<R>& parameters) = 0;
-  virtual void solution(const std::vector<unsigned int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
-                        std::vector<P>& parametersP) = 0;
-  virtual size_t end_iteration(std::vector<R>& parameters, std::vector<R>& residual) = 0;
-  virtual std::vector<size_t> suggest_p(const std::vector<R>& solution, const std::vector<R>& residual,
-                                        size_t maximumNumber, double threshold) = 0;
+  virtual void solution_params(const std::vector<int>& roots, const VecRef<R>& parameters) = 0;
+
+  //! Behaviour depends on the solver
+  virtual size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& residual) = 0;
+
+  /*!
+   * \brief Get the solver's suggestion of which degrees of freedom would be best
+   * to add to the P-space.
+   * \param solution Current solution
+   * \param residual Current residual
+   * \param max_number Suggest no more than this number
+   * \param threshold Suggest only axes for which the current residual and update
+   * indicate an energy improvement in the next iteration of this amount or more.
+   * \return
+   */
+  virtual std::vector<size_t> suggest_p(const CVecRef<R>& solution, const CVecRef<R>& residual, size_t max_number,
+                                        double threshold) = 0;
+
+  virtual void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) = 0;
+  virtual void solution_params(const std::vector<int>& roots, std::vector<R>& parameters) = 0;
+  virtual size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) = 0;
 
   /*!
    * @brief Working set of roots that are not yet converged
    */
-  virtual const std::vector<unsigned int>& working_set() const = 0;
+  virtual const std::vector<int>& working_set() const = 0;
   //! Total number of roots we are solving for, including the ones that are already converged
   virtual size_t n_roots() const = 0;
   virtual void set_n_roots(size_t nroots) = 0;
   virtual const std::vector<scalar_type>& errors() const = 0;
   virtual const Statistics& statistics() const = 0;
+  //! Writes a report to cout output stream
+  virtual void report(std::ostream& cout) const = 0;
+  //! Writes a report to std::cout
   virtual void report() const = 0;
+
+  //! Sets the convergence threshold
+  virtual void set_convergence_threshold(double thresh) = 0;
+  //! Reports the convergence threshold
+  virtual double convergence_threshold() const = 0;
+  virtual const subspace::Dimensions& dimensions() const = 0;
+  // FIXME Missing parameters: SVD threshold
 };
 
 /*!
@@ -80,7 +119,10 @@ template <class R, class Q, class P>
 class LinearEigensystem : public IterativeSolver<R, Q, P> {
 public:
   using typename IterativeSolver<R, Q, P>::scalar_type;
-  virtual std::vector<scalar_type> eigenvalues() const = 0; //!< The calculated eigenvalues of the subspace matrix
+  //! The calculated eigenvalues of the subspace matrix
+  virtual std::vector<scalar_type> eigenvalues() const = 0;
+  //! The calculated eigenvalues for roots in the working set
+  virtual std::vector<scalar_type> working_set_eigenvalues() const = 0;
 };
 
 template <class R, class Q, class P>
@@ -89,21 +131,33 @@ public:
   using typename IterativeSolver<R, Q, P>::scalar_type;
   //! eigenvalues of augmented Hessian method, if it was used
   virtual std::vector<scalar_type> eigenvalues() const = 0;
-  void addEquations(const std::vector<R>& rhs) = 0;
-  std::vector<Q>& rhs() = 0;
-
-protected:
-  std::vector<Q> m_rhs;
+  void add_equations(const std::vector<R>& rhs) = 0;
+  void add_equations(const R& rhs) = 0;
+  virtual const std::vector<Q>& rhs() const = 0;
 };
 
+//! Optimises to a stationary point using methods such as L-BFGS
 template <class R, class Q, class P>
 class Optimize : public IterativeSolver<R, Q, P> {
 public:
-  virtual bool end_iteration(std::vector<R>& solution, std::vector<R>& residual) = 0;
+  using typename IterativeSolver<R, Q, P>::value_type;
+  using typename IterativeSolver<R, Q, P>::scalar_type;
+  // FIXME Description of return is unclear
+  /*!
+   * \brief Take a current solution, objective function value and residual, and return new solution.
+   * \param parameters On input, the current solution. On exit, the interpolated solution vector.
+   * \param value The value of the objective function for parameters.
+   * \param residual On input, the residual for parameters. On exit, the expected (non-linear) residual of the
+   * interpolated parameters.
+   * \return whether it is expected that the client should make an update, based on the
+   * returned parameters and residual, before the subsequent call to endIteration()
+   */
+  virtual bool add_value(R& parameters, value_type value, R& residual) = 0;
 };
 
+//! Solves non-linear system of equations using methods such as DIIS
 template <class R, class Q, class P>
-class DIIS : public IterativeSolver<R, Q, P> {};
+class NonLinearEquations : public IterativeSolver<R, Q, P> {};
 
 } // namespace molpro::linalg::itsolv
 

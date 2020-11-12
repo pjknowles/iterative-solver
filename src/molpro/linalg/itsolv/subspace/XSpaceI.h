@@ -67,7 +67,7 @@ public:
   virtual CVecRef<Q> cparamsd() const = 0;
   virtual CVecRef<Q> cactionsd() const = 0;
 
-  virtual const xspace::Dimensions& dimensions() const = 0;
+  virtual const Dimensions& dimensions() const = 0;
 };
 
 } // namespace molpro::linalg::itsolv::subspace

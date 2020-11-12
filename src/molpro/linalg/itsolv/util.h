@@ -62,7 +62,7 @@ Q construct_zeroed_copy(const R& param, array::ArrayHandler<Q, R>& handler) {
  * @param handler_rq array handler
  */
 template <class R, class Q, class P>
-void construct_solutions(const VecRef<R>& params, const std::vector<unsigned int>& roots,
+void construct_solutions(const VecRef<R>& params, const std::vector<int>& roots,
                          const subspace::Matrix<double>& solutions, const CVecRef<P>& pparams,
                          const CVecRef<Q>& qparams, const CVecRef<Q>& dparams, size_t oP, size_t oQ, size_t oD,
                          array::ArrayHandler<R, R>& handler_rr, array::ArrayHandler<R, P>& handler_rp,

@@ -3,6 +3,7 @@
 #include <molpro/linalg/array/Span.h>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/Statistics.h>
+#include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/wrap.h>
 #include <ostream>
 #include <vector>
@@ -107,6 +108,7 @@ public:
   virtual void set_convergence_threshold(double thresh) = 0;
   //! Reports the convergence threshold
   virtual double convergence_threshold() const = 0;
+  virtual const subspace::Dimensions& dimensions() const = 0;
   // FIXME Missing parameters: SVD threshold
 };
 
@@ -150,9 +152,7 @@ public:
    * \return whether it is expected that the client should make an update, based on the
    * returned parameters and residual, before the subsequent call to endIteration()
    */
-  virtual size_t add_value(R& parameters, value_type value, R& residual) = 0;
-  // FIXME need getter for values
-  // FIXME Are there any other parameters that we need?
+  virtual bool add_value(R& parameters, value_type value, R& residual) = 0;
 };
 
 //! Solves non-linear system of equations using methods such as DIIS

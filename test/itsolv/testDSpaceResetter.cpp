@@ -12,11 +12,11 @@ using Q = std::vector<double>;
 using P = std::map<size_t, double>;
 
 struct ResizeQspace : DummyXSpace<R, Q, P> {
-  ResizeQspace() { dims = molpro::linalg::itsolv::subspace::xspace::Dimensions{0, static_cast<size_t>(nQ), 0}; }
+  ResizeQspace() { dims = molpro::linalg::itsolv::subspace::Dimensions{0, static_cast<size_t>(nQ), 0}; }
   void eraseq(size_t i) override {
     --nQ;
     erased_Q.emplace_back(i);
-    dims = molpro::linalg::itsolv::subspace::xspace::Dimensions(0, nQ, 0);
+    dims = molpro::linalg::itsolv::subspace::Dimensions(0, nQ, 0);
   }
 
   int nQ = 3;

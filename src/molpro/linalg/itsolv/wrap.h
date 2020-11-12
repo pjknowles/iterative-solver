@@ -27,55 +27,23 @@ struct decay<std::reference_wrapper<T>> {
 template <class T>
 using decay_t = typename decay<T>::type;
 
-//! Takes a vector of containers and returns a vector of references to each element
-template <class R>
-auto wrap(const std::vector<R>& vec) {
-  auto w = CVecRef<decay_t<R>>{};
-  for (const auto& v : vec)
-    w.emplace_back(std::cref(v));
-  return w;
-}
-
-//! Takes a vector of containers and returns a vector of references to each element
-template <class R>
-auto wrap(std::vector<R>& vec) {
-  auto w = VecRef<decay_t<R>>{};
-  for (auto& v : vec)
-    w.emplace_back(std::ref(v));
-  return w;
-}
-
-//! Takes a vector of containers and returns a vector of references to each element
-template <class R>
-auto cwrap(const std::vector<R>& vec) {
-  auto w = CVecRef<decay_t<R>>{};
-  for (const auto& v : vec)
-    w.emplace_back(std::cref(v));
-  return w;
-}
-
-//! Takes a vector of containers and returns a vector of references to each element
-template <class R>
-auto cwrap(std::vector<R>& vec) {
-  const auto& cvec = vec;
-  return cwrap<R>(cvec);
-}
-
 //! Takes a begin and end iterators and returns a vector of references to each element
 template <class R, class ForwardIt>
 auto wrap(ForwardIt begin, ForwardIt end) {
-  auto w = VecRef<R>{};
+  using T = decay_t<decay_t<decltype(*begin)>>;
+  auto w = VecRef<T>{};
   for (auto it = begin; it != end; ++it)
-    w.emplace_back(std::ref(*it));
+    w.push_back(std::ref(*it));
   return w;
 }
 
 //! Takes a begin and end iterators and returns a vector of references to each element
 template <class R, class ForwardIt>
 auto cwrap(ForwardIt begin, ForwardIt end) {
-  auto w = CVecRef<R>{};
+  using T = decay_t<decay_t<decltype(*begin)>>;
+  auto w = CVecRef<T>{};
   for (auto it = begin; it != end; ++it)
-    w.emplace_back(std::cref(*it));
+    w.push_back(std::cref(*it));
   return w;
 }
 
@@ -86,11 +54,12 @@ auto cwrap(ForwardIt begin, ForwardIt end) {
  * @param parameters parameters to wrap
  * @return vector of constant references to each element in parameters
  */
-template <class R, class IterableContainer>
+template <class IterableContainer>
 auto wrap(const IterableContainer& parameters) {
+  using T = typename IterableContainer::value_type;
   using std::begin;
   using std::end;
-  auto w = CVecRef<R>{};
+  auto w = CVecRef<decay_t<T>>{};
   for (auto it = begin(parameters); it != end(parameters); ++it)
     w.emplace_back(std::cref(*it));
   return w;
@@ -103,11 +72,12 @@ auto wrap(const IterableContainer& parameters) {
  * @param parameters parameters to wrap
  * @return vector of references to each element in parameters
  */
-template <class R, class IterableContainer>
+template <class IterableContainer>
 auto wrap(IterableContainer& parameters) {
+  using T = typename IterableContainer::value_type;
   using std::begin;
   using std::end;
-  auto w = VecRef<R>{};
+  auto w = VecRef<decay_t<T>>{};
   for (auto it = begin(parameters); it != end(parameters); ++it)
     w.emplace_back(std::ref(*it));
   return w;
@@ -120,11 +90,12 @@ auto wrap(IterableContainer& parameters) {
  * @param parameters parameters to wrap
  * @return vector of constant references to each element in parameters
  */
-template <class R, class IterableContainer>
+template <class IterableContainer>
 auto cwrap(IterableContainer& parameters) {
+  using T = typename IterableContainer::value_type;
   using std::begin;
   using std::end;
-  auto w = CVecRef<R>{};
+  auto w = CVecRef<decay_t<T>>{};
   for (auto it = begin(parameters); it != end(parameters); ++it)
     w.emplace_back(std::cref(*it));
   return w;

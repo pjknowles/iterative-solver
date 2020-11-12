@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_DSPACERESETTER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_DSPACERESETTER_H
 #include <molpro/linalg/itsolv/IterativeSolver.h>
+#include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
@@ -58,7 +59,7 @@ public:
   DSpaceResetter(int nreset, int max_Qsize) : m_nreset{nreset}, m_max_Qsize_after_reset{max_Qsize} {}
 
   //! Whether reset operation should be run
-  bool do_reset(size_t iter, const subspace::xspace::Dimensions& dims) {
+  bool do_reset(size_t iter, const subspace::Dimensions& dims) {
     return ((iter + 1) % m_nreset == 0 && dims.nD > 0) || !solution_params.empty();
   }
 

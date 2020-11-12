@@ -3,6 +3,7 @@
 #include <cassert>
 #include <molpro/linalg/itsolv/helper.h>
 #include <molpro/linalg/itsolv/subspace/DSpace.h>
+#include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
@@ -115,7 +116,7 @@ auto update_dspace_action_data(const CVecRef<P>& pparams, const CVecRef<Q>& qpar
 }
 
 void copy_dspace_eqn_data(const NewData& new_data, SubspaceData& data, const subspace::EqnData e,
-                          const xspace::Dimensions& dims) {
+                          const Dimensions& dims) {
   const auto& dd = new_data.qq.at(e);
   const auto& dx = new_data.qx.at(e);
   const auto& xd = new_data.xq.at(e);
@@ -184,7 +185,7 @@ public:
     }
   }
 
-  const xspace::Dimensions& dimensions() const override { return m_dim; }
+  const Dimensions& dimensions() const override { return m_dim; }
 
   void erase(size_t i) override {
     if (m_dim.oP >= i && i < m_dim.oP + m_dim.nP) {
@@ -240,7 +241,7 @@ public:
   DSpace<Q> dspace;
 
 protected:
-  void update_dimensions() { m_dim = xspace::Dimensions(pspace.size(), qspace.size(), dspace.size()); }
+  void update_dimensions() { m_dim = Dimensions(pspace.size(), qspace.size(), dspace.size()); }
 
   void remove_data(size_t i) {
     for (auto d : {EqnData::H, EqnData::S})
@@ -248,7 +249,7 @@ protected:
   }
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::shared_ptr<Logger> m_logger;
-  xspace::Dimensions m_dim;
+  Dimensions m_dim;
   bool m_hermitian = false; //!< whether the matrix is Hermitian
 };
 

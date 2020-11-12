@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_PROPOSE_RSPACE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_PROPOSE_RSPACE_H
 #include <molpro/linalg/itsolv/IterativeSolver.h>
+#include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
@@ -65,7 +66,7 @@ auto propose_orthonormal_set(VecRef<R> params, const double norm_thresh, array::
 template <typename value_type, typename value_type_abs>
 auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> overlap,
                                                    const subspace::Matrix<value_type>& solutions,
-                                                   const subspace::xspace::Dimensions& dims, Logger& logger,
+                                                   const subspace::Dimensions& dims, Logger& logger,
                                                    value_type_abs res_norm_thresh, int max_size_qspace) {
   assert(solutions.rows() != 0);
   logger.msg("calculate_transformation_to_orthogonal_rspace()", Logger::Trace);
@@ -130,10 +131,9 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
  * @return
  */
 template <typename value_type, typename value_type_abs>
-auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
-                                  const subspace::xspace::Dimensions& dims, const std::vector<int>& remove_qspace,
-                                  const subspace::Matrix<value_type>& overlap, value_type_abs norm_thresh,
-                                  Logger& logger) {
+auto construct_projected_solution(const subspace::Matrix<value_type>& solutions, const subspace::Dimensions& dims,
+                                  const std::vector<int>& remove_qspace, const subspace::Matrix<value_type>& overlap,
+                                  value_type_abs norm_thresh, Logger& logger) {
   logger.msg("construct_projected_solution", Logger::Trace);
   const auto nQd = remove_qspace.size();
   const auto nSol = solutions.rows();
@@ -201,8 +201,7 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
  */
 template <typename value_type>
 auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_type>& solutions_proj,
-                                                const subspace::xspace::Dimensions& dims,
-                                                const std::vector<int>& remove_qspace,
+                                                const subspace::Dimensions& dims, const std::vector<int>& remove_qspace,
                                                 const subspace::Matrix<value_type>& overlap, const size_t nR) {
   const auto nDnew = solutions_proj.rows();
   const auto nQd = remove_qspace.size();
@@ -278,7 +277,7 @@ auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_typ
  * @return linear transformation to the new D space in terms of P+Q+R+Qdelete+Dold
  */
 template <typename value_type, typename value_type_abs>
-auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspace::xspace::Dimensions& dims,
+auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspace::Dimensions& dims,
                     const std::vector<int>& remove_qspace, const subspace::Matrix<value_type>& overlap, const size_t nR,
                     value_type_abs norm_thresh, Logger& logger) {
   logger.msg("propose_dspace()", Logger::Trace);

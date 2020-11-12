@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_PROPOSE_RSPACE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_PROPOSE_RSPACE_H
 #include <molpro/linalg/itsolv/IterativeSolver.h>
+#include <molpro/linalg/itsolv/helper.h>
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
@@ -70,29 +71,30 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
                                                    value_type_abs res_norm_thresh, int max_size_qspace) {
   assert(solutions.rows() != 0);
   logger.msg("calculate_transformation_to_orthogonal_rspace()", Logger::Trace);
+  const auto oQ = dims.oQ;
   auto norm = std::vector<value_type_abs>{};
   auto lin_trans = subspace::Matrix<value_type>{};
   auto qindices_to_remove = std::vector<int>{};
   auto qindices = std::vector<int>(dims.nQ);
   std::iota(begin(qindices), end(qindices), 0);
-  auto remove_qspace = [&](size_t oQ, size_t iQ) {
+  auto remove_qspace = [&](size_t iQ) {
     auto iQ_glob = qindices.at(iQ);
     qindices_to_remove.emplace_back(iQ_glob);
     qindices.erase(begin(qindices) + iQ);
     overlap.remove_row_col(oQ + iQ, oQ + iQ);
     logger.msg("removing q parameter = " + std::to_string(iQ_glob), Logger::Info);
   };
-  for (bool done = false; !done;) {
-    const auto oQ = dims.oQ;
+  for (bool found_singularity = true; found_singularity;) {
     const auto nQ = qindices.size();
     const auto oN = oQ + nQ;
     norm = subspace::util::gram_schmidt(overlap, lin_trans, res_norm_thresh);
     auto it = std::find_if(std::next(begin(norm), oN), end(norm),
                            [res_norm_thresh](auto el) { return el < res_norm_thresh; });
     auto qspace_is_empty = nQ == 0;
-    auto found_singularity = (it != end(norm) && !qspace_is_empty);
-    auto qspace_over_limit = nQ > max_size_qspace;
-    done = !(found_singularity || qspace_over_limit);
+    found_singularity = (it != end(norm) && !qspace_is_empty);
+    // FIXME using GS to find singularity is not very stable and later on SVD fails
+    // FIXME we should instead use SVD here already with the same threshold as in SubspaceSolver
+    // FIXME GS can be done last when we know that the subspace is stable
     if (found_singularity) {
       auto i = std::distance(begin(norm), it);
       logger.msg("found singularity in parameter index i = " + std::to_string(i) + " norm = " + std::to_string(*it),
@@ -102,22 +104,24 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
         normalised_overlap.emplace_back(std::abs(overlap(i, oQ + j)) / std::sqrt(std::abs(overlap(oQ + j, oQ + j))));
       auto it_max = std::max_element(begin(normalised_overlap), end(normalised_overlap));
       auto iq_erase = std::distance(begin(normalised_overlap), it_max);
-      remove_qspace(oQ, iq_erase);
-    } else if (qspace_over_limit) {
-      auto max_contrib_to_solution = std::vector<value_type_abs>{};
-      for (auto i : qindices) {
-        const auto nSol = solutions.rows();
-        auto contrib = std::vector<value_type_abs>(nSol);
-        for (size_t j = 0; j < nSol; ++j) {
-          contrib[j] = std::abs(solutions(j, oQ + i));
-        }
-        max_contrib_to_solution.emplace_back(*std::max_element(begin(contrib), end(contrib)));
-      }
-      auto it_min = std::min_element(begin(max_contrib_to_solution), end(max_contrib_to_solution));
-      auto i = std::distance(begin(max_contrib_to_solution), it_min);
-      remove_qspace(oQ, i);
+      remove_qspace(iq_erase);
     }
   }
+  while (qindices.size() > max_size_qspace) {
+    auto max_contrib_to_solution = std::vector<value_type_abs>{};
+    for (auto i : qindices) {
+      const auto nSol = solutions.rows();
+      auto contrib = std::vector<value_type_abs>(nSol);
+      for (size_t j = 0; j < nSol; ++j) {
+        contrib[j] = std::abs(solutions(j, oQ + i));
+      }
+      max_contrib_to_solution.emplace_back(*std::max_element(begin(contrib), end(contrib)));
+    }
+    auto it_min = std::min_element(begin(max_contrib_to_solution), end(max_contrib_to_solution));
+    auto i = std::distance(begin(max_contrib_to_solution), it_min);
+    remove_qspace(i);
+  }
+  norm = subspace::util::gram_schmidt(overlap, lin_trans, res_norm_thresh);
   return std::make_tuple(qindices_to_remove, lin_trans, norm);
 }
 

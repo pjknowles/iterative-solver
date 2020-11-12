@@ -101,6 +101,7 @@ public:
 
   //! Set the period in iterations for resetting the D space
   void set_reset_D(size_t n) { m_dspace_resetter.set_nreset(n); }
+  size_t get_reset_D() const { return m_dspace_resetter.get_nreset(); }
   //! Set the maximum size of Q space after resetting the D space
   void set_reset_D_maxQ_size(size_t n) { m_dspace_resetter.set_max_Qsize(n); }
 

@@ -372,6 +372,16 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
   int result = instance.solver->end_iteration(cc, gg);
   if (instance.prof != nullptr)
     instance.prof->stop("EndIter:Call");
+  if (instance.prof != nullptr)
+    instance.prof->start("AddVector:Sync");
+  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
+    //if (sync) {
+    gather_all(cc[root].distribution(), ccomm, &solution[root * instance.dimension]);
+    gather_all(gg[root].distribution(), ccomm, &residual[root * instance.dimension]);
+    //}
+  }
+  if (instance.prof != nullptr)
+    instance.prof->stop("AddVector:Sync");
   /*for (size_t root = 0; root < instance.solver->n_roots(); root++) {
     error[root] = instance.solver->errors()[root];
   }*/

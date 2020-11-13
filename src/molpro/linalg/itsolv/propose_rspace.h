@@ -61,14 +61,16 @@ auto propose_orthonormal_set(VecRef<R> params, const double norm_thresh, array::
  * @param qspace qspace container
  * @param oQ offset to the Q parameters in the full subspace
  * @param nW number of working parameters
- * @param res_norm_thresh norm threshold for Gram-Schmidt procedure
+ * @param svd_thresh theshold on singular values to mark that the subspace is not stable
+ * @param norm_thresh norm threshold for Gram-Schmidt procedure
  * @return index of q parameters to be removed, linear transformation matrix for constructing R params, and their norm
  */
 template <typename value_type, typename value_type_abs>
 auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> overlap,
                                                    const subspace::Matrix<value_type>& solutions,
                                                    const subspace::Dimensions& dims, Logger& logger,
-                                                   value_type_abs res_norm_thresh, int max_size_qspace) {
+                                                   value_type_abs svd_thresh, value_type_abs norm_thresh,
+                                                   int max_size_qspace) {
   assert(solutions.rows() != 0);
   logger.msg("calculate_transformation_to_orthogonal_rspace()", Logger::Trace);
   const auto oQ = dims.oQ;
@@ -87,7 +89,7 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
   for (bool found_singularity = true; found_singularity;) {
     const auto nQ = qindices.size();
     auto svd_sys_check = svd_system(overlap.rows(), array::Span(&overlap(0, 0), overlap.size()), 0.01);
-    auto svd_sys = svd_system(overlap.rows(), array::Span(&overlap(0, 0), overlap.size()), res_norm_thresh);
+    auto svd_sys = svd_system(overlap.rows(), array::Span(&overlap(0, 0), overlap.size()), svd_thresh);
     auto qspace_is_empty = nQ == 0;
     found_singularity = (!svd_sys.empty() && !qspace_is_empty);
     if (found_singularity) {
@@ -120,7 +122,7 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
     auto i = std::distance(begin(max_contrib_to_solution), it_min);
     remove_qspace(i);
   }
-  norm = subspace::util::gram_schmidt(overlap, lin_trans, res_norm_thresh);
+  norm = subspace::util::gram_schmidt(overlap, lin_trans, norm_thresh);
   return std::make_tuple(qindices_to_remove, lin_trans, norm);
 }
 
@@ -553,8 +555,8 @@ auto get_new_working_set(const std::vector<int>& working_set, const CVecRef<R>& 
 template <class R, class Q, class P, typename value_type, typename value_type_abs>
 auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& parameters, const VecRef<R>& residuals,
                     subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& solutions,
-                    ArrayHandlers<R, Q, P>& handlers, Logger& logger, value_type_abs res_norm_thresh,
-                    int max_size_qspace) {
+                    ArrayHandlers<R, Q, P>& handlers, Logger& logger, value_type_abs svd_thresh,
+                    value_type_abs res_norm_thresh, int max_size_qspace) {
   logger.msg("itsolv::detail::propose_rspace", Logger::Trace);
   logger.msg("dimensions {nP, nQ, nD, nW} = " + std::to_string(xspace.dimensions().nP) + ", " +
                  std::to_string(xspace.dimensions().nQ) + ", " + std::to_string(xspace.dimensions().nD) + ", " +
@@ -569,7 +571,7 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
   auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
                                   xspace.cparamsq(), handlers, logger);
   auto [q_indices_remove, lin_trans, norm] = calculate_transformation_to_orthogonal_rspace(
-      ov, solutions, xspace.dimensions(), logger, res_norm_thresh, max_size_qspace);
+      ov, solutions, xspace.dimensions(), logger, svd_thresh, res_norm_thresh, max_size_qspace);
   if (logger.data_dump) {
     logger.msg("overlap P+Q+Z = " + subspace::as_string(ov), Logger::Info);
     logger.msg("linear transformation = " + subspace::as_string(lin_trans), Logger::Info);

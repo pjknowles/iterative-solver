@@ -64,7 +64,7 @@ public:
       this->m_working_set =
           detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, *this->m_xspace,
                                  this->m_subspace_solver->solutions(), *this->m_handlers, *this->m_logger,
-                                 propose_rspace_norm_thresh, max_size_qspace);
+                                 propose_rspace_svd_thresh, propose_rspace_norm_thresh, max_size_qspace);
     }
     this->m_stats->iterations++;
     return this->working_set().size();
@@ -106,7 +106,10 @@ public:
   void set_reset_D_maxQ_size(size_t n) { m_dspace_resetter.set_max_Qsize(n); }
 
   std::shared_ptr<Logger> logger;
-  double propose_rspace_norm_thresh = 1e-6; //!< vectors with norm less than threshold can be considered null
+  double propose_rspace_norm_thresh = 1e-10; //!< vectors with norm less than threshold can be considered null.
+  double propose_rspace_svd_thresh = 1e-4;   //!< the smallest singular value in the subspace that can be allowed when
+                                             //!< constructing the working set. Smaller singular values will lead to
+                                             //!< deletion of parameters from the Q space
   int max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space
 protected:
   detail::DSpaceResetter<Q> m_dspace_resetter; //!< resets D space

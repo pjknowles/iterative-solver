@@ -105,7 +105,8 @@ void test_eigen(const std::string& title = "") {
     Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> he(hmat.data(), n, n);
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he);
     auto ev = esolver.eigenvalues();
-    //          std::cout << "actual eigenvalues" << ev << std::endl;
+    //              std::cout << "actual eigenvalues" << ev << std::endl;
+    expected_eigenvalues.clear();
     for (int i = 0; i < n; i++)
       expected_eigenvalues.push_back(ev[i]);
   }
@@ -266,7 +267,7 @@ TEST(IterativeSolver, file_eigen) {
 }
 
 TEST(IterativeSolver, n_eigen) {
-  load_matrix(1000,"",1);
+  load_matrix(1000, "", 1);
   test_eigen("1000/1");
 }
 

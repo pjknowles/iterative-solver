@@ -322,7 +322,7 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
         lin_trans_Dold(i, nX + j) += lin_trans(nX + i, nX + k) * solutions_proj(k, j);
   for (size_t i = 0; i < nD; ++i)
     lin_trans_Dold.row(i).scal(1. / norm[nX + i]);
-  const auto nDmax = std::max(remove_qspace.size(), dims.nD);
+  const auto nDmax = std::min(nSol, remove_qspace.size() + dims.nD);
   while (nD > nDmax) {
     auto it = std::min_element(std::begin(norm) + nX, std::end(norm));
     auto i = std::distance(std::begin(norm) + nX, it);

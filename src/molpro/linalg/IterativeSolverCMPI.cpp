@@ -427,7 +427,8 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Call");
   size_t working_set_size = instance.solver->add_p(molpro::linalg::itsolv::cwrap(Pvectors),
-                                              Span<Rvector::value_type>(&const_cast<double*>(pp)[0], nP*nP),
+                                              Span<Rvector::value_type>(&const_cast<double*>(pp)[0],
+                                                                         (instance.solver->dimensions().oP+nP)*nP),
                                               molpro::linalg::itsolv::wrap(cc),
                                               molpro::linalg::itsolv::wrap(gg), ccp);
   if (instance.prof != nullptr)

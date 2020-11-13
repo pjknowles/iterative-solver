@@ -283,7 +283,7 @@ auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_typ
  */
 template <typename value_type, typename value_type_abs>
 auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspace::Dimensions& dims,
-                    const std::vector<int>& remove_qspace, const subspace::Matrix<value_type>& overlap, const size_t nR,
+                    std::vector<int>& remove_qspace, const subspace::Matrix<value_type>& overlap, const size_t nR,
                     value_type_abs norm_thresh, Logger& logger) {
   logger.msg("propose_dspace()", Logger::Trace);
   auto solutions_proj = construct_projected_solution(solutions, dims, remove_qspace, overlap, norm_thresh, logger);
@@ -414,6 +414,80 @@ auto construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const sub
   auto lin_trans_only_R = subspace::Matrix<value_type>({nD, nR});
   lin_trans_only_R.slice() = lin_trans.slice({0, oR}, {nD, oR + nR});
   return std::make_tuple(std::move(dparams), std::move(dactions), lin_trans_only_R);
+}
+
+/*!
+ * @brief Constructs overlap of P+Q+R+Dnew subspace by extending P+Q+R overlap with components from Dnew
+ * @param overlap_PQDR overlap of P+Q+D+R subspace where D is the old D space
+ * @param dims dimensions of the old subspace which specify P+Q+D distribution
+ * @param pparams P space parameters
+ * @param qparams Q space parameters
+ * @param rparams new R space parameters
+ * @param dparams new D space parameters
+ * @param handlers array handlers
+ * @param logger logger
+ * @return overlap of P+Q+R+Dnew subspace
+ */
+template <class R, class Q, class P, typename value_type>
+auto construct_overlap_of_new_subspace(const subspace::Matrix<value_type>& overlap_PQDR,
+                                       const subspace::Dimensions& dims, const CVecRef<P> pparams,
+                                       const CVecRef<Q>& qparams, const CVecRef<R>& rparams, const CVecRef<Q>& dparams,
+                                       ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
+  logger.msg("construct_overlap_of_new_subspace()", Logger::Trace);
+  const size_t oP = 0, nP = dims.nP;
+  const size_t oQ = nP, nQ = dims.nQ;
+  const auto oR = nP + nQ, nR = rparams.size();
+  const auto oD = oR + nR, nD = dparams.size();
+  const auto nX = nP + nQ + nR + nD;
+  auto ov = subspace::Matrix<value_type>({nX, nX});
+  ov.slice({oP, oP}, {oR, oR}) = overlap_PQDR.slice({oP, oP}, {oR, oR});
+  ov.slice({oP, oR}, {oR, oR + nR}) = overlap_PQDR.slice({oP, oR + dims.nD}, {oR, oR + dims.nD + nR});
+  ov.slice({oR, oR}, {oR + nR, oR + nR}) =
+      overlap_PQDR.slice({oR + dims.nD, oR + dims.nD}, {oR + dims.nD + nR, oR + dims.nD + nR});
+  ov.slice({oP, oD}, {oP + nP, oD + nD}) = subspace::util::overlap(pparams, dparams, handlers.qp());
+  ov.slice({oQ, oD}, {oQ + nQ, oD + nD}) = subspace::util::overlap(qparams, dparams, handlers.qq());
+  ov.slice({oR, oD}, {oR + nR, oD + nD}) = subspace::util::overlap(rparams, dparams, handlers.rq());
+  ov.slice({oD, oD}, {oD + nD, oD + nD}) = subspace::util::overlap(dparams, handlers.qq());
+  for (size_t i = 0; i < nX; ++i)
+    for (size_t j = 0; j < i; ++j)
+      ov(i, j) = ov(j, i);
+  if (logger.data_dump) {
+    logger.msg("overlap P+Q+R+Dnew = " + as_string(ov), Logger::Trace);
+  }
+  return ov;
+}
+
+/*!
+ * @brief Apply SVD to check that the subspace is well conditioned. If not mark more Q parameters for removal.
+ * @param overlap_PQRD overlap of the subspace, where Q includes parameters marked for removal
+ * @param q_indices_remove Q parameters that are marked for removal so far
+ * @param oQ offset to the start of Q block
+ * @param nQ total number of Q parameters
+ * @return whether the subspace is well conditioned (all singular values are above threshold)
+ */
+template <typename value_type, typename value_type_abs>
+bool condition_subspace(subspace::Matrix<value_type> overlap_PQRD, std::vector<int>& q_indices_remove, size_t oQ,
+                        size_t nQ, value_type_abs svd_thresh) {
+  std::sort(begin(q_indices_remove), end(q_indices_remove), std::greater());
+  auto q_indices = std::vector<int>{};
+  for (size_t i = 0; i < nQ; ++i)
+    if (std::find(begin(q_indices_remove), end(q_indices_remove), i) != end(q_indices_remove))
+      q_indices.push_back(i);
+  for (auto i : q_indices_remove)
+    overlap_PQRD.remove_row_col(oQ + i, oQ + i);
+  auto svd_vecs = svd_system(overlap_PQRD.rows(), array::Span(&overlap_PQRD(0, 0), overlap_PQRD.size()), svd_thresh);
+  for (const auto& svd : svd_vecs) {
+    if (!q_indices.empty()) {
+      auto contrib = std::vector<value_type_abs>{};
+      for (auto i : q_indices)
+        contrib.push_back(std::abs(svd.v.at(oQ + i)));
+      auto it = std::max_element(begin(contrib), end(contrib));
+      auto iq = std::distance(begin(contrib), it);
+      q_indices_remove.push_back(iq);
+      q_indices.erase(begin(q_indices) + iq);
+    }
+  }
+  return svd_vecs.empty();
 }
 
 /*!
@@ -568,12 +642,12 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
   for (auto it = null_param_indices.rbegin(); it != null_param_indices.rend(); ++it)
     wresidual.erase(begin(wresidual) + (*it));
   // propose working space by orthogonalising against P+Q
-  auto ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
-                                  xspace.cparamsq(), handlers, logger);
+  auto overlap_PQDR = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
+                                            xspace.cparamsq(), handlers, logger);
   auto [q_indices_remove, lin_trans, norm] = calculate_transformation_to_orthogonal_rspace(
-      ov, solutions, xspace.dimensions(), logger, svd_thresh, res_norm_thresh, max_size_qspace);
+      overlap_PQDR, solutions, xspace.dimensions(), logger, svd_thresh, res_norm_thresh, max_size_qspace);
   if (logger.data_dump) {
-    logger.msg("overlap P+Q+Z = " + subspace::as_string(ov), Logger::Info);
+    logger.msg("overlap P+Q+Z = " + subspace::as_string(overlap_PQDR), Logger::Info);
     logger.msg("linear transformation = " + subspace::as_string(lin_trans), Logger::Info);
     logger.msg("norm = ", norm.begin(), norm.end(), Logger::Debug);
     logger.msg("remove Q space indices = ", q_indices_remove.begin(), q_indices_remove.end(), Logger::Debug);
@@ -585,16 +659,27 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
   auto params_qd = xspace.cparamsq();
   auto paramsd = xspace.cparamsd();
   std::copy(begin(paramsd), end(paramsd), std::back_inserter(params_qd));
-  ov = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wparams), xspace.cparamsp(), params_qd,
-                             handlers, logger);
-  auto lin_trans_D =
-      propose_dspace(solutions, xspace.dimensions(), q_indices_remove, ov, wparams.size(), res_norm_thresh, logger);
-  if (logger.data_dump) {
-    logger.msg("overlap P+Q+D+R = " + subspace::as_string(ov), Logger::Info);
-    logger.msg("D params in subspace = " + subspace::as_string(lin_trans_D), Logger::Info);
+  overlap_PQDR = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wparams), xspace.cparamsp(),
+                                       params_qd, handlers, logger);
+  std::vector<Q> dparams, dactions;
+  subspace::Matrix<value_type> lin_trans_D_only_R;
+  for (bool well_conditioned = false; not well_conditioned;) {
+    logger.msg("proposing D space", Logger::Debug);
+    auto lin_trans_D = propose_dspace(solutions, xspace.dimensions(), q_indices_remove, overlap_PQDR, wparams.size(),
+                                      res_norm_thresh, logger);
+    if (logger.data_dump) {
+      logger.msg("overlap P+Q+D+R = " + subspace::as_string(overlap_PQDR), Logger::Info);
+      logger.msg("D params in subspace = " + subspace::as_string(lin_trans_D), Logger::Info);
+    }
+    std::tie(dparams, dactions, lin_trans_D_only_R) =
+        construct_orthonormal_Dparams(xspace, lin_trans_D, q_indices_remove, cwrap(wparams), handlers, logger);
+    auto overlap_PQRDnew =
+        construct_overlap_of_new_subspace(overlap_PQDR, xspace.dimensions(), xspace.cparamsp(), xspace.cparamsq(),
+                                          cwrap(wparams), cwrap(dparams), handlers, logger);
+    well_conditioned = condition_subspace(overlap_PQRDnew, q_indices_remove, xspace.dimensions().oQ,
+                                          xspace.dimensions().nQ, svd_thresh);
+    logger.msg("subspace conditioning = " + std::to_string(well_conditioned), Logger::Debug);
   }
-  auto [dparams, dactions, lin_trans_D_only_R] =
-      construct_orthonormal_Dparams(xspace, lin_trans_D, q_indices_remove, cwrap(wparams), handlers, logger);
   std::sort(begin(q_indices_remove), end(q_indices_remove), std::greater());
   for (auto iq : q_indices_remove)
     xspace.eraseq(iq);

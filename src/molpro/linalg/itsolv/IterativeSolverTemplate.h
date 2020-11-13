@@ -161,6 +161,11 @@ protected:
     auto wactions = wrap<R>(begin(actions), begin(actions) + nW);
     m_stats->r_creations += nW;
     m_xspace->complete_dspace_action(cwrap(wactions));
+    /*
+     * FIXME Solve the subspace problem P+Q+D (no R) and check that the eigenvalues do not deviate
+     * If the eigenvalues differ by more than a threshold, Log a warning and advise to reset the D space more often
+     *
+     */
     m_xspace->update_qspace(cwrap(wparams), cwrap(wactions));
     return solve_and_generate_working_set(parameters, actions, pparams, apply_p);
   }

@@ -290,15 +290,11 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
   logger.msg("propose_dspace()", Logger::Trace);
   auto [solutions_proj, solutions_D] =
       construct_projected_solution(solutions, dims, remove_qspace, overlap, norm_thresh, logger);
-  if (logger.data_dump)
-    logger.msg("projected solutions = " + as_string(solutions_proj), Logger::Info);
-  // construct overlap of projected solutions with the new P+Q+R subspace (excluding Q_D)
   auto ov = construct_overlap_with_projected_solutions(solutions_proj, dims, remove_qspace, overlap, nR);
-  // orthogonalise against the subspace
   auto lin_trans = subspace::Matrix<value_type>{};
   auto norm = subspace::util::gram_schmidt(ov, lin_trans);
   if (logger.data_dump) {
-    logger.msg("overlap with P+Q+R = " + as_string(ov), Logger::Info);
+    logger.msg("overlap matrixj of P+Q+R = " + as_string(ov), Logger::Info);
     logger.msg("lin_trans = " + as_string(lin_trans), Logger::Info);
     logger.msg("norm = ", begin(norm), end(norm), Logger::Info);
   }
@@ -535,31 +531,37 @@ bool fix_overcompleteness(subspace::Matrix<value_type> overlap_PQRD, const subsp
   auto d_indices = std::vector<int>(nD);
   std::iota(begin(d_indices), end(d_indices), 0);
   auto svd_vecs = svd_system(overlap_PQRD.rows(), array::Span(&overlap_PQRD(0, 0), overlap_PQRD.size()), svd_thresh);
-  for (const auto& svd : svd_vecs) {
-    if (!q_indices.empty()) {
-      auto contrib = std::vector<value_type_abs>{};
-      for (auto i : d_indices)
-        contrib.push_back(std::abs(svd.v.at(oD + i)));
-      auto itd = std::max_element(begin(contrib), end(contrib));
-      auto id = std::distance(begin(contrib), itd);
-      auto sol_contrib = std::vector<value_type_abs>{};
-      for (auto i : q_indices)
-        sol_contrib.push_back(std::abs(solutions_D(d_indices.at(id), oQ + i)));
-      auto itq = std::max_element(begin(sol_contrib), end(sol_contrib));
-      auto iq = std::distance(begin(sol_contrib), itq);
-      {
-        auto ss = std::stringstream{};
-        ss << "d parameter forming the null space = " << d_indices.at(id) << ", svd value = " << std::setprecision(3)
-           << svd.value << ", svd vector contribution = " << *itd << "\n";
-        ss << " q parameter with max contrib to solution = " << q_indices.at(iq) << ", contribution = " << *itq;
-        logger.msg(ss.str(), Logger::Debug);
+  auto well_conditioned = svd_vecs.empty() || q_indices.empty();
+  if (not well_conditioned) {
+    for (const auto& svd : svd_vecs) {
+      if (!q_indices.empty()) {
+        auto contrib = std::vector<value_type_abs>{};
+        for (auto i : d_indices)
+          contrib.push_back(std::abs(svd.v.at(oD + i)));
+        auto itd = std::max_element(begin(contrib), end(contrib));
+        auto id = std::distance(begin(contrib), itd);
+        auto sol_contrib = std::vector<value_type_abs>{};
+        for (auto i : q_indices)
+          sol_contrib.push_back(std::abs(solutions_D(d_indices.at(id), oQ + i)));
+        auto itq = std::max_element(begin(sol_contrib), end(sol_contrib));
+        auto iq = std::distance(begin(sol_contrib), itq);
+        {
+          auto ss = std::stringstream{};
+          ss << "d parameter forming the null space = " << d_indices.at(id) << ", svd value = " << std::setprecision(3)
+             << svd.value << ", svd vector contribution = " << *itd << "\n";
+          logger.msg(ss.str(), Logger::Debug);
+          ss = std::stringstream{};
+          ss << std::setprecision(3) << " q parameter with max contrib to solution = " << q_indices.at(iq)
+             << ", contribution = " << *itq;
+          logger.msg(ss.str(), Logger::Debug);
+        }
+        q_indices_remove.push_back(q_indices.at(iq));
+        q_indices.erase(begin(q_indices) + iq);
+        d_indices.erase(begin(d_indices) + id);
       }
-      q_indices_remove.push_back(q_indices.at(iq));
-      q_indices.erase(begin(q_indices) + iq);
-      d_indices.erase(begin(d_indices) + id);
     }
   }
-  return svd_vecs.empty();
+  return well_conditioned;
 }
 
 /*!

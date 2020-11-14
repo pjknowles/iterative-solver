@@ -133,7 +133,7 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
  * @param remove_qspace indices to remove from current Q space and move into Q_{delete}
  * @param overlap overlap matrix of the current subspace
  * @param norm_thresh vectors with norm less than this threshold are considered null
- * @return
+ * @return projected solutions, and solution matrix for corresponding parameters
  */
 template <typename value_type, typename value_type_abs>
 auto construct_projected_solution(const subspace::Matrix<value_type>& solutions, const subspace::Dimensions& dims,
@@ -180,19 +180,21 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
   }
   for (auto& x : norm_proj)
     x = std::sqrt(std::abs(x));
+  auto solutions_D = solutions;
   for (size_t i = 0, j = 0; i < nSol; ++i) {
     if (norm_proj[i] > norm_thresh) {
       solutions_proj.row(j).scal(1. / norm_proj[i]);
       ++j;
     } else {
       solutions_proj.remove_row(j);
+      solutions_D.remove_row(j);
     }
   }
   if (logger.data_dump) {
     logger.msg("norm_proj = ", std::begin(norm_proj), std::end(norm_proj), Logger::Info);
     logger.msg("projected solution after normalisation = " + as_string(solutions_proj), Logger::Info);
   }
-  return solutions_proj;
+  return std::make_tuple(solutions_proj, solutions_D);
 }
 
 /*!
@@ -279,14 +281,15 @@ auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_typ
  * @param dims dimensions of the current subspace
  * @param remove_qspace indices of Q parameters that are deleted in this iteration
  * @param overlap overlap matrix for current subspace with new R parameters (P + Q + D + R)
- * @return linear transformation to the new D space in terms of P+Q+R+Qdelete+Dold
+ * @return linear transformation to the new D space in terms of P+Q+R+Qdelete+Dold, and corresponding solutions
  */
 template <typename value_type, typename value_type_abs>
 auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspace::Dimensions& dims,
                     std::vector<int>& remove_qspace, const subspace::Matrix<value_type>& overlap, const size_t nR,
                     value_type_abs norm_thresh, Logger& logger) {
   logger.msg("propose_dspace()", Logger::Trace);
-  auto solutions_proj = construct_projected_solution(solutions, dims, remove_qspace, overlap, norm_thresh, logger);
+  auto [solutions_proj, solutions_D] =
+      construct_projected_solution(solutions, dims, remove_qspace, overlap, norm_thresh, logger);
   if (logger.data_dump)
     logger.msg("projected solutions = " + as_string(solutions_proj), Logger::Info);
   // construct overlap of projected solutions with the new P+Q+R subspace (excluding Q_D)
@@ -301,7 +304,11 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
   }
   const auto nSol = solutions_proj.rows();
   const auto nX = norm.size() - nSol;
-  util::remove_null_vectors(lin_trans, norm, nX, norm.size(), norm_thresh);
+  {
+    auto norm_D = std::vector<value_type_abs>(norm.begin() + nX, norm.end());
+    util::remove_null_vectors(lin_trans, norm, nX, norm.size(), norm_thresh);
+    util::remove_null_vectors(solutions_D, norm_D, 0, norm_D.size(), norm_thresh);
+  }
   auto nD = norm.size() - nX;
   // Orthogonalised D space is in terms of projected solutions
   // I need to use the old D space instead
@@ -330,13 +337,15 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
     logger.msg("erase i, norm = " + std::to_string(i) + ", " + std::to_string(*it), Logger::Debug);
     norm.erase(it);
     lin_trans_Dold.remove_row(i);
+    solutions_D.remove_row(i);
     --nD;
   }
   logger.msg("nD = " + std::to_string(nD), Logger::Debug);
   if (logger.data_dump) {
     logger.msg("lin_trans using old D = " + as_string(lin_trans_Dold), Logger::Info);
+    logger.msg("solutions D = " + as_string(solutions_D), Logger::Info);
   }
-  return lin_trans_Dold;
+  return std::make_tuple(lin_trans_Dold, solutions_D);
 }
 
 /*!
@@ -418,16 +427,12 @@ auto construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const sub
 
 /*!
  * @brief Normalises D parameters and remove any that are null
- * @param dparams
- * @param dactions
- * @param lin_trans_D_only_R
- * @param handler
  */
 template <class Q, typename value_type, typename value_type_abs>
 void normalise_and_remove_null_D_params(std::vector<Q>& dparams, std::vector<Q>& dactions,
                                         subspace::Matrix<value_type>& lin_trans_D_only_R,
-                                        const value_type_abs norm_thresh, array::ArrayHandler<Q, Q>& handler,
-                                        Logger& logger) {
+                                        subspace::Matrix<value_type>& solutions_D, const value_type_abs norm_thresh,
+                                        array::ArrayHandler<Q, Q>& handler, Logger& logger) {
   logger.msg("normalise_and_remove_null_D_params()", Logger::Trace);
   const auto nD = dparams.size();
   auto to_remove = std::vector<size_t>{};
@@ -450,6 +455,7 @@ void normalise_and_remove_null_D_params(std::vector<Q>& dparams, std::vector<Q>&
     dparams.erase(dparams.begin() + i);
     dactions.erase(dactions.begin() + i);
     lin_trans_D_only_R.remove_row(i);
+    solutions_D.remove_row(i);
   }
 }
 
@@ -498,17 +504,23 @@ auto construct_overlap_of_new_subspace(const subspace::Matrix<value_type>& overl
  * @brief Apply SVD to check that the subspace is well conditioned. If not mark more Q parameters for removal.
  *
  * For overcomplete problems the D space can be partially null. This routine aims to discover the null space and
- * remove it, by removing some Q parameters so that a stable D space can be reconstructed.
+ * eliminate it by removing some Q parameters so that a stable D space can be reconstructed.
+ *
+ * This is done by looking at the smallest right singular vectors and finding D parameters that have the largest
+ * weight. The corresponding solution is than searched for the largest contributing Q parameter, which is marked
+ * for deletion.
  *
  * @param overlap_PQRD overlap of the subspace, where Q includes parameters marked for removal
+ * @param solutions_D solution matrix corresponding to the D parameters
  * @param q_indices_remove Q parameters that are marked for removal so far
  * @param oQ offset to the start of Q block
  * @param nQ total number of Q parameters
  * @return whether the subspace is well conditioned (all singular values are above threshold)
  */
 template <typename value_type, typename value_type_abs>
-bool condition_subspace(subspace::Matrix<value_type> overlap_PQRD, std::vector<int>& q_indices_remove, size_t oQ,
-                        size_t nQ, value_type_abs svd_thresh, Logger& logger) {
+bool condition_subspace(subspace::Matrix<value_type> overlap_PQRD, const subspace::Matrix<value_type>& solutions_D,
+                        std::vector<int>& q_indices_remove, size_t oQ, size_t nQ, value_type_abs svd_thresh,
+                        Logger& logger) {
   logger.msg("condition_subspace()", Logger::Trace);
   std::sort(begin(q_indices_remove), end(q_indices_remove), std::greater());
   auto q_indices = std::vector<int>{};
@@ -712,18 +724,19 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
   subspace::Matrix<value_type> lin_trans_D_only_R;
   for (bool well_conditioned = false; not well_conditioned;) {
     logger.msg("proposing D space", Logger::Debug);
-    auto lin_trans_D = propose_dspace(solutions, xspace.dimensions(), q_indices_remove, overlap_PQDR, wparams.size(),
-                                      res_norm_thresh, logger);
+    auto [lin_trans_D, solutions_D] = propose_dspace(solutions, xspace.dimensions(), q_indices_remove, overlap_PQDR,
+                                                     wparams.size(), res_norm_thresh, logger);
     std::tie(dparams, dactions, lin_trans_D_only_R) =
         construct_orthonormal_Dparams(xspace, lin_trans_D, q_indices_remove, cwrap(wparams), handlers, logger);
-    normalise_and_remove_null_D_params(dparams, dactions, lin_trans_D_only_R, res_norm_thresh, handlers.qq(), logger);
+    normalise_and_remove_null_D_params(dparams, dactions, lin_trans_D_only_R, solutions_D, res_norm_thresh,
+                                       handlers.qq(), logger);
     auto overlap_PQRDnew =
         construct_overlap_of_new_subspace(overlap_PQDR, xspace.dimensions(), xspace.cparamsp(), xspace.cparamsq(),
                                           cwrap(wparams), cwrap(dparams), handlers, logger);
     if (logger.data_dump) {
       logger.msg("D params in subspace = " + subspace::as_string(lin_trans_D), Logger::Info);
     }
-    well_conditioned = condition_subspace(overlap_PQRDnew, q_indices_remove, xspace.dimensions().oQ,
+    well_conditioned = condition_subspace(overlap_PQRDnew, solutions_D, q_indices_remove, xspace.dimensions().oQ,
                                           xspace.dimensions().nQ, svd_thresh, logger);
     logger.msg("subspace conditioning = " + std::to_string(well_conditioned), Logger::Debug);
   }

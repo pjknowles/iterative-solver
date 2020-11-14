@@ -525,25 +525,37 @@ bool condition_subspace(subspace::Matrix<value_type> overlap_PQRD, const subspac
   std::sort(begin(q_indices_remove), end(q_indices_remove), std::greater());
   auto q_indices = std::vector<int>{};
   for (size_t i = 0; i < nQ; ++i)
-    if (std::find(begin(q_indices_remove), end(q_indices_remove), i) != end(q_indices_remove))
+    if (std::find(begin(q_indices_remove), end(q_indices_remove), i) == end(q_indices_remove))
       q_indices.push_back(i);
   for (auto i : q_indices_remove)
     overlap_PQRD.remove_row_col(oQ + i, oQ + i);
+  const auto nD = solutions_D.rows();
+  const auto oD = overlap_PQRD.cols() - int(nD);
+  auto d_indices = std::vector<int>(nD);
+  std::iota(begin(d_indices), end(d_indices), 0);
   auto svd_vecs = svd_system(overlap_PQRD.rows(), array::Span(&overlap_PQRD(0, 0), overlap_PQRD.size()), svd_thresh);
   for (const auto& svd : svd_vecs) {
     if (!q_indices.empty()) {
       auto contrib = std::vector<value_type_abs>{};
+      for (auto i : d_indices)
+        contrib.push_back(std::abs(svd.v.at(oD + i)));
+      auto itd = std::max_element(begin(contrib), end(contrib));
+      auto id = std::distance(begin(contrib), itd);
+      auto sol_contrib = std::vector<value_type_abs>{};
       for (auto i : q_indices)
-        contrib.push_back(std::abs(svd.v.at(oQ + i)));
-      auto it = std::max_element(begin(contrib), end(contrib));
-      auto iq = std::distance(begin(contrib), it);
+        sol_contrib.push_back(std::abs(solutions_D(d_indices.at(id), oQ + i)));
+      auto itq = std::max_element(begin(sol_contrib), end(sol_contrib));
+      auto iq = std::distance(begin(sol_contrib), itq);
       {
         auto ss = std::stringstream{};
-        ss << "remove q index = " << q_indices.at(iq) << ", svd = " << std::setprecision(3) << svd.value;
+        ss << "d parameter forming the null space = " << d_indices.at(id) << ", svd value = " << std::setprecision(3)
+           << svd.value << ", svd vector contribution = " << *itd << "\n";
+        ss << " q parameter with max contrib to solution = " << q_indices.at(iq) << ", contribution = " << *itq;
         logger.msg(ss.str(), Logger::Debug);
       }
-      q_indices_remove.push_back(iq);
+      q_indices_remove.push_back(q_indices.at(iq));
       q_indices.erase(begin(q_indices) + iq);
+      d_indices.erase(begin(d_indices) + id);
     }
   }
   return svd_vecs.empty();

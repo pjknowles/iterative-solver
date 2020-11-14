@@ -501,7 +501,8 @@ auto construct_overlap_of_new_subspace(const subspace::Matrix<value_type>& overl
 }
 
 /*!
- * @brief Apply SVD to check that the subspace is well conditioned. If not mark more Q parameters for removal.
+ * @brief Apply SVD to check that the subspace is not overcomplete due to D space. If it is mark more Q parameters for
+ * removal.
  *
  * For overcomplete problems the D space can be partially null. This routine aims to discover the null space and
  * eliminate it by removing some Q parameters so that a stable D space can be reconstructed.
@@ -518,10 +519,10 @@ auto construct_overlap_of_new_subspace(const subspace::Matrix<value_type>& overl
  * @return whether the subspace is well conditioned (all singular values are above threshold)
  */
 template <typename value_type, typename value_type_abs>
-bool condition_subspace(subspace::Matrix<value_type> overlap_PQRD, const subspace::Matrix<value_type>& solutions_D,
-                        std::vector<int>& q_indices_remove, size_t oQ, size_t nQ, value_type_abs svd_thresh,
-                        Logger& logger) {
-  logger.msg("condition_subspace()", Logger::Trace);
+bool fix_overcompleteness(subspace::Matrix<value_type> overlap_PQRD, const subspace::Matrix<value_type>& solutions_D,
+                          std::vector<int>& q_indices_remove, size_t oQ, size_t nQ, value_type_abs svd_thresh,
+                          Logger& logger) {
+  logger.msg("fix_overcompleteness()", Logger::Trace);
   std::sort(begin(q_indices_remove), end(q_indices_remove), std::greater());
   auto q_indices = std::vector<int>{};
   for (size_t i = 0; i < nQ; ++i)
@@ -748,9 +749,9 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
     if (logger.data_dump) {
       logger.msg("D params in subspace = " + subspace::as_string(lin_trans_D), Logger::Info);
     }
-    well_conditioned = condition_subspace(overlap_PQRDnew, solutions_D, q_indices_remove, xspace.dimensions().oQ,
-                                          xspace.dimensions().nQ, svd_thresh, logger);
-    logger.msg("subspace conditioning = " + std::to_string(well_conditioned), Logger::Debug);
+    well_conditioned = fix_overcompleteness(overlap_PQRDnew, solutions_D, q_indices_remove, xspace.dimensions().oQ,
+                                            xspace.dimensions().nQ, svd_thresh, logger);
+    logger.msg("subspace is overcomplete = " + std::to_string(well_conditioned), Logger::Debug);
   }
   std::sort(begin(q_indices_remove), end(q_indices_remove), std::greater());
   for (auto iq : q_indices_remove)

@@ -294,7 +294,7 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
   auto lin_trans = subspace::Matrix<value_type>{};
   auto norm = subspace::util::gram_schmidt(ov, lin_trans);
   if (logger.data_dump) {
-    logger.msg("overlap matrixj of P+Q+R = " + as_string(ov), Logger::Info);
+    logger.msg("overlap matrix of P+Q+R = " + as_string(ov), Logger::Info);
     logger.msg("lin_trans = " + as_string(lin_trans), Logger::Info);
     logger.msg("norm = ", begin(norm), end(norm), Logger::Info);
   }
@@ -553,7 +553,7 @@ auto fix_overcompleteness(subspace::Matrix<value_type> overlap_PQRD, const subsp
              << svd.value << ", svd vector contribution = " << *itd;
           logger.msg(ss.str(), Logger::Debug);
           ss = std::stringstream{};
-          ss << std::setprecision(3) << " q parameter with max contrib to solution = " << q_indices.at(iq)
+          ss << std::setprecision(3) << "q parameter with max contrib to solution = " << q_indices.at(iq)
              << ", contribution = " << *itq;
           logger.msg(ss.str(), Logger::Debug);
         }
@@ -564,11 +564,11 @@ auto fix_overcompleteness(subspace::Matrix<value_type> overlap_PQRD, const subsp
     }
   } else {
     for (const auto& svd : svd_vecs) {
-      auto contrib = std::vector<value_type_abs>{};
-      for (auto i : d_indices)
-        contrib.push_back(std::abs(svd.v.at(oD + i)));
-      auto itd = std::max_element(begin(contrib), end(contrib));
-      auto id = std::distance(begin(contrib), itd);
+      auto id = d_indices.back();
+      auto ss = std::stringstream{};
+      ss << std::setprecision(3) << "removed d parameter, index = " << std::to_string(d_indices.at(id))
+         << ", svd.v[i] = " << svd.v.at(oD + d_indices.at(id)) << ", svd.v = ";
+      logger.msg(ss.str(), std::begin(svd.v), std::end(svd.v), Logger::Debug);
       d_indices_remove.push_back(d_indices.at(id));
       d_indices.erase(begin(d_indices) + id);
     }
@@ -774,7 +774,7 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
       lin_trans_D_only_R.remove_row(id);
     }
     if (!d_indices_remove.empty())
-      logger.msg("remove d indices", std::begin(d_indices_remove), std::end(d_indices_remove), Logger::Info);
+      logger.msg("remove d indices ", std::begin(d_indices_remove), std::end(d_indices_remove), Logger::Info);
     logger.msg("subspace is overcomplete = " + std::to_string(!well_conditioned), Logger::Debug);
   }
   std::sort(begin(q_indices_remove), end(q_indices_remove), std::greater());

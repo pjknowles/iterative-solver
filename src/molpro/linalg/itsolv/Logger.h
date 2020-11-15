@@ -1,7 +1,11 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LOGGER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LOGGER_H
 #include <bitset>
+#include <iomanip>
+#include <iterator>
 #include <numeric>
+#include <ostream>
+#include <sstream>
 #include <string>
 
 namespace molpro::linalg::itsolv {
@@ -47,8 +51,14 @@ struct Logger {
   void msg(const std::string& message, Level log_lvl);
 
   template <typename ForwardIt>
-  void msg(const std::string& message, ForwardIt begin, ForwardIt end, Level log_lvl) {
-    msg(std::accumulate(begin, end, message, [](auto s, auto el) { return s + std::to_string(el) + ", "; }), log_lvl);
+  void msg(const std::string& message, ForwardIt begin, ForwardIt end, Level log_lvl, int precision = 3) {
+    std::ostringstream os{};
+    os << message;
+    if (!std::is_integral_v<decltype(*begin)>) {
+      os << std::setprecision(precision);
+    }
+    std::copy(begin, end, std::ostream_iterator<decltype(*begin)>(os, ", "));
+    msg(os.str(), log_lvl);
   }
 
   //! Converts double to a string in scientific notation

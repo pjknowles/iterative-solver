@@ -110,7 +110,7 @@ void test_eigen(const std::string& title = "") {
     for (int i = 0; i < n; i++)
       expected_eigenvalues.push_back(ev[i]);
   }
-  for (int nroot = 1; nroot <= n/2 && nroot <= 23; nroot++) {
+  for (int nroot = 1; nroot <= std::min(n, n / 2 + 3) && nroot <= 23; nroot++) {
     for (auto np = 0; np <= 0; np += 4) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
                    << np << std::endl;
@@ -259,7 +259,7 @@ void test_eigen(const std::string& title = "") {
                   ::testing::Pointwise(::testing::DoubleNear(2e-9),
                                        std::vector<double>(expected_eigenvalues.data(),
                                                            expected_eigenvalues.data() + solver.n_roots())));
-      EXPECT_LE(solver.statistics().r_creations,(nroot+1)*15);
+      EXPECT_LE(solver.statistics().r_creations, (nroot + 1) * 15);
     }
   }
 }

@@ -110,7 +110,7 @@ void test_eigen(const std::string& title = "") {
     for (int i = 0; i < n; i++)
       expected_eigenvalues.push_back(ev[i]);
   }
-  for (int nroot = 1; nroot <= n && nroot <= 14; nroot++) {
+  for (int nroot = 1; nroot <= n/2 && nroot <= 23; nroot++) {
     for (auto np = 0; np <= 0; np += 4) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
                    << np << std::endl;
@@ -238,7 +238,8 @@ void test_eigen(const std::string& title = "") {
       std::cout << "Error={ ";
       for (const auto& e : solver.errors())
         std::cout << e << " ";
-      std::cout << "} after " << solver.statistics().iterations << " iterations" << std::endl;
+      std::cout << "} after " << solver.statistics().iterations << " iterations, " << solver.statistics().r_creations
+                << " R vectors" << std::endl;
       //        for (size_t root = 0; root < solver.n_roots(); root++) {
       //          std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] <<
       //          std::endl;
@@ -250,9 +251,10 @@ void test_eigen(const std::string& title = "") {
       //        }
       EXPECT_THAT(solver.errors(), ::testing::Pointwise(::testing::DoubleNear(2 * solver.convergence_threshold()),
                                                         std::vector<double>(nroot, double(0))));
-      std::cout << "expected eigenvalues " << expected_eigenvalues[0] << std::endl;
-      auto e = solver.eigenvalues();
-      std::cout << "eigenvalues " << e[0] << std::endl;
+      std::cout << "expected eigenvalues "
+                << std::vector<double>(expected_eigenvalues.data(), expected_eigenvalues.data() + solver.n_roots())
+                << std::endl;
+      std::cout << "obtained eigenvalues " << solver.eigenvalues() << std::endl;
       EXPECT_THAT(solver.eigenvalues(),
                   ::testing::Pointwise(::testing::DoubleNear(2e-9),
                                        std::vector<double>(expected_eigenvalues.data(),

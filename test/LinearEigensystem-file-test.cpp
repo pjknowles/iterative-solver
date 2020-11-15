@@ -259,6 +259,7 @@ void test_eigen(const std::string& title = "") {
                   ::testing::Pointwise(::testing::DoubleNear(2e-9),
                                        std::vector<double>(expected_eigenvalues.data(),
                                                            expected_eigenvalues.data() + solver.n_roots())));
+      EXPECT_LE(solver.statistics().r_creations,(nroot+1)*15);
     }
   }
 }

@@ -272,8 +272,43 @@ TEST(IterativeSolver, file_eigen) {
 }
 
 TEST(IterativeSolver, n_eigen) {
-  load_matrix(1000, "", 1);
-  test_eigen("1000/1");
+  size_t n = 1000;
+  double param = 1;
+//  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
+//  for (auto param : std::vector<double>{.01, .1, 1}) {
+    for (auto param : std::vector<double>{1}) {
+    load_matrix(n, "", param);
+    test_eigen(std::to_string(n) + "/" + std::to_string(param));
+  }
+}
+
+TEST(IterativeSolver, small_eigen) {
+  for (int n = 1; n < 20; n++) {
+    double param = 1;
+    load_matrix(n, "", param);
+    test_eigen(std::to_string(n) + "/" + std::to_string(param));
+  }
+}
+
+TEST(IterativeSolver, symmetry_eigen) {
+  for (int n = 1; n < 6; n++) {
+    double param = 1;
+    load_matrix(n, "", param);
+    for (auto i = 0; i < n; i++)
+      for (auto j = 0; j < n; j++)
+        if (((i % 3) == 0 and (j % 3) != 0) or ((j % 3) == 0 and (i % 3) != 0))
+          hmat[j + i * n] = 0;
+    if (false) {
+      std::cout << "hmat " << std::endl;
+      for (auto i = 0; i < n; i++) {
+        std::cout << "i%3" << i % 3 << std::endl;
+        for (auto j = 0; j < n; j++)
+          std::cout << " " << hmat[j + i * n];
+        std::cout << std::endl;
+      }
+    }
+    test_eigen(std::to_string(n) + "/sym/" + std::to_string(param));
+  }
 }
 
 TEST(IterativeSolver, DISABLED_file_optimize_eigenvalue) {

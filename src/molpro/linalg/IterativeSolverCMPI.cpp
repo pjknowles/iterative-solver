@@ -440,8 +440,10 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
       gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
       gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
     }
-    for (size_t i = 0; i < ccp[0].size(); i++)
-      parametersP[root * ccp[0].size() + i] = ccp[root][i];
+    if (ccp.size() > 0 ) {
+      for (size_t i = 0; i < ccp[0].size(); i++)
+        parametersP[root * ccp[0].size() + i] = ccp[root][i];
+    }
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddP:Sync");

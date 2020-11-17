@@ -2,6 +2,13 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_ITERATIVESOLVERC_H_
 #include <cstdint>
 #include <stddef.h>
+#include <vector>
+#include <molpro/linalg/itsolv/wrap.h>
+#include <molpro/linalg/array/DistrArrayMPI3.h>
+using Rvector = molpro::linalg::array::DistrArrayMPI3;
+using Qvector = molpro::linalg::array::DistrArrayMPI3;
+using Pvector = std::map<size_t, double>;
+
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t range_begin,
                                                            size_t range_end, double thresh, int verbosity,
                                                            const char* fname, int64_t fcomm, int lmppx);
@@ -31,7 +38,10 @@ extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error, 
 
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
-                                      double* parametersP, int lsync, int lmppx, void (*func)());
+                                      double* parametersP, int lsync, int lmppx,
+                                      void (*func)(const std::vector<std::vector<double>>&,
+                                                   const molpro::linalg::itsolv::CVecRef<Pvector>&,
+                                                   const molpro::linalg::itsolv::VecRef<Rvector>&));
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues);
 

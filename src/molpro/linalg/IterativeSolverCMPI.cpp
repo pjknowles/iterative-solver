@@ -392,8 +392,10 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
 
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
-                                      double* parametersP, int sync, int lmppx, void (*func)()) {
-  func();
+                                      double* parametersP, int sync, int lmppx,
+                                      void (*func)(const std::vector<std::vector<double>>&,
+                                                   const molpro::linalg::itsolv::CVecRef<Pvector>&,
+                                                   const molpro::linalg::itsolv::VecRef<Rvector>&)) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   if (instance.prof != nullptr)
@@ -425,6 +427,7 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
       ppp.insert(std::pair<size_t, Rvector::value_type>(indices[k], coefficients[k]));
     Pvectors.emplace_back(ppp);
   }
+  func(ccp, molpro::linalg::itsolv::cwrap(Pvectors), molpro::linalg::itsolv::wrap(cc));
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Call");
   size_t working_set_size = instance.solver->add_p(molpro::linalg::itsolv::cwrap(Pvectors),

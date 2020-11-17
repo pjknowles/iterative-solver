@@ -204,9 +204,9 @@ public:
 
   // FIXME Currently only works if called on an empty subspace. Either enforce it or generalise.
   size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix, const VecRef<R>& parameters,
-               const VecRef<R>& actions, std::vector<VectorP>& parametersP) override {
+               const VecRef<R>& actions, std::vector<VectorP>& parametersP,
+               fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
     m_xspace->update_pspace(pparams, pp_action_matrix);
-    auto apply_p = fapply_on_p_type{};
     return solve_and_generate_working_set(parameters, actions, parametersP, apply_p);
   };
 

@@ -170,9 +170,20 @@ void test_eigen(const std::string& title = "") {
             for (const auto& j : pspace)
               PP.push_back(matrix(i.begin()->first, j.begin()->first));
           //            std::cout << "PP: " << PP << std::endl;
+          auto apply_p = [](const std::vector<std::vector<double>>& pvectors, const auto& pspace, auto& action) {
+            for (size_t i = 0; i < pvectors.size(); i++) {
+              auto& actioni = *(action[i]);
+              for (size_t pi = 0; pi < pspace.size(); pi++) {
+                const auto& p = pspace[pi];
+                for (const auto& pel : p)
+                  for (size_t j = 0; j < n; j++)
+                    actioni[j] += hmat[j + pel.first] * pel.second * pvectors[i][pi];
+              }
+            }
+          };
           nwork = solver.add_p(molpro::linalg::itsolv::cwrap(pspace),
                                molpro::linalg::array::span::Span<double>(PP.data(), PP.size()),
-                               molpro::linalg::itsolv::wrap(x), molpro::linalg::itsolv::wrap(g), Pcoeff);
+                               molpro::linalg::itsolv::wrap(x), molpro::linalg::itsolv::wrap(g), Pcoeff, apply_p);
         } else {
           action(x, g);
           //            for (auto root = 0; root < nwork; root++) {
@@ -274,9 +285,9 @@ TEST(IterativeSolver, file_eigen) {
 TEST(IterativeSolver, n_eigen) {
   size_t n = 1000;
   double param = 1;
-//  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
-//  for (auto param : std::vector<double>{.01, .1, 1}) {
-    for (auto param : std::vector<double>{1}) {
+  //  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
+  //  for (auto param : std::vector<double>{.01, .1, 1}) {
+  for (auto param : std::vector<double>{1}) {
     load_matrix(n, "", param);
     test_eigen(std::to_string(n) + "/" + std::to_string(param));
   }

@@ -133,12 +133,12 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
  * @param remove_qspace indices to remove from current Q space and move into Q_{delete}
  * @param overlap overlap matrix of the current subspace
  * @param norm_thresh vectors with norm less than this threshold are considered null
- * @return projected solutions, and solution matrix for corresponding parameters
+ * @return projected solutions, and their overlap matrix
  */
-template <typename value_type, typename value_type_abs>
+template <typename value_type>
 auto construct_projected_solution(const subspace::Matrix<value_type>& solutions, const subspace::Dimensions& dims,
                                   const std::vector<int>& remove_qspace, const subspace::Matrix<value_type>& overlap,
-                                  value_type_abs norm_thresh, Logger& logger) {
+                                  Logger& logger) {
   logger.msg("construct_projected_solution", Logger::Trace);
   const auto nQd = remove_qspace.size();
   const auto nSol = solutions.rows();
@@ -156,45 +156,87 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
   /*
    * x_i = \sum_j C_ij u_j
    * <x_i, x_i> = \sum_j \sum_k C_ij C_ik <u_j, u_k>
+   * <x_i, x_j> = \sum_k \sum_l C_ik C_jl <u_j, u_l>
    */
-  auto norm_proj = std::vector<value_type_abs>(nSol, 0.);
+  auto overlap_proj = subspace::Matrix<value_type>({nSol, nSol});
   for (size_t i = 0; i < nSol; ++i) {
-    for (size_t j = 0; j < nQd; ++j) {
-      for (size_t k = 0; k < nQd; ++k) {
-        norm_proj[i] += solutions_proj(i, j) * solutions_proj(i, k) *
-                        overlap(dims.oQ + remove_qspace[j], dims.oQ + remove_qspace[k]);
+    for (size_t ii = 0; ii <= i; ++ii) {
+      for (size_t j = 0; j < nQd; ++j) {
+        for (size_t k = 0; k < nQd; ++k) {
+          overlap_proj(i, ii) += solutions_proj(i, j) * solutions_proj(ii, k) *
+                                 overlap(dims.oQ + remove_qspace[j], dims.oQ + remove_qspace[k]);
+        }
+        for (size_t k = 0; k < dims.nD; ++k) {
+          overlap_proj(i, ii) +=
+              solutions_proj(i, j) * solutions_proj(ii, nQd + k) * overlap(dims.oQ + remove_qspace[j], dims.oD + k);
+        }
       }
-      for (size_t k = 0; k < dims.nD; ++k) {
-        norm_proj[i] +=
-            solutions_proj(i, j) * solutions_proj(i, nQd + k) * overlap(dims.oQ + remove_qspace[j], dims.oD + k);
+      for (size_t j = 0; j < dims.nD; ++j) {
+        for (size_t k = 0; k < dims.nD; ++k) {
+          overlap_proj(i, ii) +=
+              solutions_proj(i, nQd + j) * solutions_proj(ii, nQd + k) * overlap(dims.oD + j, dims.oD + k);
+        }
+        for (size_t k = 0; k < nQd; ++k) {
+          overlap_proj(i, ii) += solutions_proj(i, nQd + j) * solutions_proj(ii, k) * overlap(dims.oD + j, dims.oQ + k);
+        }
       }
-    }
-    for (size_t j = 0; j < dims.nD; ++j) {
-      for (size_t k = 0; k < dims.nD; ++k) {
-        norm_proj[i] += solutions_proj(i, nQd + j) * solutions_proj(i, nQd + k) * overlap(dims.oD + j, dims.oD + k);
-      }
-      for (size_t k = 0; k < nQd; ++k) {
-        norm_proj[i] += solutions_proj(i, nQd + j) * solutions_proj(i, k) * overlap(dims.oD + j, dims.oQ + k);
-      }
+      overlap_proj(ii, i) = overlap_proj(i, ii);
     }
   }
-  for (auto& x : norm_proj)
-    x = std::sqrt(std::abs(x));
+  return std::make_tuple(solutions_proj, overlap_proj);
+}
+
+/*!
+ * @brief Normalises projected solutions and removes the null space if nSol > nQd+nD
+ * @param solutions_proj solutions porjected onto Qd+D space
+ * @param solutions solutions in the current subspace
+ * @param overlap_proj overlap matrix of projected solutions
+ * @param norm_thresh
+ * @param logger
+ */
+template <typename value_type, typename value_type_abs>
+auto remove_null_projected_solutions(subspace::Matrix<value_type>& solutions_proj,
+                                     subspace::Matrix<value_type>& overlap_proj,
+                                     const subspace::Matrix<value_type>& solutions, const value_type_abs norm_thresh,
+                                     Logger& logger) {
   auto solutions_D = solutions;
+  const auto nSol = solutions_proj.rows();
+  auto norm_proj = std::vector<value_type_abs>(nSol, 0.);
+  for (size_t i = 0; i < nSol; ++i)
+    norm_proj[i] = std::sqrt(std::abs(overlap_proj(i, i)));
   for (size_t i = 0, j = 0; i < nSol; ++i) {
     if (norm_proj[i] > norm_thresh) {
       solutions_proj.row(j).scal(1. / norm_proj[i]);
+      overlap_proj.col(j).scal(1. / norm_proj[i]);
+      overlap_proj.row(j).scal(1. / norm_proj[i]);
       ++j;
     } else {
       solutions_proj.remove_row(j);
       solutions_D.remove_row(j);
+      overlap_proj.remove_row_col(j, j);
     }
   }
   if (logger.data_dump) {
-    logger.msg("norm_proj = ", std::begin(norm_proj), std::end(norm_proj), Logger::Info);
-    logger.msg("projected solution after normalisation = " + as_string(solutions_proj), Logger::Info);
+    logger.msg("norm of projected solutions = ", std::begin(norm_proj), std::end(norm_proj), Logger::Info);
+    logger.msg("projected solutions after normalisation = " + as_string(solutions_proj), Logger::Info);
+    logger.msg("overlap of projected solutions = " + as_string(overlap_proj), Logger::Info);
   }
-  return std::make_tuple(solutions_proj, solutions_D);
+  size_t n_removed = 0;
+  while (solutions_proj.rows() > solutions_proj.cols()) {
+    auto lin_trans = subspace::Matrix<value_type>{};
+    auto norm = subspace::util::gram_schmidt(overlap_proj, lin_trans, norm_thresh);
+    auto it = std::min_element(std::begin(norm), std::end(norm));
+    auto i = std::distance(std::begin(norm), it);
+    solutions_proj.remove_row(i);
+    solutions_D.remove_row(i);
+    overlap_proj.remove_row_col(i, i);
+    logger.msg("removing null projected solution, i = " + std::to_string(i) + ", norm = " + std::to_string(*it),
+               Logger::Debug);
+    ++n_removed;
+  }
+  logger.msg("removed n = " + std::to_string(n_removed) + " projected solutions", Logger::Debug);
+  logger.msg("remaining number of projected solutions = " + std::to_string(solutions_proj.rows()), Logger::Debug);
+  return solutions_D;
 }
 
 /*!
@@ -288,13 +330,17 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
                     std::vector<int>& remove_qspace, const subspace::Matrix<value_type>& overlap, const size_t nR,
                     value_type_abs norm_thresh, Logger& logger) {
   logger.msg("propose_dspace()", Logger::Trace);
-  auto [solutions_proj, solutions_D] =
-      construct_projected_solution(solutions, dims, remove_qspace, overlap, norm_thresh, logger);
+  auto [solutions_proj, overlap_proj] = construct_projected_solution(solutions, dims, remove_qspace, overlap, logger);
+  // When D space is first populated nSproj > nQd+nD and projected solutions have null parameters
+  // We must remove the null space before orthogonalisation, but we want to keep the link to solutions, so we cannot use
+  // SVD.
+  // Instead do a loop over GS, removing solutions with smallest norm until nSproj <= nQd+nD
+  auto solutions_D = remove_null_projected_solutions(solutions_proj, overlap_proj, solutions, norm_thresh, logger);
   auto ov = construct_overlap_with_projected_solutions(solutions_proj, dims, remove_qspace, overlap, nR);
   auto lin_trans = subspace::Matrix<value_type>{};
   auto norm = subspace::util::gram_schmidt(ov, lin_trans);
   if (logger.data_dump) {
-    logger.msg("overlap matrix of P+Q+R = " + as_string(ov), Logger::Info);
+    logger.msg("overlap matrix of P+Q+R+projected solution = " + as_string(ov), Logger::Info);
     logger.msg("lin_trans = " + as_string(lin_trans), Logger::Info);
     logger.msg("norm = ", begin(norm), end(norm), Logger::Info);
   }

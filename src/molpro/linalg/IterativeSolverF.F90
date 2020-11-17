@@ -1,6 +1,6 @@
 !> @brief IterativeSolver Fortran binding
 MODULE Iterative_Solver
-    USE iso_c_binding
+    USE, INTRINSIC :: iso_c_binding
     PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize, Iterative_Solver_Finalize
     PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize_Ranges
     PUBLIC :: Iterative_Solver_DIIS_Initialize, Iterative_Solver_Linear_Equations_Initialize
@@ -22,7 +22,15 @@ MODULE Iterative_Solver
 
 CONTAINS
 
-    !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
+    !INTEGER (KIND=C_INT) FUNCTION apply_on_p(arg) BIND(C)
+    SUBROUTINE apply_on_p() BIND(C)
+        !INTEGER(KIND=C_INT), INTENT(IN), VALUE :: arg
+        write(*,*) "APPLY_ON_P was called!"
+        !apply_on_p = arg
+    !END FUNCTION apply_on_p
+    END SUBROUTINE apply_on_p
+
+        !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
     !> Example of simplest use: @include LinearEigensystemExampleF.F90
     !> Example including use of P space: @include LinearEigensystemExampleF-Pspace-mpi.F90
     SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, verbosity, pname, pcomm, lmppx)
@@ -677,8 +685,8 @@ CONTAINS
         LOGICAL, INTENT(in), OPTIONAL :: lmppx
         INTERFACE
             FUNCTION IterativeSolverAddPC(nP, offsets, indices, coefficients, pp, parameters, action, parametersP, &
-                    lsync, lmppx) BIND(C, name = 'IterativeSolverAddP')
-                USE iso_c_binding
+                    lsync, lmppx, func) BIND(C, name = 'IterativeSolverAddP')
+                USE, INTRINSIC :: iso_c_binding
                 INTEGER(c_size_t) IterativeSolverAddPC
                 INTEGER(c_size_t), INTENT(in), VALUE :: nP
                 INTEGER(c_size_t), INTENT(in), DIMENSION(0:nP) :: offsets
@@ -690,12 +698,15 @@ CONTAINS
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
                 INTEGER(c_int), INTENT(in), VALUE :: lsync
                 INTEGER(c_int), INTENT(in), VALUE :: lmppx
+                TYPE(C_FUNPTR), INTENT(IN), VALUE :: func
             END FUNCTION IterativeSolverAddPC
         END INTERFACE
         INTEGER(c_size_t), DIMENSION(0:nP) :: offsetsC
         INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC
         INTEGER(c_int) :: lsyncC
         INTEGER(c_int) :: lmppxC
+        TYPE(C_FUNPTR) :: cproc
+        cproc = C_FUNLOC(apply_on_p)
         lmppxC = 0
         lsyncC = 1
         IF (PRESENT(lmppx)) THEN
@@ -712,7 +723,7 @@ CONTAINS
         end do
         !write (6,*) 'indicesC ',indicesC
         Iterative_Solver_Add_P = int(IterativeSolverAddPC(INT(nP, c_size_t), offsetsC, indicesC, coefficients, &
-                pp, parameters, action, parametersP, lsyncC, lmppxC))
+                pp, parameters, action, parametersP, lsyncC, lmppxC, cproc))
     END FUNCTION Iterative_Solver_Add_P
 
     FUNCTION Iterative_Solver_Add_P_Nosync(nP, offsets, indices, coefficients, pp, parameters, action, parametersP, lmppx)
@@ -729,8 +740,8 @@ CONTAINS
         LOGICAL, INTENT(in), OPTIONAL :: lmppx
         INTERFACE
             FUNCTION IterativeSolverAddPC(nP, offsets, indices, coefficients, pp, parameters, action, parametersP, &
-                    lsync, lmppx) BIND(C, name = 'IterativeSolverAddP')
-                USE iso_c_binding
+                    lsync, lmppx, func) BIND(C, name = 'IterativeSolverAddP')
+                USE, INTRINSIC :: iso_c_binding
                 INTEGER(c_size_t) IterativeSolverAddPC
                 INTEGER(c_size_t), INTENT(in), VALUE :: nP
                 INTEGER(c_size_t), INTENT(in), DIMENSION(0:nP) :: offsets
@@ -742,12 +753,15 @@ CONTAINS
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: parametersP
                 INTEGER(c_int), INTENT(in), VALUE :: lsync
                 INTEGER(c_int), INTENT(in), VALUE :: lmppx
+                TYPE(C_FUNPTR), INTENT(IN), VALUE :: func
             END FUNCTION IterativeSolverAddPC
         END INTERFACE
         INTEGER(c_size_t), DIMENSION(0:nP) :: offsetsC
         INTEGER(c_size_t), DIMENSION(SIZE(indices)) :: indicesC
         INTEGER(c_int) :: lsyncC
         INTEGER(c_int) :: lmppxC
+        TYPE(C_FUNPTR) :: cproc
+        cproc = C_FUNLOC(apply_on_p)
         lmppxC = 0
         lsyncC = 0
         IF (PRESENT(lmppx)) THEN
@@ -764,7 +778,7 @@ CONTAINS
         end do
         !write (6,*) 'indicesC ',indicesC
         Iterative_Solver_Add_P_Nosync = int(IterativeSolverAddPC(INT(nP, c_size_t), offsetsC, indicesC, coefficients, &
-                pp, parameters, action, parametersP, lsyncC, lmppxC))
+                pp, parameters, action, parametersP, lsyncC, lmppxC, cproc))
     END FUNCTION Iterative_Solver_Add_P_Nosync
     !> \brief Take an existing solution and its residual, and suggest P vectors
     !> \param solution On input, the current solution.

@@ -392,7 +392,8 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
 
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
-                                      double* parametersP, int sync, int lmppx) {
+                                      double* parametersP, int sync, int lmppx, void (*func)()) {
+  func();
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   if (instance.prof != nullptr)

@@ -111,7 +111,7 @@ void test_eigen(const std::string& title = "") {
       expected_eigenvalues.push_back(ev[i]);
   }
   for (int nroot = 1; nroot <= std::min(n, n / 2 + 3) && nroot <= 23; nroot++) {
-    for (auto np = 0; np <= 0; np += 4) {
+    for (auto np = 4; np <= 4; np += 4) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
                    << np << std::endl;
 
@@ -287,7 +287,7 @@ TEST(IterativeSolver, file_eigen) {
   }
 }
 
-TEST(IterativeSolver, n_eigen) {
+TEST(IterativeSolver, DISABLED_n_eigen) {
   size_t n = 1000;
   double param = 1;
   //  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
@@ -298,7 +298,7 @@ TEST(IterativeSolver, n_eigen) {
   }
 }
 
-TEST(IterativeSolver, small_eigen) {
+TEST(IterativeSolver, DISABLED_small_eigen) {
   for (int n = 1; n < 20; n++) {
     double param = 1;
     load_matrix(n, "", param);
@@ -306,7 +306,7 @@ TEST(IterativeSolver, small_eigen) {
   }
 }
 
-TEST(IterativeSolver, symmetry_eigen) {
+TEST(IterativeSolver, DISABLED_symmetry_eigen) {
   for (int n = 1; n < 6; n++) {
     double param = 1;
     load_matrix(n, "", param);

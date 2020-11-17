@@ -373,7 +373,7 @@ auto construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const sub
   const auto dims = xspace.dimensions();
   auto dparams = std::vector<Q>{};
   auto dactions = std::vector<Q>{};
-  {
+  if (nD > 0) {
     auto qzero = handlers.qq().copy(qparams.front());
     handlers.qq().fill(0, qzero);
     for (size_t i = 0; i < nD; ++i) {

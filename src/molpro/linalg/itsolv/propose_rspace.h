@@ -88,8 +88,7 @@ auto calculate_transformation_to_orthogonal_rspace(subspace::Matrix<value_type> 
   };
   for (bool found_singularity = true; found_singularity;) {
     const auto nQ = qindices.size();
-    auto svd_sys_check = svd_system(overlap.rows(), array::Span(&overlap(0, 0), overlap.size()), 0.01);
-    auto svd_sys = svd_system(overlap.rows(), array::Span(&overlap(0, 0), overlap.size()), svd_thresh);
+    auto svd_sys = svd_system(overlap.rows(), overlap.cols(), array::Span(&overlap(0, 0), overlap.size()), svd_thresh);
     auto qspace_is_empty = nQ == 0;
     found_singularity = (!svd_sys.empty() && !qspace_is_empty);
     if (found_singularity) {
@@ -577,7 +576,8 @@ auto fix_overcompleteness(subspace::Matrix<value_type> overlap_PQRD, const subsp
   const auto oD = overlap_PQRD.cols() - int(nD);
   auto d_indices = std::vector<int>(nD);
   std::iota(begin(d_indices), end(d_indices), 0);
-  auto svd_vecs = svd_system(overlap_PQRD.rows(), array::Span(&overlap_PQRD(0, 0), overlap_PQRD.size()), svd_thresh);
+  auto svd_vecs = svd_system(overlap_PQRD.rows(), overlap_PQRD.cols(),
+                             array::Span(&overlap_PQRD(0, 0), overlap_PQRD.size()), svd_thresh);
   auto d_indices_remove = std::vector<int>{};
   auto well_conditioned = svd_vecs.empty() || q_indices.empty();
   if (not well_conditioned) {

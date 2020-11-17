@@ -205,6 +205,39 @@ auto construct_projected_solutions_overlap(const subspace::Matrix<value_type>& s
 }
 
 /*!
+ * @brief Removes parameters with norm less than threshold and normalises the rest
+ * @param parameters row major matrix of parameters
+ * @param overlap overlap matrix of parameters
+ * @param norm_thresh norm threhsold
+ * @param logger logger
+ */
+template <typename value_type, typename value_type_abs>
+void remove_null_norm_and_normalise(subspace::Matrix<value_type>& parameters, subspace::Matrix<value_type>& overlap,
+                                    const value_type_abs norm_thresh, Logger& logger) {
+  logger.msg("remove_null_norm_and_normalise()", Logger::Trace);
+  const auto nSol = parameters.rows();
+  auto norm_proj = std::vector<value_type_abs>(nSol, 0.);
+  for (size_t i = 0; i < nSol; ++i)
+    norm_proj[i] = std::sqrt(std::abs(overlap(i, i)));
+  for (size_t i = 0, j = 0; i < nSol; ++i) {
+    if (norm_proj[i] > norm_thresh) {
+      parameters.row(j).scal(1. / norm_proj[i]);
+      overlap.col(j).scal(1. / norm_proj[i]);
+      overlap.row(j).scal(1. / norm_proj[i]);
+      ++j;
+    } else {
+      parameters.remove_row(j);
+      overlap.remove_row_col(j, j);
+    }
+  }
+  if (logger.data_dump) {
+    logger.msg("norm  = ", std::begin(norm_proj), std::end(norm_proj), Logger::Info);
+    logger.msg("parameters after normalisation = " + as_string(parameters), Logger::Info);
+    logger.msg("overlap of parameters = " + as_string(overlap), Logger::Info);
+  }
+}
+
+/*!
  * @brief Normalises projected solutions and removes the null space if nSol > nQd+nD
  * @param solutions_proj solutions porjected onto Qd+D space
  * @param solutions solutions in the current subspace
@@ -217,33 +250,11 @@ auto remove_null_projected_solutions(subspace::Matrix<value_type>& solutions_pro
                                      subspace::Matrix<value_type>& overlap_proj,
                                      const subspace::Matrix<value_type>& solutions, const value_type_abs norm_thresh,
                                      const value_type_abs svd_thresh, Logger& logger) {
-  auto solutions_D = solutions;
-  const auto nSol = solutions_proj.rows();
-  auto norm_proj = std::vector<value_type_abs>(nSol, 0.);
-  for (size_t i = 0; i < nSol; ++i)
-    norm_proj[i] = std::sqrt(std::abs(overlap_proj(i, i)));
-  for (size_t i = 0, j = 0; i < nSol; ++i) {
-    if (norm_proj[i] > norm_thresh) {
-      solutions_proj.row(j).scal(1. / norm_proj[i]);
-      overlap_proj.col(j).scal(1. / norm_proj[i]);
-      overlap_proj.row(j).scal(1. / norm_proj[i]);
-      ++j;
-    } else {
-      solutions_proj.remove_row(j);
-      solutions_D.remove_row(j);
-      overlap_proj.remove_row_col(j, j);
-    }
-  }
   auto svd_vecs =
       svd_system(overlap_proj.rows(), overlap_proj.cols(), array::Span(&overlap_proj(0, 0), overlap_proj.size()),
                  std::numeric_limits<value_type_abs>::max());
   std::remove_if(std::begin(svd_vecs), std::end(svd_vecs),
                  [&svd_thresh](const auto& el) { return el.value < svd_thresh; });
-  if (logger.data_dump) {
-    logger.msg("norm of projected solutions = ", std::begin(norm_proj), std::end(norm_proj), Logger::Info);
-    logger.msg("projected solutions after normalisation = " + as_string(solutions_proj), Logger::Info);
-    logger.msg("overlap of projected solutions = " + as_string(overlap_proj), Logger::Info);
-  }
   size_t n_removed = 0;
   while (solutions_proj.rows() > solutions_proj.cols()) {
     auto lin_trans = subspace::Matrix<value_type>{};
@@ -357,9 +368,8 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
   logger.msg("propose_dspace()", Logger::Trace);
   auto solutions_proj = construct_projected_solution(solutions, dims, remove_qspace, logger);
   auto overlap_proj = construct_projected_solutions_overlap(solutions_proj, overlap, dims, remove_qspace, logger);
-  // construct overlap
-  // normalise and remove trivial null parameters
-  // perform SVD and remove null space by transofrming to the basis of significant right-singular vectors
+  remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
+  // perform SVD and remove null space by transforming to the basis of significant right-singular vectors
   auto solutions_D =
       remove_null_projected_solutions(solutions_proj, overlap_proj, solutions, norm_thresh, norm_thresh, logger);
   // There is no mapping from D parameters to individual solutions

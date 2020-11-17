@@ -175,8 +175,7 @@ void test_eigen(const std::string& title = "") {
           using molpro::linalg::itsolv::VecRef;
 //          using fapply_on_p_type = std::function<void(const std::vector<VectorP>&, const CVecRef<P>&, const VecRef<R>&)>;
           std::function<void(const std::vector<vectorP>&, const CVecRef<Pvector>&, const VecRef<Rvector>&)>
-//          auto
-          apply_p = [](const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, VecRef<Rvector>& action) {
+              apply_p = [](const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
             for (size_t i = 0; i < pvectors.size(); i++) {
               auto& actioni = (action[i]).get();
               for (size_t pi = 0; pi < pspace.size(); pi++) {

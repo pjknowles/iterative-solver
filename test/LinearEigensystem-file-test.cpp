@@ -170,9 +170,13 @@ void test_eigen(const std::string& title = "") {
             for (const auto& j : pspace)
               PP.push_back(matrix(i.begin()->first, j.begin()->first));
           //            std::cout << "PP: " << PP << std::endl;
-          auto apply_p = [](const std::vector<std::vector<double>>& pvectors, const auto& pspace, auto& action) {
+          using vectorP = std::vector<scalar>;
+          using molpro::linalg::itsolv::CVecRef;
+          using molpro::linalg::itsolv::VecRef;
+//          using fapply_on_p_type = std::function<void(const std::vector<VectorP>&, const CVecRef<P>&, const VecRef<R>&)>;
+          auto apply_p = [](const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, VecRef<Rvector>& action) {
             for (size_t i = 0; i < pvectors.size(); i++) {
-              auto& actioni = *(action[i]);
+              auto& actioni = (action[i]).get();
               for (size_t pi = 0; pi < pspace.size(); pi++) {
                 const auto& p = pspace[pi];
                 for (const auto& pel : p)

@@ -60,7 +60,7 @@ public:
    */
   virtual size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix,
                        const VecRef<R>& parameters, const VecRef<R>& action, std::vector<VectorP>& parametersP,
-                       fapply_on_p_type& apply_p = fapply_on_p_type{}) = 0;
+                       const fapply_on_p_type& apply_p) = 0;
 
   // FIXME Is this needed?
   virtual void clearP() = 0;

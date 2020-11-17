@@ -178,7 +178,7 @@ void test_eigen(const std::string& title = "") {
             for (size_t i = 0; i < pvectors.size(); i++) {
               auto& actioni = (action[i]).get();
               for (size_t pi = 0; pi < pspace.size(); pi++) {
-                const auto& p = pspace[pi];
+                const auto& p = pspace[pi].get();
                 for (const auto& pel : p)
                   for (size_t j = 0; j < n; j++)
                     actioni[j] += hmat[j + n*pel.first] * pel.second * pvectors[i][pi];

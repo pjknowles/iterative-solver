@@ -427,14 +427,17 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
       ppp.insert(std::pair<size_t, Rvector::value_type>(indices[k], coefficients[k]));
     Pvectors.emplace_back(ppp);
   }
-  func(ccp, molpro::linalg::itsolv::cwrap(Pvectors), molpro::linalg::itsolv::wrap(cc));
+  using vectorP = std::vector<double>;
+  using molpro::linalg::itsolv::CVecRef;
+  using molpro::linalg::itsolv::VecRef;
+  std::function<void(const std::vector<vectorP>&, const CVecRef<Pvector>&, const VecRef<Rvector>&)> apply_p = func;
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Call");
   size_t working_set_size = instance.solver->add_p(molpro::linalg::itsolv::cwrap(Pvectors),
                                               Span<Rvector::value_type>(&const_cast<double*>(pp)[0],
                                                                          (instance.solver->dimensions().oP+nP)*nP),
                                               molpro::linalg::itsolv::wrap(cc),
-                                              molpro::linalg::itsolv::wrap(gg), ccp);
+                                              molpro::linalg::itsolv::wrap(gg), ccp, apply_p);
   if (instance.prof != nullptr)
     instance.prof->stop("AddP:Call");
   if (instance.prof != nullptr)

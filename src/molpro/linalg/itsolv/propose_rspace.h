@@ -281,9 +281,9 @@ auto remove_null_projected_solutions(const subspace::Matrix<value_type>& solutio
  * @return overlap matrix for the subspace P+Q+R+(projected solutions), Q without deleted vectors
  */
 template <typename value_type>
-auto construct_overlap_with_projected_solutions(const subspace::Matrix<value_type>& solutions_proj,
-                                                const subspace::Dimensions& dims, const std::vector<int>& remove_qspace,
-                                                const subspace::Matrix<value_type>& overlap, const size_t nR) {
+auto construct_full_subspace_overlap(const subspace::Matrix<value_type>& solutions_proj,
+                                     const subspace::Dimensions& dims, const std::vector<int>& remove_qspace,
+                                     const subspace::Matrix<value_type>& overlap, const size_t nR) {
   const auto nDnew = solutions_proj.rows();
   const auto nQd = remove_qspace.size();
   const auto nQ = dims.nQ - nQd;
@@ -368,16 +368,17 @@ auto propose_dspace(const subspace::Matrix<value_type>& solutions, const subspac
   solutions_proj = remove_null_projected_solutions(solutions_proj, overlap_proj, norm_thresh, logger);
   overlap_proj = construct_projected_solutions_overlap(solutions_proj, overlap, dims, remove_qspace, logger);
   remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
-  auto ov = construct_overlap_with_projected_solutions(solutions_proj, dims, remove_qspace, overlap, nR);
+  auto overlap_full_subspace = construct_full_subspace_overlap(solutions_proj, dims, remove_qspace, overlap, nR);
   // Do SVD of the full subspace.
   // If there are null parameters, remove Q with smallest contribution to the solution
   // repeat until the subspace is well conditioned
   // If there are no Q parameters left, remove D parameters with largest contributions to the null space
-  auto svd_vecs = svd_system(ov.rows(), ov.cols(), array::Span(&ov(0, 0), ov.size()), 1);
+  auto svd_vecs = svd_system(overlap_full_subspace.rows(), overlap_full_subspace.cols(),
+                             array::Span(&overlap_full_subspace(0, 0), overlap_full_subspace.size()), 1);
   auto lin_trans = subspace::Matrix<value_type>{};
-  auto norm = subspace::util::gram_schmidt(ov, lin_trans);
+  auto norm = subspace::util::gram_schmidt(overlap_full_subspace, lin_trans);
   if (logger.data_dump) {
-    logger.msg("overlap matrix of P+Q+R+projected solution = " + as_string(ov), Logger::Info);
+    logger.msg("overlap matrix of P+Q+R+projected solution = " + as_string(overlap_full_subspace), Logger::Info);
     logger.msg("lin_trans = " + as_string(lin_trans), Logger::Info);
     logger.msg("norm = ", begin(norm), end(norm), Logger::Info);
   }

@@ -401,8 +401,7 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
 
 void apply_on_p_c(const std::vector<vectorP>& a, const CVecRef<Pvector>& b, const VecRef<Rvector>& c){
   auto& instance = instances.top();
-  auto& cvec = (c.front()).get();
-  instance.apply_on_p_fort(a.front().data(), &(*cvec.local_buffer())[0]);
+  instance.apply_on_p_fort(a.front().data(), &(*c.front().get().local_buffer())[0]);
 }
 
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,

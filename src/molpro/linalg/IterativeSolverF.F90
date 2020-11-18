@@ -22,9 +22,9 @@ MODULE Iterative_Solver
 
 CONTAINS
 
-    SUBROUTINE apply_on_p(arg1, arg2, arg3) BIND(C)
-        DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: arg1, arg2, arg3
-        write(*,*) "APPLY_ON_P was called!"
+    SUBROUTINE apply_on_p(arg1, arg2) BIND(C)
+        DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: arg1, arg2
+        write(*,*) "APPLY_ON_P was called!!"
     END SUBROUTINE apply_on_p
 
         !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.

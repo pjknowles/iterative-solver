@@ -34,12 +34,21 @@ using Rvector = molpro::linalg::array::DistrArrayMPI3;
 using Qvector = molpro::linalg::array::DistrArrayMPI3;
 using Pvector = std::map<size_t, double>;
 
+using vectorP = std::vector<double>;
+using molpro::linalg::itsolv::CVecRef;
+using molpro::linalg::itsolv::VecRef;
+
 // FIXME Only top solver is active at any one time. This should be documented somewhere.
 
 namespace {
+typedef  void(*Apply_on_p_fort)(const double *a, const double *b);
 struct Instance {
+  Instance(std::unique_ptr<IterativeSolver<Rvector, Qvector, Pvector>> solver, std::shared_ptr<Profiler> prof,
+           size_t dimension, MPI_Comm comm) : solver(std::move(solver)), prof(std::move(prof)), dimension(dimension),
+           comm(comm) {};
   std::unique_ptr<IterativeSolver<Rvector, Qvector, Pvector>> solver;
   std::shared_ptr<Profiler> prof;
+  Apply_on_p_fort apply_on_p_fort;
   size_t dimension;
   MPI_Comm comm;
 };
@@ -390,14 +399,19 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
   return result;
 }
 
+void apply_on_p_c(const std::vector<vectorP>& a, const CVecRef<Pvector>& b, const VecRef<Rvector>& c){
+  auto& instance = instances.top();
+  auto& cvec = (c.front()).get();
+  instance.apply_on_p_fort(a.front().data(), &(*cvec.local_buffer())[0]);
+}
+
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
                                       double* parametersP, int sync, int lmppx,
-                                      void (*func)(const std::vector<std::vector<double>>&,
-                                                   const molpro::linalg::itsolv::CVecRef<Pvector>&,
-                                                   const molpro::linalg::itsolv::VecRef<Rvector>&)) {
+                                      void (*func)(const double*, const double*)) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
+  instance.apply_on_p_fort = func;
   if (instance.prof != nullptr)
     instance.prof->start("AddP");
   cc.reserve(instance.solver->n_roots());
@@ -430,14 +444,14 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
   using vectorP = std::vector<double>;
   using molpro::linalg::itsolv::CVecRef;
   using molpro::linalg::itsolv::VecRef;
-  std::function<void(const std::vector<vectorP>&, const CVecRef<Pvector>&, const VecRef<Rvector>&)> apply_p = func;
+  std::function<void(const std::vector<vectorP>&, const CVecRef<Pvector>&, const VecRef<Rvector>&)> apply_on_p = apply_on_p_c;
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Call");
   size_t working_set_size = instance.solver->add_p(molpro::linalg::itsolv::cwrap(Pvectors),
                                               Span<Rvector::value_type>(&const_cast<double*>(pp)[0],
                                                                          (instance.solver->dimensions().oP+nP)*nP),
                                               molpro::linalg::itsolv::wrap(cc),
-                                              molpro::linalg::itsolv::wrap(gg), ccp, apply_p);
+                                              molpro::linalg::itsolv::wrap(gg), ccp, apply_on_p);
   if (instance.prof != nullptr)
     instance.prof->stop("AddP:Call");
   if (instance.prof != nullptr)

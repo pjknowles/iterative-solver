@@ -399,9 +399,9 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
   return result;
 }
 
-void apply_on_p_c(const std::vector<vectorP>& a, const CVecRef<Pvector>& b, const VecRef<Rvector>& c){
+void apply_on_p_c(const std::vector<vectorP>& p, const CVecRef<Pvector>& pp, const VecRef<Rvector>& g){
   auto& instance = instances.top();
-  instance.apply_on_p_fort(a.front().data(), &(*c.front().get().local_buffer())[0]);
+  instance.apply_on_p_fort(p.front().data(), &(*g.front().get().local_buffer())[0]);
 }
 
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
@@ -443,6 +443,7 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
   using vectorP = std::vector<double>;
   using molpro::linalg::itsolv::CVecRef;
   using molpro::linalg::itsolv::VecRef;
+  //func(ccp.front().data(), &(*gg.front().local_buffer())[0]);
   std::function<void(const std::vector<vectorP>&, const CVecRef<Pvector>&, const VecRef<Rvector>&)> apply_on_p = apply_on_p_c;
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Call");

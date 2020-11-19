@@ -19,15 +19,21 @@ MODULE Iterative_Solver
         END SUBROUTINE Iterative_Solver_Print_Statistics
     END INTERFACE
 
+    !ABSTRACT INTERFACE
+    !  subroutine func_tmpl_a(a, b) BIND(C)
+    !    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: a, b
+    !    !DOUBLE PRECISION, INTENT(in) :: a(:,:), b(:,:)
+    !  end subroutine func_tmpl_a
+    !END INTERFACE
 
 CONTAINS
 
-    SUBROUTINE apply_on_p(arg1, arg2) BIND(C)
+    SUBROUTINE apply_on_p_test(arg1, arg2) BIND(C)
         DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: arg1, arg2
         write(*,*) "APPLY_ON_P was called!!"
-    END SUBROUTINE apply_on_p
+    END SUBROUTINE apply_on_p_test
 
-        !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
+    !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
     !> Example of simplest use: @include LinearEigensystemExampleF.F90
     !> Example including use of P space: @include LinearEigensystemExampleF-Pspace-mpi.F90
     SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, verbosity, pname, pcomm, lmppx)
@@ -668,7 +674,7 @@ CONTAINS
     !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear).
     !> On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
     !> \param parametersP On exit, the interpolated solution projected onto the P space.
-    FUNCTION Iterative_Solver_Add_P(nP, offsets, indices, coefficients, pp, parameters, action, parametersP, lmppx)
+    FUNCTION Iterative_Solver_Add_P(nP, offsets, indices, coefficients, pp, parameters, action, parametersP, lmppx, fproc)
         USE iso_c_binding
         INTEGER :: Iterative_Solver_Add_P
         INTEGER, INTENT(in) :: nP
@@ -680,6 +686,9 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parametersP
         LOGICAL, INTENT(in), OPTIONAL :: lmppx
+        !PROCEDURE(func_tmpl_a), POINTER :: fproc_ptr
+        !PROCEDURE(func_tmpl_a) :: fproc
+        EXTERNAL fproc
         INTERFACE
             FUNCTION IterativeSolverAddPC(nP, offsets, indices, coefficients, pp, parameters, action, parametersP, &
                     lsync, lmppx, func) BIND(C, name = 'IterativeSolverAddP')
@@ -703,7 +712,9 @@ CONTAINS
         INTEGER(c_int) :: lsyncC
         INTEGER(c_int) :: lmppxC
         TYPE(C_FUNPTR) :: cproc
-        cproc = C_FUNLOC(apply_on_p)
+        DOUBLE PRECISION :: dummy_a(10,10), dummy_b(10,10)
+        !cproc = C_FUNLOC(apply_on_p_test)
+        cproc = C_FUNLOC(fproc)
         lmppxC = 0
         lsyncC = 1
         IF (PRESENT(lmppx)) THEN
@@ -723,7 +734,8 @@ CONTAINS
                 pp, parameters, action, parametersP, lsyncC, lmppxC, cproc))
     END FUNCTION Iterative_Solver_Add_P
 
-    FUNCTION Iterative_Solver_Add_P_Nosync(nP, offsets, indices, coefficients, pp, parameters, action, parametersP, lmppx)
+    FUNCTION Iterative_Solver_Add_P_Nosync(nP, offsets, indices, coefficients, pp, parameters, action, parametersP, &
+                                           lmppx, fproc)
         USE iso_c_binding
         INTEGER :: Iterative_Solver_Add_P_Nosync
         INTEGER, INTENT(in) :: nP
@@ -735,6 +747,8 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parametersP
         LOGICAL, INTENT(in), OPTIONAL :: lmppx
+        !PROCEDURE(func_tmpl_a), POINTER :: func
+        EXTERNAL fproc
         INTERFACE
             FUNCTION IterativeSolverAddPC(nP, offsets, indices, coefficients, pp, parameters, action, parametersP, &
                     lsync, lmppx, func) BIND(C, name = 'IterativeSolverAddP')
@@ -758,7 +772,7 @@ CONTAINS
         INTEGER(c_int) :: lsyncC
         INTEGER(c_int) :: lmppxC
         TYPE(C_FUNPTR) :: cproc
-        cproc = C_FUNLOC(apply_on_p)
+        cproc = C_FUNLOC(fproc)
         lmppxC = 0
         lsyncC = 0
         IF (PRESENT(lmppx)) THEN

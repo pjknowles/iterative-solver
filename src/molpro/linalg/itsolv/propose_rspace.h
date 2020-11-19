@@ -396,7 +396,6 @@ auto construct_orthonormal_Dparams(subspace::XSpaceI<R, Q, P>& xspace, const sub
   for (size_t i = 0; i < nD; ++i) {
     for (size_t j = 0; j < dims.nP; ++j) {
       handlers.qp().axpy(lin_trans(i, oP + j), pparams.at(j), dparams[i]);
-      handlers.qp().axpy(lin_trans(i, oP + j), pactions.at(j), dactions[i]);
     }
     for (size_t j = 0; j < nQ; ++j) {
       const auto jj = q_indices_new[j];

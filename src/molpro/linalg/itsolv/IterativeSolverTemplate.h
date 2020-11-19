@@ -138,7 +138,7 @@ public:
   IterativeSolverTemplate<Solver, R, Q, P>& operator=(const IterativeSolverTemplate<Solver, R, Q, P>&) = delete;
   IterativeSolverTemplate<Solver, R, Q, P>& operator=(IterativeSolverTemplate<Solver, R, Q, P>&&) noexcept = default;
 
-protected:
+public:
   /*!
    * @brief Adds new parameters and corresponding action to the subspace and solves the corresponding problem.
    *
@@ -148,7 +148,7 @@ protected:
    * @return
    */
   size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions, std::vector<VectorP>& pparams,
-                    fapply_on_p_type& apply_p) {
+                    const fapply_on_p_type& apply_p) override {
     m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations) +
                       ", apply_p = " + std::to_string(bool(apply_p)),
                   Logger::Trace);
@@ -171,15 +171,6 @@ protected:
   }
 
 public:
-  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action, fapply_on_p_type& apply_p) override {
-    auto pparams = std::vector<VectorP>{};
-    return add_vector(parameters, action, pparams, apply_p);
-  }
-
-  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action, std::vector<VectorP>& pparams) override {
-    auto apply_p = fapply_on_p_type{};
-    return add_vector(parameters, action, pparams, apply_p);
-  }
 
   size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action) override {
     auto pparams = std::vector<VectorP>{};
@@ -187,11 +178,9 @@ public:
     return add_vector(parameters, action, pparams, apply_p);
   }
 
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions, fapply_on_p_type& apply_p) override {
-    return add_vector(wrap(parameters), wrap(actions), apply_p);
-  }
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions, std::vector<VectorP>& pparams) override {
-    return add_vector(wrap(parameters), wrap(actions), pparams);
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions, std::vector<VectorP>& pparams,
+                    const fapply_on_p_type& apply_p) override {
+    return add_vector(wrap(parameters), wrap(actions), pparams, apply_p);
   }
   size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions) override {
     return add_vector(wrap(parameters), wrap(actions));
@@ -205,7 +194,7 @@ public:
   // FIXME Currently only works if called on an empty subspace. Either enforce it or generalise.
   size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix, const VecRef<R>& parameters,
                const VecRef<R>& actions, std::vector<VectorP>& parametersP,
-               const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
+               const fapply_on_p_type& apply_p) override {
     m_xspace->update_pspace(pparams, pp_action_matrix);
     return solve_and_generate_working_set(parameters, actions, parametersP, apply_p);
   };

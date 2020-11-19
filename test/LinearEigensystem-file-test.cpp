@@ -111,7 +111,7 @@ void test_eigen(const std::string& title = "") {
       expected_eigenvalues.push_back(ev[i]);
   }
   for (int nroot = 1; nroot <= std::min(n, n / 2 + 3) && nroot <= 23; nroot++) {
-    for (auto np = 4; np <= 4; np += 4) {
+    for (auto np = 0; np <= 1; np += 1) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
                    << np << std::endl;
 
@@ -152,6 +152,22 @@ void test_eigen(const std::string& title = "") {
       std::vector<std::vector<scalar>> Pcoeff(solver.n_roots());
       std::vector<scalar> PP;
       std::vector<Pvector> pspace;
+      using vectorP = std::vector<scalar>;
+      using molpro::linalg::itsolv::CVecRef;
+      using molpro::linalg::itsolv::VecRef;
+//          using fapply_on_p_type = std::function<void(const std::vector<VectorP>&, const CVecRef<P>&, const VecRef<R>&)>;
+      std::function<void(const std::vector<vectorP>&, const CVecRef<Pvector>&, const VecRef<Rvector>&)>
+          apply_p = [](const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
+        for (size_t i = 0; i < pvectors.size(); i++) {
+          auto& actioni = (action[i]).get();
+          for (size_t pi = 0; pi < pspace.size(); pi++) {
+            const auto& p = pspace[pi].get();
+            for (const auto& pel : p)
+              for (size_t j = 0; j < n; j++)
+                actioni[j] += hmat[j + n*pel.first] * pel.second * pvectors[i][pi];
+          }
+        }
+      };
 
       for (auto iter = 0; iter < 100; iter++) {
         if (iter == 0 && np > 0) {
@@ -170,65 +186,50 @@ void test_eigen(const std::string& title = "") {
             for (const auto& j : pspace)
               PP.push_back(matrix(i.begin()->first, j.begin()->first));
           //            std::cout << "PP: " << PP << std::endl;
-          using vectorP = std::vector<scalar>;
-          using molpro::linalg::itsolv::CVecRef;
-          using molpro::linalg::itsolv::VecRef;
-//          using fapply_on_p_type = std::function<void(const std::vector<VectorP>&, const CVecRef<P>&, const VecRef<R>&)>;
-          std::function<void(const std::vector<vectorP>&, const CVecRef<Pvector>&, const VecRef<Rvector>&)>
-              apply_p = [](const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
-            for (size_t i = 0; i < pvectors.size(); i++) {
-              auto& actioni = (action[i]).get();
-              for (size_t pi = 0; pi < pspace.size(); pi++) {
-                const auto& p = pspace[pi].get();
-                for (const auto& pel : p)
-                  for (size_t j = 0; j < n; j++)
-                    actioni[j] += hmat[j + n*pel.first] * pel.second * pvectors[i][pi];
-              }
-            }
-          };
+
           nwork = solver.add_p(molpro::linalg::itsolv::cwrap(pspace),
                                molpro::linalg::array::span::Span<double>(PP.data(), PP.size()),
                                molpro::linalg::itsolv::wrap(x), molpro::linalg::itsolv::wrap(g), Pcoeff, apply_p);
         } else {
           action(x, g);
-          //            for (auto root = 0; root < nwork; root++) {
-          //              std::cout << "before addVector() x:";
-          //              for (auto i = 0; i < n; i++)
-          //                std::cout << " " << x[root][i];
-          //              std::cout << std::endl;
-          //              std::cout << "before addVector() g:";
-          //              for (auto i = 0; i < n; i++)
-          //                std::cout << " " << g[root][i];
-          //              std::cout << std::endl;
-          //            }
-          nwork = solver.add_vector(x, g, Pcoeff);
+                      for (auto root = 0; root < nwork; root++) {
+                        std::cout << "before addVector() x:";
+                        for (auto i = 0; i < n; i++)
+                          std::cout << " " << x[root][i];
+                        std::cout << std::endl;
+                        std::cout << "before addVector() g:";
+                        for (auto i = 0; i < n; i++)
+                          std::cout << " " << g[root][i];
+                        std::cout << std::endl;
+                      }
+          nwork = solver.add_vector(x, g, Pcoeff, apply_p);
         }
         if (nwork == 0)
           break;
-        //          for (auto root = 0; root < nwork; root++) {
-        //            std::cout << "after addVector()"
-        //                      << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" <<
-        //                      solver.errors()[root]
-        //                      << " x:";
-        //            for (auto i = 0; i < n; i++)
-        //              std::cout << " " << x[root][i];
-        //            std::cout << std::endl;
-        //            std::cout << "after addVector() g:";
-        //            for (auto i = 0; i < n; i++)
-        //              std::cout << " " << g[root][i];
-        //            std::cout << std::endl;
-        //          }
+                  for (auto root = 0; root < nwork; root++) {
+                    std::cout << "after addVector() or addP()"
+                              << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" <<
+                              solver.errors()[root]
+                              << "\nx:";
+                    for (auto i = 0; i < n; i++)
+                      std::cout << " " << x[root][i];
+                    std::cout << std::endl;
+                    std::cout << "after addVector() g:";
+                    for (auto i = 0; i < n; i++)
+                      std::cout << " " << g[root][i];
+                    std::cout << std::endl;
+                  }
         //        x.resize(nwork);
         //        g.resize(nwork);
-        for (auto k = 0; k < solver.working_set().size(); k++) {
-          for (auto p = 0; p < np; p++)
-            for (const auto& pc : pspace[p])
-              for (auto i = 0; i < n; i++)
-                g[k][i] += matrix(i, pc.first) * pc.second * Pcoeff[k][p];
-          //            molpro::cout << "old error " << solver.m_errors[solver.working_set()[k]];
-          //            solver.m_errors[solver.working_set()[k]] = std::sqrt(g[k].dot(g[k]));
-          //            molpro::cout << "; new error " << solver.m_errors[solver.working_set()[k]] << std::endl;
-        }
+//        for (auto k = 0; k < solver.working_set().size(); k++) {
+//          for (auto p = 0; p < np; p++)
+//            for (const auto& pc : pspace[p])
+//              for (auto i = 0; i < n; i++)
+//                g[k][i] += matrix(i, pc.first) * pc.second * Pcoeff[k][p];
+//          //            molpro::cout << "old error " << solver.m_errors[solver.working_set()[k]];
+//          //            solver.m_errors[solver.working_set()[k]] = std::sqrt(g[k].dot(g[k]));
+//          //            molpro::cout << "; new error " << solver.m_errors[solver.working_set()[k]] << std::endl;
+//        }
         //          for (auto root = 0; root < nwork; root++) {
         //            std::cout << "after p gradient g:";
         //            for (auto i = 0; i < n; i++)

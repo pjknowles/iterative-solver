@@ -55,6 +55,8 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
   // FIXME only works for Hermitian Hamiltonian
   transpose_copy(qx[EqnData::H].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}),
                  xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}));
+  std::cout << "xq "<<as_string(xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew})) << std::endl;
+  std::cout << "qx "<<as_string(qx[EqnData::H].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP})) << std::endl;
   if (logger.data_dump) {
     logger.msg("xspace::update_qspace_data() nQnew = " + std::to_string(nQnew), Logger::Info);
     logger.msg("Sqq = " + as_string(qq[EqnData::S]), Logger::Info);

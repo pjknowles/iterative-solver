@@ -732,7 +732,25 @@ auto append_overlap_with_r(const subspace::Matrix<value_type>& overlap, const CV
 template <typename value_type>
 auto limit_qspace_size(const subspace::Dimensions& dims, const size_t max_size_qspace,
                        const subspace::Matrix<value_type>& solutions, Logger& logger) {
+  logger.msg("limit_qspace_size()", Logger::Trace);
+  using value_type_abs = decltype(std::abs(solutions(0, 0)));
   auto q_delete = std::vector<int>{};
+  auto q_indices = std::vector<int>(dims.nQ);
+  std::iota(begin(q_indices), end(q_indices), 0);
+  const auto nSol = solutions.rows();
+  while (q_indices.size() > max_size_qspace) {
+    auto max_contrib_to_solution = std::vector<value_type_abs>{};
+    for (auto i : q_indices) {
+      auto contrib = std::vector<value_type_abs>(nSol);
+      for (size_t j = 0; j < nSol; ++j)
+        contrib[j] = std::abs(solutions(j, dims.oQ + i));
+      max_contrib_to_solution.emplace_back(*std::max_element(begin(contrib), end(contrib)));
+    }
+    auto it_min = std::min_element(begin(max_contrib_to_solution), end(max_contrib_to_solution));
+    auto i = std::distance(begin(max_contrib_to_solution), it_min);
+    q_delete.push_back(q_indices.at(i));
+    q_indices.erase(begin(q_indices) + i);
+  }
   return q_delete;
 }
 

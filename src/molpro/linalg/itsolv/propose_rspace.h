@@ -720,6 +720,59 @@ auto append_overlap_with_r(const subspace::Matrix<value_type>& overlap, const CV
   copy_upper_to_lower(oD, nD);
   return ov;
 }
+
+/*!
+ * @brief Ensures that size Q space is within limit by proposing Q parameters for deletion
+ * @param dims dimensions of current P+Q+D subspace
+ * @param max_size_qspace maximum size of Q space
+ * @param solutions solutions matrix
+ * @param logger logger
+ * @return q parameters marked for deletions
+ */
+template <typename value_type>
+auto limit_qspace_size(const subspace::Dimensions& dims, const size_t max_size_qspace,
+                       const subspace::Matrix<value_type>& solutions, Logger& logger) {
+  auto q_delete = std::vector<int>{};
+  return q_delete;
+}
+
+/*!
+ * @brief Constructs the new D space by projecting the solutions onto Qd+D subspace and ensuring they are well
+ * conditioned.
+ * @param xspace X space container
+ * @param q_delete Q parameters marked for deletion
+ * @param norm_thresh norm threshold for parameters to be considered null
+ * @param svd_thresh svd threshold for marking the null space
+ * @param handler array handler
+ * @param logger logger
+ * @return D space parameters and actions
+ */
+template <class R, class Q, class P, typename value_type, typename value_type_abs>
+auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subspace::XSpaceI<R, Q, P>& xspace,
+                      const std::vector<int>& q_delete, const value_type_abs norm_thresh,
+                      const value_type_abs svd_thresh, array::ArrayHandler<Q, Q>& handler, Logger& logger) {
+  std::vector<Q> dparams, dactions;
+  return std::make_tuple(dparams, dactions);
+}
+
+/*!
+ * @brief Orthogonalises R parameters against P+Q+D subspace (and themselves)
+ * @param rparams R space parameters
+ * @param pparams P space parameters
+ * @param qparams Q space parameters
+ * @param dparams D space parameters
+ * @param handlers array handlers
+ * @param norm_thresh  parameters with norm less than threshold are considered null and won't be orthogonalised against
+ * @return indices of null parameters
+ */
+template <class R, class Q, class P, typename value_type_abs>
+auto modified_gram_schmidt(const VecRef<R>& rparams, const CVecRef<P>& pparams, const CVecRef<Q>& qparams,
+                           const CVecRef<Q>& dparams, ArrayHandlers<R, Q, P>& handlers,
+                           const value_type_abs norm_thresh) {
+  auto null_params = std::vector<int>{};
+  return null_params;
+}
+
 /*!
  * @brief Constructs R parameters approximately orthonormal in the full subspace
  * @param params output new R parameters
@@ -810,53 +863,32 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
                  std::to_string(xspace.dimensions().nQ) + ", " + std::to_string(xspace.dimensions().nD) + ", " +
                  std::to_string(solver.working_set().size()),
              Logger::Trace);
+  // resize Q if it is over the limit by removing Q parameters that have small contribution to solutions
+  auto q_delete = limit_qspace_size(xspace.dimensions(), max_size_qspace, solutions, logger);
+  logger.msg("delete Q parameter indices = ", q_delete.begin(), q_delete.end(), Logger::Debug);
+  // Construct D space if nQd > 0, otherwise it can stay the same
+  if (!q_delete.empty()) {
+    auto [dparams, dactions] =
+        construct_dspace(solutions, xspace, q_delete, res_norm_thresh, svd_thresh, handlers.qq(), logger);
+    std::sort(begin(q_delete), end(q_delete), std::greater());
+    for (auto iq : q_delete)
+      xspace.eraseq(iq);
+    auto wdparams = wrap(dparams);
+    auto wdactions = wrap(dactions);
+    xspace.update_dspace(wdparams, wdactions, {});
+  }
+  // Optionally, solve the subspace problem again and get an estimate of the error due to new D
+  // Use modified GS to orthonormalise z against P+Q+D, removing any null parameters.
   auto wresidual = wrap<R>(residuals.begin(), residuals.begin() + solver.working_set().size());
   normalise(wresidual, handlers.rr(), logger);
-  auto null_param_indices = subspace::util::modified_gram_schmidt(wresidual, handlers.rr(), 1.0e-14);
-  for (auto it = null_param_indices.rbegin(); it != null_param_indices.rend(); ++it)
-    wresidual.erase(begin(wresidual) + (*it));
-  // FIXME for now assuming that P+z is well conditioned
-  // condition P+z, remove null z
-  // calculate overlap of P+Q+D+z
-  // condition P+Q+z by removing Q parameters that lead to linear dependencies
-  auto overlap_PQDz = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
-                                            xspace.cparamsq(), xspace.cparamsd(), handlers, logger);
-  // resize Q if it is over the limit by removing Q parameters that have small contribution to solutions
-  // while subspace is ill-conditioned
-  //   calculate projected solutions (stable and orthonormal)
-  //   calculate overlap P+Q+z+s
-  //   condition P+Q+z+s by removing a Q parameter or removing s if there are no more Q
-  // construct R by orthonormalising P+Q+z
-  // construct D by orthonormalising P+Q+R+s
-  auto [q_indices_remove, lin_trans, norm] = calculate_transformation_to_orthogonal_rspace(
-      overlap_PQDz, solutions, xspace.dimensions(), logger, svd_thresh, res_norm_thresh, max_size_qspace);
-  if (logger.data_dump) {
-    logger.msg("overlap P+Q+Z = " + subspace::as_string(overlap_PQDz), Logger::Info);
-    logger.msg("linear transformation = " + subspace::as_string(lin_trans), Logger::Info);
-    logger.msg("norm = ", norm.begin(), norm.end(), Logger::Debug);
-  }
-  logger.msg("remove Q space indices = ", q_indices_remove.begin(), q_indices_remove.end(), Logger::Debug);
-  auto wparams = wrap<R>(parameters.begin(), parameters.begin() + wresidual.size());
-  auto qparams_new = remove_elements(xspace.cparamsq(), q_indices_remove);
-  construct_orthonormal_Rparams(wparams, wresidual, lin_trans, norm, xspace.cparamsp(), qparams_new, handlers);
-  normalise(wparams, handlers.rr(), logger);
-  auto params_qd = xspace.cparamsq();
-  auto paramsd = xspace.cparamsd();
-  std::copy(begin(paramsd), end(paramsd), std::back_inserter(params_qd));
-  overlap_PQDz = append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wparams), xspace.cparamsp(),
-                                       params_qd, handlers, logger);
-  std::vector<Q> dparams, dactions;
-  subspace::Matrix<value_type> lin_trans_D_only_R;
-  auto lin_trans_D = dspace::propose_dspace(solutions, xspace.dimensions(), q_indices_remove, overlap_PQDz,
-                                            wparams.size(), res_norm_thresh, res_norm_thresh, logger);
-  std::tie(dparams, dactions, lin_trans_D_only_R) =
-      construct_orthonormal_Dparams(xspace, lin_trans_D, q_indices_remove, cwrap(wparams), handlers, logger);
-  std::sort(begin(q_indices_remove), end(q_indices_remove), std::greater());
-  for (auto iq : q_indices_remove)
-    xspace.eraseq(iq);
-  auto wdparams = wrap(dparams);
-  auto wdactions = wrap(dactions);
-  xspace.update_dspace(wdparams, wdactions, lin_trans_D_only_R);
+  auto null_param_indices = modified_gram_schmidt(wresidual, xspace.cparamsp(), xspace.cparamsq(), xspace.cparamsd(),
+                                                  handlers, res_norm_thresh);
+  std::sort(begin(null_param_indices), end(null_param_indices), std::greater());
+  for (auto i : null_param_indices)
+    wresidual.erase(begin(wresidual) + i);
+  normalise(wresidual, handlers.rr(), logger);
+  for (size_t i = 0; i < wresidual.size(); ++i)
+    handlers.rr().copy(parameters.at(i), wresidual.at(i));
   auto new_working_set = get_new_working_set(solver.working_set(), cwrap(residuals), cwrap(wresidual));
   return new_working_set;
 }

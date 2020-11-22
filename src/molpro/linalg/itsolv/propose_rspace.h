@@ -817,6 +817,11 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
       handler.axpy(solutions_proj(i, nQd + j), dactions.at(j), dactions_new.at(i));
     }
   }
+  for (size_t i = 0; i < nD; ++i) {
+    auto norm = std::sqrt(std::abs(handler.dot(dparams_new.at(i), dparams_new.at(i))));
+    handler.scal(1. / norm, dparams_new[i]);
+    handler.scal(1. / norm, dactions_new[i]);
+  }
   return std::make_tuple(dparams_new, dactions_new);
 }
 
@@ -940,7 +945,7 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
       xspace.eraseq(iq);
     auto wdparams = wrap(dparams);
     auto wdactions = wrap(dactions);
-    xspace.update_dspace(wdparams, wdactions, {});
+    xspace.update_dspace(wdparams, wdactions);
     // Optionally, solve the subspace problem again and get an estimate of the error due to new D
   }
   // Use modified GS to orthonormalise z against P+Q+D, removing any null parameters.

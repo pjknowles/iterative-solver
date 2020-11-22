@@ -30,11 +30,7 @@ struct DummyXSpace : public molpro::linalg::itsolv::subspace::XSpaceI<R, Q, P> {
   void update_qspace(const CVecRef<R>& params, const CVecRef<R>& actions) override {}
 
   //! Updates D space with the new parameters
-  void update_dspace(VecRef<Q>& params, VecRef<Q>& actions, const Matrix<value_type>& lin_trans_only_R) override {}
-
-  //! Completes construction of D space action by adding contribution from the R space, and constructs equation data
-  //! blocks corresponding to D space
-  void complete_dspace_action(const CVecRef<R>& actions) override {}
+  void update_dspace(VecRef<Q>& params, VecRef<Q>& actions) override {}
 
   VecRef<P> paramsp() override { return VecRef<P>{}; }
   VecRef<P> actionsp() override { return VecRef<P>{}; }

@@ -242,11 +242,15 @@ void remove_null_norm_and_normalise(subspace::Matrix<value_type>& parameters, su
 
 /*!
  * @brief Transforms to a stable subspace of projected solutions via SVD
+ *
+ * Performs SVD and transforms to right-singular vectors with singular values greater than threshold.
+ *
  * @param solutions_proj solutions projected onto Qd+D space
  * @param solutions solutions in the current subspace
  * @param overlap_proj overlap matrix of projected solutions
  * @param norm_thresh
  * @param logger
+ * @returns stable subspace of projected solutions
  */
 template <typename value_type, typename value_type_abs>
 auto remove_null_projected_solutions(const subspace::Matrix<value_type>& solutions_proj,
@@ -769,8 +773,51 @@ template <class R, class Q, class P, typename value_type, typename value_type_ab
 auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subspace::XSpaceI<R, Q, P>& xspace,
                       const std::vector<int>& q_delete, const value_type_abs norm_thresh,
                       const value_type_abs svd_thresh, array::ArrayHandler<Q, Q>& handler, Logger& logger) {
-  std::vector<Q> dparams, dactions;
-  return std::make_tuple(dparams, dactions);
+  const auto dims = xspace.dimensions();
+  const auto overlap = xspace.data.at(subspace::EqnData::S);
+  auto solutions_proj = dspace::construct_projected_solution(solutions, dims, q_delete, logger);
+  auto overlap_proj = dspace::construct_projected_solutions_overlap(solutions_proj, overlap, dims, q_delete, logger);
+  dspace::remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
+  solutions_proj = dspace::remove_null_projected_solutions(solutions_proj, overlap_proj, svd_thresh, logger);
+  overlap_proj = dspace::construct_projected_solutions_overlap(solutions_proj, overlap, dims, q_delete, logger);
+  dspace::remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
+  auto overlap_full_subspace = dspace::construct_full_subspace_overlap(solutions_proj, dims, q_delete, overlap, 0);
+  auto svd_vecs = svd_system(overlap_full_subspace.rows(), overlap_full_subspace.cols(),
+                             array::Span(&overlap_full_subspace(0, 0), overlap_full_subspace.size()), svd_thresh);
+  assert(svd_vecs.empty() && "P+Q+D subspace should be stable by construction");
+  const auto nD = solutions_proj.rows();
+  const auto nQd = q_delete.size();
+  assert(nQd + dims.nD == solutions_proj.cols());
+  const auto &qparams = xspace.cparamsq(), qactions = xspace.cactionsq();
+  const auto &dparams = xspace.cparamsd(), dactions = xspace.cactionsd();
+  std::vector<Q> dparams_new, dactions_new;
+  {
+    // FIXME need a simpler mechanism for constructing null parameters
+    Q const* q = nullptr;
+    if (!qparams.empty())
+      q = &qparams.front().get();
+    else if (!dparams.empty())
+      q = &dparams.front().get();
+    if (q) {
+      for (size_t i = 0; i < nD; ++i) {
+        dparams_new.emplace_back(handler.copy(*q));
+        dactions_new.emplace_back(handler.copy(*q));
+        handler.fill(0, dparams_new.back());
+        handler.fill(0, dactions_new.back());
+      }
+    }
+  }
+  for (size_t i = 0; i < nD; ++i) {
+    for (size_t j = 0; j < q_delete.size(); ++j) {
+      handler.axpy(solutions_proj(i, j), qparams.at(q_delete[j]), dparams_new.at(i));
+      handler.axpy(solutions_proj(i, j), qactions.at(q_delete[j]), dactions_new.at(i));
+    }
+    for (size_t j = 0; j < dims.nD; ++j) {
+      handler.axpy(solutions_proj(i, nQd + j), dparams.at(j), dparams_new.at(i));
+      handler.axpy(solutions_proj(i, nQd + j), dactions.at(j), dactions_new.at(i));
+    }
+  }
+  return std::make_tuple(dparams_new, dactions_new);
 }
 
 /*!
@@ -894,8 +941,8 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
     auto wdparams = wrap(dparams);
     auto wdactions = wrap(dactions);
     xspace.update_dspace(wdparams, wdactions, {});
+    // Optionally, solve the subspace problem again and get an estimate of the error due to new D
   }
-  // Optionally, solve the subspace problem again and get an estimate of the error due to new D
   // Use modified GS to orthonormalise z against P+Q+D, removing any null parameters.
   auto wresidual = wrap<R>(residuals.begin(), residuals.begin() + solver.working_set().size());
   normalise(wresidual, handlers.rr(), logger);

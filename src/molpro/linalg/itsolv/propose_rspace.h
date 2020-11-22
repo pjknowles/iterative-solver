@@ -957,9 +957,9 @@ auto get_new_working_set(const std::vector<int>& working_set, const CVecRef<R>& 
  * @param residual preconditioned residuals.
  * @return number of significant parameters to calculate the action for
  */
-template <class R, class Q, class P, typename value_type, typename value_type_abs>
+template <class R, class Q, class P, typename value_type_abs>
 auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& parameters, const VecRef<R>& residuals,
-                    subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& solutions,
+                    subspace::XSpaceI<R, Q, P>& xspace, subspace::SubspaceSolverI<R, Q, P>& subspace_solver,
                     ArrayHandlers<R, Q, P>& handlers, Logger& logger, value_type_abs svd_thresh,
                     value_type_abs res_norm_thresh, int max_size_qspace) {
   logger.msg("itsolv::detail::propose_rspace", Logger::Trace);
@@ -967,10 +967,9 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
                  std::to_string(xspace.dimensions().nQ) + ", " + std::to_string(xspace.dimensions().nD) + ", " +
                  std::to_string(solver.working_set().size()),
              Logger::Trace);
-  // resize Q if it is over the limit by removing Q parameters that have small contribution to solutions
+  auto solutions = subspace_solver.solutions();
   auto q_delete = limit_qspace_size(xspace.dimensions(), max_size_qspace, solutions, logger);
   logger.msg("delete Q parameter indices = ", q_delete.begin(), q_delete.end(), Logger::Debug);
-  // Construct D space if nQd > 0, otherwise it can stay the same
   if (!q_delete.empty()) {
     auto [dparams, dactions] =
         construct_dspace(solutions, xspace, q_delete, res_norm_thresh, svd_thresh, handlers.qq(), logger);
@@ -980,6 +979,13 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
     auto wdparams = wrap(dparams);
     auto wdactions = wrap(dactions);
     xspace.update_dspace(wdparams, wdactions);
+    auto eigenvalues_ref = subspace_solver.eigenvalues();
+    subspace_solver.solve(xspace, solutions.rows());
+    auto eigval_error = std::vector<double>{};
+    std::transform(std::begin(eigenvalues_ref), std::end(eigenvalues_ref), std::begin(subspace_solver.eigenvalues()),
+                   std::back_inserter(eigval_error), [](auto& e_ref, auto& e_new) { return std::abs(e_ref - e_new); });
+    logger.msg("eigenvalue error due to new D space = ", std::begin(eigval_error), std::end(eigval_error),
+               Logger::Debug);
     // FIXME Optionally, solve the subspace problem again and get an estimate of the error due to new D
   }
   // Use modified GS to orthonormalise z against P+Q+D, removing any null parameters.

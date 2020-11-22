@@ -63,7 +63,7 @@ public:
     } else {
       this->m_working_set =
           detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, *this->m_xspace,
-                                 this->m_subspace_solver->solutions(), *this->m_handlers, *this->m_logger,
+                                 *this->m_subspace_solver, *this->m_handlers, *this->m_logger,
                                  propose_rspace_svd_thresh, propose_rspace_norm_thresh, max_size_qspace);
     }
     this->m_stats->iterations++;

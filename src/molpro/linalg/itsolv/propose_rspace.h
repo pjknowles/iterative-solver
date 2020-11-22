@@ -827,7 +827,13 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
 
 /*!
  * @brief Orthogonalises R parameters against P+Q+D subspace (and themselves)
+ *
+ * New vectors with norm less than threshold are considered null and are not normalised.
+ * Their indices in params are returned.
+ *
  * @param rparams R space parameters
+ * @param overlap overlap of P+Q+D subspace
+ * @param dims dimensions of P+Q+D subspace
  * @param pparams P space parameters
  * @param qparams Q space parameters
  * @param dparams D space parameters
@@ -835,11 +841,39 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
  * @param norm_thresh  parameters with norm less than threshold are considered null and won't be orthogonalised against
  * @return indices of null parameters
  */
-template <class R, class Q, class P, typename value_type_abs>
-auto modified_gram_schmidt(const VecRef<R>& rparams, const CVecRef<P>& pparams, const CVecRef<Q>& qparams,
-                           const CVecRef<Q>& dparams, ArrayHandlers<R, Q, P>& handlers,
-                           const value_type_abs norm_thresh) {
+template <class R, class Q, class P, typename value_type, typename value_type_abs>
+auto modified_gram_schmidt(const VecRef<R>& rparams, const subspace::Matrix<value_type>& overlap,
+                           const subspace::Dimensions& dims, const CVecRef<P>& pparams, const CVecRef<Q>& qparams,
+                           const CVecRef<Q>& dparams, const value_type_abs norm_thresh,
+                           ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
+  logger.msg("modified_gram_schmidt()", Logger::Trace);
+  const auto nR = rparams.size(), nP = pparams.size(), nQ = qparams.size(), nD = dparams.size();
+  assert(nP == dims.nP && nQ == dims.nQ && nD == dims.nD);
+  auto orthogonalise = [&overlap, &rparams, nR](const auto& xparams, auto& handler, const size_t oX, const size_t nX) {
+    for (size_t i = 0; i < nX; ++i) {
+      auto norm = std::abs(overlap(oX + i, oX + i));
+      for (size_t j = 0; j < nR; ++j) {
+        auto ov = handler.dot(rparams[j], xparams.at(i));
+        handler.axpy(-ov / norm, xparams.at(i), rparams[j]);
+      }
+    }
+  };
+  orthogonalise(pparams, handlers.rp(), dims.oP, nP);
+  orthogonalise(qparams, handlers.rq(), dims.oQ, nQ);
+  orthogonalise(dparams, handlers.rq(), dims.oD, nD);
   auto null_params = std::vector<int>{};
+  for (size_t i = 0; i < nR; ++i) {
+    auto norm = std::sqrt(std::abs(handlers.rr().dot(rparams[i], rparams[i])));
+    if (norm > norm_thresh) {
+      handlers.rr().scal(1. / norm, rparams[i]);
+      for (size_t j = i + 1; j < nR; ++j) {
+        auto ov = handlers.rr().dot(rparams[i], rparams[j]);
+        handlers.rr().axpy(-ov, rparams[i], rparams[j]);
+      }
+    } else {
+      null_params.push_back(i);
+    }
+  }
   return null_params;
 }
 
@@ -946,13 +980,14 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
     auto wdparams = wrap(dparams);
     auto wdactions = wrap(dactions);
     xspace.update_dspace(wdparams, wdactions);
-    // Optionally, solve the subspace problem again and get an estimate of the error due to new D
+    // FIXME Optionally, solve the subspace problem again and get an estimate of the error due to new D
   }
   // Use modified GS to orthonormalise z against P+Q+D, removing any null parameters.
   auto wresidual = wrap<R>(residuals.begin(), residuals.begin() + solver.working_set().size());
   normalise(wresidual, handlers.rr(), logger);
-  auto null_param_indices = modified_gram_schmidt(wresidual, xspace.cparamsp(), xspace.cparamsq(), xspace.cparamsd(),
-                                                  handlers, res_norm_thresh);
+  auto null_param_indices =
+      modified_gram_schmidt(wresidual, xspace.data.at(subspace::EqnData::S), xspace.dimensions(), xspace.cparamsp(),
+                            xspace.cparamsq(), xspace.cparamsd(), res_norm_thresh, handlers, logger);
   std::sort(begin(null_param_indices), end(null_param_indices), std::greater());
   for (auto i : null_param_indices)
     wresidual.erase(begin(wresidual) + i);

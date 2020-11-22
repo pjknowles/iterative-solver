@@ -160,6 +160,9 @@ public:
     auto new_data = xspace::update_dspace_overlap_data(cparamsp(), cparamsq(), cparamsd(), m_handlers->qp(),
                                                        m_handlers->qq(), *m_logger);
     xspace::copy_dspace_eqn_data(new_data, data, EqnData::S, m_dim);
+    auto new_data_action = xspace::update_dspace_action_data(
+        cparamsp(), cparamsq(), cactionsq(), cparamsd(), cactionsd(), m_handlers->qp(), m_handlers->qq(), *m_logger);
+    xspace::copy_dspace_eqn_data(new_data_action, data, EqnData::H, m_dim);
   }
 
   // FIXME this must be called when XSpace is empty

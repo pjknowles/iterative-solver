@@ -266,11 +266,11 @@ auto remove_null_projected_solutions(const subspace::Matrix<value_type>& solutio
   const auto nD = svd_vecs.size();
   const auto nX = solutions_proj.cols();
   auto solutions_stable = subspace::Matrix<value_type>({nD, nX});
-  solutions_stable.resize({nD, nX});
   auto svd = svd_vecs.begin();
   for (size_t i = 0; i < nD; ++i, ++svd)
-    for (size_t j = 0; j < nX; ++j)
-      solutions_stable(i, j) = svd->v[j];
+    for (size_t j = 0; j < solutions_proj.rows(); ++j)
+      for (size_t k = 0; k < nX; ++k)
+        solutions_stable(i, k) += svd->v[j] * solutions_proj(j, k);
   logger.msg("nS without null space = " + std::to_string(solutions_stable.rows()), Logger::Debug);
   return solutions_stable;
 }

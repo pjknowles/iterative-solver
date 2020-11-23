@@ -90,35 +90,11 @@ public:
 
   explicit SubspaceSolverLinEig(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)) {}
 
-  void check_conditioning(XSpaceI<R, Q, P>& xspace) {
-    auto nX_on_entry = xspace.dimensions().nX;
-    auto nX = xspace.dimensions().nX;
-    m_logger->msg("SubspaceSolverLinEig::check_conditioning size of x space = " + std::to_string(nX), Logger::Trace);
-    if (m_logger->data_dump) {
-      m_logger->msg("on entry", Logger::Info);
-      m_logger->msg("Sxx = " + as_string(xspace.data[EqnData::S]), Logger::Info);
-      m_logger->msg("Hxx = " + as_string(xspace.data[EqnData::H]), Logger::Info);
-    }
-    auto norm = xspace::check_conditioning_gram_schmidt(xspace, m_lin_trans, m_norm_stability_threshold, *m_logger);
-    nX = xspace.dimensions().nX;
-    m_logger->msg("size of x space after conditioning = " + std::to_string(nX), Logger::Debug);
-    if (m_logger->data_dump) {
-      auto n = Matrix<value_type_abs>{std::move(norm), {1, nX}};
-      m_logger->msg("norm = " + as_string(n), Logger::Info);
-    }
-    if (m_logger->data_dump && nX != nX_on_entry) {
-      m_logger->msg("Sxx = " + as_string(xspace.data[EqnData::S]), Logger::Info);
-      m_logger->msg("Hxx = " + as_string(xspace.data[EqnData::H]), Logger::Info);
-    }
-  }
-
   void solve(XSpaceI<R, Q, P>& xspace, const size_t nroots_max) override {
     m_logger->msg("SubspaceSolverLinEig::solve", Logger::Trace);
-    check_conditioning(xspace);
-    auto h = detail::transform(xspace.data[EqnData::H], m_lin_trans);
-    auto s = detail::transform(xspace.data[EqnData::S], m_lin_trans);
+    auto h = xspace.data[EqnData::H];
+    auto s = xspace.data[EqnData::S];
     if (m_logger->data_dump) {
-      m_logger->msg("L = " + as_string(m_lin_trans), Logger::Info);
       m_logger->msg("S = " + as_string(s), Logger::Info);
       m_logger->msg("H = " + as_string(h), Logger::Info);
     }
@@ -132,7 +108,6 @@ public:
     m_eigenvalues.resize(nroots);
     m_solutions.resize({nroots, dim});
     m_solutions.slice() = full_matrix.slice({0, 0}, {nroots, dim});
-    m_solutions = detail::transform_solutions(m_solutions, m_lin_trans);
     m_errors.assign(size(), std::numeric_limits<value_type_abs>::max());
     if (m_logger->data_dump) {
       m_logger->msg("eigenvalues = ", begin(m_eigenvalues), end(m_eigenvalues), Logger::Debug, 10);
@@ -158,13 +133,11 @@ protected:
   Matrix<value_type> m_solutions;        //!< solution matrix with row vectors
   std::vector<value_type> m_eigenvalues; //!< eigenvalues
   std::vector<value_type_abs> m_errors;  //!< errors in subspace solutions
-  Matrix<value_type> m_lin_trans;        //!< linear transformation to a well conditioned subspace
   std::shared_ptr<Logger> m_logger;
 
 public:
-  value_type_abs m_norm_stability_threshold = 1.0e-4; //!< norm threshold for Gram Schmidt orthogonalisation
-  value_type_abs m_svd_solver_threshold = 1.0e-14;    //!< threshold to select null space during SVD in eigenproblem
-  bool m_hermitian = true;                            //!< flags the matrix as Hermitian
+  value_type_abs m_svd_solver_threshold = 1.0e-14; //!< threshold to select null space during SVD in eigenproblem
+  bool m_hermitian = true;                         //!< flags the matrix as Hermitian
 };
 
 } // namespace molpro::linalg::itsolv::subspace

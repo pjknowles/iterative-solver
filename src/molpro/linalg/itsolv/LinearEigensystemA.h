@@ -34,11 +34,7 @@ public:
                        std::static_pointer_cast<subspace::SubspaceSolverI<R, Q, P>>(
                            std::make_shared<subspace::SubspaceSolverLinEig<R, Q, P>>(logger_)),
                        handlers, std::make_shared<Statistics>(), logger_),
-        logger(logger_) {
-    auto* subspace_solver_lin_eig =
-        static_cast<subspace::SubspaceSolverLinEig<R, Q, P>*>(this->m_subspace_solver.get());
-    subspace_solver_lin_eig->m_norm_stability_threshold = propose_rspace_norm_thresh;
-  }
+        logger(logger_) {}
 
   /*!
    * \brief Proposes new parameters for the subspace from the preconditioned residuals.

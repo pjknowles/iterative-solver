@@ -699,15 +699,12 @@ auto append_overlap_with_r(const subspace::Matrix<value_type>& overlap, const CV
                            const CVecRef<P>& pparams, const CVecRef<Q>& qparams, const CVecRef<Q>& dparams,
                            ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
   logger.msg("append_overlap_with_r()", Logger::Trace);
-  const auto nP = pparams.size();
-  const auto nQ = qparams.size();
-  const auto nD = dparams.size();
-  const auto nN = params.size();
+  const auto nP = pparams.size(), nQ = qparams.size(), nD = dparams.size(), nN = params.size();
   const auto nX = nP + nQ + nD + nN;
   const auto oP = 0;
   const auto oQ = oP + nP;
   const auto oD = oQ + nQ;
-  const auto oN = oQ + nQ;
+  const auto oN = oD + nD;
   auto ov = overlap;
   ov.resize({nX, nX}); // solutions are last
   ov.slice({oN, oN}, {oN + nN, oN + nN}) = subspace::util::overlap(params, handlers.rr());
@@ -722,6 +719,9 @@ auto append_overlap_with_r(const subspace::Matrix<value_type>& overlap, const CV
   copy_upper_to_lower(oP, nP);
   copy_upper_to_lower(oQ, nQ);
   copy_upper_to_lower(oD, nD);
+  if (logger.data_dump) {
+    logger.msg("full overlap = " + as_string(ov), Logger::Info);
+  }
   return ov;
 }
 
@@ -918,6 +918,47 @@ void construct_orthonormal_Rparams(VecRef<R>& params, VecRef<R>& residuals,
   }
 }
 
+/*!
+ * @brief Deduces a set of parameters that are redundant due to linear dependencies
+ *
+ * Only the last nR parameters are considered for removal. Linea dependencies are discovered by performing SVD of the
+ * overlap matrix.
+ *
+ * @param overlap overlap matrix of the full subspace
+ * @param oR offset to the start of parameter block
+ * @param nR number of parameters to consider for removal
+ * @param svd_thresh singular value threshold for choosing the null space
+ * @param logger logger
+ * @return indices of the last nR parameters that are considered redundant.
+ */
+template <typename value_type, typename value_type_abs>
+auto redundant_parameters(const subspace::Matrix<value_type>& overlap, const size_t oR, const size_t nR,
+                          const value_type_abs svd_thresh, Logger& logger) {
+  logger.msg("redundant_parameters()", Logger::Trace);
+  auto redundant_params = std::vector<int>{};
+  auto rspace_indices = std::vector<int>(nR);
+  std::iota(std::begin(rspace_indices), std::end(rspace_indices), 0);
+  auto svd = svd_system(overlap.rows(), overlap.cols(),
+                        array::Span(const_cast<value_type*>(overlap.data().data()), overlap.size()), svd_thresh);
+  for (const auto& singular_system : svd) {
+    if (!rspace_indices.empty()) {
+      auto rspace_contribution = std::vector<value_type_abs>{};
+      for (auto i : rspace_indices)
+        rspace_contribution.push_back(std::abs(singular_system.v.at(oR + i)));
+      auto it_min = std::max_element(std::begin(rspace_contribution), std::end(rspace_contribution));
+      auto imin = std::distance(std::begin(rspace_contribution), it_min);
+      redundant_params.push_back(rspace_indices[imin]);
+      rspace_indices.erase(std::begin(rspace_indices) + imin);
+      std::stringstream ss;
+      ss << std::setprecision(3) << "redundant parameter found, i = " << redundant_params.back()
+         << ", svd.value = " << singular_system.value
+         << ", svd.v[i] = " << singular_system.v[oR + redundant_params.back()];
+      logger.msg(ss.str(), Logger::Info);
+    }
+  }
+  return redundant_params;
+}
+
 //! Returns new working set based on parameters included in wparams
 template <class R>
 auto get_new_working_set(const std::vector<int>& working_set, const CVecRef<R>& params, const CVecRef<R>& wparams) {
@@ -991,10 +1032,21 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
   // Use modified GS to orthonormalise z against P+Q+D, removing any null parameters.
   auto wresidual = wrap<R>(residuals.begin(), residuals.begin() + solver.working_set().size());
   normalise(wresidual, handlers.rr(), logger);
+  const auto full_overlap =
+      append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
+                            xspace.cparamsq(), xspace.cparamsd(), handlers, logger);
+  auto redundant_indices =
+      redundant_parameters(full_overlap, xspace.dimensions().nX, wresidual.size(), svd_thresh, logger);
+  std::sort(std::begin(redundant_indices), std::end(redundant_indices), std::greater());
+  logger.msg("redundant indices = ", std::begin(redundant_indices), std::end(redundant_indices), Logger::Debug);
+  for (auto i : redundant_indices)
+    wresidual.erase(begin(wresidual) + i);
   auto null_param_indices =
       modified_gram_schmidt(wresidual, xspace.data.at(subspace::EqnData::S), xspace.dimensions(), xspace.cparamsp(),
                             xspace.cparamsq(), xspace.cparamsd(), res_norm_thresh, handlers, logger);
+  // Now that there is SVD null_param_indices should always be empty
   std::sort(begin(null_param_indices), end(null_param_indices), std::greater());
+  logger.msg("null parameters = ", std::begin(null_param_indices), std::end(null_param_indices), Logger::Debug);
   for (auto i : null_param_indices)
     wresidual.erase(begin(wresidual) + i);
   normalise(wresidual, handlers.rr(), logger);

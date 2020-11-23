@@ -6,7 +6,7 @@ PROGRAM Linear_Eigensystem_Example
   USE ProfilerF
   include 'mpif.h'
   !USE mpi_f08
-  INTEGER, PARAMETER :: n = 6, nroot = 3
+  INTEGER, PARAMETER :: n = 60, nroot = 3
   DOUBLE PRECISION, DIMENSION (n, n) :: m
   DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g
   DOUBLE PRECISION, DIMENSION (nroot) :: e, error
@@ -45,9 +45,10 @@ PROGRAM Linear_Eigensystem_Example
       we = Iterative_Solver_Working_Set_Eigenvalues(nwork)
       DO root = 1, nwork
         DO j = 1, n
-          c(j, root) = c(j, root) - g(j, root) / (m(j, j) - we(root) + 1e-15)
+          g(j, root) = g(j, root) * 1.0d0 / (m(j, j) - we(root) + 1e-15)
         END DO
       END DO
+      nwork = Iterative_Solver_End_Iteration(c, g, error)
     ELSE
       EXIT
     END IF
@@ -56,10 +57,6 @@ PROGRAM Linear_Eigensystem_Example
     END IF
     deallocate(we)
   END DO
-  e = Iterative_Solver_Eigenvalues()
-  IF (rank == 0) THEN
-    PRINT *, 'Eigenvalues:', e
-  END IF
   CALL Iterative_Solver_Finalize
   call MPI_FINALIZE(ierr)
 END PROGRAM Linear_Eigensystem_Example

@@ -198,9 +198,9 @@ public:
 
   // FIXME Currently only works if called on an empty subspace. Either enforce it or generalise.
   size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix, const VecRef<R>& parameters,
-               const VecRef<R>& actions, std::vector<VectorP>& parametersP) override {
+               const VecRef<R>& actions, std::vector<VectorP>& parametersP,
+               const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
     m_xspace->update_pspace(pparams, pp_action_matrix);
-    auto apply_p = fapply_on_p_type{};
     return solve_and_generate_working_set(parameters, actions, parametersP, apply_p);
   };
 
@@ -278,7 +278,7 @@ protected:
         m_stats(std::move(stats)), m_logger(std::move(logger)) {}
 
   size_t solve_and_generate_working_set(const VecRef<R>& parameters, const VecRef<R>& action,
-                                        std::vector<VectorP>& pparams, fapply_on_p_type& apply_p) {
+                                        std::vector<VectorP>& pparams, const fapply_on_p_type& apply_p) {
     m_subspace_solver->solve(*m_xspace, n_roots());
     auto nsol = m_subspace_solver->size();
     std::vector<std::pair<Q, Q>> temp_solutions{};

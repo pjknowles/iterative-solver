@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_DSPACERESETTER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_DSPACERESETTER_H
 #include <molpro/linalg/itsolv/IterativeSolver.h>
+#include <molpro/linalg/itsolv/propose_rspace.h>
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
@@ -14,25 +15,11 @@ template <class R, class Q, class P, typename value_type>
 void resize_qspace(subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& solutions,
                    int m_max_Qsize_after_reset, Logger& logger) {
   logger.msg("resize_qspace()", Logger::Trace);
-  auto nQ = xspace.dimensions().nQ;
-  const auto oQ = xspace.dimensions().oQ;
-  const auto nSol = solutions.rows();
-  auto qindices = std::vector<size_t>(nQ);
-  std::iota(begin(qindices), end(qindices), size_t{oQ});
-  while (xspace.dimensions().nQ > m_max_Qsize_after_reset) {
-    auto min_max_contrib_to_solutions = std::pair<value_type, size_t>{std::numeric_limits<value_type>::max(), 0};
-    for (size_t i = 0; i < qindices.size(); ++i) {
-      auto contrib = std::vector<value_type>(nSol);
-      for (size_t j = 0; j < nSol; ++j)
-        contrib[j] = std::abs(solutions(j, oQ + qindices[i]));
-      auto max_contrib = std::pair{*std::max_element(begin(contrib), end(contrib)), i};
-      if (min_max_contrib_to_solutions > max_contrib)
-        std::swap(min_max_contrib_to_solutions, max_contrib);
-    }
-    const auto iQdelete = min_max_contrib_to_solutions.second;
-    xspace.eraseq(iQdelete);
-    qindices.erase(begin(qindices) + iQdelete);
-  }
+  auto q_delete = limit_qspace_size(xspace.dimensions(), m_max_Qsize_after_reset, solutions, logger);
+  logger.msg("delete Q parameter indices = ", q_delete.begin(), q_delete.end(), Logger::Debug);
+  std::sort(begin(q_delete), end(q_delete), std::greater());
+  for (auto iq : q_delete)
+    xspace.eraseq(iq);
 }
 /*!
  * @brief Resets D space constructing full solutions as the new working set, removing instabilities from Q space, and
@@ -115,9 +102,7 @@ public:
       logger.msg("removed q index = " + std::to_string(i_max) + ", with overlap = " + std::to_string(*it_max),
                  Logger::Debug);
     }
-    // FIXME It might be prudent to double check that the subspace is stable and remove more Q vectors if it is not
-    if (xspace.dimensions().nQ > m_max_Qsize_after_reset)
-      resize_qspace(xspace, solutions, m_max_Qsize_after_reset, logger);
+    resize_qspace(xspace, solutions, m_max_Qsize_after_reset, logger);
     auto new_working_set = std::vector<int>(nR);
     std::iota(begin(new_working_set), end(new_working_set), 0);
     return new_working_set;

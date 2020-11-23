@@ -110,7 +110,7 @@ void test_eigen(const std::string& title = "") {
     for (int i = 0; i < n; i++)
       expected_eigenvalues.push_back(ev[i]);
   }
-  for (int nroot = 1; nroot <= n/2 && nroot <= 23; nroot++) {
+  for (int nroot = 1; nroot <= std::min(n, n / 2 + 3) && nroot <= 23; nroot++) {
     for (auto np = 0; np <= 0; np += 4) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
                    << np << std::endl;
@@ -120,7 +120,7 @@ void test_eigen(const std::string& title = "") {
       solver.set_n_roots(nroot);
       solver.set_convergence_threshold(1.0e-10);
       solver.propose_rspace_norm_thresh = 1.0e-14;
-      solver.propose_rspace_svd_thresh = 1.0e-4;
+      solver.propose_rspace_svd_thresh = 1.0e-10;
       solver.max_size_qspace = std::min(int(n), std::min(1000, 3 * nroot));
       solver.set_reset_D(10);
       molpro::cout << "convergence threshold = " << solver.convergence_threshold() << ", svd thresh"
@@ -259,7 +259,7 @@ void test_eigen(const std::string& title = "") {
                   ::testing::Pointwise(::testing::DoubleNear(2e-9),
                                        std::vector<double>(expected_eigenvalues.data(),
                                                            expected_eigenvalues.data() + solver.n_roots())));
-      EXPECT_LE(solver.statistics().r_creations,(nroot+1)*15);
+      EXPECT_LE(solver.statistics().r_creations, (nroot + 1) * 15);
     }
   }
 }
@@ -272,8 +272,43 @@ TEST(IterativeSolver, file_eigen) {
 }
 
 TEST(IterativeSolver, n_eigen) {
-  load_matrix(1000, "", 1);
-  test_eigen("1000/1");
+  size_t n = 1000;
+  double param = 1;
+  //  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
+  //  for (auto param : std::vector<double>{.01, .1, 1}) {
+  for (auto param : std::vector<double>{1}) {
+    load_matrix(n, "", param);
+    test_eigen(std::to_string(n) + "/" + std::to_string(param));
+  }
+}
+
+TEST(IterativeSolver, small_eigen) {
+  for (int n = 1; n < 20; n++) {
+    double param = 1;
+    load_matrix(n, "", param);
+    test_eigen(std::to_string(n) + "/" + std::to_string(param));
+  }
+}
+
+TEST(IterativeSolver, symmetry_eigen) {
+  for (int n = 1; n < 10; n++) {
+    double param = 1;
+    load_matrix(n, "", param);
+    for (auto i = 0; i < n; i++)
+      for (auto j = 0; j < n; j++)
+        if (((i % 3) == 0 and (j % 3) != 0) or ((j % 3) == 0 and (i % 3) != 0))
+          hmat[j + i * n] = 0;
+    if (false) {
+      std::cout << "hmat " << std::endl;
+      for (auto i = 0; i < n; i++) {
+        std::cout << "i%3" << i % 3 << std::endl;
+        for (auto j = 0; j < n; j++)
+          std::cout << " " << hmat[j + i * n];
+        std::cout << std::endl;
+      }
+    }
+    test_eigen(std::to_string(n) + "/sym/" + std::to_string(param));
+  }
 }
 
 TEST(IterativeSolver, DISABLED_file_optimize_eigenvalue) {

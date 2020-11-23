@@ -39,19 +39,21 @@ int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, con
 }
 
 template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>
-std::list<SVD<value_type>> svd_system(size_t ndim, const array::Span<value_type>& m, double threshold) {
-  assert(m.size() == ndim * ndim);
-  auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), ndim, ndim);
+std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold) {
+  assert(m.size() == nrows * ncols);
+  if (m.empty())
+    return {};
+  auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), nrows, ncols);
   auto svd = Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>, Eigen::NoQRPreconditioner>(
       mat, Eigen::ComputeThinV);
   auto svd_system = std::list<SVD<value_type>>{};
   auto sv = svd.singularValues();
-  for (int i = ndim - 1; i >= 0; --i) {
+  for (int i = int(ncols) - 1; i >= 0; --i) {
     if (std::abs(sv(i)) < threshold) {
       auto t = SVD<value_type>{};
       t.value = sv(i);
-      t.v.reserve(ndim);
-      for (size_t j = 0; j < ndim; ++j) {
+      t.v.reserve(ncols);
+      for (size_t j = 0; j < ncols; ++j) {
         t.v.emplace_back(svd.matrixV()(j, i));
       }
       svd_system.emplace_back(std::move(t));
@@ -61,7 +63,7 @@ std::list<SVD<value_type>> svd_system(size_t ndim, const array::Span<value_type>
 }
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>
-std::list<SVD<value_type>> svd_system(size_t ndim, const array::Span<value_type>& m, double threshold) {
+std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold) {
   assert(false); // Complex not implemented here
 }
 

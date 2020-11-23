@@ -101,5 +101,33 @@ auto cwrap(IterableContainer& parameters) {
   return w;
 }
 
+/*!
+ * @brief Constructs a vector of reference wrappers with provided arguments
+ */
+template <typename T, typename... S>
+auto wrap_arg(T&& arg, S&&... args)
+    -> std::enable_if_t<std::conjunction_v<std::is_same<decay_t<T>, decay_t<S>>...>, VecRef<decay_t<T>>> {
+  using std::begin;
+  using std::end;
+  auto w = VecRef<decay_t<T>>{};
+  w.emplace_back(std::ref(arg));
+  (w.emplace_back(std::ref(args)), ...);
+  return w;
+}
+
+/*!
+ * @brief Constructs a vector of const reference wrappers with provided arguments
+ */
+template <typename T, typename... S>
+auto cwrap_arg(T&& arg, S&&... args)
+    -> std::enable_if_t<std::conjunction_v<std::is_same<decay_t<T>, decay_t<S>>...>, CVecRef<decay_t<T>>> {
+  using std::begin;
+  using std::end;
+  auto w = CVecRef<decay_t<T>>{};
+  w.emplace_back(std::cref(arg));
+  (w.emplace_back(std::cref(args)), ...);
+  return w;
+}
+
 } // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_WRAP_H

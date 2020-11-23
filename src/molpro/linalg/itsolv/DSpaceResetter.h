@@ -102,7 +102,8 @@ public:
       logger.msg("removed q index = " + std::to_string(i_max) + ", with overlap = " + std::to_string(*it_max),
                  Logger::Debug);
     }
-    resize_qspace(xspace, solutions, m_max_Qsize_after_reset, logger);
+    if (xspace.dimensions().nQ + nR > m_max_Qsize_after_reset)
+      resize_qspace(xspace, solutions, m_max_Qsize_after_reset > nR ? m_max_Qsize_after_reset - nR : 0, logger);
     auto new_working_set = std::vector<int>(nR);
     std::iota(begin(new_working_set), end(new_working_set), 0);
     return new_working_set;

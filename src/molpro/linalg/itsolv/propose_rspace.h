@@ -822,7 +822,7 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
     handler.scal(1. / norm, dparams_new[i]);
     handler.scal(1. / norm, dactions_new[i]);
   }
-  return std::make_tuple(dparams_new, dactions_new);
+  return std::make_tuple(std::move(dparams_new), std::move(dactions_new));
 }
 
 /*!

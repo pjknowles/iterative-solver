@@ -8,25 +8,27 @@
 
 using molpro::linalg::itsolv::CVecRef;
 using molpro::linalg::itsolv::cwrap;
+using molpro::linalg::itsolv::cwrap_arg;
 using molpro::linalg::itsolv::decay;
 using molpro::linalg::itsolv::decay_t;
 using molpro::linalg::itsolv::find_ref;
 using molpro::linalg::itsolv::remove_elements;
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::wrap;
+using molpro::linalg::itsolv::wrap_arg;
 using ::testing::Eq;
 using ::testing::Pointwise;
 
 struct CompareEqualRefWrap {
   template <typename T, typename R>
-  bool operator()(const std::reference_wrapper<T> &l, const std::reference_wrapper<R> &r) {
+  bool operator()(const std::reference_wrapper<T>& l, const std::reference_wrapper<R>& r) {
     return std::addressof(l.get()) == std::addressof(r.get());
   }
 };
 
 struct CompareEqualVecRef {
   template <typename T, typename R>
-  bool operator()(const VecRef<T> &l, const VecRef<R> &r) {
+  bool operator()(const VecRef<T>& l, const VecRef<R>& r) {
     return std::equal(begin(l), end(l), begin(r), CompareEqualRefWrap{});
   }
 };
@@ -114,6 +116,48 @@ TEST(cwrap, VecRef_to_CVecRef) {
   ASSERT_THAT(wparams, Pointwise(Eq(), params));
   ASSERT_THAT(cwparams, Pointwise(Eq(), params));
   ASSERT_THAT(cwparams, Pointwise(Eq(), wparams));
+}
+
+TEST(cwrap_arg, one_arguments) {
+  int a = 1;
+  auto wa = cwrap_arg(a);
+  ASSERT_TRUE(std::is_const_v<decltype(wa)::value_type::type>);
+  ASSERT_EQ(wa.size(), 1);
+  ASSERT_EQ(a, wa.front());
+  ASSERT_EQ(std::addressof(a), std::addressof(wa.front().get()));
+}
+
+TEST(cwrap_arg, two_arguments) {
+  auto ab_vec = std::vector<int>{1, 2};
+  auto& a = ab_vec[0];
+  auto& b = ab_vec[1];
+  auto ab = cwrap_arg(a, b);
+  ASSERT_TRUE(std::is_const_v<decltype(ab)::value_type::type>);
+  ASSERT_THAT(ab, Pointwise(Eq(), ab_vec));
+  ASSERT_TRUE(CompareEqualVecRef{}(wrap(ab_vec), ab));
+}
+
+TEST(cwrap_arg, four_arguments) {
+  auto vec = std::vector<int>{1, 2, 3, 4};
+  auto& a = vec[0];
+  auto& b = vec[1];
+  auto& c = vec[2];
+  auto& d = vec[3];
+  auto w = cwrap_arg(a, b, c, d);
+  ASSERT_TRUE(std::is_const_v<decltype(w)::value_type::type>);
+  ASSERT_THAT(w, Pointwise(Eq(), vec));
+  ASSERT_TRUE(CompareEqualVecRef{}(wrap(vec), w));
+}
+
+TEST(wrap_arg, four_arguments) {
+  auto vec = std::vector<int>{1, 2, 3, 4};
+  auto& a = vec[0];
+  auto& b = vec[1];
+  auto& c = vec[2];
+  auto& d = vec[3];
+  auto w = wrap_arg(a, b, c, d);
+  ASSERT_THAT(w, Pointwise(Eq(), vec));
+  ASSERT_TRUE(CompareEqualVecRef{}(wrap(vec), w));
 }
 
 TEST(cwrap, const_VecRef_to_CVecRef) {

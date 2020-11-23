@@ -192,32 +192,32 @@ void test_eigen(const std::string& title = "") {
                                molpro::linalg::itsolv::wrap(x), molpro::linalg::itsolv::wrap(g), apply_p);
         } else {
           action(x, g);
-          for (auto root = 0; root < nwork; root++) {
-            std::cout << "before addVector() x:";
-            for (auto i = 0; i < n; i++)
-              std::cout << " " << x[root][i];
-            std::cout << std::endl;
-            std::cout << "before addVector() g:";
-            for (auto i = 0; i < n; i++)
-              std::cout << " " << g[root][i];
-            std::cout << std::endl;
-          }
+//          for (auto root = 0; root < nwork; root++) {
+//            std::cout << "before addVector() x:";
+//            for (auto i = 0; i < n; i++)
+//              std::cout << " " << x[root][i];
+//            std::cout << std::endl;
+//            std::cout << "before addVector() g:";
+//            for (auto i = 0; i < n; i++)
+//              std::cout << " " << g[root][i];
+//            std::cout << std::endl;
+//          }
           nwork = solver.add_vector(x, g, apply_p);
         }
         if (nwork == 0)
           break;
-        for (auto root = 0; root < nwork; root++) {
-          std::cout << "after addVector() or addP()"
-                    << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" << solver.errors()[root]
-                    << "\nx:";
-          for (auto i = 0; i < n; i++)
-            std::cout << " " << x[root][i];
-          std::cout << std::endl;
-          std::cout << "after addVector() g:";
-          for (auto i = 0; i < n; i++)
-            std::cout << " " << g[root][i];
-          std::cout << std::endl;
-        }
+//        for (auto root = 0; root < nwork; root++) {
+//          std::cout << "after addVector() or addP()"
+//                    << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" << solver.errors()[root]
+//                    << "\nx:";
+//          for (auto i = 0; i < n; i++)
+//            std::cout << " " << x[root][i];
+//          std::cout << std::endl;
+//          std::cout << "after addVector() g:";
+//          for (auto i = 0; i < n; i++)
+//            std::cout << " " << g[root][i];
+//          std::cout << std::endl;
+//        }
         //        x.resize(nwork);
         //        g.resize(nwork);
         //        for (auto k = 0; k < solver.working_set().size(); k++) {

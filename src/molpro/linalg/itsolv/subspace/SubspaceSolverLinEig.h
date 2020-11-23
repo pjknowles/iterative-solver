@@ -122,8 +122,8 @@ public:
       m_logger->msg("S = " + as_string(s), Logger::Info);
       m_logger->msg("H = " + as_string(h), Logger::Info);
     }
-    std::cout << "h "<<as_string(h)<<std::endl;
-    std::cout << "s "<<as_string(s)<<std::endl;
+//    std::cout << "h "<<as_string(h)<<std::endl;
+//    std::cout << "s "<<as_string(s)<<std::endl;
     auto dim = h.rows();
     auto evec = std::vector<value_type>{};
     int verbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;

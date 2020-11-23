@@ -195,7 +195,8 @@ auto construct_projected_solutions_overlap(const subspace::Matrix<value_type>& s
               solutions_proj(i, nQd + j) * solutions_proj(ii, nQd + k) * overlap(dims.oD + j, dims.oD + k);
         }
         for (size_t k = 0; k < nQd; ++k) {
-          overlap_proj(i, ii) += solutions_proj(i, nQd + j) * solutions_proj(ii, k) * overlap(dims.oD + j, dims.oQ + k);
+          overlap_proj(i, ii) +=
+              solutions_proj(i, nQd + j) * solutions_proj(ii, k) * overlap(dims.oD + j, dims.oQ + remove_qspace[k]);
         }
       }
       overlap_proj(ii, i) = overlap_proj(i, ii);
@@ -784,17 +785,6 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
   auto overlap_full_subspace = dspace::construct_full_subspace_overlap(solutions_proj, dims, q_delete, overlap, 0);
   auto svd_vecs = svd_system(overlap_full_subspace.rows(), overlap_full_subspace.cols(),
                              array::Span(&overlap_full_subspace(0, 0), overlap_full_subspace.size()), svd_thresh);
-  if (!svd_vecs.empty()) {
-    std::cout << "S = " << as_string(overlap_full_subspace, 14);
-    std::cout << "construct_dspace: svd vecs not empty, n = " << svd_vecs.size() << std::endl;
-    for (const auto& svd : svd_vecs) {
-      std::cout << std::setprecision(5) << " value = " << svd.value << "\n vec = ";
-      for (auto v : svd.v) {
-        std::cout << v << " ";
-      }
-      std::cout << std::endl;
-    }
-  }
   assert(svd_vecs.empty() && "P+Q+D subspace should be stable by construction");
   const auto nD = solutions_proj.rows();
   const auto nQd = q_delete.size();

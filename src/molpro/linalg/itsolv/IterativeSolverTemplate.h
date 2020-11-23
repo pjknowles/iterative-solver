@@ -147,8 +147,8 @@ public:
    * @param pparams P space components of the working set solutions
    * @return
    */
-  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions, std::vector<VectorP>& pparams,
-                    const fapply_on_p_type& apply_p) override {
+  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions,
+                    const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
     m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations) +
                       ", apply_p = " + std::to_string(bool(apply_p)),
                   Logger::Trace);
@@ -156,6 +156,7 @@ public:
                       std::to_string(parameters.size()) + ", " + std::to_string(actions.size()) + ", " +
                       std::to_string(m_working_set.size()) + ", ",
                   Logger::Debug);
+    std::vector<VectorP> pparams; // TODO move deeper to where it is really needed
     auto nW = std::min(m_working_set.size(), parameters.size());
     auto cwparams = cwrap<R>(begin(parameters), begin(parameters) + nW);
     auto cwactions = cwrap<R>(begin(actions), begin(actions) + nW);
@@ -165,19 +166,9 @@ public:
   }
 
 public:
-
-  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action) override {
-    auto pparams = std::vector<VectorP>{};
-    auto apply_p = fapply_on_p_type{};
-    return add_vector(parameters, action, pparams, apply_p);
-  }
-
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions, std::vector<VectorP>& pparams,
-                    const fapply_on_p_type& apply_p) override {
-    return add_vector(wrap(parameters), wrap(actions), pparams, apply_p);
-  }
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions) override {
-    return add_vector(wrap(parameters), wrap(actions));
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions,
+                    const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
+    return add_vector(wrap(parameters), wrap(actions), apply_p);
   }
   size_t add_vector(R& parameters, R& actions) override {
     auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
@@ -187,8 +178,8 @@ public:
 
   // FIXME Currently only works if called on an empty subspace. Either enforce it or generalise.
   size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix, const VecRef<R>& parameters,
-               const VecRef<R>& actions, std::vector<VectorP>& parametersP,
-               const fapply_on_p_type& apply_p) override {
+               const VecRef<R>& actions, const fapply_on_p_type& apply_p) override {
+    std::vector<VectorP> parametersP;
     m_xspace->update_pspace(pparams, pp_action_matrix);
     return solve_and_generate_working_set(parameters, actions, parametersP, apply_p);
   };

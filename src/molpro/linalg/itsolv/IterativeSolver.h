@@ -41,23 +41,20 @@ public:
   //  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action, std::vector<VectorP>& pparams) =
   //  0;
   /*!
-  * \brief Take, typically, a current solution and residual, and add it to the solution space.
-  * \param parameters On input, the current solution or expansion vector. On exit, undefined.
-  * \param actions On input, the residual for parameters (non-linear), or action of matrix
-  * on parameters (linear). On exit, a vector set that should be preconditioned before returning to end_iteration().
-  * \param pparams On exit, the interpolated solution projected onto the P space.
+   * \brief Take, typically, a current solution and residual, and add it to the solution space.
+   * \param parameters On input, the current solution or expansion vector. On exit, undefined.
+   * \param actions On input, the residual for parameters (non-linear), or action of matrix
+   * on parameters (linear). On exit, a vector set that should be preconditioned before returning to end_iteration().
    * \param apply_p A function that evaluates the action of the matrix on vectors in the P space
-  * \return The size of the new working set.
+   * \return The size of the new working set.
    */
-  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions, std::vector<VectorP>& pparams,
-                            const fapply_on_p_type& apply_p) = 0;
-  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action) = 0;
+  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions,
+                            const fapply_on_p_type& apply_p = fapply_on_p_type{}) = 0;
 
   // FIXME this should be removed in favour of VecRef interface
   //  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, fapply_on_p_type& apply_p) = 0;
-  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, std::vector<VectorP>& pparams,
-                            const fapply_on_p_type& apply_p) = 0;
-  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) = 0;
+  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action,
+                            const fapply_on_p_type& apply_p = fapply_on_p_type{}) = 0;
   virtual size_t add_vector(R& parameters, R& action) = 0;
 
   /*!
@@ -73,7 +70,7 @@ public:
    * \return The number of vectors contained in parameters, action, parametersP
    */
   virtual size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix,
-                       const VecRef<R>& parameters, const VecRef<R>& action, std::vector<VectorP>& parametersP,
+                       const VecRef<R>& parameters, const VecRef<R>& action,
                        const fapply_on_p_type& apply_p) = 0;
 
   // FIXME Is this needed?

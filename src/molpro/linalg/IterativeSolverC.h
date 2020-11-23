@@ -20,7 +20,7 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, 
 
 extern "C" void IterativeSolverFinalize();
 
-extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync,
+extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, int sync,
                                            int lmppx);
 
 extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameters, double* action,
@@ -32,7 +32,7 @@ extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error, 
 
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
-                                      double* parametersP, int lsync, int lmppx,
+                                      int lsync, int lmppx,
                                       void (*func)(const double*, double*, const size_t, const size_t*));
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues);

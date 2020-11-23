@@ -121,11 +121,11 @@ void test_eigen(const std::string& title = "") {
       solver.set_convergence_threshold(1.0e-10);
       solver.propose_rspace_norm_thresh = 1.0e-14;
       solver.propose_rspace_svd_thresh = 1.0e-10;
-      solver.max_size_qspace = std::min(int(n), std::min(1000, 3 * nroot));
-      solver.set_reset_D(10);
+      solver.set_max_size_qspace(std::min(int(n), std::min(1000, 3 * nroot)));
+      solver.set_reset_D(4);
       molpro::cout << "convergence threshold = " << solver.convergence_threshold() << ", svd thresh"
                    << solver.propose_rspace_svd_thresh << ", norm thresh" << solver.propose_rspace_norm_thresh
-                   << ", max size of Q = " << solver.max_size_qspace << ", reset D = " << solver.get_reset_D()
+                   << ", max size of Q = " << solver.get_max_size_qspace() << ", reset D = " << solver.get_reset_D()
                    << std::endl;
       solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
       solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;

@@ -1,10 +1,10 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
+#include <molpro/linalg/IterativeSolver.h>
 #include <molpro/linalg/array/DistrArrayHDF5.h>
 #include <molpro/linalg/array/DistrArrayMPI3.h>
 #include <molpro/linalg/array/util/Distribution.h>
-#include <molpro/linalg/IterativeSolver.h>
 #include <molpro/linalg/itsolv/LinearEigensystemA.h>
 #include <mpi.h>
 #include <vector>
@@ -45,8 +45,7 @@ void action(size_t nwork, const std::vector<Rvector>& psc, std::vector<Rvector>&
   }
 }
 
-void update(std::vector<Rvector>& psg, size_t nwork,
-            std::vector<double> shift = std::vector<double>()) {
+void update(std::vector<Rvector>& psg, size_t nwork, std::vector<double> shift = std::vector<double>()) {
   for (size_t k = 0; k < nwork; k++) {
     auto range = psg[k].distribution().range(mpi_rank);
     auto g_chunk = psg[k].local_buffer();
@@ -91,7 +90,7 @@ int main(int argc, char* argv[]) {
       solver.set_n_roots(nroot);
       solver.set_convergence_threshold(1.0e-12);
       solver.propose_rspace_norm_thresh = 1.0e-14;
-      solver.max_size_qspace = 10;
+      solver.set_max_size_qspace(10);
       solver.set_reset_D(50);
       solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
       solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
@@ -159,7 +158,7 @@ int main(int argc, char* argv[]) {
             std::cout << std::endl;
         }
       }
-      //if (mpi_rank == 0)
+      // if (mpi_rank == 0)
       //  std::cout << solver.statistics() << std::endl;
     }
   }

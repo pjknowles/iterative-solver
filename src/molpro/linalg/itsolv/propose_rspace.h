@@ -5,6 +5,7 @@
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
+#include <molpro/linalg/itsolv/subspace/SubspaceSolverI.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/util.h>

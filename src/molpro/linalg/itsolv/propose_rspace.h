@@ -756,6 +756,9 @@ auto limit_qspace_size(const subspace::Dimensions& dims, const size_t max_size_q
     auto i = std::distance(begin(max_contrib_to_solution), it_min);
     q_delete.push_back(q_indices.at(i));
     q_indices.erase(begin(q_indices) + i);
+    logger.msg("contribution to solutions =", std::begin(max_contrib_to_solution), std::end(max_contrib_to_solution),
+               Logger::Info);
+    logger.msg("delete Q i = " + std::to_string(i), Logger::Info);
   }
   return q_delete;
 }

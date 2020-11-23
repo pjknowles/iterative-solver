@@ -3,81 +3,8 @@
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverI.h>
 #include <molpro/linalg/itsolv/subspace/XSpaceI.h>
-#include <molpro/linalg/itsolv/subspace/check_conditioning.h>
 
 namespace molpro::linalg::itsolv::subspace {
-namespace detail {
-// FIXME This can probably be done much better with eigen
-/*!
- * @brief Transform square matrix to a new basis
- *
- * M' = L * (M * L.T)
- *
- * @param mat square matrix to transform
- * @param lin_trans linear transformation to a new basis, row vectors
- * @returns transformed matrix
- */
-template <typename T>
-auto transform(const Matrix<T>& mat, const Matrix<T>& lin_trans) {
-  const size_t n = lin_trans.rows();
-  const size_t m = lin_trans.cols();
-  assert(mat.rows() == m && mat.cols() == m);
-  auto mat1 = Matrix<T>({m, n});
-  for (size_t i = 0; i < m; ++i)
-    for (size_t j = 0; j < n; ++j)
-      for (size_t k = 0; k < m; ++k)
-        mat1(i, j) += mat(i, k) * lin_trans(j, k);
-  auto result = Matrix<T>({n, n});
-  for (size_t i = 0; i < n; ++i)
-    for (size_t j = 0; j < n; ++j)
-      for (size_t k = 0; k < m; ++k)
-        result(i, j) += lin_trans(i, k) * mat1(k, j);
-  return result;
-}
-
-/*!
- * @brief Transform solutions back to the original basis
- * Let solutions be {s}, transformed basis {t} and original basis {x}
- *
- * t_i = \sum_j L_{i,j} x_j
- * s_i = \sum_j C_{i,j} t_j
- *     = \sum_j C_{i,j} \sum_k L_{j,k} x_k
- *     = \sum_j C_{i,j} \sum_k L_{j,k} x_k
- *     = \sum_k K_{i,k} x_k
- *
- * K_{i,k} = \sum_j C_{i,j} L_{j,k}
- *
- * K = C L
- *
- * @param mat
- * @param lin_trans
- * @return
- */
-template <typename T>
-auto transform_solutions(const Matrix<T>& solutions, const Matrix<T>& lin_trans) {
-  const size_t nsol = solutions.rows();
-  const size_t n = lin_trans.rows();
-  const size_t m = lin_trans.cols();
-  assert(solutions.cols() == n);
-  auto result = Matrix<T>({nsol, m});
-  for (size_t i = 0; i < nsol; ++i)
-    for (size_t j = 0; j < m; ++j)
-      for (size_t k = 0; k < n; ++k)
-        result(i, j) += solutions(i, k) * lin_trans(k, j);
-  return result;
-}
-
-template <typename value_type, typename value_type_abs>
-void normalise_transformation(Matrix<value_type>& m_lin_trans, const std::vector<value_type_abs>& norm,
-                              value_type_abs threshold) {
-  for (size_t i = 0; i < norm.size(); ++i) {
-    if (norm[i] > threshold) {
-      m_lin_trans.row(i).scal(1. / norm[i]);
-    }
-  }
-}
-
-} // namespace detail
 
 template <class RT, class QT, class PT>
 class SubspaceSolverLinEig : public SubspaceSolverI<RT, QT, PT> {

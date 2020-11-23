@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_ITERATIVESOLVERC_H_
 #include <cstdint>
 #include <stddef.h>
+
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t range_begin,
                                                            size_t range_end, double thresh, int verbosity,
                                                            const char* fname, int64_t fcomm, int lmppx);
@@ -22,16 +23,17 @@ extern "C" void IterativeSolverFinalize();
 extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync,
                                            int lmppx);
 
-extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameters, double* action, double* parametersP,
+extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameters, double* action,
                                         int sync, int lmppx);
 
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync, int lmppx);
 
-extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error, int lmppx);
+extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error, int sync, int lmppx);
 
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
-                                      double* parametersP, int lsync, int lmppx);
+                                      double* parametersP, int lsync, int lmppx,
+                                      void (*func)(const double*, double*, const size_t, const size_t*));
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues);
 

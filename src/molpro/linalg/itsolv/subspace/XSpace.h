@@ -152,14 +152,17 @@ public:
   }
 
   //! Clears old D space container and stores new params and actions. @param lin_trans_only_R R space component of D
-  void update_dspace(VecRef<Q>& params, VecRef<Q>& actions, const Matrix<value_type>& lin_trans_only_R) override {
-    dspace.update(params, actions, lin_trans_only_R);
+  void update_dspace(VecRef<Q>& params, VecRef<Q>& actions) override {
+    dspace.update(params, actions);
     update_dimensions();
     for (auto e : {EqnData::H, EqnData::S})
       data[e].resize({m_dim.nX, m_dim.nX});
     auto new_data = xspace::update_dspace_overlap_data(cparamsp(), cparamsq(), cparamsd(), m_handlers->qp(),
                                                        m_handlers->qq(), *m_logger);
     xspace::copy_dspace_eqn_data(new_data, data, EqnData::S, m_dim);
+    auto new_data_action = xspace::update_dspace_action_data(
+        cparamsp(), cparamsq(), cactionsq(), cparamsd(), cactionsd(), m_handlers->qp(), m_handlers->qq(), *m_logger);
+    xspace::copy_dspace_eqn_data(new_data_action, data, EqnData::H, m_dim);
   }
 
   // FIXME this must be called when XSpace is empty
@@ -174,15 +177,6 @@ public:
     for (size_t i = 0, ij = 0; i < nP; ++i)
       for (size_t j = 0; j < nP; ++j, ++ij)
         data[EqnData::H](i, j) = pp_action_matrix[ij];
-  }
-
-  void complete_dspace_action(const CVecRef<R>& actions) override {
-    if (!dspace.action_is_complete()) {
-      dspace.complete_action(actions, m_handlers->qr());
-      auto new_data = xspace::update_dspace_action_data(cparamsp(), cparamsq(), cactionsq(), cparamsd(), cactionsd(),
-                                                        m_handlers->qp(), m_handlers->qq(), *m_logger);
-      xspace::copy_dspace_eqn_data(new_data, data, EqnData::H, m_dim);
-    }
   }
 
   const Dimensions& dimensions() const override { return m_dim; }

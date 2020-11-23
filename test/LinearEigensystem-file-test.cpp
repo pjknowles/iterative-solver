@@ -120,7 +120,7 @@ void test_eigen(const std::string& title = "") {
       solver.set_n_roots(nroot);
       solver.set_convergence_threshold(1.0e-10);
       solver.propose_rspace_norm_thresh = 1.0e-14;
-      solver.propose_rspace_svd_thresh = 1.0e-4;
+      solver.propose_rspace_svd_thresh = 1.0e-10;
       solver.max_size_qspace = std::min(int(n), std::min(1000, 3 * nroot));
       solver.set_reset_D(10);
       molpro::cout << "convergence threshold = " << solver.convergence_threshold() << ", svd thresh"
@@ -274,9 +274,9 @@ TEST(IterativeSolver, file_eigen) {
 TEST(IterativeSolver, n_eigen) {
   size_t n = 1000;
   double param = 1;
-//  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
-//  for (auto param : std::vector<double>{.01, .1, 1}) {
-    for (auto param : std::vector<double>{1}) {
+  //  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
+  //  for (auto param : std::vector<double>{.01, .1, 1}) {
+  for (auto param : std::vector<double>{1}) {
     load_matrix(n, "", param);
     test_eigen(std::to_string(n) + "/" + std::to_string(param));
   }
@@ -291,7 +291,7 @@ TEST(IterativeSolver, small_eigen) {
 }
 
 TEST(IterativeSolver, symmetry_eigen) {
-  for (int n = 1; n < 6; n++) {
+  for (int n = 1; n < 10; n++) {
     double param = 1;
     load_matrix(n, "", param);
     for (auto i = 0; i < n; i++)

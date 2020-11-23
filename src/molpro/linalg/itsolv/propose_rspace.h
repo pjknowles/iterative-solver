@@ -784,6 +784,17 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
   auto overlap_full_subspace = dspace::construct_full_subspace_overlap(solutions_proj, dims, q_delete, overlap, 0);
   auto svd_vecs = svd_system(overlap_full_subspace.rows(), overlap_full_subspace.cols(),
                              array::Span(&overlap_full_subspace(0, 0), overlap_full_subspace.size()), svd_thresh);
+  if (!svd_vecs.empty()) {
+    std::cout << "S = " << as_string(overlap_full_subspace, 14);
+    std::cout << "construct_dspace: svd vecs not empty, n = " << svd_vecs.size() << std::endl;
+    for (const auto& svd : svd_vecs) {
+      std::cout << std::setprecision(5) << " value = " << svd.value << "\n vec = ";
+      for (auto v : svd.v) {
+        std::cout << v << " ";
+      }
+      std::cout << std::endl;
+    }
+  }
   assert(svd_vecs.empty() && "P+Q+D subspace should be stable by construction");
   const auto nD = solutions_proj.rows();
   const auto nQd = q_delete.size();

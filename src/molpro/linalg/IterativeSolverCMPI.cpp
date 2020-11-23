@@ -41,7 +41,7 @@ using molpro::linalg::itsolv::VecRef;
 // FIXME Only top solver is active at any one time. This should be documented somewhere.
 
 namespace {
-typedef  void(*Apply_on_p_fort)(const double *a, const double *b);
+typedef  void(*Apply_on_p_fort)(const double*, double*, const size_t, const size_t*);
 struct Instance {
   Instance(std::unique_ptr<IterativeSolver<Rvector, Qvector, Pvector>> solver, std::shared_ptr<Profiler> prof,
            size_t dimension, MPI_Comm comm) : solver(std::move(solver)), prof(std::move(prof)), dimension(dimension),
@@ -399,15 +399,36 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
   return result;
 }
 
-void apply_on_p_c(const std::vector<vectorP>& p, const CVecRef<Pvector>& pp, const VecRef<Rvector>& g){
+void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action){
   auto& instance = instances.top();
-  instance.apply_on_p_fort(p.front().data(), &(*g.front().get().local_buffer())[0]);
+  MPI_Comm ccomm = instance.comm; // TODO: not checking for MPI_COMM_SELF! Should lmppx be passed once and kept in instance?
+  int mpi_rank, mpi_size;
+  MPI_Comm_rank(ccomm, &mpi_rank);
+  MPI_Comm_size(ccomm, &mpi_size);
+  std::vector<size_t> ranges;
+  ranges.reserve(instance.solver->working_set().size()*2);
+  for (size_t k = 0; k < instance.solver->working_set().size(); ++k){
+    auto range = action[k].get().distribution().range(mpi_rank);
+    ranges.push_back(range.first);
+    ranges.push_back(range.second);
+  }
+  size_t w_set_size = instance.solver->working_set().size();
+  // TODO: if pvectors are an array of arrays, data will be contiguous in memory and no copying will be needed
+  std::vector<double> pvecs_to_send;
+  for (size_t i = 0; i < pvectors.size(); i++) {
+    for (auto j : pvectors[i]){
+      pvecs_to_send.push_back(j);
+    }
+  }
+  //instance.apply_on_p_fort(w_set_size, pvectors.front().data(), &(*action.front().get().local_buffer())[0],
+  //                         ranges.data());
+  instance.apply_on_p_fort(pvecs_to_send.data(), &(*action.front().get().local_buffer())[0], w_set_size, ranges.data());
 }
 
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
                                       double* parametersP, int sync, int lmppx,
-                                      void (*func)(const double*, const double*)) {
+                                      void (*func)(const double*, double*, const size_t, const size_t*)) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   instance.apply_on_p_fort = func;
@@ -434,8 +455,6 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
   for (size_t p = 0; p < nP; p++) {
     //std::map<size_t, Rvector::value_type> ppp;
     Pvector ppp;
-    //    for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
-    //    std::cout << "indices["<<k<<"]="<<indices[k]<<": "<<coefficients[k]<<std::endl;
     for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
       ppp.insert(std::pair<size_t, Rvector::value_type>(indices[k], coefficients[k]));
     Pvectors.emplace_back(ppp);
@@ -443,7 +462,6 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
   using vectorP = std::vector<double>;
   using molpro::linalg::itsolv::CVecRef;
   using molpro::linalg::itsolv::VecRef;
-  //func(ccp.front().data(), &(*gg.front().local_buffer())[0]);
   std::function<void(const std::vector<vectorP>&, const CVecRef<Pvector>&, const VecRef<Rvector>&)> apply_on_p = apply_on_p_c;
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Call");
@@ -456,7 +474,7 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
     instance.prof->stop("AddP:Call");
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Sync");
-  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
+  for (size_t root = 0; root < instance.solver->n_roots(); root++) { //!TODO: should be working_set()?
     if (sync) {
       gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
       gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);

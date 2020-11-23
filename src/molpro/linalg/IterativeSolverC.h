@@ -33,7 +33,7 @@ extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error, 
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
                                       double* parametersP, int lsync, int lmppx,
-                                      void (*func)(const double*, const double*));
+                                      void (*func)(const double*, double*, const size_t, const size_t*));
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues);
 

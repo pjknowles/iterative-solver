@@ -157,16 +157,10 @@ public:
                       std::to_string(m_working_set.size()) + ", ",
                   Logger::Debug);
     auto nW = std::min(m_working_set.size(), parameters.size());
-    auto wparams = wrap<R>(begin(parameters), begin(parameters) + nW);
-    auto wactions = wrap<R>(begin(actions), begin(actions) + nW);
+    auto cwparams = cwrap<R>(begin(parameters), begin(parameters) + nW);
+    auto cwactions = cwrap<R>(begin(actions), begin(actions) + nW);
     m_stats->r_creations += nW;
-    m_xspace->complete_dspace_action(cwrap(wactions));
-    /*
-     * FIXME Solve the subspace problem P+Q+D (no R) and check that the eigenvalues do not deviate
-     * If the eigenvalues differ by more than a threshold, Log a warning and advise to reset the D space more often
-     *
-     */
-    m_xspace->update_qspace(cwrap(wparams), cwrap(wactions));
+    m_xspace->update_qspace(cwparams, cwactions);
     return solve_and_generate_working_set(parameters, actions, pparams, apply_p);
   }
 

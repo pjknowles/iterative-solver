@@ -96,7 +96,7 @@ public:
                                 xspace.cparamsp(), xspace.cparamsq(), xspace.cparamsd(), dims.oP, dims.oQ, dims.oD,
                                 handlers.qq(), handlers.qp(), handlers.qq());
       VecRef<Q> null_params, null_actions;
-      xspace.update_dspace(null_params, null_actions, {});
+      xspace.update_dspace(null_params, null_actions);
     }
     const auto nR = std::min(rparams.size(), solution_params.size());
     for (size_t i = 0; i < nR; ++i) {

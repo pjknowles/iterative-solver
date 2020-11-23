@@ -10,7 +10,7 @@ template int propose_singularity_deletion<value_type>(size_t n, size_t ndim, con
 template void printMatrix<value_type>(const std::vector<value_type>&, size_t rows, size_t cols, std::string title,
                                       std::ostream& s);
 
-template std::list<SVD<value_type>> svd_system<value_type>(size_t ndim, const array::Span<value_type>& m,
+template std::list<SVD<value_type>> svd_system<value_type>(size_t nrows, size_t ncols, const array::Span<value_type>& m,
                                                            double threshold);
 
 template void eigenproblem<value_type>(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,

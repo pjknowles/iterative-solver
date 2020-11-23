@@ -120,7 +120,7 @@ void test_eigen(const std::string& title = "") {
       solver.set_n_roots(nroot);
       solver.set_convergence_threshold(1.0e-10);
       solver.propose_rspace_norm_thresh = 1.0e-14;
-      solver.propose_rspace_svd_thresh = 1.0e-4;
+      solver.propose_rspace_svd_thresh = 1.0e-10;
       solver.max_size_qspace = std::min(int(n), std::min(1000, 3 * nroot));
       solver.set_reset_D(10);
       molpro::cout << "convergence threshold = " << solver.convergence_threshold() << ", svd thresh"
@@ -307,8 +307,8 @@ TEST(IterativeSolver, DISABLED_small_eigen) {
   }
 }
 
-TEST(IterativeSolver, DISABLED_symmetry_eigen) {
-  for (int n = 1; n < 6; n++) {
+TEST(IterativeSolver, symmetry_eigen) {
+  for (int n = 1; n < 10; n++) {
     double param = 1;
     load_matrix(n, "", param);
     for (auto i = 0; i < n; i++)

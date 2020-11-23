@@ -40,11 +40,7 @@ public:
   virtual void update_qspace(const CVecRef<R>& params, const CVecRef<R>& actions) = 0;
 
   //! Updates D space with the new parameters
-  virtual void update_dspace(VecRef<Q>& params, VecRef<Q>& actions, const Matrix<value_type>& lin_trans_only_R) = 0;
-
-  //! Completes construction of D space action by adding contribution from the R space, and constructs equation data
-  //! blocks corresponding to D space
-  virtual void complete_dspace_action(const CVecRef<R>& actions) = 0;
+  virtual void update_dspace(VecRef<Q>& params, VecRef<Q>& actions) = 0;
 
   virtual VecRef<P> paramsp() = 0;
   virtual VecRef<P> actionsp() = 0;

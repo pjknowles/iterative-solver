@@ -111,7 +111,7 @@ void test_eigen(const std::string& title = "") {
       expected_eigenvalues.push_back(ev[i]);
   }
   for (int nroot = 1; nroot <= std::min(n, n / 2 + 3) && nroot <= 23; nroot++) {
-    for (auto np = 0; np <= 1; np += 1) {
+    for (auto np = 0; np <= nroot; np += nroot) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
                    << np << std::endl;
 
@@ -121,7 +121,7 @@ void test_eigen(const std::string& title = "") {
       solver.set_convergence_threshold(1.0e-10);
       solver.propose_rspace_norm_thresh = 1.0e-14;
       solver.propose_rspace_svd_thresh = 1.0e-10;
-      solver.set_max_size_qspace(std::min(int(n), std::min(1000, 3 * nroot)));
+      solver.set_max_size_qspace(std::min(int(n), std::min(1000, 3 * nroot)) - np);
       solver.set_reset_D(4);
       molpro::cout << "convergence threshold = " << solver.convergence_threshold() << ", svd thresh"
                    << solver.propose_rspace_svd_thresh << ", norm thresh" << solver.propose_rspace_norm_thresh
@@ -192,32 +192,33 @@ void test_eigen(const std::string& title = "") {
                                molpro::linalg::itsolv::wrap(x), molpro::linalg::itsolv::wrap(g), apply_p);
         } else {
           action(x, g);
-//          for (auto root = 0; root < nwork; root++) {
-//            std::cout << "before addVector() x:";
-//            for (auto i = 0; i < n; i++)
-//              std::cout << " " << x[root][i];
-//            std::cout << std::endl;
-//            std::cout << "before addVector() g:";
-//            for (auto i = 0; i < n; i++)
-//              std::cout << " " << g[root][i];
-//            std::cout << std::endl;
-//          }
+          //          for (auto root = 0; root < nwork; root++) {
+          //            std::cout << "before addVector() x:";
+          //            for (auto i = 0; i < n; i++)
+          //              std::cout << " " << x[root][i];
+          //            std::cout << std::endl;
+          //            std::cout << "before addVector() g:";
+          //            for (auto i = 0; i < n; i++)
+          //              std::cout << " " << g[root][i];
+          //            std::cout << std::endl;
+          //          }
           nwork = solver.add_vector(x, g, apply_p);
         }
         if (nwork == 0)
           break;
-//        for (auto root = 0; root < nwork; root++) {
-//          std::cout << "after addVector() or addP()"
-//                    << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" << solver.errors()[root]
-//                    << "\nx:";
-//          for (auto i = 0; i < n; i++)
-//            std::cout << " " << x[root][i];
-//          std::cout << std::endl;
-//          std::cout << "after addVector() g:";
-//          for (auto i = 0; i < n; i++)
-//            std::cout << " " << g[root][i];
-//          std::cout << std::endl;
-//        }
+        //        for (auto root = 0; root < nwork; root++) {
+        //          std::cout << "after addVector() or addP()"
+        //                    << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" <<
+        //                    solver.errors()[root]
+        //                    << "\nx:";
+        //          for (auto i = 0; i < n; i++)
+        //            std::cout << " " << x[root][i];
+        //          std::cout << std::endl;
+        //          std::cout << "after addVector() g:";
+        //          for (auto i = 0; i < n; i++)
+        //            std::cout << " " << g[root][i];
+        //          std::cout << std::endl;
+        //        }
         //        x.resize(nwork);
         //        g.resize(nwork);
         //        for (auto k = 0; k < solver.working_set().size(); k++) {
@@ -288,7 +289,7 @@ TEST(IterativeSolver, file_eigen) {
   }
 }
 
-TEST(IterativeSolver, DISABLED_n_eigen) {
+TEST(IterativeSolver, n_eigen) {
   size_t n = 1000;
   double param = 1;
   //  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
@@ -299,7 +300,7 @@ TEST(IterativeSolver, DISABLED_n_eigen) {
   }
 }
 
-TEST(IterativeSolver, DISABLED_small_eigen) {
+TEST(IterativeSolver, small_eigen) {
   for (int n = 1; n < 20; n++) {
     double param = 1;
     load_matrix(n, "", param);

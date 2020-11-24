@@ -94,29 +94,37 @@ public:
   auto get_max_Qsize() const { return m_max_Qsize_after_reset; }
 
   //! Run the reset operation
-  template <class R, class P, typename value_type>
+  template <class R, class P, typename value_type, typename value_type_abs>
   std::vector<int> run(const VecRef<R>& rparams, subspace::XSpaceI<R, Q, P>& xspace,
-                       const subspace::Matrix<value_type>& solutions, ArrayHandlers<R, Q, P>& handlers,
-                       Logger& logger) {
+                       const subspace::Matrix<value_type>& solutions, const value_type_abs norm_thresh,
+                       const value_type_abs svd_thresh, ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
     logger.msg("DSpaceResetter::run()", Logger::Trace);
     logger.msg("dimensions {nP, nQ, nD, nR} = " + std::to_string(xspace.dimensions().nP) + ", " +
                    std::to_string(xspace.dimensions().nQ) + ", " + std::to_string(xspace.dimensions().nD) + ", " +
                    std::to_string(rparams.size()),
                Logger::Trace);
-    const auto nC = solutions.rows();
-    auto dims = xspace.dimensions();
-    // Solution should be without the P space component to improve stability
-    // FIXME only create nD solutions
-    // FIXME there is a possibility that P+Solutions is linearly dependent. Only store Q projection?
+    auto solutions_proj = solutions;
     if (solution_params.empty() && !rparams.empty()) {
       logger.msg("constructing solutions", Logger::Debug);
+      const auto dims = xspace.dimensions();
+      const auto overlap = xspace.data.at(subspace::EqnData::S);
+      auto q_indices = std::vector<int>(xspace.dimensions().nQ);
+      std::iota(q_indices.begin(), q_indices.end(), 0);
+      solutions_proj = dspace::construct_projected_solution(solutions, dims, q_indices, logger);
+      auto overlap_proj =
+          dspace::construct_projected_solutions_overlap(solutions_proj, overlap, dims, q_indices, logger);
+      dspace::remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
+      solutions_proj = dspace::remove_null_projected_solutions(solutions_proj, overlap_proj, svd_thresh, logger);
+      overlap_proj = dspace::construct_projected_solutions_overlap(solutions_proj, overlap, dims, q_indices, logger);
+      dspace::remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
+      const auto nC = solutions_proj.rows();
       for (size_t i = 0; i < nC; ++i)
         solution_params.emplace_back(util::construct_zeroed_copy(rparams.front().get(), handlers.qr()));
       auto roots = std::vector<int>(nC);
       std::iota(begin(roots), end(roots), 0);
-      util::construct_solutions(wrap<Q>(begin(solution_params), end(solution_params)), roots, solutions,
-                                xspace.cparamsp(), xspace.cparamsq(), xspace.cparamsd(), dims.oP, dims.oQ, dims.oD,
-                                handlers.qq(), handlers.qp(), handlers.qq());
+      util::construct_solutions(wrap<Q>(begin(solution_params), end(solution_params)), roots, solutions_proj, {},
+                                xspace.cparamsq(), xspace.cparamsd(), 0, 0, dims.nQ, handlers.qq(), handlers.qp(),
+                                handlers.qq());
       VecRef<Q> null_params, null_actions;
       xspace.update_dspace(null_params, null_actions);
     }

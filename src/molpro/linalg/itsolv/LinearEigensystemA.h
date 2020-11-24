@@ -55,6 +55,7 @@ public:
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
     if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace->dimensions())) {
       this->m_working_set = m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->solutions(),
+                                                  propose_rspace_norm_thresh, propose_rspace_svd_thresh,
                                                   *this->m_handlers, *this->m_logger);
     } else {
       this->m_working_set =

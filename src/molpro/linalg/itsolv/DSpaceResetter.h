@@ -21,6 +21,38 @@ void resize_qspace(subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<va
   for (auto iq : q_delete)
     xspace.eraseq(iq);
 }
+
+/*!
+ * @brief Returns list of Q indices with maximum overlap to R parameters, sorted in descending order
+ * @param rparams R parameters
+ * @param qparams Q parameters to calculate maximum overlap of with R
+ * @param handler array handler
+ * @param logger logger
+ */
+template <class R, class Q>
+auto max_overlap_with_R(const CVecRef<R>& rparams, const CVecRef<Q>& qparams, array::ArrayHandler<R, Q>& handler,
+                        Logger& logger) {
+  logger.msg("max_overlap_with_R()", Logger::Trace);
+  const auto nR = rparams.size();
+  auto overlap = subspace::util::overlap(rparams, qparams, handler);
+  auto q_indices = std::vector<int>(qparams.size());
+  std::iota(std::begin(q_indices), std::end(q_indices), 0);
+  auto q_max_overlap = std::vector<int>{};
+  for (size_t i = 0; i < nR && !q_indices.empty(); ++i) {
+    auto ov = std::vector<typename array::ArrayHandler<R, Q>::value_type_abs>{};
+    for (auto j : q_indices)
+      ov.push_back(overlap(i, j));
+    auto it_max = std::max_element(ov.begin(), ov.end());
+    auto i_max = std::distance(ov.begin(), it_max);
+    logger.msg("removed q index = " + std::to_string(q_indices[i_max]) + ", with overlap = " + std::to_string(*it_max),
+               Logger::Debug);
+    q_max_overlap.push_back(q_indices[i_max]);
+    q_indices.erase(q_indices.begin() + i_max);
+  }
+  std::sort(std::begin(q_max_overlap), std::end(q_max_overlap), std::greater());
+  return q_max_overlap;
+}
+
 /*!
  * @brief Resets D space constructing full solutions as the new working set, removing instabilities from Q space, and
  * clearing D space
@@ -73,6 +105,9 @@ public:
                Logger::Trace);
     const auto nC = solutions.rows();
     auto dims = xspace.dimensions();
+    // Solution should be without the P space component to improve stability
+    // FIXME only create nD solutions
+    // FIXME there is a possibility that P+Solutions is linearly dependent. Only store Q projection?
     if (solution_params.empty() && !rparams.empty()) {
       logger.msg("constructing solutions", Logger::Debug);
       for (size_t i = 0; i < nC; ++i)
@@ -91,17 +126,9 @@ public:
       solution_params.pop_front();
     }
     const auto wparams = cwrap<R>(begin(rparams), begin(rparams) + nR);
-    auto overlap = subspace::util::overlap(wparams, xspace.cparamsq(), handlers.rq());
-    for (size_t i = 0; i < nR && xspace.dimensions().nQ > 0; ++i) {
-      auto* row_start = &overlap(i, xspace.dimensions().oQ);
-      auto* row_end = row_start + xspace.dimensions().nQ;
-      auto it_max = std::max_element(row_start, row_end);
-      auto i_max = std::distance(row_start, it_max);
-      xspace.eraseq(i_max);
-      overlap.remove_col(xspace.dimensions().oQ + i_max);
-      logger.msg("removed q index = " + std::to_string(i_max) + ", with overlap = " + std::to_string(*it_max),
-                 Logger::Debug);
-    }
+    auto q_delete = max_overlap_with_R(wparams, xspace.cparamsq(), handlers.rq(), logger);
+    for (auto i : q_delete)
+      xspace.eraseq(i);
     if (xspace.dimensions().nQ + nR > m_max_Qsize_after_reset)
       resize_qspace(xspace, solutions, m_max_Qsize_after_reset > nR ? m_max_Qsize_after_reset - nR : 0, logger);
     auto new_working_set = std::vector<int>(nR);

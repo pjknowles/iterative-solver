@@ -572,18 +572,14 @@ auto propose_rspace(LinearEigensystem<R, Q, P>& solver, const VecRef<R>& paramet
                             xspace.cparamsq(), xspace.cparamsd(), handlers, logger);
   auto redundant_indices =
       redundant_parameters(full_overlap, xspace.dimensions().nX, wresidual.size(), svd_thresh, logger);
-  std::sort(std::begin(redundant_indices), std::end(redundant_indices), std::greater());
   logger.msg("redundant indices = ", std::begin(redundant_indices), std::end(redundant_indices), Logger::Debug);
-  for (auto i : redundant_indices)
-    wresidual.erase(begin(wresidual) + i);
+  util::delete_parameters(redundant_indices, wresidual);
   auto null_param_indices =
       modified_gram_schmidt(wresidual, xspace.data.at(subspace::EqnData::S), xspace.dimensions(), xspace.cparamsp(),
                             xspace.cparamsq(), xspace.cparamsd(), res_norm_thresh, handlers, logger);
   // Now that there is SVD null_param_indices should always be empty
-  std::sort(begin(null_param_indices), end(null_param_indices), std::greater());
   logger.msg("null parameters = ", std::begin(null_param_indices), std::end(null_param_indices), Logger::Debug);
-  for (auto i : null_param_indices)
-    wresidual.erase(begin(wresidual) + i);
+  util::delete_parameters(null_param_indices, wresidual);
   normalise(wresidual, handlers.rr(), logger);
   for (size_t i = 0; i < wresidual.size(); ++i)
     handlers.rr().copy(parameters.at(i), wresidual.at(i));

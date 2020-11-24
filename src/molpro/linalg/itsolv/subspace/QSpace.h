@@ -1,8 +1,8 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_QSPACE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_QSPACE_H
+#include <array>
 #include <cassert>
 #include <list>
-#include <array>
 
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/Logger.h>
@@ -96,6 +96,9 @@ struct QSpace {
       data[d].slice({0, dims.oQ}, {dims.oQ, dims.oQ + nQnew}) = xq.at(d).slice({0, 0}, {dims.oQ, nQnew});
       data[d].slice({dims.oQ + nQnew, dims.oQ}, {nXnew, dims.oQ + nQnew}) =
           xq.at(d).slice({dims.oQ, 0}, {dims.nX, nQnew});
+      data[d].slice({0, 0}, {dims.oQ, dims.oQ}) = old_data[d].slice({0, 0}, {dims.oQ, dims.oQ});
+      data[d].slice({0, dims.oQ + nQnew}, {dims.oQ, nXnew}) = old_data[d].slice({0, dims.oQ}, {dims.oQ, dims.nX});
+      data[d].slice({dims.oQ + nQnew, 0}, {nXnew, dims.oQ}) = old_data[d].slice({dims.oQ, 0}, {dims.nX, dims.oQ});
       old_data[d] = data[d];
     }
     if (m_logger->data_dump) {

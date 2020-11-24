@@ -81,5 +81,17 @@ void construct_solutions(const VecRef<R>& params, const std::vector<int>& roots,
   }
 }
 
+/*!
+ * @brief Removes parameters
+ * @param indices indices of parameters to remove
+ * @param params list of parameters
+ */
+template <class Container>
+void delete_parameters(std::vector<int> indices, Container& params) {
+  std::sort(std::begin(indices), std::end(indices), std::greater());
+  for (auto i : indices)
+    params.erase(begin(params) + i);
+}
+
 } // namespace molpro::linalg::itsolv::util
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_UTIL_H

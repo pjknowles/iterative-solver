@@ -254,7 +254,7 @@ extern "C" size_t IterativeSolverAddValue(double value, double* parameters, doub
   return 0;
 }
 
-extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, double* parametersP, int sync,
+extern "C" size_t IterativeSolverAddVector(double* parameters, double* action,  int sync,
                                            int lmppx) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
@@ -262,7 +262,6 @@ extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, d
     instance.prof->start("AddVector");
   cc.reserve(instance.solver->n_roots()); // TODO: should that be size of working set instead?
   gg.reserve(instance.solver->n_roots());
-  std::vector<std::vector<typename Rvector::value_type>> ccp(instance.solver->n_roots());
   MPI_Comm ccomm = (lmppx != 0) ? MPI_COMM_SELF : instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
@@ -280,7 +279,7 @@ extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, d
   }
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Update");
-  size_t working_set_size = instance.solver->add_vector(cc, gg, ccp);
+  size_t working_set_size = instance.solver->add_vector(cc, gg);
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Update");
 
@@ -290,10 +289,6 @@ extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, d
     if (sync) {
       gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
       gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
-    }
-    if (ccp.size() > 0) {
-      for (size_t i = 0; i < ccp[0].size(); i++)
-        parametersP[root * ccp[0].size() + i] = ccp[root][i];
     }
   }
   if (instance.prof != nullptr)
@@ -425,7 +420,7 @@ void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& 
 
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
-                                      double* parametersP, int sync, int lmppx,
+                                      int sync, int lmppx,
                                       void (*func)(const double*, double*, const size_t, const size_t*)) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
@@ -434,7 +429,6 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
     instance.prof->start("AddP");
   cc.reserve(instance.solver->n_roots());
   gg.reserve(instance.solver->n_roots());
-  std::vector<std::vector<Rvector::value_type>> ccp(instance.solver->n_roots());
   MPI_Comm ccomm = (lmppx != 0) ? MPI_COMM_SELF : instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
@@ -464,10 +458,11 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
       apply_on_p_c;
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Call");
-  size_t working_set_size = instance.solver->add_p(
-      molpro::linalg::itsolv::cwrap(Pvectors),
-      Span<Rvector::value_type>(&const_cast<double*>(pp)[0], (instance.solver->dimensions().oP + nP) * nP),
-      molpro::linalg::itsolv::wrap(cc), molpro::linalg::itsolv::wrap(gg), ccp, apply_on_p);
+  size_t working_set_size = instance.solver->add_p(molpro::linalg::itsolv::cwrap(Pvectors),
+                                              Span<Rvector::value_type>(&const_cast<double*>(pp)[0],
+                                                                         (instance.solver->dimensions().oP+nP)*nP),
+                                              molpro::linalg::itsolv::wrap(cc),
+                                              molpro::linalg::itsolv::wrap(gg), apply_on_p);
   if (instance.prof != nullptr)
     instance.prof->stop("AddP:Call");
   if (instance.prof != nullptr)
@@ -476,10 +471,6 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
     if (sync) {
       gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
       gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
-    }
-    if (ccp.size() > 0) {
-      for (size_t i = 0; i < ccp[0].size(); i++)
-        parametersP[root * ccp[0].size() + i] = ccp[root][i];
     }
   }
   if (instance.prof != nullptr)

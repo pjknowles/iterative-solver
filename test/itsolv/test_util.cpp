@@ -4,6 +4,7 @@
 #include <molpro/linalg/itsolv/util.h>
 
 using molpro::linalg::itsolv::util::construct_zeroed_copy;
+using molpro::linalg::itsolv::util::delete_parameters;
 using molpro::linalg::itsolv::util::is_iota;
 
 TEST(itsolv_util, is_iota_null) {
@@ -34,4 +35,25 @@ TEST(itsolv_util, construct_zeroed_copy) {
   auto q = construct_zeroed_copy(r, *handler);
   ASSERT_EQ(q.size(), r.size());
   ASSERT_THAT(q, ::testing::Each(::testing::DoubleEq(0)));
+}
+
+TEST(itsolv_util, delete_parameters__empty_params) {
+  auto params = std::vector<int>{};
+  ASSERT_NO_FATAL_FAILURE(delete_parameters({}, params));
+  ASSERT_TRUE(params.empty());
+}
+
+TEST(itsolv_util, delete_parameters__empty_indices) {
+  auto params = std::vector<int>{1, 2, 3, 4};
+  auto params_ref = params;
+  ASSERT_NO_FATAL_FAILURE(delete_parameters({}, params));
+  ASSERT_THAT(params, ::testing::Pointwise(::testing::Eq(), params_ref));
+}
+
+TEST(itsolv_util, delete_parameters) {
+  auto params = std::vector<int>{1, 2, 3, 4};
+  auto indices = std::vector<int>{1, 3};
+  auto params_ref = std::vector<int>{1, 3};
+  ASSERT_NO_FATAL_FAILURE(delete_parameters(indices, params));
+  ASSERT_THAT(params, ::testing::Pointwise(::testing::Eq(), params_ref));
 }

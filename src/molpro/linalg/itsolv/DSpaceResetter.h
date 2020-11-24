@@ -41,7 +41,7 @@ auto max_overlap_with_R(const CVecRef<R>& rparams, const CVecRef<Q>& qparams, ar
   for (size_t i = 0; i < nR && !q_indices.empty(); ++i) {
     auto ov = std::vector<typename array::ArrayHandler<R, Q>::value_type_abs>{};
     for (auto j : q_indices)
-      ov.push_back(overlap(i, j));
+      ov.push_back(std::abs(overlap(i, j)));
     auto it_max = std::max_element(ov.begin(), ov.end());
     auto i_max = std::distance(ov.begin(), it_max);
     logger.msg("removed q index = " + std::to_string(q_indices[i_max]) + ", with overlap = " + std::to_string(*it_max),

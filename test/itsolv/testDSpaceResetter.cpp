@@ -25,14 +25,14 @@ struct ResizeQspace : DummyXSpace<R, Q, P> {
 
 TEST(DSpaceResetter, resize_qspace) {
   auto solutions = Matrix<double>{{0.0, 0.5, -0.3, //
-                                   0.0, 0.1, -0.4,   //
+                                   0.0, 0.1, -0.4, //
                                    0.1, 0.2, 0.1},
                                   {3, 3}};
   const size_t max_Qsize_after_reset = 0;
   molpro::linalg::itsolv::Logger logger{};
   auto xspace = ResizeQspace{};
   resize_qspace(xspace, solutions, max_Qsize_after_reset, logger);
-  const auto reference_erased_Q = std::vector<size_t>{0, 1, 0};
+  const auto reference_erased_Q = std::vector<size_t>{2, 1, 0};
   ASSERT_EQ(xspace.nQ, max_Qsize_after_reset);
   ASSERT_THAT(xspace.erased_Q, ::testing::Pointwise(::testing::Eq(), reference_erased_Q));
 }

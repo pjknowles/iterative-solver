@@ -34,11 +34,7 @@ public:
                        std::static_pointer_cast<subspace::SubspaceSolverI<R, Q, P>>(
                            std::make_shared<subspace::SubspaceSolverLinEig<R, Q, P>>(logger_)),
                        handlers, std::make_shared<Statistics>(), logger_),
-        logger(logger_) {
-    auto* subspace_solver_lin_eig =
-        static_cast<subspace::SubspaceSolverLinEig<R, Q, P>*>(this->m_subspace_solver.get());
-    subspace_solver_lin_eig->m_norm_stability_threshold = propose_rspace_norm_thresh;
-  }
+        logger(logger_) {}
 
   /*!
    * \brief Proposes new parameters for the subspace from the preconditioned residuals.
@@ -64,7 +60,7 @@ public:
       this->m_working_set =
           detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, *this->m_xspace,
                                  *this->m_subspace_solver, *this->m_handlers, *this->m_logger,
-                                 propose_rspace_svd_thresh, propose_rspace_norm_thresh, max_size_qspace);
+                                 propose_rspace_svd_thresh, propose_rspace_norm_thresh, m_max_size_qspace);
     }
     this->m_stats->iterations++;
     return this->working_set().size();
@@ -104,15 +100,21 @@ public:
   size_t get_reset_D() const { return m_dspace_resetter.get_nreset(); }
   //! Set the maximum size of Q space after resetting the D space
   void set_reset_D_maxQ_size(size_t n) { m_dspace_resetter.set_max_Qsize(n); }
+  int get_max_size_qspace() { return m_max_size_qspace; }
+  void set_max_size_qspace(int n) {
+    m_max_size_qspace = n;
+    if (m_dspace_resetter.get_max_Qsize() > m_max_size_qspace)
+      m_dspace_resetter.set_max_Qsize(m_max_size_qspace);
+  }
 
   std::shared_ptr<Logger> logger;
   double propose_rspace_norm_thresh = 1e-10; //!< vectors with norm less than threshold can be considered null.
   double propose_rspace_svd_thresh = 1e-4;   //!< the smallest singular value in the subspace that can be allowed when
                                              //!< constructing the working set. Smaller singular values will lead to
                                              //!< deletion of parameters from the Q space
-  int max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space
 protected:
-  detail::DSpaceResetter<Q> m_dspace_resetter; //!< resets D space
+  int m_max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space
+  detail::DSpaceResetter<Q> m_dspace_resetter;             //!< resets D space
 };
 
 } // namespace molpro::linalg::itsolv

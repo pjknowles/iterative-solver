@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
       solver.set_n_roots(nroot);
       solver.set_convergence_threshold(1.0e-12);
       solver.propose_rspace_norm_thresh = 1.0e-14;
-      solver.max_size_qspace = 10;
+      solver.set_max_size_qspace(10);
       solver.set_reset_D(50);
       solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
       solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;

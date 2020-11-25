@@ -180,6 +180,8 @@ public:
   size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix, const VecRef<R>& parameters,
                const VecRef<R>& actions, const fapply_on_p_type& apply_p) override {
     std::vector<VectorP> parametersP;
+    if (not pparams.empty() and pparams.size() < n_roots())
+      throw std::runtime_error("P space must be empty or at least as large as number of roots sought");
     m_xspace->update_pspace(pparams, pp_action_matrix);
     return solve_and_generate_working_set(parameters, actions, parametersP, apply_p);
   };

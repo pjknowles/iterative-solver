@@ -111,7 +111,7 @@ void test_eigen(const std::string& title = "") {
       expected_eigenvalues.push_back(ev[i]);
   }
   for (int nroot = 1; nroot <= n && nroot <= 28; nroot++) {
-    for (auto np = 0; np <= n && np <= 200; np += std::max(nroot,int(n)/10)) {
+    for (auto np = 0; np <= n && np <= 100; np += std::max(nroot,int(n)/10)) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
                    << np << std::endl;
 

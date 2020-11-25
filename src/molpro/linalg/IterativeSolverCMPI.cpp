@@ -254,10 +254,39 @@ extern "C" size_t IterativeSolverAddValue(double value, double* parameters, doub
   return 0;
 }
 
+void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
+  auto& instance = instances.top();
+  MPI_Comm ccomm =
+      instance.comm; // TODO: not checking for MPI_COMM_SELF! Should lmppx be passed once and kept in instance?
+  int mpi_rank, mpi_size;
+  MPI_Comm_rank(ccomm, &mpi_rank);
+  MPI_Comm_size(ccomm, &mpi_size);
+  std::vector<size_t> ranges;
+  ranges.reserve(instance.solver->working_set().size() * 2);
+  for (size_t k = 0; k < instance.solver->working_set().size(); ++k) {
+    auto range = action[k].get().distribution().range(mpi_rank);
+    ranges.push_back(range.first);
+    ranges.push_back(range.second);
+  }
+  size_t w_set_size = instance.solver->working_set().size();
+  // TODO: if pvectors are an array of arrays, data will be contiguous in memory and no copying will be needed
+  std::vector<double> pvecs_to_send;
+  for (size_t i = 0; i < pvectors.size(); i++) {
+    for (auto j : pvectors[i]) {
+      pvecs_to_send.push_back(j);
+    }
+  }
+  // instance.apply_on_p_fort(w_set_size, pvectors.front().data(), &(*action.front().get().local_buffer())[0],
+  //                         ranges.data());
+  instance.apply_on_p_fort(pvecs_to_send.data(), &(*action.front().get().local_buffer())[0], w_set_size, ranges.data());
+}
+
 extern "C" size_t IterativeSolverAddVector(double* parameters, double* action,  int sync,
-                                           int lmppx) {
+                                           int lmppx,
+                                           void (*func)(const double*, double*, const size_t, const size_t*)) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
+  instance.apply_on_p_fort = func;
   if (instance.prof != nullptr)
     instance.prof->start("AddVector");
   cc.reserve(instance.solver->n_roots()); // TODO: should that be size of working set instead?
@@ -277,9 +306,14 @@ extern "C" size_t IterativeSolverAddVector(double* parameters, double* action,  
     gg.back().allocate_buffer(
         Span<typename Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
   }
+  using vectorP = std::vector<double>;
+  using molpro::linalg::itsolv::CVecRef;
+  using molpro::linalg::itsolv::VecRef;
+  std::function<void(const std::vector<vectorP>&, const CVecRef<Pvector>&, const VecRef<Rvector>&)> apply_on_p =
+      apply_on_p_c;
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Update");
-  size_t working_set_size = instance.solver->add_vector(cc, gg);
+  size_t working_set_size = instance.solver->add_vector(cc, gg, apply_on_p_c);
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Update");
 
@@ -389,33 +423,6 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
   if (instance.prof != nullptr)
     instance.prof->stop("EndIter");
   return result;
-}
-
-void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
-  auto& instance = instances.top();
-  MPI_Comm ccomm =
-      instance.comm; // TODO: not checking for MPI_COMM_SELF! Should lmppx be passed once and kept in instance?
-  int mpi_rank, mpi_size;
-  MPI_Comm_rank(ccomm, &mpi_rank);
-  MPI_Comm_size(ccomm, &mpi_size);
-  std::vector<size_t> ranges;
-  ranges.reserve(instance.solver->working_set().size() * 2);
-  for (size_t k = 0; k < instance.solver->working_set().size(); ++k) {
-    auto range = action[k].get().distribution().range(mpi_rank);
-    ranges.push_back(range.first);
-    ranges.push_back(range.second);
-  }
-  size_t w_set_size = instance.solver->working_set().size();
-  // TODO: if pvectors are an array of arrays, data will be contiguous in memory and no copying will be needed
-  std::vector<double> pvecs_to_send;
-  for (size_t i = 0; i < pvectors.size(); i++) {
-    for (auto j : pvectors[i]) {
-      pvecs_to_send.push_back(j);
-    }
-  }
-  // instance.apply_on_p_fort(w_set_size, pvectors.front().data(), &(*action.front().get().local_buffer())[0],
-  //                         ranges.data());
-  instance.apply_on_p_fort(pvecs_to_send.data(), &(*action.front().get().local_buffer())[0], w_set_size, ranges.data());
 }
 
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,

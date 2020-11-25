@@ -21,7 +21,8 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, 
 extern "C" void IterativeSolverFinalize();
 
 extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, int sync,
-                                           int lmppx);
+                                           int lmppx,
+                                           void (*func)(const double*, double*, const size_t, const size_t*));
 
 extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameters, double* action,
                                         int sync, int lmppx);

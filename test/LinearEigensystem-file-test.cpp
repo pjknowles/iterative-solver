@@ -110,8 +110,8 @@ void test_eigen(const std::string& title = "") {
     for (int i = 0; i < n; i++)
       expected_eigenvalues.push_back(ev[i]);
   }
-  for (int nroot = 1; nroot <= std::min(n, n / 2 + 3) && nroot <= 23; nroot++) {
-    for (auto np = 0; np <= nroot; np += nroot) {
+  for (int nroot = 1; nroot <= n && nroot <= 28; nroot++) {
+    for (auto np = 0; np <= n && np <= 50; np += std::max(nroot,int(n)/10)) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
                    << np << std::endl;
 
@@ -121,7 +121,7 @@ void test_eigen(const std::string& title = "") {
       solver.set_convergence_threshold(1.0e-10);
       solver.propose_rspace_norm_thresh = 1.0e-14;
       solver.propose_rspace_svd_thresh = 1.0e-10;
-      solver.set_max_size_qspace(std::min(int(n), std::min(1000, 3 * nroot)) - np);
+      solver.set_max_size_qspace(std::max(3*nroot,std::min(int(n), std::min(1000, 3 * nroot)) - np));
       solver.set_reset_D(4);
       molpro::cout << "convergence threshold = " << solver.convergence_threshold() << ", svd thresh"
                    << solver.propose_rspace_svd_thresh << ", norm thresh" << solver.propose_rspace_norm_thresh

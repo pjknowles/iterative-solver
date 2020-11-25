@@ -62,6 +62,7 @@ PROGRAM Linear_Eigensystem_Example
   INTEGER :: nwork, alloc_stat
   INTEGER :: rank, comm_size, ierr
   TYPE(Profiler) :: prof
+  rank = 0
   call MPI_INIT(ierr)
   call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
   call MPI_COMM_SIZE(MPI_COMM_WORLD, comm_size, ierr)
@@ -98,6 +99,9 @@ PROGRAM Linear_Eigensystem_Example
     END IF
     allocate(we(nwork), stat=alloc_stat)
     we = Iterative_Solver_Working_Set_Eigenvalues(nwork)
+    IF (rank == 0) THEN
+      PRINT *, 'we:', we
+    END IF
     DO root = 1, nwork
       DO j = 1, n
         g(j, root) = - g(j, root) * 1.0d0 / (m(j, j) - we(root) + 1e-15)
@@ -108,7 +112,7 @@ PROGRAM Linear_Eigensystem_Example
       EXIT
     END IF
     g = MATMUL(m, c)
-    nwork = Iterative_Solver_Add_Vector(c, g, fproc=apply_on_p)
+    nwork = Iterative_Solver_Pspace_Add_Vector(c, g, fproc=apply_on_p)
   END DO
   CALL Iterative_Solver_Finalize
   call MPI_FINALIZE(ierr)

@@ -281,9 +281,53 @@ void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& 
   instance.apply_on_p_fort(pvecs_to_send.data(), &(*action.front().get().local_buffer())[0], w_set_size, ranges.data());
 }
 
-extern "C" size_t IterativeSolverAddVector(double* parameters, double* action,  int sync,
-                                           int lmppx,
-                                           void (*func)(const double*, double*, const size_t, const size_t*)) {
+extern "C" size_t IterativeSolverAddVector(double* parameters, double* action,  int sync, int lmppx) {
+  std::vector<Rvector> cc, gg;
+  auto& instance = instances.top();
+  if (instance.prof != nullptr)
+    instance.prof->start("AddVector");
+  cc.reserve(instance.solver->n_roots()); // TODO: should that be size of working set instead?
+  gg.reserve(instance.solver->n_roots());
+  MPI_Comm ccomm = (lmppx != 0) ? MPI_COMM_SELF : instance.comm;
+  int mpi_rank;
+  MPI_Comm_rank(ccomm, &mpi_rank);
+  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
+    cc.emplace_back(instance.dimension, ccomm);
+    auto ccrange = cc.back().distribution().range(mpi_rank);
+    auto ccn = ccrange.second - ccrange.first;
+    cc.back().allocate_buffer(
+        Span<typename Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
+    gg.emplace_back(instance.dimension, ccomm);
+    auto ggrange = gg.back().distribution().range(mpi_rank);
+    auto ggn = ggrange.second - ggrange.first;
+    gg.back().allocate_buffer(
+        Span<typename Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
+  }
+  if (instance.prof != nullptr)
+    instance.prof->start("AddVector:Update");
+  size_t working_set_size = instance.solver->add_vector(cc, gg);
+  if (instance.prof != nullptr)
+    instance.prof->stop("AddVector:Update");
+  
+  if (instance.prof != nullptr)
+    instance.prof->start("AddVector:Sync");
+  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
+    if (sync) {
+      gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
+      gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
+    }
+  }
+  if (instance.prof != nullptr)
+    instance.prof->stop("AddVector:Sync");
+  if (mpi_rank == 0)
+    instance.solver->report();
+  if (instance.prof != nullptr)
+    instance.prof->stop("AddVector");
+  return working_set_size;
+}
+
+extern "C" size_t IterativeSolverPspaceAddVector(double* parameters, double* action,  int sync, int lmppx,
+                                                 void (*func)(const double*, double*, const size_t, const size_t*)) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   instance.apply_on_p_fort = func;

@@ -105,21 +105,16 @@ ArrayHandler is an abstract class used by IterativeSolver to perform copy and li
 LinearAlgebra provides implementations for Iterable containers (e.g. `std::vector`), distributed containers (e.g. `molpro::linalg::array::DistrArray`),
 and mapped containers (e.g. `std::map`). However, some users might need/want to provide their own implementations. 
 
+## Citing
+
+Any publications resulting from this work should cite relevant papers in CITE.txt
 
 ## Contributing
 
 This library is under active development and potential collaborators are welcome to contact
 Prof. Peter Knowles at Cardiff University.
 
-## Citing
-
-Any publications resulting from this work should cite relevant papers in CITE.txt
-
-Documentation is published to 
-[https://molpro.gitlab.io/linearalgebra/latest](https://molpro.gitlab.io/linearalgebra/latest)
-
-
-# List of Contributors
+## List of Contributors
 
 Prof. Peter Knowles
 

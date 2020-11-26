@@ -28,7 +28,7 @@ else ()
     message(STATUS "LinearAlgebra: Eigen3::Eigen target already defined")
 endif ()
 
-foreach (t IterativeSolver-test TestIterativeSolver PagedVector-test OutOfCoreArray-test SimpleVector-test LinearEigensystem-file-test)
+foreach (t LinearEigensystem-file-test)
     add_executable(${t}.exe ${t}.cpp test.h)
     target_link_libraries(${t}.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)# ${MPI_CXX_LIBRARIES})
     target_link_libraries(${t}.exe PUBLIC Eigen3::Eigen)

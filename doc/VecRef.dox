@@ -1,7 +1,7 @@
 namespace molpro{
 namespace linalg{
 /*!
-@page TopicDistrArrays Distributed arrays
+@page TopicVecRef Wrappers: VecRef and CVecRef
 
 Work in Progress.
 

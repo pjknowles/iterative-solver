@@ -1,7 +1,7 @@
 namespace molpro{
 namespace linalg{
 /*!
-@page TopicDistrArrays Distributed arrays
+@page TopicArrayHandlers Array handlers
 
 Work in Progress.
 

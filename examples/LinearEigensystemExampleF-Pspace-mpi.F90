@@ -18,7 +18,7 @@ MODULE Pspace
       INTEGER :: irange, root, range
       !write(*,*) "APPLY_ON_P was called!!!"
       irange = 1
-      DO root = 1, w_set_size
+      DO root = 1, nroot ! w_set_size ???
         offset = ranges(irange)
         !range = ranges(irange+1) - ranges(irange)
         !if (rank == 1) then
@@ -94,14 +94,14 @@ PROGRAM Linear_Eigensystem_Example
   nwork =  Iterative_Solver_Add_P(nP, offsets, indices, coefficients, pp, c, g, fproc=apply_on_p)
   !g = 0.0d0
   DO iter = 1, 100
-    IF (rank == 0) THEN
-      PRINT *, 'NWORK:', nwork
-    END IF
+    !IF (rank == 0) THEN
+    !  PRINT *, 'NWORK:', nwork
+    !END IF
     allocate(we(nwork), stat=alloc_stat)
     we = Iterative_Solver_Working_Set_Eigenvalues(nwork)
-    IF (rank == 0) THEN
-      PRINT *, 'we:', we
-    END IF
+    !IF (rank == 0) THEN
+    !  PRINT *, 'we:', we
+    !END IF
     DO root = 1, nwork
       DO j = 1, n
         g(j, root) = - g(j, root) * 1.0d0 / (m(j, j) - we(root) + 1e-15)

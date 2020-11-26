@@ -262,13 +262,16 @@ void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& 
   MPI_Comm_rank(ccomm, &mpi_rank);
   MPI_Comm_size(ccomm, &mpi_size);
   std::vector<size_t> ranges;
-  ranges.reserve(instance.solver->working_set().size() * 2);
-  for (size_t k = 0; k < instance.solver->working_set().size(); ++k) {
+  //ranges.reserve(instance.solver->working_set().size() * 2);
+  //for (size_t k = 0; k < instance.solver->working_set().size(); ++k) {
+  ranges.reserve(instance.solver->n_roots() * 2);
+  for (size_t k = 0; k < instance.solver->n_roots(); ++k) {
     auto range = action[k].get().distribution().range(mpi_rank);
     ranges.push_back(range.first);
     ranges.push_back(range.second);
   }
   size_t w_set_size = instance.solver->working_set().size();
+  //std::cout << "From apply_on_p_c: working_set size:" << w_set_size << std::endl;
   // TODO: if pvectors are an array of arrays, data will be contiguous in memory and no copying will be needed
   std::vector<double> pvecs_to_send;
   for (size_t i = 0; i < pvectors.size(); i++) {
@@ -355,6 +358,8 @@ extern "C" size_t IterativeSolverPspaceAddVector(double* parameters, double* act
   using molpro::linalg::itsolv::VecRef;
   std::function<void(const std::vector<vectorP>&, const CVecRef<Pvector>&, const VecRef<Rvector>&)> apply_on_p =
       apply_on_p_c;
+  //size_t w_set_size = instance.solver->working_set().size();
+  //std::cout << "From add_vector(): working_set size:" << w_set_size << std::endl;
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Update");
   size_t working_set_size = instance.solver->add_vector(cc, gg, apply_on_p_c);
@@ -375,6 +380,8 @@ extern "C" size_t IterativeSolverPspaceAddVector(double* parameters, double* act
     instance.solver->report();
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector");
+  //w_set_size = instance.solver->working_set().size();
+  //std::cout << "From add_vector(): working_set size:" << w_set_size << std::endl;
   return working_set_size;
 }
 
@@ -427,6 +434,8 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
 extern "C" int IterativeSolverEndIteration(double* solution, double* residual, double* error, int sync, int lmppx) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
+  //size_t w_set_size = instance.solver->working_set().size();
+  //std::cout << "From end_it(): working_set size:" << w_set_size << std::endl;
   if (instance.prof != nullptr)
     instance.prof->start("EndIter");
   cc.reserve(instance.solver->n_roots());
@@ -461,11 +470,13 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Sync");
-  /*for (size_t root = 0; root < instance.solver->n_roots(); root++) {
+  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
     error[root] = instance.solver->errors()[root];
-  }*/
+  }
   if (instance.prof != nullptr)
     instance.prof->stop("EndIter");
+  //w_set_size = instance.solver->working_set().size();
+  //std::cout << "From end_it(): working_set size:" << w_set_size << std::endl;
   return result;
 }
 

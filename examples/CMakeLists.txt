@@ -8,12 +8,11 @@ if (FORTRAN
             )
 endif ()
 set(EXAMPLES
-        LinearEigensystemExample.cpp LinearEigensystemExample-serial.cpp LinearEigensystemExample-Pspace-fixed-serial.cpp
+        LinearEigensystemExample-serial.cpp
         ${ITERATIVESOLVER_FORTRAN_EXAMPLES}
         )
 if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)
     list(APPEND EXAMPLES
-            LinearEigensystemExample-mpi.cpp
             )
     if (FORTRAN)
         list(APPEND EXAMPLES

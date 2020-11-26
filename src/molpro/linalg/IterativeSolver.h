@@ -813,11 +813,10 @@ public:
 protected:
 };
 
-/*! @example LinearEigensystemExample.cpp */
 /*!
  * \brief A class that finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos
  *
- * Example of simplest use with a simple in-memory container for eigenvectors: @include LinearEigensystemExample.cpp
+ * Example of simplest use with a simple in-memory container for eigenvectors:
  *
  * Example using a P-space and offline distributed storage provided by the PagedVector class: @include
  * LinearEigensystemExample-paged.cpp

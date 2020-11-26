@@ -32,9 +32,11 @@ using Pvector = std::map<size_t, double>;
 // Find lowest eigensolution of a matrix obtained from an external file
 // Storage of vectors in-memory via class Rvector
 using scalar = double;
+namespace {
 size_t n;
 std::vector<double> hmat;
 std::vector<double> expected_eigenvalues;
+} // namespace
 
 void load_matrix(int dimension, const std::string& type = "", double param = 1) {
   n = dimension;
@@ -111,7 +113,7 @@ void test_eigen(const std::string& title = "") {
       expected_eigenvalues.push_back(ev[i]);
   }
   for (int nroot = 1; nroot <= n && nroot <= 28; nroot++) {
-    for (auto np = 0; np <= n && np <= 50; np += std::max(nroot,int(n)/10)) {
+    for (auto np = 0; np <= n && np <= 50; np += std::max(nroot, int(n) / 10)) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
                    << np << std::endl;
 
@@ -121,7 +123,7 @@ void test_eigen(const std::string& title = "") {
       solver.set_convergence_threshold(1.0e-10);
       solver.propose_rspace_norm_thresh = 1.0e-14;
       solver.propose_rspace_svd_thresh = 1.0e-10;
-      solver.set_max_size_qspace(std::max(3*nroot,std::min(int(n), std::min(1000, 3 * nroot)) - np));
+      solver.set_max_size_qspace(std::max(3 * nroot, std::min(int(n), std::min(1000, 3 * nroot)) - np));
       solver.set_reset_D(4);
       molpro::cout << "convergence threshold = " << solver.convergence_threshold() << ", svd thresh"
                    << solver.propose_rspace_svd_thresh << ", norm thresh" << solver.propose_rspace_norm_thresh

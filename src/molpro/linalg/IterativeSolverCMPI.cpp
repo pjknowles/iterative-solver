@@ -9,14 +9,12 @@
 #include <ppidd.h>
 #endif
 
-#include <molpro/linalg/IterativeSolver.h>
 #include <molpro/linalg/array/DistrArrayHDF5.h>
 #include <molpro/linalg/array/DistrArrayMPI3.h>
 #include <molpro/linalg/array/Span.h>
 #include <molpro/linalg/array/util/Distribution.h>
 #include <molpro/linalg/array/util/gather_all.h>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
-#include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/LinearEigensystemA.h>
 
 using molpro::Profiler;

@@ -2,16 +2,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "molpro/linalg/IterativeSolver.h"
-#include "molpro/linalg/PagedArray.h"
-#include "molpro/linalg/SimpleArray.h"
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 #include <cmath>
+#include <fstream>
 #include <iomanip>
 #include <limits>
 #include <molpro/iostream.h>
-#include <molpro/linalg/SimpleArray.h>
 #include <numeric>
 #include <regex>
 #include <vector>
@@ -32,9 +29,11 @@ using Pvector = std::map<size_t, double>;
 // Find lowest eigensolution of a matrix obtained from an external file
 // Storage of vectors in-memory via class Rvector
 using scalar = double;
+namespace {
 size_t n;
 std::vector<double> hmat;
 std::vector<double> expected_eigenvalues;
+} // namespace
 
 void load_matrix(int dimension, const std::string& type = "", double param = 1) {
   n = dimension;
@@ -111,7 +110,7 @@ void test_eigen(const std::string& title = "") {
       expected_eigenvalues.push_back(ev[i]);
   }
   for (int nroot = 1; nroot <= n && nroot <= 28; nroot++) {
-    for (auto np = 0; np <= n && np <= 50; np += std::max(nroot,int(n)/10)) {
+    for (auto np = 0; np <= n && np <= 50; np += std::max(nroot, int(n) / 10)) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
                    << np << std::endl;
 
@@ -121,7 +120,7 @@ void test_eigen(const std::string& title = "") {
       solver.set_convergence_threshold(1.0e-10);
       solver.propose_rspace_norm_thresh = 1.0e-14;
       solver.propose_rspace_svd_thresh = 1.0e-10;
-      solver.set_max_size_qspace(std::max(3*nroot,std::min(int(n), std::min(1000, 3 * nroot)) - np));
+      solver.set_max_size_qspace(std::max(3 * nroot, std::min(int(n), std::min(1000, 3 * nroot)) - np));
       solver.set_reset_D(4);
       molpro::cout << "convergence threshold = " << solver.convergence_threshold() << ", svd thresh"
                    << solver.propose_rspace_svd_thresh << ", norm thresh" << solver.propose_rspace_norm_thresh
@@ -326,230 +325,5 @@ TEST(IterativeSolver, symmetry_eigen) {
       }
     }
     test_eigen(std::to_string(n) + "/sym/" + std::to_string(param));
-  }
-}
-
-TEST(IterativeSolver, DISABLED_file_optimize_eigenvalue) {
-  for (const auto& file : std::vector<std::string>{"bh"}) {
-    load_matrix(file);
-    {
-      molpro::cout << "\n\n*** " << file << ", BFGS for lowest eigensolution, problem dimension " << n << std::endl;
-      auto rr = std::make_shared<ArrayHandlerIterable<Rvector>>();
-      auto qq = std::make_shared<ArrayHandlerIterable<Rvector>>();
-      auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
-      auto rq = std::make_shared<ArrayHandlerIterable<Rvector>>();
-      auto rp = std::make_shared<ArrayHandlerIterableSparse<Rvector, std::map<size_t, double>>>();
-      auto qr = std::make_shared<ArrayHandlerIterable<Rvector>>();
-      auto qp = std::make_shared<ArrayHandlerIterableSparse<Rvector, std::map<size_t, double>>>();
-      auto handlers =
-          std::make_shared<ArrayHandlers<Rvector, Rvector, std::map<size_t, double>>>(rr, qq, pp, rq, rp, qr, qp);
-      auto solver = molpro::linalg::Optimize<Rvector>{handlers};
-      solver.m_verbosity = 1;
-      solver.m_thresh = 1e-9;
-      std::vector<Rvector> g;
-      std::vector<Rvector> x;
-      std::vector<size_t> guess;
-      {
-        std::vector<double> diagonals;
-        for (auto i = 0; i < n; i++)
-          diagonals.push_back(matrix(i, i));
-        for (size_t root = 0; root < solver.m_roots; root++) {
-          x.emplace_back(n);
-          g.emplace_back(n);
-          x.back().assign(x.back().size(), 0);
-          guess.push_back(std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin()); // initial guess
-          *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
-          x.back()[guess.back()] = 1; // initial guess
-        }
-      }
-      double e0 = matrix(guess.back(), guess.back());
-      //        std::cout << "guess: " << guess << std::endl;
-      int nwork = 1;
-
-      for (auto iter = 0; iter < 50; iter++) {
-        auto eval = residual(x, g).front();
-        //            for (auto root = 0; root < nwork; root++) {
-        //              std::cout << "before addVector() x:";
-        //              for (auto i = 0; i < n; i++)
-        //                std::cout << " " << x[root][i];
-        //              std::cout << std::endl;
-        //              std::cout << "before addVector() g:";
-        //              for (auto i = 0; i < n; i++)
-        //                std::cout << " " << g[root][i];
-        //              std::cout << std::endl;
-        //            }
-        nwork = solver.addValue(x.front(), eval, g.front());
-        if (nwork == 0)
-          break;
-        //          for (auto root = 0; root < nwork; root++) {
-        //            std::cout << "after addVector()"
-        //                      << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" <<
-        //                      solver.errors()[root]
-        //                      << " x:";
-        //            for (auto i = 0; i < n; i++)
-        //              std::cout << " " << x[root][i];
-        //            std::cout << std::endl;
-        //            std::cout << "after addVector() g:";
-        //            for (auto i = 0; i < n; i++)
-        //              std::cout << " " << g[root][i];
-        //            std::cout << std::endl;
-        //          }
-        //        x.resize(nwork);
-        //        g.resize(nwork);
-        //          }
-        update(g, {eval});
-        //          for (auto root = 0; root < nwork; root++) {
-        //            std::cout << "after update() x:";
-        //            for (auto i = 0; i < n; i++)
-        //              std::cout << " " << x[root][i];
-        //            std::cout << std::endl;
-        //            std::cout << "after update() g:";
-        //            for (auto i = 0; i < n; i++)
-        //              std::cout << " " << g[root][i];
-        //            std::cout << std::endl;
-        //          }
-        solver.endIteration(x, g);
-        if (*std::max_element(solver.errors().begin(), solver.errors().end()) < solver.m_thresh)
-          break;
-      }
-      std::cout << "Error={ ";
-      for (const auto& e : solver.errors())
-        std::cout << e << " ";
-      std::cout << "} after " << solver.statistics().iterations << " iterations" << std::endl;
-      auto evals = residual(x, g);
-      for (size_t root = 0; root < solver.m_roots; root++) {
-        std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << evals[root] << std::endl;
-        //        solver.solution(root, x.front(), g.front(), Pcoeff.front());
-        //        std::cout << "Eigenvector: (norm=" << std::sqrt(x[0].dot(x[0])) << "): ";
-        //        for (size_t k = 0; k < n; k++)
-        //          std::cout << " " << (x[0])[k];
-        //        std::cout << std::endl;
-      }
-      EXPECT_THAT(solver.errors(),
-                  ::testing::Pointwise(::testing::DoubleNear(solver.m_thresh), std::vector<double>(1, double(0))));
-      EXPECT_THAT(evals, ::testing::Pointwise(::testing::DoubleNear(2e-9),
-                                              std::vector<double>(expected_eigenvalues.data(),
-                                                                  expected_eigenvalues.data() + solver.m_roots)));
-    }
-  }
-}
-
-TEST(IterativeSolver, DISABLED_file_diis_eigenvalue) {
-  for (const auto& file : std::vector<std::string>{"bh"}) {
-    std::vector<double> expected_eigenvalues;
-    expected_eigenvalues.push_back(-25.127071042);
-    expected_eigenvalues.push_back(-24.904605948);
-    expected_eigenvalues.push_back(-24.858437717);
-    expected_eigenvalues.push_back(-24.759563376);
-    {
-      std::ifstream f(std::string{"./"} + file + ".hamiltonian");
-      f >> n;
-      hmat.resize(n * n);
-      for (auto i = 0; i < n * n; i++)
-        f >> hmat[i];
-      //      molpro::cout << "diagonal elements";
-      //      for (auto i = 0; i < n; i++)
-      //        molpro::cout << " " << matrix(i, i);
-      //      molpro::cout << std::endl;
-      {
-        molpro::cout << "\n\n*** " << file << ", DIIS for lowest eigensolution, problem dimension " << n << std::endl;
-        auto rr = std::make_shared<ArrayHandlerIterable<Rvector>>();
-        auto qq = std::make_shared<ArrayHandlerIterable<Rvector>>();
-        auto pp = std::make_shared<ArrayHandlerSparse<std::map<size_t, double>>>();
-        auto rq = std::make_shared<ArrayHandlerIterable<Rvector>>();
-        auto rp = std::make_shared<ArrayHandlerIterableSparse<Rvector, std::map<size_t, double>>>();
-        auto qr = std::make_shared<ArrayHandlerIterable<Rvector>>();
-        auto qp = std::make_shared<ArrayHandlerIterableSparse<Rvector, std::map<size_t, double>>>();
-        auto handlers =
-            std::make_shared<ArrayHandlers<Rvector, Rvector, std::map<size_t, double>>>(rr, qq, pp, rq, rp, qr, qp);
-        auto solver = molpro::linalg::DIIS<Rvector>{handlers};
-        solver.m_verbosity = 1;
-        solver.m_thresh = 1e-9;
-        std::vector<Rvector> g;
-        std::vector<Rvector> x;
-        std::vector<size_t> guess;
-        {
-          std::vector<double> diagonals;
-          for (auto i = 0; i < n; i++)
-            diagonals.push_back(matrix(i, i));
-          for (size_t root = 0; root < solver.m_roots; root++) {
-            x.emplace_back(n);
-            g.emplace_back(n);
-            x.back().assign(x.back().size(), 0);
-            guess.push_back(std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin()); // initial guess
-            *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
-            x.back()[guess.back()] = 1; // initial guess
-          }
-        }
-        double e0 = matrix(guess.back(), guess.back());
-        //        std::cout << "guess: " << guess << std::endl;
-        int nwork = 1;
-
-        for (auto iter = 0; iter < 50; iter++) {
-          auto eval = residual(x, g).front();
-          //            for (auto root = 0; root < nwork; root++) {
-          //              std::cout << "before addVector() x:";
-          //              for (auto i = 0; i < n; i++)
-          //                std::cout << " " << x[root][i];
-          //              std::cout << std::endl;
-          //              std::cout << "before addVector() g:";
-          //              for (auto i = 0; i < n; i++)
-          //                std::cout << " " << g[root][i];
-          //              std::cout << std::endl;
-          //            }
-          nwork = solver.addVector(x.front(), g.front());
-          if (nwork == 0)
-            break;
-          //          for (auto root = 0; root < nwork; root++) {
-          //            std::cout << "after addVector()"
-          //                      << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" <<
-          //                      solver.errors()[root]
-          //                      << " x:";
-          //            for (auto i = 0; i < n; i++)
-          //              std::cout << " " << x[root][i];
-          //            std::cout << std::endl;
-          //            std::cout << "after addVector() g:";
-          //            for (auto i = 0; i < n; i++)
-          //              std::cout << " " << g[root][i];
-          //            std::cout << std::endl;
-          //          }
-          //        x.resize(nwork);
-          //        g.resize(nwork);
-          //          }
-          update(g, {eval});
-          //          for (auto root = 0; root < nwork; root++) {
-          //            std::cout << "after update() x:";
-          //            for (auto i = 0; i < n; i++)
-          //              std::cout << " " << x[root][i];
-          //            std::cout << std::endl;
-          //            std::cout << "after update() g:";
-          //            for (auto i = 0; i < n; i++)
-          //              std::cout << " " << g[root][i];
-          //            std::cout << std::endl;
-          //          }
-          solver.endIteration(x, g);
-          if (*std::max_element(solver.errors().begin(), solver.errors().end()) < solver.m_thresh)
-            break;
-        }
-        std::cout << "Error={ ";
-        for (const auto& e : solver.errors())
-          std::cout << e << " ";
-        std::cout << "} after " << solver.statistics().iterations << " iterations" << std::endl;
-        auto evals = residual(x, g);
-        for (size_t root = 0; root < solver.m_roots; root++) {
-          std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << evals[root] << std::endl;
-          //        solver.solution(root, x.front(), g.front(), Pcoeff.front());
-          //        std::cout << "Eigenvector: (norm=" << std::sqrt(x[0].dot(x[0])) << "): ";
-          //        for (size_t k = 0; k < n; k++)
-          //          std::cout << " " << (x[0])[k];
-          //        std::cout << std::endl;
-        }
-        EXPECT_THAT(solver.errors(),
-                    ::testing::Pointwise(::testing::DoubleNear(solver.m_thresh), std::vector<double>(1, double(0))));
-        EXPECT_THAT(evals, ::testing::Pointwise(::testing::DoubleNear(2e-9),
-                                                std::vector<double>(expected_eigenvalues.data(),
-                                                                    expected_eigenvalues.data() + solver.m_roots)));
-      }
-    }
   }
 }

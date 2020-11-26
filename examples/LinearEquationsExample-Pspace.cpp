@@ -1,5 +1,4 @@
 #include "molpro/linalg/IterativeSolver.h"
-#include "molpro/linalg/SimpleArray.h"
 #define USE_ARRAY 1
 #ifdef HAVE_MPI_H
 #include <mpi.h>

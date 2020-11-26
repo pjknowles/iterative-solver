@@ -3,15 +3,13 @@
 #include <gtest/gtest.h>
 
 #include "molpro/linalg/IterativeSolver.h"
-#include "molpro/linalg/PagedArray.h"
-#include "molpro/linalg/SimpleArray.h"
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 #include <cmath>
+#include <fstream>
 #include <iomanip>
 #include <limits>
 #include <molpro/iostream.h>
-#include <molpro/linalg/SimpleArray.h>
 #include <numeric>
 #include <regex>
 #include <vector>

@@ -3,7 +3,7 @@ Welcome to LinearAlgebra
 
 [![pipeline status](https://gitlab.com/molpro/linearalgebra/badges/master/pipeline.svg)](https://gitlab.com/molpro/linearalgebra/-/commits/master)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](https://gitlab.com/molpro/linearalgebra/-/blob/master/LICENSE)
-[![license](https://img.shields.io/badge/documentation-blue.svg)](https://dependencymanager.gitlab.io/dependency-manager/)
+[![license](https://img.shields.io/badge/documentation-blue.svg)](https://molpro.gitlab.io/linearalgebra/)
 
 
 ## Overview

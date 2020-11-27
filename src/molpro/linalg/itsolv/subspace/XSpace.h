@@ -117,6 +117,7 @@ auto update_dspace_action_data(const CVecRef<P>& pparams, const CVecRef<Q>& qpar
   return data;
 }
 
+inline
 void copy_dspace_eqn_data(const NewData& new_data, SubspaceData& data, const subspace::EqnData e,
                           const Dimensions& dims) {
   const auto& dd = new_data.qq.at(e);

@@ -10,15 +10,15 @@ MODULE Pspace
   INTEGER, DIMENSION(nP) :: indices
   INTEGER :: i, j, root, offset
   CONTAINS
-    subroutine apply_on_p(p, g, w_set_size, ranges) BIND(C)
+    subroutine apply_on_p(p, g, update_size, ranges) BIND(C)
       DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: g
       DOUBLE PRECISION, DIMENSION(nP,nroot), INTENT(inout) :: p
       INTEGER, DIMENSION(*), INTENT(in) :: ranges
-      INTEGER(c_size_t), INTENT(in), VALUE :: w_set_size
+      INTEGER(c_size_t), INTENT(in), VALUE :: update_size
       INTEGER :: irange, root, range
       !write(*,*) "APPLY_ON_P was called!!!"
       irange = 1
-      DO root = 1, nroot ! w_set_size ???
+      DO root = 1, update_size
         offset = ranges(irange)
         !range = ranges(irange+1) - ranges(irange)
         !if (rank == 1) then

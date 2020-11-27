@@ -8,6 +8,7 @@ ALLEXTERNALS           = YES
 PROJECT_NUMBER         = @PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@
 USE_MDFILE_AS_MAINPAGE = README.md
 EXAMPLE_PATH           = @CMAKE_CURRENT_SOURCE_DIR@/../examples
+GENERATE_LATEX         = NO
 
 ############################################
 # Various options for customising the output

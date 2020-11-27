@@ -3,23 +3,16 @@ if (FORTRAN
         AND OFF # TODO reinstate Fortran examples when Fortran support is reinstated
         )
     set(ITERATIVESOLVER_FORTRAN_EXAMPLES
-            OptimizeExampleF.F90
-            DIISExampleF.F90
-            LinearEigensystemExampleF.F90
-            LinearEigensystemExampleF-Pspace.F90
             LinearEigensystemExampleF-Pspace-adaptive.F90
             LinearEquationsExampleF.F90
             )
 endif ()
-set(EXAMPLES DIISexample.cpp
-        OptimizeExample.cpp
-        LinearEigensystemExample.cpp LinearEigensystemExample-serial.cpp LinearEigensystemExample-Pspace-fixed-serial.cpp
-        LinearEquationsExample.cpp LinearEquationsExample-Pspace.cpp
+set(EXAMPLES
+        LinearEigensystemExample-serial.cpp
         ${ITERATIVESOLVER_FORTRAN_EXAMPLES}
         )
 if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)
     list(APPEND EXAMPLES
-            LinearEigensystemExample-mpi.cpp
             )
     if (FORTRAN)
         list(APPEND EXAMPLES

@@ -58,7 +58,7 @@ clang011:
 pages:
   stage: deploy
   only:
-    - tags
+    - master
   script:
     - PUBLIC=$PWD/public
     - mkdir -p $PUBLIC

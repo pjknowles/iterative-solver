@@ -4,10 +4,10 @@ namespace linalg{
 @page TopicIterativeSolver Iterative solvers
 
 There are four types of systems that LinearAlgebra can solve:
-* Linear eigensystem
-* Linear equations
-* Non-linear equations
-* Optimization of a scalar function
+   - Linear eigensystem
+   - Linear equations
+   - Non-linear equations
+   - Optimization of a scalar function
 
 The interface for different solvers is declared in ``molpro/linalg/itsolv/IterativeSolver.h``.
 

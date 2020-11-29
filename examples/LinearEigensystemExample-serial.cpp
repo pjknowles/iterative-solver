@@ -1,7 +1,7 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
-#include <molpro/linalg/itsolv/LinearEigensystemA.h>
+#include <molpro/linalg/itsolv/LinearEigensystem.h>
 #include <vector>
 
 // Find lowest eigensolutions of a matrix obtained from an external file
@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
       for (auto i = 0; i < n; i++)
         diagonals.push_back(hmat[i + i * n]);
       auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>();
-      molpro::linalg::itsolv::LinearEigensystemA<Rvector, Qvector, Pvector> solver(handlers);
+      molpro::linalg::itsolv::LinearEigensystem<Rvector, Qvector, Pvector> solver(handlers);
       solver.set_n_roots(nroot);
       solver.set_convergence_threshold(1.0e-12);
       solver.propose_rspace_norm_thresh = 1.0e-14;

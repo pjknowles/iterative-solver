@@ -22,9 +22,9 @@ using molpro::linalg::array::Span;
 using molpro::linalg::array::util::gather_all;
 using molpro::linalg::itsolv::ArrayHandlers;
 using molpro::linalg::itsolv::ILinearEigensystem;
+using molpro::linalg::itsolv::ILinearEquations;
 using molpro::linalg::itsolv::IterativeSolver;
 using molpro::linalg::itsolv::LinearEigensystemA;
-using molpro::linalg::itsolv::LinearEquations;
 using molpro::linalg::itsolv::NonLinearEquations;
 using molpro::linalg::itsolv::Optimize;
 

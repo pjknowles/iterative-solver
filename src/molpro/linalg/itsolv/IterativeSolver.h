@@ -138,7 +138,7 @@ public:
 };
 
 template <class R, class Q, class P>
-class LinearEquations : public IterativeSolver<R, Q, P> {
+class ILinearEquations : public IterativeSolver<R, Q, P> {
 public:
   using typename IterativeSolver<R, Q, P>::scalar_type;
   //! eigenvalues of augmented Hessian method, if it was used

@@ -22,11 +22,11 @@ namespace molpro::linalg::itsolv {
  * @tparam P
  */
 template <class R, class Q, class P>
-class LinearEigensystemA : public IterativeSolverTemplate<LinearEigensystem, R, Q, P> {
+class LinearEigensystemA : public IterativeSolverTemplate<ILinearEigensystem, R, Q, P> {
 public:
-  using SolverTemplate = IterativeSolverTemplate<LinearEigensystem, R, Q, P>;
+  using SolverTemplate = IterativeSolverTemplate<ILinearEigensystem, R, Q, P>;
   using typename SolverTemplate::scalar_type;
-  using IterativeSolverTemplate<LinearEigensystem, R, Q, P>::report;
+  using IterativeSolverTemplate<ILinearEigensystem, R, Q, P>::report;
 
   explicit LinearEigensystemA(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
                               const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
@@ -59,7 +59,7 @@ public:
                                                   *this->m_handlers, *this->m_logger);
     } else {
       this->m_working_set =
-          detail::propose_rspace(*static_cast<LinearEigensystem<R, Q, P>*>(this), parameters, action, *this->m_xspace,
+          detail::propose_rspace(*static_cast<ILinearEigensystem<R, Q, P>*>(this), parameters, action, *this->m_xspace,
                                  *this->m_subspace_solver, *this->m_handlers, *this->m_logger,
                                  propose_rspace_svd_thresh, propose_rspace_norm_thresh, m_max_size_qspace);
     }

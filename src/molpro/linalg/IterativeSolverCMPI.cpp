@@ -21,8 +21,8 @@ using molpro::Profiler;
 using molpro::linalg::array::Span;
 using molpro::linalg::array::util::gather_all;
 using molpro::linalg::itsolv::ArrayHandlers;
+using molpro::linalg::itsolv::ILinearEigensystem;
 using molpro::linalg::itsolv::IterativeSolver;
-using molpro::linalg::itsolv::LinearEigensystem;
 using molpro::linalg::itsolv::LinearEigensystemA;
 using molpro::linalg::itsolv::LinearEquations;
 using molpro::linalg::itsolv::NonLinearEquations;
@@ -261,7 +261,7 @@ void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& 
   MPI_Comm_size(ccomm, &mpi_size);
   std::vector<size_t> ranges;
   size_t update_size = pvectors.size();
-  ranges.reserve(update_size*2);
+  ranges.reserve(update_size * 2);
   for (size_t k = 0; k < update_size; ++k) {
     auto range = action[k].get().distribution().range(mpi_rank);
     ranges.push_back(range.first);
@@ -273,10 +273,11 @@ void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& 
       pvecs_to_send.push_back(j);
     }
   }
-  instance.apply_on_p_fort(pvecs_to_send.data(), &(*action.front().get().local_buffer())[0], update_size, ranges.data());
+  instance.apply_on_p_fort(pvecs_to_send.data(), &(*action.front().get().local_buffer())[0], update_size,
+                           ranges.data());
 }
 
-extern "C" size_t IterativeSolverAddVector(double* parameters, double* action,  int sync, int lmppx) {
+extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, int sync, int lmppx) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   if (instance.prof != nullptr)
@@ -303,7 +304,7 @@ extern "C" size_t IterativeSolverAddVector(double* parameters, double* action,  
   size_t working_set_size = instance.solver->add_vector(cc, gg);
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Update");
-  
+
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Sync");
   for (size_t root = 0; root < instance.solver->n_roots(); root++) {
@@ -321,7 +322,7 @@ extern "C" size_t IterativeSolverAddVector(double* parameters, double* action,  
   return working_set_size;
 }
 
-extern "C" size_t IterativeSolverPspaceAddVector(double* parameters, double* action,  int sync, int lmppx,
+extern "C" size_t IterativeSolverPspaceAddVector(double* parameters, double* action, int sync, int lmppx,
                                                  void (*func)(const double*, double*, const size_t, const size_t*)) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
@@ -504,11 +505,10 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
       apply_on_p_c;
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Call");
-  size_t working_set_size = instance.solver->add_p(molpro::linalg::itsolv::cwrap(Pvectors),
-                                              Span<Rvector::value_type>(&const_cast<double*>(pp)[0],
-                                                                         (instance.solver->dimensions().oP+nP)*nP),
-                                              molpro::linalg::itsolv::wrap(cc),
-                                              molpro::linalg::itsolv::wrap(gg), apply_on_p);
+  size_t working_set_size = instance.solver->add_p(
+      molpro::linalg::itsolv::cwrap(Pvectors),
+      Span<Rvector::value_type>(&const_cast<double*>(pp)[0], (instance.solver->dimensions().oP + nP) * nP),
+      molpro::linalg::itsolv::wrap(cc), molpro::linalg::itsolv::wrap(gg), apply_on_p);
   if (instance.prof != nullptr)
     instance.prof->stop("AddP:Call");
   if (instance.prof != nullptr)

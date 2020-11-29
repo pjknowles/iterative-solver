@@ -128,7 +128,7 @@ public:
  * @brief Interface for a specific iterative solver, it can add special member functions or variables.
  */
 template <class R, class Q, class P>
-class LinearEigensystem : public IterativeSolver<R, Q, P> {
+class ILinearEigensystem : public IterativeSolver<R, Q, P> {
 public:
   using typename IterativeSolver<R, Q, P>::scalar_type;
   //! The calculated eigenvalues of the subspace matrix

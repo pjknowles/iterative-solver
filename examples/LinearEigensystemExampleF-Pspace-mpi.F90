@@ -5,20 +5,20 @@
 
 MODULE Pspace
   USE, INTRINSIC :: iso_c_binding
-  INTEGER, PARAMETER :: n = 20, nroot = 3, nP = 10
+  INTEGER, PARAMETER :: n = 60, nroot = 3, nP = 20
   DOUBLE PRECISION, DIMENSION (n, n) :: m
   INTEGER, DIMENSION(nP) :: indices
   INTEGER :: i, j, root, offset
   CONTAINS
-    subroutine apply_on_p(p, g, w_set_size, ranges) BIND(C)
+    subroutine apply_on_p(p, g, update_size, ranges) BIND(C)
       DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: g
       DOUBLE PRECISION, DIMENSION(nP,nroot), INTENT(inout) :: p
       INTEGER, DIMENSION(*), INTENT(in) :: ranges
-      INTEGER(c_size_t), INTENT(in), VALUE :: w_set_size
+      INTEGER(c_size_t), INTENT(in), VALUE :: update_size
       INTEGER :: irange, root, range
       !write(*,*) "APPLY_ON_P was called!!!"
       irange = 1
-      DO root = 1, w_set_size
+      DO root = 1, update_size
         offset = ranges(irange)
         !range = ranges(irange+1) - ranges(irange)
         !if (rank == 1) then
@@ -62,6 +62,7 @@ PROGRAM Linear_Eigensystem_Example
   INTEGER :: nwork, alloc_stat
   INTEGER :: rank, comm_size, ierr
   TYPE(Profiler) :: prof
+  rank = 0
   call MPI_INIT(ierr)
   call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
   call MPI_COMM_SIZE(MPI_COMM_WORLD, comm_size, ierr)
@@ -90,32 +91,28 @@ PROGRAM Linear_Eigensystem_Example
       pp(i, j) = m(indices(i), indices(j))
     END DO
   END DO
-  nwork =  Iterative_Solver_Add_P(nP, offsets, indices, coefficients, pp, c, g, p, fproc=apply_on_p)
-  g = 0.0d0
+  nwork =  Iterative_Solver_Add_P(nP, offsets, indices, coefficients, pp, c, g, fproc=apply_on_p)
+  !g = 0.0d0
   DO iter = 1, 100
+    !IF (rank == 0) THEN
+    !  PRINT *, 'NWORK:', nwork
+    !END IF
     allocate(we(nwork), stat=alloc_stat)
     we = Iterative_Solver_Working_Set_Eigenvalues(nwork)
-    DO root = 1, nwork
-      DO i = 1, nP
-        DO j = 1, n
-          g(j, root) = g(j, root) + m(j, indices(i)) * p(i, root)
-        END DO
-      END DO
-    END DO
+    !IF (rank == 0) THEN
+    !  PRINT *, 'we:', we
+    !END IF
     DO root = 1, nwork
       DO j = 1, n
         g(j, root) = - g(j, root) * 1.0d0 / (m(j, j) - we(root) + 1e-15)
       END DO
     END DO
     deallocate(we)
-    g = MATMUL(m, c)
-    nwork = Iterative_Solver_Add_Vector(c, g, p)
-    IF (rank == 0) THEN
-      PRINT *, 'NWORK:', nwork
-    END IF
-    IF (nwork == 0) THEN
+    IF (Iterative_Solver_End_Iteration(c, g, error) == 0) THEN
       EXIT
     END IF
+    g = MATMUL(m, c)
+    nwork = Iterative_Solver_Add_Vector_With_P(c, g, fproc=apply_on_p)
   END DO
   CALL Iterative_Solver_Finalize
   call MPI_FINALIZE(ierr)

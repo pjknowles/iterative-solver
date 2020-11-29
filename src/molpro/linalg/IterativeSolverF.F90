@@ -7,6 +7,7 @@ MODULE Iterative_Solver
     PUBLIC :: Iterative_Solver_Optimize_Initialize
     PUBLIC :: Iterative_Solver_Add_Value, Iterative_Solver_Add_Vector, Iterative_Solver_End_Iteration
     PUBLIC :: Iterative_Solver_Add_Value_Nosync, Iterative_Solver_Add_Vector_Nosync
+    PUBLIC :: Iterative_Solver_Add_Vector_With_P, Iterative_Solver_Add_Vector_With_P_Nosync
     PUBLIC :: Iterative_Solver_Solution, Iterative_Solver_Solution_Nosync
     PUBLIC :: Iterative_Solver_Add_P, Iterative_Solver_Suggest_P
     PUBLIC :: Iterative_Solver_Eigenvalues, Iterative_Solver_Working_Set_Eigenvalues
@@ -477,6 +478,71 @@ CONTAINS
     !> appropriate.
     !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
     !> the subsequent call to Iterative_Solver_End_Iteration()
+    FUNCTION Iterative_Solver_Add_Vector_With_P(parameters, action, lmppx, fproc)
+        USE iso_c_binding
+        INTEGER :: Iterative_Solver_Add_Vector_With_P
+        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
+        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+        LOGICAL, INTENT(in), OPTIONAL :: lmppx
+        EXTERNAL fproc
+        INTERFACE
+            FUNCTION Iterative_Solver_Add_Vector_With_P_C(parameters, action, lsync, lmppx, func) &
+                    BIND(C, name = 'IterativeSolverPspaceAddVector')
+                USE, INTRINSIC :: iso_c_binding
+                INTEGER(c_size_t) Iterative_Solver_Add_Vector_With_P_C
+                REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
+                REAL(c_double), DIMENSION(*), INTENT(inout) :: action
+                INTEGER(c_int), INTENT(in), VALUE :: lsync
+                INTEGER(c_int), INTENT(in), VALUE :: lmppx
+                TYPE(C_FUNPTR), INTENT(IN), VALUE :: func
+            END FUNCTION Iterative_Solver_Add_Vector_With_P_C
+        END INTERFACE
+        DOUBLE PRECISION, DIMENSION(0) :: pdummy
+        INTEGER(c_int) :: lsyncC
+        INTEGER(c_int) :: lmppxC
+        TYPE(C_FUNPTR) :: cproc
+        cproc = C_FUNLOC(fproc)
+        lmppxC = 0
+        lsyncC = 1
+        IF (PRESENT(lmppx)) THEN
+            IF (lmppx) lmppxC = 1
+        ENDIF
+        Iterative_Solver_Add_Vector_With_P = int(Iterative_Solver_Add_Vector_With_P_C(parameters, action, lsyncC, lmppxC, cproc))
+    END FUNCTION Iterative_Solver_Add_Vector_With_P
+    !
+    FUNCTION Iterative_Solver_Add_Vector_With_P_Nosync(parameters, action, lmppx, fproc)
+        USE iso_c_binding
+        INTEGER :: Iterative_Solver_Add_Vector_With_P_Nosync
+        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
+        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+        LOGICAL, INTENT(in), OPTIONAL :: lmppx
+        EXTERNAL fproc
+        INTERFACE
+            FUNCTION Iterative_Solver_Add_Vector_With_P_C(parameters, action, lsync, lmppx, func) &
+                    BIND(C, name = 'IterativeSolverPspaceAddVector')
+                USE iso_c_binding
+                INTEGER(c_size_t) Iterative_Solver_Add_Vector_With_P_C
+                REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
+                REAL(c_double), DIMENSION(*), INTENT(inout) :: action
+                INTEGER(c_int), INTENT(in), VALUE :: lsync
+                INTEGER(c_int), INTENT(in), VALUE :: lmppx
+                TYPE(C_FUNPTR), INTENT(IN), VALUE :: func
+            END FUNCTION Iterative_Solver_Add_Vector_With_P_C
+        END INTERFACE
+        DOUBLE PRECISION, DIMENSION(0) :: pdummy
+        INTEGER(c_int) :: lsyncC
+        INTEGER(c_int) :: lmppxC
+        TYPE(C_FUNPTR) :: cproc
+        cproc = C_FUNLOC(fproc)
+        lmppxC = 0
+        lsyncC = 0
+        IF (PRESENT(lmppx)) THEN
+            IF (lmppx) lmppxC = 1
+        ENDIF
+        Iterative_Solver_Add_Vector_With_P_Nosync = int(Iterative_Solver_Add_Vector_With_P_C(parameters, action, lsyncC, &
+                                                         lmppxC, cproc))
+    END FUNCTION Iterative_Solver_Add_Vector_With_P_Nosync
+
     FUNCTION Iterative_Solver_Add_Vector(parameters, action, lmppx)
         USE iso_c_binding
         INTEGER :: Iterative_Solver_Add_Vector
@@ -486,7 +552,7 @@ CONTAINS
         INTERFACE
             FUNCTION Iterative_Solver_Add_Vector_C(parameters, action, lsync, lmppx) &
                     BIND(C, name = 'IterativeSolverAddVector')
-                USE iso_c_binding
+                USE, INTRINSIC :: iso_c_binding
                 INTEGER(c_size_t) Iterative_Solver_Add_Vector_C
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: action
@@ -687,8 +753,6 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
         LOGICAL, INTENT(in), OPTIONAL :: lmppx
-        !PROCEDURE(func_tmpl_a), POINTER :: fproc_ptr
-        !PROCEDURE(func_tmpl_a) :: fproc
         EXTERNAL fproc
         INTERFACE
             FUNCTION IterativeSolverAddPC(nP, offsets, indices, coefficients, pp, parameters, action, &
@@ -712,8 +776,6 @@ CONTAINS
         INTEGER(c_int) :: lsyncC
         INTEGER(c_int) :: lmppxC
         TYPE(C_FUNPTR) :: cproc
-        DOUBLE PRECISION :: dummy_a(10,10), dummy_b(10,10)
-        !cproc = C_FUNLOC(apply_on_p_test)
         cproc = C_FUNLOC(fproc)
         lmppxC = 0
         lsyncC = 1

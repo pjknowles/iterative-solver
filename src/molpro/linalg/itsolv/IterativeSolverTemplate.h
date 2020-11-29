@@ -122,7 +122,9 @@ std::vector<int> select_working_set(const size_t nw, const std::vector<T>& error
 } // namespace detail
 
 /*!
- * @brief Implements functionality common to all iterative solvers
+ * @brief Implements IterativeSolver interface that is common to all solvers
+ *
+ * @tparam Solver one of the solvers that inherits from IterativeSolver.
  */
 template <template <class, class, class> class Solver, class R, class Q, class P>
 class IterativeSolverTemplate : public Solver<R, Q, P> {
@@ -259,6 +261,15 @@ protected:
       : m_handlers(std::move(handlers)), m_xspace(std::move(xspace)), m_subspace_solver(std::move(solver)),
         m_stats(std::move(stats)), m_logger(std::move(logger)) {}
 
+  /*!
+   * @brief Solves the subspace problems and selects the working set of roots, returning their parameters and residual
+   * in parameters and action
+   * @param parameters container for storing parameters of the working set
+   * @param action container for storing the residual of the working set
+   * @param pparams projection of the working set on to the P space
+   * @param apply_p function that accumulates action from the P space projection of parameters
+   * @return size of the working set
+   */
   size_t solve_and_generate_working_set(const VecRef<R>& parameters, const VecRef<R>& action,
                                         std::vector<VectorP>& pparams, const fapply_on_p_type& apply_p) {
     m_subspace_solver->solve(*m_xspace, n_roots());
@@ -305,15 +316,15 @@ protected:
     return m_working_set.size();
   }
 
-  std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
-  std::shared_ptr<subspace::XSpaceI<R, Q, P>> m_xspace;
-  std::shared_ptr<subspace::SubspaceSolverI<R, Q, P>> m_subspace_solver;
-  std::vector<double> m_errors;
-  std::vector<int> m_working_set;
-  size_t m_nroots{0};
+  std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers
+  std::shared_ptr<subspace::XSpaceI<R, Q, P>> m_xspace;                  //!< manages the subspace and associated data
+  std::shared_ptr<subspace::SubspaceSolverI<R, Q, P>> m_subspace_solver; //!< solves the subspace problem
+  std::vector<double> m_errors;                                          //!< errors from the most recent solution
+  std::vector<int> m_working_set;                                        //!< indices of roots in the working set
+  size_t m_nroots{0};                      //!< number of roots the solver is searching for
   double m_convergence_threshold{1.0e-10}; //!< errors less than this mark a converged solution
-  std::shared_ptr<Statistics> m_stats;
-  std::shared_ptr<Logger> m_logger;
+  std::shared_ptr<Statistics> m_stats;     //!< accumulates statistics of operations performed by the solver
+  std::shared_ptr<Logger> m_logger;        //!< logger
 };
 
 } // namespace molpro::linalg::itsolv

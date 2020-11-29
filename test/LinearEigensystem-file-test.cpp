@@ -16,7 +16,7 @@
 #include <molpro/linalg/array/ArrayHandlerIterable.h>
 #include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
 #include <molpro/linalg/array/ArrayHandlerSparse.h>
-#include <molpro/linalg/itsolv/LinearEigensystemA.h>
+#include <molpro/linalg/itsolv/LinearEigensystem.h>
 
 using molpro::linalg::array::ArrayHandler;
 using molpro::linalg::array::ArrayHandlerIterable;
@@ -115,7 +115,7 @@ void test_eigen(const std::string& title = "") {
                    << np << std::endl;
 
       auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>();
-      molpro::linalg::itsolv::LinearEigensystemA<Rvector, Qvector, Pvector> solver(handlers);
+      molpro::linalg::itsolv::LinearEigensystem<Rvector, Qvector, Pvector> solver(handlers);
       solver.set_n_roots(nroot);
       solver.set_convergence_threshold(1.0e-10);
       solver.propose_rspace_norm_thresh = 1.0e-14;

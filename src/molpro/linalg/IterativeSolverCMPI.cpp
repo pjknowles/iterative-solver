@@ -86,6 +86,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
       Instance{std::make_unique<LinearEigensystemA<Rvector, Qvector, Pvector>>(handlers), profiler, n, comm});
   auto& instance = instances.top();
   instance.solver->set_n_roots(nroot);
+  instance.solver->set_hermitian(hermitian);
   LinearEigensystemA<Rvector, Qvector, Pvector>* solver_cast =
       dynamic_cast<LinearEigensystemA<Rvector, Qvector, Pvector>*>(instance.solver.get());
   if (solver_cast) {

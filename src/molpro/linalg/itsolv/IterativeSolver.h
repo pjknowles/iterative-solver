@@ -121,6 +121,8 @@ public:
   //! Reports the convergence threshold
   virtual double convergence_threshold() const = 0;
   virtual const subspace::Dimensions& dimensions() const = 0;
+  //! Sets hermiticity of kernel in linear problems
+  virtual void set_hermitian(bool hermitian) = 0;
   // FIXME Missing parameters: SVD threshold
 };
 

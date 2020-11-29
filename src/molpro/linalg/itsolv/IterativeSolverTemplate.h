@@ -228,6 +228,8 @@ public:
     std::iota(begin(m_working_set), end(m_working_set), (int)0);
   }
 
+  void set_hermitian(bool hermitian) override { m_hermitian = hermitian; }
+
   const std::vector<scalar_type>& errors() const override { return m_errors; }
 
   const Statistics& statistics() const override { return *m_stats; }
@@ -314,6 +316,7 @@ protected:
   double m_convergence_threshold{1.0e-10}; //!< errors less than this mark a converged solution
   std::shared_ptr<Statistics> m_stats;
   std::shared_ptr<Logger> m_logger;
+  bool m_hermitian{true}; // TODO consider whether false would be a better default
 };
 
 } // namespace molpro::linalg::itsolv

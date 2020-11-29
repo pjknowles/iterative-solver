@@ -169,7 +169,7 @@ public:
 
 //! Solves non-linear system of equations using methods such as DIIS
 template <class R, class Q, class P>
-class NonLinearEquations : public IterativeSolver<R, Q, P> {};
+class INonLinearEquations : public IterativeSolver<R, Q, P> {};
 
 } // namespace molpro::linalg::itsolv
 

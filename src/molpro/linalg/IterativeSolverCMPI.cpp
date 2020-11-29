@@ -23,10 +23,10 @@ using molpro::linalg::array::util::gather_all;
 using molpro::linalg::itsolv::ArrayHandlers;
 using molpro::linalg::itsolv::ILinearEigensystem;
 using molpro::linalg::itsolv::ILinearEquations;
+using molpro::linalg::itsolv::INonLinearEquations;
 using molpro::linalg::itsolv::IOptimize;
 using molpro::linalg::itsolv::IterativeSolver;
 using molpro::linalg::itsolv::LinearEigensystemA;
-using molpro::linalg::itsolv::NonLinearEquations;
 
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
 using Qvector = molpro::linalg::array::DistrArrayMPI3;

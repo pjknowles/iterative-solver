@@ -3,7 +3,21 @@ namespace linalg{
 /*!
 @page TopicIterativeSolver Iterative solvers
 
-This page includes an overview of available iterative solvers and how to use them.
+There are four types of systems that LinearAlgebra can solve:
+* Linear eigensystem
+* Linear equations
+* Non-linear equations
+* Optimization of a scalar function
+
+The interface for different solvers is declared in ``molpro/linalg/itsolv/IterativeSolver.h``.
+
+Linear eigensystem solver is implemented in ``molpro/linalg/itsolv/LinearEigensystem.h``.
+
+Linear eigensystem and linear equations use a novel P space and D space algorithm described in the paper (WIP).
+
+There is significant overlap between different solvers and all common functionalities are declared in IterativeSolver
+base class and implemented in IterativeSolverTemplate. This makes it easy to extend the library with new solvers.
+See LinearEigensystem for an example of the structure.
 
 */
 }

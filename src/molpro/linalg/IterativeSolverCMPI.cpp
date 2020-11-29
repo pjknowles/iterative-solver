@@ -54,8 +54,8 @@ std::stack<Instance> instances;
 } // namespace
 
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
-                                                           double thresh, int verbosity, const char* fname,
-                                                           int64_t fcomm, int lmppx) {
+                                                           double thresh, int hermitian, int verbosity,
+                                                           const char* fname, int64_t fcomm, int lmppx) {
   std::shared_ptr<Profiler> profiler = nullptr;
   std::string pname(fname);
   int flag;
@@ -107,8 +107,8 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
 }
 
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
-                                                         const double* rhs, double aughes, double thresh, int verbosity,
-                                                         const char* fname, int64_t fcomm, int lmppx) {
+                                                         const double* rhs, double aughes, double thresh, int hermitian,
+                                                         int verbosity, const char* fname, int64_t fcomm, int lmppx) {
   /*
     std::shared_ptr<Profiler> profiler = nullptr;
     std::string pname(fname);

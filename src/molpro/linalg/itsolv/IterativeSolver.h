@@ -150,7 +150,7 @@ public:
 
 //! Optimises to a stationary point using methods such as L-BFGS
 template <class R, class Q, class P>
-class Optimize : public IterativeSolver<R, Q, P> {
+class IOptimize : public IterativeSolver<R, Q, P> {
 public:
   using typename IterativeSolver<R, Q, P>::value_type;
   using typename IterativeSolver<R, Q, P>::scalar_type;

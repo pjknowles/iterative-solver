@@ -43,21 +43,18 @@ public:
   virtual void update_dspace(VecRef<Q>& params, VecRef<Q>& actions) = 0;
 
   virtual VecRef<P> paramsp() = 0;
-  virtual VecRef<P> actionsp() = 0;
   virtual VecRef<Q> paramsq() = 0;
   virtual VecRef<Q> actionsq() = 0;
   virtual VecRef<Q> paramsd() = 0;
   virtual VecRef<Q> actionsd() = 0;
 
   virtual CVecRef<P> paramsp() const = 0;
-  virtual CVecRef<P> actionsp() const = 0;
   virtual CVecRef<Q> paramsq() const = 0;
   virtual CVecRef<Q> actionsq() const = 0;
   virtual CVecRef<Q> paramsd() const = 0;
   virtual CVecRef<Q> actionsd() const = 0;
 
   virtual CVecRef<P> cparamsp() const = 0;
-  virtual CVecRef<P> cactionsp() const = 0;
   virtual CVecRef<Q> cparamsq() const = 0;
   virtual CVecRef<Q> cactionsq() const = 0;
   virtual CVecRef<Q> cparamsd() const = 0;

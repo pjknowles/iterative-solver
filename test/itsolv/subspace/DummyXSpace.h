@@ -33,21 +33,18 @@ struct DummyXSpace : public molpro::linalg::itsolv::subspace::XSpaceI<R, Q, P> {
   void update_dspace(VecRef<Q>& params, VecRef<Q>& actions) override {}
 
   VecRef<P> paramsp() override { return VecRef<P>{}; }
-  VecRef<P> actionsp() override { return VecRef<P>{}; }
   VecRef<Q> paramsq() override { return VecRef<Q>{}; }
   VecRef<Q> actionsq() override { return VecRef<Q>{}; }
   VecRef<Q> paramsd() override { return VecRef<Q>{}; }
   VecRef<Q> actionsd() override { return VecRef<Q>{}; }
 
   CVecRef<P> paramsp() const override { return CVecRef<P>{}; }
-  CVecRef<P> actionsp() const override { return CVecRef<P>{}; }
   CVecRef<Q> paramsq() const override { return CVecRef<Q>{}; }
   CVecRef<Q> actionsq() const override { return CVecRef<Q>{}; }
   CVecRef<Q> paramsd() const override { return CVecRef<Q>{}; }
   CVecRef<Q> actionsd() const override { return CVecRef<Q>{}; }
 
   CVecRef<P> cparamsp() const override { return CVecRef<P>{}; }
-  CVecRef<P> cactionsp() const override { return CVecRef<P>{}; }
   CVecRef<Q> cparamsq() const override { return CVecRef<Q>{}; }
   CVecRef<Q> cactionsq() const override { return CVecRef<Q>{}; }
   CVecRef<Q> cparamsd() const override { return CVecRef<Q>{}; }

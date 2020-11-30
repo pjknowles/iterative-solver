@@ -212,21 +212,18 @@ public:
   }
 
   VecRef<P> paramsp() override { return pspace.params(); }
-  VecRef<P> actionsp() override { return pspace.actions(); }
   VecRef<Q> paramsq() override { return qspace.params(); }
   VecRef<Q> actionsq() override { return qspace.actions(); }
   VecRef<Q> paramsd() override { return dspace.params(); }
   VecRef<Q> actionsd() override { return dspace.actions(); }
 
   CVecRef<P> paramsp() const override { return pspace.params(); }
-  CVecRef<P> actionsp() const override { return pspace.actions(); }
   CVecRef<Q> paramsq() const override { return qspace.params(); }
   CVecRef<Q> actionsq() const override { return qspace.actions(); }
   CVecRef<Q> paramsd() const override { return dspace.cparams(); }
   CVecRef<Q> actionsd() const override { return dspace.cactions(); }
 
   CVecRef<P> cparamsp() const override { return pspace.cparams(); }
-  CVecRef<P> cactionsp() const override { return pspace.cactions(); }
   CVecRef<Q> cparamsq() const override { return qspace.cparams(); }
   CVecRef<Q> cactionsq() const override { return qspace.cactions(); }
   CVecRef<Q> cparamsd() const override { return dspace.cparams(); }

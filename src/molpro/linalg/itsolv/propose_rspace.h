@@ -3,9 +3,9 @@
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/helper.h>
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
+#include <molpro/linalg/itsolv/subspace/ISubspaceSolver.h>
 #include <molpro/linalg/itsolv/subspace/IXSpace.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
-#include <molpro/linalg/itsolv/subspace/SubspaceSolverI.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/util.h>
@@ -535,7 +535,7 @@ auto get_new_working_set(const std::vector<int>& working_set, const CVecRef<R>& 
  */
 template <class R, class Q, class P, typename value_type_abs>
 auto propose_rspace(ILinearEigensystem<R, Q, P>& solver, const VecRef<R>& parameters, const VecRef<R>& residuals,
-                    subspace::IXSpace<R, Q, P>& xspace, subspace::SubspaceSolverI<R, Q, P>& subspace_solver,
+                    subspace::IXSpace<R, Q, P>& xspace, subspace::ISubspaceSolver<R, Q, P>& subspace_solver,
                     ArrayHandlers<R, Q, P>& handlers, Logger& logger, value_type_abs svd_thresh,
                     value_type_abs res_norm_thresh, int max_size_qspace) {
   logger.msg("itsolv::detail::propose_rspace", Logger::Trace);

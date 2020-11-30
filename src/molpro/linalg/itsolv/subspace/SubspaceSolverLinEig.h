@@ -1,19 +1,19 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERLINEIG_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERLINEIG_H
+#include <molpro/linalg/itsolv/subspace/ISubspaceSolver.h>
 #include <molpro/linalg/itsolv/subspace/IXSpace.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
-#include <molpro/linalg/itsolv/subspace/SubspaceSolverI.h>
 
 namespace molpro::linalg::itsolv::subspace {
 
 template <class RT, class QT, class PT>
-class SubspaceSolverLinEig : public SubspaceSolverI<RT, QT, PT> {
+class SubspaceSolverLinEig : public ISubspaceSolver<RT, QT, PT> {
 public:
-  using value_type = typename SubspaceSolverI<RT, QT, PT>::value_type;
-  using value_type_abs = typename SubspaceSolverI<RT, QT, PT>::value_type_abs;
-  using R = typename SubspaceSolverI<RT, QT, PT>::R;
-  using Q = typename SubspaceSolverI<RT, QT, PT>::Q;
-  using P = typename SubspaceSolverI<RT, QT, PT>::P;
+  using value_type = typename ISubspaceSolver<RT, QT, PT>::value_type;
+  using value_type_abs = typename ISubspaceSolver<RT, QT, PT>::value_type_abs;
+  using R = typename ISubspaceSolver<RT, QT, PT>::R;
+  using Q = typename ISubspaceSolver<RT, QT, PT>::Q;
+  using P = typename ISubspaceSolver<RT, QT, PT>::P;
 
   explicit SubspaceSolverLinEig(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)) {}
 

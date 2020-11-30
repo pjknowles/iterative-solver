@@ -1,5 +1,5 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERI_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERI_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_ISUBSPACESOLVER_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_ISUBSPACESOLVER_H
 #include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/itsolv/subspace/IXSpace.h>
 
@@ -12,13 +12,13 @@ namespace molpro::linalg::itsolv::subspace {
  * problem, and residual minimisation in DIIS. They should inherit from this class to have consistent interface.
  */
 template <class RT, class QT, class PT>
-struct SubspaceSolverI {
+struct ISubspaceSolver {
   using R = RT;
   using Q = QT;
   using P = PT;
   using value_type = typename array::ArrayHandler<R, R>::value_type;
   using value_type_abs = typename array::ArrayHandler<R, R>::value_type_abs;
-  virtual ~SubspaceSolverI() = default;
+  virtual ~ISubspaceSolver() = default;
 
   /*!
    * @brief Solve the subspace problem
@@ -50,4 +50,4 @@ struct SubspaceSolverI {
 };
 
 } // namespace molpro::linalg::itsolv::subspace
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERI_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_ISUBSPACESOLVER_H

@@ -86,10 +86,10 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
       Instance{std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers), profiler, n, comm});
   auto& instance = instances.top();
   instance.solver->set_n_roots(nroot);
-  instance.solver->set_hermitian(hermitian);
   LinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
       dynamic_cast<LinearEigensystem<Rvector, Qvector, Pvector>*>(instance.solver.get());
   if (solver_cast) {
+    solver_cast->set_hermiticity(hermitian);
     solver_cast->set_convergence_threshold(1.0e-12);
     solver_cast->propose_rspace_norm_thresh = 1.0e-14;
     solver_cast->set_max_size_qspace(10);

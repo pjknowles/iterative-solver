@@ -70,8 +70,7 @@ public:
    * \return The number of vectors contained in parameters, action, parametersP
    */
   virtual size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix,
-                       const VecRef<R>& parameters, const VecRef<R>& action,
-                       const fapply_on_p_type& apply_p) = 0;
+                       const VecRef<R>& parameters, const VecRef<R>& action, const fapply_on_p_type& apply_p) = 0;
 
   // FIXME Is this needed?
   virtual void clearP() = 0;
@@ -121,8 +120,6 @@ public:
   //! Reports the convergence threshold
   virtual double convergence_threshold() const = 0;
   virtual const subspace::Dimensions& dimensions() const = 0;
-  //! Sets hermiticity of kernel in linear problems
-  virtual void set_hermitian(bool hermitian) = 0;
   // FIXME Missing parameters: SVD threshold
 };
 
@@ -137,6 +134,10 @@ public:
   virtual std::vector<scalar_type> eigenvalues() const = 0;
   //! The calculated eigenvalues for roots in the working set
   virtual std::vector<scalar_type> working_set_eigenvalues() const = 0;
+  //! Sets hermiticity of kernel
+  virtual void set_hermiticity(bool hermitian) = 0;
+  //! Gets hermiticity of kernel, if true than it is hermitian, otherwise it is not
+  virtual bool get_hermiticity() = 0;
 };
 
 template <class R, class Q, class P>
@@ -148,6 +149,10 @@ public:
   void add_equations(const std::vector<R>& rhs) = 0;
   void add_equations(const R& rhs) = 0;
   virtual const std::vector<Q>& rhs() const = 0;
+  //! Sets hermiticity of kernel
+  virtual void set_hermiticity(bool hermitian) = 0;
+  //! Gets hermiticity of kernel, if true than it is hermitian, otherwise it is not
+  virtual bool get_hermiticity() = 0;
 };
 
 //! Optimises to a stationary point using methods such as L-BFGS

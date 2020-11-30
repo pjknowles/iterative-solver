@@ -29,7 +29,7 @@ public:
   using IterativeSolverTemplate<ILinearEigensystem, R, Q, P>::report;
 
   explicit LinearEigensystem(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
-                              const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
+                             const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
       : SolverTemplate(std::make_shared<subspace::XSpace<R, Q, P>>(handlers, logger_),
                        std::static_pointer_cast<subspace::SubspaceSolverI<R, Q, P>>(
                            std::make_shared<subspace::SubspaceSolverLinEig<R, Q, P>>(logger_)),
@@ -107,6 +107,8 @@ public:
     if (m_dspace_resetter.get_max_Qsize() > m_max_size_qspace)
       m_dspace_resetter.set_max_Qsize(m_max_size_qspace);
   }
+  void set_hermiticity(bool hermitian) override { m_hermiticity = hermitian; }
+  bool get_hermiticity() override { return m_hermiticity; }
 
   std::shared_ptr<Logger> logger;
   double propose_rspace_norm_thresh = 1e-10; //!< vectors with norm less than threshold can be considered null.
@@ -116,6 +118,7 @@ public:
 protected:
   int m_max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space
   detail::DSpaceResetter<Q> m_dspace_resetter;             //!< resets D space
+  bool m_hermiticity = true;                               //!< whether the problem is hermitian or not
 };
 
 } // namespace molpro::linalg::itsolv

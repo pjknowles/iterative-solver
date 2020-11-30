@@ -88,8 +88,8 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
   Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> S(metric.data(), dimension, dimension);
   Eigen::MatrixXcd subspaceEigenvectors; // FIXME templating
   Eigen::VectorXcd subspaceEigenvalues;  // FIXME templating
-  //    molpro::cout << "diagonalizeSubspaceMatrix H:\n" << H.format(Eigen::FullPrecision) << std::endl;
-  //    molpro::cout << "diagonalizeSubspaceMatrix S:\n" << S.format(Eigen::FullPrecision) << std::endl;
+  molpro::cout << "diagonalizeSubspaceMatrix H:\n" << H.format(Eigen::FullPrecision) << std::endl;
+  molpro::cout << "diagonalizeSubspaceMatrix S:\n" << S.format(Eigen::FullPrecision) << std::endl;
   //   Eigen::GeneralizedEigenSolver<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV);
   svd.setThreshold(svdThreshold);
@@ -115,6 +115,10 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
   subspaceEigenvalues = s.eigenvalues();
   if (s.eigenvalues().imag().norm() < 1e-10 and s.eigenvectors().imag().norm() < 1e-10) { // real eigenvectors
     subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors().real();
+    molpro::cout << "subspaceEigenvalues\n" << subspaceEigenvalues << std::endl;
+    molpro::cout << "subspaceEigenvectors\n" << subspaceEigenvectors << std::endl;
+    molpro::cout << "H.subspaceEigenvectors\n" << H*subspaceEigenvectors << std::endl;
+    molpro::cout << "H.subspaceEigenvectors-S.c.eps\n" << H*subspaceEigenvectors-S*subspaceEigenvectors*subspaceEigenvalues.asDiagonal() << std::endl;
 
   } else { // complex eigenvectors
 #ifdef __INTEL_COMPILER

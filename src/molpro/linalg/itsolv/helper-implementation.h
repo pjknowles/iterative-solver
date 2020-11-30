@@ -84,7 +84,10 @@ template <typename value_type, typename std::enable_if_t<!is_complex<value_type>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, const size_t dimension,
                   bool hermitian, double svdThreshold, int verbosity) {
-  Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> H(matrix.data(), dimension, dimension);
+  Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> HrowMajor(
+      matrix.data(), dimension, dimension);
+  Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> H(dimension, dimension);
+  H = HrowMajor;
   Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> S(metric.data(), dimension, dimension);
   Eigen::MatrixXcd subspaceEigenvectors; // FIXME templating
   Eigen::VectorXcd subspaceEigenvalues;  // FIXME templating
@@ -117,8 +120,9 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
     subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors().real();
     molpro::cout << "subspaceEigenvalues\n" << subspaceEigenvalues << std::endl;
     molpro::cout << "subspaceEigenvectors\n" << subspaceEigenvectors << std::endl;
-    molpro::cout << "H.subspaceEigenvectors\n" << H*subspaceEigenvectors << std::endl;
-    molpro::cout << "H.subspaceEigenvectors-S.c.eps\n" << H*subspaceEigenvectors-S*subspaceEigenvectors*subspaceEigenvalues.asDiagonal() << std::endl;
+    molpro::cout << "H.subspaceEigenvectors\n" << H * subspaceEigenvectors << std::endl;
+    molpro::cout << "H.subspaceEigenvectors-S.c.eps\n"
+                 << H * subspaceEigenvectors - S * subspaceEigenvectors * subspaceEigenvalues.asDiagonal() << std::endl;
 
   } else { // complex eigenvectors
 #ifdef __INTEL_COMPILER

@@ -1,5 +1,5 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACEI_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACEI_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_IXSPACE_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_IXSPACE_H
 #include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/array/Span.h>
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
@@ -10,15 +10,15 @@ namespace molpro::linalg::itsolv::subspace {
 
 //! Full subspace
 template <class RT, class QT, class PT>
-class XSpaceI {
+class IXSpace {
 public:
   using R = RT;
   using Q = QT;
   using P = PT;
   using value_type = typename array::ArrayHandler<R, R>::value_type;
   using value_type_abs = typename array::ArrayHandler<R, R>::value_type_abs;
-  XSpaceI() = default;
-  virtual ~XSpaceI() = default;
+  IXSpace() = default;
+  virtual ~IXSpace() = default;
   SubspaceData data; //!< Equation data in the subspace
 
   //! Number of vectors forming the subspace
@@ -65,4 +65,4 @@ public:
 
 } // namespace molpro::linalg::itsolv::subspace
 
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACEI_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_IXSPACE_H

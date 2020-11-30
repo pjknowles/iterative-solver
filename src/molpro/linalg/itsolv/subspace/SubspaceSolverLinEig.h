@@ -1,8 +1,8 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERLINEIG_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERLINEIG_H
+#include <molpro/linalg/itsolv/subspace/IXSpace.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverI.h>
-#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 
 namespace molpro::linalg::itsolv::subspace {
 
@@ -17,7 +17,7 @@ public:
 
   explicit SubspaceSolverLinEig(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)) {}
 
-  void solve(XSpaceI<R, Q, P>& xspace, const size_t nroots_max) override {
+  void solve(IXSpace<R, Q, P>& xspace, const size_t nroots_max) override {
     m_logger->msg("SubspaceSolverLinEig::solve", Logger::Trace);
     auto h = xspace.data[EqnData::H];
     auto s = xspace.data[EqnData::S];

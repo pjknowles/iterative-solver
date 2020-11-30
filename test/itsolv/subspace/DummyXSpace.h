@@ -2,7 +2,7 @@
 #define LINEARALGEBRA_TEST_ITSOLV_SUBSPACE_DUMMYXSPACE_H
 
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
-#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
+#include <molpro/linalg/itsolv/subspace/IXSpace.h>
 
 using molpro::linalg::itsolv::CVecRef;
 using molpro::linalg::itsolv::VecRef;
@@ -10,9 +10,9 @@ using molpro::linalg::itsolv::subspace::Matrix;
 
 namespace {
 template <class R, class Q, class P>
-struct DummyXSpace : public molpro::linalg::itsolv::subspace::XSpaceI<R, Q, P> {
-  using typename molpro::linalg::itsolv::subspace::XSpaceI<R, Q, P>::value_type;
-  using typename molpro::linalg::itsolv::subspace::XSpaceI<R, Q, P>::value_type_abs;
+struct DummyXSpace : public molpro::linalg::itsolv::subspace::IXSpace<R, Q, P> {
+  using typename molpro::linalg::itsolv::subspace::IXSpace<R, Q, P>::value_type;
+  using typename molpro::linalg::itsolv::subspace::IXSpace<R, Q, P>::value_type_abs;
   //! Removes parameter i from the full subspace
   void erase(size_t i) override {}
   //! Removes parameter i from Q subspace

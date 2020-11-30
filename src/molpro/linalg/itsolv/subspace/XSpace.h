@@ -4,9 +4,9 @@
 #include <molpro/linalg/itsolv/helper.h>
 #include <molpro/linalg/itsolv/subspace/DSpace.h>
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
+#include <molpro/linalg/itsolv/subspace/IXSpace.h>
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
-#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 
 namespace molpro::linalg::itsolv::subspace {
 namespace xspace {
@@ -131,11 +131,11 @@ inline void copy_dspace_eqn_data(const NewData& new_data, SubspaceData& data, co
 } // namespace xspace
 
 template <class R, class Q, class P>
-class XSpace : public XSpaceI<R, Q, P> {
+class XSpace : public IXSpace<R, Q, P> {
 public:
-  using typename XSpaceI<R, Q, P>::value_type;
-  using typename XSpaceI<R, Q, P>::value_type_abs;
-  using XSpaceI<R, Q, P>::data;
+  using typename IXSpace<R, Q, P>::value_type;
+  using typename IXSpace<R, Q, P>::value_type_abs;
+  using IXSpace<R, Q, P>::data;
 
   explicit XSpace(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers, const std::shared_ptr<Logger>& logger)
       : pspace(), qspace(handlers, logger), dspace(logger), m_handlers(handlers), m_logger(logger) {

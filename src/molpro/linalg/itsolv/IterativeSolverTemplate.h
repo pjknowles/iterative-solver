@@ -3,9 +3,9 @@
 #include <iostream>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/Logger.h>
+#include <molpro/linalg/itsolv/subspace/IXSpace.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverI.h>
-#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/wrap.h>
 
@@ -254,7 +254,7 @@ public:
   const subspace::Dimensions& dimensions() const override { return m_xspace->dimensions(); }
 
 protected:
-  IterativeSolverTemplate(std::shared_ptr<subspace::XSpaceI<R, Q, P>> xspace,
+  IterativeSolverTemplate(std::shared_ptr<subspace::IXSpace<R, Q, P>> xspace,
                           std::shared_ptr<subspace::SubspaceSolverI<R, Q, P>> solver,
                           std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Statistics> stats,
                           std::shared_ptr<Logger> logger)
@@ -315,7 +315,7 @@ protected:
   }
 
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers
-  std::shared_ptr<subspace::XSpaceI<R, Q, P>> m_xspace;                  //!< manages the subspace and associated data
+  std::shared_ptr<subspace::IXSpace<R, Q, P>> m_xspace;                  //!< manages the subspace and associated data
   std::shared_ptr<subspace::SubspaceSolverI<R, Q, P>> m_subspace_solver; //!< solves the subspace problem
   std::vector<double> m_errors;                                          //!< errors from the most recent solution
   std::vector<int> m_working_set;                                        //!< indices of roots in the working set

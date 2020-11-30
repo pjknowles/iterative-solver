@@ -1,7 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERI_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERI_H
 #include <molpro/linalg/array/ArrayHandler.h>
-#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
+#include <molpro/linalg/itsolv/subspace/IXSpace.h>
 
 namespace molpro::linalg::itsolv::subspace {
 
@@ -25,7 +25,7 @@ struct SubspaceSolverI {
    * @param xspace definition of the subspace
    * @param nroots_max maximum number of roots to calculate
    */
-  virtual void solve(XSpaceI<R, Q, P>& xspace, size_t nroots_max) = 0;
+  virtual void solve(IXSpace<R, Q, P>& xspace, size_t nroots_max) = 0;
 
   /*!
    * @brief Update the error associated with a given root

@@ -34,7 +34,9 @@ public:
                        std::static_pointer_cast<subspace::SubspaceSolverI<R, Q, P>>(
                            std::make_shared<subspace::SubspaceSolverLinEig<R, Q, P>>(logger_)),
                        handlers, std::make_shared<Statistics>(), logger_),
-        logger(logger_) {}
+        logger(logger_) {
+    set_hermiticity(m_hermiticity);
+  }
 
   /*!
    * \brief Proposes new parameters for the subspace from the preconditioned residuals.
@@ -107,7 +109,11 @@ public:
     if (m_dspace_resetter.get_max_Qsize() > m_max_size_qspace)
       m_dspace_resetter.set_max_Qsize(m_max_size_qspace);
   }
-  void set_hermiticity(bool hermitian) override { m_hermiticity = hermitian; }
+  void set_hermiticity(bool hermitian) override {
+    m_hermiticity = hermitian;
+    auto xspace = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
+    xspace->set_hermiticity(hermitian);
+  }
   bool get_hermiticity() override { return m_hermiticity; }
 
   std::shared_ptr<Logger> logger;

@@ -14,7 +14,7 @@ PROGRAM QuasiNewton_Example
   INTEGER :: i, j
   LOGICAL :: converged
   LOGICAL, PARAMETER :: forced = .FALSE.
-  PRINT *, 'Fortran binding of IterativeSolver::Optimize'
+  PRINT *, 'Fortran binding of IterativeSolver::IOptimize'
   m = 1; DO i = 1, n; m(i, i) = 3*i;
   END DO
   CALL Iterative_Solver_Optimize_Initialize(n, thresh = 1d-9, verbosity = 1, algorithm = "L-BFGS")

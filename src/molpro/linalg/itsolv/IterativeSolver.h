@@ -130,7 +130,7 @@ public:
  * @brief Interface for a specific iterative solver, it can add special member functions or variables.
  */
 template <class R, class Q, class P>
-class LinearEigensystem : public IterativeSolver<R, Q, P> {
+class ILinearEigensystem : public IterativeSolver<R, Q, P> {
 public:
   using typename IterativeSolver<R, Q, P>::scalar_type;
   //! The calculated eigenvalues of the subspace matrix
@@ -140,7 +140,7 @@ public:
 };
 
 template <class R, class Q, class P>
-class LinearEquations : public IterativeSolver<R, Q, P> {
+class ILinearEquations : public IterativeSolver<R, Q, P> {
 public:
   using typename IterativeSolver<R, Q, P>::scalar_type;
   //! eigenvalues of augmented Hessian method, if it was used
@@ -152,7 +152,7 @@ public:
 
 //! Optimises to a stationary point using methods such as L-BFGS
 template <class R, class Q, class P>
-class Optimize : public IterativeSolver<R, Q, P> {
+class IOptimize : public IterativeSolver<R, Q, P> {
 public:
   using typename IterativeSolver<R, Q, P>::value_type;
   using typename IterativeSolver<R, Q, P>::scalar_type;
@@ -171,7 +171,7 @@ public:
 
 //! Solves non-linear system of equations using methods such as DIIS
 template <class R, class Q, class P>
-class NonLinearEquations : public IterativeSolver<R, Q, P> {};
+class INonLinearEquations : public IterativeSolver<R, Q, P> {};
 
 } // namespace molpro::linalg::itsolv
 

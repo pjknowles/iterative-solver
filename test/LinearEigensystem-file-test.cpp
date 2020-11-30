@@ -121,8 +121,6 @@ void test_eigen(const std::string& title = "") {
 
       auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>();
       molpro::linalg::itsolv::LinearEigensystem<Rvector, Qvector, Pvector> solver(handlers);
-//      solver.logger->data_dump=true;
-//      solver.logger->max_trace_level=molpro::linalg::itsolv::Logger::Trace;
       solver.set_n_roots(nroot);
       solver.set_convergence_threshold(1.0e-10);
       solver.propose_rspace_norm_thresh = 1.0e-14;

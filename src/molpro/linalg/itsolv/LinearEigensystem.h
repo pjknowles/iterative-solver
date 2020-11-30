@@ -113,6 +113,8 @@ public:
     m_hermiticity = hermitian;
     auto xspace = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
     xspace->set_hermiticity(hermitian);
+    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
+    subspace_solver->set_hermiticity(hermitian);
   }
   bool get_hermiticity() override { return m_hermiticity; }
 

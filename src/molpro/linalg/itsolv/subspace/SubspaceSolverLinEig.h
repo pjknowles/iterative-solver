@@ -1,23 +1,23 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERLINEIG_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERLINEIG_H
+#include <molpro/linalg/itsolv/subspace/ISubspaceSolver.h>
+#include <molpro/linalg/itsolv/subspace/IXSpace.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
-#include <molpro/linalg/itsolv/subspace/SubspaceSolverI.h>
-#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 
 namespace molpro::linalg::itsolv::subspace {
 
 template <class RT, class QT, class PT>
-class SubspaceSolverLinEig : public SubspaceSolverI<RT, QT, PT> {
+class SubspaceSolverLinEig : public ISubspaceSolver<RT, QT, PT> {
 public:
-  using value_type = typename SubspaceSolverI<RT, QT, PT>::value_type;
-  using value_type_abs = typename SubspaceSolverI<RT, QT, PT>::value_type_abs;
-  using R = typename SubspaceSolverI<RT, QT, PT>::R;
-  using Q = typename SubspaceSolverI<RT, QT, PT>::Q;
-  using P = typename SubspaceSolverI<RT, QT, PT>::P;
+  using value_type = typename ISubspaceSolver<RT, QT, PT>::value_type;
+  using value_type_abs = typename ISubspaceSolver<RT, QT, PT>::value_type_abs;
+  using R = typename ISubspaceSolver<RT, QT, PT>::R;
+  using Q = typename ISubspaceSolver<RT, QT, PT>::Q;
+  using P = typename ISubspaceSolver<RT, QT, PT>::P;
 
   explicit SubspaceSolverLinEig(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)) {}
 
-  void solve(XSpaceI<R, Q, P>& xspace, const size_t nroots_max) override {
+  void solve(IXSpace<R, Q, P>& xspace, const size_t nroots_max) override {
     m_logger->msg("SubspaceSolverLinEig::solve", Logger::Trace);
     auto h = xspace.data[EqnData::H];
     auto s = xspace.data[EqnData::S];
@@ -25,8 +25,6 @@ public:
       m_logger->msg("S = " + as_string(s), Logger::Info);
       m_logger->msg("H = " + as_string(h, 15), Logger::Info);
     }
-//    std::cout << "h "<<as_string(h)<<std::endl;
-//    std::cout << "s "<<as_string(s)<<std::endl;
     auto dim = h.rows();
     auto evec = std::vector<value_type>{};
     int verbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
@@ -58,6 +56,11 @@ public:
   //! Number of solutions
   size_t size() const override { return m_solutions.rows(); }
 
+  // FIXME What difference does it make?
+  //! Set Hermiticity of the subspace.
+  void set_hermiticity(bool hermitian) { m_hermitian = hermitian; }
+  bool get_hermiticity() { return m_hermitian; }
+
 protected:
   Matrix<value_type> m_solutions;        //!< solution matrix with row vectors
   std::vector<value_type> m_eigenvalues; //!< eigenvalues
@@ -66,7 +69,8 @@ protected:
 
 public:
   value_type_abs m_svd_solver_threshold = 1.0e-14; //!< threshold to select null space during SVD in eigenproblem
-  bool m_hermitian = true;                         //!< flags the matrix as Hermitian
+protected:
+  bool m_hermitian = true; //!< flags the matrix as Hermitian
 };
 
 } // namespace molpro::linalg::itsolv::subspace

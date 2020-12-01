@@ -1,5 +1,5 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACEI_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACEI_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_IXSPACE_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_IXSPACE_H
 #include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/array/Span.h>
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
@@ -10,15 +10,15 @@ namespace molpro::linalg::itsolv::subspace {
 
 //! Full subspace
 template <class RT, class QT, class PT>
-class XSpaceI {
+class IXSpace {
 public:
   using R = RT;
   using Q = QT;
   using P = PT;
   using value_type = typename array::ArrayHandler<R, R>::value_type;
   using value_type_abs = typename array::ArrayHandler<R, R>::value_type_abs;
-  XSpaceI() = default;
-  virtual ~XSpaceI() = default;
+  IXSpace() = default;
+  virtual ~IXSpace() = default;
   SubspaceData data; //!< Equation data in the subspace
 
   //! Number of vectors forming the subspace
@@ -43,21 +43,18 @@ public:
   virtual void update_dspace(VecRef<Q>& params, VecRef<Q>& actions) = 0;
 
   virtual VecRef<P> paramsp() = 0;
-  virtual VecRef<P> actionsp() = 0;
   virtual VecRef<Q> paramsq() = 0;
   virtual VecRef<Q> actionsq() = 0;
   virtual VecRef<Q> paramsd() = 0;
   virtual VecRef<Q> actionsd() = 0;
 
   virtual CVecRef<P> paramsp() const = 0;
-  virtual CVecRef<P> actionsp() const = 0;
   virtual CVecRef<Q> paramsq() const = 0;
   virtual CVecRef<Q> actionsq() const = 0;
   virtual CVecRef<Q> paramsd() const = 0;
   virtual CVecRef<Q> actionsd() const = 0;
 
   virtual CVecRef<P> cparamsp() const = 0;
-  virtual CVecRef<P> cactionsp() const = 0;
   virtual CVecRef<Q> cparamsq() const = 0;
   virtual CVecRef<Q> cactionsq() const = 0;
   virtual CVecRef<Q> cparamsd() const = 0;
@@ -68,4 +65,4 @@ public:
 
 } // namespace molpro::linalg::itsolv::subspace
 
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_XSPACEI_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_IXSPACE_H

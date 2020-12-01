@@ -3,8 +3,8 @@
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
+#include <molpro/linalg/itsolv/subspace/IXSpace.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
-#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 #include <molpro/linalg/itsolv/subspace/gram_schmidt.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/util.h>
@@ -12,7 +12,7 @@
 namespace molpro::linalg::itsolv::detail {
 //! Removes Q parameters that have smallest contribution to any solution until Q space size is within limit
 template <class R, class Q, class P, typename value_type>
-void resize_qspace(subspace::XSpaceI<R, Q, P>& xspace, const subspace::Matrix<value_type>& solutions,
+void resize_qspace(subspace::IXSpace<R, Q, P>& xspace, const subspace::Matrix<value_type>& solutions,
                    int m_max_Qsize_after_reset, Logger& logger) {
   logger.msg("resize_qspace()", Logger::Trace);
   auto q_delete = limit_qspace_size(xspace.dimensions(), m_max_Qsize_after_reset, solutions, logger);
@@ -95,7 +95,7 @@ public:
 
   //! Run the reset operation
   template <class R, class P, typename value_type, typename value_type_abs>
-  std::vector<int> run(const VecRef<R>& rparams, subspace::XSpaceI<R, Q, P>& xspace,
+  std::vector<int> run(const VecRef<R>& rparams, subspace::IXSpace<R, Q, P>& xspace,
                        const subspace::Matrix<value_type>& solutions, const value_type_abs norm_thresh,
                        const value_type_abs svd_thresh, ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
     logger.msg("DSpaceResetter::run()", Logger::Trace);

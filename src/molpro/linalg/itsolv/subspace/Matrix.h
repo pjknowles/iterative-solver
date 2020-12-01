@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
+#include <cassert>
 
 namespace molpro::linalg::itsolv::subspace {
 

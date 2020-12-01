@@ -20,9 +20,6 @@ public:
   CVecRef<P> params() const { return cwrap(m_params); }
   CVecRef<P> cparams() const { return params(); }
   VecRef<P> params() { return wrap(m_params); }
-  CVecRef<P> actions() const { return {}; }
-  CVecRef<P> cactions() const { return actions(); }
-  VecRef<P> actions() { return {}; }
 
   size_t size() const { return m_params.size(); }
 

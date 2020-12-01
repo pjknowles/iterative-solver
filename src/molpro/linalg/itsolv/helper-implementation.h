@@ -84,12 +84,13 @@ template <typename value_type, typename std::enable_if_t<!is_complex<value_type>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, const size_t dimension,
                   bool hermitian, double svdThreshold, int verbosity) {
-  Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> H(matrix.data(), dimension, dimension);
+  Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> HrowMajor(
+      matrix.data(), dimension, dimension);
+  Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> H(dimension, dimension);
+  H = HrowMajor;
   Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> S(metric.data(), dimension, dimension);
   Eigen::MatrixXcd subspaceEigenvectors; // FIXME templating
   Eigen::VectorXcd subspaceEigenvalues;  // FIXME templating
-  //    molpro::cout << "diagonalizeSubspaceMatrix H:\n" << H.format(Eigen::FullPrecision) << std::endl;
-  //    molpro::cout << "diagonalizeSubspaceMatrix S:\n" << S.format(Eigen::FullPrecision) << std::endl;
   //   Eigen::GeneralizedEigenSolver<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV);
   svd.setThreshold(svdThreshold);

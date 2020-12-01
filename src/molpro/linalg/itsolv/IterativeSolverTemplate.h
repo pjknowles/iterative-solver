@@ -3,9 +3,9 @@
 #include <iostream>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/Logger.h>
+#include <molpro/linalg/itsolv/subspace/ISubspaceSolver.h>
+#include <molpro/linalg/itsolv/subspace/IXSpace.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
-#include <molpro/linalg/itsolv/subspace/SubspaceSolverI.h>
-#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/wrap.h>
 
@@ -194,9 +194,9 @@ public:
     detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
                                m_xspace->paramsq(), m_xspace->paramsd(), m_xspace->dimensions().oP,
                                m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
-    detail::construct_solution(residual, roots, m_subspace_solver->solutions(), m_xspace->actionsp(),
-                               m_xspace->actionsq(), m_xspace->actionsd(), m_xspace->dimensions().oP,
-                               m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
+    detail::construct_solution(residual, roots, m_subspace_solver->solutions(), {}, m_xspace->actionsq(),
+                               m_xspace->actionsd(), m_xspace->dimensions().oP, m_xspace->dimensions().oQ,
+                               m_xspace->dimensions().oD, *m_handlers);
     detail::construct_residual(roots, m_subspace_solver->eigenvalues(), cwrap(parameters), residual, m_handlers->rr());
   };
 
@@ -254,8 +254,8 @@ public:
   const subspace::Dimensions& dimensions() const override { return m_xspace->dimensions(); }
 
 protected:
-  IterativeSolverTemplate(std::shared_ptr<subspace::XSpaceI<R, Q, P>> xspace,
-                          std::shared_ptr<subspace::SubspaceSolverI<R, Q, P>> solver,
+  IterativeSolverTemplate(std::shared_ptr<subspace::IXSpace<R, Q, P>> xspace,
+                          std::shared_ptr<subspace::ISubspaceSolver<R, Q, P>> solver,
                           std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Statistics> stats,
                           std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_xspace(std::move(xspace)), m_subspace_solver(std::move(solver)),
@@ -282,9 +282,9 @@ protected:
       detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
                                  m_xspace->paramsq(), m_xspace->paramsd(), m_xspace->dimensions().oP,
                                  m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
-      detail::construct_solution(action, roots, m_subspace_solver->solutions(), m_xspace->actionsp(),
-                                 m_xspace->actionsq(), m_xspace->actionsd(), m_xspace->dimensions().oP,
-                                 m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
+      detail::construct_solution(action, roots, m_subspace_solver->solutions(), {}, m_xspace->actionsq(),
+                                 m_xspace->actionsd(), m_xspace->dimensions().oP, m_xspace->dimensions().oQ,
+                                 m_xspace->dimensions().oD, *m_handlers);
       auto pvectors = detail::construct_vectorP(roots, m_subspace_solver->solutions(), m_xspace->dimensions().oP,
                                                 m_xspace->dimensions().nP);
       detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
@@ -292,8 +292,6 @@ protected:
         apply_p(pvectors, m_xspace->cparamsp(), action);
       } else {
         detail::remove_p_component(parameters, roots, m_subspace_solver->solutions(), m_xspace->cparamsp(),
-                                   m_xspace->dimensions().oP, m_handlers->rp());
-        detail::remove_p_component(action, roots, m_subspace_solver->solutions(), m_xspace->cactionsp(),
                                    m_xspace->dimensions().oP, m_handlers->rp());
       }
       detail::construct_residual(roots, m_subspace_solver->eigenvalues(), cwrap(parameters), action, m_handlers->rr());
@@ -317,8 +315,8 @@ protected:
   }
 
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers
-  std::shared_ptr<subspace::XSpaceI<R, Q, P>> m_xspace;                  //!< manages the subspace and associated data
-  std::shared_ptr<subspace::SubspaceSolverI<R, Q, P>> m_subspace_solver; //!< solves the subspace problem
+  std::shared_ptr<subspace::IXSpace<R, Q, P>> m_xspace;                  //!< manages the subspace and associated data
+  std::shared_ptr<subspace::ISubspaceSolver<R, Q, P>> m_subspace_solver; //!< solves the subspace problem
   std::vector<double> m_errors;                                          //!< errors from the most recent solution
   std::vector<int> m_working_set;                                        //!< indices of roots in the working set
   size_t m_nroots{0};                      //!< number of roots the solver is searching for

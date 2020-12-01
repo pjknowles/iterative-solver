@@ -4,9 +4,9 @@
 #include <molpro/linalg/itsolv/helper.h>
 #include <molpro/linalg/itsolv/subspace/DSpace.h>
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
+#include <molpro/linalg/itsolv/subspace/IXSpace.h>
 #include <molpro/linalg/itsolv/subspace/PSpace.h>
 #include <molpro/linalg/itsolv/subspace/QSpace.h>
-#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
 
 namespace molpro::linalg::itsolv::subspace {
 namespace xspace {
@@ -55,8 +55,6 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
   // FIXME only works for Hermitian Hamiltonian
   transpose_copy(qx[EqnData::H].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}),
                  xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}));
-//  std::cout << "xq "<<as_string(xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew})) << std::endl;
-//  std::cout << "qx "<<as_string(qx[EqnData::H].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP})) << std::endl;
   if (logger.data_dump) {
     logger.msg("xspace::update_qspace_data() nQnew = " + std::to_string(nQnew), Logger::Info);
     logger.msg("Sqq = " + as_string(qq[EqnData::S]), Logger::Info);
@@ -117,9 +115,8 @@ auto update_dspace_action_data(const CVecRef<P>& pparams, const CVecRef<Q>& qpar
   return data;
 }
 
-inline
-void copy_dspace_eqn_data(const NewData& new_data, SubspaceData& data, const subspace::EqnData e,
-                          const Dimensions& dims) {
+inline void copy_dspace_eqn_data(const NewData& new_data, SubspaceData& data, const subspace::EqnData e,
+                                 const Dimensions& dims) {
   const auto& dd = new_data.qq.at(e);
   const auto& dx = new_data.qx.at(e);
   const auto& xd = new_data.xq.at(e);
@@ -134,11 +131,11 @@ void copy_dspace_eqn_data(const NewData& new_data, SubspaceData& data, const sub
 } // namespace xspace
 
 template <class R, class Q, class P>
-class XSpace : public XSpaceI<R, Q, P> {
+class XSpace : public IXSpace<R, Q, P> {
 public:
-  using typename XSpaceI<R, Q, P>::value_type;
-  using typename XSpaceI<R, Q, P>::value_type_abs;
-  using XSpaceI<R, Q, P>::data;
+  using typename IXSpace<R, Q, P>::value_type;
+  using typename IXSpace<R, Q, P>::value_type_abs;
+  using IXSpace<R, Q, P>::data;
 
   explicit XSpace(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers, const std::shared_ptr<Logger>& logger)
       : pspace(), qspace(handlers, logger), dspace(logger), m_handlers(handlers), m_logger(logger) {
@@ -171,6 +168,8 @@ public:
   // FIXME this must be called when XSpace is empty
   void update_pspace(const CVecRef<P>& params, const array::Span<value_type>& pp_action_matrix) override {
     assert(m_dim.nX == 0);
+    if (!m_hermitian)
+      throw std::runtime_error("P space can only be used with hermitian kernels");
     pspace.update(params, m_handlers->pp());
     update_dimensions();
     const size_t nP = m_dim.nP;
@@ -213,25 +212,26 @@ public:
   }
 
   VecRef<P> paramsp() override { return pspace.params(); }
-  VecRef<P> actionsp() override { return pspace.actions(); }
   VecRef<Q> paramsq() override { return qspace.params(); }
   VecRef<Q> actionsq() override { return qspace.actions(); }
   VecRef<Q> paramsd() override { return dspace.params(); }
   VecRef<Q> actionsd() override { return dspace.actions(); }
 
   CVecRef<P> paramsp() const override { return pspace.params(); }
-  CVecRef<P> actionsp() const override { return pspace.actions(); }
   CVecRef<Q> paramsq() const override { return qspace.params(); }
   CVecRef<Q> actionsq() const override { return qspace.actions(); }
   CVecRef<Q> paramsd() const override { return dspace.cparams(); }
   CVecRef<Q> actionsd() const override { return dspace.cactions(); }
 
   CVecRef<P> cparamsp() const override { return pspace.cparams(); }
-  CVecRef<P> cactionsp() const override { return pspace.cactions(); }
   CVecRef<Q> cparamsq() const override { return qspace.cparams(); }
   CVecRef<Q> cactionsq() const override { return qspace.cactions(); }
   CVecRef<Q> cparamsd() const override { return dspace.cparams(); }
   CVecRef<Q> cactionsd() const override { return dspace.cactions(); }
+
+  //! Set Hermiticity of the subspace. P space can only be used with Hermitian problems
+  void set_hermiticity(bool hermitian) { m_hermitian = hermitian; }
+  bool get_hermiticity() { return m_hermitian; }
 
   PSpace<R, P> pspace;
   QSpace<R, Q, P> qspace;
@@ -247,7 +247,7 @@ protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::shared_ptr<Logger> m_logger;
   Dimensions m_dim;
-  bool m_hermitian = false; //!< whether the matrix is Hermitian
+  bool m_hermitian = true; //!< whether the matrix is Hermitian
 };
 
 } // namespace molpro::linalg::itsolv::subspace

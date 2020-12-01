@@ -2,7 +2,7 @@
 #define LINEARALGEBRA_TEST_ITSOLV_SUBSPACE_DUMMYXSPACE_H
 
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
-#include <molpro/linalg/itsolv/subspace/XSpaceI.h>
+#include <molpro/linalg/itsolv/subspace/IXSpace.h>
 
 using molpro::linalg::itsolv::CVecRef;
 using molpro::linalg::itsolv::VecRef;
@@ -10,9 +10,9 @@ using molpro::linalg::itsolv::subspace::Matrix;
 
 namespace {
 template <class R, class Q, class P>
-struct DummyXSpace : public molpro::linalg::itsolv::subspace::XSpaceI<R, Q, P> {
-  using typename molpro::linalg::itsolv::subspace::XSpaceI<R, Q, P>::value_type;
-  using typename molpro::linalg::itsolv::subspace::XSpaceI<R, Q, P>::value_type_abs;
+struct DummyXSpace : public molpro::linalg::itsolv::subspace::IXSpace<R, Q, P> {
+  using typename molpro::linalg::itsolv::subspace::IXSpace<R, Q, P>::value_type;
+  using typename molpro::linalg::itsolv::subspace::IXSpace<R, Q, P>::value_type_abs;
   //! Removes parameter i from the full subspace
   void erase(size_t i) override {}
   //! Removes parameter i from Q subspace
@@ -33,21 +33,18 @@ struct DummyXSpace : public molpro::linalg::itsolv::subspace::XSpaceI<R, Q, P> {
   void update_dspace(VecRef<Q>& params, VecRef<Q>& actions) override {}
 
   VecRef<P> paramsp() override { return VecRef<P>{}; }
-  VecRef<P> actionsp() override { return VecRef<P>{}; }
   VecRef<Q> paramsq() override { return VecRef<Q>{}; }
   VecRef<Q> actionsq() override { return VecRef<Q>{}; }
   VecRef<Q> paramsd() override { return VecRef<Q>{}; }
   VecRef<Q> actionsd() override { return VecRef<Q>{}; }
 
   CVecRef<P> paramsp() const override { return CVecRef<P>{}; }
-  CVecRef<P> actionsp() const override { return CVecRef<P>{}; }
   CVecRef<Q> paramsq() const override { return CVecRef<Q>{}; }
   CVecRef<Q> actionsq() const override { return CVecRef<Q>{}; }
   CVecRef<Q> paramsd() const override { return CVecRef<Q>{}; }
   CVecRef<Q> actionsd() const override { return CVecRef<Q>{}; }
 
   CVecRef<P> cparamsp() const override { return CVecRef<P>{}; }
-  CVecRef<P> cactionsp() const override { return CVecRef<P>{}; }
   CVecRef<Q> cparamsq() const override { return CVecRef<Q>{}; }
   CVecRef<Q> cactionsq() const override { return CVecRef<Q>{}; }
   CVecRef<Q> cparamsd() const override { return CVecRef<Q>{}; }

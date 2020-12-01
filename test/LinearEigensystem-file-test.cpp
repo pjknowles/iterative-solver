@@ -35,12 +35,16 @@ std::vector<double> hmat;
 std::vector<double> expected_eigenvalues;
 } // namespace
 
-void load_matrix(int dimension, const std::string& type = "", double param = 1) {
+void load_matrix(int dimension, const std::string& type = "", double param = 1, bool hermitian = true) {
   n = dimension;
   hmat.resize(n * n);
   hmat.assign(n * n, 1);
   for (int i = 0; i < n; i++)
     hmat[i * (n + 1)] = i * param;
+  if (not hermitian)
+    for (int i = 0; i < n; i++)
+      for (int j = 0; j < i; j++)
+        hmat[i * n + j] *= 2;
 }
 void load_matrix(const std::string& file) {
   std::ifstream f(std::string{"./"} + file + ".hamiltonian");
@@ -100,17 +104,19 @@ void update(std::vector<Rvector>& psg, std::vector<scalar> shift = std::vector<s
 }
 
 void test_eigen(const std::string& title = "") {
+  bool hermitian = std::abs(matrix(0, 1) - matrix(1, 0)) < 1e-10;
   {
     Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> he(hmat.data(), n, n);
-    Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he);
-    auto ev = esolver.eigenvalues();
+    Eigen::EigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he);
+    auto ev = esolver.eigenvalues().real();
     //              std::cout << "actual eigenvalues" << ev << std::endl;
     expected_eigenvalues.clear();
     for (int i = 0; i < n; i++)
       expected_eigenvalues.push_back(ev[i]);
   }
+  std::sort(expected_eigenvalues.begin(), expected_eigenvalues.end());
   for (int nroot = 1; nroot <= n && nroot <= 28; nroot++) {
-    for (auto np = 0; np <= n && np <= 50; np += std::max(nroot, int(n) / 10)) {
+    for (auto np = 0; np <= n && np <= 50 && (hermitian or np == 0); np += std::max(nroot, int(n) / 10)) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
                    << np << std::endl;
 
@@ -129,6 +135,7 @@ void test_eigen(const std::string& title = "") {
       solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
       solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
       solver.logger->data_dump = false;
+      solver.set_hermiticity(hermitian);
       std::vector<Rvector> g;
       std::vector<Rvector> x;
 
@@ -296,6 +303,17 @@ TEST(IterativeSolver, n_eigen) {
   for (auto param : std::vector<double>{1}) {
     load_matrix(n, "", param);
     test_eigen(std::to_string(n) + "/" + std::to_string(param));
+  }
+}
+TEST(IterativeSolver, nonhermitian_eigen) {
+  size_t n = 2;
+  double param = 1;
+  //  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
+  //  for (auto param : std::vector<double>{.01, .1, 1}) {
+  for (auto param : std::vector<double>{1}) {
+    load_matrix(n, "", param, false);
+    std::cout << "matrix " << hmat << std::endl;
+    test_eigen(std::to_string(n) + "/" + std::to_string(param) + ", non-hermitian");
   }
 }
 

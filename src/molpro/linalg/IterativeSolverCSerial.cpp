@@ -1,12 +1,12 @@
 #include "IterativeSolverC.h"
 
 void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t range_begin, size_t range_end,
-                                                double thresh, int verbosity, const char* fname, int64_t fcomm,
-                                                int lmppx) {}
+                                                double thresh, int hermitian, int verbosity, const char* fname,
+                                                int64_t fcomm, int lmppx) {}
 
 void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
-                                              const double* rhs, double aughes, double thresh, int verbosity,
-                                              const char* fname, int64_t fcomm, int lmppx) {}
+                                              const double* rhs, double aughes, double thresh, int hermitian,
+                                              int verbosity, const char* fname, int64_t fcomm, int lmppx) {}
 
 void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size_t range_end, double thresh, int verbosity,
                                    const char* fname, int64_t fcomm, int lmppx) {}

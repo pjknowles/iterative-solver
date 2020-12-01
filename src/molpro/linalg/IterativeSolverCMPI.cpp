@@ -54,8 +54,8 @@ std::stack<Instance> instances;
 } // namespace
 
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
-                                                           double thresh, int verbosity, const char* fname,
-                                                           int64_t fcomm, int lmppx) {
+                                                           double thresh, int hermitian, int verbosity,
+                                                           const char* fname, int64_t fcomm, int lmppx) {
   std::shared_ptr<Profiler> profiler = nullptr;
   std::string pname(fname);
   int flag;
@@ -89,6 +89,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   LinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
       dynamic_cast<LinearEigensystem<Rvector, Qvector, Pvector>*>(instance.solver.get());
   if (solver_cast) {
+    solver_cast->set_hermiticity(hermitian);
     solver_cast->set_convergence_threshold(1.0e-12);
     solver_cast->propose_rspace_norm_thresh = 1.0e-14;
     solver_cast->set_max_size_qspace(10);
@@ -107,8 +108,8 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
 }
 
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
-                                                         const double* rhs, double aughes, double thresh, int verbosity,
-                                                         const char* fname, int64_t fcomm, int lmppx) {
+                                                         const double* rhs, double aughes, double thresh, int hermitian,
+                                                         int verbosity, const char* fname, int64_t fcomm, int lmppx) {
   /*
     std::shared_ptr<Profiler> profiler = nullptr;
     std::string pname(fname);

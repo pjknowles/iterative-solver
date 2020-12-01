@@ -1,3 +1,4 @@
+#include "create_solver.h"
 #include "test.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -13,19 +14,6 @@
 #include <regex>
 #include <vector>
 
-#include <molpro/linalg/array/ArrayHandlerIterable.h>
-#include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
-#include <molpro/linalg/array/ArrayHandlerSparse.h>
-#include <molpro/linalg/itsolv/LinearEigensystem.h>
-
-using molpro::linalg::array::ArrayHandler;
-using molpro::linalg::array::ArrayHandlerIterable;
-using molpro::linalg::array::ArrayHandlerIterableSparse;
-using molpro::linalg::array::ArrayHandlerSparse;
-using molpro::linalg::itsolv::ArrayHandlers;
-using Rvector = std::vector<double>;
-using Qvector = std::vector<double>;
-using Pvector = std::map<size_t, double>;
 // Find lowest eigensolution of a matrix obtained from an external file
 // Storage of vectors in-memory via class Rvector
 using scalar = double;
@@ -144,23 +132,24 @@ void test_eigen(const std::string& title = "") {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
                    << np << std::endl;
 
-      auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>();
-      molpro::linalg::itsolv::LinearEigensystem<Rvector, Qvector, Pvector> solver(handlers);
-      solver.set_n_roots(nroot);
-      solver.set_convergence_threshold(1.0e-10);
-      solver.propose_rspace_norm_thresh = 1.0e-14;
-      solver.propose_rspace_svd_thresh = 1.0e-10;
-      solver.set_max_size_qspace(std::max(3 * nroot, std::min(int(n), std::min(1000, 3 * nroot)) - np));
-      solver.set_reset_D(4);
-      molpro::cout << "convergence threshold = " << solver.convergence_threshold()
-                   << ", svd thresh = " << solver.propose_rspace_svd_thresh
-                   << ", norm thresh = " << solver.propose_rspace_norm_thresh
-                   << ", max size of Q = " << solver.get_max_size_qspace() << ", reset D = " << solver.get_reset_D()
-                   << std::endl;
-      solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
-      solver.logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
-      solver.logger->data_dump = false;
-      solver.set_hermiticity(hermitian);
+      auto [solver, logger] = molpro::test::create_LinearEigensystem();
+      auto options = CastOptions::LinearEigensystem(solver->get_options());
+      options->n_roots = nroot;
+      options->convergence_threshold = 1.0e-10;
+      options->norm_thresh = 1.0e-14;
+      options->svd_thresh = 1.0e-10;
+      options->max_size_qspace = std::max(3 * nroot, std::min(int(n), std::min(1000, 3 * nroot)) - np);
+      options->reset_D = 4;
+      options->hermiticity = hermitian;
+      solver->set_options(options);
+      options = CastOptions::LinearEigensystem(solver->get_options());
+      molpro::cout << "convergence threshold = " << options->convergence_threshold.value() << ", svd thresh"
+                   << options->svd_thresh.value() << ", norm thresh" << options->norm_thresh.value()
+                   << ", max size of Q = " << options->max_size_qspace.value()
+                   << ", reset D = " << options->reset_D.value() << std::endl;
+      logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
+      logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
+      logger->data_dump = false;
       std::vector<Rvector> g;
       std::vector<Rvector> x;
 
@@ -169,7 +158,7 @@ void test_eigen(const std::string& title = "") {
         std::vector<double> diagonals;
         for (auto i = 0; i < n; i++)
           diagonals.push_back(matrix(i, i));
-        for (size_t root = 0; root < solver.n_roots(); root++) {
+        for (size_t root = 0; root < solver->n_roots(); root++) {
           x.emplace_back(n, 0);
           g.emplace_back(n);
           guess.push_back(std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin()); // initial guess
@@ -178,7 +167,7 @@ void test_eigen(const std::string& title = "") {
         }
       }
       //        std::cout << "guess: " << guess << std::endl;
-      int nwork = solver.n_roots();
+      int nwork = solver->n_roots();
 
       std::vector<scalar> PP;
       std::vector<Pvector> pspace;
@@ -218,9 +207,9 @@ void test_eigen(const std::string& title = "") {
               PP.push_back(matrix(i.begin()->first, j.begin()->first));
           //            std::cout << "PP: " << PP << std::endl;
 
-          nwork = solver.add_p(molpro::linalg::itsolv::cwrap(pspace),
-                               molpro::linalg::array::span::Span<double>(PP.data(), PP.size()),
-                               molpro::linalg::itsolv::wrap(x), molpro::linalg::itsolv::wrap(g), apply_p);
+          nwork = solver->add_p(molpro::linalg::itsolv::cwrap(pspace),
+                                molpro::linalg::array::span::Span<double>(PP.data(), PP.size()),
+                                molpro::linalg::itsolv::wrap(x), molpro::linalg::itsolv::wrap(g), apply_p);
         } else {
           action(x, g);
           //          for (auto root = 0; root < nwork; root++) {
@@ -233,7 +222,7 @@ void test_eigen(const std::string& title = "") {
           //              std::cout << " " << g[root][i];
           //            std::cout << std::endl;
           //          }
-          nwork = solver.add_vector(x, g, apply_p);
+          nwork = solver->add_vector(x, g, apply_p);
         }
         if (nwork == 0)
           break;
@@ -268,7 +257,7 @@ void test_eigen(const std::string& title = "") {
         //              std::cout << " " << g[root][i];
         //            std::cout << std::endl;
         //          }
-        update(g, solver.working_set_eigenvalues());
+        update(g, solver->working_set_eigenvalues());
         //          for (auto root = 0; root < nwork; root++) {
         //            std::cout << "after update() x:";
         //            for (auto i = 0; i < n; i++)
@@ -281,13 +270,13 @@ void test_eigen(const std::string& title = "") {
         //          }
         //        solver.report();
         //          if (*std::max_element(solver.errors().begin(), solver.errors().end()) < solver.m_thresh)
-        if (solver.end_iteration(x, g) == 0)
+        if (solver->end_iteration(x, g) == 0)
           break;
       }
       std::cout << "Error={ ";
-      for (const auto& e : solver.errors())
+      for (const auto& e : solver->errors())
         std::cout << e << " ";
-      std::cout << "} after " << solver.statistics().iterations << " iterations, " << solver.statistics().r_creations
+      std::cout << "} after " << solver->statistics().iterations << " iterations, " << solver->statistics().r_creations
                 << " R vectors" << std::endl;
       //        for (size_t root = 0; root < solver.n_roots(); root++) {
       //          std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] <<
@@ -298,38 +287,37 @@ void test_eigen(const std::string& title = "") {
       //          std::cout << " " << (x[0])[k];
       //        std::cout << std::endl;
       //        }
-      EXPECT_THAT(solver.errors(), ::testing::Pointwise(::testing::DoubleNear(2 * solver.convergence_threshold()),
-                                                        std::vector<double>(nroot, double(0))));
-      //      std::cout << "expected eigenvalues "
-      //                << std::vector<double>(expected_eigenvalues.data(), expected_eigenvalues.data() +
-      //                solver.n_roots())
-      //                << std::endl;
-      //      std::cout << "obtained eigenvalues " << solver.eigenvalues() << std::endl;
-      EXPECT_THAT(solver.eigenvalues(),
+      EXPECT_THAT(solver->errors(), ::testing::Pointwise(::testing::DoubleNear(2 * solver->convergence_threshold()),
+                                                         std::vector<double>(nroot, double(0))));
+      std::cout << "expected eigenvalues "
+                << std::vector<double>(expected_eigenvalues.data(), expected_eigenvalues.data() + solver->n_roots())
+                << std::endl;
+      std::cout << "obtained eigenvalues " << solver->eigenvalues() << std::endl;
+      EXPECT_THAT(solver->eigenvalues(),
                   ::testing::Pointwise(::testing::DoubleNear(2e-9),
                                        std::vector<double>(expected_eigenvalues.data(),
-                                                           expected_eigenvalues.data() + solver.n_roots())));
-      EXPECT_LE(solver.statistics().r_creations, (nroot + 1) * 15);
+                                                           expected_eigenvalues.data() + solver->n_roots())));
+      EXPECT_LE(solver->statistics().r_creations, (nroot + 1) * 15);
       std::vector<std::vector<double>> parameters, residuals;
       std::vector<int> roots;
-      for (int root = 0; root < solver.n_roots(); root++) {
+      for (int root = 0; root < solver->n_roots(); root++) {
         parameters.emplace_back(n);
         residuals.emplace_back(n);
         roots.push_back(root);
       }
-      solver.solution(roots, parameters, residuals);
+      solver->solution(roots, parameters, residuals);
       auto evalexpec = residual(parameters, residuals);
       for (const auto& r : residuals)
         EXPECT_LE(dot(r, r), 1e-15);
       int root = 0;
       for (const auto& ee : expected_eigensolutions) {
-        EXPECT_NEAR(ee.first, solver.eigenvalues()[root], 1e-10);
+        EXPECT_NEAR(ee.first, solver->eigenvalues()[root], 1e-10);
         EXPECT_THAT(phase_normalise(parameters[root]),
                     ::testing::Pointwise(::testing::DoubleNear(1e-8), phase_normalise(ee.second)));
         //        std::cout << phase_normalise(parameters) << std::endl;
         //        std::cout << phase_normalise(ee.second) << std::endl;
         root++;
-        if (root >= solver.n_roots())
+        if (root >= solver->n_roots())
           break;
       }
     }

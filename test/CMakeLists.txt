@@ -28,9 +28,12 @@ else ()
     message(STATUS "LinearAlgebra: Eigen3::Eigen target already defined")
 endif ()
 
+add_library(itsolv_create_solver STATIC create_solver.cpp create_solver.h)
+target_link_libraries(itsolv_create_solver PUBLIC molpro::${PROJECT_NAME})
+
 foreach (t LinearEigensystem-file-test)
     add_executable(${t}.exe ${t}.cpp test.h)
-    target_link_libraries(${t}.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)# ${MPI_CXX_LIBRARIES})
+    target_link_libraries(${t}.exe PUBLIC itsolv_create_solver gmock_main)# ${MPI_CXX_LIBRARIES})
     target_link_libraries(${t}.exe PUBLIC Eigen3::Eigen)
     gtest_discover_tests(${t}.exe)
     if (MPI)

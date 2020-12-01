@@ -52,6 +52,9 @@ void load_matrix(const std::string& file) {
   hmat.resize(n * n);
   for (auto i = 0; i < n * n; i++)
     f >> hmat[i];
+  // split degeneracies
+  for (auto i = 0; i < n; i++)
+    hmat[i*(n+1)] += 1e-8 * i;
 }
 
 using pv = Rvector;
@@ -287,7 +290,7 @@ void test_eigen(const std::string& title = "") {
         //              std::cout << " " << g[root][i];
         //            std::cout << std::endl;
         //          }
-        solver.report();
+//        solver.report();
         //          if (*std::max_element(solver.errors().begin(), solver.errors().end()) < solver.m_thresh)
         if (solver.end_iteration(x, g) == 0)
           break;
@@ -308,10 +311,10 @@ void test_eigen(const std::string& title = "") {
       //        }
       EXPECT_THAT(solver.errors(), ::testing::Pointwise(::testing::DoubleNear(2 * solver.convergence_threshold()),
                                                         std::vector<double>(nroot, double(0))));
-      std::cout << "expected eigenvalues "
-                << std::vector<double>(expected_eigenvalues.data(), expected_eigenvalues.data() + solver.n_roots())
-                << std::endl;
-      std::cout << "obtained eigenvalues " << solver.eigenvalues() << std::endl;
+//      std::cout << "expected eigenvalues "
+//                << std::vector<double>(expected_eigenvalues.data(), expected_eigenvalues.data() + solver.n_roots())
+//                << std::endl;
+//      std::cout << "obtained eigenvalues " << solver.eigenvalues() << std::endl;
       EXPECT_THAT(solver.eigenvalues(),
                   ::testing::Pointwise(::testing::DoubleNear(2e-9),
                                        std::vector<double>(expected_eigenvalues.data(),
@@ -323,7 +326,7 @@ void test_eigen(const std::string& title = "") {
         std::vector<double> parameters(n), residual(n);
         solver.solution({root}, {parameters}, {residual});
         EXPECT_THAT(phase_normalise(parameters),
-                    ::testing::Pointwise(::testing::DoubleNear(1e-10), phase_normalise(ee.second)));
+                    ::testing::Pointwise(::testing::DoubleNear(1e-8), phase_normalise(ee.second)));
         //        std::cout << phase_normalise(parameters) << std::endl;
         //        std::cout << phase_normalise(ee.second) << std::endl;
         root++;

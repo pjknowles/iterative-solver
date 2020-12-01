@@ -59,7 +59,7 @@ void load_matrix(const std::string& file) {
 
 using pv = Rvector;
 
-scalar matrix(const size_t i, const size_t j) { return hmat[i * n + j]; }
+scalar matrix(const size_t i, const size_t j) { return hmat[i + n * j]; }
 
 void action(const std::vector<Rvector>& psx, std::vector<Rvector>& outputs) {
   for (size_t k = 0; k < psx.size(); k++) {
@@ -75,20 +75,12 @@ scalar dot(const std::vector<scalar>& a, const std::vector<scalar>& b) {
   return std::inner_product(std::begin(a), std::end(a), std::begin(b), scalar(0));
 }
 std::vector<double> residual(const std::vector<Rvector>& psx, std::vector<Rvector>& outputs) {
-
   std::vector<double> evals;
+  action(psx, outputs);
   for (size_t k = 0; k < psx.size(); k++) {
-    double eval = 0;
-    for (size_t i = 0; i < n; i++) {
-      outputs[k][i] = 0;
-      for (size_t j = 0; j < n; j++)
-        outputs[k][i] += matrix(i, j) * psx[k][j];
-      eval += outputs[k][i] * psx[k][i];
-    }
-    eval /= dot(psx[k], psx[k]);
-    for (size_t i = 0; i < n; i++) {
+    auto eval = dot(outputs[k], psx[k]) / dot(psx[k], psx[k]);
+    for (size_t i = 0; i < n; i++)
       outputs[k][i] -= eval * psx[k][i];
-    }
     evals.push_back(eval);
   }
   return evals;
@@ -129,10 +121,7 @@ void test_eigen(const std::string& title = "") {
   bool hermitian = std::abs(matrix(0, 1) - matrix(1, 0)) < 1e-10;
   {
     Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> he(hmat.data(), n, n);
-    //    Eigen::EigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he);
-    // FIXME should take the line above instead of the line below, but presently the solver computes the left, not
-    // right, eigenvectors
-    Eigen::EigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he.transpose());
+    Eigen::EigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he);
     auto ev = esolver.eigenvalues().real();
     //              std::cout << "actual eigenvalues" << ev << std::endl;
     expected_eigenvalues.clear();
@@ -321,14 +310,17 @@ void test_eigen(const std::string& title = "") {
                                        std::vector<double>(expected_eigenvalues.data(),
                                                            expected_eigenvalues.data() + solver.n_roots())));
       EXPECT_LE(solver.statistics().r_creations, (nroot + 1) * 15);
-      std::vector<std::vector<double>> parameters, residual;
+      std::vector<std::vector<double>> parameters, residuals;
       std::vector<int> roots;
-      for (int root=0; root < solver.n_roots(); root++) {
+      for (int root = 0; root < solver.n_roots(); root++) {
         parameters.emplace_back(n);
-        residual.emplace_back(n);
+        residuals.emplace_back(n);
         roots.push_back(root);
       }
-      solver.solution(roots,parameters,residual);
+      solver.solution(roots, parameters, residuals);
+      auto evalexpec = residual(parameters, residuals);
+      for (const auto& r : residuals)
+        EXPECT_LE(dot(r, r), 1e-15);
       int root = 0;
       for (const auto& ee : expected_eigensolutions) {
         EXPECT_NEAR(ee.first, solver.eigenvalues()[root], 1e-10);

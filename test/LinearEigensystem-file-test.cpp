@@ -114,8 +114,9 @@ void test_eigen(const std::string& title = "") {
     for (int i = 0; i < n; i++)
       expected_eigenvalues.push_back(ev[i]);
   }
+  std::sort(expected_eigenvalues.begin(), expected_eigenvalues.end());
   for (int nroot = 1; nroot <= n && nroot <= 28; nroot++) {
-    for (auto np = 0; np <= n && np <= 50 && (hermitian or np==0); np += std::max(nroot, int(n) / 10)) {
+    for (auto np = 0; np <= n && np <= 50 && (hermitian or np == 0); np += std::max(nroot, int(n) / 10)) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
                    << np << std::endl;
 
@@ -311,8 +312,8 @@ TEST(IterativeSolver, nonhermitian_eigen) {
   //  for (auto param : std::vector<double>{.01, .1, 1}) {
   for (auto param : std::vector<double>{1}) {
     load_matrix(n, "", param, false);
-    std::cout << "matrix "<<hmat<<std::endl;
-    test_eigen(std::to_string(n) + "/" + std::to_string(param)+", non-hermitian");
+    std::cout << "matrix " << hmat << std::endl;
+    test_eigen(std::to_string(n) + "/" + std::to_string(param) + ", non-hermitian");
   }
 }
 

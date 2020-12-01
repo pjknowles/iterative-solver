@@ -1,10 +1,13 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVER_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVER_H
+#include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/array/Span.h>
-#include <molpro/linalg/itsolv/ArrayHandlers.h>
+#include <molpro/linalg/itsolv/Options.h>
 #include <molpro/linalg/itsolv/Statistics.h>
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/wrap.h>
+
+#include <memory>
 #include <ostream>
 #include <vector>
 
@@ -121,6 +124,10 @@ public:
   virtual double convergence_threshold() const = 0;
   virtual const subspace::Dimensions& dimensions() const = 0;
   // FIXME Missing parameters: SVD threshold
+  //! Set all spcecified options. This is no different than using setters, but can be used with forward declaration.
+  virtual void set_options(const Options& options) = 0;
+  //! Return all options. This is no different than using getters, but can be used with forward declaration.
+  virtual std::shared_ptr<Options> get_options() const = 0;
 };
 
 /*!

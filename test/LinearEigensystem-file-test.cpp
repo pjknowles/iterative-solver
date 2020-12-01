@@ -106,18 +106,50 @@ void update(std::vector<Rvector>& psg, std::vector<scalar> shift = std::vector<s
       psg[k][i] = -psg[k][i] / (1e-12 - shift[k] + matrix(i, i));
 }
 
+std::vector<double> phase_normalise(const std::vector<double>& in) {
+  double phase = 1;
+  double maxcomp = 1e-10;
+  double norm = 0;
+  for (const auto& v : in) {
+    norm += v * v;
+    if (std::abs(v) <= maxcomp)
+      continue;
+    phase = v / std::abs(v);
+    maxcomp = std::abs(v);
+  }
+  norm = 1 / std::sqrt(norm);
+  std::vector<double> out;
+  for (const auto& v : in)
+    out.push_back(v * norm * phase);
+  return out;
+}
+
 void test_eigen(const std::string& title = "") {
+  std::map<double, std::vector<double>> expected_eigensolutions;
   bool hermitian = std::abs(matrix(0, 1) - matrix(1, 0)) < 1e-10;
   {
     Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> he(hmat.data(), n, n);
-    Eigen::EigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he);
+    //    Eigen::EigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he);
+    // FIXME should take the line above instead of the line below, but presently the solver computes the left, not
+    // right, eigenvectors
+    Eigen::EigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he.transpose());
     auto ev = esolver.eigenvalues().real();
     //              std::cout << "actual eigenvalues" << ev << std::endl;
     expected_eigenvalues.clear();
     for (int i = 0; i < n; i++)
       expected_eigenvalues.push_back(ev[i]);
+    for (int i = 0; i < n; i++)
+      for (int j = 0; j < n; j++)
+        expected_eigensolutions[ev[i]].push_back(
+            esolver.eigenvectors().real()(j, i)); // won't work for degenerate eigenvalues!
   }
   std::sort(expected_eigenvalues.begin(), expected_eigenvalues.end());
+  { // testing the test: that sort of eigenvalues is the same thing as std::map sorting of keys
+    std::vector<double> testing;
+    for (const auto& ee : expected_eigensolutions)
+      testing.push_back(ee.first);
+    EXPECT_THAT(expected_eigenvalues, ::testing::Pointwise(::testing::DoubleNear(1e-15), testing));
+  }
   for (int nroot = 1; nroot <= n && nroot <= 28; nroot++) {
     for (auto np = 0; np <= n && np <= 50 && (hermitian or np == 0); np += std::max(nroot, int(n) / 10)) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
@@ -131,8 +163,9 @@ void test_eigen(const std::string& title = "") {
       solver.propose_rspace_svd_thresh = 1.0e-10;
       solver.set_max_size_qspace(std::max(3 * nroot, std::min(int(n), std::min(1000, 3 * nroot)) - np));
       solver.set_reset_D(4);
-      molpro::cout << "convergence threshold = " << solver.convergence_threshold() << ", svd thresh = "
-                   << solver.propose_rspace_svd_thresh << ", norm thresh = " << solver.propose_rspace_norm_thresh
+      molpro::cout << "convergence threshold = " << solver.convergence_threshold()
+                   << ", svd thresh = " << solver.propose_rspace_svd_thresh
+                   << ", norm thresh = " << solver.propose_rspace_norm_thresh
                    << ", max size of Q = " << solver.get_max_size_qspace() << ", reset D = " << solver.get_reset_D()
                    << std::endl;
       solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
@@ -319,7 +352,7 @@ TEST(IterativeSolver, file_eigen) {
 }
 
 TEST(IterativeSolver, n_eigen) {
-  size_t n = 1000;
+  size_t n = 100;
   double param = 1;
   //  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
   //  for (auto param : std::vector<double>{.01, .1, 1}) {
@@ -335,7 +368,7 @@ TEST(IterativeSolver, nonhermitian_eigen) {
   //  for (auto param : std::vector<double>{.01, .1, 1}) {
   for (auto param : std::vector<double>{1}) {
     load_matrix(n, "", param, false);
-//    std::cout << "matrix " << hmat << std::endl;
+    //    std::cout << "matrix " << hmat << std::endl;
     test_eigen(std::to_string(n) + "/" + std::to_string(param) + ", non-hermitian");
   }
 }

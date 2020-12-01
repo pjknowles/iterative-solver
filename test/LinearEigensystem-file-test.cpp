@@ -44,7 +44,7 @@ void load_matrix(int dimension, const std::string& type = "", double param = 1, 
   if (not hermitian)
     for (int i = 0; i < n; i++)
       for (int j = 0; j < i; j++)
-        hmat[i * n + j] *= 2;
+        hmat[i * n + j] *= .95;
 }
 void load_matrix(const std::string& file) {
   std::ifstream f(std::string{"./"} + file + ".hamiltonian");
@@ -128,8 +128,8 @@ void test_eigen(const std::string& title = "") {
       solver.propose_rspace_svd_thresh = 1.0e-10;
       solver.set_max_size_qspace(std::max(3 * nroot, std::min(int(n), std::min(1000, 3 * nroot)) - np));
       solver.set_reset_D(4);
-      molpro::cout << "convergence threshold = " << solver.convergence_threshold() << ", svd thresh"
-                   << solver.propose_rspace_svd_thresh << ", norm thresh" << solver.propose_rspace_norm_thresh
+      molpro::cout << "convergence threshold = " << solver.convergence_threshold() << ", svd thresh = "
+                   << solver.propose_rspace_svd_thresh << ", norm thresh = " << solver.propose_rspace_norm_thresh
                    << ", max size of Q = " << solver.get_max_size_qspace() << ", reset D = " << solver.get_reset_D()
                    << std::endl;
       solver.logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
@@ -306,13 +306,13 @@ TEST(IterativeSolver, n_eigen) {
   }
 }
 TEST(IterativeSolver, nonhermitian_eigen) {
-  size_t n = 2;
+  size_t n = 30;
   double param = 1;
   //  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
   //  for (auto param : std::vector<double>{.01, .1, 1}) {
   for (auto param : std::vector<double>{1}) {
     load_matrix(n, "", param, false);
-    std::cout << "matrix " << hmat << std::endl;
+//    std::cout << "matrix " << hmat << std::endl;
     test_eigen(std::to_string(n) + "/" + std::to_string(param) + ", non-hermitian");
   }
 }

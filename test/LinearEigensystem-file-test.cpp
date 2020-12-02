@@ -340,8 +340,8 @@ void test_eigen(const std::string& title = "") {
 }
 
 TEST(IterativeSolver, file_eigen) {
-//  for (const auto& file : std::vector<std::string>{"bh", "hf", "phenol"}) {
-  for (const auto& file : std::vector<std::string>{"bh", "hf"}) {
+  for (const auto& file : std::vector<std::string>{"bh", "hf", "phenol"}) {
+//  for (const auto& file : std::vector<std::string>{"bh", "hf"}) {
     load_matrix(file, file == "phenol" ? 0 : 1e-8);
     test_eigen(file);
   }

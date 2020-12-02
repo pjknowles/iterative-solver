@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEM_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEM_H
 #include <iterator>
+#include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/Logger.h>
@@ -103,6 +104,7 @@ public:
   size_t get_reset_D() const { return m_dspace_resetter.get_nreset(); }
   //! Set the maximum size of Q space after resetting the D space
   void set_reset_D_maxQ_size(size_t n) { m_dspace_resetter.set_max_Qsize(n); }
+  void get_reset_D_maxQ_size() const { m_dspace_resetter.get_max_Qsize(); }
   int get_max_size_qspace() { return m_max_size_qspace; }
   void set_max_size_qspace(int n) {
     m_max_size_qspace = n;
@@ -117,6 +119,37 @@ public:
     subspace_solver->set_hermiticity(hermitian);
   }
   bool get_hermiticity() override { return m_hermiticity; }
+
+  void set_options(const std::shared_ptr<Options>& options) override {
+    SolverTemplate::set_options(options);
+    auto opt = CastOptions::LinearEigensystem(options);
+    if (opt) {
+      if (opt->reset_D)
+        set_reset_D(opt->reset_D.value());
+      if (opt->reset_D_max_Q_size)
+        set_reset_D_maxQ_size(opt->reset_D_max_Q_size.value());
+      if (opt->max_size_qspace)
+        set_max_size_qspace(opt->max_size_qspace.value());
+      if (opt->norm_thresh)
+        propose_rspace_norm_thresh = opt->norm_thresh.value();
+      if (opt->svd_thresh)
+        propose_rspace_svd_thresh = opt->svd_thresh.value();
+      if (opt->hermiticity)
+        set_hermiticity(opt->hermiticity.value());
+    }
+  }
+
+  std::shared_ptr<Options> get_options() const override {
+    auto opt = std::make_shared<LinearEigensystemOptions>();
+    opt->copy(*SolverTemplate::get_options());
+    opt->reset_D = get_reset_D();
+    opt->reset_D_max_Q_size = get_reset_D_maxQ_size();
+    opt->max_size_qspace = get_max_size_qspace();
+    opt->norm_thresh = propose_rspace_norm_thresh;
+    opt->svd_thresh = propose_rspace_svd_thresh;
+    opt->hermiticity = get_hermiticity();
+    return opt;
+  }
 
   std::shared_ptr<Logger> logger;
   double propose_rspace_norm_thresh = 1e-10; //!< vectors with norm less than threshold can be considered null.

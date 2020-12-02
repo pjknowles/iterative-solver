@@ -104,7 +104,7 @@ public:
   size_t get_reset_D() const { return m_dspace_resetter.get_nreset(); }
   //! Set the maximum size of Q space after resetting the D space
   void set_reset_D_maxQ_size(size_t n) { m_dspace_resetter.set_max_Qsize(n); }
-  int get_reset_D_maxQ_size() const { m_dspace_resetter.get_max_Qsize(); }
+  int get_reset_D_maxQ_size() const { return m_dspace_resetter.get_max_Qsize(); }
   int get_max_size_qspace() const { return m_max_size_qspace; }
   void set_max_size_qspace(int n) {
     m_max_size_qspace = n;

@@ -109,7 +109,6 @@ std::vector<double> phase_normalise(const std::vector<double>& in) {
 void test_eigen(const std::string& title = "") {
   std::map<double, std::vector<double>> expected_eigensolutions;
   bool hermitian = std::abs(hmat[0 + n * 1] - hmat[1 + n * 0]) < 1e-10;
-  std::cout << hmat[0 + n * 1] << hmat[1 + n * 0] << std::endl;
   {
     Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> he(hmat.data(), n, n);
     Eigen::EigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he);
@@ -330,10 +329,9 @@ void test_eigen(const std::string& title = "") {
       int root = 0;
       for (const auto& ee : expected_eigensolutions) {
         EXPECT_NEAR(ee.first, solver->eigenvalues()[root], 1e-10);
-        EXPECT_THAT(phase_normalise(parameters[root]),
-                    ::testing::Pointwise(::testing::DoubleNear(1e-5), phase_normalise(ee.second)));
-        //        std::cout << phase_normalise(parameters) << std::endl;
-        //        std::cout << phase_normalise(ee.second) << std::endl;
+        auto overlap_with_reference = std::inner_product(parameters.at(root).begin(), parameters.at(root).end(),
+                                                         ee.second.begin(), 0., std::plus(), std::multiplies());
+        EXPECT_NEAR(std::abs(overlap_with_reference), 1., options->convergence_threshold.value());
         root++;
         if (root >= solver->n_roots())
           break;

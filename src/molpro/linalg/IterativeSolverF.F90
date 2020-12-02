@@ -10,6 +10,7 @@ MODULE Iterative_Solver
     PUBLIC :: Iterative_Solver_Add_Vector_With_P, Iterative_Solver_Add_Vector_With_P_Nosync
     PUBLIC :: Iterative_Solver_Solution, Iterative_Solver_Solution_Nosync
     PUBLIC :: Iterative_Solver_Add_P, Iterative_Solver_Suggest_P
+    PUBLIC :: Iterative_Solver_Errors
     PUBLIC :: Iterative_Solver_Eigenvalues, Iterative_Solver_Working_Set_Eigenvalues
     PUBLIC :: Iterative_Solver_Print_Statistics
     PRIVATE
@@ -675,21 +676,19 @@ CONTAINS
     !> \param residual The residual after interpolation.
     !> \param error Error indicator for each sought root.
     !> \return .TRUE. if convergence reached for all roots
-    FUNCTION Iterative_Solver_End_Iteration(solution, residual, error, lmppx)
+    FUNCTION Iterative_Solver_End_Iteration(solution, residual, lmppx)
         USE iso_c_binding
         INTEGER :: Iterative_Solver_End_Iteration
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: error
         LOGICAL, INTENT(in), OPTIONAL :: lmppx
         INTERFACE
-            FUNCTION Iterative_Solver_End_Iteration_C(solution, residual, error, lsync, lmppx) &
+            FUNCTION Iterative_Solver_End_Iteration_C(solution, residual, lsync, lmppx) &
                     BIND(C, name = 'IterativeSolverEndIteration')
                 USE iso_c_binding
                 INTEGER(c_int) Iterative_Solver_End_Iteration_C
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: solution
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: residual
-                REAL(c_double), DIMENSION(*), INTENT(inout) :: error
                 INTEGER(c_int), INTENT(in), VALUE :: lsync
                 INTEGER(c_int), INTENT(in), VALUE :: lmppx
             END FUNCTION Iterative_Solver_End_Iteration_C
@@ -701,24 +700,22 @@ CONTAINS
         IF (PRESENT(lmppx)) THEN
             if (lmppx) lmppxC = 1
         ENDIF
-        Iterative_Solver_End_Iteration = Iterative_Solver_End_Iteration_C(solution, residual, error, lsyncC, lmppxC)
+        Iterative_Solver_End_Iteration = Iterative_Solver_End_Iteration_C(solution, residual, lsyncC, lmppxC)
     END FUNCTION Iterative_Solver_End_Iteration
 
-    FUNCTION Iterative_Solver_End_Iteration_Nosync(solution, residual, error, lmppx)
+    FUNCTION Iterative_Solver_End_Iteration_Nosync(solution, residual, lmppx)
         USE iso_c_binding
         INTEGER :: Iterative_Solver_End_Iteration_Nosync
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: error
         LOGICAL, INTENT(in), OPTIONAL :: lmppx
         INTERFACE
-            FUNCTION Iterative_Solver_End_Iteration_C(solution, residual, error, lsync, lmppx) &
+            FUNCTION Iterative_Solver_End_Iteration_C(solution, residual, lsync, lmppx) &
                     BIND(C, name = 'IterativeSolverEndIteration')
                 USE iso_c_binding
                 INTEGER(c_int) Iterative_Solver_End_Iteration_C
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: solution
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: residual
-                REAL(c_double), DIMENSION(*), INTENT(inout) :: error
                 INTEGER(c_int), INTENT(in), VALUE :: lsync
                 INTEGER(c_int), INTENT(in), VALUE :: lmppx
             END FUNCTION Iterative_Solver_End_Iteration_C
@@ -730,7 +727,7 @@ CONTAINS
         IF (PRESENT(lmppx)) THEN
             if (lmppx) lmppxC = 1
         ENDIF
-        Iterative_Solver_End_Iteration_Nosync = Iterative_Solver_End_Iteration_C(solution, residual, error, lsyncC, lmppxC)
+        Iterative_Solver_End_Iteration_Nosync = Iterative_Solver_End_Iteration_C(solution, residual, lsyncC, lmppxC)
     END FUNCTION Iterative_Solver_End_Iteration_Nosync
 
     !> \brief add P-space vectors to the expansion set, and return new solution.
@@ -898,6 +895,19 @@ CONTAINS
             indices(i) = int(indicesC(i)) + 1
         end do
     END FUNCTION Iterative_Solver_Suggest_P
+
+    !> \brief errors for each root
+    FUNCTION Iterative_Solver_Errors()
+        DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: Iterative_Solver_Errors
+        INTERFACE
+            SUBROUTINE IterativeSolverErrors(errors) BIND(C, name = 'IterativeSolverErrors')
+                USE iso_c_binding
+                REAL(C_double), DIMENSION(*), INTENT(inout) :: errors
+            END SUBROUTINE IterativeSolverErrors
+        END INTERFACE
+        ALLOCATE (Iterative_Solver_Errors(m_nroot))
+        CALL IterativeSolverErrors(Iterative_Solver_Errors)
+    END FUNCTION Iterative_Solver_Errors
 
     !> \brief the lowest eigenvalues of the reduced problem, for the number of roots sought.
     FUNCTION Iterative_Solver_Eigenvalues()

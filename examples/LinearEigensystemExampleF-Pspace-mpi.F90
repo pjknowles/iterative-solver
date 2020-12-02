@@ -51,7 +51,7 @@ PROGRAM Linear_Eigensystem_Example
   !DOUBLE PRECISION, DIMENSION (n, n) :: m
   DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g
   DOUBLE PRECISION, DIMENSION(nP, nroot) :: p
-  DOUBLE PRECISION, DIMENSION (nroot) :: e, error
+  DOUBLE PRECISION, DIMENSION (nroot) :: e
   DOUBLE PRECISION, ALLOCATABLE, DIMENSION(:) :: we
   INTEGER, DIMENSION(0 : nP) :: offsets
   !INTEGER, DIMENSION(nP) :: indices
@@ -108,7 +108,7 @@ PROGRAM Linear_Eigensystem_Example
       END DO
     END DO
     deallocate(we)
-    IF (Iterative_Solver_End_Iteration(c, g, error) == 0) THEN
+    IF (Iterative_Solver_End_Iteration(c, g) == 0) THEN
       EXIT
     END IF
     g = MATMUL(m, c)

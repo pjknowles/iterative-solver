@@ -421,7 +421,7 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
     instance.prof->stop("Solution");
 }
 
-extern "C" int IterativeSolverEndIteration(double* solution, double* residual, double* error, int sync, int lmppx) {
+extern "C" int IterativeSolverEndIteration(double* solution, double* residual, int sync, int lmppx) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   if (instance.prof != nullptr)
@@ -458,9 +458,6 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Sync");
-  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
-    error[root] = instance.solver->errors()[root];
-  }
   if (instance.prof != nullptr)
     instance.prof->stop("EndIter");
   return result;
@@ -525,6 +522,17 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
   if (instance.prof != nullptr)
     instance.prof->stop("AddP");
   return working_set_size;
+}
+
+extern "C" void IterativeSolverErrors(double* errors) {
+  auto& instance = instances.top();
+  size_t k = 0;
+  LinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
+      dynamic_cast<LinearEigensystem<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  if (solver_cast) {
+    for (const auto& e : solver_cast->errors())
+      errors[k++] = e;
+  }
 }
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {

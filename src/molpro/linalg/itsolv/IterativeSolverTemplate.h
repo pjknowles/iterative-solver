@@ -230,6 +230,20 @@ public:
     std::iota(begin(m_working_set), end(m_working_set), (int)0);
   }
 
+  void set_options(const std::shared_ptr<Options>& options) override {
+    if (options->n_roots)
+      set_n_roots(options->n_roots.value());
+    if (options->convergence_threshold)
+      set_convergence_threshold(options->convergence_threshold.value());
+  }
+
+  std::shared_ptr<Options> get_options() const override {
+    auto options = std::make_shared<Options>();
+    options->n_roots = n_roots();
+    options->convergence_threshold = convergence_threshold();
+    return options;
+  }
+
   const std::vector<scalar_type>& errors() const override { return m_errors; }
 
   const Statistics& statistics() const override { return *m_stats; }

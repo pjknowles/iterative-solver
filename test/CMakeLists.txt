@@ -45,6 +45,8 @@ foreach (t LinearEigensystem-file-test)
     endif ()
 endforeach ()
 file(COPY ../examples/bh.hamiltonian DESTINATION .)
+file(COPY ../examples/hf.hamiltonian DESTINATION .)
+file(COPY ../examples/phenol.hamiltonian DESTINATION .)
 
 add_subdirectory(array)
 add_subdirectory(itsolv)

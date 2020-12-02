@@ -46,7 +46,7 @@ void load_matrix(int dimension, const std::string& type = "", double param = 1, 
       for (int j = 0; j < i; j++)
         hmat[i * n + j] *= .95;
 }
-void load_matrix(const std::string& file) {
+void load_matrix(const std::string& file, double degeneracy_split = 0) {
   std::ifstream f(std::string{"./"} + file + ".hamiltonian");
   f >> n;
   hmat.resize(n * n);
@@ -54,19 +54,18 @@ void load_matrix(const std::string& file) {
     f >> hmat[i];
   // split degeneracies
   for (auto i = 0; i < n; i++)
-    hmat[i * (n + 1)] += 1e-8 * i;
+    hmat[i * (n + 1)] += degeneracy_split * i;
 }
 
 using pv = Rvector;
-
-scalar matrix(const size_t i, const size_t j) { return hmat[i + n * j]; }
 
 void action(const std::vector<Rvector>& psx, std::vector<Rvector>& outputs) {
   for (size_t k = 0; k < psx.size(); k++) {
     for (size_t i = 0; i < n; i++) {
       outputs[k][i] = 0;
-      for (size_t j = 0; j < n; j++)
-        outputs[k][i] += matrix(i, j) * psx[k][j];
+      for (size_t j = 0; j < n; j++) {
+        outputs[k][i] += hmat[i + n * j] * psx[k][j];
+      }
     }
   }
 }
@@ -94,8 +93,9 @@ void update(std::vector<Rvector>& psg, std::vector<scalar> shift = std::vector<s
   //    molpro::cout<<std::endl;
   //  }
   for (size_t k = 0; k < psg.size() && k < shift.size(); k++)
-    for (size_t i = 0; i < n; i++)
-      psg[k][i] = -psg[k][i] / (1e-12 - shift[k] + matrix(i, i));
+    for (size_t i = 0; i < n; i++) {
+      psg[k][i] = -psg[k][i] / (1e-12 - shift[k] + hmat[i + n * i]);
+    }
 }
 
 std::vector<double> phase_normalise(const std::vector<double>& in) {
@@ -109,6 +109,8 @@ std::vector<double> phase_normalise(const std::vector<double>& in) {
     phase = v / std::abs(v);
     maxcomp = std::abs(v);
   }
+  if (norm == 0)
+    throw std::runtime_error("zero vector");
   norm = 1 / std::sqrt(norm);
   std::vector<double> out;
   for (const auto& v : in)
@@ -118,27 +120,32 @@ std::vector<double> phase_normalise(const std::vector<double>& in) {
 
 void test_eigen(const std::string& title = "") {
   std::map<double, std::vector<double>> expected_eigensolutions;
-  bool hermitian = std::abs(matrix(0, 1) - matrix(1, 0)) < 1e-10;
+  bool hermitian = std::abs(hmat[0 + n * 1] - hmat[1 + n * 0]) < 1e-10;
+  std::cout << hmat[0 + n * 1] << hmat[1 + n * 0] << std::endl;
   {
     Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> he(hmat.data(), n, n);
     Eigen::EigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he);
     auto ev = esolver.eigenvalues().real();
-    //              std::cout << "actual eigenvalues" << ev << std::endl;
     expected_eigenvalues.clear();
+    auto evecreal = esolver.eigenvectors().real().eval();
     for (int i = 0; i < n; i++)
       expected_eigenvalues.push_back(ev[i]);
     for (int i = 0; i < n; i++)
       for (int j = 0; j < n; j++)
-        expected_eigensolutions[ev[i]].push_back(
-            esolver.eigenvectors().real()(j, i)); // won't work for degenerate eigenvalues!
+        expected_eigensolutions[ev[i]].push_back(evecreal(j, i)); // won't work for degenerate eigenvalues!
+    ASSERT_EQ(expected_eigensolutions.size(), n);
+    //    for (const auto& ee : expected_eigensolutions)
+    //      std::cout << "expected eigensolution " << ee.first << std::endl<<ee.second<<std::endl;
   }
   std::sort(expected_eigenvalues.begin(), expected_eigenvalues.end());
+  std::cout << "expected eigenvalues " << expected_eigenvalues << std::endl;
   { // testing the test: that sort of eigenvalues is the same thing as std::map sorting of keys
     std::vector<double> testing;
     for (const auto& ee : expected_eigensolutions)
       testing.push_back(ee.first);
-    EXPECT_THAT(expected_eigenvalues, ::testing::Pointwise(::testing::DoubleNear(1e-15), testing));
+    ASSERT_THAT(expected_eigenvalues, ::testing::Pointwise(::testing::DoubleNear(1e-13), testing));
   }
+  std::cout << "prep done" << std::endl;
   for (int nroot = 1; nroot <= n && nroot <= 28; nroot++) {
     for (auto np = 0; np <= n && np <= 50 && (hermitian or np == 0); np += std::max(nroot, int(n) / 10)) {
       molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n << ", pspace dimension "
@@ -167,8 +174,9 @@ void test_eigen(const std::string& title = "") {
       std::vector<size_t> guess;
       {
         std::vector<double> diagonals;
-        for (auto i = 0; i < n; i++)
-          diagonals.push_back(matrix(i, i));
+        for (auto i = 0; i < n; i++) {
+          diagonals.push_back(hmat[i + n * i]);
+        }
         for (size_t root = 0; root < solver.n_roots(); root++) {
           x.emplace_back(n, 0);
           g.emplace_back(n);
@@ -203,8 +211,9 @@ void test_eigen(const std::string& title = "") {
       for (auto iter = 0; iter < 100; iter++) {
         if (iter == 0 && np > 0) {
           std::vector<double> diagonals;
-          for (auto i = 0; i < n; i++)
-            diagonals.push_back(matrix(i, i));
+          for (auto i = 0; i < n; i++) {
+            diagonals.push_back(hmat[i + n * i]);
+          }
           for (size_t p = 0; p < np; p++) {
             std::map<size_t, scalar> pp;
             pp.insert({std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin(), 1});
@@ -214,8 +223,11 @@ void test_eigen(const std::string& title = "") {
           //            std::cout << "P space: " << pspace << std::endl;
           PP.reserve(np * np);
           for (const auto& i : pspace)
-            for (const auto& j : pspace)
-              PP.push_back(matrix(i.begin()->first, j.begin()->first));
+            for (const auto& j : pspace) {
+              const size_t kI = i.begin()->first;
+              const size_t kJ = j.begin()->first;
+              PP.push_back(hmat[kI + n * kJ]);
+            }
           //            std::cout << "PP: " << PP << std::endl;
 
           nwork = solver.add_p(molpro::linalg::itsolv::cwrap(pspace),
@@ -234,6 +246,7 @@ void test_eigen(const std::string& title = "") {
           //            std::cout << std::endl;
           //          }
           nwork = solver.add_vector(x, g, apply_p);
+          std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
         }
         if (nwork == 0)
           break;
@@ -279,9 +292,11 @@ void test_eigen(const std::string& title = "") {
         //              std::cout << " " << g[root][i];
         //            std::cout << std::endl;
         //          }
-        //        solver.report();
+        solver.report();
         //          if (*std::max_element(solver.errors().begin(), solver.errors().end()) < solver.m_thresh)
-        if (solver.end_iteration(x, g) == 0)
+        nwork = solver.end_iteration(x, g);
+        std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
+        if (nwork == 0)
           break;
       }
       std::cout << "Error={ ";
@@ -337,8 +352,9 @@ void test_eigen(const std::string& title = "") {
 }
 
 TEST(IterativeSolver, file_eigen) {
-  for (const auto& file : std::vector<std::string>{"bh"}) {
-    load_matrix(file);
+//  for (const auto& file : std::vector<std::string>{"bh", "hf", "phenol"}) {
+  for (const auto& file : std::vector<std::string>{"bh", "hf"}) {
+    load_matrix(file, file == "phenol" ? 0 : 1e-8);
     test_eigen(file);
   }
 }

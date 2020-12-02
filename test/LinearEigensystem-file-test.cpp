@@ -197,7 +197,8 @@ void test_eigen(const std::string& title = "") {
             }
           };
 
-      for (auto iter = 0; iter < 100; iter++) {
+      size_t n_iter = 1;
+      for (auto iter = 0; iter < 100; iter++, ++n_iter) {
         if (iter == 0 && np > 0) {
           std::vector<double> diagonals;
           for (auto i = 0; i < n; i++) {
@@ -312,7 +313,9 @@ void test_eigen(const std::string& title = "") {
                   ::testing::Pointwise(::testing::DoubleNear(2e-9),
                                        std::vector<double>(expected_eigenvalues.data(),
                                                            expected_eigenvalues.data() + solver->n_roots())));
-      EXPECT_LE(solver->statistics().r_creations, (nroot + 1) * 15);
+      const auto nR_creations = solver->statistics().r_creations;
+      std::cout << "R creations = " << nR_creations << std::endl;
+      EXPECT_LE(nR_creations, (nroot + 1) * n_iter);
       std::vector<std::vector<double>> parameters, residuals;
       std::vector<int> roots;
       for (int root = 0; root < solver->n_roots(); root++) {
@@ -335,7 +338,6 @@ void test_eigen(const std::string& title = "") {
         if (root >= solver->n_roots())
           break;
       }
-      return; // TODO for debugging
     }
   }
 }

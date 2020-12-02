@@ -30,7 +30,7 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
 
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync, int lmppx);
 
-extern "C" int IterativeSolverEndIteration(double* c, double* g, double* error, int sync, int lmppx);
+extern "C" int IterativeSolverEndIteration(double* c, double* g, int sync, int lmppx);
 
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,

@@ -9,7 +9,7 @@ PROGRAM Linear_Eigensystem_Example
   INTEGER, PARAMETER :: n = 60, nroot = 3
   DOUBLE PRECISION, DIMENSION (n, n) :: m
   DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g
-  DOUBLE PRECISION, DIMENSION (nroot) :: e, error
+  DOUBLE PRECISION, DIMENSION (nroot) :: e
   DOUBLE PRECISION, ALLOCATABLE, DIMENSION(:) :: we
   INTEGER :: i, j, root
   INTEGER :: nwork, alloc_stat
@@ -48,7 +48,7 @@ PROGRAM Linear_Eigensystem_Example
           g(j, root) = g(j, root) * 1.0d0 / (m(j, j) - we(root) + 1e-15)
         END DO
       END DO
-      nwork = Iterative_Solver_End_Iteration(c, g, error)
+      nwork = Iterative_Solver_End_Iteration(c, g)
     ELSE
       EXIT
     END IF

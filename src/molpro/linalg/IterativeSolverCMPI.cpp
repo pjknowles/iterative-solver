@@ -421,7 +421,7 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
     instance.prof->stop("Solution");
 }
 
-extern "C" int IterativeSolverEndIteration(double* solution, double* residual, double* error, int sync, int lmppx) {
+extern "C" int IterativeSolverEndIteration(double* solution, double* residual, int sync, int lmppx) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   if (instance.prof != nullptr)
@@ -458,9 +458,6 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, d
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Sync");
-  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
-    error[root] = instance.solver->errors()[root];
-  }
   if (instance.prof != nullptr)
     instance.prof->stop("EndIter");
   return result;

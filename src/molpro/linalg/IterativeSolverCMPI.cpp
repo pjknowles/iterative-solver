@@ -527,6 +527,17 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
   return working_set_size;
 }
 
+extern "C" void IterativeSolverErrors(double* errors) {
+  auto& instance = instances.top();
+  size_t k = 0;
+  LinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
+      dynamic_cast<LinearEigensystem<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  if (solver_cast) {
+    for (const auto& e : solver_cast->errors())
+      errors[k++] = e;
+  }
+}
+
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
   auto& instance = instances.top();
   size_t k = 0;

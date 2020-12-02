@@ -10,6 +10,7 @@ MODULE Iterative_Solver
     PUBLIC :: Iterative_Solver_Add_Vector_With_P, Iterative_Solver_Add_Vector_With_P_Nosync
     PUBLIC :: Iterative_Solver_Solution, Iterative_Solver_Solution_Nosync
     PUBLIC :: Iterative_Solver_Add_P, Iterative_Solver_Suggest_P
+    PUBLIC :: Iterative_Solver_Errors
     PUBLIC :: Iterative_Solver_Eigenvalues, Iterative_Solver_Working_Set_Eigenvalues
     PUBLIC :: Iterative_Solver_Print_Statistics
     PRIVATE
@@ -898,6 +899,19 @@ CONTAINS
             indices(i) = int(indicesC(i)) + 1
         end do
     END FUNCTION Iterative_Solver_Suggest_P
+
+    !> \brief errors for each root
+    FUNCTION Iterative_Solver_Errors()
+        DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: Iterative_Solver_Errors
+        INTERFACE
+            SUBROUTINE IterativeSolverErrors(errors) BIND(C, name = 'IterativeSolverErrors')
+                USE iso_c_binding
+                REAL(C_double), DIMENSION(*), INTENT(inout) :: errors
+            END SUBROUTINE IterativeSolverErrors
+        END INTERFACE
+        ALLOCATE (Iterative_Solver_Errors(m_nroot))
+        CALL IterativeSolverErrors(Iterative_Solver_Errors)
+    END FUNCTION Iterative_Solver_Errors
 
     !> \brief the lowest eigenvalues of the reduced problem, for the number of roots sought.
     FUNCTION Iterative_Solver_Eigenvalues()

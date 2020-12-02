@@ -37,6 +37,8 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
                                       int lsync, int lmppx,
                                       void (*func)(const double*, double*, const size_t, const size_t*));
 
+extern "C" void IterativeSolverErrors(double* errors);
+
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues);
 
 extern "C" void IterativeSolverWorkingSetEigenvalues(double* eigenvalues);

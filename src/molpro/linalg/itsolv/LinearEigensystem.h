@@ -104,8 +104,8 @@ public:
   size_t get_reset_D() const { return m_dspace_resetter.get_nreset(); }
   //! Set the maximum size of Q space after resetting the D space
   void set_reset_D_maxQ_size(size_t n) { m_dspace_resetter.set_max_Qsize(n); }
-  void get_reset_D_maxQ_size() const { m_dspace_resetter.get_max_Qsize(); }
-  int get_max_size_qspace() { return m_max_size_qspace; }
+  int get_reset_D_maxQ_size() const { m_dspace_resetter.get_max_Qsize(); }
+  int get_max_size_qspace() const { return m_max_size_qspace; }
   void set_max_size_qspace(int n) {
     m_max_size_qspace = n;
     if (m_dspace_resetter.get_max_Qsize() > m_max_size_qspace)
@@ -118,7 +118,7 @@ public:
     auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
     subspace_solver->set_hermiticity(hermitian);
   }
-  bool get_hermiticity() override { return m_hermiticity; }
+  bool get_hermiticity()const override { return m_hermiticity; }
 
   void set_options(const std::shared_ptr<Options>& options) override {
     SolverTemplate::set_options(options);

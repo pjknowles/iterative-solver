@@ -230,11 +230,11 @@ public:
     std::iota(begin(m_working_set), end(m_working_set), (int)0);
   }
 
-  void set_options(const Options& options) override {
-    if (options.n_roots)
-      set_n_roots(options.n_roots.value());
-    if (options.convergence_threshold)
-      set_convergence_threshold(options.convergence_threshold.value());
+  void set_options(const std::shared_ptr<Options>& options) override {
+    if (options->n_roots)
+      set_n_roots(options->n_roots.value());
+    if (options->convergence_threshold)
+      set_convergence_threshold(options->convergence_threshold.value());
   }
 
   std::shared_ptr<Options> get_options() const override {

@@ -125,7 +125,7 @@ public:
   virtual const subspace::Dimensions& dimensions() const = 0;
   // FIXME Missing parameters: SVD threshold
   //! Set all spcecified options. This is no different than using setters, but can be used with forward declaration.
-  virtual void set_options(const Options& options) = 0;
+  virtual void set_options(const std::shared_ptr<Options>& options) = 0;
   //! Return all options. This is no different than using getters, but can be used with forward declaration.
   virtual std::shared_ptr<Options> get_options() const = 0;
 };
@@ -144,7 +144,7 @@ public:
   //! Sets hermiticity of kernel
   virtual void set_hermiticity(bool hermitian) = 0;
   //! Gets hermiticity of kernel, if true than it is hermitian, otherwise it is not
-  virtual bool get_hermiticity() = 0;
+  virtual bool get_hermiticity() const = 0;
 };
 
 template <class R, class Q, class P>
@@ -159,7 +159,7 @@ public:
   //! Sets hermiticity of kernel
   virtual void set_hermiticity(bool hermitian) = 0;
   //! Gets hermiticity of kernel, if true than it is hermitian, otherwise it is not
-  virtual bool get_hermiticity() = 0;
+  virtual bool get_hermiticity() const = 0;
 };
 
 //! Optimises to a stationary point using methods such as L-BFGS

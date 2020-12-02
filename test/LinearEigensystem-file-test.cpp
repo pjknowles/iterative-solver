@@ -109,7 +109,6 @@ std::vector<double> phase_normalise(const std::vector<double>& in) {
 void test_eigen(const std::string& title = "") {
   std::map<double, std::vector<double>> expected_eigensolutions;
   bool hermitian = std::abs(hmat[0 + n * 1] - hmat[1 + n * 0]) < 1e-10;
-  std::cout << hmat[0 + n * 1] << hmat[1 + n * 0] << std::endl;
   {
     Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> he(hmat.data(), n, n);
     Eigen::EigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he);
@@ -142,10 +141,10 @@ void test_eigen(const std::string& title = "") {
       auto [solver, logger] = molpro::test::create_LinearEigensystem();
       auto options = CastOptions::LinearEigensystem(solver->get_options());
       options->n_roots = nroot;
-      options->convergence_threshold = 1.0e-10;
+      options->convergence_threshold = 1.0e-6;
       options->norm_thresh = 1.0e-14;
       options->svd_thresh = 1.0e-10;
-      options->max_size_qspace = std::max(3 * nroot, std::min(int(n), std::min(1000, 3 * nroot)) - np);
+      options->max_size_qspace = std::max(6 * nroot, std::min(int(n), std::min(1000, 6 * nroot)) - np);
       options->reset_D = 4;
       options->hermiticity = hermitian;
       solver->set_options(options);
@@ -197,7 +196,8 @@ void test_eigen(const std::string& title = "") {
             }
           };
 
-      for (auto iter = 0; iter < 100; iter++) {
+      size_t n_iter = 1;
+      for (auto iter = 0; iter < 100; iter++, ++n_iter) {
         if (iter == 0 && np > 0) {
           std::vector<double> diagonals;
           for (auto i = 0; i < n; i++) {
@@ -284,7 +284,7 @@ void test_eigen(const std::string& title = "") {
         solver->report();
         //          if (*std::max_element(solver.errors().begin(), solver.errors().end()) < solver.m_thresh)
         nwork = solver->end_iteration(x, g);
-        std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
+        std::cout << "solver.end_iteration returns nwork=" << nwork << std::endl;
         if (nwork == 0)
           break;
       }
@@ -312,7 +312,9 @@ void test_eigen(const std::string& title = "") {
                   ::testing::Pointwise(::testing::DoubleNear(2e-9),
                                        std::vector<double>(expected_eigenvalues.data(),
                                                            expected_eigenvalues.data() + solver->n_roots())));
-      EXPECT_LE(solver->statistics().r_creations, (nroot + 1) * 15);
+      const auto nR_creations = solver->statistics().r_creations;
+      std::cout << "R creations = " << nR_creations << std::endl;
+      EXPECT_LE(nR_creations, (nroot + 1) * n_iter);
       std::vector<std::vector<double>> parameters, residuals;
       std::vector<int> roots;
       for (int root = 0; root < solver->n_roots(); root++) {
@@ -323,14 +325,13 @@ void test_eigen(const std::string& title = "") {
       solver->solution(roots, parameters, residuals);
       auto evalexpec = residual(parameters, residuals);
       for (const auto& r : residuals)
-        EXPECT_LE(dot(r, r), 1e-15);
+        EXPECT_LE(std::sqrt(dot(r, r)), options->convergence_threshold);
       int root = 0;
       for (const auto& ee : expected_eigensolutions) {
         EXPECT_NEAR(ee.first, solver->eigenvalues()[root], 1e-10);
-        EXPECT_THAT(phase_normalise(parameters[root]),
-                    ::testing::Pointwise(::testing::DoubleNear(1e-8), phase_normalise(ee.second)));
-        //        std::cout << phase_normalise(parameters) << std::endl;
-        //        std::cout << phase_normalise(ee.second) << std::endl;
+        auto overlap_with_reference = std::inner_product(parameters.at(root).begin(), parameters.at(root).end(),
+                                                         ee.second.begin(), 0., std::plus(), std::multiplies());
+        EXPECT_NEAR(std::abs(overlap_with_reference), 1., options->convergence_threshold.value());
         root++;
         if (root >= solver->n_roots())
           break;
@@ -340,8 +341,7 @@ void test_eigen(const std::string& title = "") {
 }
 
 TEST(IterativeSolver, file_eigen) {
-//  for (const auto& file : std::vector<std::string>{"bh", "hf", "phenol"}) {
-  for (const auto& file : std::vector<std::string>{"bh", "hf"}) {
+  for (const auto& file : std::vector<std::string>{"phenol", "bh", "hf"}) {
     load_matrix(file, file == "phenol" ? 0 : 1e-8);
     test_eigen(file);
   }

@@ -90,10 +90,10 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
       dynamic_cast<LinearEigensystem<Rvector, Qvector, Pvector>*>(instance.solver.get());
   if (solver_cast) {
     solver_cast->set_hermiticity(hermitian);
-    solver_cast->set_convergence_threshold(1.0e-12);
-    solver_cast->propose_rspace_norm_thresh = 1.0e-14;
-    solver_cast->set_max_size_qspace(10);
-    solver_cast->set_reset_D(50);
+    solver_cast->set_convergence_threshold(thresh);
+//    solver_cast->propose_rspace_norm_thresh = 1.0e-14;
+//    solver_cast->set_max_size_qspace(10);
+//    solver_cast->set_reset_D(50);
     solver_cast->logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
     solver_cast->logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
     solver_cast->logger->data_dump = false;

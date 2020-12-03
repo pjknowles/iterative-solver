@@ -181,6 +181,15 @@ public:
         data[EqnData::H](i, j) = pp_action_matrix[ij];
   }
 
+  //! For a system of linear equations Ax=b, adds rhs vectors b.
+  void add_rhs_equations(const CVecRef<R>& rhs) {
+    for (const auto& r : rhs)
+      m_rhs.emplace_back(this->m_handlers->qr().copy(r));
+  }
+
+  //! Access RHS vectors in linear equations
+  const std::vector<Q>& rhs() const { return m_rhs; }
+
   const Dimensions& dimensions() const override { return m_dim; }
 
   void erase(size_t i) override {
@@ -247,6 +256,7 @@ protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::shared_ptr<Logger> m_logger;
   Dimensions m_dim;
+  std::vector<Q> m_rhs;    //!< Right hand side vectors
   bool m_hermitian = true; //!< whether the matrix is Hermitian
 };
 

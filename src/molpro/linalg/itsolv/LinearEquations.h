@@ -47,15 +47,16 @@ public:
   }
 
   void add_equations(const CVecRef<R>& rhs) override {
-    this->set_n_roots(m_rhs.size());
-    for (const auto& r : rhs) {
-      m_rhs.emplace_back(this->m_handlers->qr().copy(r));
-    }
+    auto xspace = std::static_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
+    this->set_n_roots(xspace->rhs().size());
   }
 
   void add_equations(const R& rhs) override { add_equations(cwrap_arg(rhs)); }
 
-  const std::vector<Q>& rhs() const override { return m_rhs; }
+  const std::vector<Q>& rhs() const override {
+    auto xspace = std::static_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
+    return xspace->rhs();
+  }
 
   //! Set threshold on the norm of parameters that should be considered null
   void set_norm_thresh(double thresh) { m_norm_thresh = thresh; }
@@ -93,10 +94,9 @@ protected:
   void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {
     assert(params.size() >= roots.size());
     for (size_t i = 0; i < roots.size(); ++i)
-      this->m_handlers->rq().axpy(-1, m_rhs.at(roots[i]), actions.at(i));
+      this->m_handlers->rq().axpy(-1, rhs().at(roots[i]), actions.at(i));
   }
 
-  std::vector<Q> m_rhs;         //!< Right hand side vectors
   double m_norm_thresh = 1e-10; //!< vectors with norm less than threshold can be considered null.
   double m_svd_thresh = 1e-8;   //!< svd values smaller than this mark the null space
   int m_max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space

@@ -46,7 +46,12 @@ public:
     return end_iteration(wrap(parameters), wrap(action));
   }
 
-  void add_equations(const CVecRef<R>& rhs) override { throw std::runtime_error("Not implemented yet"); }
+  void add_equations(const CVecRef<R>& rhs) override {
+    this->set_n_roots(rhs.size());
+    for (const auto& r : rhs) {
+      m_rhs.emplace_back(this->m_handlers->qr().copy(r));
+    }
+  }
 
   void add_equations(const R& rhs) override { add_equations(cwrap_arg(rhs)); }
 
@@ -93,6 +98,5 @@ protected:
   bool m_hermiticity = true;                               //!< whether the problem is hermitian or not
 };
 
-//
 } // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREQUATIONS_H

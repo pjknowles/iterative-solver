@@ -2,11 +2,9 @@
 #include "test.h"
 
 #include <Eigen/Dense>
-#include <Eigen/Eigenvalues>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
-#include <limits>
 #include <molpro/iostream.h>
 #include <numeric>
 #include <regex>
@@ -75,26 +73,28 @@ void update(std::vector<Rvector>& psg, std::vector<scalar> shift = std::vector<s
     }
 }
 
-auto solve_full_problem() {
+auto solve_full_problem(bool hermitian) {
   std::map<double, std::vector<double>> expected_eigensolutions;
-  std::vector<double> expected_eigenvalues;
-  Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> he(hmat.data(), n, n);
-  Eigen::EigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he);
-  auto ev = esolver.eigenvalues().real();
-  expected_eigenvalues.clear();
-  auto evecreal = esolver.eigenvectors().real().eval();
-  for (int i = 0; i < n; i++)
-    expected_eigenvalues.push_back(ev[i]);
+  std::vector<double> expected_eigenvalues, eigenvector;
+  std::vector<double> hmat_row(n * n);
+  std::vector<double> metric(n * n);
+  for (size_t i = 0; i < n; ++i)
+    metric[i * (n + 1)] = 1;
+  for (size_t i = 0, ij = 0; i < n; ++i)
+    for (size_t j = 0; j < n; ++j, ++ij)
+      hmat_row[ij] = hmat(i, j);
+  molpro::linalg::itsolv::eigenproblem(eigenvector, expected_eigenvalues, hmat_row, metric, n, hermitian, 1.0e-14, 0);
   for (int i = 0; i < n; i++)
     for (int j = 0; j < n; j++)
-      expected_eigensolutions[ev[i]].push_back(evecreal(j, i)); // won't work for degenerate eigenvalues!
+      expected_eigensolutions[expected_eigenvalues[i]].push_back(
+          eigenvector[n * i + j]); // won't work for degenerate eigenvalues!
   return std::make_tuple(expected_eigensolutions, expected_eigenvalues);
 }
 
 void test_eigen(const std::string& title = "") {
   auto d = (hmat - hmat.transpose()).norm();
   bool hermitian = d < 1e-10;
-  auto [expected_eigensolutions, expected_eigenvalues] = solve_full_problem();
+  auto [expected_eigensolutions, expected_eigenvalues] = solve_full_problem(hermitian);
   std::sort(expected_eigenvalues.begin(), expected_eigenvalues.end());
   std::cout << "expected eigenvalues " << expected_eigenvalues << std::endl;
   { // testing the test: that sort of eigenvalues is the same thing as std::map sorting of keys

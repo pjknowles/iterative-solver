@@ -17,84 +17,62 @@
 // Find lowest eigensolution of a matrix obtained from an external file
 // Storage of vectors in-memory via class Rvector
 using scalar = double;
+using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
 namespace {
 size_t n;
-std::vector<double> hmat;
+MatrixXdc hmat;
 } // namespace
 
 void load_matrix(int dimension, const std::string& type = "", double param = 1, bool hermitian = true) {
   n = dimension;
-  hmat.resize(n * n);
-  hmat.assign(n * n, 1);
+  hmat.resize(n, n);
+  hmat.fill(1);
   for (int i = 0; i < n; i++)
-    hmat[i * (n + 1)] = i * param;
+    hmat(i, i) = i * param;
   if (not hermitian)
     for (int i = 0; i < n; i++)
       for (int j = 0; j < i; j++)
-        hmat[i * n + j] *= .95;
+        hmat(i, j) *= .95;
 }
 void load_matrix(const std::string& file, double degeneracy_split = 0) {
   std::ifstream f(std::string{"./"} + file + ".hamiltonian");
   f >> n;
-  hmat.resize(n * n);
-  for (auto i = 0; i < n * n; i++)
-    f >> hmat[i];
+  hmat.resize(n, n);
+  for (auto i = 0; i < n; i++)
+    for (auto j = 0; j < n; j++)
+      f >> hmat(i, j);
   // split degeneracies
   for (auto i = 0; i < n; i++)
-    hmat[i * (n + 1)] += degeneracy_split * i;
+    hmat(i, i) += degeneracy_split * i;
 }
 
 void action(const std::vector<Rvector>& psx, std::vector<Rvector>& outputs) {
   for (size_t k = 0; k < psx.size(); k++) {
-    for (size_t i = 0; i < n; i++) {
-      outputs[k][i] = 0;
-      for (size_t j = 0; j < n; j++) {
-        outputs[k][i] += hmat[i + n * j] * psx[k][j];
-      }
-    }
+    auto x = Eigen::Map<const Eigen::VectorXd>(psx.at(k).data(), psx.at(k).size());
+    auto r = Eigen::Map<Eigen::VectorXd>(outputs.at(k).data(), psx.at(k).size());
+    r.fill(0);
+    r += hmat * x;
   }
 }
 template <class scalar>
 scalar dot(const std::vector<scalar>& a, const std::vector<scalar>& b) {
   return std::inner_product(std::begin(a), std::end(a), std::begin(b), scalar(0));
 }
-std::vector<double> residual(const std::vector<Rvector>& psx, std::vector<Rvector>& outputs) {
-  std::vector<double> evals;
-  action(psx, outputs);
+void residual(const std::vector<Rvector>& psx, std::vector<Rvector>& actions, const std::vector<double>& evals) {
+  action(psx, actions);
   for (size_t k = 0; k < psx.size(); k++) {
-    auto eval = dot(outputs[k], psx[k]) / dot(psx[k], psx[k]);
-    for (size_t i = 0; i < n; i++)
-      outputs[k][i] -= eval * psx[k][i];
-    evals.push_back(eval);
+    auto x = Eigen::Map<const Eigen::VectorXd>(psx.at(k).data(), psx.at(k).size());
+    auto r = Eigen::Map<Eigen::VectorXd>(actions.at(k).data(), psx.at(k).size());
+    r -= evals[k] * x;
   }
-  return evals;
 }
 
 void update(std::vector<Rvector>& psg, std::vector<scalar> shift = std::vector<scalar>()) {
   for (size_t k = 0; k < psg.size() && k < shift.size(); k++)
     for (size_t i = 0; i < n; i++) {
-      psg[k][i] = -psg[k][i] / (1e-12 - shift[k] + hmat[i + n * i]);
+      psg[k][i] = -psg[k][i] / (1e-12 - shift[k] + hmat(i, i));
     }
-}
-
-std::vector<double> phase_normalise(const std::vector<double>& in) {
-  double phase = 1;
-  double maxcomp = 1e-10;
-  double norm = 0;
-  for (const auto& v : in) {
-    norm += v * v;
-    if (std::abs(v) <= maxcomp)
-      continue;
-    phase = v / std::abs(v);
-    maxcomp = std::abs(v);
-  }
-  if (norm == 0)
-    throw std::runtime_error("zero vector");
-  norm = 1 / std::sqrt(norm);
-  std::vector<double> out;
-  for (const auto& v : in)
-    out.push_back(v * norm * phase);
-  return out;
 }
 
 auto solve_full_problem() {
@@ -114,7 +92,8 @@ auto solve_full_problem() {
 }
 
 void test_eigen(const std::string& title = "") {
-  bool hermitian = std::abs(hmat[0 + n * 1] - hmat[1 + n * 0]) < 1e-10;
+  auto d = (hmat - hmat.transpose()).norm();
+  bool hermitian = d < 1e-10;
   auto [expected_eigensolutions, expected_eigenvalues] = solve_full_problem();
   std::sort(expected_eigenvalues.begin(), expected_eigenvalues.end());
   std::cout << "expected eigenvalues " << expected_eigenvalues << std::endl;
@@ -155,7 +134,7 @@ void test_eigen(const std::string& title = "") {
       {
         std::vector<double> diagonals;
         for (auto i = 0; i < n; i++) {
-          diagonals.push_back(hmat[i + n * i]);
+          diagonals.push_back(hmat(i, i));
         }
         for (size_t root = 0; root < solver->n_roots(); root++) {
           x.emplace_back(n, 0);
@@ -183,7 +162,7 @@ void test_eigen(const std::string& title = "") {
                 const auto& p = pspace[pi].get();
                 for (const auto& pel : p)
                   for (size_t j = 0; j < n; j++)
-                    actioni[j] += hmat[j + n * pel.first] * pel.second * pvectors[i][pi];
+                    actioni[j] += hmat(j, pel.first) * pel.second * pvectors[i][pi];
               }
             }
           };
@@ -193,7 +172,7 @@ void test_eigen(const std::string& title = "") {
         if (iter == 0 && np > 0) {
           std::vector<double> diagonals;
           for (auto i = 0; i < n; i++) {
-            diagonals.push_back(hmat[i + n * i]);
+            diagonals.push_back(hmat(i, i));
           }
           for (size_t p = 0; p < np; p++) {
             std::map<size_t, scalar> pp;
@@ -207,7 +186,7 @@ void test_eigen(const std::string& title = "") {
             for (const auto& j : pspace) {
               const size_t kI = i.begin()->first;
               const size_t kJ = j.begin()->first;
-              PP.push_back(hmat[kI + n * kJ]);
+              PP.push_back(hmat(kI, kJ));
             }
           //            std::cout << "PP: " << PP << std::endl;
 
@@ -315,7 +294,7 @@ void test_eigen(const std::string& title = "") {
         roots.push_back(root);
       }
       solver->solution(roots, parameters, residuals);
-      auto evalexpec = residual(parameters, residuals);
+      residual(parameters, residuals, solver->eigenvalues());
       for (const auto& r : residuals)
         EXPECT_LE(std::sqrt(dot(r, r)), options->convergence_threshold);
       int root = 0;
@@ -333,7 +312,7 @@ void test_eigen(const std::string& title = "") {
 }
 
 TEST(IterativeSolver, file_eigen) {
-  for (const auto& file : std::vector<std::string>{"phenol", "bh", "hf"}) {
+  for (const auto& file : std::vector<std::string>{"hf"}) {
     load_matrix(file, file == "phenol" ? 0 : 1e-8);
     test_eigen(file);
   }
@@ -376,13 +355,13 @@ TEST(IterativeSolver, symmetry_eigen) {
     for (auto i = 0; i < n; i++)
       for (auto j = 0; j < n; j++)
         if (((i % 3) == 0 and (j % 3) != 0) or ((j % 3) == 0 and (i % 3) != 0))
-          hmat[j + i * n] = 0;
+          hmat(j, i) = 0;
     if (false) {
       std::cout << "hmat " << std::endl;
       for (auto i = 0; i < n; i++) {
         std::cout << "i%3" << i % 3 << std::endl;
         for (auto j = 0; j < n; j++)
-          std::cout << " " << hmat[j + i * n];
+          std::cout << " " << hmat(j, i);
         std::cout << std::endl;
       }
     }

@@ -8,6 +8,7 @@
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/wrap.h>
+#include <molpro/iostream.h>
 
 namespace molpro::linalg::itsolv {
 namespace detail {
@@ -260,7 +261,7 @@ public:
     }
   }
 
-  void report() const override { report(std::cout); }
+  void report() const override { report(molpro::cout); }
 
   void set_convergence_threshold(double thresh) override { m_convergence_threshold = thresh; }
   double convergence_threshold() const override { return m_convergence_threshold; }

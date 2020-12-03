@@ -27,6 +27,7 @@ struct LinearEigensystemF : ::testing::Test {
   using vectorP = std::vector<scalar>;
 
   size_t n = 0;
+  size_t verbosity = 0;
   MatrixXdc hmat;
 
   void load_matrix(int dimension, const std::string& type = "", double param = 1, bool hermitian = true) {
@@ -209,14 +210,17 @@ struct LinearEigensystemF : ::testing::Test {
           } else {
             action(x, g);
             nwork = solver->add_vector(x, g, apply_p_wrapper);
-//            std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
+            if (verbosity > 0)
+              std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
           }
           if (nwork == 0)
             break;
           update(g, solver->working_set_eigenvalues());
-//          solver->report();
+          if (verbosity > 0)
+            solver->report();
           nwork = solver->end_iteration(x, g);
-//          std::cout << "solver.end_iteration returns nwork=" << nwork << std::endl;
+          if (verbosity > 0)
+            std::cout << "solver.end_iteration returns nwork=" << nwork << std::endl;
           if (nwork == 0)
             break;
         }
@@ -227,16 +231,19 @@ struct LinearEigensystemF : ::testing::Test {
                   << solver->statistics().r_creations << " R vectors" << std::endl;
         EXPECT_THAT(solver->errors(), ::testing::Pointwise(::testing::DoubleNear(2 * solver->convergence_threshold()),
                                                            std::vector<double>(nroot, double(0))));
-//        std::cout << "expected eigenvalues "
-//                  << std::vector<double>(expected_eigenvalues.data(), expected_eigenvalues.data() + solver->n_roots())
-//                  << std::endl;
-//        std::cout << "obtained eigenvalues " << solver->eigenvalues() << std::endl;
+        if (verbosity > 0) {
+          std::cout << "expected eigenvalues "
+                    << std::vector<double>(expected_eigenvalues.data(), expected_eigenvalues.data() + solver->n_roots())
+                    << std::endl;
+          std::cout << "obtained eigenvalues " << solver->eigenvalues() << std::endl;
+        }
         EXPECT_THAT(solver->eigenvalues(),
                     ::testing::Pointwise(::testing::DoubleNear(2e-9),
                                          std::vector<double>(expected_eigenvalues.data(),
                                                              expected_eigenvalues.data() + solver->n_roots())));
         const auto nR_creations = solver->statistics().r_creations;
-//        std::cout << "R creations = " << nR_creations << std::endl;
+        if (verbosity > 0)
+          std::cout << "R creations = " << nR_creations << std::endl;
         EXPECT_LE(nR_creations, (nroot + 1) * n_iter);
         std::vector<std::vector<double>> parameters, residuals;
         std::vector<int> roots;

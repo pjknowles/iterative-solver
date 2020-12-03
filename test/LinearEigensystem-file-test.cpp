@@ -106,7 +106,7 @@ struct LinearEigensystemF : ::testing::Test {
     std::vector<double> testing;
     for (const auto& ee : expected_eigensolutions)
       testing.push_back(ee.first);
-    ASSERT_THAT(expected_eigenvalues, ::testing::Pointwise(::testing::DoubleNear(1e-13), testing));
+    ASSERT_THAT(expected_eigenvalues, ::testing::Pointwise(::testing::DoubleEq(), testing));
   }
 
   auto initial_guess(const size_t n_roots) {

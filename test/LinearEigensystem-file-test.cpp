@@ -1,7 +1,5 @@
 #include "create_solver.h"
 #include "test.h"
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
@@ -14,13 +12,14 @@
 #include <regex>
 #include <vector>
 
+#include <molpro/linalg/itsolv/helper.h>
+
 // Find lowest eigensolution of a matrix obtained from an external file
 // Storage of vectors in-memory via class Rvector
 using scalar = double;
 namespace {
 size_t n;
 std::vector<double> hmat;
-std::vector<double> expected_eigenvalues;
 } // namespace
 
 void load_matrix(int dimension, const std::string& type = "", double param = 1, bool hermitian = true) {
@@ -44,8 +43,6 @@ void load_matrix(const std::string& file, double degeneracy_split = 0) {
   for (auto i = 0; i < n; i++)
     hmat[i * (n + 1)] += degeneracy_split * i;
 }
-
-using pv = Rvector;
 
 void action(const std::vector<Rvector>& psx, std::vector<Rvector>& outputs) {
   for (size_t k = 0; k < psx.size(); k++) {
@@ -74,12 +71,6 @@ std::vector<double> residual(const std::vector<Rvector>& psx, std::vector<Rvecto
 }
 
 void update(std::vector<Rvector>& psg, std::vector<scalar> shift = std::vector<scalar>()) {
-  //  for (size_t k = 0; k < psc.size(); k++) {
-  //   molpro::cout << "update root "<<k<<", shift="<<shift[k]<<": ";
-  //    for (size_t i = 0; i < n; i++)
-  //      molpro::cout <<" "<< -psg[k][i] / (1e-12-shift[k] + matrix(i,i));
-  //    molpro::cout<<std::endl;
-  //  }
   for (size_t k = 0; k < psg.size() && k < shift.size(); k++)
     for (size_t i = 0; i < n; i++) {
       psg[k][i] = -psg[k][i] / (1e-12 - shift[k] + hmat[i + n * i]);
@@ -106,24 +97,25 @@ std::vector<double> phase_normalise(const std::vector<double>& in) {
   return out;
 }
 
-void test_eigen(const std::string& title = "") {
+auto solve_full_problem() {
   std::map<double, std::vector<double>> expected_eigensolutions;
+  std::vector<double> expected_eigenvalues;
+  Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> he(hmat.data(), n, n);
+  Eigen::EigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he);
+  auto ev = esolver.eigenvalues().real();
+  expected_eigenvalues.clear();
+  auto evecreal = esolver.eigenvectors().real().eval();
+  for (int i = 0; i < n; i++)
+    expected_eigenvalues.push_back(ev[i]);
+  for (int i = 0; i < n; i++)
+    for (int j = 0; j < n; j++)
+      expected_eigensolutions[ev[i]].push_back(evecreal(j, i)); // won't work for degenerate eigenvalues!
+  return std::make_tuple(expected_eigensolutions, expected_eigenvalues);
+}
+
+void test_eigen(const std::string& title = "") {
   bool hermitian = std::abs(hmat[0 + n * 1] - hmat[1 + n * 0]) < 1e-10;
-  {
-    Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> he(hmat.data(), n, n);
-    Eigen::EigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> esolver(he);
-    auto ev = esolver.eigenvalues().real();
-    expected_eigenvalues.clear();
-    auto evecreal = esolver.eigenvectors().real().eval();
-    for (int i = 0; i < n; i++)
-      expected_eigenvalues.push_back(ev[i]);
-    for (int i = 0; i < n; i++)
-      for (int j = 0; j < n; j++)
-        expected_eigensolutions[ev[i]].push_back(evecreal(j, i)); // won't work for degenerate eigenvalues!
-    ASSERT_EQ(expected_eigensolutions.size(), n);
-    //    for (const auto& ee : expected_eigensolutions)
-    //      std::cout << "expected eigensolution " << ee.first << std::endl<<ee.second<<std::endl;
-  }
+  auto [expected_eigensolutions, expected_eigenvalues] = solve_full_problem();
   std::sort(expected_eigenvalues.begin(), expected_eigenvalues.end());
   std::cout << "expected eigenvalues " << expected_eigenvalues << std::endl;
   { // testing the test: that sort of eigenvalues is the same thing as std::map sorting of keys

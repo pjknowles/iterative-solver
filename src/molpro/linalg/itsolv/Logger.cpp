@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <molpro/iostream.h>
 #include <sstream>
 
 namespace molpro::linalg::itsolv {
@@ -14,7 +15,7 @@ std::map<Logger::Level, std::string> log_level_names{{Logger::Trace, "Trace"}, {
 
 void Logger::msg(const std::string& message, Level log_lvl) {
   auto print_message = [&log_lvl, &message]() {
-    std::cout << log_level_names[log_lvl] << ": " << message << std::endl;
+    molpro::cout << log_level_names[log_lvl] << ": " << message << std::endl;
   };
   if (log_lvl == Trace || log_lvl == Debug || log_lvl == Info) {
     if (log_lvl <= max_trace_level) {

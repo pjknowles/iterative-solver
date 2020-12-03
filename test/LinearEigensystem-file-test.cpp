@@ -90,6 +90,23 @@ struct LinearEigensystemF : ::testing::Test {
             eigenvector[n * i + j]); // won't work for degenerate eigenvalues!
     return std::make_tuple(expected_eigensolutions, expected_eigenvalues);
   }
+  auto initial_guess(const size_t n_roots) {
+    std::vector<Rvector> g;
+    std::vector<Rvector> x;
+    std::vector<size_t> guess;
+    std::vector<double> diagonals;
+    for (auto i = 0; i < n; i++) {
+      diagonals.push_back(hmat(i, i));
+    }
+    for (size_t root = 0; root < n_roots; root++) {
+      x.emplace_back(n, 0);
+      g.emplace_back(n);
+      guess.push_back(std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin()); // initial guess
+      *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
+      x.back()[guess.back()] = 1; // initial guess
+    }
+    return std::make_tuple(x, g, guess);
+  };
 
   void test_eigen(const std::string& title = "") {
     auto d = (hmat - hmat.transpose()).norm();
@@ -127,23 +144,8 @@ struct LinearEigensystemF : ::testing::Test {
         logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
         logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
         logger->data_dump = false;
-        std::vector<Rvector> g;
-        std::vector<Rvector> x;
 
-        std::vector<size_t> guess;
-        {
-          std::vector<double> diagonals;
-          for (auto i = 0; i < n; i++) {
-            diagonals.push_back(hmat(i, i));
-          }
-          for (size_t root = 0; root < solver->n_roots(); root++) {
-            x.emplace_back(n, 0);
-            g.emplace_back(n);
-            guess.push_back(std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin()); // initial guess
-            *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
-            x.back()[guess.back()] = 1; // initial guess
-          }
-        }
+        auto [x, g, guess] = initial_guess(solver->n_roots());
         int nwork = solver->n_roots();
 
         std::vector<scalar> PP;

@@ -90,6 +90,12 @@ public:
   std::shared_ptr<Logger> logger;
 
 protected:
+  void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {
+    assert(params.size() >= roots.size());
+    for (size_t i = 0; i < roots.size(); ++i)
+      this->m_handlers->rq().axpy(-1, m_rhs.at(roots[i]), actions.at(i));
+  }
+
   std::vector<Q> m_rhs;         //!< Right hand side vectors
   double m_norm_thresh = 1e-10; //!< vectors with norm less than threshold can be considered null.
   double m_svd_thresh = 1e-8;   //!< svd values smaller than this mark the null space

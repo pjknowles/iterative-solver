@@ -77,15 +77,6 @@ void normalise(const size_t n_roots, const VecRef<R>& params, const VecRef<R>& a
 }
 
 template <class R, typename T>
-void construct_residual(const std::vector<int>& roots, const std::vector<T>& eigvals, const CVecRef<R>& params,
-                        const VecRef<R>& actions, array::ArrayHandler<R, R>& handler) {
-  assert(params.size() >= roots.size());
-  for (size_t i = 0; i < roots.size(); ++i) {
-    handler.axpy(-eigvals.at(roots[i]), params.at(i), actions.at(i));
-  }
-}
-
-template <class R, typename T>
 void update_errors(std::vector<T>& errors, const CVecRef<R>& residual, array::ArrayHandler<R, R>& handler) {
   assert(residual.size() >= errors.size());
   for (size_t i = 0; i < errors.size(); ++i) {
@@ -177,7 +168,7 @@ public:
     detail::construct_solution(residual, roots, m_subspace_solver->solutions(), {}, m_xspace->actionsq(),
                                m_xspace->actionsd(), m_xspace->dimensions().oP, m_xspace->dimensions().oQ,
                                m_xspace->dimensions().oD, *m_handlers);
-    detail::construct_residual(roots, m_subspace_solver->eigenvalues(), cwrap(parameters), residual, m_handlers->rr());
+    construct_residual(roots, cwrap(parameters), residual);
   };
 
   void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {
@@ -255,6 +246,10 @@ protected:
       : m_handlers(std::move(handlers)), m_xspace(std::move(xspace)), m_subspace_solver(std::move(solver)),
         m_stats(std::move(stats)), m_logger(std::move(logger)) {}
 
+  //! Constructs residual for given roots provided their parameters and actions
+  virtual void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params,
+                                  const VecRef<R>& actions) = 0;
+
   /*!
    * @brief Solves the subspace problems and selects the working set of roots, returning their parameters and residual
    * in parameters and action
@@ -283,7 +278,7 @@ protected:
       detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
       if (apply_p)
         apply_p(pvectors, m_xspace->cparamsp(), action);
-      detail::construct_residual(roots, m_subspace_solver->eigenvalues(), cwrap(parameters), action, m_handlers->rr());
+      construct_residual(roots, cwrap(parameters), action);
       auto errors = std::vector<scalar_type>(roots.size(), 0);
       detail::update_errors(errors, cwrap(action), m_handlers->rr());
       for (size_t i = 0; i < roots.size(); ++i)

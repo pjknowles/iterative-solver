@@ -156,6 +156,13 @@ public:
                                              //!< constructing the working set. Smaller singular values will lead to
                                              //!< deletion of parameters from the Q space
 protected:
+  void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {
+    assert(params.size() >= roots.size());
+    const auto& eigvals = eigenvalues();
+    for (size_t i = 0; i < roots.size(); ++i)
+      this->m_handlers->rr().axpy(-eigvals.at(roots[i]), params.at(i), actions.at(i));
+  }
+
   int m_max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space
   detail::DSpaceResetter<Q> m_dspace_resetter;             //!< resets D space
   bool m_hermiticity = true;                               //!< whether the problem is hermitian or not

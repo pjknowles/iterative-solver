@@ -265,7 +265,7 @@ struct LinearEigensystemF : ::testing::Test {
 };
 
 TEST_F(LinearEigensystemF, file_eigen) {
-  for (const auto& file : std::vector<std::string>{"hf","phenol"}) {
+  for (const auto& file : std::vector<std::string>{"phenol", "bh", "hf"}) {
     load_matrix(file, file == "phenol" ? 0 : 1e-8);
     test_eigen(file);
   }

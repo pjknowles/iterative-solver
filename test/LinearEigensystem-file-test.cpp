@@ -95,6 +95,7 @@ struct LinearEigensystemF : ::testing::Test {
       for (int j = 0; j < n; j++)
         expected_eigensolutions[expected_eigenvalues[i]].push_back(
             eigenvector[n * i + j]); // won't work for degenerate eigenvalues!
+    std::sort(expected_eigenvalues.begin(), expected_eigenvalues.end());
     return std::make_tuple(expected_eigensolutions, expected_eigenvalues);
   }
   auto initial_guess(const size_t n_roots) {
@@ -155,16 +156,16 @@ struct LinearEigensystemF : ::testing::Test {
                    std::shared_ptr<Logger>& logger, const int nroot, const int np, bool hermitian) {
     auto options = CastOptions::LinearEigensystem(solver->get_options());
     options->n_roots = nroot;
-    options->convergence_threshold = 1.0e-6;
-    options->norm_thresh = 1.0e-14;
-    options->svd_thresh = 1.0e-10;
-    options->max_size_qspace = std::max(6 * nroot, std::min(int(n), std::min(1000, 6 * nroot)) - np);
-    options->reset_D = 4;
+    options->convergence_threshold = 1.0e-8;
+//    options->norm_thresh = 1.0e-14;
+//    options->svd_thresh = 1.0e-10;
+//    options->max_size_qspace = std::max(6 * nroot, std::min(int(n), std::min(1000, 6 * nroot)) - np);
+//    options->reset_D = 4;
     options->hermiticity = hermitian;
     solver->set_options(options);
     options = CastOptions::LinearEigensystem(solver->get_options());
-    molpro::cout << "convergence threshold = " << options->convergence_threshold.value() << ", svd thresh"
-                 << options->svd_thresh.value() << ", norm thresh" << options->norm_thresh.value()
+    molpro::cout << "convergence threshold = " << options->convergence_threshold.value() << ", svd thresh = "
+                 << options->svd_thresh.value() << ", norm thresh = " << options->norm_thresh.value()
                  << ", max size of Q = " << options->max_size_qspace.value()
                  << ", reset D = " << options->reset_D.value() << std::endl;
     logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
@@ -177,17 +178,15 @@ struct LinearEigensystemF : ::testing::Test {
     auto d = (hmat - hmat.transpose()).norm();
     bool hermitian = d < 1e-10;
     auto [expected_eigensolutions, expected_eigenvalues] = solve_full_problem(hermitian);
-    std::sort(expected_eigenvalues.begin(), expected_eigenvalues.end());
-    std::cout << "expected eigenvalues " << expected_eigenvalues << std::endl;
+//    std::cout << "expected eigenvalues " << expected_eigenvalues << std::endl;
     { // testing the test: that sort of eigenvalues is the same thing as std::map sorting of keys
       std::vector<double> testing;
       for (const auto& ee : expected_eigensolutions)
         testing.push_back(ee.first);
       ASSERT_THAT(expected_eigenvalues, ::testing::Pointwise(::testing::DoubleNear(1e-13), testing));
     }
-    std::cout << "prep done" << std::endl;
-    for (int nroot = 1; nroot <= n && nroot <= 28; nroot++) {
-      for (auto np = 0; np <= n && np <= 50 && (hermitian or np == 0); np += std::max(nroot, int(n) / 10)) {
+    for (int nroot = 1; nroot <= n && nroot <= 28; nroot+=std::max(size_t{1},n/100)) {
+      for (auto np = 0; np <= n && np <= 100 && (hermitian or np == 0); np += std::max(nroot, int(n) / 10)) {
         molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n
                      << ", pspace dimension " << np << std::endl;
 
@@ -210,14 +209,14 @@ struct LinearEigensystemF : ::testing::Test {
           } else {
             action(x, g);
             nwork = solver->add_vector(x, g, apply_p_wrapper);
-            std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
+//            std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
           }
           if (nwork == 0)
             break;
           update(g, solver->working_set_eigenvalues());
-          solver->report();
+//          solver->report();
           nwork = solver->end_iteration(x, g);
-          std::cout << "solver.end_iteration returns nwork=" << nwork << std::endl;
+//          std::cout << "solver.end_iteration returns nwork=" << nwork << std::endl;
           if (nwork == 0)
             break;
         }
@@ -228,16 +227,16 @@ struct LinearEigensystemF : ::testing::Test {
                   << solver->statistics().r_creations << " R vectors" << std::endl;
         EXPECT_THAT(solver->errors(), ::testing::Pointwise(::testing::DoubleNear(2 * solver->convergence_threshold()),
                                                            std::vector<double>(nroot, double(0))));
-        std::cout << "expected eigenvalues "
-                  << std::vector<double>(expected_eigenvalues.data(), expected_eigenvalues.data() + solver->n_roots())
-                  << std::endl;
-        std::cout << "obtained eigenvalues " << solver->eigenvalues() << std::endl;
+//        std::cout << "expected eigenvalues "
+//                  << std::vector<double>(expected_eigenvalues.data(), expected_eigenvalues.data() + solver->n_roots())
+//                  << std::endl;
+//        std::cout << "obtained eigenvalues " << solver->eigenvalues() << std::endl;
         EXPECT_THAT(solver->eigenvalues(),
                     ::testing::Pointwise(::testing::DoubleNear(2e-9),
                                          std::vector<double>(expected_eigenvalues.data(),
                                                              expected_eigenvalues.data() + solver->n_roots())));
         const auto nR_creations = solver->statistics().r_creations;
-        std::cout << "R creations = " << nR_creations << std::endl;
+//        std::cout << "R creations = " << nR_creations << std::endl;
         EXPECT_LE(nR_creations, (nroot + 1) * n_iter);
         std::vector<std::vector<double>> parameters, residuals;
         std::vector<int> roots;
@@ -266,7 +265,7 @@ struct LinearEigensystemF : ::testing::Test {
 };
 
 TEST_F(LinearEigensystemF, file_eigen) {
-  for (const auto& file : std::vector<std::string>{"hf"}) {
+  for (const auto& file : std::vector<std::string>{"hf","phenol"}) {
     load_matrix(file, file == "phenol" ? 0 : 1e-8);
     test_eigen(file);
   }

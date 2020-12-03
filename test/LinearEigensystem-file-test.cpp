@@ -14,11 +14,17 @@
 
 // Find lowest eigensolution of a matrix obtained from an external file
 // Storage of vectors in-memory via class Rvector
-using scalar = double;
-using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
 
 struct LinearEigensystemF : ::testing::Test {
+  using scalar = double;
+  using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+  using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
+  template <typename T>
+  using CVecRef = molpro::linalg::itsolv::CVecRef<T>;
+  template <typename T>
+  using VecRef = molpro::linalg::itsolv::VecRef<T>;
+  using vectorP = std::vector<scalar>;
+
   size_t n = 0;
   MatrixXdc hmat;
 
@@ -108,6 +114,18 @@ struct LinearEigensystemF : ::testing::Test {
     return std::make_tuple(x, g, guess);
   };
 
+  void apply_p(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
+    for (size_t i = 0; i < pvectors.size(); i++) {
+      auto& actioni = (action[i]).get();
+      for (size_t pi = 0; pi < pspace.size(); pi++) {
+        const auto& p = pspace[pi].get();
+        for (const auto& pel : p)
+          for (size_t j = 0; j < n; j++)
+            actioni[j] += hmat(j, pel.first) * pel.second * pvectors[i][pi];
+      }
+    }
+  };
+
   void test_eigen(const std::string& title = "") {
     auto d = (hmat - hmat.transpose()).norm();
     bool hermitian = d < 1e-10;
@@ -150,22 +168,9 @@ struct LinearEigensystemF : ::testing::Test {
 
         std::vector<scalar> PP;
         std::vector<Pvector> pspace;
-        using vectorP = std::vector<scalar>;
-        using molpro::linalg::itsolv::CVecRef;
-        using molpro::linalg::itsolv::VecRef;
-        std::function<void(const std::vector<vectorP>&, const CVecRef<Pvector>&, const VecRef<Rvector>&)> apply_p =
-            [this](const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace,
-                   const VecRef<Rvector>& action) {
-              for (size_t i = 0; i < pvectors.size(); i++) {
-                auto& actioni = (action[i]).get();
-                for (size_t pi = 0; pi < pspace.size(); pi++) {
-                  const auto& p = pspace[pi].get();
-                  for (const auto& pel : p)
-                    for (size_t j = 0; j < n; j++)
-                      actioni[j] += hmat(j, pel.first) * pel.second * pvectors[i][pi];
-                }
-              }
-            };
+        auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
+          return this->apply_p(pvectors, pspace, action);
+        };
 
         size_t n_iter = 1;
         for (auto iter = 0; iter < 100; iter++, ++n_iter) {
@@ -190,10 +195,10 @@ struct LinearEigensystemF : ::testing::Test {
 
             nwork = solver->add_p(molpro::linalg::itsolv::cwrap(pspace),
                                   molpro::linalg::array::span::Span<double>(PP.data(), PP.size()),
-                                  molpro::linalg::itsolv::wrap(x), molpro::linalg::itsolv::wrap(g), apply_p);
+                                  molpro::linalg::itsolv::wrap(x), molpro::linalg::itsolv::wrap(g), apply_p_wrapper);
           } else {
             action(x, g);
-            nwork = solver->add_vector(x, g, apply_p);
+            nwork = solver->add_vector(x, g, apply_p_wrapper);
             std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
           }
           if (nwork == 0)

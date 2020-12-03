@@ -138,6 +138,8 @@ public:
                       std::to_string(parameters.size()) + ", " + std::to_string(actions.size()) + ", " +
                       std::to_string(m_working_set.size()) + ", ",
                   Logger::Debug);
+    if (m_xspace->dimensions().nP != 0 && !apply_p)
+      throw std::runtime_error("Solver contains P space but add_vector was not provided apply_p function");
     auto nW = std::min(m_working_set.size(), parameters.size());
     auto cwparams = cwrap<R>(begin(parameters), begin(parameters) + nW);
     auto cwactions = cwrap<R>(begin(actions), begin(actions) + nW);

@@ -19,7 +19,7 @@ using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::R
 using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
 
 struct LinearEigensystemF : ::testing::Test {
-  size_t n;
+  size_t n = 0;
   MatrixXdc hmat;
 
   void load_matrix(int dimension, const std::string& type = "", double param = 1, bool hermitian = true) {
@@ -144,7 +144,6 @@ struct LinearEigensystemF : ::testing::Test {
             x.back()[guess.back()] = 1; // initial guess
           }
         }
-        //        std::cout << "guess: " << guess << std::endl;
         int nwork = solver->n_roots();
 
         std::vector<scalar> PP;
@@ -152,8 +151,6 @@ struct LinearEigensystemF : ::testing::Test {
         using vectorP = std::vector<scalar>;
         using molpro::linalg::itsolv::CVecRef;
         using molpro::linalg::itsolv::VecRef;
-        //          using fapply_on_p_type = std::function<void(const std::vector<VectorP>&, const CVecRef<P>&, const
-        //          VecRef<R>&)>;
         std::function<void(const std::vector<vectorP>&, const CVecRef<Pvector>&, const VecRef<Rvector>&)> apply_p =
             [this](const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace,
                    const VecRef<Rvector>& action) {
@@ -181,7 +178,6 @@ struct LinearEigensystemF : ::testing::Test {
               pspace.push_back(pp);
               *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
             }
-            //            std::cout << "P space: " << pspace << std::endl;
             PP.reserve(np * np);
             for (const auto& i : pspace)
               for (const auto& j : pspace) {
@@ -189,72 +185,19 @@ struct LinearEigensystemF : ::testing::Test {
                 const size_t kJ = j.begin()->first;
                 PP.push_back(hmat(kI, kJ));
               }
-            //            std::cout << "PP: " << PP << std::endl;
 
             nwork = solver->add_p(molpro::linalg::itsolv::cwrap(pspace),
                                   molpro::linalg::array::span::Span<double>(PP.data(), PP.size()),
                                   molpro::linalg::itsolv::wrap(x), molpro::linalg::itsolv::wrap(g), apply_p);
           } else {
             action(x, g);
-            //          for (auto root = 0; root < nwork; root++) {
-            //            std::cout << "before addVector() x:";
-            //            for (auto i = 0; i < n; i++)
-            //              std::cout << " " << x[root][i];
-            //            std::cout << std::endl;
-            //            std::cout << "before addVector() g:";
-            //            for (auto i = 0; i < n; i++)
-            //              std::cout << " " << g[root][i];
-            //            std::cout << std::endl;
-            //          }
             nwork = solver->add_vector(x, g, apply_p);
             std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
           }
           if (nwork == 0)
             break;
-          //        for (auto root = 0; root < nwork; root++) {
-          //          std::cout << "after addVector() or addP()"
-          //                    << " eigenvalue=" << solver.working_set_eigenvalues()[root] << " error=" <<
-          //                    solver.errors()[root]
-          //                    << "\nx:";
-          //          for (auto i = 0; i < n; i++)
-          //            std::cout << " " << x[root][i];
-          //          std::cout << std::endl;
-          //          std::cout << "after addVector() g:";
-          //          for (auto i = 0; i < n; i++)
-          //            std::cout << " " << g[root][i];
-          //          std::cout << std::endl;
-          //        }
-          //        x.resize(nwork);
-          //        g.resize(nwork);
-          //        for (auto k = 0; k < solver.working_set().size(); k++) {
-          //          for (auto p = 0; p < np; p++)
-          //            for (const auto& pc : pspace[p])
-          //              for (auto i = 0; i < n; i++)
-          //                g[k][i] += matrix(i, pc.first) * pc.second * Pcoeff[k][p];
-          //          //            molpro::cout << "old error " << solver.m_errors[solver.working_set()[k]];
-          //          //            solver.m_errors[solver.working_set()[k]] = std::sqrt(g[k].dot(g[k]));
-          //          //            molpro::cout << "; new error " << solver.m_errors[solver.working_set()[k]] <<
-          //          std::endl;
-          //        }
-          //          for (auto root = 0; root < nwork; root++) {
-          //            std::cout << "after p gradient g:";
-          //            for (auto i = 0; i < n; i++)
-          //              std::cout << " " << g[root][i];
-          //            std::cout << std::endl;
-          //          }
           update(g, solver->working_set_eigenvalues());
-          //          for (auto root = 0; root < nwork; root++) {
-          //            std::cout << "after update() x:";
-          //            for (auto i = 0; i < n; i++)
-          //              std::cout << " " << x[root][i];
-          //            std::cout << std::endl;
-          //            std::cout << "after update() g:";
-          //            for (auto i = 0; i < n; i++)
-          //              std::cout << " " << g[root][i];
-          //            std::cout << std::endl;
-          //          }
           solver->report();
-          //          if (*std::max_element(solver.errors().begin(), solver.errors().end()) < solver.m_thresh)
           nwork = solver->end_iteration(x, g);
           std::cout << "solver.end_iteration returns nwork=" << nwork << std::endl;
           if (nwork == 0)
@@ -265,15 +208,6 @@ struct LinearEigensystemF : ::testing::Test {
           std::cout << e << " ";
         std::cout << "} after " << solver->statistics().iterations << " iterations, "
                   << solver->statistics().r_creations << " R vectors" << std::endl;
-        //        for (size_t root = 0; root < solver.n_roots(); root++) {
-        //          std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver.eigenvalues()[root] <<
-        //          std::endl;
-        //        solver.solution(root, x.front(), g.front(), Pcoeff.front());
-        //        std::cout << "Eigenvector: (norm=" << std::sqrt(x[0].dot(x[0])) << "): ";
-        //        for (size_t k = 0; k < n; k++)
-        //          std::cout << " " << (x[0])[k];
-        //        std::cout << std::endl;
-        //        }
         EXPECT_THAT(solver->errors(), ::testing::Pointwise(::testing::DoubleNear(2 * solver->convergence_threshold()),
                                                            std::vector<double>(nroot, double(0))));
         std::cout << "expected eigenvalues "
@@ -337,7 +271,6 @@ TEST_F(LinearEigensystemF, nonhermitian_eigen) {
   //  for (auto param : std::vector<double>{.01, .1, 1}) {
   for (auto param : std::vector<double>{1}) {
     load_matrix(n, "", param, false);
-    //    std::cout << "matrix " << hmat << std::endl;
     test_eigen(std::to_string(n) + "/" + std::to_string(param) + ", non-hermitian");
   }
 }

@@ -12,12 +12,13 @@ namespace molpro::linalg::itsolv::subspace {
 namespace xspace {
 //! New sections of equation data
 struct NewData {
-  NewData(size_t nQnew, size_t nX) {
+  NewData(size_t nQnew, size_t nX, size_t nRHS) {
     for (auto d : {EqnData::H, EqnData::S}) {
       qq[d].resize({nQnew, nQnew});
       qx[d].resize({nQnew, nX});
       xq[d].resize({nX, nQnew});
     }
+    qq[EqnData::rhs].resize({nQnew, nRHS});
   }
 
   SubspaceData qq = null_data<EqnData::H, EqnData::S>(); //!< data block between new paramters
@@ -29,10 +30,10 @@ struct NewData {
 template <class R, class Q, class P>
 auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, const CVecRef<P>& pparams,
                         const CVecRef<Q>& qparams, const CVecRef<Q>& qactions, const CVecRef<Q>& dparams,
-                        const CVecRef<Q>& dactions, const Dimensions& dims, ArrayHandlers<R, Q, P>& handlers,
-                        Logger& logger) {
+                        const CVecRef<Q>& dactions, const CVecRef<Q>& rhs, const Dimensions& dims,
+                        ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
   auto nQnew = params.size();
-  auto data = NewData(nQnew, dims.nX);
+  auto data = NewData(nQnew, dims.nX, rhs.size());
   auto& qq = data.qq;
   auto& qx = data.qx;
   auto& xq = data.xq;
@@ -46,6 +47,7 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
   xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}) = util::overlap(pparams, actions, handlers.rp());
   xq[EqnData::H].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}) = util::overlap(qparams, actions, handlers.qr());
   xq[EqnData::H].slice({dims.oD, 0}, {dims.oD + dims.nD, nQnew}) = util::overlap(dparams, actions, handlers.qr());
+  qq[EqnData::rhs] = util::overlap(params, rhs, handlers.qr());
   transpose_copy(xq[EqnData::S].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}),
                  qx[EqnData::S].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}));
   transpose_copy(xq[EqnData::S].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}),
@@ -63,6 +65,7 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
     logger.msg("Hqx = " + as_string(qx[EqnData::H]), Logger::Info);
     logger.msg("Sxq = " + as_string(xq[EqnData::S]), Logger::Info);
     logger.msg("Hxq = " + as_string(xq[EqnData::H]), Logger::Info);
+    logger.msg("rhs = " + as_string(qq[EqnData::rhs]), Logger::Info);
   }
   return data;
 }
@@ -76,7 +79,7 @@ auto update_dspace_overlap_data(const CVecRef<P>& pparams, const CVecRef<Q>& qpa
   const auto nQ = qparams.size();
   const auto nX = nP + nQ;
   auto nD = dparams.size();
-  auto data = NewData(nD, nX);
+  auto data = NewData(nD, nX, 0);
   data.qq[EqnData::S].slice() = util::overlap(dparams, handler_qq);
   data.qx[EqnData::S].slice({0, 0}, {nD, nP}) = util::overlap(dparams, pparams, handler_qp);
   data.qx[EqnData::S].slice({0, nP}, {nD, nX}) = util::overlap(dparams, qparams, handler_qq);
@@ -99,7 +102,7 @@ auto update_dspace_action_data(const CVecRef<P>& pparams, const CVecRef<Q>& qpar
   const auto nQ = qparams.size();
   const auto nX = nP + nQ;
   auto nD = dparams.size();
-  auto data = NewData(nD, nX);
+  auto data = NewData(nD, nX, 0);
   const auto e = EqnData::H;
   data.qq[e].slice() = util::overlap(dparams, dactions, handler_qq);
   data.xq[e].slice({0, 0}, {nP, nD}) = util::overlap(pparams, dactions, handler_qp);
@@ -139,14 +142,14 @@ public:
 
   explicit XSpace(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers, const std::shared_ptr<Logger>& logger)
       : pspace(), qspace(handlers, logger), dspace(logger), m_handlers(handlers), m_logger(logger) {
-    data = null_data<EqnData::H, EqnData::S>();
+    data = null_data<EqnData::H, EqnData::S, EqnData::rhs>();
   };
 
   //! Updata parameters in Q space and corresponding equation data
   void update_qspace(const CVecRef<R>& params, const CVecRef<R>& actions) override {
     m_logger->msg("QSpace::update_qspace", Logger::Trace);
     auto new_data = xspace::update_qspace_data(params, actions, cparamsp(), cparamsq(), cactionsq(), cparamsd(),
-                                               cactionsd(), m_dim, *m_handlers, *m_logger);
+                                               cactionsd(), cwrap(m_rhs), m_dim, *m_handlers, *m_logger);
     qspace.update(params, actions, new_data.qq, new_data.qx, new_data.xq, m_dim, data);
     update_dimensions();
   }

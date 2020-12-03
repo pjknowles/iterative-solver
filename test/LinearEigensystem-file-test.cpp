@@ -158,15 +158,16 @@ struct LinearEigensystemF : ::testing::Test {
     auto options = CastOptions::LinearEigensystem(solver->get_options());
     options->n_roots = nroot;
     options->convergence_threshold = 1.0e-8;
-//    options->norm_thresh = 1.0e-14;
-//    options->svd_thresh = 1.0e-10;
-//    options->max_size_qspace = std::max(6 * nroot, std::min(int(n), std::min(1000, 6 * nroot)) - np);
-//    options->reset_D = 4;
+    //    options->norm_thresh = 1.0e-14;
+    //    options->svd_thresh = 1.0e-10;
+    options->max_size_qspace = std::max(6 * nroot, std::min(int(n), std::min(1000, 6 * nroot)) - np);
+    options->reset_D = 8;
     options->hermiticity = hermitian;
     solver->set_options(options);
     options = CastOptions::LinearEigensystem(solver->get_options());
-    molpro::cout << "convergence threshold = " << options->convergence_threshold.value() << ", svd thresh = "
-                 << options->svd_thresh.value() << ", norm thresh = " << options->norm_thresh.value()
+    molpro::cout << "convergence threshold = " << options->convergence_threshold.value()
+                 << ", svd thresh = " << options->svd_thresh.value()
+                 << ", norm thresh = " << options->norm_thresh.value()
                  << ", max size of Q = " << options->max_size_qspace.value()
                  << ", reset D = " << options->reset_D.value() << std::endl;
     logger->max_trace_level = molpro::linalg::itsolv::Logger::None;

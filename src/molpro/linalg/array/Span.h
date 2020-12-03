@@ -1,5 +1,8 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_SPAN_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_SPAN_H
+#include <stddef.h>
+#include <type_traits>
+#include <utility>
 
 namespace molpro::linalg::array {
 

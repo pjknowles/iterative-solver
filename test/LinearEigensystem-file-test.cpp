@@ -97,13 +97,16 @@ struct LinearEigensystemF : ::testing::Test {
         expected_eigensolutions[expected_eigenvalues[i]].push_back(
             eigenvector[n * i + j]); // won't work for degenerate eigenvalues!
     std::sort(expected_eigenvalues.begin(), expected_eigenvalues.end());
-    { // testing the test: that sort of eigenvalues is the same thing as std::map sorting of keys
-      std::vector<double> testing;
-      for (const auto& ee : expected_eigensolutions)
-        testing.push_back(ee.first);
-      ASSERT_THAT(expected_eigenvalues, ::testing::Pointwise(::testing::DoubleNear(1e-13), testing));
-    }
     return std::make_tuple(expected_eigensolutions, expected_eigenvalues);
+  }
+
+  // testing the test: that sort of eigenvalues is the same thing as std::map sorting of keys
+  void check_eigenvectors_map(const std::map<double, std::vector<double>>& expected_eigensolutions,
+                              const std::vector<double>& expected_eigenvalues) {
+    std::vector<double> testing;
+    for (const auto& ee : expected_eigensolutions)
+      testing.push_back(ee.first);
+    ASSERT_THAT(expected_eigenvalues, ::testing::Pointwise(::testing::DoubleNear(1e-13), testing));
   }
 
   auto initial_guess(const size_t n_roots) {
@@ -187,6 +190,7 @@ struct LinearEigensystemF : ::testing::Test {
     auto d = (hmat - hmat.transpose()).norm();
     bool hermitian = d < 1e-10;
     auto [expected_eigensolutions, expected_eigenvalues] = solve_full_problem(hermitian);
+    check_eigenvectors_map(expected_eigensolutions, expected_eigenvalues);
     if (verbosity > 0)
       std::cout << "expected eigenvalues " << expected_eigenvalues << std::endl;
     for (int nroot = 1; nroot <= n && nroot <= 28; nroot += std::max(size_t{1}, n / 100)) {

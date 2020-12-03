@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVERTEMPLATE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVERTEMPLATE_H
 #include <iostream>
+#include <molpro/iostream.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/subspace/ISubspaceSolver.h>
@@ -8,7 +9,6 @@
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/wrap.h>
-#include <molpro/iostream.h>
 
 namespace molpro::linalg::itsolv {
 namespace detail {
@@ -142,14 +142,6 @@ public:
   IterativeSolverTemplate<Solver, R, Q, P>& operator=(IterativeSolverTemplate<Solver, R, Q, P>&&) noexcept = default;
 
 public:
-  /*!
-   * @brief Adds new parameters and corresponding action to the subspace and solves the corresponding problem.
-   *
-   * @param parameters new parameters for the R space
-   * @param action corresponding action
-   * @param pparams P space components of the working set solutions
-   * @return
-   */
   size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions,
                     const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
     m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations) +
@@ -159,13 +151,12 @@ public:
                       std::to_string(parameters.size()) + ", " + std::to_string(actions.size()) + ", " +
                       std::to_string(m_working_set.size()) + ", ",
                   Logger::Debug);
-    std::vector<VectorP> pparams; // TODO move deeper to where it is really needed
     auto nW = std::min(m_working_set.size(), parameters.size());
     auto cwparams = cwrap<R>(begin(parameters), begin(parameters) + nW);
     auto cwactions = cwrap<R>(begin(actions), begin(actions) + nW);
     m_stats->r_creations += nW;
     m_xspace->update_qspace(cwparams, cwactions);
-    return solve_and_generate_working_set(parameters, actions, pparams, apply_p);
+    return solve_and_generate_working_set(parameters, actions, apply_p);
   }
 
 public:
@@ -182,11 +173,10 @@ public:
   // FIXME Currently only works if called on an empty subspace. Either enforce it or generalise.
   size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix, const VecRef<R>& parameters,
                const VecRef<R>& actions, const fapply_on_p_type& apply_p) override {
-    std::vector<VectorP> parametersP;
     if (not pparams.empty() and pparams.size() < n_roots())
       throw std::runtime_error("P space must be empty or at least as large as number of roots sought");
     m_xspace->update_pspace(pparams, pp_action_matrix);
-    return solve_and_generate_working_set(parameters, actions, parametersP, apply_p);
+    return solve_and_generate_working_set(parameters, actions, apply_p);
   };
 
   void clearP() override {}
@@ -281,12 +271,11 @@ protected:
    * in parameters and action
    * @param parameters container for storing parameters of the working set
    * @param action container for storing the residual of the working set
-   * @param pparams projection of the working set on to the P space
    * @param apply_p function that accumulates action from the P space projection of parameters
    * @return size of the working set
    */
   size_t solve_and_generate_working_set(const VecRef<R>& parameters, const VecRef<R>& action,
-                                        std::vector<VectorP>& pparams, const fapply_on_p_type& apply_p) {
+                                        const fapply_on_p_type& apply_p) {
     m_subspace_solver->solve(*m_xspace, n_roots());
     auto nsol = m_subspace_solver->size();
     std::vector<std::pair<Q, Q>> temp_solutions{};
@@ -303,12 +292,8 @@ protected:
       auto pvectors = detail::construct_vectorP(roots, m_subspace_solver->solutions(), m_xspace->dimensions().oP,
                                                 m_xspace->dimensions().nP);
       detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
-      if (apply_p) {
+      if (apply_p)
         apply_p(pvectors, m_xspace->cparamsp(), action);
-      } else {
-        detail::remove_p_component(parameters, roots, m_subspace_solver->solutions(), m_xspace->cparamsp(),
-                                   m_xspace->dimensions().oP, m_handlers->rp());
-      }
       detail::construct_residual(roots, m_subspace_solver->eigenvalues(), cwrap(parameters), action, m_handlers->rr());
       auto errors = std::vector<scalar_type>(roots.size(), 0);
       detail::update_errors(errors, cwrap(action), m_handlers->rr());
@@ -323,8 +308,6 @@ protected:
       m_handlers->rq().copy(parameters[i], temp_solutions.at(root).first);
       m_handlers->rq().copy(action[i], temp_solutions.at(root).second);
     }
-    pparams = detail::construct_vectorP(m_working_set, m_subspace_solver->solutions(), m_xspace->dimensions().oP,
-                                        m_xspace->dimensions().nP);
     m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace, 6);
     return m_working_set.size();
   }

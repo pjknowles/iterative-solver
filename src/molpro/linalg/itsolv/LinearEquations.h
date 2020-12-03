@@ -47,7 +47,7 @@ public:
   }
 
   void add_equations(const CVecRef<R>& rhs) override {
-    this->set_n_roots(rhs.size());
+    this->set_n_roots(m_rhs.size());
     for (const auto& r : rhs) {
       m_rhs.emplace_back(this->m_handlers->qr().copy(r));
     }

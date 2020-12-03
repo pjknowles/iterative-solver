@@ -48,19 +48,6 @@ void construct_solution(const VecRef<R>& params, const std::vector<int>& roots,
   }
 }
 
-template <class R, class P>
-void remove_p_component(const VecRef<R>& params, const std::vector<int>& roots,
-                        const subspace::Matrix<double>& solutions, const CVecRef<P>& pparams, size_t oP,
-                        array::ArrayHandler<R, P>& handler) {
-  assert(params.size() >= roots.size());
-  for (size_t i = 0; i < roots.size(); ++i) {
-    auto root = roots[i];
-    for (size_t j = 0; j < pparams.size(); ++j) {
-      handler.axpy(-solutions(root, oP + j), pparams.at(j), params.at(i));
-    }
-  }
-}
-
 template <typename T>
 std::vector<std::vector<T>> construct_vectorP(const std::vector<int>& roots, const subspace::Matrix<T>& solutions,
                                               const size_t oP, const size_t nP) {

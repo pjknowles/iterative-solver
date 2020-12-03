@@ -151,6 +151,28 @@ struct LinearEigensystemF : ::testing::Test {
     return std::make_tuple(pspace, PP);
   }
 
+  auto set_options(std::shared_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver,
+                   std::shared_ptr<Logger>& logger, const int nroot, const int np, bool hermitian) {
+    auto options = CastOptions::LinearEigensystem(solver->get_options());
+    options->n_roots = nroot;
+    options->convergence_threshold = 1.0e-6;
+    options->norm_thresh = 1.0e-14;
+    options->svd_thresh = 1.0e-10;
+    options->max_size_qspace = std::max(6 * nroot, std::min(int(n), std::min(1000, 6 * nroot)) - np);
+    options->reset_D = 4;
+    options->hermiticity = hermitian;
+    solver->set_options(options);
+    options = CastOptions::LinearEigensystem(solver->get_options());
+    molpro::cout << "convergence threshold = " << options->convergence_threshold.value() << ", svd thresh"
+                 << options->svd_thresh.value() << ", norm thresh" << options->norm_thresh.value()
+                 << ", max size of Q = " << options->max_size_qspace.value()
+                 << ", reset D = " << options->reset_D.value() << std::endl;
+    logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
+    logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
+    logger->data_dump = false;
+    return options;
+  }
+
   void test_eigen(const std::string& title = "") {
     auto d = (hmat - hmat.transpose()).norm();
     bool hermitian = d < 1e-10;
@@ -170,23 +192,7 @@ struct LinearEigensystemF : ::testing::Test {
                      << ", pspace dimension " << np << std::endl;
 
         auto [solver, logger] = molpro::test::create_LinearEigensystem();
-        auto options = CastOptions::LinearEigensystem(solver->get_options());
-        options->n_roots = nroot;
-        options->convergence_threshold = 1.0e-6;
-        options->norm_thresh = 1.0e-14;
-        options->svd_thresh = 1.0e-10;
-        options->max_size_qspace = std::max(6 * nroot, std::min(int(n), std::min(1000, 6 * nroot)) - np);
-        options->reset_D = 4;
-        options->hermiticity = hermitian;
-        solver->set_options(options);
-        options = CastOptions::LinearEigensystem(solver->get_options());
-        molpro::cout << "convergence threshold = " << options->convergence_threshold.value() << ", svd thresh"
-                     << options->svd_thresh.value() << ", norm thresh" << options->norm_thresh.value()
-                     << ", max size of Q = " << options->max_size_qspace.value()
-                     << ", reset D = " << options->reset_D.value() << std::endl;
-        logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
-        logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
-        logger->data_dump = false;
+        auto options = set_options(solver, logger, nroot, np, hermitian);
 
         auto [x, g, guess] = initial_guess(solver->n_roots());
         auto [pspace, PP] = initial_pspace(np);

@@ -61,10 +61,9 @@ public:
                                                   propose_rspace_norm_thresh, propose_rspace_svd_thresh,
                                                   *this->m_handlers, *this->m_logger);
     } else {
-      this->m_working_set =
-          detail::propose_rspace(*static_cast<ILinearEigensystem<R, Q, P>*>(this), parameters, action, *this->m_xspace,
-                                 *this->m_subspace_solver, *this->m_handlers, *this->m_logger,
-                                 propose_rspace_svd_thresh, propose_rspace_norm_thresh, m_max_size_qspace);
+      this->m_working_set = detail::propose_rspace(*this, parameters, action, *this->m_xspace, *this->m_subspace_solver,
+                                                   *this->m_handlers, *this->m_logger, propose_rspace_svd_thresh,
+                                                   propose_rspace_norm_thresh, m_max_size_qspace);
     }
     this->m_stats->iterations++;
     return this->working_set().size();
@@ -118,7 +117,7 @@ public:
     auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
     subspace_solver->set_hermiticity(hermitian);
   }
-  bool get_hermiticity()const override { return m_hermiticity; }
+  bool get_hermiticity() const override { return m_hermiticity; }
 
   void set_options(const std::shared_ptr<Options>& options) override {
     SolverTemplate::set_options(options);

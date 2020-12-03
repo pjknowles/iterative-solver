@@ -534,7 +534,7 @@ auto get_new_working_set(const std::vector<int>& working_set, const CVecRef<R>& 
  * @return number of significant parameters to calculate the action for
  */
 template <class R, class Q, class P, typename value_type_abs>
-auto propose_rspace(ILinearEigensystem<R, Q, P>& solver, const VecRef<R>& parameters, const VecRef<R>& residuals,
+auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameters, const VecRef<R>& residuals,
                     subspace::IXSpace<R, Q, P>& xspace, subspace::ISubspaceSolver<R, Q, P>& subspace_solver,
                     ArrayHandlers<R, Q, P>& handlers, Logger& logger, value_type_abs svd_thresh,
                     value_type_abs res_norm_thresh, int max_size_qspace) {

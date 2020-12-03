@@ -15,14 +15,15 @@
 // Find lowest eigensolution of a matrix obtained from an external file
 // Storage of vectors in-memory via class Rvector
 
+using molpro::linalg::array::Span;
+using molpro::linalg::itsolv::CVecRef;
+using molpro::linalg::itsolv::cwrap;
+using molpro::linalg::itsolv::VecRef;
+using molpro::linalg::itsolv::wrap;
 struct LinearEigensystemF : ::testing::Test {
   using scalar = double;
   using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
   using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
-  template <typename T>
-  using CVecRef = molpro::linalg::itsolv::CVecRef<T>;
-  template <typename T>
-  using VecRef = molpro::linalg::itsolv::VecRef<T>;
   using vectorP = std::vector<scalar>;
 
   size_t n = 0;
@@ -112,7 +113,7 @@ struct LinearEigensystemF : ::testing::Test {
       x.back()[guess.back()] = 1; // initial guess
     }
     return std::make_tuple(x, g, guess);
-  };
+  }
 
   void apply_p(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
     for (size_t i = 0; i < pvectors.size(); i++) {
@@ -124,7 +125,31 @@ struct LinearEigensystemF : ::testing::Test {
             actioni[j] += hmat(j, pel.first) * pel.second * pvectors[i][pi];
       }
     }
-  };
+  }
+
+  auto initial_pspace(const size_t np) {
+    std::vector<scalar> PP;
+    std::vector<Pvector> pspace;
+    if (np > 0) {
+      std::vector<double> diagonals;
+      for (auto i = 0; i < n; i++)
+        diagonals.push_back(hmat(i, i));
+      for (size_t p = 0; p < np; p++) {
+        std::map<size_t, scalar> pp;
+        pp.insert({std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin(), 1});
+        pspace.push_back(pp);
+        *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
+      }
+      PP.reserve(np * np);
+      for (const auto& i : pspace)
+        for (const auto& j : pspace) {
+          const size_t kI = i.begin()->first;
+          const size_t kJ = j.begin()->first;
+          PP.push_back(hmat(kI, kJ));
+        }
+    }
+    return std::make_tuple(pspace, PP);
+  }
 
   void test_eigen(const std::string& title = "") {
     auto d = (hmat - hmat.transpose()).norm();
@@ -164,10 +189,9 @@ struct LinearEigensystemF : ::testing::Test {
         logger->data_dump = false;
 
         auto [x, g, guess] = initial_guess(solver->n_roots());
+        auto [pspace, PP] = initial_pspace(np);
         int nwork = solver->n_roots();
 
-        std::vector<scalar> PP;
-        std::vector<Pvector> pspace;
         auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
           return this->apply_p(pvectors, pspace, action);
         };
@@ -175,27 +199,8 @@ struct LinearEigensystemF : ::testing::Test {
         size_t n_iter = 1;
         for (auto iter = 0; iter < 100; iter++, ++n_iter) {
           if (iter == 0 && np > 0) {
-            std::vector<double> diagonals;
-            for (auto i = 0; i < n; i++) {
-              diagonals.push_back(hmat(i, i));
-            }
-            for (size_t p = 0; p < np; p++) {
-              std::map<size_t, scalar> pp;
-              pp.insert({std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin(), 1});
-              pspace.push_back(pp);
-              *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
-            }
-            PP.reserve(np * np);
-            for (const auto& i : pspace)
-              for (const auto& j : pspace) {
-                const size_t kI = i.begin()->first;
-                const size_t kJ = j.begin()->first;
-                PP.push_back(hmat(kI, kJ));
-              }
-
-            nwork = solver->add_p(molpro::linalg::itsolv::cwrap(pspace),
-                                  molpro::linalg::array::span::Span<double>(PP.data(), PP.size()),
-                                  molpro::linalg::itsolv::wrap(x), molpro::linalg::itsolv::wrap(g), apply_p_wrapper);
+            nwork = solver->add_p(cwrap(pspace), Span<double>(PP.data(), PP.size()), wrap(x),
+                                  molpro::linalg::itsolv::wrap(g), apply_p_wrapper);
           } else {
             action(x, g);
             nwork = solver->add_vector(x, g, apply_p_wrapper);

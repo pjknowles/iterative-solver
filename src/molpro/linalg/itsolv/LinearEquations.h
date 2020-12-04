@@ -48,7 +48,8 @@ public:
 
   void add_equations(const CVecRef<R>& rhs) override {
     auto xspace = std::static_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
-    this->set_n_roots(xspace->rhs().size());
+    xspace->add_rhs_equations(rhs);
+    this->set_n_roots(xspace->dimensions().nRHS);
   }
 
   void add_equations(const R& rhs) override { add_equations(cwrap_arg(rhs)); }

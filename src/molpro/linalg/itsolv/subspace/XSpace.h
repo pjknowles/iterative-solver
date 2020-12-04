@@ -195,11 +195,16 @@ public:
   void add_rhs_equations(const CVecRef<R>& rhs) {
     for (const auto& r : rhs)
       m_rhs.emplace_back(this->m_handlers->qr().copy(r));
+    for (const auto& r : rhs)
+      m_rhs_norm.template emplace_back(this->m_handlers->rr().dot(r, r));
     update_rhs_with_pspace();
   }
 
   //! Access RHS vectors in linear equations
   CVecRef<Q> rhs() const { return cwrap(m_rhs); }
+
+  //! Norm of RHS vectors
+  const std::vector<value_type_abs> rhs_norm() const { return m_rhs_norm; }
 
   const Dimensions& dimensions() const override { return m_dim; }
 
@@ -276,8 +281,9 @@ protected:
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::shared_ptr<Logger> m_logger;
   Dimensions m_dim;
-  std::vector<Q> m_rhs;    //!< Right hand side vectors
-  bool m_hermitian = true; //!< whether the matrix is Hermitian
+  std::vector<Q> m_rhs;                   //!< Right hand side vectors
+  std::vector<value_type_abs> m_rhs_norm; //!< norm of RHS vectors
+  bool m_hermitian = true;                //!< whether the matrix is Hermitian
 };
 
 } // namespace molpro::linalg::itsolv::subspace

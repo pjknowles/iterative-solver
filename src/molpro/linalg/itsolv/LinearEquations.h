@@ -92,10 +92,17 @@ public:
   std::shared_ptr<Logger> logger;
 
 protected:
+  // FIXME The scale is fixed by the norm of RHS, but if RHS=0 there is no reference. We could use the norm of params
   void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {
     assert(params.size() >= roots.size());
-    for (size_t i = 0; i < roots.size(); ++i)
-      this->m_handlers->rq().axpy(-1, rhs().at(roots[i]), actions.at(i));
+    const auto& norm = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace)->rhs_norm();
+    for (size_t i = 0; i < roots.size(); ++i) {
+      const auto ii = roots[i];
+      if (norm.at(ii) != 0) {
+        auto scal = 1 / std::pow(norm[ii], 2);
+        this->m_handlers->rq().axpy(-scal, rhs().at(ii), actions.at(i));
+      }
+    }
   }
 
   double m_norm_thresh = 1e-10; //!< vectors with norm less than threshold can be considered null.

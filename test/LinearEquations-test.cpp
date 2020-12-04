@@ -5,6 +5,7 @@
 #include <Eigen/Eigenvalues>
 #include <numeric>
 
+#include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/helper.h>
 
 using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
@@ -60,7 +61,7 @@ void apply_matrix(const MatrixXdr& mat, const std::vector<Rvector>& params, std:
   }
 }
 
-auto solve_full_problem(const MatrixXdr& mat, const MatrixXdr& rhs, bool augmented_hessian) {
+auto solve_full_problem(const MatrixXdr& mat, const MatrixXdr& rhs, double augmented_hessian) {
   const auto nX = mat.rows(), nroot = rhs.cols();
   std::vector<double> solution, eigenvalues, matrix, metric, rhs_flat;
   matrix.resize(nX * nX);
@@ -103,12 +104,39 @@ std::vector<double> residual(const MatrixXdr& rhs, const std::vector<Rvector>& a
   return errors;
 }
 
-void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, bool augmented_hessian) {
+auto set_options(std::shared_ptr<ILinearEquations<Rvector, Qvector, Pvector>>& solver, std::shared_ptr<Logger>& logger,
+                 const int n, const int nroot, const int np, bool hermitian, double augmented_hessian) {
+  auto options = CastOptions::LinearEquations(solver->get_options());
+  options->n_roots = nroot;
+  options->convergence_threshold = 1.0e-8;
+  //    options->norm_thresh = 1.0e-14;
+  //    options->svd_thresh = 1.0e-10;
+  options->max_size_qspace = std::max(6 * nroot, std::min(n, std::min(1000, 6 * nroot)) - np);
+  options->reset_D = 8;
+  options->hermiticity = hermitian;
+  options->augmented_hessian = augmented_hessian;
+  solver->set_options(options);
+  options = CastOptions::LinearEquations(solver->get_options());
+  molpro::cout << "convergence threshold = " << options->convergence_threshold.value()
+               << ", svd thresh = " << options->svd_thresh.value() << ", norm thresh = " << options->norm_thresh.value()
+               << ", max size of Q = " << options->max_size_qspace.value() << ", reset D = " << options->reset_D.value()
+               << ", augmented hessian = " << options->augmented_hessian.value() << std::endl;
+  logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
+  logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
+  logger->data_dump = false;
+  return options;
+}
+
+void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, double augmented_hessian) {
+  auto d = (mat - mat.transpose()).norm();
+  bool hermitian = d < 1e-10;
   const auto n_root_max = rhs.cols();
   const auto nX = mat.rows();
   auto reference_solutions = solve_full_problem(mat, rhs, augmented_hessian);
   auto preconditioner = LinearEquationsPreconditioner(mat);
   for (size_t nroot = 1; nroot <= n_root_max; ++nroot) {
+    auto [solver, logger] = molpro::test::create_LinearEquations();
+    auto options = set_options(solver, logger, mat.rows(), nroot, 0, hermitian, augmented_hessian);
     // solve the problem iteratively
     // compare solutions
     std::vector<std::vector<double>> parameters, actions;
@@ -144,7 +172,7 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
 TEST(LinearEquations, simple_symmetric_system) {
   double p = 1;
   size_t n_max = 4;
-  bool augmented_hessian = false;
+  double augmented_hessian = 0;
   for (size_t n = 1; n < n_max; ++n) {
     auto [mat, rhs] = construct_simple_symmetric_system(n, p);
     auto update = [](const auto& params, const auto& actions, auto n_work) {};

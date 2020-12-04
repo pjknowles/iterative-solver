@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREQUATIONS_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREQUATIONS_H
+#include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
@@ -106,6 +107,40 @@ public:
   double get_augmented_hessian() const {
     auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
     return subspace_solver->get_augmented_hessian();
+  }
+
+  void set_options(const std::shared_ptr<Options>& options) override {
+    SolverTemplate::set_options(options);
+    auto opt = CastOptions::LinearEquations(options);
+    if (opt) {
+      if (opt->reset_D)
+        set_reset_D(opt->reset_D.value());
+      if (opt->reset_D_max_Q_size)
+        set_reset_D_maxQ_size(opt->reset_D_max_Q_size.value());
+      if (opt->max_size_qspace)
+        set_max_size_qspace(opt->max_size_qspace.value());
+      if (opt->norm_thresh)
+        set_norm_thresh(opt->norm_thresh.value());
+      if (opt->svd_thresh)
+        set_svd_thresh(opt->svd_thresh.value());
+      if (opt->hermiticity)
+        set_hermiticity(opt->hermiticity.value());
+      if (opt->augmented_hessian)
+        set_augmented_hessian(opt->augmented_hessian.value());
+    }
+  }
+
+  std::shared_ptr<Options> get_options() const override {
+    auto opt = std::make_shared<LinearEquationsOptions>();
+    opt->copy(*SolverTemplate::get_options());
+    opt->reset_D = get_reset_D();
+    opt->reset_D_max_Q_size = get_reset_D_maxQ_size();
+    opt->max_size_qspace = get_max_size_qspace();
+    opt->norm_thresh = get_norm_thresh();
+    opt->svd_thresh = get_svd_thresh();
+    opt->hermiticity = get_hermiticity();
+    opt->augmented_hessian = get_augmented_hessian();
+    return opt;
   }
 
   std::shared_ptr<Logger> logger;

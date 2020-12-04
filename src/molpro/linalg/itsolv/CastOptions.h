@@ -3,6 +3,7 @@
 #include <memory>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/LinearEigensystemOptions.h>
+#include <molpro/linalg/itsolv/LinearEquationsOptions.h>
 #include <stdexcept>
 
 namespace molpro::linalg::itsolv {
@@ -10,7 +11,8 @@ namespace molpro::linalg::itsolv {
 struct CastOptions {
 private:
   template <class OptionsType>
-  static std::shared_ptr<OptionsType> cast(const std::shared_ptr<Options>& options, std::string options_type_name) {
+  static std::shared_ptr<OptionsType> cast(const std::shared_ptr<Options>& options,
+                                           const std::string& options_type_name) {
     auto lin_eig_options = std::shared_ptr<OptionsType>{};
     if (options) {
       lin_eig_options = std::dynamic_pointer_cast<OptionsType>(options);
@@ -23,6 +25,9 @@ private:
 public:
   static std::shared_ptr<LinearEigensystemOptions> LinearEigensystem(const std::shared_ptr<Options>& options) {
     return cast<LinearEigensystemOptions>(options, "LinearEigensystemOptions");
+  }
+  static std::shared_ptr<LinearEquationsOptions> LinearEquations(const std::shared_ptr<Options>& options) {
+    return cast<LinearEquationsOptions>(options, "LinearEquationsOptions");
   }
 };
 } // namespace molpro::linalg::itsolv

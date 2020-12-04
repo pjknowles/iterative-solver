@@ -57,7 +57,7 @@ void apply_matrix(const MatrixXdr& mat, const std::vector<Rvector>& params, std:
   for (size_t i = 0; i < n_work; ++i) {
     auto x = Eigen::Map<const Eigen::VectorXd>(params.at(i).data(), params[i].size());
     auto r = Eigen::Map<Eigen::VectorXd>(actions.at(i).data(), params[i].size());
-    r += mat * x;
+    r = mat * x;
   }
 }
 
@@ -87,15 +87,17 @@ auto solve_full_problem(const MatrixXdr& mat, const MatrixXdr& rhs, double augme
   return solutions_mat;
 }
 
-std::vector<double> residual(const MatrixXdr& rhs, const std::vector<Rvector>& actions) {
-  const auto nroots = actions.size();
+std::vector<double> residual(const MatrixXdr& mat, const MatrixXdr& rhs, const std::vector<Rvector>& parameters,
+                             std::vector<Rvector>& actions) {
+  const auto nroots = parameters.size();
+  apply_matrix(mat, parameters, actions, nroots);
   const auto nX = rhs.rows();
   auto errors = std::vector<double>(nroots);
   for (size_t i = 0; i < nroots; ++i) {
     double norm = 0;
     for (size_t j = 0; j < nX; ++j) {
-      errors[i] += rhs(i, j) - actions[i][j];
-      norm += rhs(i, j) * rhs(i, j);
+      errors[i] += std::pow(rhs(j, i) - actions[i][j], 2);
+      norm += std::pow(rhs(j, i), 2);
     }
     if (norm != 0)
       errors[i] /= norm;
@@ -201,9 +203,9 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
       roots.push_back(root);
     }
     solver->solution(roots, parameters, actions);
-    auto residual_errors = residual(rhs, actions);
+    auto residual_errors = residual(mat, rhs, parameters, actions);
     EXPECT_EQ(residual_errors.size(), nroot);
-    EXPECT_THAT(residual_errors, ::testing::Each(::testing::Le(options->convergence_threshold)));
+    EXPECT_THAT(residual_errors, ::testing::Each(::testing::Le(options->convergence_threshold.value())));
     for (size_t i = 0; i < nroot; ++i) {
       auto norm = std::inner_product(reference_solutions.at(i).begin(), reference_solutions.at(i).end(),
                                      reference_solutions.at(i).begin(), 0.);

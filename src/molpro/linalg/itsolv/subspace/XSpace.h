@@ -65,7 +65,7 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
     logger.msg("Hqx = " + as_string(qx[EqnData::H]), Logger::Info);
     logger.msg("Sxq = " + as_string(xq[EqnData::S]), Logger::Info);
     logger.msg("Hxq = " + as_string(xq[EqnData::H]), Logger::Info);
-    logger.msg("rhs = " + as_string(qq[EqnData::rhs]), Logger::Info);
+    logger.msg("rhs_q = " + as_string(qq[EqnData::rhs]), Logger::Info);
   }
   return data;
 }
@@ -73,21 +73,24 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
 //! Calculates overlap blocks between D space and the rest of the subspace
 template <class Q, class P>
 auto update_dspace_overlap_data(const CVecRef<P>& pparams, const CVecRef<Q>& qparams, const CVecRef<Q>& dparams,
-                                array::ArrayHandler<Q, P>& handler_qp, array::ArrayHandler<Q, Q>& handler_qq,
-                                Logger& logger) {
+                                const CVecRef<Q>& rhs, array::ArrayHandler<Q, P>& handler_qp,
+                                array::ArrayHandler<Q, Q>& handler_qq, Logger& logger) {
   const auto nP = pparams.size();
   const auto nQ = qparams.size();
   const auto nX = nP + nQ;
   auto nD = dparams.size();
-  auto data = NewData(nD, nX, 0);
+  const auto nRHS = rhs.size();
+  auto data = NewData(nD, nX, nRHS);
   data.qq[EqnData::S].slice() = util::overlap(dparams, handler_qq);
   data.qx[EqnData::S].slice({0, 0}, {nD, nP}) = util::overlap(dparams, pparams, handler_qp);
   data.qx[EqnData::S].slice({0, nP}, {nD, nX}) = util::overlap(dparams, qparams, handler_qq);
+  data.qq[EqnData::rhs].slice() = util::overlap(dparams, rhs, handler_qq);
   transpose_copy(data.xq[EqnData::S].slice(), data.qx[EqnData::S].slice());
   if (logger.data_dump) {
     logger.msg("xspace::update_dspace_overlap_data() nD = " + std::to_string(nD), Logger::Info);
     logger.msg("Sdd = " + as_string(data.qq[EqnData::S]), Logger::Info);
     logger.msg("Sdx = " + as_string(data.qx[EqnData::S]), Logger::Info);
+    logger.msg("rhs_d = " + as_string(data.qq[EqnData::rhs]), Logger::Info);
   }
   return data;
 }
@@ -160,12 +163,15 @@ public:
     update_dimensions();
     for (auto e : {EqnData::H, EqnData::S})
       data[e].resize({m_dim.nX, m_dim.nX});
-    auto new_data = xspace::update_dspace_overlap_data(cparamsp(), cparamsq(), cparamsd(), m_handlers->qp(),
-                                                       m_handlers->qq(), *m_logger);
+    auto new_data = xspace::update_dspace_overlap_data(cparamsp(), cparamsq(), cparamsd(), cwrap(m_rhs),
+                                                       m_handlers->qp(), m_handlers->qq(), *m_logger);
     xspace::copy_dspace_eqn_data(new_data, data, EqnData::S, m_dim);
     auto new_data_action = xspace::update_dspace_action_data(
         cparamsp(), cparamsq(), cactionsq(), cparamsd(), cactionsd(), m_handlers->qp(), m_handlers->qq(), *m_logger);
     xspace::copy_dspace_eqn_data(new_data_action, data, EqnData::H, m_dim);
+    const auto nRHS = m_rhs.size();
+    data[EqnData::rhs].resize({m_dim.nX, nRHS});
+    data[EqnData::rhs].slice({m_dim.oD, 0}, {m_dim.oD + m_dim.nD, nRHS}) = new_data.qq[EqnData::rhs].slice();
   }
 
   // FIXME this must be called when XSpace is empty

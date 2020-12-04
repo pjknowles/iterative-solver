@@ -175,6 +175,7 @@ public:
   }
 
   // FIXME this must be called when XSpace is empty
+  //! @warning Subspace should be empty
   void update_pspace(const CVecRef<P>& params, const array::Span<value_type>& pp_action_matrix) override {
     assert(m_dim.nX == 0);
     if (!m_hermitian)
@@ -182,6 +183,7 @@ public:
     pspace.update(params, m_handlers->pp());
     update_dimensions();
     const size_t nP = m_dim.nP;
+    update_rhs_with_pspace();
     data[EqnData::S].resize({nP, nP});
     data[EqnData::H].resize({nP, nP});
     data[EqnData::S].slice() = util::overlap(params, m_handlers->pp());
@@ -257,6 +259,13 @@ public:
 
 protected:
   void update_dimensions() { m_dim = Dimensions(pspace.size(), qspace.size(), dspace.size()); }
+
+  //! Update projection of RHS data onto P space. @warning Subspace should contain only P space
+  auto update_rhs_with_pspace() {
+    const auto nRHS = m_rhs.size();
+    data[EqnData::rhs].resize({m_dim.nP, nRHS});
+    data[EqnData::rhs].slice() = util::overlap(cparamsp(), rhs(), m_handlers->rp());
+  };
 
   void remove_data(size_t i) {
     for (auto d : {EqnData::H, EqnData::S})

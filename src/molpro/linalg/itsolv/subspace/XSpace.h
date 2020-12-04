@@ -169,9 +169,8 @@ public:
     auto new_data_action = xspace::update_dspace_action_data(
         cparamsp(), cparamsq(), cactionsq(), cparamsd(), cactionsd(), m_handlers->qp(), m_handlers->qq(), *m_logger);
     xspace::copy_dspace_eqn_data(new_data_action, data, EqnData::H, m_dim);
-    const auto nRHS = m_rhs.size();
-    data[EqnData::rhs].resize({m_dim.nX, nRHS});
-    data[EqnData::rhs].slice({m_dim.oD, 0}, {m_dim.oD + m_dim.nD, nRHS}) = new_data.qq[EqnData::rhs].slice();
+    data[EqnData::rhs].resize({m_dim.nX, m_dim.nRHS});
+    data[EqnData::rhs].slice({m_dim.oD, 0}, {m_dim.oD + m_dim.nD, m_dim.nRHS}) = new_data.qq[EqnData::rhs].slice();
   }
 
   // FIXME this must be called when XSpace is empty
@@ -259,12 +258,14 @@ public:
   DSpace<Q> dspace;
 
 protected:
-  void update_dimensions() { m_dim = Dimensions(pspace.size(), qspace.size(), dspace.size()); }
+  void update_dimensions() {
+    m_dim = Dimensions(pspace.size(), qspace.size(), dspace.size());
+    m_dim.nRHS = data.at(EqnData::rhs).cols();
+  }
 
   //! Update projection of RHS data onto P space. @warning Subspace should contain only P space
   auto update_rhs_with_pspace() {
-    const auto nRHS = m_rhs.size();
-    data[EqnData::rhs].resize({m_dim.nP, nRHS});
+    data[EqnData::rhs].resize({m_dim.nP, m_dim.nRHS});
     data[EqnData::rhs].slice() = util::overlap(cparamsp(), rhs(), m_handlers->rp());
   };
 

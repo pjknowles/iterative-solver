@@ -12,6 +12,7 @@ struct Dimensions {
   size_t oP = 0;
   size_t oQ = nP;
   size_t oD = oQ + nQ;
+  size_t nRHS = 0; //!< number of rigt-hand-side vectors in the system of linear equations
 };
 } // namespace molpro::linalg::itsolv::subspace
 

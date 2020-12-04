@@ -102,11 +102,10 @@ struct QSpace {
       old_data[d] = data[d];
     }
     if (!qq.at(EqnData::rhs).empty()) {
-      const auto nRHS = qq.at(EqnData::rhs).cols();
-      data[EqnData::rhs].resize({dims.nX + nQnew, nRHS});
-      data[EqnData::rhs].slice({dims.oQ, 0}, {dims.oQ + nQnew, nRHS}) = qq.at(EqnData::rhs).slice();
-      data[EqnData::rhs].slice({dims.oQ + nQnew, 0}, {dims.nX + nQnew, nRHS}) =
-          old_data[EqnData::rhs].slice({dims.oQ, 0}, {dims.nX, nRHS});
+      data[EqnData::rhs].resize({dims.nX + nQnew, dims.nRHS});
+      data[EqnData::rhs].slice({dims.oQ, 0}, {dims.oQ + nQnew, dims.nRHS}) = qq.at(EqnData::rhs).slice();
+      data[EqnData::rhs].slice({dims.oQ + nQnew, 0}, {dims.nX + nQnew, dims.nRHS}) =
+          old_data[EqnData::rhs].slice({dims.oQ, 0}, {dims.nX, dims.nRHS});
     }
     if (m_logger->data_dump) {
       m_logger->msg("S = " + as_string(data.at(EqnData::S)), Logger::Info);

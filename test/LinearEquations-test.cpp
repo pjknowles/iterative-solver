@@ -11,6 +11,23 @@ using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::R
 using Update = std::function<void(const std::vector<Rvector>& params, std::vector<Rvector>& actions, size_t n_work)>;
 
 namespace {
+struct LinearEquationsPreconditioner {
+  explicit LinearEquationsPreconditioner(const MatrixXdr& mat) {
+    const auto n = mat.rows();
+    diagonals.resize(n);
+    for (size_t i = 0; i < n; ++i)
+      diagonals[i] = mat(i, i);
+  }
+
+  void operator()(std::vector<Rvector>& residuals, const int nwork) const {
+    for (size_t i = 0; i < nwork; ++i) {
+      for (size_t j = 0; j < residuals[i].size(); ++j)
+        residuals[i][j] /= diagonals[i];
+    }
+  }
+
+  Rvector diagonals;
+};
 /*
  * Simple symmetric system of linear equations
  * A.x = b
@@ -90,6 +107,7 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
   const auto n_root_max = rhs.cols();
   const auto nX = mat.rows();
   auto reference_solutions = solve_full_problem(mat, rhs, augmented_hessian);
+  auto preconditioner = LinearEquationsPreconditioner(mat);
   for (size_t nroot = 1; nroot <= n_root_max; ++nroot) {
     // solve the problem iteratively
     // compare solutions

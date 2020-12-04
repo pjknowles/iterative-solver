@@ -28,6 +28,7 @@ class IterativeSolver {
 public:
   using value_type = typename R::value_type;                          ///< The underlying type of elements of vectors
   using scalar_type = typename array::ArrayHandler<R, Q>::value_type; ///< The type of scalar products of vectors
+  using value_type_abs = typename array::ArrayHandler<R, R>::value_type_abs;
   using VectorP = std::vector<value_type>; //!< type for vectors projected on to P space, each element is a coefficient
                                            //!< for the corresponding P space parameter
   //! Function type for applying matrix to the P space vectors and accumulating result in a residual

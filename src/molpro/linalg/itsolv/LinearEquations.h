@@ -16,7 +16,8 @@ class LinearEquations : public IterativeSolverTemplate<ILinearEquations, R, Q, P
 public:
   using SolverTemplate = IterativeSolverTemplate<ILinearEquations, R, Q, P>;
   using SolverTemplate ::report;
-  using typename SolverTemplate::scalar_type;
+  using typename SolverTemplate::value_type;
+  using typename SolverTemplate::value_type_abs;
 
   explicit LinearEquations(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
                            const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
@@ -88,6 +89,16 @@ public:
     subspace_solver->set_hermiticity(hermitian);
   }
   bool get_hermiticity() const override { return m_hermiticity; }
+  //!@copydoc SubspaceSolverLinEig::set_augmented_hessian()
+  value_type_abs set_augmented_hessian(const value_type_abs parameter) {
+    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
+    subspace_solver->set_augmented_hessian(parameter);
+  }
+  //!@copydoc SubspaceSolverLinEig::get_augmented_hessian()
+  value_type_abs get_augmented_hessian() const {
+    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
+    return subspace_solver->get_augmented_hessian();
+  }
 
   std::shared_ptr<Logger> logger;
 

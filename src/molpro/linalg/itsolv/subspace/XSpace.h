@@ -197,7 +197,7 @@ public:
   }
 
   //! Access RHS vectors in linear equations
-  const std::vector<Q>& rhs() const { return m_rhs; }
+  CVecRef<Q> rhs() const { return cwrap(m_rhs); }
 
   const Dimensions& dimensions() const override { return m_dim; }
 

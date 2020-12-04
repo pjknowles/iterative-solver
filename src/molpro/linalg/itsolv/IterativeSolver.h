@@ -153,7 +153,7 @@ public:
   using typename IterativeSolver<R, Q, P>::scalar_type;
   virtual void add_equations(const CVecRef<R>& rhs) = 0;
   virtual void add_equations(const R& rhs) = 0;
-  virtual const std::vector<Q>& rhs() const = 0;
+  virtual CVecRef<Q> rhs() const = 0;
   //! Sets hermiticity of kernel
   virtual void set_hermiticity(bool hermitian) = 0;
   //! Gets hermiticity of kernel, if true than it is hermitian, otherwise it is not

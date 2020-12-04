@@ -197,6 +197,7 @@ public:
       m_rhs.emplace_back(this->m_handlers->qr().copy(r));
     for (const auto& r : rhs)
       m_rhs_norm.template emplace_back(this->m_handlers->rr().dot(r, r));
+    update_dimensions();
     update_rhs_with_pspace();
   }
 
@@ -265,7 +266,7 @@ public:
 protected:
   void update_dimensions() {
     m_dim = Dimensions(pspace.size(), qspace.size(), dspace.size());
-    m_dim.nRHS = data.at(EqnData::rhs).cols();
+    m_dim.nRHS = m_rhs.size();
   }
 
   //! Update projection of RHS data onto P space. @warning Subspace should contain only P space

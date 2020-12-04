@@ -196,6 +196,7 @@ public:
   void add_rhs_equations(const CVecRef<R>& rhs) {
     for (const auto& r : rhs)
       m_rhs.emplace_back(this->m_handlers->qr().copy(r));
+    update_rhs_with_pspace();
   }
 
   //! Access RHS vectors in linear equations

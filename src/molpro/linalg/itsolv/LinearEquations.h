@@ -7,9 +7,17 @@
 namespace molpro::linalg::itsolv {
 /*!
  * @brief Solves a system of linear equation, A x = b
- * @tparam R
- * @tparam Q
- * @tparam P
+ *
+ * The equations are solved using a Krylov subspace projection method with the P and D space. This is the same approach
+ * as LinearEigenvalue.
+ *
+ * Preconditioner
+ * -------------
+ * @todo Explain some of the theory
+ *
+ * Augmented Hessian
+ * -----------------
+ * @todo Explain some of the theory
  */
 template <class R, class Q, class P>
 class LinearEquations : public IterativeSolverTemplate<ILinearEquations, R, Q, P> {

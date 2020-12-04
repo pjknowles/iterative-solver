@@ -37,6 +37,7 @@ public:
                        handlers, std::make_shared<Statistics>(), logger_),
         logger(logger_) {
     set_hermiticity(m_hermiticity);
+    this->m_normalise_solution = false;
   }
 
   /*!

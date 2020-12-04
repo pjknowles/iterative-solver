@@ -275,7 +275,8 @@ protected:
                                  m_xspace->dimensions().oD, *m_handlers);
       auto pvectors = detail::construct_vectorP(roots, m_subspace_solver->solutions(), m_xspace->dimensions().oP,
                                                 m_xspace->dimensions().nP);
-      detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
+      if (m_normalise_solution)
+        detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
       if (apply_p)
         apply_p(pvectors, m_xspace->cparamsp(), action);
       construct_residual(roots, cwrap(parameters), action);
@@ -305,6 +306,7 @@ protected:
   double m_convergence_threshold{1.0e-10}; //!< errors less than this mark a converged solution
   std::shared_ptr<Statistics> m_stats;     //!< accumulates statistics of operations performed by the solver
   std::shared_ptr<Logger> m_logger;        //!< logger
+  bool m_normalise_solution = false;       //!< whether to normalise the solutions
 };
 
 } // namespace molpro::linalg::itsolv

@@ -12,6 +12,10 @@ namespace molpro::linalg::itsolv {
  * The equations are solved using a Krylov subspace projection method with the P and D space. This is the same approach
  * as LinearEigenvalue.
  *
+ * Residual
+ * --------
+ * The residual is scaled down by the norm of the RHS vector so that thresholds are consistent.
+ *
  * Preconditioner
  * -------------
  * @todo Explain some of the theory
@@ -36,6 +40,7 @@ public:
                        handlers, std::make_shared<Statistics>(), logger_),
         logger(logger_) {
     set_hermiticity(m_hermiticity);
+    this->m_normalise_solution = false;
   }
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {

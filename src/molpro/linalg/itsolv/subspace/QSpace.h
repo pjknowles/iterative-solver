@@ -106,6 +106,7 @@ struct QSpace {
       data[EqnData::rhs].slice({dims.oQ, 0}, {dims.oQ + nQnew, dims.nRHS}) = qq.at(EqnData::rhs).slice();
       data[EqnData::rhs].slice({dims.oQ + nQnew, 0}, {dims.nX + nQnew, dims.nRHS}) =
           old_data[EqnData::rhs].slice({dims.oQ, 0}, {dims.nX, dims.nRHS});
+      old_data[EqnData::rhs] = data[EqnData::rhs];
     }
     if (m_logger->data_dump) {
       m_logger->msg("S = " + as_string(data.at(EqnData::S)), Logger::Info);

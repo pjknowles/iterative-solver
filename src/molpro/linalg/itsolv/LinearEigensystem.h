@@ -86,6 +86,14 @@ public:
     return eval;
   }
 
+  void set_value_errors() override {
+    auto last_values = this->m_last_values;
+    this->m_last_values = this->m_subspace_solver->eigenvalues();
+    this->m_value_errors.clear();
+    for (size_t i = 0; i < last_values.size(); i++)
+      this->m_value_errors.push_back(std::abs(last_values[i] - this->m_last_values[i]));
+  }
+
   void report(std::ostream& cout) const override {
     SolverTemplate::report(cout);
     cout << "errors " << std::scientific;
@@ -118,7 +126,7 @@ public:
     auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
     subspace_solver->set_hermiticity(hermitian);
   }
-  bool get_hermiticity()const override { return m_hermiticity; }
+  bool get_hermiticity() const override { return m_hermiticity; }
 
   void set_options(const std::shared_ptr<Options>& options) override {
     SolverTemplate::set_options(options);

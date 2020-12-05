@@ -95,10 +95,11 @@ void update_errors(std::vector<T>& errors, const CVecRef<R>& residual, array::Ar
 }
 
 template <typename T>
-std::vector<int> select_working_set(const size_t nw, const std::vector<T>& errors, const T threshold) {
+std::vector<int> select_working_set(const size_t nw, const std::vector<T>& errors, const T threshold,
+                                    const std::vector<T>& value_errors, const T value_threshold) {
   auto ordered_errors = std::multimap<T, size_t, std::greater<T>>{};
   for (size_t i = 0; i < errors.size(); ++i) {
-    if (errors[i] > threshold)
+    if (errors[i] > threshold or (i < value_errors.size() and value_errors[i] > value_threshold))
       ordered_errors.emplace(errors[i], i);
   }
   auto working_set = std::vector<int>{};
@@ -244,6 +245,8 @@ public:
 
   void set_convergence_threshold(double thresh) override { m_convergence_threshold = thresh; }
   double convergence_threshold() const override { return m_convergence_threshold; }
+  void set_convergence_threshold_value(double thresh) override { m_convergence_threshold_value = thresh; }
+  double convergence_threshold_value() const override { return m_convergence_threshold_value; }
   //! Access dimensions of the subspace
   const subspace::Dimensions& dimensions() const override { return m_xspace->dimensions(); }
 
@@ -255,6 +258,8 @@ protected:
       : m_handlers(std::move(handlers)), m_xspace(std::move(xspace)), m_subspace_solver(std::move(solver)),
         m_stats(std::move(stats)), m_logger(std::move(logger)) {}
 
+  std::vector<scalar_type> value_errors() const { return m_value_errors; }
+  virtual void set_value_errors() {}
   /*!
    * @brief Solves the subspace problems and selects the working set of roots, returning their parameters and residual
    * in parameters and action
@@ -290,8 +295,10 @@ protected:
         temp_solutions.emplace_back(m_handlers->qr().copy(parameters[i]), m_handlers->qr().copy(action[i]));
       m_subspace_solver->set_error(roots, errors);
     }
+    set_value_errors();
     m_errors = m_subspace_solver->errors();
-    m_working_set = detail::select_working_set(parameters.size(), m_errors, m_convergence_threshold);
+    m_working_set = detail::select_working_set(parameters.size(), m_errors, m_convergence_threshold, m_value_errors,
+                                               m_convergence_threshold_value);
     for (size_t i = 0; i < m_working_set.size(); ++i) {
       auto root = m_working_set[i];
       m_handlers->rq().copy(parameters[i], temp_solutions.at(root).first);
@@ -301,13 +308,18 @@ protected:
     return m_working_set.size();
   }
 
+
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers
   std::shared_ptr<subspace::IXSpace<R, Q, P>> m_xspace;                  //!< manages the subspace and associated data
   std::shared_ptr<subspace::ISubspaceSolver<R, Q, P>> m_subspace_solver; //!< solves the subspace problem
   std::vector<double> m_errors;                                          //!< errors from the most recent solution
+  std::vector<double> m_value_errors;                                    //!< value errors from the most recent solution
   std::vector<int> m_working_set;                                        //!< indices of roots in the working set
   size_t m_nroots{0};                      //!< number of roots the solver is searching for
-  double m_convergence_threshold{1.0e-10}; //!< errors less than this mark a converged solution
+  double m_convergence_threshold{1.0e-10}; //!< residual norms less than this mark a converged solution
+  double m_convergence_threshold_value{
+      std::numeric_limits<double>::max()}; //!< value changes less than this mark a converged solution
+  std::vector<double> m_last_values;       //!< The values from the previous iteration
   std::shared_ptr<Statistics> m_stats;     //!< accumulates statistics of operations performed by the solver
   std::shared_ptr<Logger> m_logger;        //!< logger
 };

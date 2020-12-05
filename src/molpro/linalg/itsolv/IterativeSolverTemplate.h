@@ -244,6 +244,8 @@ public:
 
   void set_convergence_threshold(double thresh) override { m_convergence_threshold = thresh; }
   double convergence_threshold() const override { return m_convergence_threshold; }
+  void set_convergence_threshold_value(double thresh) override { m_convergence_threshold_value = thresh; }
+  double convergence_threshold_value() const override { return m_convergence_threshold_value; }
   //! Access dimensions of the subspace
   const subspace::Dimensions& dimensions() const override { return m_xspace->dimensions(); }
 
@@ -307,7 +309,9 @@ protected:
   std::vector<double> m_errors;                                          //!< errors from the most recent solution
   std::vector<int> m_working_set;                                        //!< indices of roots in the working set
   size_t m_nroots{0};                      //!< number of roots the solver is searching for
-  double m_convergence_threshold{1.0e-10}; //!< errors less than this mark a converged solution
+  double m_convergence_threshold{1.0e-10}; //!< residual norms less than this mark a converged solution
+  double m_convergence_threshold_value{std::numeric_limits<double>::max()}; //!< value changes less than this mark a converged solution
+  std::vector<double> m_last_values; //!< The values from the previous iteration
   std::shared_ptr<Statistics> m_stats;     //!< accumulates statistics of operations performed by the solver
   std::shared_ptr<Logger> m_logger;        //!< logger
 };

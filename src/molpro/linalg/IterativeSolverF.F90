@@ -39,10 +39,12 @@ CONTAINS
     !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
     !> Example of simplest use: @include LinearEigensystemExampleF.F90
     !> Example including use of P space: @include LinearEigensystemExampleF-Pspace-mpi.F90
-    SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, hermitian, verbosity, pname, pcomm, lmppx)
+    SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, thresh_value, hermitian, &
+        verbosity, pname, pcomm, lmppx)
         INTEGER, INTENT(in) :: nq !< dimension of matrix
         INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< Convergence threshold
+        DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh_value !< Value convergence threshold
         LOGICAL, INTENT(in), OPTIONAL :: hermitian !< Whether the underlying kernel is hermitian
         INTEGER, INTENT(in), OPTIONAL :: verbosity !< Print level
         CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
@@ -50,13 +52,14 @@ CONTAINS
         LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
         !< One gives a single progress-report line each iteration.
         INTERFACE
-            SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, range_begin, range_end, thresh, &
+            SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, range_begin, range_end, thresh, thresh_value, &
                     hermitian, verbosity, pname, pcomm, lmppx) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
                 INTEGER(C_size_t), INTENT(in), VALUE :: nroot
                 INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
                 REAL(c_double), INTENT(in), VALUE :: thresh
+                REAL(c_double), INTENT(in), VALUE :: thresh_value
                 INTEGER(C_int), INTENT(in), VALUE :: hermitian, verbosity
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
                 INTEGER(C_int64_t), INTENT(in), VALUE :: pcomm
@@ -65,11 +68,15 @@ CONTAINS
         END INTERFACE
         INTEGER(c_size_t) :: dummy_range_begin, dummy_range_end
         INTEGER(c_int) :: hermitianC
-        INTEGER(c_int) :: verbosityC = 0
-        REAL(c_double) :: threshC = 0d0
+        INTEGER(c_int) :: verbosityC
+        REAL(c_double) :: threshC
+        REAL(c_double) :: thresh_valueC
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: pcommC
         INTEGER(c_int) :: lmppxC
+        verbosityC = 0
+        threshC = 0d0
+        thresh_valueC = 0d0
         lmppxC = 0
         pcommC = 0
         hermitianC = hermitian_default
@@ -82,6 +89,9 @@ CONTAINS
         ENDIF
         m_nq = INT(nq, kind = c_size_t)
         m_nroot = INT(nroot, kind = c_size_t)
+        IF (PRESENT(thresh_value)) THEN
+            thresh_valueC = thresh_value
+        END IF
         IF (PRESENT(thresh)) THEN
             threshC = thresh
         END IF
@@ -98,7 +108,8 @@ CONTAINS
         IF (PRESENT(lmppx)) THEN
             IF (lmppx) lmppxC = 1
         ENDIF
-        CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, dummy_range_begin, dummy_range_end, threshC, &
+        CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, dummy_range_begin, dummy_range_end, &
+                threshC, thresh_valueC, &
                 hermitianC, verbosityC, pnameC, pcommC, lmppxC)
     END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize
     !

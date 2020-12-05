@@ -167,8 +167,8 @@ CONTAINS
     !> \brief Finds the solutions of linear equation systems using a generalisation of Davidson's method, i.e. preconditioned Lanczos
     !> Example of simplest use: @include LinearEquationsExampleF.F90
     !! Example including use of P space: include LinearEquationsExampleF-Pspace.F90
-    SUBROUTINE Iterative_Solver_Linear_Equations_Initialize(nq, nroot, rhs, augmented_hessian, thresh, hermitian, verbosity, &
-            pname, pcomm, lmppx)
+    SUBROUTINE Iterative_Solver_Linear_Equations_Initialize(nq, nroot, rhs, augmented_hessian, thresh, thresh_value, &
+        hermitian, verbosity, pname, pcomm, lmppx)
         INTEGER, INTENT(in) :: nq !< dimension of matrix
         INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
         DOUBLE PRECISION, INTENT(in), DIMENSION(nq, nroot) :: rhs !< the constant right-hand-side of each equation system
@@ -176,6 +176,7 @@ CONTAINS
         !< If zero, solve the inhomogeneous equations unmodified. If 1, solve instead
         !< the augmented hessian problem. Other values scale the augmented hessian damping.
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
+        DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh_value !< value convergence threshold
         LOGICAL, INTENT(in), OPTIONAL :: hermitian !< whether the underlying kernel is hermitian
         INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
         CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
@@ -184,7 +185,7 @@ CONTAINS
         !< One gives a single progress-report line each iteration.
         INTERFACE
             SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC(nq, nroot, range_begin, range_end, rhs, &
-                    augmented_hessian, thresh, hermitian, verbosity, pname, pcomm, lmppx) &
+                    augmented_hessian, thresh, thresh_value, hermitian, verbosity, pname, pcomm, lmppx) &
                     BIND(C, name = 'IterativeSolverLinearEquationsInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
@@ -193,6 +194,7 @@ CONTAINS
                 REAL(c_double), INTENT(in), DIMENSION(*) :: rhs
                 REAL(c_double), INTENT(in), VALUE :: augmented_hessian
                 REAL(c_double), INTENT(in), VALUE :: thresh
+                REAL(c_double), INTENT(in), VALUE :: thresh_value
                 INTEGER(C_int), INTENT(in), VALUE :: hermitian
                 INTEGER(C_int), INTENT(in), VALUE :: verbosity
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
@@ -203,10 +205,13 @@ CONTAINS
         INTEGER(c_size_t) :: dummy_range_begin, dummy_range_end
         INTEGER(c_int) :: hermitianC
         INTEGER(c_int) :: verbosityC = 0
-        REAL(c_double) :: threshC = 0d0, augmented_hessianC = 0d0
+        REAL(c_double) :: threshC = 0d0, thresh_valueC, augmented_hessianC = 0d0
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: pcommC
         INTEGER(c_int) :: lmppxC
+        threshC = 0d0
+        thresh_valueC = 0d0
+        augmented_hessianC = 0d0
         lmppxC = 0
         pcommC = 0
         hermitianC = hermitian_default
@@ -225,6 +230,9 @@ CONTAINS
         IF (PRESENT(thresh)) THEN
             threshC = thresh
         END IF
+        IF (PRESENT(thresh_value)) THEN
+            thresh_valueC = thresh_value
+        END IF
         IF (PRESENT(hermitian)) THEN
             IF (hermitian) hermitianC = 1
             IF (.NOT. hermitian) hermitianC = 0
@@ -239,7 +247,7 @@ CONTAINS
             IF (lmppx) lmppxC = 1
         ENDIF
         CALL Iterative_Solver_Linear_Equations_InitializeC(m_nq, m_nroot, dummy_range_begin, dummy_range_end, &
-                rhs, augmented_hessianC, threshC, hermitianC, verbosityC, pnameC, pcommC, lmppxC)
+                rhs, augmented_hessianC, threshC, thresh_valueC, hermitianC, verbosityC, pnameC, pcommC, lmppxC)
     END SUBROUTINE Iterative_Solver_Linear_Equations_Initialize
 
     !> \brief Optimization

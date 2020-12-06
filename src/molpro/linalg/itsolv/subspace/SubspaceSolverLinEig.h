@@ -70,7 +70,7 @@ protected:
 public:
   value_type_abs m_svd_solver_threshold = 1.0e-14; //!< threshold to select null space during SVD in eigenproblem
 protected:
-  bool m_hermitian = true; //!< flags the matrix as Hermitian
+  bool m_hermitian = false; //!< flags the matrix as Hermitian
 };
 
 } // namespace molpro::linalg::itsolv::subspace

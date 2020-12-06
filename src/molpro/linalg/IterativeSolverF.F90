@@ -648,7 +648,7 @@ CONTAINS
         ENDIF
         nroot = INT(size(roots), c_int)
         DO i = 1, size(roots)
-            rootsC(i) = INT(roots(i), kind = c_int)
+            rootsC(i) = INT(roots(i)-1, kind = c_int)
         ENDDO
         call Iterative_Solver_Solution_C(nroot, rootsC, parameters, action, lsyncC, lmppxC)
     END SUBROUTINE

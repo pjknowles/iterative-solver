@@ -399,7 +399,10 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
     gg.back().allocate_buffer(
         Span<typename Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
   }
-  const std::vector<int> croots(roots, roots + nroot);
+  std::vector<int> croots;
+  for (int i = 0; i < nroot; i++){
+    croots.push_back(*(roots+i));
+  }
   if (instance.prof != nullptr)
     instance.prof->start("Solution:Call");
   instance.solver->solution(croots, cc, gg);

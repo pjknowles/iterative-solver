@@ -304,7 +304,6 @@ protected:
     return m_working_set.size();
   }
 
-
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers
   std::shared_ptr<subspace::IXSpace<R, Q, P>> m_xspace;                  //!< manages the subspace and associated data
   std::shared_ptr<subspace::ISubspaceSolver<R, Q, P>> m_subspace_solver; //!< solves the subspace problem
@@ -315,7 +314,6 @@ protected:
   double m_convergence_threshold{1.0e-10}; //!< residual norms less than this mark a converged solution
   double m_convergence_threshold_value{
       std::numeric_limits<double>::max()}; //!< value changes less than this mark a converged solution
-  std::vector<double> m_last_values;       //!< The values from the previous iteration
   std::shared_ptr<Statistics> m_stats;     //!< accumulates statistics of operations performed by the solver
   std::shared_ptr<Logger> m_logger;        //!< logger
   bool m_normalise_solution = false;       //!< whether to normalise the solutions

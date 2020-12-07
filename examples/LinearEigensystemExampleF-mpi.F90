@@ -39,7 +39,7 @@ PROGRAM Linear_Eigensystem_Example
   END DO
   DO i = 1, n
     g = MATMUL(m, c)
-    nwork = Iterative_Solver_Add_Vector(c, g)
+    nwork = Iterative_Solver_Add_Vector(c(:,1), g(:,1))
     IF (nwork .GT. 0) THEN
       allocate(we(nwork), stat=alloc_stat)
       we = Iterative_Solver_Working_Set_Eigenvalues(nwork)

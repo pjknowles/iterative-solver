@@ -249,7 +249,7 @@ protected:
       : m_handlers(std::move(handlers)), m_xspace(std::move(xspace)), m_subspace_solver(std::move(solver)),
         m_stats(std::move(stats)), m_logger(std::move(logger)) {}
 
-  std::vector<scalar_type> value_errors() const { return m_value_errors; }
+  //! Implementation class should overload this to set errors in the current values (e.g. change in eigenvalues)
   virtual void set_value_errors() {}
   //! Constructs residual for given roots provided their parameters and actions
   virtual void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params,

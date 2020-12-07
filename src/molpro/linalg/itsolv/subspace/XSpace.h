@@ -282,6 +282,7 @@ protected:
   void remove_data(size_t i) {
     for (auto d : {EqnData::H, EqnData::S})
       data[d].remove_row_col(i, i);
+    data[EqnData::rhs].remove_row(i);
   }
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::shared_ptr<Logger> m_logger;

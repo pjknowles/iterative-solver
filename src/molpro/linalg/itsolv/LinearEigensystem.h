@@ -167,7 +167,7 @@ public:
 protected:
   int m_max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space
   detail::DSpaceResetter<Q> m_dspace_resetter;             //!< resets D space
-  bool m_hermiticity = true;                               //!< whether the problem is hermitian or not
+  bool m_hermiticity = false;                               //!< whether the problem is hermitian or not
 };
 
 } // namespace molpro::linalg::itsolv

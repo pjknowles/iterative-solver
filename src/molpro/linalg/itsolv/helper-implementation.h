@@ -279,8 +279,12 @@ void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_
       //      std::cout << "subspace augmented hessian solution\n"<<Solution<<std::endl;
     }
   } else { // straight solution of linear equations
-    Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> subspaceMatrix(matrix.data(), nX, nX);
-    Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> RHS(rhs.data(), nX, nroot);
+    Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> subspaceMatrixR(
+        matrix.data(), nX, nX);
+    Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> RHS_R(rhs.data(), nX,
+                                                                                                       nroot);
+    Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> subspaceMatrix = subspaceMatrixR;
+    Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> RHS = RHS_R;
     Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> Solution;
     Solution = subspaceMatrix.householderQr().solve(RHS);
     //    std::cout << "subspace linear equations solution\n"<<Solution<<std::endl;

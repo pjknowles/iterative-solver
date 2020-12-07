@@ -77,15 +77,6 @@ void normalise(const size_t n_roots, const VecRef<R>& params, const VecRef<R>& a
 }
 
 template <class R, typename T>
-void construct_residual(const std::vector<int>& roots, const std::vector<T>& eigvals, const CVecRef<R>& params,
-                        const VecRef<R>& actions, array::ArrayHandler<R, R>& handler) {
-  assert(params.size() >= roots.size());
-  for (size_t i = 0; i < roots.size(); ++i) {
-    handler.axpy(-eigvals.at(roots[i]), params.at(i), actions.at(i));
-  }
-}
-
-template <class R, typename T>
 void update_errors(std::vector<T>& errors, const CVecRef<R>& residual, array::ArrayHandler<R, R>& handler) {
   assert(residual.size() >= errors.size());
   for (size_t i = 0; i < errors.size(); ++i) {
@@ -178,7 +169,7 @@ public:
     detail::construct_solution(residual, roots, m_subspace_solver->solutions(), {}, m_xspace->actionsq(),
                                m_xspace->actionsd(), m_xspace->dimensions().oP, m_xspace->dimensions().oQ,
                                m_xspace->dimensions().oD, *m_handlers);
-    detail::construct_residual(roots, m_subspace_solver->eigenvalues(), cwrap(parameters), residual, m_handlers->rr());
+    construct_residual(roots, cwrap(parameters), residual);
   };
 
   void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {
@@ -258,8 +249,12 @@ protected:
       : m_handlers(std::move(handlers)), m_xspace(std::move(xspace)), m_subspace_solver(std::move(solver)),
         m_stats(std::move(stats)), m_logger(std::move(logger)) {}
 
-  std::vector<scalar_type> value_errors() const { return m_value_errors; }
+  //! Implementation class should overload this to set errors in the current values (e.g. change in eigenvalues)
   virtual void set_value_errors() {}
+  //! Constructs residual for given roots provided their parameters and actions
+  virtual void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params,
+                                  const VecRef<R>& actions) = 0;
+
   /*!
    * @brief Solves the subspace problems and selects the working set of roots, returning their parameters and residual
    * in parameters and action
@@ -285,10 +280,11 @@ protected:
                                  m_xspace->dimensions().oD, *m_handlers);
       auto pvectors = detail::construct_vectorP(roots, m_subspace_solver->solutions(), m_xspace->dimensions().oP,
                                                 m_xspace->dimensions().nP);
-      detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
+      if (m_normalise_solution)
+        detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
       if (apply_p)
         apply_p(pvectors, m_xspace->cparamsp(), action);
-      detail::construct_residual(roots, m_subspace_solver->eigenvalues(), cwrap(parameters), action, m_handlers->rr());
+      construct_residual(roots, cwrap(parameters), action);
       auto errors = std::vector<scalar_type>(roots.size(), 0);
       detail::update_errors(errors, cwrap(action), m_handlers->rr());
       for (size_t i = 0; i < roots.size(); ++i)
@@ -308,7 +304,6 @@ protected:
     return m_working_set.size();
   }
 
-
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers
   std::shared_ptr<subspace::IXSpace<R, Q, P>> m_xspace;                  //!< manages the subspace and associated data
   std::shared_ptr<subspace::ISubspaceSolver<R, Q, P>> m_subspace_solver; //!< solves the subspace problem
@@ -319,9 +314,9 @@ protected:
   double m_convergence_threshold{1.0e-10}; //!< residual norms less than this mark a converged solution
   double m_convergence_threshold_value{
       std::numeric_limits<double>::max()}; //!< value changes less than this mark a converged solution
-  std::vector<double> m_last_values;       //!< The values from the previous iteration
   std::shared_ptr<Statistics> m_stats;     //!< accumulates statistics of operations performed by the solver
   std::shared_ptr<Logger> m_logger;        //!< logger
+  bool m_normalise_solution = false;       //!< whether to normalise the solutions
 };
 
 } // namespace molpro::linalg::itsolv

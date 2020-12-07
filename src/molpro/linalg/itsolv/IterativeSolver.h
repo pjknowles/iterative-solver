@@ -28,6 +28,7 @@ class IterativeSolver {
 public:
   using value_type = typename R::value_type;                          ///< The underlying type of elements of vectors
   using scalar_type = typename array::ArrayHandler<R, Q>::value_type; ///< The type of scalar products of vectors
+  using value_type_abs = typename array::ArrayHandler<R, R>::value_type_abs;
   using VectorP = std::vector<value_type>; //!< type for vectors projected on to P space, each element is a coefficient
                                            //!< for the corresponding P space parameter
   //! Function type for applying matrix to the P space vectors and accumulating result in a residual
@@ -155,11 +156,9 @@ template <class R, class Q, class P>
 class ILinearEquations : public IterativeSolver<R, Q, P> {
 public:
   using typename IterativeSolver<R, Q, P>::scalar_type;
-  //! eigenvalues of augmented Hessian method, if it was used
-  virtual std::vector<scalar_type> eigenvalues() const = 0;
-  void add_equations(const std::vector<R>& rhs) = 0;
-  void add_equations(const R& rhs) = 0;
-  virtual const std::vector<Q>& rhs() const = 0;
+  virtual void add_equations(const CVecRef<R>& rhs) = 0;
+  virtual void add_equations(const R& rhs) = 0;
+  virtual CVecRef<Q> rhs() const = 0;
   //! Sets hermiticity of kernel
   virtual void set_hermiticity(bool hermitian) = 0;
   //! Gets hermiticity of kernel, if true than it is hermitian, otherwise it is not

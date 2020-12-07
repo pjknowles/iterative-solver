@@ -37,6 +37,7 @@ public:
                        handlers, std::make_shared<Statistics>(), logger_),
         logger(logger_) {
     set_hermiticity(m_hermiticity);
+    this->m_normalise_solution = false;
   }
 
   /*!
@@ -61,10 +62,9 @@ public:
                                                   propose_rspace_norm_thresh, propose_rspace_svd_thresh,
                                                   *this->m_handlers, *this->m_logger);
     } else {
-      this->m_working_set =
-          detail::propose_rspace(*static_cast<ILinearEigensystem<R, Q, P>*>(this), parameters, action, *this->m_xspace,
-                                 *this->m_subspace_solver, *this->m_handlers, *this->m_logger,
-                                 propose_rspace_svd_thresh, propose_rspace_norm_thresh, m_max_size_qspace);
+      this->m_working_set = detail::propose_rspace(*this, parameters, action, *this->m_xspace, *this->m_subspace_solver,
+                                                   *this->m_handlers, *this->m_logger, propose_rspace_svd_thresh,
+                                                   propose_rspace_norm_thresh, m_max_size_qspace);
     }
     this->m_stats->iterations++;
     return this->working_set().size();
@@ -165,9 +165,17 @@ public:
                                              //!< constructing the working set. Smaller singular values will lead to
                                              //!< deletion of parameters from the Q space
 protected:
+  void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {
+    assert(params.size() >= roots.size());
+    const auto& eigvals = eigenvalues();
+    for (size_t i = 0; i < roots.size(); ++i)
+      this->m_handlers->rr().axpy(-eigvals.at(roots[i]), params.at(i), actions.at(i));
+  }
+
   int m_max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space
   detail::DSpaceResetter<Q> m_dspace_resetter;             //!< resets D space
-  bool m_hermiticity = false;                               //!< whether the problem is hermitian or not
+  bool m_hermiticity = false;                              //!< whether the problem is hermitian or not
+  std::vector<double> m_last_values;                       //!< The values from the previous iteration
 };
 
 } // namespace molpro::linalg::itsolv

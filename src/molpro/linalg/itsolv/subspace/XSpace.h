@@ -195,8 +195,12 @@ public:
   void add_rhs_equations(const CVecRef<R>& rhs) {
     for (const auto& r : rhs)
       m_rhs.emplace_back(this->m_handlers->qr().copy(r));
-    for (const auto& r : rhs)
-      m_rhs_norm.template emplace_back(this->m_handlers->rr().dot(r, r));
+    for (const auto& r : rhs) {
+      auto d = std::abs(this->m_handlers->rr().dot(r, r));
+      if (d == 0)
+        throw std::runtime_error("RHS vector cannot be zero");
+      m_rhs_norm.emplace_back(std::sqrt(d));
+    }
     update_dimensions();
     update_rhs_with_pspace();
   }
@@ -205,7 +209,7 @@ public:
   CVecRef<Q> rhs() const { return cwrap(m_rhs); }
 
   //! Norm of RHS vectors
-  const std::vector<value_type_abs> rhs_norm() const { return m_rhs_norm; }
+  const std::vector<value_type_abs>& rhs_norm() const { return m_rhs_norm; }
 
   const Dimensions& dimensions() const override { return m_dim; }
 

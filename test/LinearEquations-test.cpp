@@ -140,6 +140,7 @@ auto set_options(std::shared_ptr<ILinearEquations<Rvector, Qvector, Pvector>>& s
   options->augmented_hessian = augmented_hessian;
   solver->set_options(options);
   options = CastOptions::LinearEquations(solver->get_options());
+  std::cout << "nroot = " << nroot << std::endl;
   molpro::cout << "convergence threshold = " << options->convergence_threshold.value()
                << ", svd thresh = " << options->svd_thresh.value() << ", norm thresh = " << options->norm_thresh.value()
                << ", max size of Q = " << options->max_size_qspace.value() << ", reset D = " << options->reset_D.value()
@@ -173,7 +174,7 @@ void print_parameters_actions(const std::vector<Rvector>& x, const std::vector<R
 }
 void print_solutions(const std::vector<Rvector>& solutions) {
   std::cout << "solutions = " << std::endl;
-  for (const auto & solution : solutions) {
+  for (const auto& solution : solutions) {
     std::copy(std::begin(solution), std::end(solution), std::ostream_iterator<double>(std::cout, ", "));
     std::cout << std::endl;
   }
@@ -211,6 +212,7 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
       if (nwork == 0)
         break;
     }
+    solver->report();
     std::vector<std::vector<double>> parameters, actions;
     std::vector<int> roots;
     for (int root = 0; root < solver->n_roots(); root++) {
@@ -244,9 +246,9 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
 
 TEST(LinearEquations, simple_symmetric_system) {
   double p = 1;
-  size_t n_max = 7;
+  size_t n_min = 1, n_max = 20;
   double augmented_hessian = 0;
-  for (size_t n = 1; n <= n_max; ++n) {
+  for (size_t n = n_min; n <= n_max; ++n) {
     auto [mat, rhs] = construct_simple_symmetric_system(n, p);
     auto update = [](const auto& params, const auto& actions, auto n_work) {};
     std::cout << "\nsimple_symmetric_system: n = " << n << std::endl;

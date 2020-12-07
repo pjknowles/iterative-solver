@@ -148,6 +148,13 @@ public:
     return opt;
   }
 
+  void report(std::ostream& cout) const override {
+    SolverTemplate::report(cout);
+    cout << "errors " << std::scientific;
+    auto& err = this->m_errors;
+    std::copy(begin(err), end(err), std::ostream_iterator<value_type_abs>(molpro::cout, ", "));
+    cout << std::defaultfloat << std::endl;
+  }
   std::shared_ptr<Logger> logger;
 
 protected:

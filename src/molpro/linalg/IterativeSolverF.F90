@@ -481,8 +481,8 @@ CONTAINS
     FUNCTION Add_Vector_With_P(parameters, action, lmppx, fproc, synchronize)
         USE iso_c_binding
         INTEGER :: Add_Vector_With_P
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: action
         LOGICAL, INTENT(in), OPTIONAL :: lmppx
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
         EXTERNAL fproc
@@ -517,8 +517,8 @@ CONTAINS
     FUNCTION Add_Vector_Without_P(parameters, action, lmppx, synchronize)
         USE iso_c_binding
         INTEGER :: Add_Vector_Without_P
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: action
         LOGICAL, INTENT(in), OPTIONAL :: lmppx
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
         INTERFACE
@@ -549,8 +549,8 @@ CONTAINS
     SUBROUTINE Iterative_Solver_Solution(roots, parameters, action, lmppx, synchronize)
         USE iso_c_binding
         INTEGER, INTENT(in), DIMENSION(:) :: roots  !< Array containing root indices
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: action
         LOGICAL, INTENT(in), OPTIONAL :: lmppx  !< Whether communicator should be MPI_COMM_SELF
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
         INTERFACE
@@ -590,12 +590,13 @@ CONTAINS
     !> \param residual The residual after interpolation.
     !> \param error Error indicator for each sought root.
     !> \return .TRUE. if convergence reached for all roots
-    FUNCTION Iterative_Solver_End_Iteration(solution, residual, lmppx)
+    FUNCTION Iterative_Solver_End_Iteration(solution, residual, lmppx, synchronize)
         USE iso_c_binding
         INTEGER :: Iterative_Solver_End_Iteration
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: solution
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: residual
         LOGICAL, INTENT(in), OPTIONAL :: lmppx
+        LOGICAL, INTENT(in), OPTIONAL :: synchronize
         INTERFACE
             FUNCTION Iterative_Solver_End_Iteration_C(solution, residual, lsync, lmppx) &
                     BIND(C, name = 'IterativeSolverEndIteration')
@@ -609,40 +610,17 @@ CONTAINS
         END INTERFACE
         INTEGER(c_int) :: lsyncC
         INTEGER(c_int) :: lmppxC
-        lsyncC = 1
         lmppxC = 0
         IF (PRESENT(lmppx)) THEN
             if (lmppx) lmppxC = 1
         ENDIF
+        lsyncC = 1
+        IF (PRESENT(synchronize)) THEN
+            IF (.NOT. synchronize) lsyncC = 0
+        END IF
         Iterative_Solver_End_Iteration = Iterative_Solver_End_Iteration_C(solution, residual, lsyncC, lmppxC)
     END FUNCTION Iterative_Solver_End_Iteration
 
-    FUNCTION Iterative_Solver_End_Iteration_Nosync(solution, residual, lmppx)
-        USE iso_c_binding
-        INTEGER :: Iterative_Solver_End_Iteration_Nosync
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
-        LOGICAL, INTENT(in), OPTIONAL :: lmppx
-        INTERFACE
-            FUNCTION Iterative_Solver_End_Iteration_C(solution, residual, lsync, lmppx) &
-                    BIND(C, name = 'IterativeSolverEndIteration')
-                USE iso_c_binding
-                INTEGER(c_int) Iterative_Solver_End_Iteration_C
-                REAL(c_double), DIMENSION(*), INTENT(inout) :: solution
-                REAL(c_double), DIMENSION(*), INTENT(inout) :: residual
-                INTEGER(c_int), INTENT(in), VALUE :: lsync
-                INTEGER(c_int), INTENT(in), VALUE :: lmppx
-            END FUNCTION Iterative_Solver_End_Iteration_C
-        END INTERFACE
-        INTEGER(c_int) :: lsyncC
-        INTEGER(c_int) :: lmppxC
-        lsyncC = 0
-        lmppxC = 0
-        IF (PRESENT(lmppx)) THEN
-            if (lmppx) lmppxC = 1
-        ENDIF
-        Iterative_Solver_End_Iteration_Nosync = Iterative_Solver_End_Iteration_C(solution, residual, lsyncC, lmppxC)
-    END FUNCTION Iterative_Solver_End_Iteration_Nosync
 
     !> \brief add P-space vectors to the expansion set, and return new solution.
     !> \param nP the number of P-space vectors to add

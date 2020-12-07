@@ -113,7 +113,7 @@ PROGRAM Linear_Eigensystem_Example
       EXIT
     END IF
     g = MATMUL(m, c)
-    nwork = Iterative_Solver_Add_Vector_With_P(c, g, fproc=apply_on_p)
+    nwork = Iterative_Solver_Add_Vector(c, g, fproc=apply_on_p)
   END DO
   DO root = 1, nroot
     roots(root) = root

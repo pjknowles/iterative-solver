@@ -157,9 +157,10 @@ protected:
     const auto& norm = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace)->rhs_norm();
     for (size_t i = 0; i < roots.size(); ++i) {
       const auto ii = roots[i];
+      this->m_handlers->rq().axpy(-1, rhs().at(ii), actions.at(i));
       if (norm.at(ii) != 0) {
-        auto scal = 1 / std::pow(norm[ii], 2);
-        this->m_handlers->rq().axpy(-scal, rhs().at(ii), actions.at(i));
+        auto scal = 1 / norm[ii];
+        this->m_handlers->rr().scal(scal, actions.at(i));
       }
     }
   }

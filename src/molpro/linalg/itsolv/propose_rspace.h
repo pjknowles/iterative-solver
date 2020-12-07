@@ -293,7 +293,7 @@ auto append_overlap_with_r(const subspace::Matrix<value_type>& overlap, const CV
   copy_upper_to_lower(oQ, nQ);
   copy_upper_to_lower(oD, nD);
   if (logger.data_dump) {
-    logger.msg("full overlap = " + as_string(ov), Logger::Info);
+    logger.msg("full overlap P+Q+D+R = " + as_string(ov), Logger::Info);
   }
   return ov;
 }

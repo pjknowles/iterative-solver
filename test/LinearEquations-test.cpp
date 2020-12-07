@@ -33,10 +33,10 @@ struct LinearEquationsPreconditioner {
  * Simple symmetric system of linear equations
  * A.x = b
  * A_ij = If[ i==j, i] + p
- * b_ij = i + j
+ * b_ij = i + j + 1
  *
  * Solutions are:
- * x_ij = If[ i == 0, 1 - n + j / p, 1]
+ * x_ij = If[ i == 0, 2 - n + j , 1]
  * ^ solutions stored in columns. Consistent with Mathematica and Eigen, but we store them as rows.
  */
 auto construct_simple_symmetric_system(size_t n, double p) {
@@ -46,7 +46,7 @@ auto construct_simple_symmetric_system(size_t n, double p) {
   for (size_t i = 0; i < n; ++i) {
     mat(i, i) += i;
     for (size_t j = 0; j < n; ++j) {
-      rhs(i, j) = i + j;
+      rhs(i, j) = i + j + 1;
     }
   }
   return std::make_tuple(mat, rhs);
@@ -144,9 +144,9 @@ auto set_options(std::shared_ptr<ILinearEquations<Rvector, Qvector, Pvector>>& s
                << ", svd thresh = " << options->svd_thresh.value() << ", norm thresh = " << options->norm_thresh.value()
                << ", max size of Q = " << options->max_size_qspace.value() << ", reset D = " << options->reset_D.value()
                << ", augmented hessian = " << options->augmented_hessian.value() << std::endl;
-  logger->max_trace_level = molpro::linalg::itsolv::Logger::Info;
+  logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
   logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
-  logger->data_dump = true;
+  logger->data_dump = false;
   return options;
 }
 
@@ -162,13 +162,19 @@ std::vector<std::vector<double>> matrix_to_vector(const MatrixXdr& rhs, const si
   return rhs_vector;
 }
 void print_parameters_actions(const std::vector<Rvector>& x, const std::vector<Rvector>& g, size_t nwork) {
-  //
   for (size_t i = 0; i < nwork; ++i) {
     std::cout << "parameter_" << i << " = ";
     std::copy(std::begin(x[i]), std::end(x[i]), std::ostream_iterator<double>(std::cout, ", "));
     std::cout << std::endl;
     std::cout << "action_" << i << " = ";
     std::copy(std::begin(g[i]), std::end(g[i]), std::ostream_iterator<double>(std::cout, ", "));
+    std::cout << std::endl;
+  }
+}
+void print_solutions(const std::vector<Rvector>& solutions) {
+  std::cout << "solutions = " << std::endl;
+  for (const auto & solution : solutions) {
+    std::copy(std::begin(solution), std::end(solution), std::ostream_iterator<double>(std::cout, ", "));
     std::cout << std::endl;
   }
 }
@@ -179,6 +185,9 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
   const auto n_root_max = rhs.cols();
   const auto nX = mat.rows();
   auto reference_solutions = solve_full_problem(mat, rhs, augmented_hessian);
+  bool verbose = false;
+  if (verbose)
+    print_solutions(reference_solutions);
   auto preconditioner = LinearEquationsPreconditioner(mat);
   for (size_t nroot = 1; nroot <= n_root_max; ++nroot) {
     auto rhs_vector = matrix_to_vector(rhs, nroot);
@@ -191,7 +200,7 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
     size_t n_iter = 1;
     for (size_t iter = 0; iter < max_iter; ++iter, ++n_iter) {
       apply_matrix(mat, x, g, nwork);
-      if (true)
+      if (verbose)
         print_parameters_actions(x, g, nwork);
       nwork = solver->add_vector(x, g);
       if (nwork == 0)
@@ -235,13 +244,12 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
 
 TEST(LinearEquations, simple_symmetric_system) {
   double p = 1;
-  size_t n_max = 3;
+  size_t n_max = 7;
   double augmented_hessian = 0;
-  for (size_t n = 3; n <= n_max; ++n) {
+  for (size_t n = 1; n <= n_max; ++n) {
     auto [mat, rhs] = construct_simple_symmetric_system(n, p);
     auto update = [](const auto& params, const auto& actions, auto n_work) {};
-    std::cout << "matrix =\n" << mat << std::endl;
-    std::cout << "rhs =\n" << rhs << std::endl;
+    std::cout << "\nsimple_symmetric_system: n = " << n << std::endl;
     run_test(mat, rhs, update, augmented_hessian);
   }
 }

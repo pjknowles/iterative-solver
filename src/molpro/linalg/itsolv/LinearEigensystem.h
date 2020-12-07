@@ -86,6 +86,14 @@ public:
     return eval;
   }
 
+  void set_value_errors() override {
+    auto last_values = this->m_last_values;
+    this->m_last_values = this->m_subspace_solver->eigenvalues();
+    this->m_value_errors.clear();
+    for (size_t i = 0; i < last_values.size(); i++)
+      this->m_value_errors.push_back(std::abs(last_values[i] - this->m_last_values[i]));
+  }
+
   void report(std::ostream& cout) const override {
     SolverTemplate::report(cout);
     cout << "errors " << std::scientific;
@@ -166,7 +174,7 @@ protected:
 
   int m_max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space
   detail::DSpaceResetter<Q> m_dspace_resetter;             //!< resets D space
-  bool m_hermiticity = true;                               //!< whether the problem is hermitian or not
+  bool m_hermiticity = false;                               //!< whether the problem is hermitian or not
 };
 
 } // namespace molpro::linalg::itsolv

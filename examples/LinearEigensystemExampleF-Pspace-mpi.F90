@@ -61,6 +61,7 @@ PROGRAM Linear_Eigensystem_Example
   LOGICAL :: update
   INTEGER :: nwork, alloc_stat
   INTEGER :: rank, comm_size, ierr
+  INTEGER :: roots(nroot)
   TYPE(Profiler) :: prof
   rank = 0
   call MPI_INIT(ierr)
@@ -112,8 +113,13 @@ PROGRAM Linear_Eigensystem_Example
       EXIT
     END IF
     g = MATMUL(m, c)
-    nwork = Iterative_Solver_Add_Vector_With_P(c, g, fproc=apply_on_p)
+    nwork = Iterative_Solver_Add_Vector(c, g, fproc=apply_on_p)
   END DO
+  DO root = 1, nroot
+    roots(root) = root
+  END DO
+  CALL Iterative_Solver_Solution(roots,c,g)
+  write(*,*) c(:,1)
   CALL Iterative_Solver_Finalize
   call MPI_FINALIZE(ierr)
 END PROGRAM Linear_Eigensystem_Example

@@ -4,17 +4,17 @@
 #include <stddef.h>
 
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t range_begin,
-                                                           size_t range_end, double thresh, int hermitian,
+                                                           size_t range_end, double thresh, double thresh_value, int hermitian,
                                                            int verbosity, const char* fname, int64_t fcomm, int lmppx);
 
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
-                                                         const double* rhs, double aughes, double thresh, int hermitian,
+                                                         const double* rhs, double aughes, double thresh, double thresh_value, int hermitian,
                                                          int verbosity, const char* fname, int64_t fcomm, int lmppx);
 
 extern "C" void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
                                               int verbosity, const char* fname, int64_t fcomm, int lmppx);
 
-extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
+extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh, double thresh_value,
                                                   int verbosity, char* algorithm, int minimize, const char* fname,
                                                   int64_t fcomm, int lmppx);
 

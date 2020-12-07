@@ -54,7 +54,7 @@ std::stack<Instance> instances;
 } // namespace
 
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
-                                                           double thresh, int hermitian, int verbosity,
+                                                           double thresh, double thresh_value, int hermitian, int verbosity,
                                                            const char* fname, int64_t fcomm, int lmppx) {
   std::shared_ptr<Profiler> profiler = nullptr;
   std::string pname(fname);
@@ -91,6 +91,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   if (solver_cast) {
     solver_cast->set_hermiticity(hermitian);
     solver_cast->set_convergence_threshold(thresh);
+    solver_cast->set_convergence_threshold_value(thresh_value);
 //    solver_cast->propose_rspace_norm_thresh = 1.0e-14;
 //    solver_cast->set_max_size_qspace(10);
 //    solver_cast->set_reset_D(50);
@@ -108,7 +109,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
 }
 
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
-                                                         const double* rhs, double aughes, double thresh, int hermitian,
+                                                         const double* rhs, double aughes, double thresh, double thresh_value, int hermitian,
                                                          int verbosity, const char* fname, int64_t fcomm, int lmppx) {
   /*
     std::shared_ptr<Profiler> profiler = nullptr;
@@ -188,7 +189,7 @@ extern "C" void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size
     */
 }
 
-extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
+extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh, double thresh_value,
                                                   int verbosity, char* algorithm, int minimize, const char* fname,
                                                   int64_t fcomm, int lmppx) {
   /*
@@ -398,7 +399,10 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
     gg.back().allocate_buffer(
         Span<typename Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
   }
-  const std::vector<int> croots(roots, roots + nroot);
+  std::vector<int> croots;
+  for (int i = 0; i < nroot; i++){
+    croots.push_back(*(roots+i));
+  }
   if (instance.prof != nullptr)
     instance.prof->start("Solution:Call");
   instance.solver->solution(croots, cc, gg);

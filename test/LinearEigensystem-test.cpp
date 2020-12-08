@@ -202,8 +202,8 @@ struct LinearEigensystemF : ::testing::Test {
     for (int nroot = 1; nroot <= n && nroot <= 28; nroot += std::max(size_t{1}, n / 10)) {
       for (auto np = 0; np <= n && np <= 100 && (hermitian or np == 0); np += std::max(nroot, int(n) / 5)) {
         molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n
-            << ", pspace dimension " << np << ", n_working_vectors_max = " << n_working_vectors_max
-            << std::endl;
+                     << ", pspace dimension " << np << ", n_working_vectors_max = " << n_working_vectors_max
+                     << std::endl;
         auto [solver, logger] = molpro::test::create_LinearEigensystem();
         auto options = set_options(solver, logger, nroot, np, hermitian);
         auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
@@ -276,7 +276,7 @@ struct LinearEigensystemF : ::testing::Test {
         solver->solution(roots, parameters, residuals);
         residual(parameters, residuals, solver->eigenvalues());
         for (const auto& r : residuals)
-          EXPECT_LE(std::sqrt(dot(r, r)), options->convergence_threshold);
+          EXPECT_LE(std::sqrt(dot(r, r)), options->convergence_threshold.value());
         int root = 0;
         for (const auto& ee : expected_eigensolutions) {
           EXPECT_NEAR(ee.first, solver->eigenvalues()[root], 1e-10);

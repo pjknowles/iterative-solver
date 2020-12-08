@@ -192,9 +192,13 @@ struct LinearEigensystemF : ::testing::Test {
     return options;
   }
 
-  void test_eigen(const std::string& title = "", const int n_working_vectors_max = 0) {
+  bool check_mat_hermiticity() {
     auto d = (hmat - hmat.transpose()).norm();
-    bool hermitian = d < 1e-10;
+    return d < 1e-10;
+  }
+
+  void test_eigen(const std::string& title = "", const int n_working_vectors_max = 0) {
+    bool hermitian = check_mat_hermiticity();
     auto [expected_eigensolutions, expected_eigenvalues] = solve_full_problem(hermitian);
     check_eigenvectors_map(expected_eigensolutions, expected_eigenvalues);
     if (verbosity > 0)

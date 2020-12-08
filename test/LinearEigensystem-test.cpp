@@ -364,23 +364,29 @@ TEST_F(LinearEigensystemF, symmetry_eigen) {
 TEST_F(LinearEigensystemF, solution) {
   size_t n = 10;
   auto solution_residual = std::vector<Rvector>(n);
+  std::for_each(solution_residual.begin(), solution_residual.end(), [&n](auto& el) { el.assign(n, 0); });
   double param = 1;
   load_matrix(n, "", param);
-  test_eigen(std::to_string(n) + "/" + std::to_string(param));
-  for (size_t nroot = 0; nroot < n; ++nroot) {
-    auto [solver, logger] = molpro::test::create_LinearEigensystem();
-    auto options = set_options(solver, logger, nroot, 0, check_mat_hermiticity());
-    auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
-      return this->apply_p(pvectors, pspace, action);
-    };
-    auto [x, g] = create_containers(nroot);
-    initial_guess(x);
-    action(x, g);
-    solver->add_vector(x, g, apply_p_wrapper);
-    auto roots = std::vector<int>(nroot);
-    std::iota(roots.begin(), roots.end(), 0);
-    std::for_each(solution_residual.begin(), solution_residual.end(), [&n](auto& el) { el.assign(n, 0); });
-    solver->solution(roots, x, solution_residual, apply_p_wrapper);
-    // check residual from add_vector is the same as
+  for (size_t nroot = 1; nroot < n; ++nroot) {
+    for (size_t np = 0; np <= nroot; np += nroot) {
+      for (size_t n_working_vectors_max = 0; n_working_vectors_max < 2; ++n_working_vectors_max) {
+        auto [solver, logger] = molpro::test::create_LinearEigensystem();
+        auto options = set_options(solver, logger, nroot, np, check_mat_hermiticity());
+        auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
+          return this->apply_p(pvectors, pspace, action);
+        };
+        auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, apply_p_wrapper, solver);
+        auto roots = solver->working_set();
+        solver->solution(roots, x, g, apply_p_wrapper);
+        residual(x, solution_residual, solver->working_set_eigenvalues());
+        for (size_t i = 0; i < roots.size(); ++i) {
+          auto diff = 0.;
+          for (size_t j = 0; j < n; ++j)
+            diff += std::abs(g.at(i)[j] - solution_residual.at(i)[j]);
+          diff = std::sqrt(diff / n);
+          EXPECT_NEAR(diff, 0., 1.0e-8);
+        }
+      }
+    }
   }
 }

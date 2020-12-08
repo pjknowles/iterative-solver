@@ -173,7 +173,7 @@ protected:
   }
 
   double m_norm_thresh = 1e-10; //!< vectors with norm less than threshold can be considered null.
-  double m_svd_thresh = 1e-8;   //!< svd values smaller than this mark the null space
+  double m_svd_thresh = 1e-12;  //!< svd values smaller than this mark the null space
   int m_max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space
   detail::DSpaceResetter<Q> m_dspace_resetter;             //!< resets D space
   bool m_hermiticity = true;                               //!< whether the problem is hermitian or not

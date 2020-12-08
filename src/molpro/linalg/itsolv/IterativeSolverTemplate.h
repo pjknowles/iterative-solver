@@ -163,6 +163,7 @@ public:
   void clearP() override {}
 
   void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) override {
+    check_consistent_number_of_roots_and_solutions(roots, parameters.size());
     detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
                                m_xspace->paramsq(), m_xspace->paramsd(), m_xspace->dimensions().oP,
                                m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
@@ -181,6 +182,7 @@ public:
   }
 
   void solution_params(const std::vector<int>& roots, const VecRef<R>& parameters) override {
+    check_consistent_number_of_roots_and_solutions(roots, parameters.size());
     detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
                                m_xspace->paramsq(), m_xspace->paramsd(), m_xspace->dimensions().oP,
                                m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
@@ -302,6 +304,14 @@ protected:
     }
     m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace, 6);
     return m_working_set.size();
+  }
+
+  template <typename I>
+  void check_consistent_number_of_roots_and_solutions(const std::vector<I>& roots, const size_t nparams) {
+    if (roots.size() > nparams)
+      throw std::runtime_error("asking for more roots than parameters");
+    if (*std::max_element(roots.begin(), roots.end()) >= m_subspace_solver->solutions().size())
+      throw std::runtime_error("asking for more roots than there are solutions");
   }
 
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers

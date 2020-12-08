@@ -161,7 +161,7 @@ public:
 
   std::shared_ptr<Logger> logger;
   double propose_rspace_norm_thresh = 1e-10; //!< vectors with norm less than threshold can be considered null.
-  double propose_rspace_svd_thresh = 1e-4;   //!< the smallest singular value in the subspace that can be allowed when
+  double propose_rspace_svd_thresh = 1e-12;  //!< the smallest singular value in the subspace that can be allowed when
                                              //!< constructing the working set. Smaller singular values will lead to
                                              //!< deletion of parameters from the Q space
 protected:

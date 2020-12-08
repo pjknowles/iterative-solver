@@ -109,22 +109,28 @@ struct LinearEigensystemF : ::testing::Test {
     ASSERT_THAT(expected_eigenvalues, ::testing::Pointwise(::testing::DoubleEq(), testing));
   }
 
-  auto initial_guess(const size_t n_roots) {
+  auto create_containers(const size_t nW) {
     std::vector<Rvector> g;
     std::vector<Rvector> x;
+    for (size_t i = 0; i < nW; i++) {
+      x.emplace_back(n, 0);
+      g.emplace_back(n);
+    }
+    return std::make_tuple(x, g);
+  }
+
+  auto initial_guess(std::vector<Rvector>& x) {
+    const auto n_roots = x.size();
     std::vector<size_t> guess;
     std::vector<double> diagonals;
     for (auto i = 0; i < n; i++) {
       diagonals.push_back(hmat(i, i));
     }
     for (size_t root = 0; root < n_roots; root++) {
-      x.emplace_back(n, 0);
-      g.emplace_back(n);
       guess.push_back(std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin()); // initial guess
       *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
-      x.back()[guess.back()] = 1; // initial guess
+      x[root][guess.back()] = 1; // initial guess
     }
-    return std::make_tuple(x, g, guess);
   }
 
   void apply_p(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
@@ -186,7 +192,7 @@ struct LinearEigensystemF : ::testing::Test {
     return options;
   }
 
-  void test_eigen(const std::string& title = "") {
+  void test_eigen(const std::string& title = "", const int n_working_vectors_max = 0) {
     auto d = (hmat - hmat.transpose()).norm();
     bool hermitian = d < 1e-10;
     auto [expected_eigensolutions, expected_eigenvalues] = solve_full_problem(hermitian);
@@ -195,30 +201,37 @@ struct LinearEigensystemF : ::testing::Test {
       std::cout << "expected eigenvalues " << expected_eigenvalues << std::endl;
     for (int nroot = 1; nroot <= n && nroot <= 28; nroot += std::max(size_t{1}, n / 10)) {
       for (auto np = 0; np <= n && np <= 100 && (hermitian or np == 0); np += std::max(nroot, int(n) / 5)) {
+        molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n
+                     << ", pspace dimension " << np << ", n_working_vectors_max = " << n_working_vectors_max
+                     << std::endl;
         auto [solver, logger] = molpro::test::create_LinearEigensystem();
         auto options = set_options(solver, logger, nroot, np, hermitian);
-        auto [x, g, guess] = initial_guess(np < solver->n_roots() ? solver->n_roots() : solver->n_roots()/2+1);
-        molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n
-                     << ", pspace dimension " << np <<", buffer size "<<x.size() << std::endl;
-
-        auto [pspace, PP] = initial_pspace(np);
-        int nwork = x.size();
-
         auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
           return this->apply_p(pvectors, pspace, action);
         };
-
-        size_t n_iter = 1;
-        for (auto iter = 0; iter < 100; iter++, ++n_iter) {
-          if (iter == 0 && np > 0) {
-            nwork = solver->add_p(cwrap(pspace), Span<double>(PP.data(), PP.size()), wrap(x),
-                                  molpro::linalg::itsolv::wrap(g), apply_p_wrapper);
-          } else {
-            action(x, g);
-            nwork = solver->add_vector(x, g, apply_p_wrapper);
-            if (verbosity > 0)
-              std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
-          }
+        int nwork = nroot;
+        auto [pspace, PP] = initial_pspace(np);
+        // Create initial subspace. This is iteration 0.
+        auto [x, g] = create_containers(nroot);
+        if (np) {
+          solver->add_p(cwrap(pspace), Span<double>(PP.data(), PP.size()), wrap(x), molpro::linalg::itsolv::wrap(g),
+                        apply_p_wrapper);
+        } else {
+          initial_guess(x);
+          action(x, g);
+          solver->add_vector(x, g, apply_p_wrapper);
+        }
+        auto n_working_vectors_guess = std::max(nroot, n_working_vectors_max > 0 ? n_working_vectors_max : nroot);
+        x.resize(n_working_vectors_guess);
+        g.resize(n_working_vectors_guess);
+        update(g, solver->working_set_eigenvalues());
+        solver->end_iteration(x, g);
+        size_t n_iter = 2;
+        for (auto iter = 1; iter < 100; iter++, ++n_iter) {
+          action(x, g);
+          nwork = solver->add_vector(x, g, apply_p_wrapper);
+          if (verbosity > 0)
+            std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
           if (nwork == 0)
             break;
           update(g, solver->working_set_eigenvalues());
@@ -230,6 +243,8 @@ struct LinearEigensystemF : ::testing::Test {
           if (nwork == 0)
             break;
         }
+        if (verbosity > 0)
+          solver->report();
         std::cout << "Error={ ";
         for (const auto& e : solver->errors())
           std::cout << e << " ";
@@ -261,7 +276,7 @@ struct LinearEigensystemF : ::testing::Test {
         solver->solution(roots, parameters, residuals);
         residual(parameters, residuals, solver->eigenvalues());
         for (const auto& r : residuals)
-          EXPECT_LE(std::sqrt(dot(r, r)), options->convergence_threshold);
+          EXPECT_LE(std::sqrt(dot(r, r)), options->convergence_threshold.value());
         int root = 0;
         for (const auto& ee : expected_eigensolutions) {
           EXPECT_NEAR(ee.first, solver->eigenvalues()[root], 1e-10);
@@ -310,6 +325,7 @@ TEST_F(LinearEigensystemF, small_eigen) {
     double param = 1;
     load_matrix(n, "", param);
     test_eigen(std::to_string(n) + "/" + std::to_string(param));
+    test_eigen(std::to_string(n) + "/" + std::to_string(param), 1);
   }
 }
 

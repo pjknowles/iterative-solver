@@ -197,6 +197,28 @@ struct LinearEigensystemF : ::testing::Test {
     return d < 1e-10;
   }
 
+  // Create initial subspace. This is iteration 0.
+  auto initialize_subspace(const size_t np, const size_t nroot, const size_t n_working_vectors_max,
+                           const IterativeSolver<Rvector, Qvector, Pvector>::fapply_on_p_type& apply_p_wrapper,
+                           std::shared_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver) {
+    auto [x, g] = create_containers(nroot);
+    if (np) {
+      auto [pspace, PP] = initial_pspace(np);
+      solver->add_p(cwrap(pspace), Span<double>(PP.data(), PP.size()), wrap(x), molpro::linalg::itsolv::wrap(g),
+                    apply_p_wrapper);
+    } else {
+      initial_guess(x);
+      action(x, g);
+      solver->add_vector(x, g, apply_p_wrapper);
+    }
+    auto n_working_vectors_guess = std::max(nroot, n_working_vectors_max > 0 ? n_working_vectors_max : nroot);
+    x.resize(n_working_vectors_guess);
+    g.resize(n_working_vectors_guess);
+    update(g, solver->working_set_eigenvalues());
+    solver->end_iteration(x, g);
+    return std::make_tuple(x, g);
+  };
+
   void test_eigen(const std::string& title = "", const int n_working_vectors_max = 0) {
     bool hermitian = check_mat_hermiticity();
     auto [expected_eigensolutions, expected_eigenvalues] = solve_full_problem(hermitian);
@@ -214,22 +236,7 @@ struct LinearEigensystemF : ::testing::Test {
           return this->apply_p(pvectors, pspace, action);
         };
         int nwork = nroot;
-        auto [pspace, PP] = initial_pspace(np);
-        // Create initial subspace. This is iteration 0.
-        auto [x, g] = create_containers(nroot);
-        if (np) {
-          solver->add_p(cwrap(pspace), Span<double>(PP.data(), PP.size()), wrap(x), molpro::linalg::itsolv::wrap(g),
-                        apply_p_wrapper);
-        } else {
-          initial_guess(x);
-          action(x, g);
-          solver->add_vector(x, g, apply_p_wrapper);
-        }
-        auto n_working_vectors_guess = std::max(nroot, n_working_vectors_max > 0 ? n_working_vectors_max : nroot);
-        x.resize(n_working_vectors_guess);
-        g.resize(n_working_vectors_guess);
-        update(g, solver->working_set_eigenvalues());
-        solver->end_iteration(x, g);
+        auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, apply_p_wrapper, solver);
         size_t n_iter = 2;
         for (auto iter = 1; iter < 100; iter++, ++n_iter) {
           action(x, g);
@@ -351,5 +358,29 @@ TEST_F(LinearEigensystemF, symmetry_eigen) {
       }
     }
     test_eigen(std::to_string(n) + "/sym/" + std::to_string(param));
+  }
+}
+
+TEST_F(LinearEigensystemF, solution) {
+  size_t n = 10;
+  auto solution_residual = std::vector<Rvector>(n);
+  double param = 1;
+  load_matrix(n, "", param);
+  test_eigen(std::to_string(n) + "/" + std::to_string(param));
+  for (size_t nroot = 0; nroot < n; ++nroot) {
+    auto [solver, logger] = molpro::test::create_LinearEigensystem();
+    auto options = set_options(solver, logger, nroot, 0, check_mat_hermiticity());
+    auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
+      return this->apply_p(pvectors, pspace, action);
+    };
+    auto [x, g] = create_containers(nroot);
+    initial_guess(x);
+    action(x, g);
+    solver->add_vector(x, g, apply_p_wrapper);
+    auto roots = std::vector<int>(nroot);
+    std::iota(roots.begin(), roots.end(), 0);
+    std::for_each(solution_residual.begin(), solution_residual.end(), [&n](auto& el) { el.assign(n, 0); });
+    solver->solution(roots, x, solution_residual, apply_p_wrapper);
+    // check residual from add_vector is the same as
   }
 }

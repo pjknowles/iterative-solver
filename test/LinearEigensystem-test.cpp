@@ -193,17 +193,16 @@ struct LinearEigensystemF : ::testing::Test {
     check_eigenvectors_map(expected_eigensolutions, expected_eigenvalues);
     if (verbosity > 0)
       std::cout << "expected eigenvalues " << expected_eigenvalues << std::endl;
-    for (int nroot = 1; nroot <= n && nroot <= 28; nroot += std::max(size_t{1}, n / 100)) {
-      for (auto np = 0; np <= n && np <= 100 && (hermitian or np == 0); np += std::max(nroot, int(n) / 10)) {
-        molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n
-                     << ", pspace dimension " << np << std::endl;
-
+    for (int nroot = 1; nroot <= n && nroot <= 28; nroot += std::max(size_t{1}, n / 10)) {
+      for (auto np = 0; np <= n && np <= 100 && (hermitian or np == 0); np += std::max(nroot, int(n) / 5)) {
         auto [solver, logger] = molpro::test::create_LinearEigensystem();
         auto options = set_options(solver, logger, nroot, np, hermitian);
+        auto [x, g, guess] = initial_guess(np < solver->n_roots() ? solver->n_roots() : solver->n_roots()/2+1);
+        molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n
+                     << ", pspace dimension " << np <<", buffer size "<<x.size() << std::endl;
 
-        auto [x, g, guess] = initial_guess(solver->n_roots());
         auto [pspace, PP] = initial_pspace(np);
-        int nwork = solver->n_roots();
+        int nwork = x.size();
 
         auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
           return this->apply_p(pvectors, pspace, action);

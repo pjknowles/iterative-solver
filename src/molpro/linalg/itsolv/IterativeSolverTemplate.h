@@ -14,11 +14,13 @@ namespace molpro::linalg::itsolv {
 namespace detail {
 
 inline std::vector<std::pair<size_t, size_t>> parameter_batches(const size_t nsol, const size_t nparam) {
-  auto n_batch = nsol / nparam + (nsol % nparam ? 1 : 0);
   auto batches = std::vector<std::pair<size_t, size_t>>{};
-  for (size_t ib = 0, start_sol = 0, end_sol = 0; ib < n_batch; ++ib, start_sol = end_sol) {
-    end_sol = std::min(start_sol + nparam, nsol);
-    batches.emplace_back(start_sol, end_sol);
+  if (nparam && nsol) {
+    auto n_batch = nsol / nparam + (nsol % nparam ? 1 : 0);
+    for (size_t ib = 0, start_sol = 0, end_sol = 0; ib < n_batch; ++ib, start_sol = end_sol) {
+      end_sol = std::min(start_sol + nparam, nsol);
+      batches.emplace_back(start_sol, end_sol);
+    }
   }
   return batches;
 }
@@ -310,7 +312,7 @@ protected:
   void check_consistent_number_of_roots_and_solutions(const std::vector<I>& roots, const size_t nparams) {
     if (roots.size() > nparams)
       throw std::runtime_error("asking for more roots than parameters");
-    if (*std::max_element(roots.begin(), roots.end()) >= m_subspace_solver->solutions().size())
+    if (!roots.empty() && *std::max_element(roots.begin(), roots.end()) >= m_subspace_solver->solutions().size())
       throw std::runtime_error("asking for more roots than there are solutions");
   }
 

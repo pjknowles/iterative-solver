@@ -184,6 +184,7 @@ public:
    * returned parameters and residual, before the subsequent call to endIteration()
    */
   virtual bool add_value(R& parameters, value_type value, R& residual) = 0;
+  virtual scalar_type value() const = 0;
 };
 
 //! Solves non-linear system of equations using methods such as DIIS

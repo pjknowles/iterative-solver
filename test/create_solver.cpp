@@ -4,6 +4,11 @@
 
 #include <molpro/linalg/itsolv/LinearEigensystem.h>
 #include <molpro/linalg/itsolv/LinearEquations.h>
+#include <molpro/linalg/itsolv/Optimize.h>
+#include <molpro/linalg/itsolv/IterativeSolver.h>
+
+
+
 
 namespace molpro::test {
 
@@ -19,6 +24,13 @@ std::pair<std::shared_ptr<ILinearEquations<Rvector, Qvector, Pvector>>, std::sha
 create_LinearEquations() {
   auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>();
   auto solver = std::make_shared<molpro::linalg::itsolv::LinearEquations<Rvector, Qvector, Pvector>>(handlers);
+  auto logger = solver->logger;
+  return {solver, logger};
+}
+std::pair<std::shared_ptr<IOptimize<Rvector, Qvector, Pvector>>, std::shared_ptr<Logger>>
+create_Optimize() {
+  auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>();
+  auto solver = std::make_shared<molpro::linalg::itsolv::Optimize<Rvector, Qvector, Pvector>>(handlers);
   auto logger = solver->logger;
   return {solver, logger};
 }

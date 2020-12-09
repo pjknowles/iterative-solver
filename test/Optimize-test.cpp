@@ -10,6 +10,7 @@
 #include <regex>
 #include <vector>
 
+#include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/helper.h>
 
 // Find lowest eigensolution of a matrix obtained from an external file
@@ -53,13 +54,15 @@ struct OptimizeF : ::testing::Test {
       hmat(i, i) += degeneracy_split * i;
   }
 
-  void action(const std::vector<Rvector>& psx, std::vector<Rvector>& outputs) {
-    for (size_t k = 0; k < psx.size(); k++) {
-      auto x = Eigen::Map<const Eigen::VectorXd>(psx.at(k).data(), psx.at(k).size());
-      auto r = Eigen::Map<Eigen::VectorXd>(outputs.at(k).data(), psx.at(k).size());
-      r.fill(0);
-      r += hmat * x;
-    }
+  double action(const std::vector<Rvector>& psx, std::vector<Rvector>& outputs) {
+    size_t k = 0;
+    auto x = Eigen::Map<const Eigen::VectorXd>(psx.at(k).data(), psx.at(k).size());
+    auto r = Eigen::Map<Eigen::VectorXd>(outputs.at(k).data(), psx.at(k).size());
+    r.fill(0);
+    r += 2 * hmat * x;
+    double value = 0.5 * x.dot(r) / x.dot(x);
+    r -= 2 * value * x;
+    return value;
   }
   template <class scalar>
   scalar dot(const std::vector<scalar>& a, const std::vector<scalar>& b) {
@@ -169,23 +172,18 @@ struct OptimizeF : ::testing::Test {
     return std::make_tuple(pspace, PP);
   }
 
-  auto set_options(std::shared_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver,
-                   std::shared_ptr<Logger>& logger, const int nroot, const int np, bool hermitian) {
-    auto options = CastOptions::LinearEigensystem(solver->get_options());
-    options->n_roots = nroot;
+  auto set_options(std::shared_ptr<IOptimize<Rvector, Qvector, Pvector>>& solver, std::shared_ptr<Logger>& logger) {
+    auto options = CastOptions::Optimize(solver->get_options());
     options->convergence_threshold = 1.0e-8;
     //    options->norm_thresh = 1.0e-14;
     //    options->svd_thresh = 1.0e-10;
-    options->max_size_qspace = std::max(6 * nroot, std::min(int(n), std::min(1000, 6 * nroot)) - np);
-    options->reset_D = 8;
-    options->hermiticity = hermitian;
+    options->max_size_qspace = 10;
     solver->set_options(options);
-    options = CastOptions::LinearEigensystem(solver->get_options());
+    options = CastOptions::Optimize(solver->get_options());
     molpro::cout << "convergence threshold = " << options->convergence_threshold.value()
                  << ", svd thresh = " << options->svd_thresh.value()
                  << ", norm thresh = " << options->norm_thresh.value()
-                 << ", max size of Q = " << options->max_size_qspace.value()
-                 << ", reset D = " << options->reset_D.value() << std::endl;
+                 << ", max size of Q = " << options->max_size_qspace.value() << std::endl;
     logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
     logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
     logger->data_dump = false;
@@ -199,42 +197,25 @@ struct OptimizeF : ::testing::Test {
     check_eigenvectors_map(expected_eigensolutions, expected_eigenvalues);
     if (verbosity > 0)
       std::cout << "expected eigenvalues " << expected_eigenvalues << std::endl;
-    for (int nroot = 1; nroot <= n && nroot <= 28; nroot += std::max(size_t{1}, n / 10)) {
-      for (auto np = 0; np <= n && np <= 100 && (hermitian or np == 0); np += std::max(nroot, int(n) / 5)) {
+    int nroot = 1;
+    {
+      int np = 0;
+      {
         molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n
                      << ", pspace dimension " << np << ", n_working_vectors_max = " << n_working_vectors_max
                      << std::endl;
-        auto [solver, logger] = molpro::test::create_LinearEigensystem();
-        auto options = set_options(solver, logger, nroot, np, hermitian);
-        auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
-          return this->apply_p(pvectors, pspace, action);
-        };
-        int nwork = nroot;
-        auto [pspace, PP] = initial_pspace(np);
+        auto [solver, logger] = molpro::test::create_Optimize();
+        auto options = set_options(solver, logger);
+        int nwork = 1;
         // Create initial subspace. This is iteration 0.
-        auto [x, g] = create_containers(nroot);
-        if (np) {
-          solver->add_p(cwrap(pspace), Span<double>(PP.data(), PP.size()), wrap(x), molpro::linalg::itsolv::wrap(g),
-                        apply_p_wrapper);
-        } else {
-          initial_guess(x);
-          action(x, g);
-          solver->add_vector(x, g, apply_p_wrapper);
-        }
-        auto n_working_vectors_guess = std::max(nroot, n_working_vectors_max > 0 ? n_working_vectors_max : nroot);
-        x.resize(n_working_vectors_guess);
-        g.resize(n_working_vectors_guess);
-        update(g, solver->working_set_eigenvalues());
-        solver->end_iteration(x, g);
-        size_t n_iter = 2;
+        auto [x, g] = create_containers(1);
+        initial_guess(x);
+        size_t n_iter = 1;
         for (auto iter = 1; iter < 100; iter++, ++n_iter) {
-          action(x, g);
-          nwork = solver->add_vector(x, g, apply_p_wrapper);
-          if (verbosity > 0)
-            std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
-          if (nwork == 0)
-            break;
-          update(g, solver->working_set_eigenvalues());
+          auto value = action(x, g);
+          auto precon = solver->add_value(x.front(), value, g.front());
+          if (precon)
+            update(g, {value});
           if (verbosity > 0)
             solver->report();
           nwork = solver->end_iteration(x, g);
@@ -256,12 +237,9 @@ struct OptimizeF : ::testing::Test {
           std::cout << "expected eigenvalues "
                     << std::vector<double>(expected_eigenvalues.data(), expected_eigenvalues.data() + solver->n_roots())
                     << std::endl;
-          std::cout << "obtained eigenvalues " << solver->eigenvalues() << std::endl;
+          std::cout << "obtained eigenvalues " << solver->value() << std::endl;
         }
-        EXPECT_THAT(solver->eigenvalues(),
-                    ::testing::Pointwise(::testing::DoubleNear(2e-9),
-                                         std::vector<double>(expected_eigenvalues.data(),
-                                                             expected_eigenvalues.data() + solver->n_roots())));
+        EXPECT_NEAR(solver->value(), expected_eigenvalues.front(), 2e-9);
         const auto nR_creations = solver->statistics().r_creations;
         if (verbosity > 0)
           std::cout << "R creations = " << nR_creations << std::endl;
@@ -274,12 +252,12 @@ struct OptimizeF : ::testing::Test {
           roots.push_back(root);
         }
         solver->solution(roots, parameters, residuals);
-        residual(parameters, residuals, solver->eigenvalues());
+        residual(parameters, residuals, {solver->value()});
         for (const auto& r : residuals)
           EXPECT_LE(std::sqrt(dot(r, r)), options->convergence_threshold.value());
         int root = 0;
         for (const auto& ee : expected_eigensolutions) {
-          EXPECT_NEAR(ee.first, solver->eigenvalues()[root], 1e-10);
+          EXPECT_NEAR(ee.first, solver->value(), 1e-10);
           auto overlap_with_reference = std::inner_product(parameters.at(root).begin(), parameters.at(root).end(),
                                                            ee.second.begin(), 0., std::plus(), std::multiplies());
           EXPECT_NEAR(std::abs(overlap_with_reference), 1., options->convergence_threshold.value());

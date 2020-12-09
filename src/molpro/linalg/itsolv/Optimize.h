@@ -4,8 +4,8 @@
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
-#include <molpro/linalg/itsolv/subspace/XSpace.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverOpt.h>
+#include <molpro/linalg/itsolv/subspace/XSpace.h>
 
 namespace molpro::linalg::itsolv {
 /*!
@@ -16,24 +16,22 @@ namespace molpro::linalg::itsolv {
  * @tparam R The class encapsulating solution and residual vectors
  * @tparam Q Used internally as a class for storing vectors on backing store
  */
-template <class R, class Q>
-class Optimize : public IterativeSolverTemplate<IOptimize, R, Q, R> {
+template <class R, class Q, class P = R>
+class Optimize : public IterativeSolverTemplate<IOptimize, R, Q, P> {
 public:
-  using P = R;
   using SolverTemplate = IterativeSolverTemplate<IOptimize, R, Q, P>;
   using SolverTemplate ::report;
   using typename SolverTemplate::value_type;
   using typename SolverTemplate::value_type_abs;
+  using typename SolverTemplate::scalar_type;
 
   explicit Optimize(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
-                           const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
+                    const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
       : SolverTemplate(std::make_shared<subspace::XSpace<R, Q, P>>(handlers, logger_),
                        std::static_pointer_cast<subspace::ISubspaceSolver<R, Q, P>>(
                            std::make_shared<subspace::SubspaceSolverOpt<R, Q, P>>(logger_)),
                        handlers, std::make_shared<Statistics>(), logger_),
         logger(logger_) {
-    set_hermiticity(m_hermiticity);
-    this->m_normalise_solution = false;
   }
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
@@ -63,42 +61,28 @@ public:
   double get_svd_thresh() const { return m_svd_thresh; }
   //! Set a limit on the maximum size of Q space. This does not include the size of the working space (R) and the D
   //! space
-  void set_max_size_qspace(int n) {
-    m_max_size_qspace = n;
-  }
+  void set_max_size_qspace(int n) { m_max_size_qspace = n; }
   int get_max_size_qspace() const { return m_max_size_qspace; }
 
   void set_options(const std::shared_ptr<Options>& options) override {
     SolverTemplate::set_options(options);
     auto opt = CastOptions::Optimize(options);
     if (opt) {
-      if (opt->reset_D)
-        set_reset_D(opt->reset_D.value());
-      if (opt->reset_D_max_Q_size)
-        set_reset_D_maxQ_size(opt->reset_D_max_Q_size.value());
       if (opt->max_size_qspace)
         set_max_size_qspace(opt->max_size_qspace.value());
       if (opt->norm_thresh)
         set_norm_thresh(opt->norm_thresh.value());
       if (opt->svd_thresh)
         set_svd_thresh(opt->svd_thresh.value());
-      if (opt->hermiticity)
-        set_hermiticity(opt->hermiticity.value());
-      if (opt->augmented_hessian)
-        set_augmented_hessian(opt->augmented_hessian.value());
     }
   }
 
   std::shared_ptr<Options> get_options() const override {
     auto opt = std::make_shared<OptimizeOptions>();
     opt->copy(*SolverTemplate::get_options());
-    opt->reset_D = get_reset_D();
-    opt->reset_D_max_Q_size = get_reset_D_maxQ_size();
     opt->max_size_qspace = get_max_size_qspace();
     opt->norm_thresh = get_norm_thresh();
     opt->svd_thresh = get_svd_thresh();
-    opt->hermiticity = get_hermiticity();
-    opt->augmented_hessian = get_augmented_hessian();
     return opt;
   }
 
@@ -111,19 +95,17 @@ public:
   }
   std::shared_ptr<Logger> logger;
 
+  bool add_value(R& parameters, value_type value, R& residual) override {
+    auto nwork = this->add_vector(parameters,residual);
+    this->m_values.push(value);
+    return nwork>0; // TODO check this does the right thing
+  }
+
+  scalar_type value() const override { return this->m_values.top();}
+
 protected:
-  // FIXME The scale is fixed by the norm of RHS, but if RHS=0 there is no reference. We could use the norm of params
+  // for non-linear problems, actions already contains the residual
   void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {
-    assert(params.size() >= roots.size());
-    const auto& norm = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace)->rhs_norm();
-    for (size_t i = 0; i < roots.size(); ++i) {
-      const auto ii = roots[i];
-      this->m_handlers->rq().axpy(-1, rhs().at(ii), actions.at(i));
-      if (norm.at(ii) != 0) {
-        auto scal = 1 / norm[ii];
-        this->m_handlers->rr().scal(scal, actions.at(i));
-      }
-    }
   }
 
   double m_norm_thresh = 1e-10; //!< vectors with norm less than threshold can be considered null.

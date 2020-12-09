@@ -9,6 +9,7 @@
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/wrap.h>
+#include <stack>
 
 namespace molpro::linalg::itsolv {
 namespace detail {
@@ -312,8 +313,9 @@ protected:
       throw std::runtime_error("asking for more roots than there are solutions");
   }
 
-  std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers
-  std::shared_ptr<subspace::IXSpace<R, Q, P>> m_xspace;                  //!< manages the subspace and associated data
+  std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;   //!< Array handlers
+  std::shared_ptr<subspace::IXSpace<R, Q, P>> m_xspace; //!< manages the subspace and associated data
+  std::stack<scalar_type> m_values;                     //! function values in this and previous iterations
   std::shared_ptr<subspace::ISubspaceSolver<R, Q, P>> m_subspace_solver; //!< solves the subspace problem
   std::vector<double> m_errors;                                          //!< errors from the most recent solution
   std::vector<double> m_value_errors;                                    //!< value errors from the most recent solution

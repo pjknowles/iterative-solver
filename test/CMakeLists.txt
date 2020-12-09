@@ -31,7 +31,7 @@ endif ()
 add_library(itsolv_create_solver STATIC create_solver.cpp create_solver.h)
 target_link_libraries(itsolv_create_solver PUBLIC molpro::${PROJECT_NAME})
 
-foreach (t LinearEigensystem-test LinearEquations-test)
+foreach (t LinearEigensystem-test LinearEquations-test Optimize-test)
     add_executable(${t}.exe ${t}.cpp test.h)
     target_link_libraries(${t}.exe PUBLIC itsolv_create_solver gmock_main)# ${MPI_CXX_LIBRARIES})
     target_link_libraries(${t}.exe PUBLIC Eigen3::Eigen)

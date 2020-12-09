@@ -9,23 +9,17 @@
 
 namespace molpro::linalg::itsolv {
 /*!
- * @brief Solves a system of linear equation, A x = b
+ * @brief A class that optimises a function using a Quasi-Newton or other method.
  *
- * The equations are solved using a Krylov subspace projection method with the P and D space. This is the same approach
- * as LinearEigenvalue.
- *
- * Residual
- * --------
- * The residual is scaled down by the norm of the RHS vector so that thresholds are consistent.
- *
- * Preconditioner
- * -------------
  * @todo Explain some of the theory
  *
+ * @tparam R The class encapsulating solution and residual vectors
+ * @tparam Q Used internally as a class for storing vectors on backing store
  */
-template <class R, class Q, class P>
-class Optimize : public IterativeSolverTemplate<IOptimize, R, Q, P> {
+template <class R, class Q>
+class Optimize : public IterativeSolverTemplate<IOptimize, R, Q, R> {
 public:
+  using P = R;
   using SolverTemplate = IterativeSolverTemplate<IOptimize, R, Q, P>;
   using SolverTemplate ::report;
   using typename SolverTemplate::value_type;
@@ -60,19 +54,6 @@ public:
     return end_iteration(wrap(parameters), wrap(action));
   }
 
-  void add_equations(const CVecRef<R>& rhs) override {
-    auto xspace = std::static_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
-    xspace->add_rhs_equations(rhs);
-    this->set_n_roots(xspace->dimensions().nRHS);
-  }
-
-  void add_equations(const R& rhs) override { add_equations(cwrap_arg(rhs)); }
-
-  CVecRef<Q> rhs() const override {
-    auto xspace = std::static_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
-    return xspace->rhs();
-  }
-
   //! Set threshold on the norm of parameters that should be considered null
   void set_norm_thresh(double thresh) { m_norm_thresh = thresh; }
   double get_norm_thresh() const { return m_norm_thresh; }
@@ -80,38 +61,12 @@ public:
   //! constructing the working set. Smaller singular values will lead to deletion of parameters
   void set_svd_thresh(double thresh) { m_svd_thresh = thresh; }
   double get_svd_thresh() const { return m_svd_thresh; }
-  //! Set the period in iterations for resetting the D space
-  void set_reset_D(size_t n) { m_dspace_resetter.set_nreset(n); }
-  size_t get_reset_D() const { return m_dspace_resetter.get_nreset(); }
-  //! Set the maximum size of Q space after resetting the D space
-  void set_reset_D_maxQ_size(size_t n) { m_dspace_resetter.set_max_Qsize(n); }
-  int get_reset_D_maxQ_size() const { return m_dspace_resetter.get_max_Qsize(); }
   //! Set a limit on the maximum size of Q space. This does not include the size of the working space (R) and the D
   //! space
   void set_max_size_qspace(int n) {
     m_max_size_qspace = n;
-    if (m_dspace_resetter.get_max_Qsize() > m_max_size_qspace)
-      m_dspace_resetter.set_max_Qsize(m_max_size_qspace);
   }
   int get_max_size_qspace() const { return m_max_size_qspace; }
-  void set_hermiticity(bool hermitian) override {
-    m_hermiticity = hermitian;
-    auto xspace = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
-    xspace->set_hermiticity(hermitian);
-    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverOpt<R, Q, P>>(this->m_subspace_solver);
-    subspace_solver->set_hermiticity(hermitian);
-  }
-  bool get_hermiticity() const override { return m_hermiticity; }
-  //!@copydoc SubspaceSolverOpt::set_augmented_hessian()
-  void set_augmented_hessian(const double parameter) {
-    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverOpt<R, Q, P>>(this->m_subspace_solver);
-    subspace_solver->set_augmented_hessian(parameter);
-  }
-  //!@copydoc SubspaceSolverOpt::get_augmented_hessian()
-  double get_augmented_hessian() const {
-    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverOpt<R, Q, P>>(this->m_subspace_solver);
-    return subspace_solver->get_augmented_hessian();
-  }
 
   void set_options(const std::shared_ptr<Options>& options) override {
     SolverTemplate::set_options(options);

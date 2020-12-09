@@ -4,6 +4,7 @@
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/LinearEigensystemOptions.h>
 #include <molpro/linalg/itsolv/LinearEquationsOptions.h>
+#include <molpro/linalg/itsolv/OptimizeOptions.h>
 #include <stdexcept>
 
 namespace molpro::linalg::itsolv {
@@ -28,6 +29,9 @@ public:
   }
   static std::shared_ptr<LinearEquationsOptions> LinearEquations(const std::shared_ptr<Options>& options) {
     return cast<LinearEquationsOptions>(options, "LinearEquationsOptions");
+  }
+  static std::shared_ptr<OptimizeOptions> Optimize(const std::shared_ptr<Options>& options) {
+    return cast<OptimizeOptions>(options, "OptimizeOptions");
   }
 };
 } // namespace molpro::linalg::itsolv

@@ -14,11 +14,13 @@ namespace molpro::linalg::itsolv {
 namespace detail {
 
 inline std::vector<std::pair<size_t, size_t>> parameter_batches(const size_t nsol, const size_t nparam) {
-  auto n_batch = nsol / nparam + (nsol % nparam ? 1 : 0);
   auto batches = std::vector<std::pair<size_t, size_t>>{};
-  for (size_t ib = 0, start_sol = 0, end_sol = 0; ib < n_batch; ++ib, start_sol = end_sol) {
-    end_sol = std::min(start_sol + nparam, nsol);
-    batches.emplace_back(start_sol, end_sol);
+  if (nparam && nsol) {
+    auto n_batch = nsol / nparam + (nsol % nparam ? 1 : 0);
+    for (size_t ib = 0, start_sol = 0, end_sol = 0; ib < n_batch; ++ib, start_sol = end_sol) {
+      end_sol = std::min(start_sol + nparam, nsol);
+      batches.emplace_back(start_sol, end_sol);
+    }
   }
   return batches;
 }
@@ -162,7 +164,8 @@ public:
 
   void clearP() override {}
 
-  void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) override {
+  void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual,
+                const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
     check_consistent_number_of_roots_and_solutions(roots, parameters.size());
     detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
                                m_xspace->paramsq(), m_xspace->paramsd(), m_xspace->dimensions().oP,
@@ -170,11 +173,18 @@ public:
     detail::construct_solution(residual, roots, m_subspace_solver->solutions(), {}, m_xspace->actionsq(),
                                m_xspace->actionsd(), m_xspace->dimensions().oP, m_xspace->dimensions().oQ,
                                m_xspace->dimensions().oD, *m_handlers);
+    auto pvectors = detail::construct_vectorP(roots, m_subspace_solver->solutions(), m_xspace->dimensions().oP,
+                                              m_xspace->dimensions().nP);
+    if (m_normalise_solution)
+      detail::normalise(roots.size(), parameters, residual, m_handlers->rr(), *m_logger);
+    if (apply_p)
+      apply_p(pvectors, m_xspace->cparamsp(), residual);
     construct_residual(roots, cwrap(parameters), residual);
   };
 
-  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {
-    return solution(roots, wrap(parameters), wrap(residual));
+  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
+                const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
+    return solution(roots, wrap(parameters), wrap(residual), apply_p);
   }
 
   void solution_params(const std::vector<int>& roots, std::vector<R>& parameters) override {
@@ -274,19 +284,7 @@ protected:
       auto [start_sol, end_sol] = batch;
       auto roots = std::vector<int>(end_sol - start_sol);
       std::iota(begin(roots), end(roots), start_sol);
-      detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
-                                 m_xspace->paramsq(), m_xspace->paramsd(), m_xspace->dimensions().oP,
-                                 m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
-      detail::construct_solution(action, roots, m_subspace_solver->solutions(), {}, m_xspace->actionsq(),
-                                 m_xspace->actionsd(), m_xspace->dimensions().oP, m_xspace->dimensions().oQ,
-                                 m_xspace->dimensions().oD, *m_handlers);
-      auto pvectors = detail::construct_vectorP(roots, m_subspace_solver->solutions(), m_xspace->dimensions().oP,
-                                                m_xspace->dimensions().nP);
-      if (m_normalise_solution)
-        detail::normalise(roots.size(), parameters, action, m_handlers->rr(), *m_logger);
-      if (apply_p)
-        apply_p(pvectors, m_xspace->cparamsp(), action);
-      construct_residual(roots, cwrap(parameters), action);
+      solution(roots, parameters, action, apply_p);
       auto errors = std::vector<scalar_type>(roots.size(), 0);
       detail::update_errors(errors, cwrap(action), m_handlers->rr());
       for (size_t i = 0; i < roots.size(); ++i)
@@ -310,7 +308,7 @@ protected:
   void check_consistent_number_of_roots_and_solutions(const std::vector<I>& roots, const size_t nparams) {
     if (roots.size() > nparams)
       throw std::runtime_error("asking for more roots than parameters");
-    if (*std::max_element(roots.begin(), roots.end()) >= m_subspace_solver->solutions().size())
+    if (!roots.empty() && *std::max_element(roots.begin(), roots.end()) >= m_subspace_solver->solutions().size())
       throw std::runtime_error("asking for more roots than there are solutions");
   }
 

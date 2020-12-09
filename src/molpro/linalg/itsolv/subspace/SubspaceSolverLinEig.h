@@ -43,7 +43,9 @@ protected:
     auto evec = std::vector<value_type>{};
     int verbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
     itsolv::eigenproblem(evec, m_eigenvalues, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, verbosity);
-    auto n_solutions = evec.size() / dim;
+    size_t n_solutions = 0;
+    if (dim)
+      n_solutions = evec.size() / dim;
     auto full_matrix = Matrix<value_type>{std::move(evec), {n_solutions, dim}};
     auto nroots = std::min(nroots_max, n_solutions);
     m_eigenvalues.resize(nroots);
@@ -113,7 +115,7 @@ protected:
 public:
   value_type_abs m_svd_solver_threshold = 1.0e-14; //!< threshold to select null space during SVD in eigenproblem
 protected:
-  bool m_hermitian = false;        //!< flags the matrix as Hermitian
+  bool m_hermitian = false;       //!< flags the matrix as Hermitian
   double m_augmented_hessian = 0; //!< value of augmented hessian parameter. If 0, than augmented Hessian is not used
 };
 

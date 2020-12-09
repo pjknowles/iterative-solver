@@ -192,9 +192,35 @@ struct LinearEigensystemF : ::testing::Test {
     return options;
   }
 
-  void test_eigen(const std::string& title = "", const int n_working_vectors_max = 0) {
+  bool check_mat_hermiticity() {
     auto d = (hmat - hmat.transpose()).norm();
-    bool hermitian = d < 1e-10;
+    return d < 1e-10;
+  }
+
+  // Create initial subspace. This is iteration 0.
+  auto initialize_subspace(const size_t np, const size_t nroot, const size_t n_working_vectors_max,
+                           const IterativeSolver<Rvector, Qvector, Pvector>::fapply_on_p_type& apply_p_wrapper,
+                           std::shared_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver) {
+    auto [x, g] = create_containers(nroot);
+    if (np) {
+      auto [pspace, PP] = initial_pspace(np);
+      solver->add_p(cwrap(pspace), Span<double>(PP.data(), PP.size()), wrap(x), molpro::linalg::itsolv::wrap(g),
+                    apply_p_wrapper);
+    } else {
+      initial_guess(x);
+      action(x, g);
+      solver->add_vector(x, g, apply_p_wrapper);
+    }
+    auto n_working_vectors_guess = std::max(nroot, n_working_vectors_max > 0 ? n_working_vectors_max : nroot);
+    x.resize(n_working_vectors_guess);
+    g.resize(n_working_vectors_guess);
+    update(g, solver->working_set_eigenvalues());
+    solver->end_iteration(x, g);
+    return std::make_tuple(x, g);
+  };
+
+  void test_eigen(const std::string& title = "", const int n_working_vectors_max = 0) {
+    bool hermitian = check_mat_hermiticity();
     auto [expected_eigensolutions, expected_eigenvalues] = solve_full_problem(hermitian);
     check_eigenvectors_map(expected_eigensolutions, expected_eigenvalues);
     if (verbosity > 0)
@@ -210,22 +236,7 @@ struct LinearEigensystemF : ::testing::Test {
           return this->apply_p(pvectors, pspace, action);
         };
         int nwork = nroot;
-        auto [pspace, PP] = initial_pspace(np);
-        // Create initial subspace. This is iteration 0.
-        auto [x, g] = create_containers(nroot);
-        if (np) {
-          solver->add_p(cwrap(pspace), Span<double>(PP.data(), PP.size()), wrap(x), molpro::linalg::itsolv::wrap(g),
-                        apply_p_wrapper);
-        } else {
-          initial_guess(x);
-          action(x, g);
-          solver->add_vector(x, g, apply_p_wrapper);
-        }
-        auto n_working_vectors_guess = std::max(nroot, n_working_vectors_max > 0 ? n_working_vectors_max : nroot);
-        x.resize(n_working_vectors_guess);
-        g.resize(n_working_vectors_guess);
-        update(g, solver->working_set_eigenvalues());
-        solver->end_iteration(x, g);
+        auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, apply_p_wrapper, solver);
         size_t n_iter = 2;
         for (auto iter = 1; iter < 100; iter++, ++n_iter) {
           action(x, g);
@@ -347,5 +358,35 @@ TEST_F(LinearEigensystemF, symmetry_eigen) {
       }
     }
     test_eigen(std::to_string(n) + "/sym/" + std::to_string(param));
+  }
+}
+
+TEST_F(LinearEigensystemF, solution) {
+  size_t n = 10;
+  auto solution_residual = std::vector<Rvector>(n);
+  std::for_each(solution_residual.begin(), solution_residual.end(), [&n](auto& el) { el.assign(n, 0); });
+  double param = 1;
+  load_matrix(n, "", param);
+  for (size_t nroot = 1; nroot < n; ++nroot) {
+    for (size_t np = 0; np <= nroot; np += nroot) {
+      for (size_t n_working_vectors_max = 0; n_working_vectors_max < 2; ++n_working_vectors_max) {
+        auto [solver, logger] = molpro::test::create_LinearEigensystem();
+        auto options = set_options(solver, logger, nroot, np, check_mat_hermiticity());
+        auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
+          return this->apply_p(pvectors, pspace, action);
+        };
+        auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, apply_p_wrapper, solver);
+        auto roots = solver->working_set();
+        solver->solution(roots, x, g, apply_p_wrapper);
+        residual(x, solution_residual, solver->working_set_eigenvalues());
+        for (size_t i = 0; i < roots.size(); ++i) {
+          auto diff = 0.;
+          for (size_t j = 0; j < n; ++j)
+            diff += std::abs(g.at(i)[j] - solution_residual.at(i)[j]);
+          diff = std::sqrt(diff / n);
+          EXPECT_NEAR(diff, 0., 1.0e-6);
+        }
+      }
+    }
   }
 }

@@ -100,8 +100,8 @@ public:
   std::shared_ptr<Logger> logger;
 
   bool add_value(R& parameters, value_type value, R& residual) override {
-    auto nwork = this->add_vector(parameters, residual);
     this->m_values.push(value);
+    auto nwork = this->add_vector(parameters, residual);
     return nwork > 0; // TODO check this does the right thing
   }
 

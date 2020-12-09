@@ -384,7 +384,7 @@ TEST_F(LinearEigensystemF, solution) {
           for (size_t j = 0; j < n; ++j)
             diff += std::abs(g.at(i)[j] - solution_residual.at(i)[j]);
           diff = std::sqrt(diff / n);
-          EXPECT_NEAR(diff, 0., 1.0e-8);
+          EXPECT_NEAR(diff, 0., 1.0e-6);
         }
       }
     }

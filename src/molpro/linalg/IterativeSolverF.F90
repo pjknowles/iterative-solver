@@ -26,19 +26,12 @@ MODULE Iterative_Solver
         MODULE PROCEDURE Add_Vector_Without_P
     END INTERFACE Iterative_Solver_Add_Vector
 
-    !ABSTRACT INTERFACE
-    !  subroutine func_tmpl_a(a, b) BIND(C)
-    !    DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: a, b
-    !    !DOUBLE PRECISION, INTENT(in) :: a(:,:), b(:,:)
-    !  end subroutine func_tmpl_a
-    !END INTERFACE
+    INTERFACE Iterative_Solver_Solution
+        MODULE PROCEDURE Solution_With_P
+        MODULE PROCEDURE Solution_Without_P
+    END INTERFACE Iterative_Solver_Solution
 
 CONTAINS
-
-    SUBROUTINE apply_on_p_test(arg1, arg2) BIND(C)
-        DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: arg1, arg2
-        write(*,*) "APPLY_ON_P was called!!"
-    END SUBROUTINE apply_on_p_test
 
     !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
     !> Example of simplest use: @include LinearEigensystemExampleF.F90
@@ -546,7 +539,49 @@ CONTAINS
         Add_Vector_Without_P = int(Add_Vector_C(parameters, action, lsyncC, lmppxC))
     END FUNCTION Add_Vector_Without_P
     !
-    SUBROUTINE Iterative_Solver_Solution(roots, parameters, action, lmppx, synchronize)
+    SUBROUTINE Solution_With_P(roots, parameters, action, lmppx, fproc, synchronize)
+        USE iso_c_binding
+        INTEGER, INTENT(in), DIMENSION(:) :: roots  !< Array containing root indices
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: action
+        LOGICAL, INTENT(in), OPTIONAL :: lmppx  !< Whether communicator should be MPI_COMM_SELF
+        LOGICAL, INTENT(in), OPTIONAL :: synchronize
+        EXTERNAL fproc
+        INTERFACE
+            SUBROUTINE Solution_With_P_C(nroot, roots, parameters, action, lsync, lmppx, func) &
+                    BIND(C, name = 'IterativeSolverPspaceSolution')
+                USE iso_c_binding
+                INTEGER(c_int), VALUE :: nroot
+                INTEGER(c_int), INTENT(in), DIMENSION(nroot) :: roots
+                REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
+                REAL(c_double), DIMENSION(*), INTENT(inout) :: action
+                INTEGER(c_int), INTENT(in), VALUE :: lsync
+                INTEGER(c_int), INTENT(in), VALUE :: lmppx
+                TYPE(C_FUNPTR), INTENT(IN), VALUE :: func
+            END SUBROUTINE
+        END INTERFACE
+        INTEGER(c_int), DIMENSION(SIZE(roots)) :: rootsC
+        INTEGER(c_int) :: nroot
+        INTEGER(c_int) :: lsyncC
+        INTEGER(c_int) :: lmppxC
+        TYPE(C_FUNPTR) :: cproc
+        cproc = C_FUNLOC(fproc)
+        lmppxC = 0
+        IF (PRESENT(lmppx)) THEN
+            IF (lmppx) lmppxC = 1
+        ENDIF
+        lsyncC = 1
+        IF (PRESENT(synchronize)) THEN
+            IF (.NOT. synchronize) lsyncC = 0
+        END IF
+        nroot = INT(size(roots), c_int)
+        DO i = 1, size(roots)
+            rootsC(i) = INT(roots(i)-1, kind = c_int)
+        ENDDO
+        call Solution_With_P_C(nroot, rootsC, parameters, action, lsyncC, lmppxC, cproc)
+    END SUBROUTINE
+    !
+    SUBROUTINE Solution_Without_P(roots, parameters, action, lmppx, synchronize)
         USE iso_c_binding
         INTEGER, INTENT(in), DIMENSION(:) :: roots  !< Array containing root indices
         DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters
@@ -554,7 +589,7 @@ CONTAINS
         LOGICAL, INTENT(in), OPTIONAL :: lmppx  !< Whether communicator should be MPI_COMM_SELF
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
         INTERFACE
-            SUBROUTINE Iterative_Solver_Solution_C(nroot, roots, parameters, action, lsync, lmppx) &
+            SUBROUTINE Solution_C(nroot, roots, parameters, action, lsync, lmppx) &
                     BIND(C, name = 'IterativeSolverSolution')
                 USE iso_c_binding
                 INTEGER(c_int), VALUE :: nroot
@@ -581,7 +616,7 @@ CONTAINS
         DO i = 1, size(roots)
             rootsC(i) = INT(roots(i)-1, kind = c_int)
         ENDDO
-        call Iterative_Solver_Solution_C(nroot, rootsC, parameters, action, lsyncC, lmppxC)
+        call Solution_C(nroot, rootsC, parameters, action, lsyncC, lmppxC)
     END SUBROUTINE
     !
     !>@brief For most methods, does nothing; for Optimize it is required.

@@ -28,6 +28,10 @@ extern "C" size_t IterativeSolverPspaceAddVector(double* parameters, double* act
 extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameters, double* action,
                                         int sync, int lmppx);
 
+extern "C" void IterativeSolverPspaceSolution(int nroot, int* roots, double* parameters, double* action, int sync,
+                                              int lmppx,
+                                              void (*func)(const double*, double*, const size_t, const size_t*));
+                                        
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync, int lmppx);
 
 extern "C" int IterativeSolverEndIteration(double* c, double* g, int sync, int lmppx);

@@ -317,8 +317,8 @@ extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, i
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Sync");
-  if (mpi_rank == 0)
-    instance.solver->report();
+  //if (mpi_rank == 0)
+  //  instance.solver->report();
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector");
   return working_set_size;
@@ -369,8 +369,8 @@ extern "C" size_t IterativeSolverPspaceAddVector(double* parameters, double* act
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Sync");
-  if (mpi_rank == 0)
-    instance.solver->report();
+  //if (mpi_rank == 0)
+  //  instance.solver->report();
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector");
   return working_set_size;
@@ -426,8 +426,8 @@ extern "C" void IterativeSolverPspaceSolution(int nroot, int* roots, double* par
   }
   if (instance.prof != nullptr)
     instance.prof->stop("Solution:Sync");
-  if (mpi_rank == 0)
-    instance.solver->report();
+  //if (mpi_rank == 0)
+  //  instance.solver->report();
   if (instance.prof != nullptr)
     instance.prof->stop("Solution");
 }
@@ -475,8 +475,8 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
   }
   if (instance.prof != nullptr)
     instance.prof->stop("Solution:Sync");
-  if (mpi_rank == 0)
-    instance.solver->report();
+  //if (mpi_rank == 0)
+  //  instance.solver->report();
   if (instance.prof != nullptr)
     instance.prof->stop("Solution");
 }

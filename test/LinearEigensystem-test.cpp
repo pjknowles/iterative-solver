@@ -199,10 +199,12 @@ struct LinearEigensystemF : ::testing::Test {
 
   // Create initial subspace. This is iteration 0.
   auto initialize_subspace(const size_t np, const size_t nroot, const size_t n_working_vectors_max,
-                           const IterativeSolver<Rvector, Qvector, Pvector>::fapply_on_p_type& apply_p_wrapper,
                            std::shared_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver) {
     auto [x, g] = create_containers(nroot);
     if (np) {
+      auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
+        return this->apply_p(pvectors, pspace, action);
+      };
       auto [pspace, PP] = initial_pspace(np);
       solver->add_p(cwrap(pspace), Span<double>(PP.data(), PP.size()), wrap(x), molpro::linalg::itsolv::wrap(g),
                     apply_p_wrapper);
@@ -232,11 +234,8 @@ struct LinearEigensystemF : ::testing::Test {
                      << std::endl;
         auto [solver, logger] = molpro::test::create_LinearEigensystem();
         auto options = set_options(solver, logger, nroot, np, hermitian);
-        auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
-          return this->apply_p(pvectors, pspace, action);
-        };
         int nwork = nroot;
-        auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, apply_p_wrapper, solver);
+        auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, solver);
         size_t n_iter = 2;
         for (auto iter = 1; iter < 100; iter++, ++n_iter) {
           action(x, g);
@@ -372,10 +371,7 @@ TEST_F(LinearEigensystemF, solution) {
       for (size_t n_working_vectors_max = 0; n_working_vectors_max < 2; ++n_working_vectors_max) {
         auto [solver, logger] = molpro::test::create_LinearEigensystem();
         auto options = set_options(solver, logger, nroot, np, check_mat_hermiticity());
-        auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
-          return this->apply_p(pvectors, pspace, action);
-        };
-        auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, apply_p_wrapper, solver);
+        auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, solver);
         auto roots = solver->working_set();
         solver->solution(roots, x, g);
         residual(x, solution_residual, solver->working_set_eigenvalues());

@@ -58,10 +58,12 @@ public:
    */
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
     if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace->dimensions())) {
+      m_resetting_in_progress = true;
       this->m_working_set = m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->solutions(),
                                                   propose_rspace_norm_thresh, propose_rspace_svd_thresh,
                                                   *this->m_handlers, *this->m_logger);
     } else {
+      m_resetting_in_progress = false;
       this->m_working_set = detail::propose_rspace(*this, parameters, action, *this->m_xspace, *this->m_subspace_solver,
                                                    *this->m_handlers, *this->m_logger, propose_rspace_svd_thresh,
                                                    propose_rspace_norm_thresh, m_max_size_qspace);
@@ -176,6 +178,7 @@ protected:
   detail::DSpaceResetter<Q> m_dspace_resetter;             //!< resets D space
   bool m_hermiticity = false;                              //!< whether the problem is hermitian or not
   std::vector<double> m_last_values;                       //!< The values from the previous iteration
+  bool m_resetting_in_progress = false;                    //!< whether D space resetting is in progress
 };
 
 } // namespace molpro::linalg::itsolv

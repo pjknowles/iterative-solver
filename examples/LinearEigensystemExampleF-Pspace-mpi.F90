@@ -118,8 +118,15 @@ PROGRAM Linear_Eigensystem_Example
   DO root = 1, nroot
     roots(root) = root
   END DO
-  CALL Iterative_Solver_Solution(roots,c,g)
-  write(*,*) c(:,1)
+  if (rank == 0) then
+    write(*,*) "Solution vector before the call to Solution(): ", c(:,1)
+    write(*,*) "Residual before the call to Solution: ", g(:,1)
+  end if
+  CALL Iterative_Solver_Solution(roots, c, g, fproc=apply_on_p)
+  if (rank == 0) then
+    write(*,*) "Solution vector after the call to Solution(): ", c(:,1)
+    write(*,*) "Residual after the call to Solution: ", g(:,1)
+  end if
   CALL Iterative_Solver_Finalize
   call MPI_FINALIZE(ierr)
 END PROGRAM Linear_Eigensystem_Example

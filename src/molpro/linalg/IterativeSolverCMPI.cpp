@@ -412,7 +412,7 @@ extern "C" void IterativeSolverPspaceSolution(int nroot, int* roots, double* par
       apply_on_p_c;
   if (instance.prof != nullptr)
     instance.prof->start("Solution:Call");
-  instance.solver->solution(croots, cc, gg, apply_on_p);
+  instance.solver->solution(croots, cc, gg);
   if (instance.prof != nullptr)
     instance.prof->stop("Solution:Call");
   

@@ -75,8 +75,7 @@ public:
   virtual void clearP() = 0;
 
   //! Construct solution and residual for a given set of roots
-  virtual void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual,
-                        const fapply_on_p_type& apply_p = fapply_on_p_type{}) = 0;
+  virtual void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) = 0;
 
   //! Constructs parameters of selected roots
   virtual void solution_params(const std::vector<int>& roots, const VecRef<R>& parameters) = 0;
@@ -97,8 +96,7 @@ public:
   virtual std::vector<size_t> suggest_p(const CVecRef<R>& solution, const CVecRef<R>& residual, size_t max_number,
                                         double threshold) = 0;
 
-  virtual void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
-                        const fapply_on_p_type& apply_p = fapply_on_p_type{}) = 0;
+  virtual void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) = 0;
   virtual void solution_params(const std::vector<int>& roots, std::vector<R>& parameters) = 0;
   virtual size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) = 0;
 

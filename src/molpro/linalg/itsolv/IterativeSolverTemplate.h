@@ -138,7 +138,7 @@ public:
     auto cwactions = cwrap<R>(begin(actions), begin(actions) + nW);
     m_stats->r_creations += nW;
     m_xspace->update_qspace(cwparams, cwactions);
-    return solve_and_generate_working_set(parameters, actions, m_apply_p);
+    return solve_and_generate_working_set(parameters, actions);
   }
 
 public:
@@ -159,13 +159,12 @@ public:
     if (apply_p)
       m_apply_p = std::move(apply_p);
     m_xspace->update_pspace(pparams, pp_action_matrix);
-    return solve_and_generate_working_set(parameters, actions, m_apply_p);
+    return solve_and_generate_working_set(parameters, actions);
   };
 
   void clearP() override {}
 
-  void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual,
-                const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
+  void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) override {
     check_consistent_number_of_roots_and_solutions(roots, parameters.size());
     detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
                                m_xspace->paramsq(), m_xspace->paramsd(), m_xspace->dimensions().oP,
@@ -177,14 +176,13 @@ public:
                                               m_xspace->dimensions().nP);
     if (m_normalise_solution)
       detail::normalise(roots.size(), parameters, residual, m_handlers->rr(), *m_logger);
-    if (apply_p)
-      apply_p(pvectors, m_xspace->cparamsp(), residual);
+    if (m_apply_p)
+      m_apply_p(pvectors, m_xspace->cparamsp(), residual);
     construct_residual(roots, cwrap(parameters), residual);
   };
 
-  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
-                const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
-    return solution(roots, wrap(parameters), wrap(residual), apply_p);
+  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {
+    return solution(roots, wrap(parameters), wrap(residual));
   }
 
   void solution_params(const std::vector<int>& roots, std::vector<R>& parameters) override {
@@ -275,8 +273,7 @@ protected:
    * @param apply_p function that accumulates action from the P space projection of parameters
    * @return size of the working set
    */
-  size_t solve_and_generate_working_set(const VecRef<R>& parameters, const VecRef<R>& action,
-                                        const fapply_on_p_type& apply_p) {
+  size_t solve_and_generate_working_set(const VecRef<R>& parameters, const VecRef<R>& action) {
     m_subspace_solver->solve(*m_xspace, n_roots());
     auto nsol = m_subspace_solver->size();
     std::vector<std::pair<Q, Q>> temp_solutions{};
@@ -284,7 +281,7 @@ protected:
       auto [start_sol, end_sol] = batch;
       auto roots = std::vector<int>(end_sol - start_sol);
       std::iota(begin(roots), end(roots), start_sol);
-      solution(roots, parameters, action, apply_p);
+      solution(roots, parameters, action);
       auto errors = std::vector<scalar_type>(roots.size(), 0);
       detail::update_errors(errors, cwrap(action), m_handlers->rr());
       for (size_t i = 0; i < roots.size(); ++i)

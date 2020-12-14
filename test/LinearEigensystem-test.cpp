@@ -377,7 +377,7 @@ TEST_F(LinearEigensystemF, solution) {
         };
         auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, apply_p_wrapper, solver);
         auto roots = solver->working_set();
-        solver->solution(roots, x, g, apply_p_wrapper);
+        solver->solution(roots, x, g);
         residual(x, solution_residual, solver->working_set_eigenvalues());
         for (size_t i = 0; i < roots.size(); ++i) {
           auto diff = 0.;

@@ -42,7 +42,7 @@ target_link_libraries(${YOUR_LIBRARY_NAME} PUBLIC molpro::LinearAlgebra)
 
 ### Interfaces
 
-There is a hierarchy of abstract classes defined in `molpro/linalg/istolv/IterativeSolver.h` with `IterativeSolver` 
+There is a hierarchy of abstract classes defined in `molpro/linalg/itsolv/IterativeSolver.h` with `IterativeSolver` 
 defining the interface for common functionality and `ILinearEigensystem`, `ILinearEquations`, `IOptimize` and
 `INonLinearEquations` defining functions that are specific to each type of solver. They are provided to reduce header 
 bloat in user's code. 

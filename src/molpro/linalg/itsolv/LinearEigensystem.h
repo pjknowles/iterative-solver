@@ -89,11 +89,12 @@ public:
   }
 
   void set_value_errors() override {
-    auto last_values = this->m_last_values;
-    this->m_last_values = this->m_subspace_solver->eigenvalues();
-    this->m_value_errors.clear();
-    for (size_t i = 0; i < last_values.size(); i++)
-      this->m_value_errors.push_back(std::abs(last_values[i] - this->m_last_values[i]));
+    auto current_values = this->m_subspace_solver->eigenvalues();
+    this->m_value_errors.assign(current_values.size(), std::numeric_limits<scalar_type>::max());
+    for (size_t i = 0; i < std::min(m_last_values.size(), current_values.size()); i++)
+      this->m_value_errors[i] = std::abs(current_values[i] - m_last_values[i]);
+    if (!m_resetting_in_progress)
+      m_last_values = current_values;
   }
 
   void report(std::ostream& cout) const override {

@@ -123,29 +123,27 @@ public:
   IterativeSolverTemplate<Solver, R, Q, P>& operator=(IterativeSolverTemplate<Solver, R, Q, P>&&) noexcept = default;
 
 public:
-  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions,
-                    const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
-    m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations) +
-                      ", apply_p = " + std::to_string(bool(apply_p)),
+  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions) override {
+    m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations),
                   Logger::Trace);
     m_logger->msg("IterativeSolverTemplate::add_vector  size of {params, actions, working_set} = " +
                       std::to_string(parameters.size()) + ", " + std::to_string(actions.size()) + ", " +
                       std::to_string(m_working_set.size()) + ", ",
                   Logger::Debug);
-    if (m_xspace->dimensions().nP != 0 && !apply_p)
-      throw std::runtime_error("Solver contains P space but add_vector was not provided apply_p function");
+    if (m_xspace->dimensions().nP != 0 && !m_apply_p)
+      throw std::runtime_error(
+          "Solver contains P space but no valid apply_p function. Make sure add_p was called correctly.");
     auto nW = std::min(m_working_set.size(), parameters.size());
     auto cwparams = cwrap<R>(begin(parameters), begin(parameters) + nW);
     auto cwactions = cwrap<R>(begin(actions), begin(actions) + nW);
     m_stats->r_creations += nW;
     m_xspace->update_qspace(cwparams, cwactions);
-    return solve_and_generate_working_set(parameters, actions, apply_p);
+    return solve_and_generate_working_set(parameters, actions, m_apply_p);
   }
 
 public:
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions,
-                    const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
-    return add_vector(wrap(parameters), wrap(actions), apply_p);
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions) override {
+    return add_vector(wrap(parameters), wrap(actions));
   }
   size_t add_vector(R& parameters, R& actions) override {
     auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
@@ -155,11 +153,13 @@ public:
 
   // FIXME Currently only works if called on an empty subspace. Either enforce it or generalise.
   size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix, const VecRef<R>& parameters,
-               const VecRef<R>& actions, const fapply_on_p_type& apply_p) override {
+               const VecRef<R>& actions, fapply_on_p_type apply_p) override {
     if (not pparams.empty() and pparams.size() < n_roots())
       throw std::runtime_error("P space must be empty or at least as large as number of roots sought");
+    if (apply_p)
+      m_apply_p = std::move(apply_p);
     m_xspace->update_pspace(pparams, pp_action_matrix);
-    return solve_and_generate_working_set(parameters, actions, apply_p);
+    return solve_and_generate_working_set(parameters, actions, m_apply_p);
   };
 
   void clearP() override {}
@@ -325,6 +325,7 @@ protected:
   std::shared_ptr<Statistics> m_stats;     //!< accumulates statistics of operations performed by the solver
   std::shared_ptr<Logger> m_logger;        //!< logger
   bool m_normalise_solution = false;       //!< whether to normalise the solutions
+  fapply_on_p_type m_apply_p = {};         //!< function that evaluates effect of action on the P space projection
 };
 
 } // namespace molpro::linalg::itsolv

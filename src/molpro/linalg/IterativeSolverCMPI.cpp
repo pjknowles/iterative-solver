@@ -355,7 +355,7 @@ extern "C" size_t IterativeSolverPspaceAddVector(double* parameters, double* act
       apply_on_p_c;
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Update");
-  size_t working_set_size = instance.solver->add_vector(cc, gg, apply_on_p_c);
+  size_t working_set_size = instance.solver->add_vector(cc, gg);
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Update");
 

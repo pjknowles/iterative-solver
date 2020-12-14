@@ -209,7 +209,7 @@ struct LinearEigensystemF : ::testing::Test {
     } else {
       initial_guess(x);
       action(x, g);
-      solver->add_vector(x, g, apply_p_wrapper);
+      solver->add_vector(x, g);
     }
     auto n_working_vectors_guess = std::max(nroot, n_working_vectors_max > 0 ? n_working_vectors_max : nroot);
     x.resize(n_working_vectors_guess);
@@ -240,7 +240,7 @@ struct LinearEigensystemF : ::testing::Test {
         size_t n_iter = 2;
         for (auto iter = 1; iter < 100; iter++, ++n_iter) {
           action(x, g);
-          nwork = solver->add_vector(x, g, apply_p_wrapper);
+          nwork = solver->add_vector(x, g);
           if (verbosity > 0)
             std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
           if (nwork == 0)

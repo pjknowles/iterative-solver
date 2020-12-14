@@ -41,9 +41,6 @@ public:
   IterativeSolver(IterativeSolver<R, Q, P>&&) noexcept = default;
   IterativeSolver<R, Q, P>& operator=(IterativeSolver<R, Q, P>&&) noexcept = default;
 
-  //  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action, fapply_on_p_type& apply_p) = 0;
-  //  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& action, std::vector<VectorP>& pparams) =
-  //  0;
   /*!
    * \brief Take, typically, a current solution and residual, and add it to the solution space.
    * \param parameters On input, the current solution or expansion vector. On exit, undefined.
@@ -52,17 +49,15 @@ public:
    * \param apply_p A function that evaluates the action of the matrix on vectors in the P space
    * \return The size of the new working set.
    */
-  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions,
-                            const fapply_on_p_type& apply_p = fapply_on_p_type{}) = 0;
+  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions) = 0;
 
   // FIXME this should be removed in favour of VecRef interface
-  //  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action, fapply_on_p_type& apply_p) = 0;
-  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action,
-                            const fapply_on_p_type& apply_p = fapply_on_p_type{}) = 0;
+  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) = 0;
   virtual size_t add_vector(R& parameters, R& action) = 0;
 
   /*!
    * \brief Add P-space vectors to the expansion set for linear methods.
+   * \note the apply_p function is stored and used by the solver internally.
    * \param Pparams the vectors to add. Each Pvector specifies a sparse vector in the underlying space
    * \param pp_action_matrix Matrix projected onto the existing+new, new P space. It should be provided as a
    * 1-dimensional array, with the existing+new index running fastest.
@@ -74,7 +69,7 @@ public:
    * \return The number of vectors contained in parameters, action, parametersP
    */
   virtual size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix,
-                       const VecRef<R>& parameters, const VecRef<R>& action, const fapply_on_p_type& apply_p) = 0;
+                       const VecRef<R>& parameters, const VecRef<R>& action, fapply_on_p_type apply_p) = 0;
 
   // FIXME Is this needed?
   virtual void clearP() = 0;

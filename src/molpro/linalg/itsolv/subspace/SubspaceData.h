@@ -4,7 +4,7 @@
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 
 namespace molpro::linalg::itsolv::subspace {
-enum class EqnData { H, S, rhs };
+enum class EqnData { H, S, rhs, value };
 
 using SubspaceData = std::map<EqnData, Matrix<double>>;
 

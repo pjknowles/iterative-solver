@@ -177,6 +177,7 @@ struct OptimizeF : ::testing::Test {
     options->convergence_threshold = 1.0e-8;
     //    options->norm_thresh = 1.0e-14;
     //    options->svd_thresh = 1.0e-10;
+    options->n_roots = 1;
     options->max_size_qspace = 10;
     solver->set_options(options);
     options = CastOptions::Optimize(solver->get_options());

@@ -8,30 +8,29 @@ namespace molpro::linalg::itsolv {
 
 template <class R, class Q, class P>
 std::shared_ptr<IterativeSolver<R, Q, P>>
-SolverFactory<IterativeSolver<R, Q, P>>::create(const Options& options,
-                                                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
+SolverFactory<R, Q, P>::create(const Options& options, const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
   Options* options_ptr = &const_cast<Options&>(options);
-  if (dynamic_cast<ILinearEquationsOptions*>(options_ptr)) {
-    return SolverFactory<ILinearEquations<R, Q, P>>::create(options, handlers);
-  } else if (dynamic_cast<ILinearEigensystemOptions*>(options_ptr)) {
-    return SolverFactory<ILinearEigensystem<R, Q, P>>::create(options, handlers);
+  if (auto options_child = dynamic_cast<ILinearEigensystemOptions*>(options_ptr); options_child) {
+    return create(*options_child, handlers);
+  } else if (auto options_child = dynamic_cast<ILinearEquationsOptions*>(options_ptr); options_child) {
+    return create(*options_child, handlers);
   }
 }
 
 template <class R, class Q, class P>
 std::shared_ptr<ILinearEigensystem<R, Q, P>>
-SolverFactory<ILinearEigensystem<R, Q, P>>::create(const Options& options,
-                                                   const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
-  auto solver = std::make_shared<ILinearEigensystem<R, Q, P>>(handlers);
+SolverFactory<R, Q, P>::create(const ILinearEigensystemOptions& options,
+                               const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
+  auto solver = std::make_shared<LinearEigensystem<R, Q, P>>(handlers);
   solver->set_options(options);
   return solver;
 }
 
 template <class R, class Q, class P>
 std::shared_ptr<ILinearEquations<R, Q, P>>
-SolverFactory<ILinearEquations<R, Q, P>>::create(const Options& options,
-                                                 const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
-  auto solver = std::make_shared<ILinearEquations<R, Q, P>>(handlers);
+SolverFactory<R, Q, P>::create(const ILinearEquationsOptions& options,
+                               const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
+  auto solver = std::make_shared<LinearEquations<R, Q, P>>(handlers);
   solver->set_options(options);
   return solver;
 }

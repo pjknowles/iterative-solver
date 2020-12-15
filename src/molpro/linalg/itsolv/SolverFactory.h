@@ -34,53 +34,34 @@ namespace molpro::linalg::itsolv {
  * using P = UserDefinedPVector;
  *
  * int main(int argn, char** argv){
- *      std::shared_ptr<Options> options = read_user_options(argn, argv);
+ *      std::shared_ptr<Options> options = read_user_options_general(argn, argv);
+ *      auto handlers = std::make_shared<ArrayHandlers<R, Q, P>>();
+ *      auto factory = SolverFactory<R, Q, P>{};
  *
- *      std::shared_ptr<IterativeSolver> solver = SolverFactory<IterativeSolver<R,Q,P>>::create(*options)
- *      solver.solve();
+ *      std::shared_ptr<IterativeSolver> solver = factory.create(*options, handlers);
+ *      solver->solve();
  *
  *      // Or, if a specific solver type is needed
- *      std::shared_ptr<ILinearEigensystem> eigensystem_solver =
- *              SolverFactory<R,Q,P>::create<ILinearEigensystem>(*options);
- *      solver.solve();
- *      eigensystem_solver.solve();
- *      user_defined_print(eigensystem_solver.eigenvalues());
+ *      std::shared_ptr<ILinearEigensystemOptions> eigen_options = read_user_options_eigen(argn, argv);
+ *      std::shared_ptr<ILinearEigensystem> eigen_solver = factory.create(*eigen_options, handlers);
+ *      eigen_solver.solve();
+ *      user_defined_print(eigen_solver.eigenvalues());
  * }
- * @code{cpp}
+ * @endcode
  *
  */
-template <class SolverType = void>
+template <class R, class Q, class P>
 class SolverFactory {
 public:
-  using R = typename SolverType::R;
-  using Q = typename SolverType::Q;
-  using P = typename SolverType::P;
-
-  static std::shared_ptr<SolverType> create(const Options& options,
-                                            const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
-    static_assert(true, "must call one of the specializations");
-  }
-};
-
-template <class R, class Q, class P>
-class SolverFactory<IterativeSolver<R, Q, P>> {
-public:
-  static std::shared_ptr<IterativeSolver<R, Q, P>> create(const Options& options,
-                                                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers);
-};
-
-template <class R, class Q, class P>
-class SolverFactory<ILinearEigensystem<R, Q, P>> {
-public:
-  static std::shared_ptr<ILinearEigensystem<R, Q, P>> create(const Options& options,
-                                                             const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers);
-};
-
-template <class R, class Q, class P>
-class SolverFactory<ILinearEquations<R, Q, P>> {
-public:
-  static std::shared_ptr<ILinearEquations<R, Q, P>> create(const Options& options,
+  virtual ~SolverFactory() = default;
+  virtual std::shared_ptr<IterativeSolver<R, Q, P>> create(const Options& options,
                                                            const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers);
+
+  virtual std::shared_ptr<ILinearEigensystem<R, Q, P>> create(const ILinearEigensystemOptions& options,
+                                                              const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers);
+
+  virtual std::shared_ptr<ILinearEquations<R, Q, P>> create(const ILinearEquationsOptions& options,
+                                                            const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers);
 };
 } // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_H

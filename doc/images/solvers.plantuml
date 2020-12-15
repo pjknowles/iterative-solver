@@ -1,0 +1,28 @@
+@startuml
+interface IterativeSolver{
++solve()
++solution() ...
+}
+interface ILinearEigensystem
+interface ILinearEquations
+interface INonLinearEquations
+interface IOptimize
+class LinearEquations
+class LinearEigensystem
+class DIIS
+class BFGS
+class ConjugateGradient
+
+hide empty methods
+hide empty fields
+IterativeSolver <|.. ILinearEigensystem
+IterativeSolver <|.. ILinearEquations
+IterativeSolver <|.. INonLinearEquations
+IterativeSolver <|.. IOptimize
+ILinearEigensystem ^-- LinearEigensystem
+ILinearEquations ^-- LinearEquations
+INonLinearEquations ^-- DIIS
+IOptimize ^-- BFGS
+IOptimize ^-- ConjugateGradient
+
+@enduml

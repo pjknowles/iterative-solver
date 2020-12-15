@@ -1,0 +1,27 @@
+@startuml
+allow_mixing
+hide empty methods
+hide empty fields
+
+package "High level implementation" {
+class "Solver<R, Q, P>" as Solver
+}
+
+package "Abstraction"{
+interface "ArrayHandlers<R, Q, P>" as Handler
+class "DenseLinearAlgebra<value_type>" as Dense
+}
+
+package "Low level functionality"{
+usecase "Container linear algebra:\n dot, axpy, fill..." as linalg
+usecase "Container creation" as copy
+usecase "all dense linear algebra operations\n specialsed for value_type" as dense_linalg
+}
+
+Solver --^ Handler
+Solver --^ Dense
+Handler ^-- linalg
+Handler ^-- copy
+Dense ^-- dense_linalg
+
+@enduml

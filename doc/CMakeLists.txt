@@ -5,7 +5,7 @@ foreach (f DoxygenLayout.xml)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${f} ${DEPENDENCYMANAGERDOCS_BASE_DIR}/${PROJECT_NAME}/${f} @ONLY)
 endforeach ()
 
-foreach (f images/solvers.png)
+foreach (f images/solvers.png images/dependency_inversion.png)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${f} ${DEPENDENCYMANAGERDOCS_BASE_DIR}/${PROJECT_NAME}/html/${f} COPYONLY)
 endforeach ()
 

@@ -14,5 +14,11 @@ struct Options {
     n_roots = options.n_roots;
   }
 };
+
+struct ILinearEigensystemOptions : Options {};
+struct ILinearEquationsOptions : Options {};
+struct INoneLinearEquationsOptions : Options {};
+struct IOptimizeOptions : Options {};
+
 } // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVER_H_OPTIONS_H

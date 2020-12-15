@@ -6,7 +6,6 @@ max_iterations
 }
 
 class SolverFactory{
-+create(Options&): IterativeSolver*
 +create<SolverInterface>(const Options&): SolverInterface*
 }
 

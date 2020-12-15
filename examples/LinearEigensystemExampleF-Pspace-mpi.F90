@@ -113,7 +113,7 @@ PROGRAM Linear_Eigensystem_Example
       EXIT
     END IF
     g = MATMUL(m, c)
-    nwork = Iterative_Solver_Add_Vector(c, g, fproc=apply_on_p)
+    nwork = Iterative_Solver_Add_Vector(c, g)
   END DO
   DO root = 1, nroot
     roots(root) = root
@@ -122,7 +122,7 @@ PROGRAM Linear_Eigensystem_Example
     write(*,*) "Solution vector before the call to Solution(): ", c(:,1)
     write(*,*) "Residual before the call to Solution: ", g(:,1)
   end if
-  CALL Iterative_Solver_Solution(roots, c, g, fproc=apply_on_p)
+  CALL Iterative_Solver_Solution(roots, c, g)
   if (rank == 0) then
     write(*,*) "Solution vector after the call to Solution(): ", c(:,1)
     write(*,*) "Residual after the call to Solution: ", g(:,1)

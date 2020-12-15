@@ -1,0 +1,30 @@
+@startuml
+class Options{
+convergence_threshold
+nroots
+max_iterations
+}
+
+class SolverFactory{
++create(Options&): IterativeSolver*
++create<SolverInterface>(const Options&): SolverInterface*
+}
+
+hide empty methods
+hide empty fields
+
+SolverFactory <-- Options
+package "Implemented solver returned as pointer to the interface"{
+object ILinearEigensystem
+object ILinearEquations
+object INonLinearEquations
+object IOptimize
+object IterativeSolver
+}
+
+IterativeSolver <-- SolverFactory
+ILinearEigensystem <-- SolverFactory
+ILinearEquations <-- SolverFactory
+INonLinearEquations <-- SolverFactory
+IOptimize <-- SolverFactory
+@enduml

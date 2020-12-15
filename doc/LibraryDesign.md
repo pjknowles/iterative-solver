@@ -23,3 +23,7 @@ of ``ArrayHandler`` abstract classes. There are implementations of ``ArrayHandle
 for common container types, but for more specialised cases the user must provide their own.
 
 ![SolversHirearchyDiagram](images/dependency_inversion.png)
+
+## Distributed Arrays
+
+WIP

@@ -19,7 +19,9 @@ namespace molpro::linalg::itsolv {
  * #include <molpro/linalg/itsolv/SolverFactory-implementation.h>
  * #include "UserDefinedVectors.h"
  *
- * template class molpro::linalg::itsolv::SolverFactory<UserDefinedRvector, UserDefinedQvector, UserDefinedPvector>;
+ * namespace molpro::linalg::itsolv {
+ * template class SolverFactory<UserDefinedRvector, UserDefinedQvector, UserDefinedPvector>;
+ * }
  * @endcode
  *
  * Using the factory

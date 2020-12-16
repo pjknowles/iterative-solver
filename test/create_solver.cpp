@@ -6,6 +6,10 @@
 #include <molpro/linalg/itsolv/LinearEquations.h>
 #include <molpro/linalg/itsolv/SolverFactory-implementation.h>
 
+namespace molpro::linalg::itsolv {
+template class SolverFactory<Rvector, Qvector, Pvector>;
+}
+
 namespace molpro::test {
 
 std::pair<std::shared_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>,

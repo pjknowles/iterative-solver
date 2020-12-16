@@ -131,23 +131,21 @@ public:
   }
   bool get_hermiticity() const override { return m_hermiticity; }
 
-  void set_options(const std::shared_ptr<Options>& options) override {
+  void set_options(const Options& options) override {
     SolverTemplate::set_options(options);
     auto opt = CastOptions::LinearEigensystem(options);
-    if (opt) {
-      if (opt->reset_D)
-        set_reset_D(opt->reset_D.value());
-      if (opt->reset_D_max_Q_size)
-        set_reset_D_maxQ_size(opt->reset_D_max_Q_size.value());
-      if (opt->max_size_qspace)
-        set_max_size_qspace(opt->max_size_qspace.value());
-      if (opt->norm_thresh)
-        propose_rspace_norm_thresh = opt->norm_thresh.value();
-      if (opt->svd_thresh)
-        propose_rspace_svd_thresh = opt->svd_thresh.value();
-      if (opt->hermiticity)
-        set_hermiticity(opt->hermiticity.value());
-    }
+    if (opt.reset_D)
+      set_reset_D(opt.reset_D.value());
+    if (opt.reset_D_max_Q_size)
+      set_reset_D_maxQ_size(opt.reset_D_max_Q_size.value());
+    if (opt.max_size_qspace)
+      set_max_size_qspace(opt.max_size_qspace.value());
+    if (opt.norm_thresh)
+      propose_rspace_norm_thresh = opt.norm_thresh.value();
+    if (opt.svd_thresh)
+      propose_rspace_svd_thresh = opt.svd_thresh.value();
+    if (opt.hermiticity)
+      set_hermiticity(opt.hermiticity.value());
   }
 
   std::shared_ptr<Options> get_options() const override {

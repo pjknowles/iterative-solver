@@ -138,7 +138,7 @@ auto set_options(std::shared_ptr<ILinearEquations<Rvector, Qvector, Pvector>>& s
   options->reset_D = 8;
   options->hermiticity = hermitian;
   options->augmented_hessian = augmented_hessian;
-  solver->set_options(options);
+  solver->set_options(*options);
   options = CastOptions::LinearEquations(solver->get_options());
   std::cout << "nroot = " << nroot << std::endl;
   molpro::cout << "convergence threshold = " << options->convergence_threshold.value()

@@ -125,7 +125,7 @@ public:
   virtual const subspace::Dimensions& dimensions() const = 0;
   // FIXME Missing parameters: SVD threshold
   //! Set all spcecified options. This is no different than using setters, but can be used with forward declaration.
-  virtual void set_options(const std::shared_ptr<Options>& options) = 0;
+  virtual void set_options(const Options& options) = 0;
   //! Return all options. This is no different than using getters, but can be used with forward declaration.
   virtual std::shared_ptr<Options> get_options() const = 0;
 };

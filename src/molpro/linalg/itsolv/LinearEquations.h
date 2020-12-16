@@ -114,25 +114,23 @@ public:
     return subspace_solver->get_augmented_hessian();
   }
 
-  void set_options(const std::shared_ptr<Options>& options) override {
+  void set_options(const Options& options) override {
     SolverTemplate::set_options(options);
     auto opt = CastOptions::LinearEquations(options);
-    if (opt) {
-      if (opt->reset_D)
-        set_reset_D(opt->reset_D.value());
-      if (opt->reset_D_max_Q_size)
-        set_reset_D_maxQ_size(opt->reset_D_max_Q_size.value());
-      if (opt->max_size_qspace)
-        set_max_size_qspace(opt->max_size_qspace.value());
-      if (opt->norm_thresh)
-        set_norm_thresh(opt->norm_thresh.value());
-      if (opt->svd_thresh)
-        set_svd_thresh(opt->svd_thresh.value());
-      if (opt->hermiticity)
-        set_hermiticity(opt->hermiticity.value());
-      if (opt->augmented_hessian)
-        set_augmented_hessian(opt->augmented_hessian.value());
-    }
+    if (opt.reset_D)
+      set_reset_D(opt.reset_D.value());
+    if (opt.reset_D_max_Q_size)
+      set_reset_D_maxQ_size(opt.reset_D_max_Q_size.value());
+    if (opt.max_size_qspace)
+      set_max_size_qspace(opt.max_size_qspace.value());
+    if (opt.norm_thresh)
+      set_norm_thresh(opt.norm_thresh.value());
+    if (opt.svd_thresh)
+      set_svd_thresh(opt.svd_thresh.value());
+    if (opt.hermiticity)
+      set_hermiticity(opt.hermiticity.value());
+    if (opt.augmented_hessian)
+      set_augmented_hessian(opt.augmented_hessian.value());
   }
 
   std::shared_ptr<Options> get_options() const override {

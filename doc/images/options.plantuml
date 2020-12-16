@@ -1,0 +1,39 @@
+@startuml
+class Options{
+convergence_threshold
+nroots
+max_iterations
+}
+package "Options common to a particular type of solver"{
+class IOptimizeOptions
+class INonLinearEquationsOptions
+class ILinearEquationsOptions
+class ILinearEigensystemOptions
+}
+
+package "Implementation options"{
+class LinearEquationsOptions{
+max_size_Q_space
+...
+}
+class LinearEigensystemOptions{
+max_size_Q_space
+...
+}
+class DIISOptions
+class BFGSOptions
+class ConjugateGradientOptions
+}
+
+hide empty methods
+hide empty fields
+Options <|-- ILinearEigensystemOptions
+Options <|-- ILinearEquationsOptions
+Options <|-- INonLinearEquationsOptions
+Options <|-- IOptimizeOptions
+ILinearEigensystemOptions ^-- LinearEigensystemOptions
+ILinearEquationsOptions ^-- LinearEquationsOptions
+INonLinearEquationsOptions ^-- DIISOptions
+IOptimizeOptions ^-- BFGSOptions
+IOptimizeOptions ^-- ConjugateGradientOptions
+@enduml

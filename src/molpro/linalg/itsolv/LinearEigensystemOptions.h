@@ -31,7 +31,7 @@ namespace molpro::linalg::itsolv {
  *   std::cout << "svd threshold= " << options_p->svd_threshold.get() << std::endl;
  * @endcode
  */
-struct LinearEigensystemOptions : public Options {
+struct LinearEigensystemOptions : public ILinearEigensystemOptions {
   std::optional<int> reset_D;
   std::optional<int> reset_D_max_Q_size;
   std::optional<int> max_size_qspace;

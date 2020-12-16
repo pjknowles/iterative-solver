@@ -5,6 +5,7 @@
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/Logger.h>
+#include <molpro/linalg/itsolv/SolverFactory.h>
 
 using Rvector = std::vector<double>;
 using Qvector = std::vector<double>;

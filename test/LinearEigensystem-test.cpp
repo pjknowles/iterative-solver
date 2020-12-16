@@ -179,7 +179,7 @@ struct LinearEigensystemF : ::testing::Test {
     options->max_size_qspace = std::max(6 * nroot, std::min(int(n), std::min(1000, 6 * nroot)) - np);
     options->reset_D = 8;
     options->hermiticity = hermitian;
-    solver->set_options(options);
+    solver->set_options(*options);
     options = CastOptions::LinearEigensystem(solver->get_options());
     molpro::cout << "convergence threshold = " << options->convergence_threshold.value()
                  << ", svd thresh = " << options->svd_thresh.value()
@@ -199,17 +199,19 @@ struct LinearEigensystemF : ::testing::Test {
 
   // Create initial subspace. This is iteration 0.
   auto initialize_subspace(const size_t np, const size_t nroot, const size_t n_working_vectors_max,
-                           const IterativeSolver<Rvector, Qvector, Pvector>::fapply_on_p_type& apply_p_wrapper,
                            std::shared_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver) {
     auto [x, g] = create_containers(nroot);
     if (np) {
+      auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
+        return this->apply_p(pvectors, pspace, action);
+      };
       auto [pspace, PP] = initial_pspace(np);
       solver->add_p(cwrap(pspace), Span<double>(PP.data(), PP.size()), wrap(x), molpro::linalg::itsolv::wrap(g),
                     apply_p_wrapper);
     } else {
       initial_guess(x);
       action(x, g);
-      solver->add_vector(x, g, apply_p_wrapper);
+      solver->add_vector(x, g);
     }
     auto n_working_vectors_guess = std::max(nroot, n_working_vectors_max > 0 ? n_working_vectors_max : nroot);
     x.resize(n_working_vectors_guess);
@@ -232,15 +234,12 @@ struct LinearEigensystemF : ::testing::Test {
                      << std::endl;
         auto [solver, logger] = molpro::test::create_LinearEigensystem();
         auto options = set_options(solver, logger, nroot, np, hermitian);
-        auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
-          return this->apply_p(pvectors, pspace, action);
-        };
         int nwork = nroot;
-        auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, apply_p_wrapper, solver);
+        auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, solver);
         size_t n_iter = 2;
         for (auto iter = 1; iter < 100; iter++, ++n_iter) {
           action(x, g);
-          nwork = solver->add_vector(x, g, apply_p_wrapper);
+          nwork = solver->add_vector(x, g);
           if (verbosity > 0)
             std::cout << "solver.add_vector returns nwork=" << nwork << std::endl;
           if (nwork == 0)
@@ -372,12 +371,9 @@ TEST_F(LinearEigensystemF, solution) {
       for (size_t n_working_vectors_max = 0; n_working_vectors_max < 2; ++n_working_vectors_max) {
         auto [solver, logger] = molpro::test::create_LinearEigensystem();
         auto options = set_options(solver, logger, nroot, np, check_mat_hermiticity());
-        auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
-          return this->apply_p(pvectors, pspace, action);
-        };
-        auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, apply_p_wrapper, solver);
+        auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, solver);
         auto roots = solver->working_set();
-        solver->solution(roots, x, g, apply_p_wrapper);
+        solver->solution(roots, x, g);
         residual(x, solution_residual, solver->working_set_eigenvalues());
         for (size_t i = 0; i < roots.size(); ++i) {
           auto diff = 0.;

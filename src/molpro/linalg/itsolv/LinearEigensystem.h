@@ -58,10 +58,12 @@ public:
    */
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
     if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace->dimensions())) {
+      m_resetting_in_progress = true;
       this->m_working_set = m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->solutions(),
                                                   propose_rspace_norm_thresh, propose_rspace_svd_thresh,
                                                   *this->m_handlers, *this->m_logger);
     } else {
+      m_resetting_in_progress = false;
       this->m_working_set = detail::propose_rspace(*this, parameters, action, *this->m_xspace, *this->m_subspace_solver,
                                                    *this->m_handlers, *this->m_logger, propose_rspace_svd_thresh,
                                                    propose_rspace_norm_thresh, m_max_size_qspace);
@@ -87,11 +89,12 @@ public:
   }
 
   void set_value_errors() override {
-    auto last_values = this->m_last_values;
-    this->m_last_values = this->m_subspace_solver->eigenvalues();
-    this->m_value_errors.clear();
-    for (size_t i = 0; i < last_values.size(); i++)
-      this->m_value_errors.push_back(std::abs(last_values[i] - this->m_last_values[i]));
+    auto current_values = this->m_subspace_solver->eigenvalues();
+    this->m_value_errors.assign(current_values.size(), std::numeric_limits<scalar_type>::max());
+    for (size_t i = 0; i < std::min(m_last_values.size(), current_values.size()); i++)
+      this->m_value_errors[i] = std::abs(current_values[i] - m_last_values[i]);
+    if (!m_resetting_in_progress)
+      m_last_values = current_values;
   }
 
   void report(std::ostream& cout) const override {
@@ -128,23 +131,21 @@ public:
   }
   bool get_hermiticity() const override { return m_hermiticity; }
 
-  void set_options(const std::shared_ptr<Options>& options) override {
+  void set_options(const Options& options) override {
     SolverTemplate::set_options(options);
     auto opt = CastOptions::LinearEigensystem(options);
-    if (opt) {
-      if (opt->reset_D)
-        set_reset_D(opt->reset_D.value());
-      if (opt->reset_D_max_Q_size)
-        set_reset_D_maxQ_size(opt->reset_D_max_Q_size.value());
-      if (opt->max_size_qspace)
-        set_max_size_qspace(opt->max_size_qspace.value());
-      if (opt->norm_thresh)
-        propose_rspace_norm_thresh = opt->norm_thresh.value();
-      if (opt->svd_thresh)
-        propose_rspace_svd_thresh = opt->svd_thresh.value();
-      if (opt->hermiticity)
-        set_hermiticity(opt->hermiticity.value());
-    }
+    if (opt.reset_D)
+      set_reset_D(opt.reset_D.value());
+    if (opt.reset_D_max_Q_size)
+      set_reset_D_maxQ_size(opt.reset_D_max_Q_size.value());
+    if (opt.max_size_qspace)
+      set_max_size_qspace(opt.max_size_qspace.value());
+    if (opt.norm_thresh)
+      propose_rspace_norm_thresh = opt.norm_thresh.value();
+    if (opt.svd_thresh)
+      propose_rspace_svd_thresh = opt.svd_thresh.value();
+    if (opt.hermiticity)
+      set_hermiticity(opt.hermiticity.value());
   }
 
   std::shared_ptr<Options> get_options() const override {
@@ -176,6 +177,7 @@ protected:
   detail::DSpaceResetter<Q> m_dspace_resetter;             //!< resets D space
   bool m_hermiticity = false;                              //!< whether the problem is hermitian or not
   std::vector<double> m_last_values;                       //!< The values from the previous iteration
+  bool m_resetting_in_progress = false;                    //!< whether D space resetting is in progress
 };
 
 } // namespace molpro::linalg::itsolv

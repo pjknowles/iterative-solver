@@ -5,7 +5,7 @@ namespace molpro::linalg::itsolv {
 /*!
  * @brief Allows setting and getting of options for LinearEquations instance via IterativeSolver base class
  */
-struct LinearEquationsOptions : public Options {
+struct LinearEquationsOptions : public ILinearEquationsOptions {
   std::optional<int> reset_D;
   std::optional<int> reset_D_max_Q_size;
   std::optional<int> max_size_qspace;

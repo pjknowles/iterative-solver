@@ -21,16 +21,6 @@ MODULE Iterative_Solver
         END SUBROUTINE Iterative_Solver_Print_Statistics
     END INTERFACE
 
-    INTERFACE Iterative_Solver_Add_Vector
-        MODULE PROCEDURE Add_Vector_With_P
-        MODULE PROCEDURE Add_Vector_Without_P
-    END INTERFACE Iterative_Solver_Add_Vector
-
-    INTERFACE Iterative_Solver_Solution
-        MODULE PROCEDURE Solution_With_P
-        MODULE PROCEDURE Solution_Without_P
-    END INTERFACE Iterative_Solver_Solution
-
 CONTAINS
 
     !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
@@ -471,43 +461,8 @@ CONTAINS
     !> appropriate.
     !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
     !> the subsequent call to Iterative_Solver_End_Iteration()
-    FUNCTION Add_Vector_With_P(parameters, action, lmppx, fproc, synchronize)
-        USE iso_c_binding
-        INTEGER :: Add_Vector_With_P
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: action
-        LOGICAL, INTENT(in), OPTIONAL :: lmppx
-        LOGICAL, INTENT(in), OPTIONAL :: synchronize
-        EXTERNAL fproc
-        INTERFACE
-            FUNCTION Add_Vector_With_P_C(parameters, action, lsync, lmppx, func) &
-                    BIND(C, name = 'IterativeSolverPspaceAddVector')
-                USE, INTRINSIC :: iso_c_binding
-                INTEGER(c_size_t) Add_Vector_With_P_C
-                REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
-                REAL(c_double), DIMENSION(*), INTENT(inout) :: action
-                INTEGER(c_int), INTENT(in), VALUE :: lsync
-                INTEGER(c_int), INTENT(in), VALUE :: lmppx
-                TYPE(C_FUNPTR), INTENT(IN), VALUE :: func
-            END FUNCTION Add_Vector_With_P_C
-        END INTERFACE
-        DOUBLE PRECISION, DIMENSION(0) :: pdummy
-        INTEGER(c_int) :: lsyncC
-        INTEGER(c_int) :: lmppxC
-        TYPE(C_FUNPTR) :: cproc
-        cproc = C_FUNLOC(fproc)
-        lmppxC = 0
-        IF (PRESENT(lmppx)) THEN
-            IF (lmppx) lmppxC = 1
-        ENDIF
-        lsyncC = 1
-        IF (PRESENT(synchronize)) THEN
-            IF (.NOT. synchronize) lsyncC = 0
-        END IF
-        Add_Vector_With_P = int(Add_Vector_With_P_C(parameters, action, lsyncC, lmppxC, cproc))
-    END FUNCTION Add_Vector_With_P
 
-    FUNCTION Add_Vector_Without_P(parameters, action, lmppx, synchronize)
+    FUNCTION Iterative_Solver_Add_Vector(parameters, action, lmppx, synchronize)
         USE iso_c_binding
         INTEGER :: Add_Vector_Without_P
         DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters
@@ -537,51 +492,9 @@ CONTAINS
             IF (.NOT. synchronize) lsyncC = 0
         END IF
         Add_Vector_Without_P = int(Add_Vector_C(parameters, action, lsyncC, lmppxC))
-    END FUNCTION Add_Vector_Without_P
+    END FUNCTION Iterative_Solver_Add_Vector
     !
-    SUBROUTINE Solution_With_P(roots, parameters, action, lmppx, fproc, synchronize)
-        USE iso_c_binding
-        INTEGER, INTENT(in), DIMENSION(:) :: roots  !< Array containing root indices
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: action
-        LOGICAL, INTENT(in), OPTIONAL :: lmppx  !< Whether communicator should be MPI_COMM_SELF
-        LOGICAL, INTENT(in), OPTIONAL :: synchronize
-        EXTERNAL fproc
-        INTERFACE
-            SUBROUTINE Solution_With_P_C(nroot, roots, parameters, action, lsync, lmppx, func) &
-                    BIND(C, name = 'IterativeSolverPspaceSolution')
-                USE iso_c_binding
-                INTEGER(c_int), VALUE :: nroot
-                INTEGER(c_int), INTENT(in), DIMENSION(nroot) :: roots
-                REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
-                REAL(c_double), DIMENSION(*), INTENT(inout) :: action
-                INTEGER(c_int), INTENT(in), VALUE :: lsync
-                INTEGER(c_int), INTENT(in), VALUE :: lmppx
-                TYPE(C_FUNPTR), INTENT(IN), VALUE :: func
-            END SUBROUTINE
-        END INTERFACE
-        INTEGER(c_int), DIMENSION(SIZE(roots)) :: rootsC
-        INTEGER(c_int) :: nroot
-        INTEGER(c_int) :: lsyncC
-        INTEGER(c_int) :: lmppxC
-        TYPE(C_FUNPTR) :: cproc
-        cproc = C_FUNLOC(fproc)
-        lmppxC = 0
-        IF (PRESENT(lmppx)) THEN
-            IF (lmppx) lmppxC = 1
-        ENDIF
-        lsyncC = 1
-        IF (PRESENT(synchronize)) THEN
-            IF (.NOT. synchronize) lsyncC = 0
-        END IF
-        nroot = INT(size(roots), c_int)
-        DO i = 1, size(roots)
-            rootsC(i) = INT(roots(i)-1, kind = c_int)
-        ENDDO
-        call Solution_With_P_C(nroot, rootsC, parameters, action, lsyncC, lmppxC, cproc)
-    END SUBROUTINE
-    !
-    SUBROUTINE Solution_Without_P(roots, parameters, action, lmppx, synchronize)
+    SUBROUTINE Iterative_Solver_Solution(roots, parameters, action, lmppx, synchronize)
         USE iso_c_binding
         INTEGER, INTENT(in), DIMENSION(:) :: roots  !< Array containing root indices
         DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters

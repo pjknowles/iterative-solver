@@ -124,29 +124,27 @@ public:
   IterativeSolverTemplate<Solver, R, Q, P>& operator=(IterativeSolverTemplate<Solver, R, Q, P>&&) noexcept = default;
 
 public:
-  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions,
-                    const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
-    m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations) +
-                      ", apply_p = " + std::to_string(bool(apply_p)),
+  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions) override {
+    m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations),
                   Logger::Trace);
     m_logger->msg("IterativeSolverTemplate::add_vector  size of {params, actions, working_set} = " +
                       std::to_string(parameters.size()) + ", " + std::to_string(actions.size()) + ", " +
                       std::to_string(m_working_set.size()) + ", ",
                   Logger::Debug);
-    if (m_xspace->dimensions().nP != 0 && !apply_p)
-      throw std::runtime_error("Solver contains P space but add_vector was not provided apply_p function");
+    if (m_xspace->dimensions().nP != 0 && !m_apply_p)
+      throw std::runtime_error(
+          "Solver contains P space but no valid apply_p function. Make sure add_p was called correctly.");
     auto nW = std::min(m_working_set.size(), parameters.size());
     auto cwparams = cwrap<R>(begin(parameters), begin(parameters) + nW);
     auto cwactions = cwrap<R>(begin(actions), begin(actions) + nW);
     m_stats->r_creations += nW;
     m_xspace->update_qspace(cwparams, cwactions);
-    return solve_and_generate_working_set(parameters, actions, apply_p);
+    return solve_and_generate_working_set(parameters, actions);
   }
 
 public:
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions,
-                    const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
-    return add_vector(wrap(parameters), wrap(actions), apply_p);
+  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions) override {
+    return add_vector(wrap(parameters), wrap(actions));
   }
   size_t add_vector(R& parameters, R& actions) override {
     auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
@@ -156,17 +154,18 @@ public:
 
   // FIXME Currently only works if called on an empty subspace. Either enforce it or generalise.
   size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix, const VecRef<R>& parameters,
-               const VecRef<R>& actions, const fapply_on_p_type& apply_p) override {
+               const VecRef<R>& actions, fapply_on_p_type apply_p) override {
     if (not pparams.empty() and pparams.size() < n_roots())
       throw std::runtime_error("P space must be empty or at least as large as number of roots sought");
+    if (apply_p)
+      m_apply_p = std::move(apply_p);
     m_xspace->update_pspace(pparams, pp_action_matrix);
-    return solve_and_generate_working_set(parameters, actions, apply_p);
+    return solve_and_generate_working_set(parameters, actions);
   };
 
   void clearP() override {}
 
-  void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual,
-                const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
+  void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) override {
     check_consistent_number_of_roots_and_solutions(roots, parameters.size());
     detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
                                m_xspace->paramsq(), m_xspace->paramsd(), m_xspace->dimensions().oP,
@@ -178,14 +177,13 @@ public:
                                               m_xspace->dimensions().nP);
     if (m_normalise_solution)
       detail::normalise(roots.size(), parameters, residual, m_handlers->rr(), *m_logger);
-    if (apply_p)
-      apply_p(pvectors, m_xspace->cparamsp(), residual);
+    if (m_apply_p)
+      m_apply_p(pvectors, m_xspace->cparamsp(), residual);
     construct_residual(roots, cwrap(parameters), residual);
   };
 
-  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual,
-                const fapply_on_p_type& apply_p = fapply_on_p_type{}) override {
-    return solution(roots, wrap(parameters), wrap(residual), apply_p);
+  void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {
+    return solution(roots, wrap(parameters), wrap(residual));
   }
 
   void solution_params(const std::vector<int>& roots, std::vector<R>& parameters) override {
@@ -215,11 +213,11 @@ public:
     std::iota(begin(m_working_set), end(m_working_set), (int)0);
   }
 
-  void set_options(const std::shared_ptr<Options>& options) override {
-    if (options->n_roots)
-      set_n_roots(options->n_roots.value());
-    if (options->convergence_threshold)
-      set_convergence_threshold(options->convergence_threshold.value());
+  void set_options(const Options& options) override {
+    if (options.n_roots)
+      set_n_roots(options.n_roots.value());
+    if (options.convergence_threshold)
+      set_convergence_threshold(options.convergence_threshold.value());
   }
 
   std::shared_ptr<Options> get_options() const override {
@@ -276,8 +274,7 @@ protected:
    * @param apply_p function that accumulates action from the P space projection of parameters
    * @return size of the working set
    */
-  size_t solve_and_generate_working_set(const VecRef<R>& parameters, const VecRef<R>& action,
-                                        const fapply_on_p_type& apply_p) {
+  size_t solve_and_generate_working_set(const VecRef<R>& parameters, const VecRef<R>& action) {
     m_subspace_solver->solve(*m_xspace, n_roots());
     auto nsol = m_subspace_solver->size();
     std::vector<std::pair<Q, Q>> temp_solutions{};
@@ -285,7 +282,7 @@ protected:
       auto [start_sol, end_sol] = batch;
       auto roots = std::vector<int>(end_sol - start_sol);
       std::iota(begin(roots), end(roots), start_sol);
-      solution(roots, parameters, action, apply_p);
+      solution(roots, parameters, action);
       auto errors = std::vector<scalar_type>(roots.size(), 0);
       detail::update_errors(errors, cwrap(action), m_handlers->rr());
       for (size_t i = 0; i < roots.size(); ++i)
@@ -327,6 +324,7 @@ protected:
   std::shared_ptr<Statistics> m_stats;     //!< accumulates statistics of operations performed by the solver
   std::shared_ptr<Logger> m_logger;        //!< logger
   bool m_normalise_solution = false;       //!< whether to normalise the solutions
+  fapply_on_p_type m_apply_p = {};         //!< function that evaluates effect of action on the P space projection
 };
 
 } // namespace molpro::linalg::itsolv

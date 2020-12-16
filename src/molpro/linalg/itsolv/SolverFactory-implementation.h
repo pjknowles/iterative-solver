@@ -14,6 +14,8 @@ SolverFactory<R, Q, P>::create(const Options& options, const std::shared_ptr<Arr
     return create(*options_child, handlers);
   } else if (auto options_child = dynamic_cast<ILinearEquationsOptions*>(options_ptr); options_child) {
     return create(*options_child, handlers);
+  } else {
+    return nullptr;
   }
 }
 

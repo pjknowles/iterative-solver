@@ -32,7 +32,7 @@ create_LinearEquations() {
   auto factory = linalg::itsolv::SolverFactory<Rvector, Qvector, Pvector>{};
   auto solver = factory.create(options, handlers);
   auto solver_eq =
-      std::dynamic_pointer_cast<molpro::linalg::itsolv::LinearEigensystem<Rvector, Qvector, Pvector>>(solver);
+      std::dynamic_pointer_cast<molpro::linalg::itsolv::LinearEquations<Rvector, Qvector, Pvector>>(solver);
   auto logger = solver_eq->logger;
   return {solver, logger};
 }

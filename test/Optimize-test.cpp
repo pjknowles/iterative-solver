@@ -179,7 +179,7 @@ struct OptimizeF : ::testing::Test {
     //    options->svd_thresh = 1.0e-10;
     options->n_roots = 1;
     options->max_size_qspace = 10;
-    solver->set_options(options);
+    solver->set_options(*options);
     options = CastOptions::Optimize(solver->get_options());
     molpro::cout << "convergence threshold = " << options->convergence_threshold.value()
                  << ", svd thresh = " << options->svd_thresh.value()

@@ -65,19 +65,17 @@ public:
   void set_method(const std::string& method) { m_method = method; }
   std::string get_method() const { return m_method; }
 
-  void set_options(const std::shared_ptr<Options>& options) override {
+  void set_options(const Options& options) override {
     SolverTemplate::set_options(options);
     auto opt = CastOptions::Optimize(options);
-    if (opt) {
-      if (opt->max_size_qspace)
-        set_max_size_qspace(opt->max_size_qspace.value());
-      if (opt->norm_thresh)
-        set_norm_thresh(opt->norm_thresh.value());
-      if (opt->svd_thresh)
-        set_svd_thresh(opt->svd_thresh.value());
-      if (opt->method)
-        set_method(opt->method.value());
-    }
+      if (opt.max_size_qspace)
+        set_max_size_qspace(opt.max_size_qspace.value());
+      if (opt.norm_thresh)
+        set_norm_thresh(opt.norm_thresh.value());
+      if (opt.svd_thresh)
+        set_svd_thresh(opt.svd_thresh.value());
+      if (opt.method)
+        set_method(opt.method.value());
   }
 
   std::shared_ptr<Options> get_options() const override {
@@ -101,6 +99,8 @@ public:
 
   bool add_value(R& parameters, value_type value, R& residual) override {
     this->m_values.push(value);
+    this->m_xspace->data[subspace::EqnData::value].resize({this->m_values.size(),1});
+    this->m_xspace->data[subspace::EqnData::value](this->m_values.size()-1,0)=value; // TODO find a less hacky way to inject value
     auto nwork = this->add_vector(parameters, residual);
     return nwork > 0; // TODO check this does the right thing
   }

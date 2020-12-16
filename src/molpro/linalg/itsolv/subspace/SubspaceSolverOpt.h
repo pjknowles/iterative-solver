@@ -22,62 +22,36 @@ public:
 
   void solve(IXSpace<R, Q, P>& xspace, const size_t nroots_max) override {
     m_logger->msg("SubspaceSolverOpt::solve", Logger::Trace);
-    if (xspace.data.find(EqnData::rhs) == xspace.data.end() || xspace.data[EqnData::rhs].empty()) {
-      solve_eigenvalue(xspace, nroots_max);
+    assert(xspace.data.end() != xspace.data.find(EqnData::value));
+    auto values = xspace.data[EqnData::value];
+    assert(xspace.size() == values.size());
+
+    if (true) {
+      solve_steepest(xspace);
     } else {
-      solve_linear_equations(xspace);
     }
   }
 
 protected:
-  void solve_eigenvalue(IXSpace<R, Q, P>& xspace, const size_t nroots_max) {
-    m_logger->msg("SubspaceSolverOpt::solve_eigenvalue", Logger::Trace);
+  void solve_steepest(IXSpace<R, Q, P>& xspace) {
+    m_logger->msg("SubspaceSolverOpt::solve_steepest", Logger::Trace);
     auto h = xspace.data[EqnData::H];
     auto s = xspace.data[EqnData::S];
+    auto value = xspace.data[EqnData::value];
     if (m_logger->data_dump) {
       m_logger->msg("S = " + as_string(s), Logger::Info);
       m_logger->msg("H = " + as_string(h, 15), Logger::Info);
-      m_logger->msg("rhs = " + as_string(h, 15), Logger::Info);
+      m_logger->msg("value = " + as_string(value, 15), Logger::Info);
     }
     auto dim = h.rows();
     auto evec = std::vector<value_type>{};
     int verbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
-    itsolv::eigenproblem(evec, m_eigenvalues, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, verbosity);
-    auto n_solutions = evec.size() / dim;
-    auto full_matrix = Matrix<value_type>{std::move(evec), {n_solutions, dim}};
-    auto nroots = std::min(nroots_max, n_solutions);
-    m_eigenvalues.resize(nroots);
-    m_solutions.resize({nroots, dim});
-    m_solutions.slice() = full_matrix.slice({0, 0}, {nroots, dim});
-    m_errors.assign(size(), std::numeric_limits<value_type_abs>::max());
+    m_solutions.resize({1, dim});
+    m_solutions.slice().fill(0);
+    m_solutions(0,dim-1)=1;
+    m_errors.assign(1,h(0,0)); // FIXME
     if (m_logger->data_dump) {
-      m_logger->msg("eigenvalues = ", begin(m_eigenvalues), end(m_eigenvalues), Logger::Debug, 10);
-      m_logger->msg("eigenvectors = " + as_string(m_solutions), Logger::Info);
-    }
-  }
-
-  void solve_linear_equations(IXSpace<R, Q, P>& xspace) {
-    m_logger->msg("SubspaceSolverOpt::solve_linear_equations", Logger::Trace);
-    auto h = xspace.data[EqnData::H];
-    auto s = xspace.data[EqnData::S];
-    auto rhs = xspace.data[EqnData::rhs];
-    if (m_logger->data_dump) {
-      m_logger->msg("S = " + as_string(s, 15), Logger::Info);
-      m_logger->msg("H = " + as_string(h, 15), Logger::Info);
-      m_logger->msg("rhs = " + as_string(rhs, 15), Logger::Info);
-    }
-    const auto dim = h.rows();
-    const auto n_solutions = rhs.cols();
-    auto solution = std::vector<value_type>{};
-    m_eigenvalues.assign(n_solutions, 0);
-    int verbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
-    itsolv::solve_LinearEquations(solution, m_eigenvalues, h.data(), s.data(), rhs.data(), dim, n_solutions,
-                                  m_augmented_hessian, m_svd_solver_threshold, verbosity);
-    m_solutions = Matrix<value_type>{std::move(solution), {n_solutions, dim}};
-    m_errors.assign(size(), std::numeric_limits<value_type_abs>::max());
-    if (m_logger->data_dump) {
-      m_logger->msg("eigenvalues = ", begin(m_eigenvalues), end(m_eigenvalues), Logger::Debug, 10);
-      m_logger->msg("solutions = " + as_string(m_solutions), Logger::Info);
+      m_logger->msg("solution = " + as_string(m_solutions), Logger::Info);
     }
   }
 

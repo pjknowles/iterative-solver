@@ -62,6 +62,9 @@ struct OptimizeF : ::testing::Test {
     r += 2 * hmat * x;
     double value = 0.5 * x.dot(r) / x.dot(x);
     r -= 2 * value * x;
+    std::cout << "action, x:\n"<<x.transpose()<<std::endl;
+    std::cout << "action, r:\n"<<r.transpose()<<std::endl;
+    std::cout << "action, value: "<<value<<std::endl;
     return value;
   }
   template <class scalar>
@@ -185,7 +188,7 @@ struct OptimizeF : ::testing::Test {
                  << ", svd thresh = " << options->svd_thresh.value()
                  << ", norm thresh = " << options->norm_thresh.value()
                  << ", max size of Q = " << options->max_size_qspace.value() << std::endl;
-    logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
+    logger->max_trace_level = molpro::linalg::itsolv::Logger::Trace;
     logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
     logger->data_dump = false;
     return options;
@@ -304,7 +307,6 @@ TEST_F(OptimizeF, small_eigen) {
     double param = 1;
     load_matrix(n, "", param);
     test_eigen(std::to_string(n) + "/" + std::to_string(param));
-    test_eigen(std::to_string(n) + "/" + std::to_string(param), 1);
   }
 }
 

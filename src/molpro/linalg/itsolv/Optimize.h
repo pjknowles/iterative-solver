@@ -34,14 +34,16 @@ public:
         logger(logger_) {}
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
-    if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace->dimensions())) {
-      this->m_working_set = m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->solutions(),
-                                                  m_norm_thresh, m_svd_thresh, *this->m_handlers, *this->m_logger);
-    } else {
-      this->m_working_set =
-          detail::propose_rspace(*this, parameters, action, *this->m_xspace, *this->m_subspace_solver,
-                                 *this->m_handlers, *this->m_logger, m_svd_thresh, m_norm_thresh, m_max_size_qspace);
-    }
+    // TODO implement for other optimiser variants
+//    this->m_working_set =
+//        detail::propose_rspace(*this, parameters, action, *this->m_xspace, *this->m_subspace_solver, *this->m_handlers,
+//                               *this->m_logger, m_svd_thresh, m_norm_thresh, m_max_size_qspace);
+    this->solution_params(this->m_working_set,parameters);
+    // TODO add action to parameters. Why is it so hard to figure out how to do this simple thing?
+    if (this->m_errors.front() < 1e-10)
+      this->m_working_set.clear();
+    else
+      this->m_working_set.assign(1, 0);
     this->m_stats->iterations++;
     return this->working_set().size();
   }
@@ -68,14 +70,14 @@ public:
   void set_options(const Options& options) override {
     SolverTemplate::set_options(options);
     auto opt = CastOptions::Optimize(options);
-      if (opt.max_size_qspace)
-        set_max_size_qspace(opt.max_size_qspace.value());
-      if (opt.norm_thresh)
-        set_norm_thresh(opt.norm_thresh.value());
-      if (opt.svd_thresh)
-        set_svd_thresh(opt.svd_thresh.value());
-      if (opt.method)
-        set_method(opt.method.value());
+    if (opt.max_size_qspace)
+      set_max_size_qspace(opt.max_size_qspace.value());
+    if (opt.norm_thresh)
+      set_norm_thresh(opt.norm_thresh.value());
+    if (opt.svd_thresh)
+      set_svd_thresh(opt.svd_thresh.value());
+    if (opt.method)
+      set_method(opt.method.value());
   }
 
   std::shared_ptr<Options> get_options() const override {
@@ -99,8 +101,9 @@ public:
 
   bool add_value(R& parameters, value_type value, R& residual) override {
     this->m_values.push(value);
-    this->m_xspace->data[subspace::EqnData::value].resize({this->m_values.size(),1});
-    this->m_xspace->data[subspace::EqnData::value](this->m_values.size()-1,0)=value; // TODO find a less hacky way to inject value
+    this->m_xspace->data[subspace::EqnData::value].resize({this->m_values.size(), 1});
+    this->m_xspace->data[subspace::EqnData::value](this->m_values.size() - 1, 0) =
+        value; // TODO find a less hacky way to inject value
     auto nwork = this->add_vector(parameters, residual);
     return nwork > 0; // TODO check this does the right thing
   }

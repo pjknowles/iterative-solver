@@ -148,7 +148,7 @@ public:
   }
   size_t add_vector(R& parameters, R& actions) override {
     auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
-    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
+    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
     return add_vector(wparams, wactions);
   }
 

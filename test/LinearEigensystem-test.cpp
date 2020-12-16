@@ -179,7 +179,7 @@ struct LinearEigensystemF : ::testing::Test {
     options->max_size_qspace = std::max(6 * nroot, std::min(int(n), std::min(1000, 6 * nroot)) - np);
     options->reset_D = 8;
     options->hermiticity = hermitian;
-    solver->set_options(options);
+    solver->set_options(*options);
     options = CastOptions::LinearEigensystem(solver->get_options());
     molpro::cout << "convergence threshold = " << options->convergence_threshold.value()
                  << ", svd thresh = " << options->svd_thresh.value()

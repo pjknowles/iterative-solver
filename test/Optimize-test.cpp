@@ -119,7 +119,7 @@ struct OptimizeF : ::testing::Test {
     return options;
   }
 
-  void test_eigen(const std::string& title = "", const int n_working_vectors_max = 0) {
+  void test_quadratic_form(const std::string& title = "", const int n_working_vectors_max = 0) {
     int nroot = 1;
     {
       int np = 0;
@@ -179,10 +179,10 @@ struct OptimizeF : ::testing::Test {
   }
 };
 
-TEST_F(OptimizeF, small_eigen) {
+TEST_F(OptimizeF, small_quadratic_form) {
   for (int n = 1; n < 51; n++) {
     double param = 10;
     load_matrix(n, "", param);
-    test_eigen(std::to_string(n) + "/" + std::to_string(param));
+    test_quadratic_form(std::to_string(n) + "/" + std::to_string(param));
   }
 }

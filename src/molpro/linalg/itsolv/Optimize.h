@@ -39,8 +39,8 @@ public:
 //        detail::propose_rspace(*this, parameters, action, *this->m_xspace, *this->m_subspace_solver, *this->m_handlers,
 //                               *this->m_logger, m_svd_thresh, m_norm_thresh, m_max_size_qspace);
     this->solution_params(this->m_working_set,parameters);
-    // TODO add action to parameters. Why is it so hard to figure out how to do this simple thing?
-    if (this->m_errors.front() < 1e-10)
+    this->m_handlers->rr().axpy(1,action.front(),parameters.front());
+    if (this->m_errors.front() < this->m_convergence_threshold)
       this->m_working_set.clear();
     else
       this->m_working_set.assign(1, 0);
@@ -50,7 +50,8 @@ public:
 
   // FIXME move this to the template
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
-    return end_iteration(wrap(parameters), wrap(action));
+    auto result = end_iteration(wrap(parameters), wrap(action));
+    return result;
   }
 
   //! Set threshold on the norm of parameters that should be considered null

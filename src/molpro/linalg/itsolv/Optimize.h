@@ -34,19 +34,22 @@ public:
         logger(logger_) {}
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
-    // TODO implement for other optimiser variants
-    //    this->m_working_set =
-    //        detail::propose_rspace(*this, parameters, action, *this->m_xspace, *this->m_subspace_solver,
-    //        *this->m_handlers,
-    //                               *this->m_logger, m_svd_thresh, m_norm_thresh, m_max_size_qspace);
     this->solution_params(this->m_working_set, parameters);
-    this->m_handlers->rr().axpy(1, action.front(), parameters.front());
-    if (this->m_errors.front() < this->m_convergence_threshold)
+    if (this->m_errors.front() < this->m_convergence_threshold) {
       this->m_working_set.clear();
-    else
-      this->m_working_set.assign(1, 0);
+      return 0;
+    }
+    this->m_working_set.assign(1, 0);
+    auto signal = solver_signal();
+    if (signal ==
+        0) { // action is expected to hold the preconditioned residual, and here we should add it to parameters
+      this->m_handlers->rr().axpy(1, action.front(), parameters.front());
+    } else if (signal == 1) { // residual not used, simply leave parameters alone
+    } else {                  // L-BFGS
+      throw std::logic_error("L-BFGS not yet implemented");
+    }
     this->m_stats->iterations++;
-    return this->working_set().size();
+    return 1;
   }
 
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
@@ -103,7 +106,7 @@ public:
     xdata[EqnData::value].resize({n + 1, 1});
     xdata[EqnData::value](0, 0) = value;
     auto nwork = this->add_vector(parameters, residual);
-    return nwork > 0 && (xdata.find(EqnData::signals) == xdata.end() || xdata[EqnData::signals].empty());
+    return nwork > 0 && solver_signal() != 1;
   }
 
   size_t end_iteration(R& parameters, R& actions) override {
@@ -115,6 +118,16 @@ public:
   scalar_type value() const override { return this->m_xspace->data[subspace::EqnData::value](0, 0); }
 
 protected:
+  int solver_signal() const {
+    int signal = 0;
+    using namespace subspace;
+    auto& xspace = this->m_xspace;
+    auto& xdata = xspace->data;
+    if (xdata.find(EqnData::signals) != xdata.end() && xdata[EqnData::signals].empty())
+      signal = xdata[EqnData::signals](0, 0);
+//    molpro::cout << "signal " << signal << std::endl;
+    return signal;
+  }
   // for non-linear problems, actions already contains the residual
   void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {}
 

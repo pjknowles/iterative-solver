@@ -464,7 +464,7 @@ CONTAINS
 
     FUNCTION Iterative_Solver_Add_Vector(parameters, action, lmppx, synchronize)
         USE iso_c_binding
-        INTEGER :: Add_Vector_Without_P
+        INTEGER :: Iterative_Solver_Add_Vector
         DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters
         DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: action
         LOGICAL, INTENT(in), OPTIONAL :: lmppx
@@ -491,7 +491,7 @@ CONTAINS
         IF (PRESENT(synchronize)) THEN
             IF (.NOT. synchronize) lsyncC = 0
         END IF
-        Add_Vector_Without_P = int(Add_Vector_C(parameters, action, lsyncC, lmppxC))
+        Iterative_Solver_Add_Vector = int(Add_Vector_C(parameters, action, lsyncC, lmppxC))
     END FUNCTION Iterative_Solver_Add_Vector
     !
     SUBROUTINE Iterative_Solver_Solution(roots, parameters, action, lmppx, synchronize)

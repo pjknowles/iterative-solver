@@ -13,9 +13,6 @@
 #include <molpro/linalg/itsolv/Optimize.h>
 #include <molpro/linalg/itsolv/helper.h>
 
-// Find lowest eigensolution of a matrix obtained from an external file
-// Storage of vectors in-memory via class Rvector
-
 using Rvector = std::vector<double>;
 using Qvector = std::vector<double>;
 using molpro::linalg::itsolv::CastOptions;
@@ -90,6 +87,7 @@ struct OptimizeF : ::testing::Test {
     return options;
   }
 
+  template<template <class, class, class> class SubspaceSolver=molpro::linalg::itsolv::subspace::SubspaceSolverOptSD>
   void test_quadratic_form(const std::string& title = "", const int n_working_vectors_max = 0) {
     int nroot = 1;
     {
@@ -100,7 +98,7 @@ struct OptimizeF : ::testing::Test {
 
         auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector>>();
         auto solver =
-            std::make_shared<molpro::linalg::itsolv::Optimize<molpro::linalg::itsolv::subspace::SubspaceSolverOptSD,
+            std::make_shared<molpro::linalg::itsolv::Optimize<SubspaceSolver,
                                                               Rvector, Qvector>>(handlers);
         auto logger = solver->logger;
         auto options = set_options(solver, logger);
@@ -146,6 +144,6 @@ TEST_F(OptimizeF, small_quadratic_form) {
   for (int n = 1; n < 51; n++) {
     double param = 10;
     load_matrix(n, "", param);
-    test_quadratic_form(std::to_string(n) + "/" + std::to_string(param));
+    test_quadratic_form<molpro::linalg::itsolv::subspace::SubspaceSolverOptSD>(std::to_string(n) + "/" + std::to_string(param));
   }
 }

@@ -48,7 +48,6 @@ public:
     return this->working_set().size();
   }
 
-  // FIXME move this to the template
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
     auto result = end_iteration(wrap(parameters), wrap(action));
     return result;
@@ -101,15 +100,25 @@ public:
   std::shared_ptr<Logger> logger;
 
   bool add_value(R& parameters, value_type value, R& residual) override {
-    this->m_values.push(value);
-    this->m_xspace->data[subspace::EqnData::value].resize({this->m_values.size(), 1});
-    this->m_xspace->data[subspace::EqnData::value](this->m_values.size() - 1, 0) =
-        value; // TODO find a less hacky way to inject value
+//    this->m_values.push(value);
+//    this->m_xspace->data[subspace::EqnData::value].push_back(value);
+    auto n = this->m_xspace->dimensions().nX;
+    this->m_xspace->data[subspace::EqnData::value].resize({n+1, 1});
+    this->m_xspace->data[subspace::EqnData::value](0, 0) = value; // TODO check order
     auto nwork = this->add_vector(parameters, residual);
     return nwork > 0; // TODO check this does the right thing
   }
 
-  scalar_type value() const override { return this->m_values.top(); }
+  size_t end_iteration(R& parameters, R& actions) override {
+    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
+    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
+    return end_iteration(wparams, wactions);
+  }
+
+  scalar_type value() const override {
+    return this->m_xspace->data[subspace::EqnData::value](0,0); // TODO check order
+//  return this->m_values.top();
+  }
 
 protected:
   // for non-linear problems, actions already contains the residual

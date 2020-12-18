@@ -29,6 +29,8 @@ public:
     m_logger->msg("SubspaceSolverOpt::solve", Logger::Trace);
     assert(xspace.data.end() != xspace.data.find(EqnData::value));
     auto values = xspace.data[EqnData::value];
+    std::cout << "xspace.size() "<<xspace.size()<<std::endl;
+    std::cout << "values.size() "<<values.size()<<std::endl;
     assert(xspace.size() == values.size());
 
     if (true) {

@@ -97,8 +97,11 @@ public:
                                         double threshold) = 0;
 
   virtual void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) = 0;
+  virtual void solution(R& parameters, R& residual) = 0;
   virtual void solution_params(const std::vector<int>& roots, std::vector<R>& parameters) = 0;
+  virtual void solution_params(R& parameters) = 0;
   virtual size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) = 0;
+  virtual size_t end_iteration(R& parameters, R& action) = 0;
 
   /*!
    * @brief Working set of roots that are not yet converged
@@ -166,17 +169,22 @@ class IOptimize : public IterativeSolver<R, Q, P> {
 public:
   using typename IterativeSolver<R, Q, P>::value_type;
   using typename IterativeSolver<R, Q, P>::scalar_type;
-  // FIXME Description of return is unclear
   /*!
    * \brief Take a current solution, objective function value and residual, and return new solution.
    * \param parameters On input, the current solution. On exit, the interpolated solution vector.
    * \param value The value of the objective function for parameters.
    * \param residual On input, the residual for parameters. On exit, the expected (non-linear) residual of the
    * interpolated parameters.
-   * \return whether it is expected that the client should make an update, based on the
-   * returned parameters and residual, before the subsequent call to endIteration()
+   * \return whether it is expected that the client should precondition the returned residual
+   * before the subsequent call to endIteration(). If false, there is no need to do so, as the preconditioned
+   * residual will not be used in making the next iterate. This does not indicate convergence, which is indicated
+   * rather by the return of an empty working set by endIteration().
    */
   virtual bool add_value(R& parameters, value_type value, R& residual) = 0;
+  /*!
+   * @brief Report the function value for the current optimum solution
+   * @return
+   */
   virtual scalar_type value() const = 0;
 };
 

@@ -284,6 +284,8 @@ protected:
       data[d].remove_row_col(i, i);
     if (data.find(EqnData::rhs) != std::end(data) && !data[EqnData::rhs].empty())
       data[EqnData::rhs].remove_row(i);
+    if (data.find(EqnData::value) != std::end(data) && !data[EqnData::value].empty())
+      data[EqnData::value].remove_row(i);
   }
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;
   std::shared_ptr<Logger> m_logger;

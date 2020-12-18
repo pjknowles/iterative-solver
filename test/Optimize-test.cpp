@@ -40,7 +40,7 @@ struct OptimizeF : ::testing::Test {
     //    std::cout << "hmat " << hmat << std::endl;
   }
 
-  double action(const std::vector<Rvector>& psx, std::vector<Rvector>& outputs) {
+  double action(const Rvector& psx, Rvector& outputs) {
     // f = 0.5 x.h.x/x.x + lambda (x.x-1)^2
     // df/dx = x.x^{-1} (h x - x.h.x x.x^{-1} x) + 4 lambda (x.x-1) x
     // f = 0.5 x.h.x/x.x + 0.5 * lambda (x.x0-1)^2
@@ -49,9 +49,8 @@ struct OptimizeF : ::testing::Test {
     // df/dx = h x - h.b
 
     const double lambda = 1e0;
-    size_t k = 0;
-    auto x = Eigen::Map<const Eigen::VectorXd>(psx.at(k).data(), psx.at(k).size());
-    auto r = Eigen::Map<Eigen::VectorXd>(outputs.at(k).data(), psx.at(k).size());
+    auto x = Eigen::Map<const Eigen::VectorXd>(psx.data(), psx.size());
+    auto r = Eigen::Map<Eigen::VectorXd>(outputs.data(), psx.size());
     Eigen::VectorXd b;
     b.resize(x.size());
     b.fill(1);
@@ -68,37 +67,11 @@ struct OptimizeF : ::testing::Test {
     return std::inner_product(std::begin(a), std::end(a), std::begin(b), scalar(0));
   }
 
-  void update(std::vector<Rvector>& psg) {
-    for (size_t k = 0; k < psg.size(); k++) {
-      for (size_t i = 0; i < n; i++) {
-        psg[k][i] = -psg[k][i] / hmat(i, i);
-      }
-    }
+  void update(Rvector& psg) {
+    for (size_t i = 0; i < n; i++)
+      psg[i] = -psg[i] / hmat(i, i);
   }
 
-  auto create_containers(const size_t nW) {
-    std::vector<Rvector> g;
-    std::vector<Rvector> x;
-    for (size_t i = 0; i < nW; i++) {
-      x.emplace_back(n, 0);
-      g.emplace_back(n);
-    }
-    return std::make_tuple(x, g);
-  }
-
-  auto initial_guess(std::vector<Rvector>& x) {
-    const auto n_roots = x.size();
-    std::vector<size_t> guess;
-    std::vector<double> diagonals;
-    for (auto i = 0; i < n; i++) {
-      diagonals.push_back(hmat(i, i));
-    }
-    for (size_t root = 0; root < n_roots; root++) {
-      guess.push_back(std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin()); // initial guess
-      *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
-      x[root][guess.back()] = 1; // initial guess
-    }
-  }
 
   auto set_options(std::shared_ptr<IOptimize<Rvector, Qvector, Pvector>>& solver, std::shared_ptr<Logger>& logger) {
     auto options = CastOptions::Optimize(solver->get_options());
@@ -130,13 +103,12 @@ struct OptimizeF : ::testing::Test {
         auto options = set_options(solver, logger);
         int nwork = 1;
         // Create initial subspace. This is iteration 0.
-        auto [x, g] = create_containers(1);
-        x.front().assign(n, 0);
-        x.front().front() = 1;
+        Rvector x(n, 0), g(n);
+        x.front() = 1;
         size_t n_iter = 1;
         for (auto iter = 1; iter < 1000; iter++, ++n_iter) {
           auto value = action(x, g);
-          auto precon = solver->add_value(x.front(), value, g.front());
+          auto precon = solver->add_value(x, value, g);
           if (precon)
             update(g);
           if (verbosity > 0)
@@ -161,19 +133,12 @@ struct OptimizeF : ::testing::Test {
         if (verbosity > 0)
           std::cout << "R creations = " << nR_creations << std::endl;
         EXPECT_LE(nR_creations, (nroot + 1) * n_iter);
-        std::vector<std::vector<double>> parameters, residuals;
-        std::vector<int> roots;
-        for (int root = 0; root < solver->n_roots(); root++) {
-          parameters.emplace_back(n);
-          residuals.emplace_back(n);
-          roots.push_back(root);
-        }
-        solver->solution(roots, parameters, residuals);
-        for (const auto& r : residuals)
-          EXPECT_LE(std::sqrt(dot(r, r)), options->convergence_threshold.value());
-        for (const auto& p : parameters)
-          EXPECT_THAT(p, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()),
-                                              std::vector<double>(n, double(1))));
+        std::vector<double> parameters(n), residual(n);
+        std::vector<int> roots(1, 0);
+        solver->solution(parameters, residual);
+        EXPECT_LE(std::sqrt(dot(residual, residual)), options->convergence_threshold.value());
+        EXPECT_THAT(parameters, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()),
+                                                     std::vector<double>(n, double(1))));
       }
     }
   }

@@ -64,8 +64,6 @@ public:
   //! space
   void set_max_size_qspace(int n) { m_max_size_qspace = n; }
   int get_max_size_qspace() const { return m_max_size_qspace; }
-  void set_method(const std::string& method) { m_method = method; }
-  std::string get_method() const { return m_method; }
 
   void set_options(const Options& options) override {
     SolverTemplate::set_options(options);
@@ -76,8 +74,6 @@ public:
       set_norm_thresh(opt.norm_thresh.value());
     if (opt.svd_thresh)
       set_svd_thresh(opt.svd_thresh.value());
-    if (opt.method)
-      set_method(opt.method.value());
   }
 
   std::shared_ptr<Options> get_options() const override {
@@ -86,7 +82,6 @@ public:
     opt->max_size_qspace = get_max_size_qspace();
     opt->norm_thresh = get_norm_thresh();
     opt->svd_thresh = get_svd_thresh();
-    opt->method = get_method();
     return opt;
   }
 
@@ -100,8 +95,6 @@ public:
   std::shared_ptr<Logger> logger;
 
   bool add_value(R& parameters, value_type value, R& residual) override {
-//    this->m_values.push(value);
-//    this->m_xspace->data[subspace::EqnData::value].push_back(value);
     auto n = this->m_xspace->dimensions().nX;
     this->m_xspace->data[subspace::EqnData::value].resize({n+1, 1});
     this->m_xspace->data[subspace::EqnData::value](0, 0) = value; // TODO check order
@@ -127,9 +120,6 @@ protected:
   double m_norm_thresh = 1e-10; //!< vectors with norm less than threshold can be considered null.
   double m_svd_thresh = 1e-12;  //!< svd values smaller than this mark the null space
   int m_max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space
-  detail::DSpaceResetter<Q> m_dspace_resetter;             //!< resets D space
-  bool m_hermiticity = true;                               //!< whether the problem is hermitian or not
-  std::string m_method;                                    ///!< algorithm choice for solver
 };
 
 } // namespace molpro::linalg::itsolv

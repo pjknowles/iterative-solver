@@ -4,7 +4,6 @@
 
 #include <molpro/linalg/itsolv/LinearEigensystem.h>
 #include <molpro/linalg/itsolv/LinearEquations.h>
-#include <molpro/linalg/itsolv/Optimize.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 
 

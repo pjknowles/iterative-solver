@@ -12,6 +12,8 @@
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/Optimize.h>
 #include <molpro/linalg/itsolv/helper.h>
+#include <molpro/linalg/itsolv/subspace/SubspaceSolverOptBFGS.h>
+#include <molpro/linalg/itsolv/subspace/SubspaceSolverOptSD.h>
 
 using Rvector = std::vector<double>;
 using Qvector = std::vector<double>;
@@ -145,5 +147,6 @@ TEST_F(OptimizeF, small_quadratic_form) {
     double param = 10;
     load_matrix(n, "", param);
     test_quadratic_form<molpro::linalg::itsolv::subspace::SubspaceSolverOptSD>(std::to_string(n) + "/" + std::to_string(param));
+    test_quadratic_form<molpro::linalg::itsolv::subspace::SubspaceSolverOptBFGS>(std::to_string(n) + "/" + std::to_string(param));
   }
 }

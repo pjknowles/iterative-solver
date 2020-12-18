@@ -1,5 +1,5 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVEROPTSD_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVEROPTSD_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVEROPTBFGS_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVEROPTBFGS_H
 #include <molpro/linalg/itsolv/subspace/ISubspaceSolver.h>
 #include <molpro/linalg/itsolv/subspace/IXSpace.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
@@ -10,7 +10,7 @@ namespace molpro::linalg::itsolv::subspace {
  * @brief Solves subspace problem for minimisation using the Steepest Descent algorithm
  */
 template <class RT, class QT, class PT>
-class SubspaceSolverOptSD : public ISubspaceSolver<RT, QT, PT> {
+class SubspaceSolverOptBFGS : public ISubspaceSolver<RT, QT, PT> {
 public:
   using value_type = typename ISubspaceSolver<RT, QT, PT>::value_type;
   using value_type_abs = typename ISubspaceSolver<RT, QT, PT>::value_type_abs;
@@ -18,10 +18,10 @@ public:
   using Q = typename ISubspaceSolver<RT, QT, PT>::Q;
   using P = typename ISubspaceSolver<RT, QT, PT>::P;
 
-  explicit SubspaceSolverOptSD(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)) {}
+  explicit SubspaceSolverOptBFGS(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)) {}
 
   void solve(IXSpace<R, Q, P>& xspace, const size_t nroots_max) override {
-    m_logger->msg("SubspaceSolverOptSD::solve", Logger::Trace);
+    m_logger->msg("SubspaceSolverOptBFGS::solve", Logger::Trace);
     assert(xspace.data.end() != xspace.data.find(EqnData::value));
     auto values = xspace.data[EqnData::value];
     assert(xspace.size() == values.size());
@@ -73,4 +73,4 @@ public:
 
 } // namespace molpro::linalg::itsolv::subspace
 
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVEROPTSD_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVEROPTBFGS_H

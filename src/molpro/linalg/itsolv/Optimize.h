@@ -97,7 +97,7 @@ public:
   bool add_value(R& parameters, value_type value, R& residual) override {
     auto n = this->m_xspace->dimensions().nX;
     this->m_xspace->data[subspace::EqnData::value].resize({n+1, 1});
-    this->m_xspace->data[subspace::EqnData::value](0, 0) = value; // TODO check order
+    this->m_xspace->data[subspace::EqnData::value](0, 0) = value;
     auto nwork = this->add_vector(parameters, residual);
     return nwork > 0; // TODO check this does the right thing
   }
@@ -109,8 +109,7 @@ public:
   }
 
   scalar_type value() const override {
-    return this->m_xspace->data[subspace::EqnData::value](0,0); // TODO check order
-//  return this->m_values.top();
+    return this->m_xspace->data[subspace::EqnData::value](0,0);
   }
 
 protected:

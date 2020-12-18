@@ -80,7 +80,8 @@ PROGRAM Linear_Eigensystem_Example
     WRITE (6, *) 'P-space=', nP, ', dimension=', n, ', roots=', nroot
   end if
   CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Eigensystem_Example_P', pcomm = MPI_COMM_WORLD, &
-                                                                                  thresh = 1d-8, verbosity = 1)
+                                                                                  thresh = 1d-8, thresh_value = 1d-14, &
+                                                                                  verbosity = 1)
   offsets(0) = 0
   DO i = 1, nP
     offsets(i) = i
@@ -95,26 +96,43 @@ PROGRAM Linear_Eigensystem_Example
   nwork =  Iterative_Solver_Add_P(nP, offsets, indices, coefficients, pp, c, g, fproc=apply_on_p)
   !g = 0.0d0
   DO iter = 1, 100
-    !IF (rank == 0) THEN
-    !  PRINT *, 'NWORK:', nwork
-    !END IF
+    IF (rank == 0) THEN
+      PRINT *, 'ITERATION #', iter
+      PRINT *, 'nwork after Add_Vector():', nwork
+    END IF
     allocate(we(nwork), stat=alloc_stat)
     we = Iterative_Solver_Working_Set_Eigenvalues(nwork)
-    !IF (rank == 0) THEN
-    !  PRINT *, 'we:', we
-    !END IF
+    IF (rank == 0) THEN
+      PRINT *, 'Working set roots after Add_Vector():', we
+    END IF
     DO root = 1, nwork
       DO j = 1, n
         g(j, root) = - g(j, root) * 1.0d0 / (m(j, j) - we(root) + 1e-15)
       END DO
     END DO
     deallocate(we)
-    IF (Iterative_Solver_End_Iteration(c, g) == 0) THEN
+    nwork = Iterative_Solver_End_Iteration(c, g)
+    IF (nwork == 0) THEN
       EXIT
     END IF
+    allocate(we(nwork), stat=alloc_stat)
+    we = Iterative_Solver_Working_Set_Eigenvalues(nwork)
+    IF (rank == 0) THEN
+      PRINT *, 'Working set roots after End_Iteration():', we
+    END IF
+    deallocate(we)
     g = MATMUL(m, c)
     nwork = Iterative_Solver_Add_Vector(c, g)
+    IF (nwork == 0) THEN
+      EXIT
+    END IF
   END DO
+  allocate(we(nroot), stat=alloc_stat)
+  we = Iterative_Solver_Eigenvalues()
+  IF (rank == 0) THEN
+    PRINT *, 'Converged roots:', we
+  END IF
+  deallocate(we)
   DO root = 1, nroot
     roots(root) = root
   END DO

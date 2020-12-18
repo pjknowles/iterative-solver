@@ -1,4 +1,3 @@
-#include "create_solver.h"
 #include "test.h"
 
 #include <Eigen/Dense>
@@ -11,11 +10,17 @@
 #include <vector>
 
 #include <molpro/linalg/itsolv/IterativeSolver.h>
+#include <molpro/linalg/itsolv/Optimize.h>
 #include <molpro/linalg/itsolv/helper.h>
 
 // Find lowest eigensolution of a matrix obtained from an external file
 // Storage of vectors in-memory via class Rvector
 
+using Rvector = std::vector<double>;
+using Qvector = std::vector<double>;
+using Pvector = std::map<size_t, double>;
+using molpro::linalg::itsolv::CastOptions;
+using molpro::linalg::itsolv::Logger;
 using molpro::linalg::array::Span;
 using molpro::linalg::itsolv::CVecRef;
 using molpro::linalg::itsolv::cwrap;
@@ -25,7 +30,6 @@ struct OptimizeF : ::testing::Test {
   using scalar = double;
   using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
   using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
-  using vectorP = std::vector<scalar>;
 
   size_t n = 0;
   size_t verbosity = 0;
@@ -41,14 +45,8 @@ struct OptimizeF : ::testing::Test {
   }
 
   double action(const Rvector& psx, Rvector& outputs) {
-    // f = 0.5 x.h.x/x.x + lambda (x.x-1)^2
-    // df/dx = x.x^{-1} (h x - x.h.x x.x^{-1} x) + 4 lambda (x.x-1) x
-    // f = 0.5 x.h.x/x.x + 0.5 * lambda (x.x0-1)^2
-    // df/dx = x.x^{-1} (h x - x.h.x x.x^{-1} x) + lambda (x.x0-1) x0
     // f = 0.5 * (x-b).h.(x-b) where b=[111...]
     // df/dx = h x - h.b
-
-    const double lambda = 1e0;
     auto x = Eigen::Map<const Eigen::VectorXd>(psx.data(), psx.size());
     auto r = Eigen::Map<Eigen::VectorXd>(outputs.data(), psx.size());
     Eigen::VectorXd b;
@@ -72,8 +70,10 @@ struct OptimizeF : ::testing::Test {
       psg[i] = -psg[i] / hmat(i, i);
   }
 
-
-  auto set_options(std::shared_ptr<IOptimize<Rvector, Qvector, Pvector>>& solver, std::shared_ptr<Logger>& logger) {
+  //  auto set_options(std::shared_ptr<IOptimize<Rvector, Qvector, Pvector>>& solver, std::shared_ptr<Logger>& logger) {
+  template <template <class, class, class> class subspaceSolver>
+  auto set_options(std::shared_ptr<molpro::linalg::itsolv::Optimize<subspaceSolver, Rvector, Qvector, Pvector>>& solver,
+                   std::shared_ptr<Logger>& logger) {
     auto options = CastOptions::Optimize(solver->get_options());
     options->convergence_threshold = 1.0e-8;
     //    options->norm_thresh = 1.0e-14;
@@ -99,14 +99,19 @@ struct OptimizeF : ::testing::Test {
       {
         molpro::cout << "\n\n*** " << title << ",  problem dimension " << n
                      << ", n_working_vectors_max = " << n_working_vectors_max << std::endl;
-        auto [solver, logger] = molpro::test::create_Optimize();
+
+        auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>();
+        auto solver =
+            std::make_shared<molpro::linalg::itsolv::Optimize<molpro::linalg::itsolv::subspace::SubspaceSolverOptSD,
+                                                              Rvector, Qvector, Pvector>>(handlers);
+        auto logger = solver->logger;
         auto options = set_options(solver, logger);
         int nwork = 1;
         // Create initial subspace. This is iteration 0.
         Rvector x(n, 0), g(n);
         x.front() = 1;
         size_t n_iter = 1;
-        for (auto iter = 1; iter < 1000; iter++, ++n_iter) {
+        for (auto iter = 1; iter < 1000 && nwork > 0; iter++, ++n_iter) {
           auto value = action(x, g);
           auto precon = solver->add_value(x, value, g);
           if (precon)
@@ -114,13 +119,8 @@ struct OptimizeF : ::testing::Test {
           if (verbosity > 0)
             solver->report();
           nwork = solver->end_iteration(x, g);
-          if (verbosity > 1)
-            std::cout << "solver.end_iteration returns nwork=" << nwork << std::endl;
-          if (nwork == 0)
-            break;
         }
-        if (verbosity > 0)
-          solver->report();
+        //        EXPECT_EQ(n_iter, solver->n_roots());
         std::cout << "Error={ ";
         for (const auto& e : solver->errors())
           std::cout << e << " ";

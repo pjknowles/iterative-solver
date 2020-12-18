@@ -25,8 +25,5 @@ create_LinearEigensystem();
 std::pair<std::shared_ptr<ILinearEquations<Rvector, Qvector, Pvector>>, std::shared_ptr<Logger>>
 create_LinearEquations();
 
-std::pair<std::shared_ptr<IOptimize<Rvector, Qvector, Pvector>>, std::shared_ptr<Logger>>
-create_Optimize();
-
 } // namespace molpro::test
 #endif // LINEARALGEBRA_TEST_CREATE_SOLVER_H

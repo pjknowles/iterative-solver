@@ -4,7 +4,7 @@
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
-#include <molpro/linalg/itsolv/subspace/SubspaceSolverOpt.h>
+#include <molpro/linalg/itsolv/subspace/SubspaceSolverOptSD.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
 
 namespace molpro::linalg::itsolv {
@@ -16,7 +16,8 @@ namespace molpro::linalg::itsolv {
  * @tparam R The class encapsulating solution and residual vectors
  * @tparam Q Used internally as a class for storing vectors on backing store
  */
-template <class R, class Q, class P = R>
+//template <template <class, class, class> class Solver, class R, class Q, class P>
+template <template <class, class, class> class SubspaceSolver, class R, class Q, class P = R>
 class Optimize : public IterativeSolverTemplate<IOptimize, R, Q, P> {
 public:
   using SolverTemplate = IterativeSolverTemplate<IOptimize, R, Q, P>;
@@ -29,7 +30,7 @@ public:
                     const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
       : SolverTemplate(std::make_shared<subspace::XSpace<R, Q, P>>(handlers, logger_),
                        std::static_pointer_cast<subspace::ISubspaceSolver<R, Q, P>>(
-                           std::make_shared<subspace::SubspaceSolverOpt<R, Q, P>>(logger_)),
+                           std::make_shared<SubspaceSolver<R, Q, P>>(logger_)),
                        handlers, std::make_shared<Statistics>(), logger_),
         logger(logger_) {}
 

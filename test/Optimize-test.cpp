@@ -114,7 +114,7 @@ struct OptimizeF : ::testing::Test {
           if (verbosity > 0)
             solver->report();
           nwork = solver->end_iteration(x, g);
-          if (verbosity > 0)
+          if (verbosity > 1)
             std::cout << "solver.end_iteration returns nwork=" << nwork << std::endl;
           if (nwork == 0)
             break;

@@ -35,11 +35,12 @@ public:
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
     // TODO implement for other optimiser variants
-//    this->m_working_set =
-//        detail::propose_rspace(*this, parameters, action, *this->m_xspace, *this->m_subspace_solver, *this->m_handlers,
-//                               *this->m_logger, m_svd_thresh, m_norm_thresh, m_max_size_qspace);
-    this->solution_params(this->m_working_set,parameters);
-    this->m_handlers->rr().axpy(1,action.front(),parameters.front());
+    //    this->m_working_set =
+    //        detail::propose_rspace(*this, parameters, action, *this->m_xspace, *this->m_subspace_solver,
+    //        *this->m_handlers,
+    //                               *this->m_logger, m_svd_thresh, m_norm_thresh, m_max_size_qspace);
+    this->solution_params(this->m_working_set, parameters);
+    this->m_handlers->rr().axpy(1, action.front(), parameters.front());
     if (this->m_errors.front() < this->m_convergence_threshold)
       this->m_working_set.clear();
     else
@@ -87,7 +88,7 @@ public:
 
   void report(std::ostream& cout) const override {
     SolverTemplate::report(cout);
-    cout << "errors " << std::scientific;
+    cout << "value " << value() << ", errors " << std::scientific;
     auto& err = this->m_errors;
     std::copy(begin(err), end(err), std::ostream_iterator<value_type_abs>(molpro::cout, ", "));
     cout << std::defaultfloat << std::endl;
@@ -95,11 +96,14 @@ public:
   std::shared_ptr<Logger> logger;
 
   bool add_value(R& parameters, value_type value, R& residual) override {
-    auto n = this->m_xspace->dimensions().nX;
-    this->m_xspace->data[subspace::EqnData::value].resize({n+1, 1});
-    this->m_xspace->data[subspace::EqnData::value](0, 0) = value;
+    using namespace subspace;
+    auto& xspace = this->m_xspace;
+    auto& xdata = xspace->data;
+    const auto n = this->m_xspace->dimensions().nX;
+    xdata[EqnData::value].resize({n + 1, 1});
+    xdata[EqnData::value](0, 0) = value;
     auto nwork = this->add_vector(parameters, residual);
-    return nwork > 0; // TODO check this does the right thing
+    return nwork > 0 && (xdata.find(EqnData::signals) == xdata.end() || xdata[EqnData::signals].empty());
   }
 
   size_t end_iteration(R& parameters, R& actions) override {
@@ -108,9 +112,7 @@ public:
     return end_iteration(wparams, wactions);
   }
 
-  scalar_type value() const override {
-    return this->m_xspace->data[subspace::EqnData::value](0,0);
-  }
+  scalar_type value() const override { return this->m_xspace->data[subspace::EqnData::value](0, 0); }
 
 protected:
   // for non-linear problems, actions already contains the residual

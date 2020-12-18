@@ -18,7 +18,6 @@
 
 using Rvector = std::vector<double>;
 using Qvector = std::vector<double>;
-using Pvector = std::map<size_t, double>;
 using molpro::linalg::itsolv::CastOptions;
 using molpro::linalg::itsolv::Logger;
 using molpro::linalg::array::Span;
@@ -70,9 +69,8 @@ struct OptimizeF : ::testing::Test {
       psg[i] = -psg[i] / hmat(i, i);
   }
 
-  //  auto set_options(std::shared_ptr<IOptimize<Rvector, Qvector, Pvector>>& solver, std::shared_ptr<Logger>& logger) {
   template <template <class, class, class> class subspaceSolver>
-  auto set_options(std::shared_ptr<molpro::linalg::itsolv::Optimize<subspaceSolver, Rvector, Qvector, Pvector>>& solver,
+  auto set_options(std::shared_ptr<molpro::linalg::itsolv::Optimize<subspaceSolver, Rvector, Qvector>>& solver,
                    std::shared_ptr<Logger>& logger) {
     auto options = CastOptions::Optimize(solver->get_options());
     options->convergence_threshold = 1.0e-8;
@@ -100,10 +98,10 @@ struct OptimizeF : ::testing::Test {
         molpro::cout << "\n\n*** " << title << ",  problem dimension " << n
                      << ", n_working_vectors_max = " << n_working_vectors_max << std::endl;
 
-        auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector, Pvector>>();
+        auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector>>();
         auto solver =
             std::make_shared<molpro::linalg::itsolv::Optimize<molpro::linalg::itsolv::subspace::SubspaceSolverOptSD,
-                                                              Rvector, Qvector, Pvector>>(handlers);
+                                                              Rvector, Qvector>>(handlers);
         auto logger = solver->logger;
         auto options = set_options(solver, logger);
         int nwork = 1;

@@ -16,8 +16,7 @@ namespace molpro::linalg::itsolv {
  * @tparam R The class encapsulating solution and residual vectors
  * @tparam Q Used internally as a class for storing vectors on backing store
  */
-//template <template <class, class, class> class Solver, class R, class Q, class P>
-template <template <class, class, class> class SubspaceSolver, class R, class Q, class P = R>
+template <template <class, class, class> class SubspaceSolver, class R, class Q, class P = std::map<size_t, typename R::value_type>>
 class Optimize : public IterativeSolverTemplate<IOptimize, R, Q, P> {
 public:
   using SolverTemplate = IterativeSolverTemplate<IOptimize, R, Q, P>;

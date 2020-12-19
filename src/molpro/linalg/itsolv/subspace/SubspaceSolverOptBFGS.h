@@ -36,6 +36,13 @@ public:
     }
     auto kDim = kH.rows();
     int kVerbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
+    auto dH = kH;
+    auto dDim = kDim - 1;
+    dH.resize({dDim, dDim});
+    for (size_t i = 0; i < dDim; i++)
+      for (size_t j = 0; j < dDim; j++)
+        dH(i, j) = kH(i, j) - kH(i + 1, j) - kH(i, j + 1) + kH(i + 1, j + 1);
+    m_logger->msg("dH = " + as_string(kH, 15), Logger::Info);
     m_solutions.resize({1, kDim});
     m_solutions.slice().fill(0);
     m_solutions(0, 0) = 1;

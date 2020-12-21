@@ -18,7 +18,7 @@ struct Options {
 
 struct ILinearEigensystemOptions : Options {};
 struct ILinearEquationsOptions : Options {};
-struct INoneLinearEquationsOptions : Options {};
+struct INonLinearEquationsOptions : Options {};
 struct IOptimizeOptions : Options {};
 
 } // namespace molpro::linalg::itsolv

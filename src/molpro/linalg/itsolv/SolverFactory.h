@@ -52,18 +52,22 @@ namespace molpro::linalg::itsolv {
  * @endcode
  *
  */
-template <class R, class Q, class P>
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
 class SolverFactory {
 public:
   virtual ~SolverFactory() = default;
   virtual std::shared_ptr<IterativeSolver<R, Q, P>> create(const Options& options,
                                                            const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers);
 
-  virtual std::shared_ptr<ILinearEigensystem<R, Q, P>> create(const ILinearEigensystemOptions& options,
-                                                              const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers);
+  virtual std::shared_ptr<ILinearEigensystem<R, Q, P>>
+  create(const ILinearEigensystemOptions& options,
+         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
-  virtual std::shared_ptr<ILinearEquations<R, Q, P>> create(const ILinearEquationsOptions& options,
-                                                            const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers);
+  virtual std::shared_ptr<ILinearEquations<R, Q, P>>
+  create(const ILinearEquationsOptions& options,
+         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 };
 } // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_H

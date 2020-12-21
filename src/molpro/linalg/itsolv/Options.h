@@ -24,10 +24,25 @@ struct Options {
   void copy(const Options& source);
 };
 
-struct ILinearEigensystemOptions : Options {};
-struct ILinearEquationsOptions : Options {};
-struct INonLinearEquationsOptions : Options {};
-struct IOptimizeOptions : Options {};
+struct ILinearEigensystemOptions : Options {
+  ILinearEigensystemOptions() = default;
+  ILinearEigensystemOptions(const std::map<std::string, std::string>& opt) : Options(opt) {}
+};
+
+struct ILinearEquationsOptions : Options {
+  ILinearEquationsOptions() = default;
+  ILinearEquationsOptions(const std::map<std::string, std::string>& opt) : Options(opt) {}
+};
+
+struct INonLinearEquationsOptions : Options {
+  INonLinearEquationsOptions() = default;
+  INonLinearEquationsOptions(const std::map<std::string, std::string>& opt) : Options(opt) {}
+};
+
+struct IOptimizeOptions : Options {
+  IOptimizeOptions() = default;
+  IOptimizeOptions(const std::map<std::string, std::string>& opt) : Options(opt) {}
+};
 
 } // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVER_H_OPTIONS_H

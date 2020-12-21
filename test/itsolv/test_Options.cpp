@@ -1,8 +1,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <molpro/linalg/itsolv/LinearEigensystemOptions.h>
 #include <molpro/linalg/itsolv/Options.h>
 
+using molpro::linalg::itsolv::LinearEigensystemOptions;
 using molpro::linalg::itsolv::Options;
 
 TEST(Options, default_constructor) {
@@ -24,8 +26,30 @@ TEST(Options, copy) {
 }
 
 TEST(Options, constructor_string) {
-  const auto options_map = std::map<std::string, std::string>{{"n_roots", "3"}, {"convergence_threshold", "1.23e-11"}};
+  const auto options_map = std::map<std::string, std::string>{
+      {"n_roots", "3"}, {"convergence_threshold", "1.23e-11"}, {"random_test_jhjhaw", "ajwd"}};
   auto opt = Options(options_map);
   ASSERT_EQ(opt.n_roots.value(), 3);
+  ASSERT_DOUBLE_EQ(opt.convergence_threshold.value(), 1.23e-11);
+}
+
+TEST(LinearEigensystemOptions, constructor_string) {
+  const auto options_map = std::map<std::string, std::string>{{"n_roots", "3"},
+                                                              {"convergence_threshold", "1.23e-11"},
+                                                              {"reset_d", "5"},
+                                                              {"reset_d_max_q_size", "20"},
+                                                              {"max_size_qspace", "30"},
+                                                              {"norm_thresh", "1.3e-4"},
+                                                              {"svd_thresh", "7.123e-11"},
+                                                              {"hermiticity", "true"},
+                                                              {"random_test_12wdgjh", "gi98a"}};
+  auto opt = LinearEigensystemOptions(options_map);
+  ASSERT_EQ(opt.n_roots.value(), 3);
   ASSERT_EQ(opt.convergence_threshold.value(), 1.23e-11);
+  ASSERT_EQ(opt.reset_D.value(), 5);
+  ASSERT_EQ(opt.reset_D_max_Q_size.value(), 20);
+  ASSERT_EQ(opt.max_size_qspace.value(), 30);
+  ASSERT_DOUBLE_EQ(opt.norm_thresh.value(), 1.3e-4);
+  ASSERT_DOUBLE_EQ(opt.svd_thresh.value(), 7.123e-11);
+  ASSERT_TRUE(opt.hermiticity.value());
 }

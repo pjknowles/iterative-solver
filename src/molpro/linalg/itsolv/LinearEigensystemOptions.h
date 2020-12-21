@@ -32,6 +32,8 @@ namespace molpro::linalg::itsolv {
  * @endcode
  */
 struct LinearEigensystemOptions : public ILinearEigensystemOptions {
+  LinearEigensystemOptions() = default;
+  LinearEigensystemOptions(const std::map<std::string, std::string>& opt);
   std::optional<int> reset_D;
   std::optional<int> reset_D_max_Q_size;
   std::optional<int> max_size_qspace;

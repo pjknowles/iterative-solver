@@ -37,6 +37,20 @@ SolverFactory<R, Q, P>::create(const ILinearEquationsOptions& options,
   return solver;
 }
 
+template <class R, class Q, class P>
+std::shared_ptr<IterativeSolver<R, Q, P>>
+SolverFactory<R, Q, P>::create(const std::string& method, const std::map<std::string, std::string>& options,
+                               const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
+  // FIXME pass the options strings
+  if (method == "LinearEigensystem") {
+    return create(LinearEigensystemOptions{}, handlers);
+  } else if (method == "LinearEquations") {
+    return create(LinearEquationsOptions{}, handlers);
+  } else {
+    throw std::runtime_error("Method = " + method + ", is not implemented");
+  }
+}
+
 } // namespace molpro::linalg::itsolv
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_IMPLEMENTATION_H

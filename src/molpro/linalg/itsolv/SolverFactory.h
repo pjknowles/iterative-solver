@@ -68,6 +68,11 @@ public:
   create(const ILinearEquationsOptions& options,
          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
+
+  virtual std::shared_ptr<IterativeSolver<R, Q, P>>
+  create(const std::string& method, const std::map<std::string, std::string>& options,
+         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 };
 } // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_H

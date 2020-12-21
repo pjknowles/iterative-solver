@@ -9,11 +9,11 @@ struct Options {
   std::optional<double> convergence_threshold; //!< convergence threshold
   std::optional<int> n_roots;                  //!< number of roots to solve for
 
-  //FIXME Should this be virtual? Document the use case. Should this be a free function in namespace detail?
-  void copy(const Options& options) {
-    convergence_threshold = options.convergence_threshold;
-    n_roots = options.n_roots;
-  }
+  /*!
+   * @brief copies options from source object
+   * @note this is only necessary for internal use and should not be implemented in subclasses.
+   */
+  void copy(const Options& source);
 };
 
 struct ILinearEigensystemOptions : Options {};

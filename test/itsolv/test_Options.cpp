@@ -26,6 +26,6 @@ TEST(Options, copy) {
 TEST(Options, constructor_string) {
   const auto options_map = std::map<std::string, std::string>{{"n_roots", "3"}, {"convergence_threshold", "1.23e-11"}};
   auto opt = Options(options_map);
-  ASSERT_EQ(opt.n_roots.get(), 3);
-  ASSERT_EQ(opt.convergence_threshold.get(), 1.23e-11);
+  ASSERT_EQ(opt.n_roots.value(), 3);
+  ASSERT_EQ(opt.convergence_threshold.value(), 1.23e-11);
 }

@@ -72,3 +72,11 @@ TEST(StringFacet, tolower) {
   auto s_lower = sf.tolower(s);
   ASSERT_EQ(s_lower, "mixed c@se");
 }
+
+TEST(StringFacet, crop_space) {
+  auto core_text = std::string("some_words");
+  for (std::string s : {" " + core_text, core_text + " ", " " + core_text + " "}) {
+    StringFacet::crop_space(s);
+    ASSERT_EQ(s, core_text);
+  }
+}

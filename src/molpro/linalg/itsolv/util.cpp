@@ -11,4 +11,9 @@ std::string StringFacet::tolower(std::string in) {
   return in;
 }
 
+void StringFacet::crop_space(std::string &path) {
+  path.erase(path.begin(), std::find_if(path.begin(), path.end(), [](auto &el) { return !std::isspace(el); }));
+  path.erase(std::find_if(path.rbegin(), path.rend(), [](auto &el) { return !std::isspace(el); }).base(), path.end());
+}
+
 } // namespace molpro::linalg::itsolv::util

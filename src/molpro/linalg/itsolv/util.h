@@ -101,6 +101,7 @@ class StringFacet {
 public:
   std::string toupper(std::string in);
   std::string tolower(std::string in);
+  static void crop_space(std::string& path);
 
 private:
   const std::ctype<char>& facet = std::use_facet<std::ctype<char>>(std::locale());

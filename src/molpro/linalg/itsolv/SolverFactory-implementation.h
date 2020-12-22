@@ -2,6 +2,8 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_IMPLEMENTATION_H
 #include <molpro/linalg/itsolv/LinearEigensystem.h>
 #include <molpro/linalg/itsolv/LinearEquations.h>
+#include <molpro/linalg/itsolv/NonLinearEquations.h>
+#include <molpro/linalg/itsolv/Optimize.h>
 #include <molpro/linalg/itsolv/SolverFactory.h>
 
 namespace molpro::linalg::itsolv {
@@ -32,7 +34,26 @@ template <class R, class Q, class P>
 std::shared_ptr<ILinearEquations<R, Q, P>>
 SolverFactory<R, Q, P>::create(const ILinearEquationsOptions& options,
                                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
-  auto solver = std::make_shared<LinearEquations<R, Q, P>>(handlers);
+auto solver = std::make_shared<LinearEquations<R, Q, P>>(handlers);
+solver->set_options(options);
+return solver;
+}
+
+template <class R, class Q, class P>
+std::shared_ptr<INonLinearEquations<R, Q, P>>
+SolverFactory<R, Q, P>::create(const INonLinearEquationsOptions& options,
+                               const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
+auto solver = std::make_shared<NonLinearEquations<R, Q, P>>(handlers);
+solver->set_options(options);
+return solver;
+}
+
+
+template <class R, class Q, class P>
+std::shared_ptr<IOptimize<R, Q, P>>
+SolverFactory<R, Q, P>::create(const IOptimizeOptions& options,
+                               const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
+  auto solver = std::make_shared<Optimize<OptimizeBFGS<R,Q,P>,R, Q, P>>(handlers);
   solver->set_options(options);
   return solver;
 }

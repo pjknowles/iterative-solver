@@ -69,6 +69,16 @@ public:
   virtual std::shared_ptr<ILinearEquations<R, Q, P>>
   create(const ILinearEquationsOptions& options,
          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+         std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
+
+  virtual std::shared_ptr<INonLinearEquations<R, Q, P>>
+  create(const INonLinearEquationsOptions& options,
+         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+         std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
+
+  virtual std::shared_ptr<IOptimize<R, Q, P>>
+  create(const IOptimizeOptions& options,
+         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
   virtual std::shared_ptr<IterativeSolver<R, Q, P>>
@@ -76,5 +86,23 @@ public:
          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 };
+
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+std::shared_ptr<ILinearEigensystem<R, Q, P>>
+create_LinearEigensystem(const ILinearEigensystemOptions& options,
+                         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                         std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  return SolverFactory<R, Q, P>{}.create(options, handlers);
+}
+
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+std::shared_ptr<ILinearEquations<R, Q, P>>
+create_LinearEquations(const ILinearEquationsOptions& options,
+       const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+       std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  return SolverFactory<R,Q,P>{}.create(options, handlers);
+}
+
+
 } // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_H

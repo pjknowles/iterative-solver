@@ -4,6 +4,8 @@
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/LinearEigensystemOptions.h>
 #include <molpro/linalg/itsolv/LinearEquationsOptions.h>
+#include <molpro/linalg/itsolv/NonLinearEquationsOptions.h>
+#include <molpro/linalg/itsolv/OptimizeOptions.h>
 #include <stdexcept>
 
 namespace molpro::linalg::itsolv {
@@ -47,11 +49,34 @@ public:
     return cast<LinearEquationsOptions>(options, "LinearEquationsOptions");
   }
   static const LinearEquationsOptions& LinearEquations(const Options& options) {
-    return cast<LinearEquationsOptions>(options, "LinearEigensystemOptions");
+    return cast<LinearEquationsOptions>(options, "LinearEquationsOptions");
   }
   static LinearEquationsOptions& LinearEquations(Options& options) {
     const auto& opt = const_cast<const Options&>(options);
-    return const_cast<LinearEquationsOptions&>(cast<LinearEquationsOptions>(options, "LinearEigensystemOptions"));
+    return const_cast<LinearEquationsOptions&>(cast<LinearEquationsOptions>(options, "LinearEquationsOptions"));
+  }
+
+  static std::shared_ptr<NonLinearEquationsOptions> NonLinearEquations(const std::shared_ptr<Options>& options) {
+    return cast<NonLinearEquationsOptions>(options, "NonLinearEquationsOptions");
+  }
+  static const NonLinearEquationsOptions& NonLinearEquations(const Options& options) {
+    return cast<NonLinearEquationsOptions>(options, "NonLinearEquationsOptions");
+  }
+  static NonLinearEquationsOptions& NonLinearEquations(Options& options) {
+    const auto& opt = const_cast<const Options&>(options);
+    return const_cast<NonLinearEquationsOptions&>(cast<NonLinearEquationsOptions>(options, "NonLinearEquationsOptions"));
+  }
+
+
+  static std::shared_ptr<OptimizeOptions> Optimize(const std::shared_ptr<Options>& options) {
+    return cast<OptimizeOptions>(options, "OptimizeOptions");
+  }
+  static const OptimizeOptions& Optimize(const Options& options) {
+    return cast<OptimizeOptions>(options, "OptimizeOptions");
+  }
+  static OptimizeOptions& Optimize(Options& options) {
+    const auto& opt = const_cast<const Options&>(options);
+    return const_cast<OptimizeOptions&>(cast<OptimizeOptions>(options, "OptimizeOptions"));
   }
 };
 } // namespace molpro::linalg::itsolv

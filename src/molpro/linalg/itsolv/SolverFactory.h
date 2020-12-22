@@ -1,8 +1,10 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_H
 #include <memory>
+
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
+#include <molpro/linalg/itsolv/options_map.h>
 
 namespace molpro::linalg::itsolv {
 /*!
@@ -70,7 +72,7 @@ public:
              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
   virtual std::shared_ptr<IterativeSolver<R, Q, P>>
-  create(const std::string& method, const std::map<std::string, std::string>& options,
+  create(const std::string& method, const options_map& options,
          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 };

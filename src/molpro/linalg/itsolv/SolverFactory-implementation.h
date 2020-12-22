@@ -39,13 +39,12 @@ SolverFactory<R, Q, P>::create(const ILinearEquationsOptions& options,
 
 template <class R, class Q, class P>
 std::shared_ptr<IterativeSolver<R, Q, P>>
-SolverFactory<R, Q, P>::create(const std::string& method, const std::map<std::string, std::string>& options,
+SolverFactory<R, Q, P>::create(const std::string& method, const options_map& options,
                                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
-  // FIXME pass the options strings
   if (method == "LinearEigensystem") {
-    return create(LinearEigensystemOptions{}, handlers);
+    return create(LinearEigensystemOptions{options}, handlers);
   } else if (method == "LinearEquations") {
-    return create(LinearEquationsOptions{}, handlers);
+    return create(LinearEquationsOptions{options}, handlers);
   } else {
     throw std::runtime_error("Method = " + method + ", is not implemented");
   }

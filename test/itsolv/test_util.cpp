@@ -6,6 +6,7 @@
 using molpro::linalg::itsolv::util::construct_zeroed_copy;
 using molpro::linalg::itsolv::util::delete_parameters;
 using molpro::linalg::itsolv::util::is_iota;
+using molpro::linalg::itsolv::util::StringFacet;
 
 TEST(itsolv_util, is_iota_null) {
   auto vec = std::vector<int>{};
@@ -56,4 +57,18 @@ TEST(itsolv_util, delete_parameters) {
   auto params_ref = std::vector<int>{1, 3};
   ASSERT_NO_FATAL_FAILURE(delete_parameters(indices, params));
   ASSERT_THAT(params, ::testing::Pointwise(::testing::Eq(), params_ref));
+}
+
+TEST(StringFacet, toupper) {
+  auto s = std::string("MixeD C@sE");
+  auto sf = StringFacet{};
+  auto s_upper = sf.toupper(s);
+  ASSERT_EQ(s_upper, "MIXED C@SE");
+}
+
+TEST(StringFacet, tolower) {
+  auto s = std::string("MixeD C@sE");
+  auto sf = StringFacet{};
+  auto s_lower = sf.tolower(s);
+  ASSERT_EQ(s_lower, "mixed c@se");
 }

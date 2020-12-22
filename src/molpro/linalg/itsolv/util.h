@@ -4,6 +4,9 @@
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/wrap.h>
 
+#include <locale>
+#include <string>
+
 namespace molpro::linalg::itsolv::util {
 
 /*!
@@ -92,6 +95,16 @@ void delete_parameters(std::vector<int> indices, Container& params) {
   for (auto i : indices)
     params.erase(begin(params) + i);
 }
+
+//! Wraps some useful string manipulation functions
+class StringFacet {
+public:
+  std::string toupper(std::string in);
+  std::string tolower(std::string in);
+
+private:
+  const std::ctype<char>& facet = std::use_facet<std::ctype<char>>(std::locale());
+};
 
 } // namespace molpro::linalg::itsolv::util
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_UTIL_H

@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMOPTIONS_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMOPTIONS_H
 #include <molpro/linalg/itsolv/Options.h>
+#include <molpro/linalg/itsolv/options_map.h>
 
 namespace molpro::linalg::itsolv {
 /*!
@@ -33,7 +34,8 @@ namespace molpro::linalg::itsolv {
  */
 struct LinearEigensystemOptions : public ILinearEigensystemOptions {
   LinearEigensystemOptions() = default;
-  LinearEigensystemOptions(const std::map<std::string, std::string>& opt);
+  LinearEigensystemOptions(const options_map& opt);
+
   std::optional<int> reset_D;
   std::optional<int> reset_D_max_Q_size;
   std::optional<int> max_size_qspace;

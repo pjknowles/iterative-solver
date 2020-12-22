@@ -1,5 +1,4 @@
 #include "LinearEigensystemOptions.h"
-#include "options_map.h"
 #include "util.h"
 
 namespace molpro::linalg::itsolv {

@@ -1,5 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVER_H_OPTIONS_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVER_H_OPTIONS_H
+#include <molpro/linalg/itsolv/options_map.h>
+
 #include <map>
 #include <optional>
 #include <string>
@@ -13,7 +15,7 @@ struct Options {
    * @brief Initialises options from key/value strings. Unrecognised options are ignored.
    * @param opt keys and values are  option name and corresponding value
    */
-  Options(const std::map<std::string, std::string>& opt);
+  Options(const options_map& opt);
   std::optional<double> convergence_threshold; //!< convergence threshold
   std::optional<int> n_roots;                  //!< number of roots to solve for
 
@@ -26,22 +28,22 @@ struct Options {
 
 struct ILinearEigensystemOptions : Options {
   ILinearEigensystemOptions() = default;
-  ILinearEigensystemOptions(const std::map<std::string, std::string>& opt) : Options(opt) {}
+  ILinearEigensystemOptions(const options_map& opt) : Options(opt) {}
 };
 
 struct ILinearEquationsOptions : Options {
   ILinearEquationsOptions() = default;
-  ILinearEquationsOptions(const std::map<std::string, std::string>& opt) : Options(opt) {}
+  ILinearEquationsOptions(const options_map& opt) : Options(opt) {}
 };
 
 struct INonLinearEquationsOptions : Options {
   INonLinearEquationsOptions() = default;
-  INonLinearEquationsOptions(const std::map<std::string, std::string>& opt) : Options(opt) {}
+  INonLinearEquationsOptions(const options_map& opt) : Options(opt) {}
 };
 
 struct IOptimizeOptions : Options {
   IOptimizeOptions() = default;
-  IOptimizeOptions(const std::map<std::string, std::string>& opt) : Options(opt) {}
+  IOptimizeOptions(const options_map& opt) : Options(opt) {}
 };
 
 } // namespace molpro::linalg::itsolv

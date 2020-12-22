@@ -1,12 +1,12 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_NONLINEAREQUATIONSOPTIONS_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_NONLINEAREQUATIONSOPTIONS_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_NONLINEAREQUATIONSOPTIONSDIIS_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_NONLINEAREQUATIONSOPTIONSDIIS_H
 #include <molpro/linalg/itsolv/Options.h>
 #include <string>
 namespace molpro::linalg::itsolv {
 /*!
  * @brief Allows setting and getting of options for NonLinearEquations instance via IterativeSolver base class
  */
-struct NonLinearEquationsOptions : public Options {
+struct NonLinearEquationsOptionsDIIS : public Options {
   std::optional<int> max_size_qspace;
   std::optional<double> norm_thresh;
   std::optional<double> svd_thresh;
@@ -15,4 +15,4 @@ struct NonLinearEquationsOptions : public Options {
 
 } // namespace molpro::linalg::itsolv
 
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_NONLINEAREQUATIONSOPTIONS_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_NONLINEAREQUATIONSOPTIONSDIIS_H

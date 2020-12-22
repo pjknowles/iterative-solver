@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_IMPLEMENTATION_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_IMPLEMENTATION_H
+#include "OptimizeOptionsSD.h"
 #include <molpro/linalg/itsolv/LinearEigensystem.h>
 #include <molpro/linalg/itsolv/LinearEquations.h>
 #include <molpro/linalg/itsolv/NonLinearEquations.h>
@@ -44,31 +45,33 @@ SolverFactory<R, Q, P>::create(const ILinearEquationsOptions& options,
 
 template <class R, class Q, class P>
 std::shared_ptr<INonLinearEquations<R, Q, P>>
-SolverFactory<R, Q, P>::create(const std::string& method, const INonLinearEquationsOptions& options,
+SolverFactory<R, Q, P>::create(const INonLinearEquationsOptions& options,
                                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
-  if (method == "SD") {
+  Options* options_ptr = &const_cast<INonLinearEquationsOptions&>(options);
+  if (auto options_child = dynamic_cast<NonLinearEquationsOptionsDIIS*>(options_ptr); options_child) {
     auto solver = std::make_shared<NonLinearEquations<subspace::SubspaceSolverDIIS, R, Q, P>>(handlers);
     solver->set_options(options);
     return solver;
   }
-  throw std::runtime_error("Unimplemented solver method: " + method);
+  throw std::runtime_error("Unimplemented solver method");
 }
 
 template <class R, class Q, class P>
 std::shared_ptr<IOptimize<R, Q, P>>
-SolverFactory<R, Q, P>::create(const std::string& method, const IOptimizeOptions& options,
+SolverFactory<R, Q, P>::create(const IOptimizeOptions& options,
                                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
-  if (method == "BFGS" or method == "L-BFGS") {
+  Options* options_ptr = &const_cast<IOptimizeOptions&>(options);
+  if (auto options_child = dynamic_cast<OptimizeOptionsBFGS*>(options_ptr); options_child) {
     auto solver = std::make_shared<Optimize<subspace::SubspaceSolverOptBFGS, R, Q, P>>(handlers);
     solver->set_options(options);
     return solver;
   }
-  if (method == "SD") {
+  if (auto options_child = dynamic_cast<OptimizeOptionsSD*>(options_ptr); options_child) {
     auto solver = std::make_shared<Optimize<subspace::SubspaceSolverOptSD, R, Q, P>>(handlers);
     solver->set_options(options);
     return solver;
   }
-  throw std::runtime_error("Unimplemented solver method: " + method);
+  throw std::runtime_error("Unimplemented solver method");
 }
 
 template <class R, class Q, class P>

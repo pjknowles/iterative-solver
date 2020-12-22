@@ -5,6 +5,7 @@ LibraryManager_Append(${PROJECT_NAME}
         PUBLIC_HEADER IterativeSolver.h IterativeSolverTemplate.h LinearEigensystem.h Optimize.h Options.h LinearEquations.h
         Logger.h wrap.h wrap_util.h propose_rspace.h util.h DSpaceResetter.h LinearEigensystemOptions.h CastOptions.h
         LinearEquationsOptions.h SolverFactory.h SolverFactory-implementation.h options_map.h
-        OptimizeOptions.h
+        OptimizeOptionsBFGS.h OptimizeOptionsSD.h
+        NonLinearEquationsOptionsDIIS.h
         )
 add_subdirectory(subspace)

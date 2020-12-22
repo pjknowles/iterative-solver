@@ -74,6 +74,12 @@ public:
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
     return end_iteration(wrap(parameters), wrap(action));
   }
+  size_t end_iteration(R& parameters, R& actions) override {
+    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
+    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
+    return end_iteration(wparams, wactions);
+  }
+
 
   //! Applies the Davidson preconditioner
   void precondition(std::vector<R>& parameters, std::vector<R>& action) const {}

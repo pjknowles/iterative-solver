@@ -9,6 +9,7 @@
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/wrap.h>
+#include <stack>
 
 namespace molpro::linalg::itsolv {
 namespace detail {
@@ -147,7 +148,7 @@ public:
   }
   size_t add_vector(R& parameters, R& actions) override {
     auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
-    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
+    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
     return add_vector(wparams, wactions);
   }
 
@@ -184,6 +185,12 @@ public:
   void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {
     return solution(roots, wrap(parameters), wrap(residual));
   }
+  void solution(R& parameters, R& residual) override {
+    std::vector<int> roots(1,0);
+    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
+    auto wresidual = std::vector<std::reference_wrapper<R>>{std::ref(residual)};
+    return solution(roots, wparams,wresidual);
+  }
 
   void solution_params(const std::vector<int>& roots, std::vector<R>& parameters) override {
     return solution_params(roots, wrap(parameters));
@@ -195,6 +202,13 @@ public:
                                m_xspace->paramsq(), m_xspace->paramsd(), m_xspace->dimensions().oP,
                                m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
   };
+
+  void solution_params(R& parameters) override {
+    std::vector<int> roots(1,0);
+    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
+    return solution_params(roots, wparams);
+  }
+
 
   // TODO Implement this
   std::vector<size_t> suggest_p(const CVecRef<R>& solution, const CVecRef<R>& residual, size_t max_number,
@@ -309,8 +323,8 @@ protected:
       throw std::runtime_error("asking for more roots than there are solutions");
   }
 
-  std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers
-  std::shared_ptr<subspace::IXSpace<R, Q, P>> m_xspace;                  //!< manages the subspace and associated data
+  std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;   //!< Array handlers
+  std::shared_ptr<subspace::IXSpace<R, Q, P>> m_xspace; //!< manages the subspace and associated data
   std::shared_ptr<subspace::ISubspaceSolver<R, Q, P>> m_subspace_solver; //!< solves the subspace problem
   std::vector<double> m_errors;                                          //!< errors from the most recent solution
   std::vector<double> m_value_errors;                                    //!< value errors from the most recent solution

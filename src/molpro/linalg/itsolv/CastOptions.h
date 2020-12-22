@@ -78,6 +78,16 @@ public:
     const auto& opt = const_cast<const Options&>(options);
     return const_cast<OptimizeOptions&>(cast<OptimizeOptions>(options, "OptimizeOptions"));
   }
+  static std::shared_ptr<OptimizeOptions> Optimize(const std::shared_ptr<Options>& options) {
+    return cast<OptimizeOptions>(options, "OptimizeOptions");
+  }
+  static const OptimizeOptions& Optimize(const Options& options) {
+    return cast<OptimizeOptions>(options, "OptimizeOptions");
+  }
+  static OptimizeOptions& Optimize(Options& options) {
+    const auto& opt = const_cast<const Options&>(options);
+    return const_cast<OptimizeOptions&>(cast<OptimizeOptions>(options, "OptimizeOptions"));
+  }
 };
 } // namespace molpro::linalg::itsolv
 

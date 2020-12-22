@@ -4,6 +4,10 @@
 
 #include <molpro/linalg/itsolv/LinearEigensystem.h>
 #include <molpro/linalg/itsolv/LinearEquations.h>
+#include <molpro/linalg/itsolv/IterativeSolver.h>
+
+
+
 #include <molpro/linalg/itsolv/SolverFactory-implementation.h>
 
 namespace molpro::linalg::itsolv {

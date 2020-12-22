@@ -1,4 +1,5 @@
 #include "Options.h"
+#include "util.h"
 
 namespace molpro::linalg::itsolv {
 
@@ -8,12 +9,13 @@ void Options::copy(const Options& options) {
 }
 
 Options::Options(const options_map& opt) {
-  auto present = [&opt](const auto& key) { return opt.find(key) != opt.end(); };
-  if (auto key = "n_roots"; present(key)) {
-    n_roots = std::stoi(opt.at(key));
+  auto facet = util::StringFacet{};
+  auto opt_upper = util::capitalize_keys(opt, facet);
+  if (auto key = facet.toupper("n_roots"); opt_upper.count(key)) {
+    n_roots = std::stoi(opt_upper.at(key));
   };
-  if (auto key = "convergence_threshold"; present(key)) {
-    convergence_threshold = std::stod(opt.at(key));
+  if (auto key = facet.toupper("convergence_threshold"); opt_upper.count(key)) {
+    convergence_threshold = std::stod(opt_upper.at(key));
   }
 }
 

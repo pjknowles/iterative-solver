@@ -1,17 +1,17 @@
 #include "util.h"
 namespace molpro::linalg::itsolv::util {
 
-std::string StringFacet::toupper(std::string in) {
+std::string StringFacet::toupper(std::string in) const {
   facet.toupper(in.data(), in.data() + in.size());
   return in;
 }
 
-std::string StringFacet::tolower(std::string in) {
+std::string StringFacet::tolower(std::string in) const {
   facet.tolower(in.data(), in.data() + in.size());
   return in;
 }
 
-bool StringFacet::tobool(const std::string &in) {
+bool StringFacet::tobool(const std::string &in) const {
   auto val = toupper(in);
   crop_space(val);
   bool result;

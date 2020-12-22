@@ -99,9 +99,9 @@ void delete_parameters(std::vector<int> indices, Container& params) {
 //! Wraps some useful string manipulation functions
 class StringFacet {
 public:
-  std::string toupper(std::string in);
-  std::string tolower(std::string in);
-  bool tobool(const std::string& in);
+  std::string toupper(std::string in) const;
+  std::string tolower(std::string in) const;
+  bool tobool(const std::string& in) const;
   static void crop_space(std::string& path);
 
 private:

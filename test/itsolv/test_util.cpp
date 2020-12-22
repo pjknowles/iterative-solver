@@ -80,3 +80,26 @@ TEST(StringFacet, crop_space) {
     ASSERT_EQ(s, core_text);
   }
 }
+
+TEST(StringFacet, tobool_true) {
+  auto sf = StringFacet{};
+  for (std::string s : {"TRUE", "True", "tRuE", "true", " true", "    true    ", "T", "t", "1"}) {
+    bool string_as_bool = sf.tobool(s);
+    ASSERT_TRUE(string_as_bool);
+  }
+}
+
+TEST(StringFacet, tobool_false) {
+  auto sf = StringFacet{};
+  for (std::string s : {"FALSE", "False", "fAlSe", "false", " false", "  false    ", "F", "f", "0"}) {
+    bool string_as_bool = sf.tobool(s);
+    ASSERT_FALSE(string_as_bool);
+  }
+}
+
+TEST(StringFacet, tobool_exception) {
+  auto sf = StringFacet{};
+  for (std::string s : {"Tr", "fal", "2", ""}) {
+    ASSERT_THROW(sf.tobool(s), std::runtime_error);
+  }
+}

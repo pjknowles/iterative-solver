@@ -101,6 +101,7 @@ class StringFacet {
 public:
   std::string toupper(std::string in);
   std::string tolower(std::string in);
+  bool tobool(const std::string& in);
   static void crop_space(std::string& path);
 
 private:

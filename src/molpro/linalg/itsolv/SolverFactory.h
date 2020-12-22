@@ -69,15 +69,16 @@ public:
   virtual std::shared_ptr<ILinearEquations<R, Q, P>>
   create(const ILinearEquationsOptions& options,
          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
-         std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
+             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
   virtual std::shared_ptr<INonLinearEquations<R, Q, P>>
-  create(const INonLinearEquationsOptions& options,
+  create(const std::string& method = "DIIS",
+  const INonLinearEquationsOptions& options=INonLinearEquationsOptions{},
          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
-         std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
+             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
   virtual std::shared_ptr<IOptimize<R, Q, P>>
-  create(const IOptimizeOptions& options,
+  create(const std::string& method = "BFGS", const IOptimizeOptions& options = IOptimizeOptions{},
          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
@@ -91,18 +92,34 @@ template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
 std::shared_ptr<ILinearEigensystem<R, Q, P>>
 create_LinearEigensystem(const ILinearEigensystemOptions& options,
                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
-                         std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+                             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   return SolverFactory<R, Q, P>{}.create(options, handlers);
 }
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
 std::shared_ptr<ILinearEquations<R, Q, P>>
 create_LinearEquations(const ILinearEquationsOptions& options,
-       const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
-       std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
-  return SolverFactory<R,Q,P>{}.create(options, handlers);
+                       const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                           std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  return SolverFactory<R, Q, P>{}.create(options, handlers);
 }
 
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+std::shared_ptr<INonLinearEquations<R, Q, P>>
+create_NonLinearEquations(const std::string& method = "DIIS", const INonLinearEquationsOptions& options=INonLinearEquationsOptions{},
+                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                          std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  return SolverFactory<R, Q, P>{}.create(method, options, handlers);
+}
+
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+std::shared_ptr<INonLinearEquations<R, Q, P>>
+create_NonLinearEquations(const std::string& method, const std::string& options,
+                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                          std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  options_map optionsmap; // TODO populate with options
+  return SolverFactory<R, Q, P>{}.create(method, optionsmap, handlers);
+}
 
 } // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_H

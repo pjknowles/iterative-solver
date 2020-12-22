@@ -44,21 +44,31 @@ SolverFactory<R, Q, P>::create(const ILinearEquationsOptions& options,
 
 template <class R, class Q, class P>
 std::shared_ptr<INonLinearEquations<R, Q, P>>
-SolverFactory<R, Q, P>::create(const INonLinearEquationsOptions& options,
+SolverFactory<R, Q, P>::create(const std::string& method, const INonLinearEquationsOptions& options,
                                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
-  auto solver =
-      std::make_shared<NonLinearEquations<molpro::linalg::itsolv::subspace::SubspaceSolverDIIS, R, Q, P>>(handlers);
-  solver->set_options(options);
-  return solver;
+  if (method == "SD") {
+    auto solver = std::make_shared<NonLinearEquations<subspace::SubspaceSolverDIIS, R, Q, P>>(handlers);
+    solver->set_options(options);
+    return solver;
+  }
+  throw std::runtime_error("Unimplemented solver method: " + method);
 }
 
 template <class R, class Q, class P>
 std::shared_ptr<IOptimize<R, Q, P>>
-SolverFactory<R, Q, P>::create(const IOptimizeOptions& options,
+SolverFactory<R, Q, P>::create(const std::string& method, const IOptimizeOptions& options,
                                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
-  auto solver = std::make_shared<Optimize<molpro::linalg::itsolv::subspace::SubspaceSolverOptBFGS, R, Q, P>>(handlers);
-  solver->set_options(options);
-  return solver;
+  if (method == "BFGS" or method == "L-BFGS") {
+    auto solver = std::make_shared<Optimize<subspace::SubspaceSolverOptBFGS, R, Q, P>>(handlers);
+    solver->set_options(options);
+    return solver;
+  }
+  if (method == "SD") {
+    auto solver = std::make_shared<Optimize<subspace::SubspaceSolverOptSD, R, Q, P>>(handlers);
+    solver->set_options(options);
+    return solver;
+  }
+  throw std::runtime_error("Unimplemented solver method: " + method);
 }
 
 template <class R, class Q, class P>

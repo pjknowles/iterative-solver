@@ -71,14 +71,14 @@ struct OptimizeF : ::testing::Test {
   template <template <class, class, class> class subspaceSolver>
   auto set_options(std::shared_ptr<molpro::linalg::itsolv::Optimize<subspaceSolver, Rvector, Qvector>>& solver,
                    std::shared_ptr<Logger>& logger) {
-    auto options = CastOptions::Optimize(solver->get_options());
+    auto options = CastOptions::OptimizeBFGS(solver->get_options());
     options->convergence_threshold = 1.0e-8;
     //    options->norm_thresh = 1.0e-14;
     //    options->svd_thresh = 1.0e-10;
     options->n_roots = 1;
     options->max_size_qspace = 10;
     solver->set_options(*options);
-    options = CastOptions::Optimize(solver->get_options());
+    options = CastOptions::OptimizeBFGS(solver->get_options());
     molpro::cout << "convergence threshold = " << options->convergence_threshold.value()
                  << ", svd thresh = " << options->svd_thresh.value()
                  << ", norm thresh = " << options->norm_thresh.value()

@@ -4,7 +4,7 @@
 #include <string>
 namespace molpro::linalg::itsolv {
 /*!
- * @brief Allows setting and getting of options for NonLinearEquations instance via IterativeSolver base class
+ * @brief Allows setting and getting of options for NonLinearEquationsDIIS instance via IterativeSolver base class
  */
 struct NonLinearEquationsDIISOptions : public INonLinearEquationsOptions {
   NonLinearEquationsDIISOptions() = default;

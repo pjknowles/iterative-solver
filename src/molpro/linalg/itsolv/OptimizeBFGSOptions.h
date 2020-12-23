@@ -4,7 +4,7 @@
 #include <string>
 namespace molpro::linalg::itsolv {
 /*!
- * @brief Allows setting and getting of options for Optimize instance via IterativeSolver base class
+ * @brief Allows setting and getting of options for OptimizeBFGS instance via IterativeSolver base class
  */
 struct OptimizeBFGSOptions : public IOptimizeOptions {
   OptimizeBFGSOptions() = default;

@@ -56,9 +56,9 @@ namespace molpro::linalg::itsolv {
  *      eigen_solver.solve();
  *      user_defined_print(eigen_solver.eigenvalues());
  *
- *      // Or with options provided as a key1=value1,key2=value2,.. string, and using a free-function factory call, and using default handlers where these support the given R, Q, P:
- *      auto eigen_solver = create_LinearEigensystem<R, Q, P>("max_size_qspace=6, nroots=3, convergence_threshold=1e-4");
- *      eigen_solver.solve();
+ *      // Or with options provided as a key1=value1,key2=value2,.. string, and using a free-function factory call, and
+ * using default handlers where these support the given R, Q, P: auto eigen_solver = create_LinearEigensystem<R, Q,
+ * P>("max_size_qspace=6, nroots=3, convergence_threshold=1e-4"); eigen_solver.solve();
  *
  *      // The factory functions for non-linear equations and optimisation take
  *      // an additional argument specifying the method:
@@ -113,7 +113,7 @@ create_LinearEigensystem(const ILinearEigensystemOptions& options,
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
 std::shared_ptr<ILinearEigensystem<R, Q, P>>
-create_LinearEigensystem(const std::string& method, const std::string& options,
+create_LinearEigensystem(const std::string& options,
                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   auto optionsmap = SolverFactory<R, Q, P>::split_string(options);
@@ -130,7 +130,7 @@ create_LinearEquations(const ILinearEquationsOptions& options,
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
 std::shared_ptr<ILinearEquations<R, Q, P>>
-create_LinearEquations(const std::string& method, const std::string& options,
+create_LinearEquations(const std::string& options,
                        const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                            std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   auto optionsmap = SolverFactory<R, Q, P>::split_string(options);

@@ -70,13 +70,18 @@ public:
 
   void set_options(const Options& options) override {
     SolverTemplate::set_options(options);
-    auto opt = CastOptions::Optimize(options);
-    if (opt.max_size_qspace)
-      set_max_size_qspace(opt.max_size_qspace.value());
-    if (opt.norm_thresh)
-      set_norm_thresh(opt.norm_thresh.value());
-    if (opt.svd_thresh)
-      set_svd_thresh(opt.svd_thresh.value());
+    if (auto opt2 = dynamic_cast<const molpro::linalg::itsolv::OptimizeBFGSOptions*>(&options)) {
+      auto opt = CastOptions::OptimizeBFGS(options);
+      if (opt.max_size_qspace)
+        set_max_size_qspace(opt.max_size_qspace.value());
+      if (opt.norm_thresh)
+        set_norm_thresh(opt.norm_thresh.value());
+      if (opt.svd_thresh)
+        set_svd_thresh(opt.svd_thresh.value());
+    }
+    if (auto opt2 = dynamic_cast<const molpro::linalg::itsolv::OptimizeSDOptions*>(&options)) {
+    auto opt = CastOptions::OptimizeSD(options);
+    }
   }
 
   std::shared_ptr<Options> get_options() const override {

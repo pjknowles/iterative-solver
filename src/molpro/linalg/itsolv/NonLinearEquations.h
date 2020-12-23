@@ -70,7 +70,7 @@ public:
 
   void set_options(const Options& options) override {
     SolverTemplate::set_options(options);
-    auto opt = CastOptions::NonLinearEquations(options);
+    auto opt = CastOptions::NonLinearEquationsDIIS(options);
     if (opt.max_size_qspace)
       set_max_size_qspace(opt.max_size_qspace.value());
     if (opt.norm_thresh)

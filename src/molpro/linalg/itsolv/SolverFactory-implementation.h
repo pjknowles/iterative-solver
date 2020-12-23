@@ -106,7 +106,7 @@ options_map SolverFactory<R, Q, P>::split_string(std::string s) {
     auto end = s.find_first_of(field_separators);
     auto entry = trim(s.substr(0, end));
     if (entry.empty()) break;
-    auto equal = entry.template find_first_of(keyval_separators);
+    auto equal = entry.find_first_of(keyval_separators);
     if (equal == std::string::npos)
       throw std::runtime_error("String " + entry + " cannot be parsed as key" + field_separators.front() + "value");
     result[trim(entry.substr(0, equal ))] = trim(entry.substr(equal+1));

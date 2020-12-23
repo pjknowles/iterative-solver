@@ -28,7 +28,7 @@ template <class T>
 using decay_t = typename decay<T>::type;
 
 //! Takes a begin and end iterators and returns a vector of references to each element
-template <class R, class ForwardIt>
+template <class ForwardIt>
 auto wrap(ForwardIt begin, ForwardIt end) {
   using T = decay_t<decay_t<decltype(*begin)>>;
   auto w = VecRef<T>{};
@@ -38,7 +38,7 @@ auto wrap(ForwardIt begin, ForwardIt end) {
 }
 
 //! Takes a begin and end iterators and returns a vector of references to each element
-template <class R, class ForwardIt>
+template <class ForwardIt>
 auto cwrap(ForwardIt begin, ForwardIt end) {
   using T = decay_t<decay_t<decltype(*begin)>>;
   auto w = CVecRef<T>{};

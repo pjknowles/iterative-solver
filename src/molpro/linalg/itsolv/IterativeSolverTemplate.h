@@ -142,8 +142,8 @@ public:
       throw std::runtime_error(
           "Solver contains P space but no valid apply_p function. Make sure add_p was called correctly.");
     auto nW = std::min(m_working_set.size(), parameters.size());
-    auto cwparams = cwrap<R>(begin(parameters), begin(parameters) + nW);
-    auto cwactions = cwrap<R>(begin(actions), begin(actions) + nW);
+    auto cwparams = cwrap(begin(parameters), begin(parameters) + nW);
+    auto cwactions = cwrap(begin(actions), begin(actions) + nW);
     m_stats->r_creations += nW;
     m_xspace->update_qspace(cwparams, cwactions);
     m_stats->q_creations += 2*nW;

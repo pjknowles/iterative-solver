@@ -1,8 +1,15 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_H
 #include <memory>
+
+#include "LinearEigensystemOptions.h"
+#include "LinearEquationsOptions.h"
+#include "OptimizeBFGSOptions.h"
+#include "OptimizeSDOptions.h"
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
+#include <molpro/linalg/itsolv/NonLinearEquationsDIISOptions.h>
+#include <molpro/linalg/itsolv/options_map.h>
 
 namespace molpro::linalg::itsolv {
 /*!
@@ -48,22 +55,127 @@ namespace molpro::linalg::itsolv {
  *      std::shared_ptr<ILinearEigensystem> eigen_solver = factory.create(*eigen_options, handlers);
  *      eigen_solver.solve();
  *      user_defined_print(eigen_solver.eigenvalues());
+ *
+ *      // Or with options provided as a key1=value1,key2=value2,.. string, and using a free-function factory call, and
+ * using default handlers where these support the given R, Q, P: auto eigen_solver = create_LinearEigensystem<R, Q,
+ * P>("max_size_qspace=6, nroots=3, convergence_threshold=1e-4"); eigen_solver.solve();
+ *
+ *      // The factory functions for non-linear equations and optimisation take
+ *      // an additional argument specifying the method:
+ *      auto minimiser = create_Optimize<R, Q, P>("BFGS","convergence_threshold=1e-5");
  * }
  * @endcode
  *
  */
-template <class R, class Q, class P>
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
 class SolverFactory {
 public:
   virtual ~SolverFactory() = default;
   virtual std::shared_ptr<IterativeSolver<R, Q, P>> create(const Options& options,
                                                            const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers);
 
-  virtual std::shared_ptr<ILinearEigensystem<R, Q, P>> create(const ILinearEigensystemOptions& options,
-                                                              const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers);
+  virtual std::shared_ptr<ILinearEigensystem<R, Q, P>>
+  create(const ILinearEigensystemOptions& options,
+         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
-  virtual std::shared_ptr<ILinearEquations<R, Q, P>> create(const ILinearEquationsOptions& options,
-                                                            const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers);
+  virtual std::shared_ptr<ILinearEquations<R, Q, P>>
+  create(const ILinearEquationsOptions& options,
+         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
+
+  virtual std::shared_ptr<INonLinearEquations<R, Q, P>>
+  create(const INonLinearEquationsOptions& options = INonLinearEquationsOptions{},
+         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
+
+  virtual std::shared_ptr<IOptimize<R, Q, P>>
+  create(const IOptimizeOptions& options = IOptimizeOptions{},
+         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
+
+  virtual std::shared_ptr<IterativeSolver<R, Q, P>>
+  create(const std::string& method, const options_map& options,
+         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
+
+  static std::map<std::string, std::string> split_string(std::string s);
 };
+
+// free-function factory invocation
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+std::shared_ptr<ILinearEigensystem<R, Q, P>>
+create_LinearEigensystem(const ILinearEigensystemOptions& options,
+                         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  return SolverFactory<R, Q, P>{}.create(options, handlers);
+}
+
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+std::shared_ptr<ILinearEigensystem<R, Q, P>>
+create_LinearEigensystem(const std::string& options,
+                         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  auto optionsmap = SolverFactory<R, Q, P>::split_string(options);
+  return SolverFactory<R, Q, P>{}.create(LinearEigensystemOptions{optionsmap}, handlers);
+}
+
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+std::shared_ptr<ILinearEquations<R, Q, P>>
+create_LinearEquations(const ILinearEquationsOptions& options,
+                       const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                           std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  return SolverFactory<R, Q, P>{}.create(options, handlers);
+}
+
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+std::shared_ptr<ILinearEquations<R, Q, P>>
+create_LinearEquations(const std::string& options,
+                       const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                           std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  auto optionsmap = SolverFactory<R, Q, P>::split_string(options);
+  return SolverFactory<R, Q, P>{}.create(LinearEquationsOptions{optionsmap}, handlers);
+}
+
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+std::shared_ptr<INonLinearEquations<R, Q, P>>
+create_NonLinearEquations(const INonLinearEquationsOptions& options = INonLinearEquationsOptions{},
+                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  return SolverFactory<R, Q, P>{}.create(options, handlers);
+}
+
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+std::shared_ptr<INonLinearEquations<R, Q, P>>
+create_NonLinearEquations(const std::string& method, const std::string& options,
+                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  auto optionsmap = SolverFactory<R, Q, P>::split_string(options);
+  if (method == "DIIS")
+    return SolverFactory<R, Q, P>{}.create(NonLinearEquationsDIISOptions{optionsmap}, handlers);
+  throw std::runtime_error("Unimplemented method " + method);
+}
+
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+std::shared_ptr<IOptimize<R, Q, P>>
+create_Optimize(const IOptimizeOptions& options = IOptimizeOptions{},
+                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                    std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  return SolverFactory<R, Q, P>{}.create(options, handlers);
+}
+
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+std::shared_ptr<IOptimize<R, Q, P>>
+create_Optimize(const std::string& method, const std::string& options,
+                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                    std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  auto optionsmap = SolverFactory<R, Q, P>::split_string(options);
+  if (method == "BFGS")
+    return SolverFactory<R, Q, P>{}.create(OptimizeBFGSOptions{optionsmap}, handlers);
+  if (method == "SD")
+    return SolverFactory<R, Q, P>{}.create(OptimizeSDOptions{optionsmap}, handlers);
+  throw std::runtime_error("Unimplemented method " + method);
+}
+
 } // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_H

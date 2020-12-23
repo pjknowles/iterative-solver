@@ -13,6 +13,7 @@ using Pvector = std::map<size_t, double>;
 using molpro::linalg::itsolv::CastOptions;
 using molpro::linalg::itsolv::ILinearEigensystem;
 using molpro::linalg::itsolv::ILinearEquations;
+using molpro::linalg::itsolv::IOptimize;
 using molpro::linalg::itsolv::IterativeSolver;
 using molpro::linalg::itsolv::Logger;
 

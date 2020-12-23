@@ -60,6 +60,12 @@ public:
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
     return end_iteration(wrap(parameters), wrap(action));
   }
+  size_t end_iteration(R& parameters, R& actions) override {
+    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
+    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
+    return end_iteration(wparams, wactions);
+  }
+
 
   void add_equations(const CVecRef<R>& rhs) override {
     auto xspace = std::static_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);

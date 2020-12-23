@@ -43,6 +43,10 @@ public:
     if (m_buffer.size() != size())
       throw std::runtime_error("data buffer is of the wrong size");
   }
+  explicit Matrix(const std::vector<T>& data, coord_type dims) : m_rows(dims.first), m_cols(dims.second), m_buffer(data) {
+    if (m_buffer.size() != size())
+      throw std::runtime_error("data buffer is of the wrong size");
+  }
   Matrix() = default;
   ~Matrix() = default;
   Matrix(const Matrix<T>&) = default;

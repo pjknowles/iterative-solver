@@ -2,15 +2,13 @@
 #include <gtest/gtest.h>
 
 #include <molpro/linalg/itsolv/SolverFactory.h>
+#include "vector_types.h"
 
 using molpro::linalg::itsolv::Options;
 using molpro::linalg::itsolv::options_map;
-using R = std::vector<double>;
-using Q = std::vector<double>;
-using P = std::vector<double>;
 
 TEST(SolverFactory, split_string) {
-  using factory = molpro::linalg::itsolv::SolverFactory<R, Q, P>;
+  using factory = molpro::linalg::itsolv::SolverFactory<Rvector, Qvector, Pvector>;
   std::string good{" key1=value1 , key2=value2,key3=  , key4=value4"};
   std::string bad{"keywithoutvalue"};
   auto sgood = factory::split_string(good);
@@ -22,7 +20,7 @@ TEST(SolverFactory, split_string) {
 }
 TEST(SolverFactory, string_constructor) {
   {
-    auto solver = molpro::linalg::itsolv::create_LinearEigensystem<R, Q, P>(
+    auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector, Pvector>(
         "convergence_threshold=1e-3,max_size_qspace=73, n_roots=4");
     auto options = dynamic_cast<molpro::linalg::itsolv::Options*>(solver->get_options().get());
     EXPECT_TRUE(options->convergence_threshold.has_value());
@@ -37,7 +35,7 @@ TEST(SolverFactory, string_constructor) {
   }
 
   {
-    auto solver = molpro::linalg::itsolv::create_LinearEquations<R, Q, P>(
+    auto solver = molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector, Pvector>(
         "convergence_threshold=1e-3,max_size_qspace=73, rubbish=trash");
     auto options = dynamic_cast<molpro::linalg::itsolv::LinearEquationsOptions*>(solver->get_options().get());
     EXPECT_TRUE(options->convergence_threshold.has_value());
@@ -48,7 +46,7 @@ TEST(SolverFactory, string_constructor) {
   }
 
   for (const auto& method : std::vector<std::string>{"DIIS"}) {
-    auto solver = molpro::linalg::itsolv::create_NonLinearEquations<R, Q, P>(
+    auto solver = molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector, Pvector>(
         "DIIS", "convergence_threshold=1e-3,max_size_qspace=73, rubbish=trash");
     auto options = dynamic_cast<molpro::linalg::itsolv::Options*>(solver->get_options().get());
     EXPECT_TRUE(options->convergence_threshold.has_value());
@@ -62,7 +60,7 @@ TEST(SolverFactory, string_constructor) {
   }
 
   for (const auto& method : std::vector<std::string>{"BFGS", "SD"}) {
-    auto solver = molpro::linalg::itsolv::create_Optimize<R, Q, P>(
+    auto solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector, Pvector>(
         method, std::string{"convergence_threshold=1e-3"} + (method == "BFGS" ? ",max_size_qspace=73" : ""));
     auto options = dynamic_cast<molpro::linalg::itsolv::Options*>(solver->get_options().get());
     EXPECT_TRUE(options->convergence_threshold.has_value());

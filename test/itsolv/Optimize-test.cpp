@@ -1,4 +1,4 @@
-#include "test.h"
+#include "../test.h"
 
 #include <Eigen/Dense>
 #include <cmath>
@@ -14,9 +14,9 @@
 #include <molpro/linalg/itsolv/helper.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverOptBFGS.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverOptSD.h>
+#include <molpro/linalg/itsolv/SolverFactory.h>
 
-using Rvector = std::vector<double>;
-using Qvector = std::vector<double>;
+#include "vector_types.h"
 using molpro::linalg::itsolv::CastOptions;
 using molpro::linalg::itsolv::Logger;
 using molpro::linalg::array::Span;
@@ -68,27 +68,6 @@ struct OptimizeF : ::testing::Test {
       psg[i] = -psg[i] / hmat(i, i);
   }
 
-  template <template <class, class, class> class subspaceSolver>
-  auto set_options(std::shared_ptr<molpro::linalg::itsolv::Optimize<subspaceSolver, Rvector, Qvector>>& solver,
-                   std::shared_ptr<Logger>& logger) {
-    auto options = CastOptions::OptimizeBFGS(solver->get_options());
-    options->convergence_threshold = 1.0e-8;
-    //    options->norm_thresh = 1.0e-14;
-    //    options->svd_thresh = 1.0e-10;
-    options->n_roots = 1;
-    options->max_size_qspace = 10;
-    solver->set_options(*options);
-    options = CastOptions::OptimizeBFGS(solver->get_options());
-    molpro::cout << "convergence threshold = " << options->convergence_threshold.value()
-                 << ", svd thresh = " << options->svd_thresh.value()
-                 << ", norm thresh = " << options->norm_thresh.value()
-                 << ", max size of Q = " << options->max_size_qspace.value() << std::endl;
-    logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
-    logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
-    logger->data_dump = false;
-    return options;
-  }
-
   template<template <class, class, class> class SubspaceSolver=molpro::linalg::itsolv::subspace::SubspaceSolverOptSD>
   void test_quadratic_form(const std::string& title = "", const int n_working_vectors_max = 0) {
     int nroot = 1;
@@ -98,12 +77,13 @@ struct OptimizeF : ::testing::Test {
         molpro::cout << "\n\n*** " << title << ",  problem dimension " << n
                      << ", n_working_vectors_max = " << n_working_vectors_max << std::endl;
 
-        auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector>>();
-        auto solver =
-            std::make_shared<molpro::linalg::itsolv::Optimize<SubspaceSolver,
-                                                              Rvector, Qvector>>(handlers);
-        auto logger = solver->logger;
-        auto options = set_options(solver, logger);
+//        auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector>>();
+//        auto solver =
+//            std::make_shared<molpro::linalg::itsolv::Optimize<SubspaceSolver,
+//                                                              Rvector, Qvector>>(handlers);
+        auto solver = molpro::linalg::itsolv::create_Optimize<Rvector ,Qvector >("BFGS","convergence_threshold=1e-8,n_roots=1,max_size_qspace=10");
+//        auto logger = dynamic_cast<molpro::linalg::itsolv::Optimize<molpro::linalg::itsolv::subspace::SubspaceSolverOptBFGS<Rvector,Qvector,Pvector>,Rvector,Qvector,Pvector>*>(solver)->logger;
+        auto options = CastOptions::OptimizeBFGS(solver->get_options());
         int nwork = 1;
         // Create initial subspace. This is iteration 0.
         Rvector x(n, 0), g(n);

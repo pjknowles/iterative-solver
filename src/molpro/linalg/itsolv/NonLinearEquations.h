@@ -80,7 +80,7 @@ public:
   }
 
   std::shared_ptr<Options> get_options() const override {
-    auto opt = std::make_shared<NonLinearEquationsOptionsDIIS>();
+    auto opt = std::make_shared<NonLinearEquationsDIISOptions>();
     opt->copy(*SolverTemplate::get_options());
     opt->max_size_qspace = get_max_size_qspace();
     opt->norm_thresh = get_norm_thresh();

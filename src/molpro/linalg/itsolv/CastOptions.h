@@ -4,8 +4,8 @@
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/LinearEigensystemOptions.h>
 #include <molpro/linalg/itsolv/LinearEquationsOptions.h>
-#include <molpro/linalg/itsolv/NonLinearEquationsOptionsDIIS.h>
-#include <molpro/linalg/itsolv/OptimizeOptionsBFGS.h>
+#include <molpro/linalg/itsolv/NonLinearEquationsDIISOptions.h>
+#include <molpro/linalg/itsolv/OptimizeBFGSOptions.h>
 #include <stdexcept>
 
 namespace molpro::linalg::itsolv {
@@ -56,27 +56,27 @@ public:
     return const_cast<LinearEquationsOptions&>(cast<LinearEquationsOptions>(options, "LinearEquationsOptions"));
   }
 
-  static std::shared_ptr<NonLinearEquationsOptionsDIIS> NonLinearEquations(const std::shared_ptr<Options>& options) {
-    return cast<NonLinearEquationsOptionsDIIS>(options, "NonLinearEquationsOptions");
+  static std::shared_ptr<NonLinearEquationsDIISOptions> NonLinearEquations(const std::shared_ptr<Options>& options) {
+    return cast<NonLinearEquationsDIISOptions>(options, "NonLinearEquationsOptions");
   }
-  static const NonLinearEquationsOptionsDIIS& NonLinearEquations(const Options& options) {
-    return cast<NonLinearEquationsOptionsDIIS>(options, "NonLinearEquationsOptions");
+  static const NonLinearEquationsDIISOptions& NonLinearEquations(const Options& options) {
+    return cast<NonLinearEquationsDIISOptions>(options, "NonLinearEquationsOptions");
   }
-  static NonLinearEquationsOptionsDIIS& NonLinearEquations(Options& options) {
+  static NonLinearEquationsDIISOptions& NonLinearEquations(Options& options) {
     const auto& opt = const_cast<const Options&>(options);
-    return const_cast<NonLinearEquationsOptionsDIIS&>(cast<NonLinearEquationsOptionsDIIS>(options, "NonLinearEquationsOptions"));
+    return const_cast<NonLinearEquationsDIISOptions&>(cast<NonLinearEquationsDIISOptions>(options, "NonLinearEquationsOptions"));
   }
 
 
-  static std::shared_ptr<OptimizeOptionsBFGS> Optimize(const std::shared_ptr<Options>& options) {
-    return cast<OptimizeOptionsBFGS>(options, "OptimizeOptions");
+  static std::shared_ptr<OptimizeBFGSOptions> Optimize(const std::shared_ptr<Options>& options) {
+    return cast<OptimizeBFGSOptions>(options, "OptimizeOptions");
   }
-  static const OptimizeOptionsBFGS& Optimize(const Options& options) {
-    return cast<OptimizeOptionsBFGS>(options, "OptimizeOptions");
+  static const OptimizeBFGSOptions& Optimize(const Options& options) {
+    return cast<OptimizeBFGSOptions>(options, "OptimizeOptions");
   }
-  static OptimizeOptionsBFGS& Optimize(Options& options) {
+  static OptimizeBFGSOptions& Optimize(Options& options) {
     const auto& opt = const_cast<const Options&>(options);
-    return const_cast<OptimizeOptionsBFGS&>(cast<OptimizeOptionsBFGS>(options, "OptimizeOptions"));
+    return const_cast<OptimizeBFGSOptions&>(cast<OptimizeBFGSOptions>(options, "OptimizeOptions"));
   }
 };
 } // namespace molpro::linalg::itsolv

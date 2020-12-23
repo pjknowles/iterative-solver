@@ -6,11 +6,12 @@ namespace molpro::linalg::itsolv {
 /*!
  * @brief Allows setting and getting of options for NonLinearEquations instance via IterativeSolver base class
  */
-struct NonLinearEquationsOptionsDIIS : public Options {
+struct NonLinearEquationsDIISOptions : public INonLinearEquationsOptions {
+  NonLinearEquationsDIISOptions() = default;
+  NonLinearEquationsDIISOptions(const options_map& opt);
   std::optional<int> max_size_qspace;
   std::optional<double> norm_thresh;
   std::optional<double> svd_thresh;
-  std::optional<std::string> method;
 };
 
 } // namespace molpro::linalg::itsolv

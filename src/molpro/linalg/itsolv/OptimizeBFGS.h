@@ -1,9 +1,10 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_OPTIMIZE_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_OPTIMIZE_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_OPTIMIZEBFGS_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_OPTIMIZEBFGS_H
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
+#include <molpro/linalg/itsolv/subspace/SubspaceSolverOptBFGS.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
 
 namespace molpro::linalg::itsolv {
@@ -15,20 +16,21 @@ namespace molpro::linalg::itsolv {
  * @tparam R The class encapsulating solution and residual vectors
  * @tparam Q Used internally as a class for storing vectors on backing store
  */
-template <template <class, class, class> class SubspaceSolver, class R, class Q, class P = std::map<size_t, typename R::value_type>>
-class Optimize : public IterativeSolverTemplate<IOptimize, R, Q, P> {
+template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+class OptimizeBFGS : public IterativeSolverTemplate<IOptimize, R, Q, P> {
 public:
   using SolverTemplate = IterativeSolverTemplate<IOptimize, R, Q, P>;
   using SolverTemplate ::report;
   using typename SolverTemplate::scalar_type;
   using typename SolverTemplate::value_type;
   using typename SolverTemplate::value_type_abs;
+  using SubspaceSolver = subspace::SubspaceSolverOptBFGS<R, Q, P>;
 
-  explicit Optimize(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
-                    const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
+  explicit OptimizeBFGS(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
+                        const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
       : SolverTemplate(std::make_shared<subspace::XSpace<R, Q, P>>(handlers, logger_),
                        std::static_pointer_cast<subspace::ISubspaceSolver<R, Q, P>>(
-                           std::make_shared<SubspaceSolver<R, Q, P>>(logger_)),
+                           std::make_shared<subspace::SubspaceSolverOptBFGS<R, Q, P>>(logger_)),
                        handlers, std::make_shared<Statistics>(), logger_),
         logger(logger_) {}
 
@@ -80,7 +82,7 @@ public:
         set_svd_thresh(opt.svd_thresh.value());
     }
     if (auto opt2 = dynamic_cast<const molpro::linalg::itsolv::OptimizeSDOptions*>(&options)) {
-    auto opt = CastOptions::OptimizeSD(options);
+      auto opt = CastOptions::OptimizeSD(options);
     }
   }
 
@@ -129,7 +131,7 @@ protected:
     auto& xdata = xspace->data;
     if (xdata.find(EqnData::signals) != xdata.end() && xdata[EqnData::signals].empty())
       signal = xdata[EqnData::signals](0, 0);
-//    molpro::cout << "signal " << signal << std::endl;
+    //    molpro::cout << "signal " << signal << std::endl;
     return signal;
   }
   // for non-linear problems, actions already contains the residual
@@ -141,4 +143,4 @@ protected:
 };
 
 } // namespace molpro::linalg::itsolv
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_OPTIMIZE_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_OPTIMIZEBFGS_H

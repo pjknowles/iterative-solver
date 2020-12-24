@@ -1,4 +1,4 @@
-#include "../test.h"
+#include "test.h"
 
 #include <Eigen/Dense>
 #include <cmath>
@@ -15,7 +15,6 @@
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverOptBFGS.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverOptSD.h>
 #include <molpro/linalg/itsolv/SolverFactory.h>
-
 #include "vector_types.h"
 using molpro::linalg::itsolv::CastOptions;
 using molpro::linalg::itsolv::Logger;
@@ -26,7 +25,6 @@ using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::wrap;
 struct OptimizeF : ::testing::Test {
   using scalar = double;
-  using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
   using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
 
   size_t n = 0;
@@ -68,8 +66,7 @@ struct OptimizeF : ::testing::Test {
       psg[i] = -psg[i] / hmat(i, i);
   }
 
-  template<template <class, class, class> class SubspaceSolver=molpro::linalg::itsolv::subspace::SubspaceSolverOptSD>
-  void test_quadratic_form(const std::string& title = "", const int n_working_vectors_max = 0) {
+  void test_quadratic_form(const std::string& method, const std::string& title = "", const int n_working_vectors_max = 0) {
     int nroot = 1;
     {
       int np = 0;
@@ -77,13 +74,7 @@ struct OptimizeF : ::testing::Test {
         molpro::cout << "\n\n*** " << title << ",  problem dimension " << n
                      << ", n_working_vectors_max = " << n_working_vectors_max << std::endl;
 
-//        auto handlers = std::make_shared<molpro::linalg::itsolv::ArrayHandlers<Rvector, Qvector>>();
-//        auto solver =
-//            std::make_shared<molpro::linalg::itsolv::Optimize<SubspaceSolver,
-//                                                              Rvector, Qvector>>(handlers);
-        auto solver = molpro::linalg::itsolv::create_Optimize<Rvector ,Qvector >("BFGS","convergence_threshold=1e-8,n_roots=1,max_size_qspace=10");
-//        auto logger = dynamic_cast<molpro::linalg::itsolv::Optimize<molpro::linalg::itsolv::subspace::SubspaceSolverOptBFGS<Rvector,Qvector,Pvector>,Rvector,Qvector,Pvector>*>(solver)->logger;
-        auto options = CastOptions::OptimizeBFGS(solver->get_options());
+        auto solver = molpro::linalg::itsolv::create_Optimize<Rvector ,Qvector >(method,"convergence_threshold=1e-8,n_roots=1,max_size_qspace=10");
         int nwork = 1;
         // Create initial subspace. This is iteration 0.
         Rvector x(n, 0), g(n);
@@ -91,14 +82,12 @@ struct OptimizeF : ::testing::Test {
         size_t n_iter = 1;
         for (auto iter = 1; iter < 1000 && nwork > 0; iter++, ++n_iter) {
           auto value = action(x, g);
-          auto precon = solver->add_value(x, value, g);
-          if (precon)
+          if (solver->add_value(x, value, g))
             update(g);
           if (verbosity > 0)
             solver->report();
           nwork = solver->end_iteration(x, g);
         }
-        //        EXPECT_EQ(n_iter, solver->n_roots());
         std::cout << "Error={ ";
         for (const auto& e : solver->errors())
           std::cout << e << " ";
@@ -114,7 +103,7 @@ struct OptimizeF : ::testing::Test {
         std::vector<double> parameters(n), residual(n);
         std::vector<int> roots(1, 0);
         solver->solution(parameters, residual);
-        EXPECT_LE(std::sqrt(dot(residual, residual)), options->convergence_threshold.value());
+        EXPECT_LE(std::sqrt(dot(residual, residual)), solver->convergence_threshold());
         EXPECT_THAT(parameters, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()),
                                                      std::vector<double>(n, double(1))));
       }
@@ -126,7 +115,7 @@ TEST_F(OptimizeF, small_quadratic_form) {
   for (int n = 1; n < 51; n++) {
     double param = 10;
     load_matrix(n, "", param);
-    test_quadratic_form<molpro::linalg::itsolv::subspace::SubspaceSolverOptSD>(std::to_string(n) + "/" + std::to_string(param));
-    test_quadratic_form<molpro::linalg::itsolv::subspace::SubspaceSolverOptBFGS>(std::to_string(n) + "/" + std::to_string(param));
+    test_quadratic_form("BFGS",std::to_string(n) + "/" + std::to_string(param));
+    test_quadratic_form("SD", std::to_string(n) + "/" + std::to_string(param));
   }
 }

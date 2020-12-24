@@ -103,3 +103,14 @@ TEST(StringFacet, tobool_exception) {
     ASSERT_THROW(sf.tobool(s), std::runtime_error);
   }
 }
+
+TEST(StringFacet, parse_keyval_string) {
+  std::string good{" key1=value1 , key2=value2,key3=  , key4=value4"};
+  std::string bad{"keywithoutvalue"};
+  auto sgood = StringFacet::parse_keyval_string(good);
+  EXPECT_EQ(sgood["key1"], "value1");
+  EXPECT_EQ(sgood["key2"], "value2");
+  EXPECT_EQ(sgood["key3"], "");
+  EXPECT_EQ(sgood["key4"], "value4");
+  EXPECT_THROW(auto sbad = StringFacet::parse_keyval_string(bad), std::runtime_error);
+}

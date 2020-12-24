@@ -6,6 +6,7 @@
 #include "LinearEquationsOptions.h"
 #include "OptimizeBFGSOptions.h"
 #include "OptimizeSDOptions.h"
+#include "util.h"
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/NonLinearEquationsDIISOptions.h>
@@ -99,7 +100,6 @@ public:
          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
-  static std::map<std::string, std::string> split_string(std::string s);
 };
 
 // free-function factory invocation
@@ -116,7 +116,7 @@ std::shared_ptr<ILinearEigensystem<R, Q, P>>
 create_LinearEigensystem(const std::string& options,
                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
-  auto optionsmap = SolverFactory<R, Q, P>::split_string(options);
+  auto optionsmap = util::StringFacet::parse_keyval_string(options);
   return SolverFactory<R, Q, P>{}.create(LinearEigensystemOptions{optionsmap}, handlers);
 }
 
@@ -133,7 +133,7 @@ std::shared_ptr<ILinearEquations<R, Q, P>>
 create_LinearEquations(const std::string& options,
                        const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                            std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
-  auto optionsmap = SolverFactory<R, Q, P>::split_string(options);
+  auto optionsmap = util::StringFacet::parse_keyval_string(options);
   return SolverFactory<R, Q, P>{}.create(LinearEquationsOptions{optionsmap}, handlers);
 }
 
@@ -150,7 +150,7 @@ std::shared_ptr<INonLinearEquations<R, Q, P>>
 create_NonLinearEquations(const std::string& method, const std::string& options,
                           const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                               std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
-  auto optionsmap = SolverFactory<R, Q, P>::split_string(options);
+  auto optionsmap = util::StringFacet::parse_keyval_string(options);
   if (method == "DIIS")
     return SolverFactory<R, Q, P>{}.create(NonLinearEquationsDIISOptions{optionsmap}, handlers);
   throw std::runtime_error("Unimplemented method " + method);
@@ -169,7 +169,7 @@ std::shared_ptr<IOptimize<R, Q, P>>
 create_Optimize(const std::string& method, const std::string& options,
                 const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                     std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
-  auto optionsmap = SolverFactory<R, Q, P>::split_string(options);
+  auto optionsmap = util::StringFacet::parse_keyval_string(options);
   if (method == "BFGS")
     return SolverFactory<R, Q, P>{}.create(OptimizeBFGSOptions{optionsmap}, handlers);
   if (method == "SD")

@@ -30,4 +30,28 @@ void StringFacet::crop_space(std::string &path) {
   path.erase(std::find_if(path.rbegin(), path.rend(), [](auto &el) { return !std::isspace(el); }).base(), path.end());
 }
 
+static std::string trim_string(std::string s) {
+  StringFacet::crop_space(s);
+  return s;
+}
+
+std::map<std::string,std::string> StringFacet::parse_keyval_string(std::string s) {
+  std::map<std::string, std::string> result;
+  const std::string field_separators = ",;";
+  const std::string keyval_separators = "=:";
+  s += field_separators;
+  crop_space(s);
+  while (!s.empty()) {
+    auto end = s.find_first_of(field_separators);
+    auto entry = trim_string(s.substr(0, end));
+    if (entry.empty()) break;
+    auto equal = entry.find_first_of(keyval_separators);
+    if (equal == std::string::npos)
+      throw std::runtime_error("String " + entry + " cannot be parsed as key" + field_separators.front() + "value");
+    result[trim_string(entry.substr(0, equal ))] = trim_string(entry.substr(equal+1));
+    s = trim_string(s.substr(end+1));
+  }
+  return result;
+}
+
 } // namespace molpro::linalg::itsolv::util

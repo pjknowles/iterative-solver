@@ -374,7 +374,7 @@ TEST_F(LinearEigensystemF, solution) {
   for (size_t nroot = 1; nroot < n; ++nroot) {
     for (size_t np = 0; np <= nroot; np += nroot) {
       for (size_t n_working_vectors_max = 0; n_working_vectors_max < 2; ++n_working_vectors_max) {
-        auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector,Qvector,Pvector>("");
+        auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector,Qvector,Pvector>();
         auto options = set_options(solver, nroot, np, check_mat_hermiticity());
         auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, solver);
         auto roots = solver->working_set();

@@ -63,12 +63,12 @@ SolverFactory<R, Q, P>::create(const IOptimizeOptions& options,
                                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
   Options* options_ptr = &const_cast<IOptimizeOptions&>(options);
   if (auto options_child = dynamic_cast<OptimizeBFGSOptions*>(options_ptr); options_child) {
-    auto solver = std::make_shared<OptimizeBFGS<subspace::SubspaceSolverOptBFGS, R, Q, P>>(handlers);
+    auto solver = std::make_shared<OptimizeBFGS<R, Q, P>>(handlers);
     solver->set_options(options);
     return solver;
   }
   if (auto options_child = dynamic_cast<OptimizeSDOptions*>(options_ptr); options_child) {
-    auto solver = std::make_shared<OptimizeSD<subspace::SubspaceSolverOptSD, R, Q, P>>(handlers);
+    auto solver = std::make_shared<OptimizeSD<R, Q, P>>(handlers);
     solver->set_options(options);
     return solver;
   }

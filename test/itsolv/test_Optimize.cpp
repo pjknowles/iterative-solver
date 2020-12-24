@@ -9,13 +9,13 @@
 #include <regex>
 #include <vector>
 
+#include "vector_types.h"
 #include <molpro/linalg/itsolv/IterativeSolver.h>
-#include <molpro/linalg/itsolv/Optimize.h>
+#include <molpro/linalg/itsolv/OptimizeBFGS.h>
+#include <molpro/linalg/itsolv/SolverFactory.h>
 #include <molpro/linalg/itsolv/helper.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverOptBFGS.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverOptSD.h>
-#include <molpro/linalg/itsolv/SolverFactory.h>
-#include "vector_types.h"
 using molpro::linalg::itsolv::CastOptions;
 using molpro::linalg::itsolv::Logger;
 using molpro::linalg::array::Span;

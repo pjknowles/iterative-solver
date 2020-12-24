@@ -68,6 +68,7 @@ namespace molpro::linalg::itsolv {
  * @endcode
  *
  */
+
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
 class SolverFactory {
 public:

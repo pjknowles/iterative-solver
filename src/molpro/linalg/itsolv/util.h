@@ -6,6 +6,7 @@
 
 #include <locale>
 #include <string>
+#include <map>
 
 namespace molpro::linalg::itsolv::util {
 
@@ -103,6 +104,7 @@ public:
   std::string tolower(std::string in) const;
   bool tobool(const std::string& in) const;
   static void crop_space(std::string& path);
+  static std::map<std::string,std::string> parse_keyval_string(std::string s);
 
 private:
   const std::ctype<char>& facet = std::use_facet<std::ctype<char>>(std::locale());

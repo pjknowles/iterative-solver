@@ -1,4 +1,3 @@
-#include "create_solver.h"
 #include "test.h"
 
 #include <Eigen/Dense>
@@ -7,9 +6,13 @@
 
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/helper.h>
+#include <molpro/linalg/itsolv/SolverFactory.h>
+#include "vector_types.h"
 
 using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 using Update = std::function<void(const std::vector<Rvector>& params, std::vector<Rvector>& actions, size_t n_work)>;
+using molpro::linalg::itsolv::ILinearEquations;
+using molpro::linalg::itsolv::CastOptions;
 
 namespace {
 struct LinearEquationsPreconditioner {
@@ -127,7 +130,7 @@ auto initial_guess(const MatrixXdr& mat, const size_t n_roots) {
   return std::make_tuple(x, g, guess);
 }
 
-auto set_options(std::shared_ptr<ILinearEquations<Rvector, Qvector, Pvector>>& solver, std::shared_ptr<Logger>& logger,
+auto set_options(std::shared_ptr<ILinearEquations<Rvector, Qvector, Pvector>>& solver,
                  const int n, const int nroot, const int np, bool hermitian, double augmented_hessian) {
   auto options = CastOptions::LinearEquations(solver->get_options());
   options->n_roots = nroot;
@@ -145,9 +148,9 @@ auto set_options(std::shared_ptr<ILinearEquations<Rvector, Qvector, Pvector>>& s
                << ", svd thresh = " << options->svd_thresh.value() << ", norm thresh = " << options->norm_thresh.value()
                << ", max size of Q = " << options->max_size_qspace.value() << ", reset D = " << options->reset_D.value()
                << ", augmented hessian = " << options->augmented_hessian.value() << std::endl;
-  logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
-  logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
-  logger->data_dump = false;
+//  logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
+//  logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
+//  logger->data_dump = false;
   return options;
 }
 
@@ -192,8 +195,8 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
   auto preconditioner = LinearEquationsPreconditioner(mat);
   for (size_t nroot = 1; nroot <= n_root_max; ++nroot) {
     auto rhs_vector = matrix_to_vector(rhs, nroot);
-    auto [solver, logger] = molpro::test::create_LinearEquations();
-    auto options = set_options(solver, logger, mat.rows(), nroot, 0, hermitian, augmented_hessian);
+    auto solver = molpro::linalg::itsolv::create_LinearEquations<Rvector,Qvector,Pvector>();
+    auto options = set_options(solver, mat.rows(), nroot, 0, hermitian, augmented_hessian);
     solver->add_equations(molpro::linalg::itsolv::cwrap(rhs_vector));
     auto [x, g, guess] = initial_guess(mat, solver->n_roots());
     int nwork = solver->n_roots();

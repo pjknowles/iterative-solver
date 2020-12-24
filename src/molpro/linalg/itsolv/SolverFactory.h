@@ -113,7 +113,7 @@ create_LinearEigensystem(const ILinearEigensystemOptions& options,
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
 std::shared_ptr<ILinearEigensystem<R, Q, P>>
-create_LinearEigensystem(const std::string& options,
+create_LinearEigensystem(const std::string& options="",
                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   auto optionsmap = util::StringFacet::parse_keyval_string(options);
@@ -130,7 +130,7 @@ create_LinearEquations(const ILinearEquationsOptions& options,
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
 std::shared_ptr<ILinearEquations<R, Q, P>>
-create_LinearEquations(const std::string& options,
+create_LinearEquations(const std::string& options="",
                        const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                            std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   auto optionsmap = util::StringFacet::parse_keyval_string(options);
@@ -147,7 +147,7 @@ create_NonLinearEquations(const INonLinearEquationsOptions& options = INonLinear
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
 std::shared_ptr<INonLinearEquations<R, Q, P>>
-create_NonLinearEquations(const std::string& method, const std::string& options,
+create_NonLinearEquations(const std::string& method="DIIS", const std::string& options="",
                           const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                               std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   auto optionsmap = util::StringFacet::parse_keyval_string(options);
@@ -166,7 +166,7 @@ create_Optimize(const IOptimizeOptions& options = IOptimizeOptions{},
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
 std::shared_ptr<IOptimize<R, Q, P>>
-create_Optimize(const std::string& method, const std::string& options,
+create_Optimize(const std::string& method="BFGS", const std::string& options="",
                 const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                     std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   auto optionsmap = util::StringFacet::parse_keyval_string(options);

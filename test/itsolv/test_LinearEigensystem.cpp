@@ -1,4 +1,3 @@
-#include "create_solver.h"
 #include "test.h"
 
 #include <Eigen/Dense>
@@ -11,6 +10,9 @@
 #include <vector>
 
 #include <molpro/linalg/itsolv/helper.h>
+#include <molpro/linalg/itsolv/SolverFactory.h>
+#include <molpro/linalg/itsolv/CastOptions.h>
+#include "vector_types.h"
 
 // Find lowest eigensolution of a matrix obtained from an external file
 // Storage of vectors in-memory via class Rvector
@@ -20,8 +22,9 @@ using molpro::linalg::itsolv::CVecRef;
 using molpro::linalg::itsolv::cwrap;
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::wrap;
+using molpro::linalg::itsolv::ILinearEigensystem;
+using molpro::linalg::itsolv::CastOptions;
 struct LinearEigensystemF : ::testing::Test {
-  using scalar = double;
   using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
   using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
   using vectorP = std::vector<scalar>;
@@ -170,7 +173,7 @@ struct LinearEigensystemF : ::testing::Test {
   }
 
   auto set_options(std::shared_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver,
-                   std::shared_ptr<Logger>& logger, const int nroot, const int np, bool hermitian) {
+                    const int nroot, const int np, bool hermitian) {
     auto options = CastOptions::LinearEigensystem(solver->get_options());
     options->n_roots = nroot;
     options->convergence_threshold = 1.0e-8;
@@ -186,9 +189,9 @@ struct LinearEigensystemF : ::testing::Test {
                  << ", norm thresh = " << options->norm_thresh.value()
                  << ", max size of Q = " << options->max_size_qspace.value()
                  << ", reset D = " << options->reset_D.value() << std::endl;
-    logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
-    logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
-    logger->data_dump = false;
+//    logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
+//    logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
+//    logger->data_dump = false;
     return options;
   }
 
@@ -232,8 +235,10 @@ struct LinearEigensystemF : ::testing::Test {
         molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n
                      << ", pspace dimension " << np << ", n_working_vectors_max = " << n_working_vectors_max
                      << std::endl;
-        auto [solver, logger] = molpro::test::create_LinearEigensystem();
-        auto options = set_options(solver, logger, nroot, np, hermitian);
+        auto
+//        std::shared_ptr<molpro::linalg::itsolv::ILinearEigensystem<Rvector,Qvector,Pvector>>
+            solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector,Qvector,Pvector>();
+        auto options = set_options(solver, nroot, np, hermitian);
         int nwork = nroot;
         auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, solver);
         size_t n_iter = 2;
@@ -369,8 +374,8 @@ TEST_F(LinearEigensystemF, solution) {
   for (size_t nroot = 1; nroot < n; ++nroot) {
     for (size_t np = 0; np <= nroot; np += nroot) {
       for (size_t n_working_vectors_max = 0; n_working_vectors_max < 2; ++n_working_vectors_max) {
-        auto [solver, logger] = molpro::test::create_LinearEigensystem();
-        auto options = set_options(solver, logger, nroot, np, check_mat_hermiticity());
+        auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector,Qvector,Pvector>("");
+        auto options = set_options(solver, nroot, np, check_mat_hermiticity());
         auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, solver);
         auto roots = solver->working_set();
         solver->solution(roots, x, g);

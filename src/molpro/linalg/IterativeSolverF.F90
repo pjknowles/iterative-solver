@@ -23,11 +23,11 @@ MODULE Iterative_Solver
 
 CONTAINS
 
-    !> \brief Finds the lowest eigensolutions of a matrix using Davidson's method, i.e. preconditioned Lanczos.
+    !> \brief Finds the lowest eigensolutions of a matrix. The default algorithm is Davidson's method, i.e. preconditioned Lanczos.
     !> Example of simplest use: @include LinearEigensystemExampleF.F90
     !> Example including use of P space: @include LinearEigensystemExampleF-Pspace-mpi.F90
     SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, thresh_value, hermitian, &
-        verbosity, pname, pcomm, lmppx)
+        verbosity, pname, pcomm, lmppx, algorithm)
         INTEGER, INTENT(in) :: nq !< dimension of matrix
         INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< Convergence threshold
@@ -38,9 +38,11 @@ CONTAINS
         INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
         LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
         !< One gives a single progress-report line each iteration.
+        CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
         INTERFACE
             SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, range_begin, range_end, thresh, thresh_value, &
-                    hermitian, verbosity, pname, pcomm, lmppx) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
+                    hermitian, verbosity, pname, pcomm, lmppx, algorithm &
+                ) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
                 INTEGER(C_size_t), INTENT(in), VALUE :: nroot
@@ -51,6 +53,7 @@ CONTAINS
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
                 INTEGER(C_int64_t), INTENT(in), VALUE :: pcomm
                 INTEGER(C_int), INTENT(in), VALUE :: lmppx
+                CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: algorithm
             END SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC
         END INTERFACE
         INTEGER(c_size_t) :: dummy_range_begin, dummy_range_end
@@ -61,6 +64,7 @@ CONTAINS
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: pcommC
         INTEGER(c_int) :: lmppxC
+        CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
         verbosityC = 0
         threshC = 0d0
         thresh_valueC = 0d0
@@ -73,6 +77,13 @@ CONTAINS
         ELSE
             ALLOCATE(pnameC(1))
             pnameC(1) = c_null_char
+        ENDIF
+        IF (PRESENT(algorithm)) THEN
+            ALLOCATE(algorithmC(LEN(algorithm) + 1))
+            CALL c_string_from_f(algorithm, algorithmC)
+        ELSE
+            ALLOCATE(algorithmC(1))
+            algorithmC(1) = c_null_char
         ENDIF
         m_nq = INT(nq, kind = c_size_t)
         m_nroot = INT(nroot, kind = c_size_t)
@@ -97,11 +108,11 @@ CONTAINS
         ENDIF
         CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, dummy_range_begin, dummy_range_end, &
                 threshC, thresh_valueC, &
-                hermitianC, verbosityC, pnameC, pcommC, lmppxC)
+                hermitianC, verbosityC, pnameC, pcommC, lmppxC, algorithmC)
     END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize
     !
     SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize_Ranges(nq, nroot, range_begin, range_end, thresh, &
-            verbosity, pname, pcomm, lmppx)
+            verbosity, pname, pcomm, lmppx, algorithm)
         INTEGER, INTENT(in) :: nq !< dimension of matrix
         INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
         INTEGER, INTENT(out) :: range_begin, range_end !< Local range starting and ending indices
@@ -111,9 +122,10 @@ CONTAINS
         INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
         LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
         !< One gives a single progress-report line each iteration.
+        CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
         INTERFACE
             SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, range_begin, range_end, thresh, &
-                    verbosity, pname, pcomm, lmppx) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
+                    verbosity, pname, pcomm, lmppx, algorithm) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
                 INTEGER(C_size_t), INTENT(in), VALUE :: nroot
@@ -123,6 +135,7 @@ CONTAINS
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
                 INTEGER(C_int64_t), INTENT(in), VALUE :: pcomm
                 INTEGER(C_int), INTENT(in), VALUE :: lmppx
+                CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: algorithm
             END SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC
         END INTERFACE
         INTEGER(c_size_t) m_range_begin, m_range_end
@@ -131,6 +144,7 @@ CONTAINS
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: pcommC
         INTEGER(c_int) :: lmppxC
+        CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
         lmppxC = 0
         pcommC = 0
         m_range_begin = INT(range_begin, kind = c_size_t)
@@ -141,6 +155,13 @@ CONTAINS
         ELSE
             ALLOCATE(pnameC(1))
             pnameC(1) = c_null_char
+        ENDIF
+        IF (PRESENT(algorithm)) THEN
+            ALLOCATE(algorithmC(LEN(algorithm) + 1))
+            CALL c_string_from_f(algorithm, algorithmC)
+        ELSE
+            ALLOCATE(algorithmC(1))
+            algorithmC(1) = c_null_char
         ENDIF
         m_nq = INT(nq, kind = c_size_t)
         m_nroot = INT(nroot, kind = c_size_t)
@@ -157,7 +178,7 @@ CONTAINS
             IF (lmppx) lmppxC = 1
         ENDIF
         CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, m_range_begin, m_range_end, threshC, &
-                verbosityC, pnameC, pcommC, lmppxC)
+                verbosityC, pnameC, pcommC, lmppxC, algorithmC)
         range_begin = int(m_range_begin)
         range_end = int(m_range_end)
     END SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize_Ranges
@@ -166,7 +187,7 @@ CONTAINS
     !> Example of simplest use: @include LinearEquationsExampleF.F90
     !! Example including use of P space: include LinearEquationsExampleF-Pspace.F90
     SUBROUTINE Iterative_Solver_Linear_Equations_Initialize(nq, nroot, rhs, augmented_hessian, thresh, thresh_value, &
-        hermitian, verbosity, pname, pcomm, lmppx)
+        hermitian, verbosity, pname, pcomm, lmppx, algorithm)
         INTEGER, INTENT(in) :: nq !< dimension of matrix
         INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
         DOUBLE PRECISION, INTENT(in), DIMENSION(nq, nroot) :: rhs !< the constant right-hand-side of each equation system
@@ -181,9 +202,10 @@ CONTAINS
         INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
         LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
         !< One gives a single progress-report line each iteration.
+        CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
         INTERFACE
             SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC(nq, nroot, range_begin, range_end, rhs, &
-                    augmented_hessian, thresh, thresh_value, hermitian, verbosity, pname, pcomm, lmppx) &
+                    augmented_hessian, thresh, thresh_value, hermitian, verbosity, pname, pcomm, lmppx, algorithm) &
                     BIND(C, name = 'IterativeSolverLinearEquationsInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
@@ -198,6 +220,7 @@ CONTAINS
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
                 INTEGER(C_int64_t), INTENT(in), VALUE :: pcomm
                 INTEGER(C_int), INTENT(in), VALUE :: lmppx
+                CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: algorithm
             END SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC
         END INTERFACE
         INTEGER(c_size_t) :: dummy_range_begin, dummy_range_end
@@ -207,6 +230,7 @@ CONTAINS
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: pcommC
         INTEGER(c_int) :: lmppxC
+        CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
         threshC = 0d0
         thresh_valueC = 0d0
         augmented_hessianC = 0d0
@@ -219,6 +243,13 @@ CONTAINS
         ELSE
             ALLOCATE(pnameC(1))
             pnameC(1) = c_null_char
+        ENDIF
+        IF (PRESENT(algorithm)) THEN
+            ALLOCATE(algorithmC(LEN(algorithm) + 1))
+            CALL c_string_from_f(algorithm, algorithmC)
+        ELSE
+            ALLOCATE(algorithmC(1))
+            algorithmC(1) = c_null_char
         ENDIF
         m_nq = INT(nq, kind = c_size_t)
         m_nroot = INT(nroot, kind = c_size_t)
@@ -245,25 +276,26 @@ CONTAINS
             IF (lmppx) lmppxC = 1
         ENDIF
         CALL Iterative_Solver_Linear_Equations_InitializeC(m_nq, m_nroot, dummy_range_begin, dummy_range_end, &
-                rhs, augmented_hessianC, threshC, thresh_valueC, hermitianC, verbosityC, pnameC, pcommC, lmppxC)
+                rhs, augmented_hessianC, threshC, thresh_valueC, hermitianC, verbosityC, pnameC, pcommC, lmppxC, &
+            algorithmC)
     END SUBROUTINE Iterative_Solver_Linear_Equations_Initialize
 
     !> \brief Optimization
     !> through the L-BFGS or related methods.
     !> Example of simplest use: @include OptimizeExampleF.F90
-    SUBROUTINE Iterative_Solver_Optimize_Initialize(nq, thresh, verbosity, algorithm, minimize, pname, pcomm, lmppx)
+    SUBROUTINE Iterative_Solver_Optimize_Initialize(nq, thresh, verbosity, minimize, pname, pcomm, lmppx, algorithm)
         INTEGER, INTENT(in) :: nq !< dimension of parameter space
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
         INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
-        CHARACTER(*), INTENT(in), OPTIONAL :: algorithm !< keyword specifying optimization algorithm
         LOGICAL, INTENT(in), OPTIONAL :: minimize !< whether to minimize (default) or maximize
         CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
         INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
         LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
         !< One gives a single progress-report line each iteration.
+        CHARACTER(*), INTENT(in), OPTIONAL :: algorithm !< keyword specifying optimization algorithm
         INTERFACE
-            SUBROUTINE Iterative_Solver_Optimize_InitializeC(nq, range_begin, range_end, thresh, verbosity, algorithm, &
-                    minimize, pname, pcomm, lmppx) BIND(C, name = 'IterativeSolverOptimizeInitialize')
+            SUBROUTINE Iterative_Solver_Optimize_InitializeC(nq, range_begin, range_end, thresh, verbosity, &
+                    minimize, pname, pcomm, lmppx, algorithm) BIND(C, name = 'IterativeSolverOptimizeInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
                 INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
@@ -279,9 +311,9 @@ CONTAINS
         INTEGER(c_size_t) :: dummy_range_begin, dummy_range_end
         INTEGER(c_int) :: verbosityC, minimizeC
         REAL(c_double) :: threshC
-        CHARACTER(LEN = 128) :: algorith
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: pcommC
+        CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
         INTEGER(c_int) :: lmppxC
         lmppxC = 0
         pcommC = 0
@@ -305,10 +337,12 @@ CONTAINS
             verbosityC = 0
         END IF
         IF (PRESENT(algorithm)) THEN
-            algorith = algorithm
+            ALLOCATE(algorithmC(LEN(algorithm) + 1))
+            CALL c_string_from_f(algorithm, algorithmC)
         ELSE
-            algorith = ""
-        END IF
+            ALLOCATE(algorithmC(1))
+            algorithmC(1) = c_null_char
+        ENDIF
         minimize_C = 1
         IF (PRESENT(minimize)) THEN
             IF (.NOT. minimize) minimizeC = 0
@@ -320,7 +354,7 @@ CONTAINS
             IF (lmppx) lmppxC = 1
         ENDIF
         CALL Iterative_Solver_Optimize_InitializeC(m_nq, dummy_range_begin, dummy_range_end, threshC, verbosityC, &
-                c_string_c(algorith), minimizeC, pnameC, pcommC, lmppxC)
+                minimizeC, pnameC, pcommC, lmppxC, algorithmC)
     CONTAINS
         FUNCTION c_string_c(fstring)
             CHARACTER(*), INTENT(in) :: fstring
@@ -338,7 +372,7 @@ CONTAINS
     !> \brief Accelerated convergence of non-linear equations
     !> through the DIIS or related methods.
     !> Example of simplest use: @include DIISExampleF.F90
-    SUBROUTINE Iterative_Solver_DIIS_Initialize(nq, thresh, verbosity, pname, pcomm, lmppx)
+    SUBROUTINE Iterative_Solver_DIIS_Initialize(nq, thresh, verbosity, pname, pcomm, lmppx, algorithm)
         INTEGER, INTENT(in) :: nq !< dimension of parameter space
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
         INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
@@ -346,9 +380,10 @@ CONTAINS
         INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
         LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
         !< One gives a single progress-report line each iteration.
+        CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
         INTERFACE
             SUBROUTINE Iterative_Solver_DIIS_InitializeC(nq, range_begin, range_end, thresh, verbosity, &
-                    pname, pcomm, lmppx) BIND(C, name = 'IterativeSolverDIISInitialize')
+                    pname, pcomm, lmppx, algorithm) BIND(C, name = 'IterativeSolverNonLinearEquationsInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
                 INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
@@ -357,6 +392,7 @@ CONTAINS
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
                 INTEGER(C_int64_t), INTENT(in), VALUE :: pcomm
                 INTEGER(C_int), INTENT(in), VALUE :: lmppx
+                CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: algorithm
             END SUBROUTINE Iterative_Solver_DIIS_InitializeC
         END INTERFACE
         INTEGER(c_size_t) :: dummy_range_begin, dummy_range_end
@@ -365,6 +401,7 @@ CONTAINS
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: pcommC
         INTEGER(c_int) :: lmppxC
+        CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
         lmppxC = 0
         pcommC = 0
         IF (PRESENT(pname)) THEN
@@ -373,6 +410,13 @@ CONTAINS
         ELSE
             ALLOCATE(pnameC(1))
             pnameC(1) = c_null_char
+        ENDIF
+        IF (PRESENT(algorithm)) THEN
+            ALLOCATE(algorithmC(LEN(algorithm) + 1))
+            CALL c_string_from_f(algorithm, algorithmC)
+        ELSE
+            ALLOCATE(algorithmC(1))
+            algorithmC(1) = c_null_char
         ENDIF
         m_nq = INT(nq, kind = c_size_t)
         m_nroot = 1
@@ -393,7 +437,7 @@ CONTAINS
             IF (lmppx) lmppxC = 1
         ENDIF
         CALL Iterative_Solver_DIIS_InitializeC(m_nq, dummy_range_begin, dummy_range_end, threshC, verbosityC, &
-                pnameC, pcommC, lmppxC)
+                pnameC, pcommC, lmppxC, algorithm)
     END SUBROUTINE Iterative_Solver_DIIS_Initialize
 
     !> \brief Terminate the iterative solver

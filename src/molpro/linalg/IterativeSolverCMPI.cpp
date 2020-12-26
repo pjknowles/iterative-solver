@@ -53,9 +53,10 @@ struct Instance {
 std::stack<Instance> instances;
 } // namespace
 
-extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
-                                                           double thresh, double thresh_value, int hermitian, int verbosity,
-                                                           const char* fname, int64_t fcomm, int lmppx) {
+extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t range_begin,
+                                                           size_t range_end, double thresh, double thresh_value,
+                                                           int hermitian, int verbosity, const char* fname,
+                                                           int64_t fcomm, int lmppx, const char* algorithm) {
   std::shared_ptr<Profiler> profiler = nullptr;
   std::string pname(fname);
   int flag;
@@ -83,7 +84,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   MPI_Comm_rank(comm, &mpi_rank);
   auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
   instances.emplace(
-      Instance{std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers), profiler, n, comm});
+      Instance{std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers), profiler, nQ, comm});
   auto& instance = instances.top();
   instance.solver->set_n_roots(nroot);
   LinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
@@ -102,15 +103,17 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   std::vector<Rvector> x;
   std::vector<Rvector> g;
   for (size_t root = 0; root < instance.solver->n_roots(); root++) {
-    x.emplace_back(n, comm);
-    g.emplace_back(n, comm);
+    x.emplace_back(nQ, comm);
+    g.emplace_back(nQ, comm);
   }
   std::tie(range_begin, range_end) = x[0].distribution().range(mpi_rank);
 }
 
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
-                                                         const double* rhs, double aughes, double thresh, double thresh_value, int hermitian,
-                                                         int verbosity, const char* fname, int64_t fcomm, int lmppx) {
+                                                         const double* rhs, double aughes, double thresh,
+                                                         double thresh_value, int hermitian, int verbosity,
+                                                         const char* fname, int64_t fcomm, int lmppx,
+                                                         const char* algorithm) {
   /*
     std::shared_ptr<Profiler> profiler = nullptr;
     std::string pname(fname);
@@ -153,8 +156,9 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
     */
 }
 
-extern "C" void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
-                                              int verbosity, const char* fname, int64_t fcomm, int lmppx) {
+extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
+                                              int verbosity, const char* fname, int64_t fcomm, int lmppx,
+                                              const char* algorithm) {
   /*
     std::shared_ptr<Profiler> profiler = nullptr;
     std::string pname(fname);
@@ -189,9 +193,9 @@ extern "C" void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size
     */
 }
 
-extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh, double thresh_value,
-                                                  int verbosity, char* algorithm, int minimize, const char* fname,
-                                                  int64_t fcomm, int lmppx) {
+extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
+                                                  double thresh_value, int verbosity, int minimize, const char* fname,
+                                                  int64_t fcomm, int lmppx, const char* algorithm) {
   /*
     std::shared_ptr<Profiler> profiler = nullptr;
     std::string pname(fname);

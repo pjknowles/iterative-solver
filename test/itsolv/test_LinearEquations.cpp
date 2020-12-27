@@ -14,6 +14,7 @@ using Update = std::function<void(const std::vector<Rvector>& params, std::vecto
 using molpro::linalg::itsolv::ILinearEquations;
 using molpro::linalg::itsolv::CastOptions;
 
+extern "C" void test_linearequationsf(const double* matrix, const double* rhs, size_t n, size_t np, size_t nroot, int hermitian);
 namespace {
 struct LinearEquationsPreconditioner {
   explicit LinearEquationsPreconditioner(const MatrixXdr& mat) {
@@ -195,6 +196,7 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
   auto preconditioner = LinearEquationsPreconditioner(mat);
   for (size_t nroot = 1; nroot <= n_root_max; ++nroot) {
     auto rhs_vector = matrix_to_vector(rhs, nroot);
+    test_linearequationsf(mat.data(), rhs.data(), nX, 0, nroot, hermitian);
     auto solver = molpro::linalg::itsolv::create_LinearEquations<Rvector,Qvector,Pvector>();
     auto options = set_options(solver, mat.rows(), nroot, 0, hermitian, augmented_hessian);
     solver->add_equations(molpro::linalg::itsolv::cwrap(rhs_vector));

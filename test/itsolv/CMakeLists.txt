@@ -27,7 +27,7 @@ else ()
 endif ()
 
 foreach (t test_LinearEigensystem test_LinearEquations test_Optimize)
-    add_executable(${t}.exe ${t}.cpp test.h SolverFactory_implementation.cpp)
+    add_executable(${t}.exe ${t}.cpp ${t}F.f90 test.h SolverFactory_implementation.cpp)
     target_link_libraries(${t}.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)# ${MPI_CXX_LIBRARIES})
     target_link_libraries(${t}.exe PUBLIC Eigen3::Eigen)
     gtest_discover_tests(${t}.exe)

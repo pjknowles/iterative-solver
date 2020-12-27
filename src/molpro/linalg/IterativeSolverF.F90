@@ -34,10 +34,10 @@ CONTAINS
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh_value !< Value convergence threshold
         LOGICAL, INTENT(in), OPTIONAL :: hermitian !< Whether the underlying kernel is hermitian
         INTEGER, INTENT(in), OPTIONAL :: verbosity !< Print level
+        !< One gives a single progress-report line each iteration.
         CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
         INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
         LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
-        !< One gives a single progress-report line each iteration.
         CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
         INTERFACE
             SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, range_begin, range_end, thresh, thresh_value, &
@@ -66,8 +66,8 @@ CONTAINS
         INTEGER(c_int) :: lmppxC
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
         verbosityC = 0
-        threshC = 0d0
-        thresh_valueC = 0d0
+        threshC = 1d-10
+        thresh_valueC = 1d50
         lmppxC = 0
         pcommC = 0
         hermitianC = hermitian_default
@@ -118,10 +118,10 @@ CONTAINS
         INTEGER, INTENT(out) :: range_begin, range_end !< Local range starting and ending indices
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< Convergence threshold
         INTEGER, INTENT(in), OPTIONAL :: verbosity !< Print level
+        !< One gives a single progress-report line each iteration.
         CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
         INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
         LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
-        !< One gives a single progress-report line each iteration.
         CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
         INTERFACE
             SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, range_begin, range_end, thresh, &
@@ -140,7 +140,7 @@ CONTAINS
         END INTERFACE
         INTEGER(c_size_t) m_range_begin, m_range_end
         INTEGER(c_int) :: verbosityC = 0
-        REAL(c_double) :: threshC = 0d0
+        REAL(c_double) :: threshC
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: pcommC
         INTEGER(c_int) :: lmppxC
@@ -165,6 +165,7 @@ CONTAINS
         ENDIF
         m_nq = INT(nq, kind = c_size_t)
         m_nroot = INT(nroot, kind = c_size_t)
+        threshC = 1d-10
         IF (PRESENT(thresh)) THEN
             threshC = thresh
         END IF
@@ -198,10 +199,10 @@ CONTAINS
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh_value !< value convergence threshold
         LOGICAL, INTENT(in), OPTIONAL :: hermitian !< whether the underlying kernel is hermitian
         INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
+        !< One gives a single progress-report line each iteration.
         CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
         INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
         LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
-        !< One gives a single progress-report line each iteration.
         CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
         INTERFACE
             SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC(nq, nroot, range_begin, range_end, rhs, &
@@ -226,13 +227,13 @@ CONTAINS
         INTEGER(c_size_t) :: dummy_range_begin, dummy_range_end
         INTEGER(c_int) :: hermitianC
         INTEGER(c_int) :: verbosityC = 0
-        REAL(c_double) :: threshC = 0d0, thresh_valueC, augmented_hessianC = 0d0
+        REAL(c_double) :: threshC, thresh_valueC, augmented_hessianC = 0d0
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: pcommC
         INTEGER(c_int) :: lmppxC
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
-        threshC = 0d0
-        thresh_valueC = 0d0
+        threshC = 1d-10
+        thresh_valueC = 1d50
         augmented_hessianC = 0d0
         lmppxC = 0
         pcommC = 0
@@ -287,11 +288,11 @@ CONTAINS
         INTEGER, INTENT(in) :: nq !< dimension of parameter space
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
         INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
+        !< One gives a single progress-report line each iteration.
         LOGICAL, INTENT(in), OPTIONAL :: minimize !< whether to minimize (default) or maximize
         CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
         INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
         LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
-        !< One gives a single progress-report line each iteration.
         CHARACTER(*), INTENT(in), OPTIONAL :: algorithm !< keyword specifying optimization algorithm
         INTERFACE
             SUBROUTINE Iterative_Solver_Optimize_InitializeC(nq, range_begin, range_end, thresh, verbosity, &
@@ -329,7 +330,7 @@ CONTAINS
         IF (PRESENT(thresh)) THEN
             threshC = thresh
         ELSE
-            threshC = 0
+            threshC = 1d-10
         END IF
         IF (PRESENT(verbosity)) THEN
             verbosityC = INT(verbosity, kind = c_int)
@@ -376,10 +377,10 @@ CONTAINS
         INTEGER, INTENT(in) :: nq !< dimension of parameter space
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
         INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
+        !< One gives a single progress-report line each iteration.
         CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
         INTEGER, INTENT(in), OPTIONAL :: pcomm !< Profiler communicator
         LOGICAL, INTENT(in), OPTIONAL :: lmppx !< Whether communicator should be MPI_COMM_SELF
-        !< One gives a single progress-report line each iteration.
         CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
         INTERFACE
             SUBROUTINE Iterative_Solver_DIIS_InitializeC(nq, range_begin, range_end, thresh, verbosity, &
@@ -423,7 +424,7 @@ CONTAINS
         IF (PRESENT(thresh)) THEN
             threshC = thresh
         ELSE
-            threshC = 0
+            threshC = 1d-10
         END IF
         IF (PRESENT(verbosity)) THEN
             verbosityC = INT(verbosity, kind = c_int)

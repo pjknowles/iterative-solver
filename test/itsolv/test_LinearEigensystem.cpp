@@ -9,21 +9,22 @@
 #include <regex>
 #include <vector>
 
-#include <molpro/linalg/itsolv/helper.h>
-#include <molpro/linalg/itsolv/SolverFactory.h>
-#include <molpro/linalg/itsolv/CastOptions.h>
 #include "vector_types.h"
+#include <molpro/linalg/itsolv/CastOptions.h>
+#include <molpro/linalg/itsolv/SolverFactory.h>
+#include <molpro/linalg/itsolv/helper.h>
 
 // Find lowest eigensolution of a matrix obtained from an external file
 // Storage of vectors in-memory via class Rvector
 
 using molpro::linalg::array::Span;
+using molpro::linalg::itsolv::CastOptions;
 using molpro::linalg::itsolv::CVecRef;
 using molpro::linalg::itsolv::cwrap;
+using molpro::linalg::itsolv::ILinearEigensystem;
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::wrap;
-using molpro::linalg::itsolv::ILinearEigensystem;
-using molpro::linalg::itsolv::CastOptions;
+extern "C" void test_lineareigensystemf(double* matrix, size_t n, size_t np, size_t nroot, int hermitian, double* eigenvalues);
 struct LinearEigensystemF : ::testing::Test {
   using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
   using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
@@ -235,9 +236,10 @@ struct LinearEigensystemF : ::testing::Test {
         molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n
                      << ", pspace dimension " << np << ", n_working_vectors_max = " << n_working_vectors_max
                      << std::endl;
+        test_lineareigensystemf(hmat.data(), n, np, nroot, hermitian, expected_eigenvalues.data());
         auto
-//        std::shared_ptr<molpro::linalg::itsolv::ILinearEigensystem<Rvector,Qvector,Pvector>>
-            solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector,Qvector,Pvector>();
+            //        std::shared_ptr<molpro::linalg::itsolv::ILinearEigensystem<Rvector,Qvector,Pvector>>
+            solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector, Pvector>();
         auto options = set_options(solver, nroot, np, hermitian);
         int nwork = nroot;
         auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, solver);
@@ -374,7 +376,7 @@ TEST_F(LinearEigensystemF, solution) {
   for (size_t nroot = 1; nroot < n; ++nroot) {
     for (size_t np = 0; np <= nroot; np += nroot) {
       for (size_t n_working_vectors_max = 0; n_working_vectors_max < 2; ++n_working_vectors_max) {
-        auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector,Qvector,Pvector>();
+        auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector, Pvector>();
         auto options = set_options(solver, nroot, np, check_mat_hermiticity());
         auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, solver);
         auto roots = solver->working_set();

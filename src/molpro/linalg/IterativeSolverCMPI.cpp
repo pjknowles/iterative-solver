@@ -16,6 +16,7 @@
 #include <molpro/linalg/array/util/gather_all.h>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/LinearEigensystem.h>
+#include <molpro/linalg/itsolv/SolverFactory.h>
 
 using molpro::Profiler;
 using molpro::linalg::array::Span;
@@ -84,7 +85,11 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nro
   MPI_Comm_rank(comm, &mpi_rank);
   auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
   instances.emplace(
-      Instance{std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers), profiler, nQ, comm});
+      Instance{
+//          molpro::linalg::itsolv::create_LinearEigensystem<Rvector ,Qvector ,Pvector >(algorithm,"")
+              std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers), profiler, nQ, comm
+          }
+ );
   auto& instance = instances.top();
   instance.solver->set_n_roots(nroot);
   LinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
@@ -285,6 +290,8 @@ void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& 
 
 extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, int sync, int lmppx) {
   std::vector<Rvector> cc, gg;
+  if (instances.empty())
+    throw std::runtime_error("IterativeSolver not initialised properly");
   auto& instance = instances.top();
   if (instance.prof != nullptr)
     instance.prof->start("AddVector");

@@ -172,7 +172,7 @@ struct LinearEigensystemF : ::testing::Test {
     return std::make_tuple(pspace, PP);
   }
 
-  auto set_options(std::shared_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver,
+  auto set_options(std::unique_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver,
                     const int nroot, const int np, bool hermitian) {
     auto options = CastOptions::LinearEigensystem(solver->get_options());
     options->n_roots = nroot;
@@ -202,7 +202,7 @@ struct LinearEigensystemF : ::testing::Test {
 
   // Create initial subspace. This is iteration 0.
   auto initialize_subspace(const size_t np, const size_t nroot, const size_t n_working_vectors_max,
-                           std::shared_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver) {
+                           std::unique_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver) {
     auto [x, g] = create_containers(nroot);
     if (np) {
       auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
@@ -236,7 +236,6 @@ struct LinearEigensystemF : ::testing::Test {
                      << ", pspace dimension " << np << ", n_working_vectors_max = " << n_working_vectors_max
                      << std::endl;
         auto
-//        std::shared_ptr<molpro::linalg::itsolv::ILinearEigensystem<Rvector,Qvector,Pvector>>
             solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector,Qvector,Pvector>();
         auto options = set_options(solver, nroot, np, hermitian);
         int nwork = nroot;

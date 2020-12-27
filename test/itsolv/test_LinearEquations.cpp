@@ -131,7 +131,7 @@ auto initial_guess(const MatrixXdr& mat, const size_t n_roots) {
   return std::make_tuple(x, g, guess);
 }
 
-auto set_options(std::shared_ptr<ILinearEquations<Rvector, Qvector, Pvector>>& solver,
+auto set_options(std::unique_ptr<ILinearEquations<Rvector, Qvector, Pvector>>& solver,
                  const int n, const int nroot, const int np, bool hermitian, double augmented_hessian) {
   auto options = CastOptions::LinearEquations(solver->get_options());
   options->n_roots = nroot;

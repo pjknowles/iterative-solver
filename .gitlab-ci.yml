@@ -21,7 +21,7 @@ build111:
   script:
     - export MPIPROCS=2
     - BUILDTYPE=Release
-    - BUILD=build/FORTRAN=1/MPI=1/PPIDD=1 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DFORTRAN=1 -DMPI=1 -DPPIDD=1 $OLDPWD && time cmake --build . -- -j2 && (time ctest || ctest -V)
+    - BUILD=build/FORTRAN=1/MPI=1/PPIDD=1 ; mkdir -p $BUILD && cd $BUILD && rm -rf ** && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DFORTRAN=1 -DMPI=1 -DPPIDD=1 $OLDPWD && time cmake --build . -- -j2 && (time ctest || ctest -V)
 build000:
   tags:
     - linux-farm
@@ -30,7 +30,7 @@ build000:
   timeout: 60m
   script:
     - BUILDTYPE=Release
-    - BUILD=build/FORTRAN=0/MPI=0/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DFORTRAN=0 -DMPI=0 -DPPIDD=0 $OLDPWD && time cmake --build . -- -j2 && (time ctest || ctest -V)
+    - BUILD=build/FORTRAN=0/MPI=0/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && rm -rf ** && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DFORTRAN=0 -DMPI=0 -DPPIDD=0 $OLDPWD && time cmake --build . -- -j2 && (time ctest || ctest -V)
 build010:
   tags:
     - linux-farm
@@ -40,7 +40,7 @@ build010:
   script:
     - export MPIPROCS=2
     - BUILDTYPE=Release
-    - BUILD=build/FORTRAN=0/MPI=1/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DFORTRAN=0 -DMPI=1 -DPPIDD=0 $OLDPWD && time cmake --build . -- -j2 && (time ctest || ctest -V)
+    - BUILD=build/FORTRAN=0/MPI=1/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && rm -rf ** && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DFORTRAN=0 -DMPI=1 -DPPIDD=0 $OLDPWD && time cmake --build . -- -j2 && (time ctest || ctest -V)
 build011:
   tags:
     - linux-farm

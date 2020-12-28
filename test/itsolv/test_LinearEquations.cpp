@@ -4,17 +4,18 @@
 #include <Eigen/Eigenvalues>
 #include <numeric>
 
-#include <molpro/linalg/itsolv/CastOptions.h>
-#include <molpro/linalg/itsolv/helper.h>
-#include <molpro/linalg/itsolv/SolverFactory.h>
 #include "vector_types.h"
+#include <molpro/linalg/itsolv/CastOptions.h>
+#include <molpro/linalg/itsolv/SolverFactory.h>
+#include <molpro/linalg/itsolv/helper.h>
 
 using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 using Update = std::function<void(const std::vector<Rvector>& params, std::vector<Rvector>& actions, size_t n_work)>;
-using molpro::linalg::itsolv::ILinearEquations;
 using molpro::linalg::itsolv::CastOptions;
+using molpro::linalg::itsolv::ILinearEquations;
 
-extern "C" void test_linearequationsf(const double* matrix, const double* rhs, size_t n, size_t np, size_t nroot, int hermitian);
+extern "C" int test_linearequationsf(const double* matrix, const double* rhs, size_t n, size_t np, size_t nroot,
+                                     int hermitian, double augmented_hessian);
 namespace {
 struct LinearEquationsPreconditioner {
   explicit LinearEquationsPreconditioner(const MatrixXdr& mat) {
@@ -27,7 +28,7 @@ struct LinearEquationsPreconditioner {
   void operator()(std::vector<Rvector>& residuals, const int nwork) const {
     for (size_t i = 0; i < nwork; ++i) {
       for (size_t j = 0; j < residuals[i].size(); ++j)
-        residuals[i][j] /= diagonals[i];
+        residuals[i][j] /= diagonals[j];
     }
   }
 
@@ -110,7 +111,7 @@ std::vector<double> residual(const MatrixXdr& mat, const MatrixXdr& rhs, const s
   return errors;
 }
 
-auto initial_guess(const MatrixXdr& mat, const size_t n_roots) {
+auto initial_guess(const MatrixXdr& mat, const size_t n_roots, const MatrixXdr& rhs) {
   const auto n = mat.rows();
   std::vector<Rvector> g;
   std::vector<Rvector> x;
@@ -123,16 +124,18 @@ auto initial_guess(const MatrixXdr& mat, const size_t n_roots) {
   for (size_t root = 0; root < n_roots; root++) {
     x.emplace_back(n, 0);
     g.emplace_back(n);
-    auto it_min = std::min_element(diagonals.begin(), diagonals.end());
-    guess.push_back(std::distance(diagonals.begin(), it_min)); // initial guess
-    *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
-    x.back()[guess.back()] = 1; // initial guess
+//    auto it_min = std::min_element(diagonals.begin(), diagonals.end());
+//    guess.push_back(std::distance(diagonals.begin(), it_min)); // initial guess
+//    *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
+//    x.back()[guess.back()] = 1; // initial guess
+    for (size_t i=root; i<n; i++)
+      x.back()[i]=-rhs(root,i)/mat(i,i);
   }
   return std::make_tuple(x, g, guess);
 }
 
-auto set_options(std::unique_ptr<ILinearEquations<Rvector, Qvector, Pvector>>& solver,
-                 const int n, const int nroot, const int np, bool hermitian, double augmented_hessian) {
+auto set_options(std::unique_ptr<ILinearEquations<Rvector, Qvector, Pvector>>& solver, const int n, const int nroot,
+                 const int np, bool hermitian, double augmented_hessian) {
   auto options = CastOptions::LinearEquations(solver->get_options());
   options->n_roots = nroot;
   options->convergence_threshold = 1.0e-8;
@@ -149,9 +152,9 @@ auto set_options(std::unique_ptr<ILinearEquations<Rvector, Qvector, Pvector>>& s
                << ", svd thresh = " << options->svd_thresh.value() << ", norm thresh = " << options->norm_thresh.value()
                << ", max size of Q = " << options->max_size_qspace.value() << ", reset D = " << options->reset_D.value()
                << ", augmented hessian = " << options->augmented_hessian.value() << std::endl;
-//  logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
-//  logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
-//  logger->data_dump = false;
+  //  logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
+  //  logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
+  //  logger->data_dump = false;
   return options;
 }
 
@@ -196,11 +199,12 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
   auto preconditioner = LinearEquationsPreconditioner(mat);
   for (size_t nroot = 1; nroot <= n_root_max; ++nroot) {
     auto rhs_vector = matrix_to_vector(rhs, nroot);
-    test_linearequationsf(mat.data(), rhs.data(), nX, 0, nroot, hermitian);
-    auto solver = molpro::linalg::itsolv::create_LinearEquations<Rvector,Qvector,Pvector>();
+//    std::cout << "mat:\n" << mat << std::endl;
+//    std::cout << "rhs_vector:\n" << rhs_vector << std::endl;
+    auto solver = molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector, Pvector>();
     auto options = set_options(solver, mat.rows(), nroot, 0, hermitian, augmented_hessian);
     solver->add_equations(molpro::linalg::itsolv::cwrap(rhs_vector));
-    auto [x, g, guess] = initial_guess(mat, solver->n_roots());
+    auto [x, g, guess] = initial_guess(mat, solver->n_roots(),rhs);
     int nwork = solver->n_roots();
     int max_iter = 100;
     size_t n_iter = 1;
@@ -232,7 +236,9 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
       roots.push_back(root);
     }
     solver->solution(roots, parameters, actions);
+//    std::cout << "actions after solution\n"<<actions<<std::endl;
     auto residual_errors = residual(mat, rhs, parameters, actions);
+//    std::cout << "actions after residual\n"<<actions<<std::endl;
     EXPECT_EQ(residual_errors.size(), nroot);
     EXPECT_THAT(residual_errors, ::testing::Each(::testing::Le(options->convergence_threshold.value())));
     for (size_t i = 0; i < nroot; ++i) {
@@ -245,12 +251,16 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
         EXPECT_NEAR(overlap_with_reference, 1., options->convergence_threshold.value()) << "root = " << i;
       }
     }
+    auto fortran_success =
+        test_linearequationsf(mat.data(), rhs.data(), nX, 0, nroot, hermitian, augmented_hessian) != 0;
+    EXPECT_TRUE(fortran_success);
+//    ASSERT_TRUE(fortran_success);
   }
 }
 } // namespace
 
 TEST(LinearEquations, simple_symmetric_system) {
-  double p = 1;
+  double p = .1;
   size_t n_min = 1, n_max = 20;
   double augmented_hessian = 0;
   for (size_t n = n_min; n <= n_max; ++n) {

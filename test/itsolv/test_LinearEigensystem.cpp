@@ -24,7 +24,8 @@ using molpro::linalg::itsolv::cwrap;
 using molpro::linalg::itsolv::ILinearEigensystem;
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::wrap;
-extern "C" void test_lineareigensystemf(double* matrix, size_t n, size_t np, size_t nroot, int hermitian, double* eigenvalues);
+extern "C" void test_lineareigensystemf(double* matrix, size_t n, size_t np, size_t nroot, int hermitian,
+                                        double* eigenvalues);
 struct LinearEigensystemF : ::testing::Test {
   using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
   using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
@@ -173,8 +174,8 @@ struct LinearEigensystemF : ::testing::Test {
     return std::make_tuple(pspace, PP);
   }
 
-  auto set_options(std::unique_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver,
-                    const int nroot, const int np, bool hermitian) {
+  auto set_options(std::unique_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver, const int nroot,
+                   const int np, bool hermitian) {
     auto options = CastOptions::LinearEigensystem(solver->get_options());
     options->n_roots = nroot;
     options->convergence_threshold = 1.0e-8;
@@ -190,9 +191,9 @@ struct LinearEigensystemF : ::testing::Test {
                  << ", norm thresh = " << options->norm_thresh.value()
                  << ", max size of Q = " << options->max_size_qspace.value()
                  << ", reset D = " << options->reset_D.value() << std::endl;
-//    logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
-//    logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
-//    logger->data_dump = false;
+    //    logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
+    //    logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
+    //    logger->data_dump = false;
     return options;
   }
 

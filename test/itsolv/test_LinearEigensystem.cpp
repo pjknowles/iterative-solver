@@ -24,8 +24,8 @@ using molpro::linalg::itsolv::cwrap;
 using molpro::linalg::itsolv::ILinearEigensystem;
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::wrap;
-extern "C" void test_lineareigensystemf(double* matrix, size_t n, size_t np, size_t nroot, int hermitian,
-                                        double* eigenvalues);
+extern "C" int test_lineareigensystemf(double* matrix, size_t n, size_t np, size_t nroot, int hermitian,
+                                       double* eigenvalues);
 struct LinearEigensystemF : ::testing::Test {
   using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
   using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
@@ -237,7 +237,7 @@ struct LinearEigensystemF : ::testing::Test {
         molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n
                      << ", pspace dimension " << np << ", n_working_vectors_max = " << n_working_vectors_max
                      << std::endl;
-        test_lineareigensystemf(hmat.data(), n, np, nroot, hermitian, expected_eigenvalues.data());
+        ASSERT_NE(test_lineareigensystemf(hmat.data(), n, np, nroot, hermitian, expected_eigenvalues.data()), 0);
         auto
             //        std::shared_ptr<molpro::linalg::itsolv::ILinearEigensystem<Rvector,Qvector,Pvector>>
             solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector, Pvector>();

@@ -1,9 +1,8 @@
-! Created by Peter Knowles on 26/12/2020.
-
-subroutine test_LinearEigensystemF(matrix, n, np, nroot, hermitian, expected_eigenvalues) BIND(C)
+function test_LinearEigensystemF(matrix, n, np, nroot, hermitian, expected_eigenvalues) BIND(C)
   use iso_c_binding
   use Iterative_Solver
   implicit none
+  integer(c_int) :: test_LinearEigensystemF
   integer(c_size_t), intent(in), value :: n, np, nroot
   integer(c_int), intent(in), value :: hermitian
   double precision, intent(in), dimension(n, n) :: matrix
@@ -16,6 +15,7 @@ subroutine test_LinearEigensystemF(matrix, n, np, nroot, hermitian, expected_eig
   integer, dimension(nroot) :: guess
   double precision :: guess_value
 
+  test_LinearEigensystemF = 1
   if (np .gt. 0) return
   write (6, *) 'test_linearEigensystemF ', hermitian
   call Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, verbosity = 2, hermitian = hermitian.ne.0, &
@@ -60,8 +60,8 @@ subroutine test_LinearEigensystemF(matrix, n, np, nroot, hermitian, expected_eig
     write (6, *) 'test_linearEigensystemF expected eigenvalues ', expected_eigenvalues
     write (6, *) 'difference ', eigs - expected_eigenvalues
     write (6, *) 'difference ', sqrt(dot_product(eigs - expected_eigenvalues, eigs - expected_eigenvalues))
-    stop
+    test_LinearEigensystemF = 0
   end if
   call Iterative_Solver_Finalize
 
-end subroutine test_LinearEigensystemF
+end function test_LinearEigensystemF

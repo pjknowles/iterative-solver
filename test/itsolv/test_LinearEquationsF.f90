@@ -1,5 +1,3 @@
-! Created by Peter Knowles on 26/12/2020.
-
 function test_LinearEquationsF(matrix, rhs, n, np, nroot, hermitian, augmented_hessian) BIND(C)
   use iso_c_binding
   use Iterative_Solver

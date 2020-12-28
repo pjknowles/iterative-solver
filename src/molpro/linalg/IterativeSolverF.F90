@@ -463,7 +463,7 @@ CONTAINS
     !> the subsequent call to Iterative_Solver_End_Iteration()
     FUNCTION Iterative_Solver_Add_Value(value, parameters, action, lmppx, synchronize)
         USE iso_c_binding
-        INTEGER :: Iterative_Solver_Add_Value
+        LOGICAL :: Iterative_Solver_Add_Value
         DOUBLE PRECISION, INTENT(in) :: value
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
@@ -491,7 +491,7 @@ CONTAINS
         IF (PRESENT(synchronize)) THEN
             IF (.NOT. synchronize) lsyncC = 0
         END IF
-        Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action, lsyncC, lmppxC)
+        Iterative_Solver_Add_Value = Iterative_Solver_Add_Value_C(value, parameters, action, lsyncC, lmppxC).NE.0
     END FUNCTION Iterative_Solver_Add_Value
     !
     !
@@ -586,8 +586,8 @@ CONTAINS
     FUNCTION Iterative_Solver_End_Iteration(solution, residual, lmppx, synchronize)
         USE iso_c_binding
         INTEGER :: Iterative_Solver_End_Iteration
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: solution
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: residual
+        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
+        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
         LOGICAL, INTENT(in), OPTIONAL :: lmppx
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
         INTERFACE

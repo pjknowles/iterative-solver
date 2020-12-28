@@ -35,7 +35,7 @@ function test_LinearEquationsF(matrix, rhs, n, np, nroot, hermitian, augmented_h
   !  options->reset_D = 8;
   call Iterative_Solver_Linear_Equations_Initialize(n, nroot, rhs, augmented_hessian = augmented_hessian, &
       hermitian = hermitian.ne.0, &
-      thresh = thresh, thresh_value = 1d50)
+      thresh = thresh, thresh_value = 1d50, lmppx=.true.)
   nwork = nroot
   c = 0
   do k = 1, nroot

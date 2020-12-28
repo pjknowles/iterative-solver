@@ -14,12 +14,13 @@ function test_LinearEigensystemF(matrix, n, np, nroot, hermitian, expected_eigen
   integer :: nwork, i, j, k
   integer, dimension(nroot) :: guess
   double precision :: guess_value
+  double precision, parameter :: thresh = 1d-8
 
   test_LinearEigensystemF = 1
   if (np .gt. 0) return
   write (6, *) 'test_linearEigensystemF ', hermitian
   call Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, verbosity = 2, hermitian = hermitian.ne.0, &
-      thresh = 1d-8)
+      thresh = thresh, lmppx=.true.)
   nwork = nroot
   c = 0
   do i = 1, nroot
@@ -50,12 +51,12 @@ function test_LinearEigensystemF(matrix, n, np, nroot, hermitian, expected_eigen
       end do
     end do
     nwork = Iterative_Solver_End_Iteration(c, g);
-!    write (6, *) 'error ', Iterative_Solver_Errors()
     if (nwork.le.0) exit
   end do
+  write (6, *) 'errors ', Iterative_Solver_Errors()
   eigs = Iterative_Solver_Eigenvalues()
   error = sqrt(dot_product(eigs - expected_eigenvalues, eigs - expected_eigenvalues))
-  if (error.gt.1d-10) then
+  if (error.gt.thresh) then
     write (6, *) 'test_linearEigensystemF eigenvalues ', eigs
     write (6, *) 'test_linearEigensystemF expected eigenvalues ', expected_eigenvalues
     write (6, *) 'difference ', eigs - expected_eigenvalues

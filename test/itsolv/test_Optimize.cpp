@@ -23,6 +23,9 @@ using molpro::linalg::itsolv::CVecRef;
 using molpro::linalg::itsolv::cwrap;
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::wrap;
+#ifndef NOFORTRAN
+extern "C" int test_optimizef(double* matrix, size_t n);
+#endif
 struct OptimizeF : ::testing::Test {
   using scalar = double;
   using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
@@ -108,6 +111,9 @@ struct OptimizeF : ::testing::Test {
                                                      std::vector<double>(n, double(1))));
       }
     }
+#ifndef NOFORTRAN
+    EXPECT_TRUE(test_optimizef(hmat.data(), n) != 0);
+#endif
   }
 };
 

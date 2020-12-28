@@ -11,12 +11,13 @@ function test_OptimizeF(matrix, n) BIND(C)
 
   double precision, dimension(n) :: c, g
   doubleprecision :: eigk, error, value
+  double precision, parameter :: thresh=1d-8
   integer :: nwork, i, j, k
 
   test_OptimizeF = 1
   write (6, *) 'test_OptimizeF '
   call Iterative_Solver_Optimize_Initialize(n, verbosity = 2, &
-      thresh = 1d-8, lmppx=.true.)
+      thresh = thresh, lmppx=.true.)
   nwork = 1
   c = 0
   do i = 1, 1000
@@ -32,8 +33,8 @@ function test_OptimizeF(matrix, n) BIND(C)
     if (nwork.le.0) exit
   end do
   error = sqrt(dot_product(c - 1, c - 1))
-  if (error.gt.1d-10) then
-    write (6, *) 'OptimizeF has failed '
+  if (error.gt.thresh) then
+    write (6, *) 'OptimizeF has failed ',value
     test_OptimizeF = 0
   end if
   call Iterative_Solver_Finalize

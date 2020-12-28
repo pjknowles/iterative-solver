@@ -16,6 +16,8 @@
 #include <molpro/linalg/array/util/gather_all.h>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/LinearEigensystem.h>
+#include <molpro/linalg/itsolv/LinearEquations.h>
+#include <molpro/linalg/itsolv/SolverFactory.h>
 
 using molpro::Profiler;
 using molpro::linalg::array::Span;
@@ -27,10 +29,14 @@ using molpro::linalg::itsolv::INonLinearEquations;
 using molpro::linalg::itsolv::IOptimize;
 using molpro::linalg::itsolv::IterativeSolver;
 using molpro::linalg::itsolv::LinearEigensystem;
+using molpro::linalg::itsolv::LinearEquations;
 
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
 using Qvector = molpro::linalg::array::DistrArrayMPI3;
 using Pvector = std::map<size_t, double>;
+// instantiate the factory
+#include <molpro/linalg/itsolv/SolverFactory-implementation.h>
+template class molpro::linalg::itsolv::SolverFactory<Rvector, Qvector, Pvector>;
 
 using vectorP = std::vector<double>;
 using molpro::linalg::itsolv::CVecRef;
@@ -53,9 +59,10 @@ struct Instance {
 std::stack<Instance> instances;
 } // namespace
 
-extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
-                                                           double thresh, double thresh_value, int hermitian, int verbosity,
-                                                           const char* fname, int64_t fcomm, int lmppx) {
+extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t range_begin,
+                                                           size_t range_end, double thresh, double thresh_value,
+                                                           int hermitian, int verbosity, const char* fname,
+                                                           int64_t fcomm, int lmppx, const char* algorithm) {
   std::shared_ptr<Profiler> profiler = nullptr;
   std::string pname(fname);
   int flag;
@@ -82,8 +89,10 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   int mpi_rank;
   MPI_Comm_rank(comm, &mpi_rank);
   auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
-  instances.emplace(
-      Instance{std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers), profiler, n, comm});
+  instances.emplace(Instance{molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector, Pvector>(algorithm, "")
+                             //              std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers)
+                             ,
+                             profiler, nQ, comm});
   auto& instance = instances.top();
   instance.solver->set_n_roots(nroot);
   LinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
@@ -92,9 +101,9 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
     solver_cast->set_hermiticity(hermitian);
     solver_cast->set_convergence_threshold(thresh);
     solver_cast->set_convergence_threshold_value(thresh_value);
-//    solver_cast->propose_rspace_norm_thresh = 1.0e-14;
-//    solver_cast->set_max_size_qspace(10);
-//    solver_cast->set_reset_D(50);
+    //    solver_cast->propose_rspace_norm_thresh = 1.0e-14;
+    //    solver_cast->set_max_size_qspace(10);
+    //    solver_cast->set_reset_D(50);
     solver_cast->logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
     solver_cast->logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
     solver_cast->logger->data_dump = false;
@@ -102,137 +111,143 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t n, size_t nroo
   std::vector<Rvector> x;
   std::vector<Rvector> g;
   for (size_t root = 0; root < instance.solver->n_roots(); root++) {
-    x.emplace_back(n, comm);
-    g.emplace_back(n, comm);
+    x.emplace_back(nQ, comm);
+    g.emplace_back(nQ, comm);
   }
   std::tie(range_begin, range_end) = x[0].distribution().range(mpi_rank);
 }
 
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
-                                                         const double* rhs, double aughes, double thresh, double thresh_value, int hermitian,
-                                                         int verbosity, const char* fname, int64_t fcomm, int lmppx) {
-  /*
-    std::shared_ptr<Profiler> profiler = nullptr;
-    std::string pname(fname);
-    int flag;
-    MPI_Initialized(&flag);
-    MPI_Comm comm;
-    if (!flag) {
-  #ifdef HAVE_PPIDD_H
-      PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
-      comm = MPI_Comm_f2c(PPIDD_Worker_comm());
-  #else
-      MPI_Init(0, nullptr);
-      comm = MPI_COMM_WORLD;
-  #endif
-    } else if (lmppx != 0) {
-      comm = MPI_COMM_SELF;
-    } else {
-      comm = MPI_Comm_f2c(fcomm);
-    }
-    if (!pname.empty()) {
-      profiler = molpro::ProfilerSingle::instance(pname, comm);
-    }
-    int mpi_rank;
-    MPI_Comm_rank(comm, &mpi_rank);
-    auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
-    std::vector<Rvector> rr;
-    rr.reserve(nroot);
-    for (size_t root = 0; root < nroot; root++) {
-      rr.emplace_back(n, comm);
-      auto rrrange = rr.back().distribution().range(mpi_rank);
-      auto rrn = rrrange.second - rrrange.first;
-      rr.back().allocate_buffer(Span<Rvector::value_type>(&const_cast<double*>(rhs)[root * n + rrrange.first], rrn));
-    }
-    instances.emplace(
-        Instance{std::make_unique<LinearEquations<Rvector, Qvector, Pvector>>(rr, handlers, aughes), profiler, n,
-  comm}); auto& instance = instances.top(); instance.solver->set_n_roots(nroot);
-    //instance.solver->m_thresh = thresh;
-    //instance.solver->m_verbosity = verbosity;
-    std::tie(range_begin, range_end) = rr[0].distribution().range(mpi_rank);
-    */
+                                                         const double* rhs, double aughes, double thresh,
+                                                         double thresh_value, int hermitian, int verbosity,
+                                                         const char* fname, int64_t fcomm, int lmppx,
+                                                         const char* algorithm) {
+  std::shared_ptr<Profiler> profiler = nullptr;
+  std::string pname(fname);
+  int flag;
+  MPI_Initialized(&flag);
+  MPI_Comm comm;
+  if (!flag) {
+#ifdef HAVE_PPIDD_H
+    PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
+    comm = MPI_Comm_f2c(PPIDD_Worker_comm());
+#else
+    MPI_Init(0, nullptr);
+    comm = MPI_COMM_WORLD;
+#endif
+  } else if (lmppx != 0) {
+    comm = MPI_COMM_SELF;
+  } else {
+    comm = MPI_Comm_f2c(fcomm);
+  }
+  if (!pname.empty()) {
+    profiler = molpro::ProfilerSingle::instance(pname, comm);
+  }
+  int mpi_rank;
+  MPI_Comm_rank(comm, &mpi_rank);
+  auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
+  std::vector<Rvector> rr;
+  rr.reserve(nroot);
+  for (size_t root = 0; root < nroot; root++) {
+    rr.emplace_back(n, comm);
+    auto rrrange = rr.back().distribution().range(mpi_rank);
+    auto rrn = rrrange.second - rrrange.first;
+    rr.back().allocate_buffer(Span<Rvector::value_type>(&const_cast<double*>(rhs)[root * n + rrrange.first], rrn));
+  }
+  instances.emplace(
+      Instance{molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector, Pvector>(algorithm, "")
+               //        std::make_unique<LinearEquations<Rvector, Qvector, Pvector>>(rr, handlers, aughes)
+               ,
+               profiler, n, comm});
+  auto& instance = instances.top();
+  auto solver = dynamic_cast<ILinearEquations<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  auto solverLinearEquations = dynamic_cast<LinearEquations<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  solver->set_n_roots(nroot);
+  solverLinearEquations->add_equations(rr);
+  solver->set_convergence_threshold(thresh);
+  solver->set_convergence_threshold_value(thresh_value);
+  // instance.solver->m_verbosity = verbosity;
+  std::tie(range_begin, range_end) = rr[0].distribution().range(mpi_rank);
 }
 
-extern "C" void IterativeSolverDIISInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
-                                              int verbosity, const char* fname, int64_t fcomm, int lmppx) {
-  /*
-    std::shared_ptr<Profiler> profiler = nullptr;
-    std::string pname(fname);
-    int flag;
-    MPI_Initialized(&flag);
-    MPI_Comm comm;
-    if (!flag) {
-  #ifdef HAVE_PPIDD_H
-      PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
-      comm = MPI_Comm_f2c(PPIDD_Worker_comm());
-  #else
-      MPI_Init(0, nullptr);
-      comm = MPI_COMM_WORLD;
-  #endif
-    } else if (lmppx != 0) {
-      comm = MPI_COMM_SELF;
-    } else {
-      comm = MPI_Comm_f2c(fcomm);
-    }
-    if (!pname.empty()) {
-      profiler = molpro::ProfilerSingle::instance(pname, comm);
-    }
-    int mpi_rank;
-    MPI_Comm_rank(comm, &mpi_rank);
-    auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
-    instances.emplace(Instance{std::make_unique<DIIS<Rvector, Qvector, Pvector>>(handlers), profiler, n, comm});
-    auto& instance = instances.top();
-    //instance.solver->m_thresh = thresh;
-    //instance.solver->m_verbosity = verbosity;
-    Rvector x(n, comm);
-    std::tie(range_begin, range_end) = x.distribution().range(mpi_rank);
-    */
+extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t range_begin, size_t range_end,
+                                                            double thresh, int verbosity, const char* fname,
+                                                            int64_t fcomm, int lmppx, const char* algorithm) {
+  std::shared_ptr<Profiler> profiler = nullptr;
+  std::string pname(fname);
+  int flag;
+  MPI_Initialized(&flag);
+  MPI_Comm comm;
+  if (!flag) {
+#ifdef HAVE_PPIDD_H
+    PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
+    comm = MPI_Comm_f2c(PPIDD_Worker_comm());
+#else
+    MPI_Init(0, nullptr);
+    comm = MPI_COMM_WORLD;
+#endif
+  } else if (lmppx != 0) {
+    comm = MPI_COMM_SELF;
+  } else {
+    comm = MPI_Comm_f2c(fcomm);
+  }
+  if (!pname.empty()) {
+    profiler = molpro::ProfilerSingle::instance(pname, comm);
+  }
+  int mpi_rank;
+  MPI_Comm_rank(comm, &mpi_rank);
+  auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
+  instances.emplace(Instance{
+      molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector, Pvector>(algorithm, ""), profiler, n, comm});
+  auto& instance = instances.top();
+  instance.solver->set_convergence_threshold(thresh);
+  // instance.solver->m_verbosity = verbosity;
+  Rvector x(n, comm);
+  std::tie(range_begin, range_end) = x.distribution().range(mpi_rank);
 }
 
-extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh, double thresh_value,
-                                                  int verbosity, char* algorithm, int minimize, const char* fname,
-                                                  int64_t fcomm, int lmppx) {
-  /*
-    std::shared_ptr<Profiler> profiler = nullptr;
-    std::string pname(fname);
-    int flag;
-    MPI_Initialized(&flag);
-    MPI_Comm comm;
-    if (!flag) {
-  #ifdef HAVE_PPIDD_H
-      PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
-      comm = MPI_Comm_f2c(PPIDD_Worker_comm());
-  #else
-      MPI_Init(0, nullptr);
-      comm = MPI_COMM_WORLD;
-  #endif
-    } else if (lmppx != 0) {
-      comm = MPI_COMM_SELF;
-    } else {
-      comm = MPI_Comm_f2c(fcomm);
-    }
-    if (!pname.empty()) {
-      profiler = molpro::ProfilerSingle::instance(pname, comm);
-    }
-    int mpi_rank;
-    MPI_Comm_rank(comm, &mpi_rank);
-    auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
-    if (*algorithm)
-      instances.emplace(
-          Instance{std::make_unique<Optimize<Rvector, Qvector, Pvector>>(handlers, algorithm, minimize != 0), profiler,
-  n, comm}); else instances.emplace(Instance{std::make_unique<Optimize<Rvector, Qvector, Pvector>>(handlers), profiler,
-  n, comm}); auto& instance = instances.top(); instance.solver->set_n_roots(1);
-    //instance.solver->m_thresh = thresh;
-    //instance.solver->m_verbosity = verbosity;
-    Rvector x(n, comm);
-    std::tie(range_begin, range_end) = x.distribution().range(mpi_rank);
-    */
+extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
+                                                  double thresh_value, int verbosity, int minimize, const char* fname,
+                                                  int64_t fcomm, int lmppx, const char* algorithm) {
+  std::shared_ptr<Profiler> profiler = nullptr;
+  std::string pname(fname);
+  int flag;
+  MPI_Initialized(&flag);
+  MPI_Comm comm;
+  if (!flag) {
+#ifdef HAVE_PPIDD_H
+    PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
+    comm = MPI_Comm_f2c(PPIDD_Worker_comm());
+#else
+    MPI_Init(0, nullptr);
+    comm = MPI_COMM_WORLD;
+#endif
+  } else if (lmppx != 0) {
+    comm = MPI_COMM_SELF;
+  } else {
+    comm = MPI_Comm_f2c(fcomm);
+  }
+  if (!pname.empty()) {
+    profiler = molpro::ProfilerSingle::instance(pname, comm);
+  }
+  int mpi_rank;
+  MPI_Comm_rank(comm, &mpi_rank);
+  auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
+  instances.emplace(
+      Instance{molpro::linalg::itsolv::create_Optimize<Rvector, Qvector, Pvector>(algorithm, ""), profiler, n, comm});
+  auto& instance = instances.top();
+  instance.solver->set_n_roots(1);
+  instance.solver->set_convergence_threshold(thresh);
+  instance.solver->set_convergence_threshold_value(thresh_value);
+  // instance.solver->m_verbosity = verbosity;
+  Rvector x(n, comm);
+  std::tie(range_begin, range_end) = x.distribution().range(mpi_rank);
 }
 
 extern "C" void IterativeSolverFinalize() { instances.pop(); }
 
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync, int lmppx) {
-  /*  auto& instance = instances.top();
+  auto& instance = instances.top();
     MPI_Comm ccomm = (lmppx != 0) ? MPI_COMM_SELF : instance.comm;
     int mpi_rank;
     MPI_Comm_rank(ccomm, &mpi_rank);
@@ -245,12 +260,12 @@ extern "C" size_t IterativeSolverAddValue(double value, double* parameters, doub
     auto ggn = ggrange.second - ggrange.first;
     ggg.allocate_buffer(Span<typename Rvector::value_type>(&action[ggrange.first], ggn));
     size_t working_set_size =
-        static_cast<Optimize<Rvector, Qvector>*>(instance.solver.get())->addValue(ccc, value, ggg) ? 1 : 0;
+        dynamic_cast<molpro::linalg::itsolv::IOptimize<Rvector, Qvector, Pvector>*>(instance.solver.get())->add_value(ccc, value, ggg) ? 1 : 0;
     if (sync) { // throw an error if communicator was not passed?
       gather_all(ccc.distribution(), ccomm, &parameters[0]);
       gather_all(ggg.distribution(), ccomm, &action[0]);
     }
-    return working_set_size;*/
+    return working_set_size;
   return 0;
 }
 
@@ -281,6 +296,8 @@ void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& 
 
 extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, int sync, int lmppx) {
   std::vector<Rvector> cc, gg;
+  if (instances.empty())
+    throw std::runtime_error("IterativeSolver not initialised properly");
   auto& instance = instances.top();
   if (instance.prof != nullptr)
     instance.prof->start("AddVector");
@@ -317,7 +334,7 @@ extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, i
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Sync");
-  //if (mpi_rank == 0)
+  // if (mpi_rank == 0)
   //  instance.solver->report();
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector");
@@ -348,8 +365,8 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
         Span<typename Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
   }
   std::vector<int> croots;
-  for (int i = 0; i < nroot; i++){
-    croots.push_back(*(roots+i));
+  for (int i = 0; i < nroot; i++) {
+    croots.push_back(*(roots + i));
   }
   if (instance.prof != nullptr)
     instance.prof->start("Solution:Call");
@@ -367,7 +384,7 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
   }
   if (instance.prof != nullptr)
     instance.prof->stop("Solution:Sync");
-  //if (mpi_rank == 0)
+  // if (mpi_rank == 0)
   //  instance.solver->report();
   if (instance.prof != nullptr)
     instance.prof->stop("Solution");
@@ -479,19 +496,16 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
 extern "C" void IterativeSolverErrors(double* errors) {
   auto& instance = instances.top();
   size_t k = 0;
-  LinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
-      dynamic_cast<LinearEigensystem<Rvector, Qvector, Pvector>*>(instance.solver.get());
-  if (solver_cast) {
-    for (const auto& e : solver_cast->errors())
-      errors[k++] = e;
-  }
+  for (const auto& e : instance.solver.get()->errors())
+    errors[k++] = e;
+  return;
 }
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
   auto& instance = instances.top();
   size_t k = 0;
-  LinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
-      dynamic_cast<LinearEigensystem<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  ILinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
+      dynamic_cast<ILinearEigensystem<Rvector, Qvector, Pvector>*>(instance.solver.get());
   if (solver_cast) {
     for (const auto& e : solver_cast->eigenvalues())
       eigenvalues[k++] = e;

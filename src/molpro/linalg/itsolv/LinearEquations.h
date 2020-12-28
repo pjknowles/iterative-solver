@@ -74,6 +74,8 @@ public:
   }
 
   void add_equations(const R& rhs) override { add_equations(cwrap_arg(rhs)); }
+  void add_equations(const std::vector<R>& rhs) override { add_equations(cwrap(rhs));
+  }
 
   CVecRef<Q> rhs() const override {
     auto xspace = std::static_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);

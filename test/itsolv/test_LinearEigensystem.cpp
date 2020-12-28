@@ -9,21 +9,25 @@
 #include <regex>
 #include <vector>
 
-#include <molpro/linalg/itsolv/helper.h>
-#include <molpro/linalg/itsolv/SolverFactory.h>
-#include <molpro/linalg/itsolv/CastOptions.h>
 #include "vector_types.h"
+#include <molpro/linalg/itsolv/CastOptions.h>
+#include <molpro/linalg/itsolv/SolverFactory.h>
+#include <molpro/linalg/itsolv/helper.h>
 
 // Find lowest eigensolution of a matrix obtained from an external file
 // Storage of vectors in-memory via class Rvector
 
 using molpro::linalg::array::Span;
+using molpro::linalg::itsolv::CastOptions;
 using molpro::linalg::itsolv::CVecRef;
 using molpro::linalg::itsolv::cwrap;
+using molpro::linalg::itsolv::ILinearEigensystem;
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::wrap;
-using molpro::linalg::itsolv::ILinearEigensystem;
-using molpro::linalg::itsolv::CastOptions;
+#ifndef NOFORTRAN
+extern "C" int test_lineareigensystemf(double* matrix, size_t n, size_t np, size_t nroot, int hermitian,
+                                       double* eigenvalues);
+#endif
 struct LinearEigensystemF : ::testing::Test {
   using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
   using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
@@ -172,8 +176,8 @@ struct LinearEigensystemF : ::testing::Test {
     return std::make_tuple(pspace, PP);
   }
 
-  auto set_options(std::unique_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver,
-                    const int nroot, const int np, bool hermitian) {
+  auto set_options(std::unique_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver, const int nroot,
+                   const int np, bool hermitian) {
     auto options = CastOptions::LinearEigensystem(solver->get_options());
     options->n_roots = nroot;
     options->convergence_threshold = 1.0e-8;
@@ -189,9 +193,9 @@ struct LinearEigensystemF : ::testing::Test {
                  << ", norm thresh = " << options->norm_thresh.value()
                  << ", max size of Q = " << options->max_size_qspace.value()
                  << ", reset D = " << options->reset_D.value() << std::endl;
-//    logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
-//    logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
-//    logger->data_dump = false;
+    //    logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
+    //    logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
+    //    logger->data_dump = false;
     return options;
   }
 
@@ -235,8 +239,12 @@ struct LinearEigensystemF : ::testing::Test {
         molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n
                      << ", pspace dimension " << np << ", n_working_vectors_max = " << n_working_vectors_max
                      << std::endl;
+#ifndef NOFORTRAN
+        ASSERT_NE(test_lineareigensystemf(hmat.data(), n, np, nroot, hermitian, expected_eigenvalues.data()), 0);
+#endif
         auto
-            solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector,Qvector,Pvector>();
+            //        std::shared_ptr<molpro::linalg::itsolv::ILinearEigensystem<Rvector,Qvector,Pvector>>
+            solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector, Pvector>();
         auto options = set_options(solver, nroot, np, hermitian);
         int nwork = nroot;
         auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, solver);
@@ -373,7 +381,7 @@ TEST_F(LinearEigensystemF, solution) {
   for (size_t nroot = 1; nroot < n; ++nroot) {
     for (size_t np = 0; np <= nroot; np += nroot) {
       for (size_t n_working_vectors_max = 0; n_working_vectors_max < 2; ++n_working_vectors_max) {
-        auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector,Qvector,Pvector>();
+        auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector, Pvector>();
         auto options = set_options(solver, nroot, np, check_mat_hermiticity());
         auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, solver);
         auto roots = solver->working_set();

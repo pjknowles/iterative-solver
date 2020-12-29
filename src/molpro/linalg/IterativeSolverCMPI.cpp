@@ -8,6 +8,9 @@
 #ifdef HAVE_PPIDD_H
 #include <ppidd.h>
 #endif
+#ifdef LINEARALGEBRA_ARRAY_GA
+#include "ga-mpi.h"
+#endif
 
 #include <molpro/linalg/array/DistrArrayHDF5.h>
 #include <molpro/linalg/array/DistrArrayMPI3.h>
@@ -555,3 +558,20 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
 }
 
 extern "C" void IterativeSolverPrintStatistics() { molpro::cout << instances.top().solver->statistics() << std::endl; }
+
+extern "C" int64_t mpicomm_self() {
+  return MPI_Comm_c2f(MPI_COMM_SELF);
+}
+
+extern "C" int64_t mpicomm_global() {
+  int flag;
+  MPI_Initialized(&flag);
+  if (! flag) return 0;
+#ifdef HAVE_PPIDD_H
+  return MPI_Comm_c2f(PPIDD_Worker_comm());
+#endif
+#ifdef LINEARALGEBRA_ARRAY_GA
+  return MPI_Comm_c2f(GA_MPI_Comm());
+#endif
+  return MPI_Comm_c2f(MPI_COMM_WORLD);
+}

@@ -1,6 +1,7 @@
 !> @brief IterativeSolver Fortran binding
 MODULE Iterative_Solver
     USE, INTRINSIC :: iso_c_binding
+    USE :: iso_fortran_env, only : int64
     PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize, Iterative_Solver_Finalize
     PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize_Ranges
     PUBLIC :: Iterative_Solver_DIIS_Initialize, Iterative_Solver_Linear_Equations_Initialize
@@ -12,16 +13,40 @@ MODULE Iterative_Solver
     PUBLIC :: Iterative_Solver_Errors
     PUBLIC :: Iterative_Solver_Eigenvalues, Iterative_Solver_Working_Set_Eigenvalues
     PUBLIC :: Iterative_Solver_Print_Statistics
+    INTEGER, PUBLIC, PARAMETER :: mpicomm_kind = KIND(int64)
+    PUBLIC :: mpicomm_global, set_mpicomm_compute, mpicomm_self
     PRIVATE
+    INTEGER(kind = mpicomm_kind), SAVE :: s_mpicomm_compute=-9999999
     INTEGER(c_size_t) :: m_nq, m_nroot
     INTEGER(c_int), parameter :: hermitian_default=1 ! TODO consider making non-hermitian the default
 
     INTERFACE
         SUBROUTINE Iterative_Solver_Print_Statistics() BIND (C, name = 'IterativeSolverPrintStatistics')
         END SUBROUTINE Iterative_Solver_Print_Statistics
+
+        FUNCTION mpicomm_self() BIND(C)
+            INTEGER, PARAMETER :: mpicomm_kind = KIND(int64)
+            INTEGER(KIND = mpicomm_kind) :: mpicomm_self
+        END FUNCTION mpicomm_self
+        FUNCTION mpicomm_global() BIND(C)
+            INTEGER, PARAMETER :: mpicomm_kind = KIND(int64)
+            INTEGER(KIND = mpicomm_kind) :: mpicomm_global
+        END FUNCTION mpicomm_global
     END INTERFACE
 
 CONTAINS
+
+    FUNCTION mpicomm_compute()
+        INTEGER(KIND = mpicomm_kind) :: mpicomm_compute
+        if (s_mpicomm_compute .EQ. -9999999) s_mpicomm_compute = mpicomm_global()
+        mpi_comm_compute = s_mpicomm_compute
+    END FUNCTION mpicomm_compute
+
+    SUBROUTINE set_mpicomm_compute(comm)
+        INTEGER(KIND = mpicomm_kind), intent(IN) :: comm
+        s_mpicomm_compute = comm
+    END SUBROUTINE set_mpicomm_compute
+
 
     !> \brief Finds the lowest eigensolutions of a matrix. The default algorithm is Davidson's method, i.e. preconditioned Lanczos.
     !> Example of simplest use: @include LinearEigensystemExampleF.F90

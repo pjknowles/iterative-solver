@@ -48,4 +48,8 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
                                           double threshold, size_t* indices, int lmppx);
 
 extern "C" void IterativeSolverPrintStatistics();
+
+extern "C" int64_t mpicomm_self();
+
+extern "C" int64_t mpicomm_global();
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_ITERATIVESOLVERC_H_

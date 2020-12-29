@@ -560,6 +560,9 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
 extern "C" void IterativeSolverPrintStatistics() { molpro::cout << instances.top().solver->statistics() << std::endl; }
 
 extern "C" int64_t mpicomm_self() {
+  int flag;
+  MPI_Initialized(&flag);
+  if (! flag) return 0;
   return MPI_Comm_c2f(MPI_COMM_SELF);
 }
 

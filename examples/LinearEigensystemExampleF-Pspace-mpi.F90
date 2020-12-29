@@ -79,7 +79,7 @@ PROGRAM Linear_Eigensystem_Example
   if (rank == 0) then
     WRITE (6, *) 'P-space=', nP, ', dimension=', n, ', roots=', nroot
   end if
-  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Eigensystem_Example_P', pcomm = MPI_COMM_WORLD, &
+  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Eigensystem_Example_P',  &
                                                                                   thresh = 1d-8, thresh_value = 1d-14, &
                                                                                   verbosity = 1)
   offsets(0) = 0

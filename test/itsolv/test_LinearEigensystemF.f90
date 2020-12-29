@@ -20,7 +20,7 @@ function test_LinearEigensystemF(matrix, n, np, nroot, hermitian, expected_eigen
   if (np .gt. 0) return
   write (6, *) 'test_linearEigensystemF ', hermitian
   call Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, verbosity = 2, hermitian = hermitian.ne.0, &
-      thresh = thresh, lmppx=.true.)
+      thresh = thresh)
   nwork = nroot
   c = 0
   do i = 1, nroot

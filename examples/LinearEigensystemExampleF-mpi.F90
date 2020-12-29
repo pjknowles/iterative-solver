@@ -31,7 +31,7 @@ PROGRAM Linear_Eigensystem_Example
     m(i, i) = 3 * i
   END DO
   p=Profiler('Eigensystem_Example', MPI_COMM_WORLD)
-  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Eigensystem_Example', pcomm = MPI_COMM_WORLD, &
+  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Eigensystem_Example',  &
                                                                                   thresh = 1d-7, thresh_value = 1d-14, &
                                                                                   verbosity = 1)
   c = 0

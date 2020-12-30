@@ -509,21 +509,22 @@ extern "C" int64_t mpicomm_global() {
   int flag;
   MPI_Initialized(&flag);
   if (!flag) {
-#ifdef HAVE_PPIDD_H
-    PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
-#else
     MPI_Init(0, nullptr);
-#ifdef LINEARALGEBRA_ARRAY_GA
-    GA_Initialize();
-#endif
-#endif
-  }
-#ifdef HAVE_PPIDD_H
-    return MPI_Comm_c2f(PPIDD_Worker_comm());
-#endif
-#ifdef LINEARALGEBRA_ARRAY_GA
-    if (GA_MPI_Comm() != NULL && GA_MPI_Comm() != MPI_COMM_NULL)
-      return MPI_Comm_c2f(GA_MPI_Comm());
-#endif
     return MPI_Comm_c2f(MPI_COMM_WORLD);
   }
+#ifdef HAVE_PPIDD_H
+  {
+    int64_t size;
+    PPIDD_Size(&size);
+    if (size > 0)
+      return MPI_Comm_c2f(PPIDD_Worker_comm());
+  }
+#else
+#ifdef LINEARALGEBRA_ARRAY_GA
+  if (GA_MPI_Comm() != NULL && GA_MPI_Comm() != MPI_COMM_NULL) {
+    return MPI_Comm_c2f(GA_MPI_Comm());
+  }
+#endif
+#endif
+  return MPI_Comm_c2f(MPI_COMM_WORLD);
+}

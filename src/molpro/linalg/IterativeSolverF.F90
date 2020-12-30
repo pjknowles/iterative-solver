@@ -161,7 +161,6 @@ CONTAINS
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: mpicommC
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
-        mpicommC = 0
         m_range_begin = INT(range_begin, kind = c_size_t)
         m_range_end = INT(range_end, kind = c_size_t)
         IF (PRESENT(pname)) THEN
@@ -189,6 +188,8 @@ CONTAINS
         END IF
         IF (PRESENT(mpicomm)) THEN
             mpicommC = INT(mpicomm, kind = c_int64_t)
+        ELSE
+            mpicommC = mpicomm_compute()
         ENDIF
         CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, m_range_begin, m_range_end, threshC, &
                 verbosityC, pnameC, mpicommC, algorithmC)
@@ -244,7 +245,6 @@ CONTAINS
         threshC = 1d-10
         thresh_valueC = 1d50
         augmented_hessianC = 0d0
-        mpicommC = 0
         hermitianC = hermitian_default
         IF (PRESENT(pname)) THEN
             ALLOCATE(pnameC(LEN(pname) + 1))
@@ -280,6 +280,8 @@ CONTAINS
         END IF
         IF (PRESENT(mpicomm)) THEN
             mpicommC = INT(mpicomm, kind = c_int64_t)
+        ELSE
+            mpicommC = mpicomm_compute()
         ENDIF
         CALL Iterative_Solver_Linear_Equations_InitializeC(m_nq, m_nroot, dummy_range_begin, dummy_range_end, &
                 rhs, augmented_hessianC, threshC, thresh_valueC, hermitianC, verbosityC, pnameC, mpicommC, &
@@ -318,7 +320,6 @@ CONTAINS
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: mpicommC
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
-        mpicommC = 0
         IF (PRESENT(pname)) THEN
             ALLOCATE(pnameC(LEN(pname) + 1))
             CALL c_string_from_f(pname, pnameC)
@@ -351,6 +352,8 @@ CONTAINS
         END IF
         IF (PRESENT(mpicomm)) THEN
             mpicommC = INT(mpicomm, kind = c_int64_t)
+        ELSE
+            mpicommC = mpicomm_compute()
         ENDIF
         CALL Iterative_Solver_Optimize_InitializeC(m_nq, dummy_range_begin, dummy_range_end, threshC, verbosityC, &
                 minimizeC, pnameC, mpicommC, algorithmC)
@@ -398,7 +401,6 @@ CONTAINS
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: mpicommC
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
-        mpicommC = 0
         IF (PRESENT(pname)) THEN
             ALLOCATE(pnameC(LEN(pname) + 1))
             CALL c_string_from_f(pname, pnameC)
@@ -427,6 +429,8 @@ CONTAINS
         END IF
         IF (PRESENT(mpicomm)) THEN
             mpicommC = INT(mpicomm, kind = c_int64_t)
+        ELSE
+            mpicommC = mpicomm_compute()
         ENDIF
         CALL Iterative_Solver_DIIS_InitializeC(m_nq, dummy_range_begin, dummy_range_end, threshC, verbosityC, &
                 pnameC, mpicommC, algorithm)

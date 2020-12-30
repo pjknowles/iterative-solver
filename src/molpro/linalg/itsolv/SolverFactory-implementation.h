@@ -17,9 +17,9 @@ template <class R, class Q, class P>
 std::unique_ptr<IterativeSolver<R, Q, P>>
 SolverFactory<R, Q, P>::create(const Options& options, const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
   Options* options_ptr = &const_cast<Options&>(options);
-  if (auto options_child = dynamic_cast<ILinearEigensystemOptions*>(options_ptr); options_child) {
+  if (auto options_child = dynamic_cast<LinearEigensystemOptions*>(options_ptr); options_child) {
     return create(*options_child, handlers);
-  } else if (auto options_child = dynamic_cast<ILinearEquationsOptions*>(options_ptr); options_child) {
+  } else if (auto options_child = dynamic_cast<LinearEquationsOptions*>(options_ptr); options_child) {
     return create(*options_child, handlers);
   } else {
     return nullptr;
@@ -27,8 +27,8 @@ SolverFactory<R, Q, P>::create(const Options& options, const std::shared_ptr<Arr
 }
 
 template <class R, class Q, class P>
-std::unique_ptr<ILinearEigensystem<R, Q, P>>
-SolverFactory<R, Q, P>::create(const ILinearEigensystemOptions& options,
+std::unique_ptr<LinearEigensystem<R, Q, P>>
+SolverFactory<R, Q, P>::create(const LinearEigensystemOptions& options,
                                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
   auto solver = std::make_unique<LinearEigensystemDavidson<R, Q, P>>(handlers);
   solver->set_options(options);
@@ -36,8 +36,8 @@ SolverFactory<R, Q, P>::create(const ILinearEigensystemOptions& options,
 }
 
 template <class R, class Q, class P>
-std::unique_ptr<ILinearEquations<R, Q, P>>
-SolverFactory<R, Q, P>::create(const ILinearEquationsOptions& options,
+std::unique_ptr<LinearEquations<R, Q, P>>
+SolverFactory<R, Q, P>::create(const LinearEquationsOptions& options,
                                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
   auto solver = std::make_unique<LinearEquationsDavidson<R, Q, P>>(handlers);
   solver->set_options(options);
@@ -45,10 +45,10 @@ SolverFactory<R, Q, P>::create(const ILinearEquationsOptions& options,
 }
 
 template <class R, class Q, class P>
-std::unique_ptr<INonLinearEquations<R, Q, P>>
-SolverFactory<R, Q, P>::create(const INonLinearEquationsOptions& options,
+std::unique_ptr<NonLinearEquations<R, Q, P>>
+SolverFactory<R, Q, P>::create(const NonLinearEquationsOptions& options,
                                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
-  Options* options_ptr = &const_cast<INonLinearEquationsOptions&>(options);
+  Options* options_ptr = &const_cast<NonLinearEquationsOptions&>(options);
   if (auto options_child = dynamic_cast<NonLinearEquationsDIISOptions*>(options_ptr); options_child) {
     auto solver = std::make_unique<NonLinearEquationsDIIS<R, Q, P>>(handlers);
     solver->set_options(options);
@@ -58,10 +58,10 @@ SolverFactory<R, Q, P>::create(const INonLinearEquationsOptions& options,
 }
 
 template <class R, class Q, class P>
-std::unique_ptr<IOptimize<R, Q, P>>
-SolverFactory<R, Q, P>::create(const IOptimizeOptions& options,
+std::unique_ptr<Optimize<R, Q, P>>
+SolverFactory<R, Q, P>::create(const OptimizeOptions& options,
                                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
-  Options* options_ptr = &const_cast<IOptimizeOptions&>(options);
+  Options* options_ptr = &const_cast<OptimizeOptions&>(options);
   if (auto options_child = dynamic_cast<OptimizeBFGSOptions*>(options_ptr); options_child) {
     auto solver = std::make_unique<OptimizeBFGS<R, Q, P>>(handlers);
     solver->set_options(options);

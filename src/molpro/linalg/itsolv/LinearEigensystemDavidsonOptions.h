@@ -32,7 +32,7 @@ namespace molpro::linalg::itsolv {
  *   std::cout << "svd threshold= " << options_p->svd_threshold.get() << std::endl;
  * @endcode
  */
-struct LinearEigensystemDavidsonOptions : public ILinearEigensystemOptions {
+struct LinearEigensystemDavidsonOptions : public LinearEigensystemOptions {
   LinearEigensystemDavidsonOptions() = default;
   LinearEigensystemDavidsonOptions(const options_map& opt);
 

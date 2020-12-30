@@ -21,7 +21,7 @@ using molpro::linalg::array::Span;
 using molpro::linalg::itsolv::CastOptions;
 using molpro::linalg::itsolv::CVecRef;
 using molpro::linalg::itsolv::cwrap;
-using molpro::linalg::itsolv::ILinearEigensystem;
+using molpro::linalg::itsolv::LinearEigensystem;
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::wrap;
 #ifndef NOFORTRAN
@@ -176,7 +176,7 @@ struct LinearEigensystemF : ::testing::Test {
     return std::make_tuple(pspace, PP);
   }
 
-  auto set_options(std::unique_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver, const int nroot,
+  auto set_options(std::unique_ptr<LinearEigensystem<Rvector, Qvector, Pvector>>& solver, const int nroot,
                    const int np, bool hermitian) {
     auto options = CastOptions::LinearEigensystem(solver->get_options());
     options->n_roots = nroot;
@@ -206,7 +206,7 @@ struct LinearEigensystemF : ::testing::Test {
 
   // Create initial subspace. This is iteration 0.
   auto initialize_subspace(const size_t np, const size_t nroot, const size_t n_working_vectors_max,
-                           std::unique_ptr<ILinearEigensystem<Rvector, Qvector, Pvector>>& solver) {
+                           std::unique_ptr<LinearEigensystem<Rvector, Qvector, Pvector>>& solver) {
     auto [x, g] = create_containers(nroot);
     if (np) {
       auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {

@@ -25,9 +25,9 @@ namespace molpro::linalg::itsolv {
  * @todo Explain some of the theory
  */
 template <class R, class Q, class P>
-class LinearEquationsDavidson : public IterativeSolverTemplate<ILinearEquations, R, Q, P> {
+class LinearEquationsDavidson : public IterativeSolverTemplate<LinearEquations, R, Q, P> {
 public:
-  using SolverTemplate = IterativeSolverTemplate<ILinearEquations, R, Q, P>;
+  using SolverTemplate = IterativeSolverTemplate<LinearEquations, R, Q, P>;
   using SolverTemplate ::report;
   using typename SolverTemplate::value_type;
   using typename SolverTemplate::value_type_abs;

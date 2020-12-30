@@ -12,7 +12,7 @@
 using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 using Update = std::function<void(const std::vector<Rvector>& params, std::vector<Rvector>& actions, size_t n_work)>;
 using molpro::linalg::itsolv::CastOptions;
-using molpro::linalg::itsolv::ILinearEquations;
+using molpro::linalg::itsolv::LinearEquations;
 
 #ifndef NOFORTRAN
 extern "C" int test_linearequationsf(const double* matrix, const double* rhs, size_t n, size_t np, size_t nroot,
@@ -136,7 +136,7 @@ auto initial_guess(const MatrixXdr& mat, const size_t n_roots, const MatrixXdr& 
   return std::make_tuple(x, g, guess);
 }
 
-auto set_options(std::unique_ptr<ILinearEquations<Rvector, Qvector, Pvector>>& solver, const int n, const int nroot,
+auto set_options(std::unique_ptr<LinearEquations<Rvector, Qvector, Pvector>>& solver, const int n, const int nroot,
                  const int np, bool hermitian, double augmented_hessian) {
   auto options = CastOptions::LinearEquations(solver->get_options());
   options->n_roots = nroot;

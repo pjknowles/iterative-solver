@@ -3,7 +3,7 @@
 
 namespace molpro::linalg::itsolv {
 LinearEigensystemDavidsonOptions::LinearEigensystemDavidsonOptions(const std::map<std::string, std::string>& opt)
-    : ILinearEigensystemOptions(opt) {
+    : LinearEigensystemOptions(opt) {
   auto facet = util::StringFacet{};
   auto opt_upper = util::capitalize_keys(opt, facet);
   if (auto key = facet.toupper("reset_D"); opt_upper.count(key)) {

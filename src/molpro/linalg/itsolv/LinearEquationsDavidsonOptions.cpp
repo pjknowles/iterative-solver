@@ -3,7 +3,7 @@
 
 namespace molpro::linalg::itsolv {
 
-LinearEquationsDavidsonOptions::LinearEquationsDavidsonOptions(const options_map& opt) : ILinearEquationsOptions(opt) {
+LinearEquationsDavidsonOptions::LinearEquationsDavidsonOptions(const options_map& opt) : LinearEquationsOptions(opt) {
   auto facet = util::StringFacet{};
   auto opt_upper = util::capitalize_keys(opt, facet);
   if (auto key = facet.toupper("reset_D"); opt_upper.count(key)) {

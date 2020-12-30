@@ -7,8 +7,8 @@ max_iterations
 package "Options common to a particular type of solver"{
 class IOptimizeOptions
 class INonLinearEquationsOptions
-class ILinearEquationsOptions
-class ILinearEigensystemOptions
+class LinearEquationsOptions
+class LinearEigensystemOptions
 }
 
 package "Implementation options"{
@@ -27,12 +27,12 @@ class ConjugateGradientOptions
 
 hide empty methods
 hide empty fields
-Options <|-- ILinearEigensystemOptions
-Options <|-- ILinearEquationsOptions
+Options <|-- LinearEigensystemOptions
+Options <|-- LinearEquationsOptions
 Options <|-- INonLinearEquationsOptions
 Options <|-- IOptimizeOptions
-ILinearEigensystemOptions ^-- LinearEigensystemOptions
-ILinearEquationsOptions ^-- LinearEquationsOptions
+LinearEigensystemOptions ^-- LinearEigensystemOptions
+LinearEquationsOptions ^-- LinearEquationsOptions
 INonLinearEquationsOptions ^-- DIISOptions
 IOptimizeOptions ^-- BFGSOptions
 IOptimizeOptions ^-- ConjugateGradientOptions

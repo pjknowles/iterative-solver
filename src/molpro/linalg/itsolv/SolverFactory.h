@@ -76,23 +76,23 @@ public:
   virtual std::unique_ptr<IterativeSolver<R, Q, P>> create(const Options& options,
                                                            const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers);
 
-  virtual std::unique_ptr<ILinearEigensystem<R, Q, P>>
-  create(const ILinearEigensystemOptions& options,
+  virtual std::unique_ptr<LinearEigensystem<R, Q, P>>
+  create(const LinearEigensystemOptions& options,
          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
-  virtual std::unique_ptr<ILinearEquations<R, Q, P>>
-  create(const ILinearEquationsOptions& options,
+  virtual std::unique_ptr<LinearEquations<R, Q, P>>
+  create(const LinearEquationsOptions& options,
          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
-  virtual std::unique_ptr<INonLinearEquations<R, Q, P>>
-  create(const INonLinearEquationsOptions& options = INonLinearEquationsOptions{},
+  virtual std::unique_ptr<NonLinearEquations<R, Q, P>>
+  create(const NonLinearEquationsOptions& options = NonLinearEquationsOptions{},
          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
-  virtual std::unique_ptr<IOptimize<R, Q, P>>
-  create(const IOptimizeOptions& options = IOptimizeOptions{},
+  virtual std::unique_ptr<Optimize<R, Q, P>>
+  create(const OptimizeOptions& options = OptimizeOptions{},
          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
@@ -104,15 +104,15 @@ public:
 
 // free-function factory invocation
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
-std::unique_ptr<ILinearEigensystem<R, Q, P>>
-create_LinearEigensystem(const ILinearEigensystemOptions& options,
+std::unique_ptr<LinearEigensystem<R, Q, P>>
+create_LinearEigensystem(const LinearEigensystemOptions& options,
                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   return SolverFactory<R, Q, P>{}.create(options, handlers);
 }
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
-std::unique_ptr<ILinearEigensystem<R, Q, P>>
+std::unique_ptr<LinearEigensystem<R, Q, P>>
 create_LinearEigensystem(const std::string& method = "Davidson", const std::string& options = "",
                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
@@ -123,15 +123,15 @@ create_LinearEigensystem(const std::string& method = "Davidson", const std::stri
 }
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
-std::unique_ptr<ILinearEquations<R, Q, P>>
-create_LinearEquations(const ILinearEquationsOptions& options,
+std::unique_ptr<LinearEquations<R, Q, P>>
+create_LinearEquations(const LinearEquationsOptions& options,
                        const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                            std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   return SolverFactory<R, Q, P>{}.create(options, handlers);
 }
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
-std::unique_ptr<ILinearEquations<R, Q, P>>
+std::unique_ptr<LinearEquations<R, Q, P>>
 create_LinearEquations(const std::string& method = "Davidson", const std::string& options = "",
                        const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                            std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
@@ -142,15 +142,15 @@ create_LinearEquations(const std::string& method = "Davidson", const std::string
 }
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
-std::unique_ptr<INonLinearEquations<R, Q, P>>
-create_NonLinearEquations(const INonLinearEquationsOptions& options = INonLinearEquationsOptions{},
+std::unique_ptr<NonLinearEquations<R, Q, P>>
+create_NonLinearEquations(const NonLinearEquationsOptions& options = NonLinearEquationsOptions{},
                           const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                               std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   return SolverFactory<R, Q, P>{}.create(options, handlers);
 }
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
-std::unique_ptr<INonLinearEquations<R, Q, P>>
+std::unique_ptr<NonLinearEquations<R, Q, P>>
 create_NonLinearEquations(const std::string& method = "DIIS", const std::string& options = "",
                           const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                               std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
@@ -161,15 +161,15 @@ create_NonLinearEquations(const std::string& method = "DIIS", const std::string&
 }
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
-std::unique_ptr<IOptimize<R, Q, P>>
-create_Optimize(const IOptimizeOptions& options = IOptimizeOptions{},
+std::unique_ptr<Optimize<R, Q, P>>
+create_Optimize(const OptimizeOptions& options = OptimizeOptions{},
                 const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                     std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   return SolverFactory<R, Q, P>{}.create(options, handlers);
 }
 
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
-std::unique_ptr<IOptimize<R, Q, P>>
+std::unique_ptr<Optimize<R, Q, P>>
 create_Optimize(const std::string& method = "BFGS", const std::string& options = "",
                 const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                     std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {

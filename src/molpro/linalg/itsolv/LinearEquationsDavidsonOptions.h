@@ -5,7 +5,7 @@ namespace molpro::linalg::itsolv {
 /*!
  * @brief Allows setting and getting of options for LinearEquationsDavidson instance via IterativeSolver base class
  */
-struct LinearEquationsDavidsonOptions : public ILinearEquationsOptions {
+struct LinearEquationsDavidsonOptions : public LinearEquationsOptions {
   LinearEquationsDavidsonOptions() = default;
   LinearEquationsDavidsonOptions(const options_map& opt);
 

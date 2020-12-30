@@ -3,7 +3,7 @@
 
 namespace molpro::linalg::itsolv {
 
-OptimizeBFGSOptions::OptimizeBFGSOptions(const options_map& opt) : IOptimizeOptions(opt) {
+OptimizeBFGSOptions::OptimizeBFGSOptions(const options_map& opt) : OptimizeOptions(opt) {
   auto facet = util::StringFacet{};
   auto opt_upper = util::capitalize_keys(opt, facet);
   if (auto key = facet.toupper("max_size_qspace"); opt_upper.count(key)) {

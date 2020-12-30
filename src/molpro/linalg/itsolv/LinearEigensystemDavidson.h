@@ -22,11 +22,11 @@ namespace molpro::linalg::itsolv {
  * @tparam P
  */
 template <class R, class Q, class P>
-class LinearEigensystemDavidson : public IterativeSolverTemplate<ILinearEigensystem, R, Q, P> {
+class LinearEigensystemDavidson : public IterativeSolverTemplate<LinearEigensystem, R, Q, P> {
 public:
-  using SolverTemplate = IterativeSolverTemplate<ILinearEigensystem, R, Q, P>;
+  using SolverTemplate = IterativeSolverTemplate<LinearEigensystem, R, Q, P>;
   using typename SolverTemplate::scalar_type;
-  using IterativeSolverTemplate<ILinearEigensystem, R, Q, P>::report;
+  using IterativeSolverTemplate<LinearEigensystem, R, Q, P>::report;
 
   explicit LinearEigensystemDavidson(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
                              const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())

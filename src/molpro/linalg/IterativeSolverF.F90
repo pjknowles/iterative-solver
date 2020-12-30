@@ -1,7 +1,6 @@
 !> @brief IterativeSolver Fortran binding
 MODULE Iterative_Solver
     USE, INTRINSIC :: iso_c_binding
-    USE :: iso_fortran_env, only : int64
     PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize, Iterative_Solver_Finalize
     PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize_Ranges
     PUBLIC :: Iterative_Solver_DIIS_Initialize, Iterative_Solver_Linear_Equations_Initialize
@@ -13,26 +12,30 @@ MODULE Iterative_Solver
     PUBLIC :: Iterative_Solver_Errors
     PUBLIC :: Iterative_Solver_Eigenvalues, Iterative_Solver_Working_Set_Eigenvalues
     PUBLIC :: Iterative_Solver_Print_Statistics
-    INTEGER, PUBLIC, PARAMETER :: mpicomm_kind = KIND(int64)
+    INTEGER, PUBLIC, PARAMETER :: mpicomm_kind = KIND(c_int64_t)
     PUBLIC :: mpicomm_global, set_mpicomm_compute, mpicomm_self, mpicomm_compute
     PRIVATE
     INTEGER(kind = mpicomm_kind), SAVE :: s_mpicomm_compute=-9999999
     INTEGER(c_size_t) :: m_nq, m_nroot
-    INTEGER(c_int), parameter :: hermitian_default=1 ! TODO consider making non-hermitian the default
+    INTEGER(c_int), parameter :: hermitian_default=0
 
     INTERFACE
         SUBROUTINE Iterative_Solver_Print_Statistics() BIND (C, name = 'IterativeSolverPrintStatistics')
         END SUBROUTINE Iterative_Solver_Print_Statistics
 
         FUNCTION mpicomm_self() BIND(C)
-            INTEGER, PARAMETER :: mpicomm_kind = KIND(int64)
+            INTEGER, PARAMETER :: mpicomm_kind = KIND(c_int64_t)
             INTEGER(KIND = mpicomm_kind) :: mpicomm_self
         END FUNCTION mpicomm_self
         FUNCTION mpicomm_global() BIND(C)
-            INTEGER, PARAMETER :: mpicomm_kind = KIND(int64)
+            INTEGER, PARAMETER :: mpicomm_kind = KIND(c_int64_t)
             INTEGER(KIND = mpicomm_kind) :: mpicomm_global
         END FUNCTION mpicomm_global
     END INTERFACE
+
+    INTERFACE Iterative_Solver_End_Iteration
+        MODULE PROCEDURE Iterative_Solver_End_Iteration1, Iterative_Solver_End_Iteration2
+    END INTERFACE Iterative_Solver_End_Iteration
 
 CONTAINS
 
@@ -446,11 +449,11 @@ CONTAINS
         CALL IterativeSolverFinalize
     END SUBROUTINE Iterative_Solver_Finalize
 
-    !> \brief Take a current solution, value and residual, add it to the expansion set, and return new solution.
+    !> \brief Take a current solution, value and residual, add it to the expansion set, and return working-set residual.
     !> \param value On input, the current objective function value.
-    !> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
+    !> \param parameters On input, the current solution or expansion vector. On exit, undefined.
     !> \param action On input, the residual for parameters.
-    !> On exit, the expected residual of the interpolated parameters.
+    !> On exit, the expected residual of the new working set.
     !> \param synchronize Whether to synchronize any distributed storage of parameters and action before return.
     !>        Unnecessary if the client preconditioner is diagonal, but otherwise should be done.
     !>        The default is the safe .TRUE. but can be .FALSE. if appropriate.
@@ -502,10 +505,11 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: action
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
         INTERFACE
-            FUNCTION Add_Vector_C(parameters, action, lsync) &
+            FUNCTION Add_Vector_C(buffer_size, parameters, action, lsync) &
                     BIND(C, name = 'IterativeSolverAddVector')
                 USE, INTRINSIC :: iso_c_binding
                 INTEGER(c_size_t) Add_Vector_C
+                INTEGER(c_size_t), INTENT(in), VALUE :: buffer_size
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: action
                 INTEGER(c_int), INTENT(in), VALUE :: lsync
@@ -517,7 +521,9 @@ CONTAINS
         IF (PRESENT(synchronize)) THEN
             IF (.NOT. synchronize) lsyncC = 0
         END IF
-        Iterative_Solver_Add_Vector = int(Add_Vector_C(parameters, action, lsyncC))
+        Iterative_Solver_Add_Vector = int(&
+            Add_Vector_C(int(ubound(parameters, 2) - lbound(parameters, 2) + 1, c_size_t), &
+                parameters, action, lsyncC))
     END FUNCTION Iterative_Solver_Add_Vector
     !
     SUBROUTINE Iterative_Solver_Solution(roots, parameters, action, synchronize)
@@ -557,29 +563,48 @@ CONTAINS
     !> \param residual The residual after interpolation.
     !> \param error Error indicator for each sought root.
     !> \return .TRUE. if convergence reached for all roots
-    FUNCTION Iterative_Solver_End_Iteration(solution, residual, synchronize)
+    FUNCTION Iterative_Solver_End_Iteration1(solution, residual, synchronize, buffer_size)
         USE iso_c_binding
         INTEGER :: Iterative_Solver_End_Iteration
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
-        INTERFACE
-            FUNCTION Iterative_Solver_End_Iteration_C(solution, residual, lsync) &
-                    BIND(C, name = 'IterativeSolverEndIteration')
+        INTEGER, INTENT(in), OPTIONAL :: buffer_size
+    INTERFACE
+            FUNCTION Iterative_Solver_End_Iteration_C(buffer_size, solution, residual, lsync) &
+                BIND(C, name = 'IterativeSolverEndIteration')
                 USE iso_c_binding
                 INTEGER(c_int) Iterative_Solver_End_Iteration_C
+                INTEGER(c_size_t), INTENT(in), VALUE :: buffer_size
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: solution
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: residual
                 INTEGER(c_int), INTENT(in), VALUE :: lsync
             END FUNCTION Iterative_Solver_End_Iteration_C
         END INTERFACE
         INTEGER(c_int) :: lsyncC
+        INTEGER(c_size_t) :: buffer_sizeC
+        buffer_sizeC = 1
+        IF (PRESENT(buffer_size)) buffer_sizeC = buffer_size
         lsyncC = 1
         IF (PRESENT(synchronize)) THEN
             IF (.NOT. synchronize) lsyncC = 0
         END IF
-        Iterative_Solver_End_Iteration = Iterative_Solver_End_Iteration_C(solution, residual, lsyncC)
-    END FUNCTION Iterative_Solver_End_Iteration
+        Iterative_Solver_End_Iteration1 = Iterative_Solver_End_Iteration_C( &
+            buffer_sizeC, &
+            solution, residual, lsyncC)
+    END FUNCTION Iterative_Solver_End_Iteration1
+
+    FUNCTION Iterative_Solver_End_Iteration2(solution, residual, synchronize)
+        USE iso_c_binding
+        INTEGER :: Iterative_Solver_End_Iteration
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: solution
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: residual
+        LOGICAL, INTENT(in), OPTIONAL :: synchronize
+        Iterative_Solver_End_Iteration2 = Iterative_Solver_End_Iteration1( &
+            solution, residual, synchronize, &
+        buffer_size = ubound(solution, 2) - lbound(solution, 2) + 1 &
+        )
+    END FUNCTION Iterative_Solver_End_Iteration2
 
 
     !> \brief add P-space vectors to the expansion set, and return new solution.
@@ -599,14 +624,15 @@ CONTAINS
         INTEGER, INTENT(in), DIMENSION(offsets(nP)) :: indices
         DOUBLE PRECISION, DIMENSION(offsets(nP)), INTENT(in) :: coefficients
         DOUBLE PRECISION, DIMENSION(*), INTENT(in) :: pp
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: parameters
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: action
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: action
         EXTERNAL fproc
         INTERFACE
-            FUNCTION IterativeSolverAddPC(nP, offsets, indices, coefficients, pp, parameters, action, &
+            FUNCTION IterativeSolverAddPC(buffer_size, nP, offsets, indices, coefficients, pp, parameters, action, &
                     lsync, func) BIND(C, name = 'IterativeSolverAddP')
                 USE, INTRINSIC :: iso_c_binding
                 INTEGER(c_size_t) IterativeSolverAddPC
+                INTEGER(c_size_t), INTENT(in), VALUE :: buffer_size
                 INTEGER(c_size_t), INTENT(in), VALUE :: nP
                 INTEGER(c_size_t), INTENT(in), DIMENSION(0:nP) :: offsets
                 INTEGER(c_size_t), INTENT(in), DIMENSION(offsets(nP)) :: indices
@@ -634,7 +660,9 @@ CONTAINS
             !write (6,*) 'fortran addp',indicesC(i)
         end do
         !write (6,*) 'indicesC ',indicesC
-        Iterative_Solver_Add_P = int(IterativeSolverAddPC(INT(nP, c_size_t), offsetsC, indicesC, coefficients, &
+        Iterative_Solver_Add_P = int(IterativeSolverAddPC( &
+            INT(ubound(parameters,2)-lbound(parameters,2)+1, c_size_t), &
+            INT(nP, c_size_t), offsetsC, indicesC, coefficients, &
                 pp, parameters, action, lsyncC, cproc))
     END FUNCTION Iterative_Solver_Add_P
 

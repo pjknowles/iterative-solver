@@ -237,19 +237,20 @@ void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& 
                            ranges.data());
 }
 
-extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, int sync) {
+extern "C" size_t IterativeSolverAddVector(size_t buffer_size, double* parameters, double* action, int sync) {
   std::vector<Rvector> cc, gg;
   if (instances.empty())
     throw std::runtime_error("IterativeSolver not initialised properly");
   auto& instance = instances.top();
   if (instance.prof != nullptr)
     instance.prof->start("AddVector");
-  cc.reserve(instance.solver->n_roots()); // TODO: should that be size of working set instead? YES IT SHOULD!
-  gg.reserve(instance.solver->n_roots());
+  cc.reserve(buffer_size);
+  gg.reserve(buffer_size);
   MPI_Comm ccomm = instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
-  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
+  size_t working_set_size = instance.solver->working_set().size();
+  for (size_t root = 0; root < working_set_size; root++) {
     cc.emplace_back(instance.dimension, ccomm);
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
@@ -263,13 +264,13 @@ extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, i
   }
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Update");
-  size_t working_set_size = instance.solver->add_vector(cc, gg);
+  working_set_size = instance.solver->add_vector(cc, gg);
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Update");
 
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Sync");
-  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
+  for (size_t root = 0; root < working_set_size; root++) {
     if (sync) {
       gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
       gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
@@ -289,12 +290,12 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
   auto& instance = instances.top();
   if (instance.prof != nullptr)
     instance.prof->start("Solution");
-  cc.reserve(instance.solver->n_roots());
-  gg.reserve(instance.solver->n_roots());
+  cc.reserve(nroot);
+  gg.reserve(nroot);
   MPI_Comm ccomm = instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
-  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
+  for (size_t root = 0; root < nroot; root++) {
     cc.emplace_back(instance.dimension, ccomm);
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
@@ -318,7 +319,7 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
 
   if (instance.prof != nullptr)
     instance.prof->start("Solution:Sync");
-  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
+  for (size_t root = 0; root < nroot; root++) {
     if (sync) {
       gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
       gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
@@ -332,17 +333,17 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
     instance.prof->stop("Solution");
 }
 
-extern "C" int IterativeSolverEndIteration(double* solution, double* residual, int sync) {
+extern "C" int IterativeSolverEndIteration(size_t buffer_size, double* solution, double* residual, int sync) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   if (instance.prof != nullptr)
     instance.prof->start("EndIter");
-  cc.reserve(instance.solver->n_roots());
-  gg.reserve(instance.solver->n_roots());
+  cc.reserve(buffer_size);
+  gg.reserve(buffer_size);
   MPI_Comm ccomm = instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
-  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
+  for (size_t root = 0; root < buffer_size; root++) {
     cc.emplace_back(instance.dimension, ccomm);
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
@@ -361,7 +362,7 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, i
     instance.prof->stop("EndIter:Call");
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Sync");
-  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
+  for (size_t root = 0; root < instance.solver->working_set().size(); root++) {
     if (sync) {
       gather_all(cc[root].distribution(), ccomm, &solution[root * instance.dimension]);
       gather_all(gg[root].distribution(), ccomm, &residual[root * instance.dimension]);
@@ -374,7 +375,7 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, i
   return result;
 }
 
-extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
+extern "C" size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
                                       int sync, void (*func)(const double*, double*, const size_t, const size_t*)) {
   std::vector<Rvector> cc, gg;
@@ -382,12 +383,12 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
   instance.apply_on_p_fort = func;
   if (instance.prof != nullptr)
     instance.prof->start("AddP");
-  cc.reserve(instance.solver->n_roots());
-  gg.reserve(instance.solver->n_roots());
+  cc.reserve(buffer_size);
+  gg.reserve(buffer_size);
   MPI_Comm ccomm = instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
-  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
+  for (size_t root = 0; root < buffer_size; root++) {
     cc.emplace_back(instance.dimension, ccomm);
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
@@ -421,7 +422,7 @@ extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const si
     instance.prof->stop("AddP:Call");
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Sync");
-  for (size_t root = 0; root < instance.solver->n_roots(); root++) { //! TODO: should be working_set()?
+  for (size_t root = 0; root < working_set_size; root++) {
     if (sync) {
       gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
       gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);

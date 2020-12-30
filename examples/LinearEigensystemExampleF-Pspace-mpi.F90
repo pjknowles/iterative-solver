@@ -81,7 +81,7 @@ PROGRAM Linear_Eigensystem_Example
   end if
   CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Eigensystem_Example_P',  &
                                                                                   thresh = 1d-8, thresh_value = 1d-14, &
-                                                                                  verbosity = 1)
+     hermitian=.true.,                                                                             verbosity = 1)
   offsets(0) = 0
   DO i = 1, nP
     offsets(i) = i

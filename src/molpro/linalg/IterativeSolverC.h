@@ -24,19 +24,18 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
 
 extern "C" void IterativeSolverFinalize();
 
-extern "C" size_t IterativeSolverAddVector(double* parameters, double* action, int sync);
+extern "C" size_t IterativeSolverAddVector(size_t buffer_size, double* parameters, double* action, int sync);
 
 extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameters, double* action,
                                         int sync);
 
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync);
 
-extern "C" int IterativeSolverEndIteration(double* c, double* g, int sync);
+extern "C" int IterativeSolverEndIteration(size_t buffer_size, double* solution, double* residual, int sync);
 
-extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
+extern "C" size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
-                                      int lsync,
-                                      void (*func)(const double*, double*, const size_t, const size_t*));
+                                      int sync, void (*func)(const double*, double*, const size_t, const size_t*));
 
 extern "C" void IterativeSolverErrors(double* errors);
 

@@ -15,7 +15,7 @@ TEST(SolverFactory, string_constructor) {
     EXPECT_TRUE(options->convergence_threshold.has_value());
     EXPECT_EQ(options->convergence_threshold.value(), 1e-3);
     {
-      auto options = dynamic_cast<molpro::linalg::itsolv::LinearEigensystemOptions*>(solver->get_options().get());
+      auto options = dynamic_cast<molpro::linalg::itsolv::LinearEigensystemDavidsonOptions*>(solver->get_options().get());
       EXPECT_TRUE(options->norm_thresh.has_value());
       EXPECT_NE(options->norm_thresh.value_or(777), 777);
       EXPECT_EQ(options->max_size_qspace.value(), 73);
@@ -26,7 +26,7 @@ TEST(SolverFactory, string_constructor) {
   {
     auto solver = molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector, Pvector>("Davidson",
         "convergence_threshold=1e-3,max_size_qspace=73, rubbish=trash");
-    auto options = dynamic_cast<molpro::linalg::itsolv::LinearEquationsOptions*>(solver->get_options().get());
+    auto options = dynamic_cast<molpro::linalg::itsolv::LinearEquationsDavidsonOptions*>(solver->get_options().get());
     EXPECT_TRUE(options->convergence_threshold.has_value());
     EXPECT_EQ(options->convergence_threshold.value(), 1e-3);
     EXPECT_TRUE(options->norm_thresh.has_value());

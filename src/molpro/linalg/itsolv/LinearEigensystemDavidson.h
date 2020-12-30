@@ -1,5 +1,5 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEM_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEM_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMDAVIDSON_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMDAVIDSON_H
 #include <iterator>
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
@@ -12,9 +12,8 @@
 namespace molpro::linalg::itsolv {
 
 /*!
- * @brief One specific implementation of LinearEigensystem (codename A)
- *
- * This implementation uses our own D-space algorithm.
+ * @brief One specific implementation of LinearEigensystem using Davidson's algorithm
+ * with modifications to manage near linear dependencies, and consequent numerical noise, in candidate expansion vectors.
  *
  * TODO add more documentation and examples
  *
@@ -23,13 +22,13 @@ namespace molpro::linalg::itsolv {
  * @tparam P
  */
 template <class R, class Q, class P>
-class LinearEigensystem : public IterativeSolverTemplate<ILinearEigensystem, R, Q, P> {
+class LinearEigensystemDavidson : public IterativeSolverTemplate<ILinearEigensystem, R, Q, P> {
 public:
   using SolverTemplate = IterativeSolverTemplate<ILinearEigensystem, R, Q, P>;
   using typename SolverTemplate::scalar_type;
   using IterativeSolverTemplate<ILinearEigensystem, R, Q, P>::report;
 
-  explicit LinearEigensystem(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
+  explicit LinearEigensystemDavidson(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
                              const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
       : SolverTemplate(std::make_shared<subspace::XSpace<R, Q, P>>(handlers, logger_),
                        std::static_pointer_cast<subspace::ISubspaceSolver<R, Q, P>>(
@@ -155,7 +154,7 @@ public:
   }
 
   std::shared_ptr<Options> get_options() const override {
-    auto opt = std::make_shared<LinearEigensystemOptions>();
+    auto opt = std::make_shared<LinearEigensystemDavidsonOptions>();
     opt->copy(*SolverTemplate::get_options());
     opt->reset_D = get_reset_D();
     opt->reset_D_max_Q_size = get_reset_D_maxQ_size();
@@ -188,4 +187,4 @@ protected:
 
 } // namespace molpro::linalg::itsolv
 
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEM_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMDAVIDSON_H

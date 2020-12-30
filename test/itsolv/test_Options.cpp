@@ -1,12 +1,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <molpro/linalg/itsolv/LinearEigensystemOptions.h>
-#include <molpro/linalg/itsolv/LinearEquationsOptions.h>
+#include <molpro/linalg/itsolv/LinearEigensystemDavidsonOptions.h>
+#include <molpro/linalg/itsolv/LinearEquationsDavidsonOptions.h>
 #include <molpro/linalg/itsolv/Options.h>
 
-using molpro::linalg::itsolv::LinearEigensystemOptions;
-using molpro::linalg::itsolv::LinearEquationsOptions;
+using molpro::linalg::itsolv::LinearEigensystemDavidsonOptions;
+using molpro::linalg::itsolv::LinearEquationsDavidsonOptions;
 using molpro::linalg::itsolv::Options;
 using molpro::linalg::itsolv::options_map;
 
@@ -46,7 +46,7 @@ TEST(LinearEigensystemOptions, constructor_string) {
                                    {"svd_thresh", "7.123e-11"},
                                    {"hermiticity", "true"},
                                    {"random_test_12wdgjh", "gi98a"}};
-  auto opt = LinearEigensystemOptions(opt_map);
+  auto opt = LinearEigensystemDavidsonOptions(opt_map);
   ASSERT_EQ(opt.n_roots.value(), 3);
   ASSERT_EQ(opt.convergence_threshold.value(), 1.23e-11);
   ASSERT_EQ(opt.reset_D.value(), 5);
@@ -68,7 +68,7 @@ TEST(LinearEquationsOptions, constructor_options_map) {
                                    {"hermiticity", "true"},
                                    {"augmented_hessian", "0.1"},
                                    {"random_test_12wdgjh", "gi98a"}};
-  auto opt = LinearEquationsOptions(opt_map);
+  auto opt = LinearEquationsDavidsonOptions(opt_map);
   ASSERT_EQ(opt.n_roots.value(), 3);
   ASSERT_EQ(opt.convergence_threshold.value(), 1.23e-11);
   ASSERT_EQ(opt.reset_D.value(), 5);

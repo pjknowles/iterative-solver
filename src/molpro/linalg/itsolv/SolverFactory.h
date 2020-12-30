@@ -2,8 +2,8 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SOLVERFACTORY_H
 #include <memory>
 
-#include "LinearEigensystemOptions.h"
-#include "LinearEquationsOptions.h"
+#include "LinearEigensystemDavidsonOptions.h"
+#include "LinearEquationsDavidsonOptions.h"
 #include "OptimizeBFGSOptions.h"
 #include "OptimizeSDOptions.h"
 #include "util.h"
@@ -118,7 +118,7 @@ create_LinearEigensystem(const std::string& method = "Davidson", const std::stri
                              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   auto optionsmap = util::StringFacet::parse_keyval_string(options);
   if (method == "Davidson" or method.empty())
-    return SolverFactory<R, Q, P>{}.create(LinearEigensystemOptions{optionsmap}, handlers);
+    return SolverFactory<R, Q, P>{}.create(LinearEigensystemDavidsonOptions{optionsmap}, handlers);
   throw std::runtime_error("Unimplemented method " + method);
 }
 
@@ -137,7 +137,7 @@ create_LinearEquations(const std::string& method = "Davidson", const std::string
                            std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   auto optionsmap = util::StringFacet::parse_keyval_string(options);
   if (method == "Davidson" or method.empty())
-    return SolverFactory<R, Q, P>{}.create(LinearEquationsOptions{optionsmap}, handlers);
+    return SolverFactory<R, Q, P>{}.create(LinearEquationsDavidsonOptions{optionsmap}, handlers);
   throw std::runtime_error("Unimplemented method " + method);
 }
 

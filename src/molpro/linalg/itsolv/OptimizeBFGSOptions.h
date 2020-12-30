@@ -6,7 +6,7 @@ namespace molpro::linalg::itsolv {
 /*!
  * @brief Allows setting and getting of options for OptimizeBFGS instance via IterativeSolver base class
  */
-struct OptimizeBFGSOptions : public IOptimizeOptions {
+struct OptimizeBFGSOptions : public OptimizeOptions {
   OptimizeBFGSOptions() = default;
   OptimizeBFGSOptions(const options_map& opt);
   std::optional<int> max_size_qspace;

@@ -26,24 +26,24 @@ struct Options {
   void copy(const Options& source);
 };
 
-struct ILinearEigensystemOptions : Options {
-  ILinearEigensystemOptions() = default;
-  ILinearEigensystemOptions(const options_map& opt) : Options(opt) {}
+struct LinearEigensystemOptions : Options {
+  LinearEigensystemOptions() = default;
+  LinearEigensystemOptions(const options_map& opt) : Options(opt) {}
 };
 
-struct ILinearEquationsOptions : Options {
-  ILinearEquationsOptions() = default;
-  ILinearEquationsOptions(const options_map& opt) : Options(opt) {}
+struct LinearEquationsOptions : Options {
+  LinearEquationsOptions() = default;
+  LinearEquationsOptions(const options_map& opt) : Options(opt) {}
 };
 
-struct INonLinearEquationsOptions : Options {
-  INonLinearEquationsOptions() = default;
-  INonLinearEquationsOptions(const options_map& opt) : Options(opt) {}
+struct NonLinearEquationsOptions : Options {
+  NonLinearEquationsOptions() = default;
+  NonLinearEquationsOptions(const options_map& opt) : Options(opt) {}
 };
 
-struct IOptimizeOptions : Options {
-  IOptimizeOptions() = default;
-  IOptimizeOptions(const options_map& opt) : Options(opt) {}
+struct OptimizeOptions : Options {
+  OptimizeOptions() = default;
+  OptimizeOptions(const options_map& opt) : Options(opt) {}
 };
 
 } // namespace molpro::linalg::itsolv

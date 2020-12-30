@@ -2,8 +2,8 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_CASTOPTIONS_H
 #include <memory>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
-#include <molpro/linalg/itsolv/LinearEigensystemOptions.h>
-#include <molpro/linalg/itsolv/LinearEquationsOptions.h>
+#include <molpro/linalg/itsolv/LinearEigensystemDavidsonOptions.h>
+#include <molpro/linalg/itsolv/LinearEquationsDavidsonOptions.h>
 #include <molpro/linalg/itsolv/NonLinearEquationsDIISOptions.h>
 #include <molpro/linalg/itsolv/OptimizeBFGSOptions.h>
 #include <molpro/linalg/itsolv/OptimizeSDOptions.h>
@@ -35,26 +35,26 @@ private:
   }
 
 public:
-  static std::shared_ptr<LinearEigensystemOptions> LinearEigensystem(const std::shared_ptr<Options>& options) {
-    return cast<LinearEigensystemOptions>(options, "LinearEigensystemOptions");
+  static std::shared_ptr<LinearEigensystemDavidsonOptions> LinearEigensystem(const std::shared_ptr<Options>& options) {
+    return cast<LinearEigensystemDavidsonOptions>(options, "LinearEigensystemOptions");
   }
-  static const LinearEigensystemOptions& LinearEigensystem(const Options& options) {
-    return cast<LinearEigensystemOptions>(options, "LinearEigensystemOptions");
+  static const LinearEigensystemDavidsonOptions& LinearEigensystem(const Options& options) {
+    return cast<LinearEigensystemDavidsonOptions>(options, "LinearEigensystemOptions");
   }
-  static LinearEigensystemOptions& LinearEigensystem(Options& options) {
+  static LinearEigensystemDavidsonOptions& LinearEigensystem(Options& options) {
     const auto& opt = const_cast<const Options&>(options);
-    return const_cast<LinearEigensystemOptions&>(cast<LinearEigensystemOptions>(options, "LinearEigensystemOptions"));
+    return const_cast<LinearEigensystemDavidsonOptions&>(cast<LinearEigensystemDavidsonOptions>(options, "LinearEigensystemOptions"));
   }
 
-  static std::shared_ptr<LinearEquationsOptions> LinearEquations(const std::shared_ptr<Options>& options) {
-    return cast<LinearEquationsOptions>(options, "LinearEquationsOptions");
+  static std::shared_ptr<LinearEquationsDavidsonOptions> LinearEquations(const std::shared_ptr<Options>& options) {
+    return cast<LinearEquationsDavidsonOptions>(options, "LinearEquationsOptions");
   }
-  static const LinearEquationsOptions& LinearEquations(const Options& options) {
-    return cast<LinearEquationsOptions>(options, "LinearEquationsOptions");
+  static const LinearEquationsDavidsonOptions& LinearEquations(const Options& options) {
+    return cast<LinearEquationsDavidsonOptions>(options, "LinearEquationsOptions");
   }
-  static LinearEquationsOptions& LinearEquations(Options& options) {
+  static LinearEquationsDavidsonOptions& LinearEquations(Options& options) {
     const auto& opt = const_cast<const Options&>(options);
-    return const_cast<LinearEquationsOptions&>(cast<LinearEquationsOptions>(options, "LinearEquationsOptions"));
+    return const_cast<LinearEquationsDavidsonOptions&>(cast<LinearEquationsDavidsonOptions>(options, "LinearEquationsOptions"));
   }
 
   static std::shared_ptr<NonLinearEquationsDIISOptions>

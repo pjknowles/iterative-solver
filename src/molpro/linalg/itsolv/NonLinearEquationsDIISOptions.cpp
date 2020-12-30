@@ -3,7 +3,7 @@
 
 namespace molpro::linalg::itsolv {
 
-NonLinearEquationsDIISOptions::NonLinearEquationsDIISOptions(const options_map& opt) : INonLinearEquationsOptions(opt) {
+NonLinearEquationsDIISOptions::NonLinearEquationsDIISOptions(const options_map& opt) : NonLinearEquationsOptions(opt) {
   auto facet = util::StringFacet{};
   auto opt_upper = util::capitalize_keys(opt, facet);
   if (auto key = facet.toupper("max_size_qspace"); opt_upper.count(key)) {

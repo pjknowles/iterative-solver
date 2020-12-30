@@ -19,21 +19,21 @@
 #include <molpro/linalg/array/util/Distribution.h>
 #include <molpro/linalg/array/util/gather_all.h>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
-#include <molpro/linalg/itsolv/LinearEigensystem.h>
-#include <molpro/linalg/itsolv/LinearEquations.h>
+#include <molpro/linalg/itsolv/LinearEigensystemDavidson.h>
+#include <molpro/linalg/itsolv/LinearEquationsDavidson.h>
 #include <molpro/linalg/itsolv/SolverFactory.h>
 
 using molpro::Profiler;
 using molpro::linalg::array::Span;
 using molpro::linalg::array::util::gather_all;
 using molpro::linalg::itsolv::ArrayHandlers;
-using molpro::linalg::itsolv::ILinearEigensystem;
-using molpro::linalg::itsolv::ILinearEquations;
-using molpro::linalg::itsolv::INonLinearEquations;
-using molpro::linalg::itsolv::IOptimize;
-using molpro::linalg::itsolv::IterativeSolver;
 using molpro::linalg::itsolv::LinearEigensystem;
 using molpro::linalg::itsolv::LinearEquations;
+using molpro::linalg::itsolv::NonLinearEquations;
+using molpro::linalg::itsolv::Optimize;
+using molpro::linalg::itsolv::IterativeSolver;
+using molpro::linalg::itsolv::LinearEigensystemDavidson;
+using molpro::linalg::itsolv::LinearEquationsDavidson;
 
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
 using Qvector = molpro::linalg::array::DistrArrayMPI3;
@@ -82,8 +82,8 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nro
                              profiler, nQ, comm});
   auto& instance = instances.top();
   instance.solver->set_n_roots(nroot);
-  LinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
-      dynamic_cast<LinearEigensystem<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  LinearEigensystemDavidson<Rvector, Qvector, Pvector>* solver_cast =
+      dynamic_cast<LinearEigensystemDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get());
   if (solver_cast) {
     solver_cast->set_hermiticity(hermitian);
     solver_cast->set_convergence_threshold(thresh);
@@ -131,8 +131,8 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
                ,
                profiler, n, comm});
   auto& instance = instances.top();
-  auto solver = dynamic_cast<ILinearEquations<Rvector, Qvector, Pvector>*>(instance.solver.get());
-  auto solverLinearEquations = dynamic_cast<LinearEquations<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  auto solver = dynamic_cast<LinearEquations<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  auto solverLinearEquations = dynamic_cast<LinearEquationsDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get());
   solver->set_n_roots(nroot);
   solverLinearEquations->add_equations(rr);
   solver->set_convergence_threshold(thresh);
@@ -201,7 +201,7 @@ extern "C" size_t IterativeSolverAddValue(double value, double* parameters, doub
   auto ggn = ggrange.second - ggrange.first;
   ggg.allocate_buffer(Span<typename Rvector::value_type>(&action[ggrange.first], ggn));
   size_t working_set_size =
-      dynamic_cast<molpro::linalg::itsolv::IOptimize<Rvector, Qvector, Pvector>*>(instance.solver.get())
+      dynamic_cast<molpro::linalg::itsolv::Optimize<Rvector, Qvector, Pvector>*>(instance.solver.get())
               ->add_value(ccc, value, ggg)
           ? 1
           : 0;
@@ -446,8 +446,8 @@ extern "C" void IterativeSolverErrors(double* errors) {
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
   auto& instance = instances.top();
   size_t k = 0;
-  ILinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
-      dynamic_cast<ILinearEigensystem<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  LinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
+      dynamic_cast<LinearEigensystem<Rvector, Qvector, Pvector>*>(instance.solver.get());
   if (solver_cast) {
     for (const auto& e : solver_cast->eigenvalues())
       eigenvalues[k++] = e;
@@ -457,8 +457,8 @@ extern "C" void IterativeSolverEigenvalues(double* eigenvalues) {
 extern "C" void IterativeSolverWorkingSetEigenvalues(double* eigenvalues) {
   auto& instance = instances.top();
   size_t k = 0;
-  LinearEigensystem<Rvector, Qvector, Pvector>* solver_cast =
-      dynamic_cast<LinearEigensystem<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  LinearEigensystemDavidson<Rvector, Qvector, Pvector>* solver_cast =
+      dynamic_cast<LinearEigensystemDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get());
   if (solver_cast) {
     for (const auto& e : solver_cast->working_set_eigenvalues())
       eigenvalues[k++] = e;

@@ -17,9 +17,9 @@ namespace molpro::linalg::itsolv {
  * @tparam Q Used internally as a class for storing vectors on backing store
  */
 template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
-class OptimizeBFGS : public IterativeSolverTemplate<IOptimize, R, Q, P> {
+class OptimizeBFGS : public IterativeSolverTemplate<Optimize, R, Q, P> {
 public:
-  using SolverTemplate = IterativeSolverTemplate<IOptimize, R, Q, P>;
+  using SolverTemplate = IterativeSolverTemplate<Optimize, R, Q, P>;
   using SolverTemplate ::report;
   using typename SolverTemplate::scalar_type;
   using typename SolverTemplate::value_type;

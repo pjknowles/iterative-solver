@@ -1,5 +1,5 @@
-#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREQUATIONS_H
-#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREQUATIONS_H
+#ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREQUATIONSDAVIDSON_H
+#define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREQUATIONSDAVIDSON_H
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
@@ -25,14 +25,14 @@ namespace molpro::linalg::itsolv {
  * @todo Explain some of the theory
  */
 template <class R, class Q, class P>
-class LinearEquations : public IterativeSolverTemplate<ILinearEquations, R, Q, P> {
+class LinearEquationsDavidson : public IterativeSolverTemplate<LinearEquations, R, Q, P> {
 public:
-  using SolverTemplate = IterativeSolverTemplate<ILinearEquations, R, Q, P>;
+  using SolverTemplate = IterativeSolverTemplate<LinearEquations, R, Q, P>;
   using SolverTemplate ::report;
   using typename SolverTemplate::value_type;
   using typename SolverTemplate::value_type_abs;
 
-  explicit LinearEquations(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
+  explicit LinearEquationsDavidson(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
                            const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
       : SolverTemplate(std::make_shared<subspace::XSpace<R, Q, P>>(handlers, logger_),
                        std::static_pointer_cast<subspace::ISubspaceSolver<R, Q, P>>(
@@ -142,7 +142,7 @@ public:
   }
 
   std::shared_ptr<Options> get_options() const override {
-    auto opt = std::make_shared<LinearEquationsOptions>();
+    auto opt = std::make_shared<LinearEquationsDavidsonOptions>();
     opt->copy(*SolverTemplate::get_options());
     opt->reset_D = get_reset_D();
     opt->reset_D_max_Q_size = get_reset_D_maxQ_size();
@@ -186,4 +186,4 @@ protected:
 };
 
 } // namespace molpro::linalg::itsolv
-#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREQUATIONS_H
+#endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREQUATIONSDAVIDSON_H

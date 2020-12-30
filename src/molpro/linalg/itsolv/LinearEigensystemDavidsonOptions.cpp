@@ -1,9 +1,9 @@
-#include "LinearEquationsOptions.h"
+#include "LinearEigensystemDavidsonOptions.h"
 #include "util.h"
 
 namespace molpro::linalg::itsolv {
-
-LinearEquationsOptions::LinearEquationsOptions(const options_map& opt) : ILinearEquationsOptions(opt) {
+LinearEigensystemDavidsonOptions::LinearEigensystemDavidsonOptions(const std::map<std::string, std::string>& opt)
+    : LinearEigensystemOptions(opt) {
   auto facet = util::StringFacet{};
   auto opt_upper = util::capitalize_keys(opt, facet);
   if (auto key = facet.toupper("reset_D"); opt_upper.count(key)) {
@@ -23,9 +23,6 @@ LinearEquationsOptions::LinearEquationsOptions(const options_map& opt) : ILinear
   }
   if (auto key = facet.toupper("hermiticity"); opt_upper.count(key)) {
     hermiticity = facet.tobool(opt_upper.at(key));
-  }
-  if (auto key = facet.toupper("augmented_hessian"); opt_upper.count(key)) {
-    augmented_hessian = std::stod(opt_upper.at(key));
   }
 }
 

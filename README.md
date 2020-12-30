@@ -43,12 +43,12 @@ target_link_libraries(${YOUR_LIBRARY_NAME} PUBLIC molpro::LinearAlgebra)
 ### Interfaces
 
 There is a hierarchy of abstract classes defined in `molpro/linalg/itsolv/IterativeSolver.h` with `IterativeSolver` 
-defining the interface for common functionality and `ILinearEigensystem`, `ILinearEquations`, `IOptimize` and
-`INonLinearEquations` defining functions that are specific to each type of solver. They are provided to reduce header 
+defining the interface for common functionality and `LinearEigensystem`, `LinearEquations`, `Optimize` and
+`NonLinearEquations` defining functions that are specific to each type of solver. They are provided to reduce header 
 bloat in user's code. 
 
-Each type of solver has at least one implementation class, e.g. `LinearEigensystem` in 
-`molpro/linalg/itsolv/LinearEigensystem.h`, which implements the full interface. The library is designed to make it easy
+Each type of solver has at least one implementation class, e.g. `LinearEigensystemDavidson` in 
+`molpro/linalg/itsolv/LinearEigensystemDavidson.h`, which implements the full interface. The library is designed to make it easy
 to add new iterative solvers, so there might be more than one implementation.
 
 ### Example
@@ -62,7 +62,7 @@ Here is an example of using `LinearEigensystem` with Davidson preconditioner,
 using molpro::linalg::itsolv::LinearEigensystem;
 using R = std::vector<double>;
 using Q = std::vector<double>;
-LinearEigensystem<R, Q> solver{};
+LinearEigensystemDavdison<R, Q> solver{};
 auto [x, g] = get_initial_parameters_and_action();
 solver.set_preconditioner_davidson(get_diagonal_matrix_elements());
 solver.solve(x, g, user_specified_action_function);

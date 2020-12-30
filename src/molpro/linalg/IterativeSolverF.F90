@@ -39,7 +39,7 @@ CONTAINS
     FUNCTION mpicomm_compute()
         INTEGER(KIND = mpicomm_kind) :: mpicomm_compute
         if (s_mpicomm_compute .EQ. -9999999) s_mpicomm_compute = mpicomm_global()
-        mpi_comm_compute = s_mpicomm_compute
+        mpicomm_compute = s_mpicomm_compute
     END FUNCTION mpicomm_compute
 
     SUBROUTINE set_mpicomm_compute(comm)
@@ -70,7 +70,7 @@ CONTAINS
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
                 INTEGER(C_size_t), INTENT(in), VALUE :: nroot
-                INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
+                INTEGER(C_size_t), INTENT(inout) :: range_begin, range_end
                 REAL(c_double), INTENT(in), VALUE :: thresh
                 REAL(c_double), INTENT(in), VALUE :: thresh_value
                 INTEGER(C_int), INTENT(in), VALUE :: hermitian, verbosity
@@ -147,7 +147,7 @@ CONTAINS
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
                 INTEGER(C_size_t), INTENT(in), VALUE :: nroot
-                INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
+                INTEGER(C_size_t), INTENT(inout) :: range_begin, range_end
                 REAL(c_double), INTENT(in), VALUE :: thresh
                 INTEGER(C_int), INTENT(in), VALUE :: verbosity
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
@@ -222,7 +222,7 @@ CONTAINS
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
                 INTEGER(C_size_t), INTENT(in), VALUE :: nroot
-                INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
+                INTEGER(C_size_t), INTENT(inout) :: range_begin, range_end
                 REAL(c_double), INTENT(in), DIMENSION(*) :: rhs
                 REAL(c_double), INTENT(in), VALUE :: augmented_hessian
                 REAL(c_double), INTENT(in), VALUE :: thresh
@@ -303,7 +303,7 @@ CONTAINS
                     minimize, pname, mpicomm, algorithm) BIND(C, name = 'IterativeSolverOptimizeInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
-                INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
+                INTEGER(C_size_t), INTENT(inout) :: range_begin, range_end
                 REAL(c_double), INTENT(in), VALUE :: thresh
                 INTEGER(C_int), INTENT(in), VALUE :: verbosity
                 INTEGER(C_int), INTENT(in), VALUE :: minimize
@@ -384,7 +384,7 @@ CONTAINS
                     pname, mpicomm, algorithm) BIND(C, name = 'IterativeSolverNonLinearEquationsInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
-                INTEGER(C_size_t), INTENT(out) :: range_begin, range_end
+                INTEGER(C_size_t), INTENT(inout) :: range_begin, range_end
                 REAL(c_double), INTENT(in), VALUE :: thresh
                 INTEGER(C_int), INTENT(in), VALUE :: verbosity
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname

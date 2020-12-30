@@ -9,8 +9,8 @@
 #include <ppidd.h>
 #endif
 #ifdef LINEARALGEBRA_ARRAY_GA
-#include "ga.h"
 #include "ga-mpi.h"
+#include "ga.h"
 #endif
 
 #include <molpro/linalg/array/DistrArrayHDF5.h>
@@ -63,8 +63,8 @@ struct Instance {
 std::stack<Instance> instances;
 } // namespace
 
-extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t range_begin,
-                                                           size_t range_end, double thresh, double thresh_value,
+extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t* range_begin,
+                                                           size_t* range_end, double thresh, double thresh_value,
                                                            int hermitian, int verbosity, const char* fname,
                                                            int64_t fcomm, const char* algorithm) {
   std::shared_ptr<Profiler> profiler = nullptr;
@@ -101,14 +101,13 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nro
     x.emplace_back(nQ, comm);
     g.emplace_back(nQ, comm);
   }
-  std::tie(range_begin, range_end) = x[0].distribution().range(mpi_rank);
+  std::tie(*range_begin, *range_end) = x[0].distribution().range(mpi_rank);
 }
 
-extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t range_begin, size_t range_end,
+extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t* range_begin, size_t* range_end,
                                                          const double* rhs, double aughes, double thresh,
                                                          double thresh_value, int hermitian, int verbosity,
-                                                         const char* fname, int64_t fcomm,
-                                                         const char* algorithm) {
+                                                         const char* fname, int64_t fcomm, const char* algorithm) {
   std::shared_ptr<Profiler> profiler = nullptr;
   std::string pname(fname);
   MPI_Comm comm = MPI_Comm_f2c(fcomm);
@@ -139,10 +138,10 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
   solver->set_convergence_threshold(thresh);
   solver->set_convergence_threshold_value(thresh_value);
   // instance.solver->m_verbosity = verbosity;
-  std::tie(range_begin, range_end) = rr[0].distribution().range(mpi_rank);
+  std::tie(*range_begin, *range_end) = rr[0].distribution().range(mpi_rank);
 }
 
-extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t range_begin, size_t range_end,
+extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t* range_begin, size_t* range_end,
                                                             double thresh, int verbosity, const char* fname,
                                                             int64_t fcomm, const char* algorithm) {
   std::shared_ptr<Profiler> profiler = nullptr;
@@ -160,10 +159,10 @@ extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t ran
   instance.solver->set_convergence_threshold(thresh);
   // instance.solver->m_verbosity = verbosity;
   Rvector x(n, comm);
-  std::tie(range_begin, range_end) = x.distribution().range(mpi_rank);
+  std::tie(*range_begin, *range_end) = x.distribution().range(mpi_rank);
 }
 
-extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, size_t range_end, double thresh,
+extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin, size_t* range_end, double thresh,
                                                   double thresh_value, int verbosity, int minimize, const char* fname,
                                                   int64_t fcomm, const char* algorithm) {
   std::shared_ptr<Profiler> profiler = nullptr;
@@ -183,31 +182,34 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t range_begin, 
   instance.solver->set_convergence_threshold_value(thresh_value);
   // instance.solver->m_verbosity = verbosity;
   Rvector x(n, comm);
-  std::tie(range_begin, range_end) = x.distribution().range(mpi_rank);
+  std::tie(*range_begin, *range_end) = x.distribution().range(mpi_rank);
 }
 
 extern "C" void IterativeSolverFinalize() { instances.pop(); }
 
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync) {
   auto& instance = instances.top();
-    MPI_Comm ccomm = instance.comm;
-    int mpi_rank;
-    MPI_Comm_rank(ccomm, &mpi_rank);
-    Rvector ccc(instance.dimension, ccomm);
-    auto ccrange = ccc.distribution().range(mpi_rank);
-    auto ccn = ccrange.second - ccrange.first;
-    ccc.allocate_buffer(Span<typename Rvector::value_type>(&parameters[ccrange.first], ccn));
-    Rvector ggg(instance.dimension, ccomm);
-    auto ggrange = ggg.distribution().range(mpi_rank);
-    auto ggn = ggrange.second - ggrange.first;
-    ggg.allocate_buffer(Span<typename Rvector::value_type>(&action[ggrange.first], ggn));
-    size_t working_set_size =
-        dynamic_cast<molpro::linalg::itsolv::IOptimize<Rvector, Qvector, Pvector>*>(instance.solver.get())->add_value(ccc, value, ggg) ? 1 : 0;
-    if (sync) { // throw an error if communicator was not passed?
-      gather_all(ccc.distribution(), ccomm, &parameters[0]);
-      gather_all(ggg.distribution(), ccomm, &action[0]);
-    }
-    return working_set_size;
+  MPI_Comm ccomm = instance.comm;
+  int mpi_rank;
+  MPI_Comm_rank(ccomm, &mpi_rank);
+  Rvector ccc(instance.dimension, ccomm);
+  auto ccrange = ccc.distribution().range(mpi_rank);
+  auto ccn = ccrange.second - ccrange.first;
+  ccc.allocate_buffer(Span<typename Rvector::value_type>(&parameters[ccrange.first], ccn));
+  Rvector ggg(instance.dimension, ccomm);
+  auto ggrange = ggg.distribution().range(mpi_rank);
+  auto ggn = ggrange.second - ggrange.first;
+  ggg.allocate_buffer(Span<typename Rvector::value_type>(&action[ggrange.first], ggn));
+  size_t working_set_size =
+      dynamic_cast<molpro::linalg::itsolv::IOptimize<Rvector, Qvector, Pvector>*>(instance.solver.get())
+              ->add_value(ccc, value, ggg)
+          ? 1
+          : 0;
+  if (sync) { // throw an error if communicator was not passed?
+    gather_all(ccc.distribution(), ccomm, &parameters[0]);
+    gather_all(ggg.distribution(), ccomm, &action[0]);
+  }
+  return working_set_size;
   return 0;
 }
 
@@ -374,8 +376,7 @@ extern "C" int IterativeSolverEndIteration(double* solution, double* residual, i
 
 extern "C" size_t IterativeSolverAddP(size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
-                                      int sync,
-                                      void (*func)(const double*, double*, const size_t, const size_t*)) {
+                                      int sync, void (*func)(const double*, double*, const size_t, const size_t*)) {
   std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   instance.apply_on_p_fort = func;
@@ -499,28 +500,30 @@ extern "C" void IterativeSolverPrintStatistics() { molpro::cout << instances.top
 extern "C" int64_t mpicomm_self() {
   int flag;
   MPI_Initialized(&flag);
-  if (! flag) return 0;
+  if (!flag)
+    return 0;
   return MPI_Comm_c2f(MPI_COMM_SELF);
 }
 
 extern "C" int64_t mpicomm_global() {
   int flag;
   MPI_Initialized(&flag);
-  if (! flag) {
+  if (!flag) {
 #ifdef HAVE_PPIDD_H
-  PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
+    PPIDD_Initialize(0, nullptr, PPIDD_IMPL_DEFAULT);
 #else
     MPI_Init(0, nullptr);
 #ifdef LINEARALGEBRA_ARRAY_GA
     GA_Initialize();
 #endif
-  }
 #endif
+  }
 #ifdef HAVE_PPIDD_H
-  return MPI_Comm_c2f(PPIDD_Worker_comm());
+    return MPI_Comm_c2f(PPIDD_Worker_comm());
 #endif
 #ifdef LINEARALGEBRA_ARRAY_GA
-  return MPI_Comm_c2f(GA_MPI_Comm());
+    if (GA_MPI_Comm() != NULL && GA_MPI_Comm() != MPI_COMM_NULL)
+      return MPI_Comm_c2f(GA_MPI_Comm());
 #endif
-  return MPI_Comm_c2f(MPI_COMM_WORLD);
-}
+    return MPI_Comm_c2f(MPI_COMM_WORLD);
+  }

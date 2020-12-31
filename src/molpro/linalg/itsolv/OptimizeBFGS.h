@@ -41,16 +41,30 @@ public:
       return 0;
     }
     this->m_working_set.assign(1, 0);
+    auto& z = action.front();
+    const auto& xspace = this->m_xspace;
+    auto& xdata = xspace->data;
+    const auto& H = xdata[subspace::EqnData::H];
+    const auto& S = xdata[subspace::EqnData::S];
+    const auto& q = xspace->paramsq();
+    const auto& u = xspace->actionsq();
+
     auto signal = solver_signal();
-    if (signal ==
-        0) { // action is expected to hold the preconditioned residual, and here we should add it to parameters
-      this->m_handlers->rr().axpy(1, action.front(), parameters.front());
+    //    std::cout << "end_iteration signal=" << signal << std::endl;
+    if (signal == 0) { // action is expected to hold the preconditioned residual
+      for (int a = m_alpha.size() - 1; a >= 0; a--) {
+        auto beta = -(this->m_handlers->qr().dot(z, u[a]) - this->m_handlers->qr().dot(z, u[a + 1])) /
+                    (H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1));
+        //        std::cout << "alpha[" << a << "] = " << m_alpha[a] << std::endl;
+        //        std::cout << "beta[" << a << "] = " << beta << std::endl;
+        this->m_handlers->qr().axpy(-m_alpha[a] + beta, q[a], z);
+        this->m_handlers->qr().axpy(+m_alpha[a] - beta, q[a + 1], z);
+      }
+      this->m_handlers->rr().axpy(1, z, parameters.front());
     } else if (signal == 1) { // residual not used, simply leave parameters alone
-    } else {                  // L-BFGS
-      throw std::logic_error("L-BFGS not yet implemented");
     }
     this->m_stats->iterations++;
-    return 1;
+    return this->errors().front() < this->m_convergence_threshold ? 0 : 1;
   }
 
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
@@ -104,15 +118,39 @@ public:
   }
   std::shared_ptr<Logger> logger;
 
+protected:
+  std::vector<double> m_alpha;
+
+public:
   bool add_value(R& parameters, value_type value, R& residual) override {
     using namespace subspace;
     auto& xspace = this->m_xspace;
     auto& xdata = xspace->data;
-    const auto n = this->m_xspace->dimensions().nX;
-    xdata[EqnData::value].resize({n + 1, 1});
-    xdata[EqnData::value](0, 0) = value;
+    const auto& H = xdata[EqnData::H];
+    const auto& S = xdata[EqnData::S];
+    auto& Value = xdata[EqnData::value];
+    const int n = this->m_xspace->dimensions().nX;
+    auto oldValue = Value;
+    Value.resize({n + 1, 1});
+    if (n > 0)
+      Value.slice({1, 0}, {n + 1, 1}) = oldValue.slice();
+    Value(0, 0) = value;
+//    std::cout << "updated value to" << as_string(Value) << std::endl;
     auto nwork = this->add_vector(parameters, residual);
-    return nwork > 0 && solver_signal() != 1;
+    if (solver_signal() == 1) // line search required
+      return false;
+    m_alpha.resize(n);
+    const auto& q = xspace->paramsq();
+    const auto& u = xspace->actionsq();
+//    this->m_errors.front() = std::sqrt(this->m_handlers->rr().dot(residual,residual));
+    for (int a = 0; a < n; a++) {
+      m_alpha[a] = (this->m_handlers->qr().dot(residual, q[a]) - this->m_handlers->qr().dot(residual, q[a + 1])) /
+                   (H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1));
+//      std::cout << "alpha[" << a << "] = " << m_alpha[a] << std::endl;
+      this->m_handlers->qr().axpy(-m_alpha[a], u[a], residual);
+      this->m_handlers->qr().axpy(m_alpha[a], u[a + 1], residual);
+    }
+    return nwork > 0;
   }
 
   size_t end_iteration(R& parameters, R& actions) override {

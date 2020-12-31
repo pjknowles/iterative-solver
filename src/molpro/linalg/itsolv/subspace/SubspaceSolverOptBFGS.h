@@ -36,17 +36,20 @@ public:
     }
     auto kDim = kH.rows();
     int kVerbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
-    auto dH = kH;
-    auto dDim = kDim - 1;
-    dH.resize({dDim, dDim});
-    for (size_t i = 0; i < dDim; i++)
-      for (size_t j = 0; j < dDim; j++)
-        dH(i, j) = kH(i, j) - kH(i + 1, j) - kH(i, j + 1) + kH(i + 1, j + 1);
-    m_logger->msg("dH = " + as_string(kH, 15), Logger::Info);
-    m_solutions.resize({1, kDim});
-    m_solutions.slice().fill(0);
-    m_solutions(0, 0) = 1;
-    m_errors.assign(1, kH(0, 0));
+//    std::cout << "S" << as_string(kS) << std::endl;
+//    std::cout << "H" << as_string(kH) << std::endl;
+//    std::cout << "Value" << as_string(kValue) << std::endl;
+    if (true) {
+      m_logger->msg("Quasi-Newton step taken",Logger::Info);
+      m_solutions.resize({1, kDim});
+      m_solutions.slice().fill(0);
+      m_solutions(0, 0) = 1;
+      m_errors.assign(1, kH(0, 0)); // FIXME
+    } else {
+      m_logger->msg("Line search step taken",Logger::Info);
+      xspace.data[EqnData::signals].resize({1, 1});
+      xspace.data[EqnData::signals](0, 0) = 1;
+    }
     if (m_logger->data_dump) {
       m_logger->msg("solution = " + as_string(m_solutions), Logger::Info);
     }

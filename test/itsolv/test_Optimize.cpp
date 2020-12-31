@@ -16,11 +16,11 @@
 #include <molpro/linalg/itsolv/helper.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverOptBFGS.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverOptSD.h>
-using molpro::linalg::itsolv::CastOptions;
-using molpro::linalg::itsolv::Logger;
 using molpro::linalg::array::Span;
+using molpro::linalg::itsolv::CastOptions;
 using molpro::linalg::itsolv::CVecRef;
 using molpro::linalg::itsolv::cwrap;
+using molpro::linalg::itsolv::Logger;
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::wrap;
 #ifndef NOFORTRAN
@@ -69,15 +69,17 @@ struct OptimizeF : ::testing::Test {
       psg[i] = -psg[i] / hmat(i, i);
   }
 
-  void test_quadratic_form(const std::string& method, const std::string& title = "", const int n_working_vectors_max = 0) {
+  void test_quadratic_form(const std::string& method, const std::string& title = "",
+                           const int n_working_vectors_max = 0) {
     int nroot = 1;
     {
       int np = 0;
       {
-        molpro::cout << "\n\n*** " << title << ",  problem dimension " << n
+        molpro::cout << "\n\n*** " << title << ",  problem dimension " << n << ", method = " << method
                      << ", n_working_vectors_max = " << n_working_vectors_max << std::endl;
 
-        auto solver = molpro::linalg::itsolv::create_Optimize<Rvector ,Qvector >(method,"convergence_threshold=1e-8,n_roots=1,max_size_qspace=10");
+        auto solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>(
+            method, "convergence_threshold=1e-8,n_roots=1,max_size_qspace=10");
         int nwork = 1;
         // Create initial subspace. This is iteration 0.
         Rvector x(n, 0), g(n);
@@ -85,8 +87,14 @@ struct OptimizeF : ::testing::Test {
         size_t n_iter = 1;
         for (auto iter = 1; iter < 1000 && nwork > 0; iter++, ++n_iter) {
           auto value = action(x, g);
-          if (solver->add_value(x, value, g))
+          //          std::cout << "Iteration "<<iter<<std::endl;
+          //          std::cout << "x\n"<<x<< std::endl;
+          //          std::cout << "g\n"<<g<< std::endl;
+          if (solver->add_value(x, value, g)) {
+            //            std::cout << "before update, g\n"<<g<< std::endl;
             update(g);
+          }
+          //          std::cout << "after update, g\n"<<g<< std::endl;
           if (verbosity > 0)
             solver->report();
           nwork = solver->end_iteration(x, g);
@@ -121,7 +129,7 @@ TEST_F(OptimizeF, small_quadratic_form) {
   for (int n = 1; n < 51; n++) {
     double param = 10;
     load_matrix(n, "", param);
-    test_quadratic_form("BFGS",std::to_string(n) + "/" + std::to_string(param));
+    test_quadratic_form("BFGS", std::to_string(n) + "/" + std::to_string(param));
     test_quadratic_form("SD", std::to_string(n) + "/" + std::to_string(param));
   }
 }

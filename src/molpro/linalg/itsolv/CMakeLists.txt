@@ -7,5 +7,7 @@ LibraryManager_Append(${PROJECT_NAME}
         LinearEquationsDavidsonOptions.h SolverFactory.h SolverFactory-implementation.h options_map.h
         OptimizeBFGSOptions.h OptimizeSDOptions.h
         NonLinearEquationsDIISOptions.h
+        SOURCES Interpolate.cpp
+        PUBLIC_HEADER Interpolate.h
         )
 add_subdirectory(subspace)

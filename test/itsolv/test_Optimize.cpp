@@ -133,3 +133,19 @@ TEST_F(OptimizeF, small_quadratic_form) {
     test_quadratic_form("SD", std::to_string(n) + "/" + std::to_string(param));
   }
 }
+
+TEST(Optimize, trig1d){
+
+  auto solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>(
+      "BFGS", "convergence_threshold=1e-8,max_size_qspace=6,n_roots=1");
+  std::vector<double> x(1),g(1);
+  int nwork=1;
+  x[0]=0.1;
+  for (int iter=0; iter<100; iter++){
+    double value = std::sin(x[0]);
+    std::cout << "iter="<<iter<<", x="<<x<<", value="<<value<<std::endl;
+    g[0] = std::cos(x[0]);
+    solver->add_value(x,value,g);
+    if (solver->end_iteration(x,g)==0) break;
+  }
+}

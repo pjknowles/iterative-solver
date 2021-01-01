@@ -6,6 +6,7 @@
 #include <molpro/linalg/itsolv/propose_rspace.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverOptBFGS.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
+#include <molpro/linalg/itsolv/Interpolate.h>
 
 namespace molpro::linalg::itsolv {
 /*!
@@ -87,7 +88,12 @@ public:
         goto accept;
       molpro::cout << "taking line search" << std::endl;
       this->m_logger->msg("Line search step taken", Logger::Info);
-      //      return false;
+      Interpolate inter({0,f0,g0},{1,f1,g1});
+     auto  [ x, f, g, h] = inter.minimize(-1,2);
+     molpro::cout << "interpolation"<<x<<" f="<<f<<" g="<<g<<" h="<<h<<std::endl;
+     this->m_handlers->rr().scal(1+x,parameters);
+     this->m_handlers->rq().axpy(-x,xspace->paramsq()[1],parameters);
+            return false;
     }
 
   accept:

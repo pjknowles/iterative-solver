@@ -34,6 +34,80 @@ public:
                        handlers, std::make_shared<Statistics>(), logger_),
         logger(logger_) {}
 
+  bool add_value(R& parameters, value_type value, R& residual) override {
+    using namespace subspace;
+    auto& xspace = this->m_xspace;
+    auto& xdata = xspace->data;
+    const auto& H = xdata[EqnData::H];
+    const auto& S = xdata[EqnData::S];
+    auto& Value = xdata[EqnData::value];
+    //    std::cout << "updated value to" << as_string(Value) << std::endl;
+
+//    std::cout << "H "<<as_string(H)<<std::endl;
+//    std::cout << "Value "<<as_string(Value)<<std::endl;
+    while (xspace->size() >= this->m_max_size_qspace) {
+//      std::cout << "delete Q" << std::endl;
+      xspace->eraseq(xspace->size() - 1);
+      Value.resize({xspace->size() , 1});
+    }
+//    std::cout << "H after delete Q "<<as_string(H)<<std::endl;
+//    std::cout << "Value after delete Q "<<as_string(Value)<<std::endl;
+
+    // augment space with current point
+    auto oldValue = Value;
+    Value.resize({xspace->size() + 1, 1});
+    if (xspace->size() > 0)
+      Value.slice({1, 0}, {xspace->size() + 1, 1}) = oldValue.slice();
+    Value(0, 0) = value;
+    auto nwork = this->add_vector(parameters, residual);
+//    std::cout << "H after add_vector "<<as_string(H)<<std::endl;
+//    std::cout << "Value after add_vector "<<as_string(Value)<<std::endl;
+
+    if (xspace->size() > 1) {             // see whether a line search is needed
+      auto f0 = Value(1, 0); // the previous point
+      auto f1 = Value(0, 0); // the current point
+      auto g0 = H(0, 1) - H(1, 1);
+      auto g1 = H(0, 0) - H(1, 0);
+      bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
+      bool Wolfe_2 = m_strong_Wolfe ? g1 >= m_Wolfe_2 * g0 : std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
+      auto step = S(0, 0) - S(1, 0) - S(0, 1) + S(1, 1);
+      if (true) {
+        molpro::cout << "Size of Q=" << xspace->size() << std::endl;
+        molpro::cout << "step=" << step << std::endl;
+        molpro::cout << "f0=" << f0 << std::endl;
+        molpro::cout << "f1=" << f1 << std::endl;
+        molpro::cout << " m_Wolfe_1 =" << m_Wolfe_1 << std::endl;
+        molpro::cout << " m_Wolfe_1 * g0=" << m_Wolfe_1 * g0 << std::endl;
+        molpro::cout << "f0 + m_Wolfe_1 * g0=" << f0 + m_Wolfe_1 * g0 << std::endl;
+        molpro::cout << "g0=" << g0 << std::endl;
+        molpro::cout << "g1=" << g1 << std::endl;
+        molpro::cout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
+      }
+      if (g1 < this->m_convergence_threshold or (Wolfe_1 && Wolfe_2))
+        goto accept;
+      molpro::cout << "taking line search" << std::endl;
+      this->m_logger->msg("Line search step taken", Logger::Info);
+      //      return false;
+    }
+
+  accept:
+    this->m_logger->msg("Quasi-Newton step taken", Logger::Info);
+    m_alpha.resize(xspace->size()-1);
+    const auto& q = xspace->paramsq();
+    const auto& u = xspace->actionsq();
+    //    this->m_errors.front() = std::sqrt(this->m_handlers->rr().dot(residual,residual));
+    for (int a = 0; a < m_alpha.size(); a++) {
+      m_alpha[a] = (this->m_handlers->qr().dot(residual, q[a]) - this->m_handlers->qr().dot(residual, q[a + 1])) /
+                   (H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1));
+      //      std::cout << "alpha[" << a << "] = " << m_alpha[a] << std::endl;
+      this->m_handlers->qr().axpy(-m_alpha[a], u[a], residual);
+      this->m_handlers->qr().axpy(m_alpha[a], u[a + 1], residual);
+    }
+    return nwork > 0;
+  }
+
+  scalar_type value() const override { return this->m_xspace->data[subspace::EqnData::value](0, 0); }
+
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
     this->solution_params(this->m_working_set, parameters);
     if (this->m_errors.front() < this->m_convergence_threshold) {
@@ -70,6 +144,12 @@ public:
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
     auto result = end_iteration(wrap(parameters), wrap(action));
     return result;
+  }
+
+  size_t end_iteration(R& parameters, R& actions) override {
+    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
+    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
+    return end_iteration(wparams, wactions);
   }
 
   //! Set a limit on the maximum size of Q space. This does not include the size of the working space (R) and the D
@@ -122,46 +202,6 @@ public:
 
 protected:
   std::vector<double> m_alpha;
-
-public:
-  bool add_value(R& parameters, value_type value, R& residual) override {
-    using namespace subspace;
-    auto& xspace = this->m_xspace;
-    auto& xdata = xspace->data;
-    const auto& H = xdata[EqnData::H];
-    const auto& S = xdata[EqnData::S];
-    auto& Value = xdata[EqnData::value];
-    const int n = this->m_xspace->dimensions().nX;
-    auto oldValue = Value;
-    Value.resize({n + 1, 1});
-    if (n > 0)
-      Value.slice({1, 0}, {n + 1, 1}) = oldValue.slice();
-    Value(0, 0) = value;
-    //    std::cout << "updated value to" << as_string(Value) << std::endl;
-    auto nwork = this->add_vector(parameters, residual);
-    if (solver_signal() == 1) // line search required
-      return false;
-    m_alpha.resize(n);
-    const auto& q = xspace->paramsq();
-    const auto& u = xspace->actionsq();
-    //    this->m_errors.front() = std::sqrt(this->m_handlers->rr().dot(residual,residual));
-    for (int a = 0; a < n; a++) {
-      m_alpha[a] = (this->m_handlers->qr().dot(residual, q[a]) - this->m_handlers->qr().dot(residual, q[a + 1])) /
-                   (H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1));
-      //      std::cout << "alpha[" << a << "] = " << m_alpha[a] << std::endl;
-      this->m_handlers->qr().axpy(-m_alpha[a], u[a], residual);
-      this->m_handlers->qr().axpy(m_alpha[a], u[a + 1], residual);
-    }
-    return nwork > 0;
-  }
-
-  size_t end_iteration(R& parameters, R& actions) override {
-    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
-    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
-    return end_iteration(wparams, wactions);
-  }
-
-  scalar_type value() const override { return this->m_xspace->data[subspace::EqnData::value](0, 0); }
 
 protected:
   int solver_signal() const {

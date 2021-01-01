@@ -79,7 +79,7 @@ struct OptimizeF : ::testing::Test {
                      << ", n_working_vectors_max = " << n_working_vectors_max << std::endl;
 
         auto solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>(
-            method, "convergence_threshold=1e-8,n_roots=1,max_size_qspace=10");
+            method, "convergence_threshold=1e-8,n_roots=1,max_size_qspace=6");
         int nwork = 1;
         // Create initial subspace. This is iteration 0.
         Rvector x(n, 0), g(n);
@@ -87,9 +87,9 @@ struct OptimizeF : ::testing::Test {
         size_t n_iter = 1;
         for (auto iter = 1; iter < 1000 && nwork > 0; iter++, ++n_iter) {
           auto value = action(x, g);
-          //          std::cout << "Iteration "<<iter<<std::endl;
-          //          std::cout << "x\n"<<x<< std::endl;
-          //          std::cout << "g\n"<<g<< std::endl;
+//                    std::cout << "Iteration "<<iter<<std::endl;
+//                    std::cout << "x\n"<<x<< std::endl;
+//                    std::cout << "g\n"<<g<< std::endl;
           if (solver->add_value(x, value, g)) {
             //            std::cout << "before update, g\n"<<g<< std::endl;
             update(g);
@@ -126,7 +126,7 @@ struct OptimizeF : ::testing::Test {
 };
 
 TEST_F(OptimizeF, small_quadratic_form) {
-  for (int n = 1; n < 51; n++) {
+  for (int n = 2; n < 51; n++) {
     double param = 10;
     load_matrix(n, "", param);
     test_quadratic_form("BFGS", std::to_string(n) + "/" + std::to_string(param));

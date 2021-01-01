@@ -35,21 +35,10 @@ public:
       m_logger->msg("value = " + as_string(kValue, 15), Logger::Info);
     }
     auto kDim = kH.rows();
-    int kVerbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
-//    std::cout << "S" << as_string(kS) << std::endl;
-//    std::cout << "H" << as_string(kH) << std::endl;
-//    std::cout << "Value" << as_string(kValue) << std::endl;
-    if (true) {
-      m_logger->msg("Quasi-Newton step taken",Logger::Info);
-      m_solutions.resize({1, kDim});
-      m_solutions.slice().fill(0);
-      m_solutions(0, 0) = 1;
-      m_errors.assign(1, kH(0, 0)); // FIXME
-    } else {
-      m_logger->msg("Line search step taken",Logger::Info);
-      xspace.data[EqnData::signals].resize({1, 1});
-      xspace.data[EqnData::signals](0, 0) = 1;
-    }
+    m_solutions.resize({1, kDim});
+    m_solutions.slice().fill(0);
+    m_solutions(0, 0) = 1;
+    m_errors.assign(1, kH(0, 0)); // FIXME
     if (m_logger->data_dump) {
       m_logger->msg("solution = " + as_string(m_solutions), Logger::Info);
     }
@@ -76,9 +65,6 @@ protected:
   Matrix<value_type> m_solutions;       //!< solution matrix with row vectors
   std::vector<value_type_abs> m_errors; //!< errors in subspace solutions
   std::shared_ptr<Logger> m_logger{};
-
-public:
-  value_type_abs m_svd_solver_threshold = 1.0e-14; //!< threshold to select null space during SVD in eigenproblem
 };
 
 } // namespace molpro::linalg::itsolv::subspace

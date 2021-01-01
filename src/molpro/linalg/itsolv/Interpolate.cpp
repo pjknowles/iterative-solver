@@ -20,6 +20,10 @@ Interpolate::Interpolate(point p0, point p1, std::string interpolant)
     throw std::runtime_error("Unknown interpolant: " + m_interpolant);
 }
 
+std::vector<std::string> Interpolate::interpolants() {
+  return std::vector<std::string>{"cubic"};
+}
+
 Interpolate::point Interpolate::operator()(double x) const {
   if (m_interpolant == "cubic") {
     auto xbar = 0.5 * (m_p1.x + m_p0.x);
@@ -31,7 +35,31 @@ Interpolate::point Interpolate::operator()(double x) const {
   throw std::logic_error("Unknown interpolant: " + m_interpolant);
 }
 
-Interpolate::point Interpolate::minimize(double xmin, double xmax) const {
-  double x = xmin;
-  return (*this)(x);
+Interpolate::point Interpolate::minimize(double xa, double xb, double bracket_factor) const {
+  auto p0 = (*this)(std::min(xa, xb));
+  auto p1 = (*this)(std::max(xa, xb));
+//  std::cout << "minimize " << p0.x << " : " << p1.x << ", bracket_factor=" << bracket_factor << std::endl;
+  auto bracket_step = bracket_factor * (p1.x - p0.x);
+  while (p0.f1 > 0) {
+    if (std::nexttoward(p0.x, p1.x) >= p1.x)
+      return (*this)((*this)(xa).f > (*this)(xb).f ? xb : xa);
+    p0 = (*this)(p0.x + bracket_step);
+  }
+  while (p1.f1 < 0) {
+    if (std::nexttoward(p1.x, p0.x) <= p0.x)
+      return (*this)((*this)(xa).f > (*this)(xb).f ? xb : xa);
+    p1 = (*this)(p1.x - bracket_step);
+  }
+  //  std::cout << "bracket " << p0.x << " : " << p1.x << std::endl;
+  if (p0.f1 * p1.f1 > 0)
+    throw std::runtime_error("secant method cannot continue");
+  auto pnew = p1;
+  while (p0.x != pnew.x) {
+    pnew = (*this)((p1.x * p0.f1 - p0.x * p1.f1) / (p0.f1 - p1.f1));
+    if (pnew.f1 * p0.f1 < 0)
+      std::swap(p0, p1);
+    std::swap(p0, pnew);
+  }
+  //  std::cout << "return " << p0.x << ", " << p0.f << ", " << p0.f1 << ", " << p0.f2 << std::endl;
+  return p0;
 }

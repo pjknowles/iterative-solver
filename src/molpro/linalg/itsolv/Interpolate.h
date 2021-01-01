@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_INTERPOLATE_H_
 #include <cmath>
 #include <string>
+#include <vector>
 
 /*!
  * @brief 4-parameter interpolation of a 1-dimensional function given two points for which function values and first
@@ -12,11 +13,17 @@ namespace molpro::linalg::itsolv {
 class Interpolate {
 public:
   struct point {
-    double x;
-    double f;
-    double f1;
-    double f2 = std::nan("unset");
+    double x; //< abscissa
+    double f = std::nan("unset"); //< function value at x
+    double f1 = std::nan("unset"); //< function first gradient at x
+    double f2 = std::nan("unset"); //< function second gradient at x
   };
+  /*!
+   * @brief Construct the interpolant
+   * @param p0 Defining point
+   * @param p1 Defining point
+   * @param interpolant The interpolation method. An exception is thrown if it is not one of the implemented values.
+   */
   explicit Interpolate(point p0, point p1, std::string interpolant = "cubic");
   /*!
    * @brief Evaluate the interpolant and its derivative at a given point
@@ -26,12 +33,13 @@ public:
   point operator()(double x) const;
   /*!
    * @brief Find the minimum of the interpolant within a range
-   * @param xmin lower bound of range
-   * @param xmax upper bound of range
-   * @return
+   * @param xa first bound of range
+   * @param xb second bound of range
+   * @param bracket_factor step length, as a fraction of |xa-xb|, to be taken in initial bracketing of the minimum. Small values result in many function evaluations, but if set too large, the minimum may be stepped over and missed.
+   * @return The minimum point. The result may be one of Interpolate(xa), Interpolate(xb) with non-zero first derivative, if no other minimum was found in the interval
    */
-  point minimize(double xmin, double xmax) const;
-
+  Interpolate::point minimize(double xa, double xb, double bracket_factor = 0.001) const;
+  static std::vector<std::string> interpolants();
 private:
   const point m_p0, m_p1;
   const std::string m_interpolant;

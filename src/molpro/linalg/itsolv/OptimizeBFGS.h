@@ -72,13 +72,6 @@ public:
     return result;
   }
 
-  //! Set threshold on the norm of parameters that should be considered null
-  void set_norm_thresh(double thresh) { m_norm_thresh = thresh; }
-  double get_norm_thresh() const { return m_norm_thresh; }
-  //! Set the smallest singular value in the subspace that can be allowed when
-  //! constructing the working set. Smaller singular values will lead to deletion of parameters
-  void set_svd_thresh(double thresh) { m_svd_thresh = thresh; }
-  double get_svd_thresh() const { return m_svd_thresh; }
   //! Set a limit on the maximum size of Q space. This does not include the size of the working space (R) and the D
   //! space
   void set_max_size_qspace(int n) { m_max_size_qspace = n; }
@@ -90,10 +83,16 @@ public:
       auto opt = CastOptions::OptimizeBFGS(options);
       if (opt.max_size_qspace)
         set_max_size_qspace(opt.max_size_qspace.value());
-      if (opt.norm_thresh)
-        set_norm_thresh(opt.norm_thresh.value());
-      if (opt.svd_thresh)
-        set_svd_thresh(opt.svd_thresh.value());
+      if (opt.strong_Wolfe)
+        m_strong_Wolfe = opt.strong_Wolfe.value();
+      if (opt.Wolfe_1)
+        m_Wolfe_1 = opt.Wolfe_1.value();
+      if (opt.Wolfe_2)
+        m_Wolfe_2 = opt.Wolfe_2.value();
+      if (opt.linesearch_tolerance)
+        m_linesearch_tolerance = opt.linesearch_tolerance.value();
+      if (opt.linesearch_grow_factor)
+        m_linesearch_grow_factor = opt.linesearch_grow_factor.value();
     }
     if (auto opt2 = dynamic_cast<const molpro::linalg::itsolv::OptimizeSDOptions*>(&options)) {
       auto opt = CastOptions::OptimizeSD(options);
@@ -104,8 +103,11 @@ public:
     auto opt = std::make_shared<OptimizeBFGSOptions>();
     opt->copy(*SolverTemplate::get_options());
     opt->max_size_qspace = get_max_size_qspace();
-    opt->norm_thresh = get_norm_thresh();
-    opt->svd_thresh = get_svd_thresh();
+    opt->strong_Wolfe = m_strong_Wolfe;
+    opt->Wolfe_1 = m_strong_Wolfe;
+    opt->Wolfe_2 = m_Wolfe_2;
+    opt->linesearch_tolerance = m_linesearch_tolerance;
+    opt->linesearch_grow_factor = m_linesearch_grow_factor;
     return opt;
   }
 
@@ -135,18 +137,18 @@ public:
     if (n > 0)
       Value.slice({1, 0}, {n + 1, 1}) = oldValue.slice();
     Value(0, 0) = value;
-//    std::cout << "updated value to" << as_string(Value) << std::endl;
+    //    std::cout << "updated value to" << as_string(Value) << std::endl;
     auto nwork = this->add_vector(parameters, residual);
     if (solver_signal() == 1) // line search required
       return false;
     m_alpha.resize(n);
     const auto& q = xspace->paramsq();
     const auto& u = xspace->actionsq();
-//    this->m_errors.front() = std::sqrt(this->m_handlers->rr().dot(residual,residual));
+    //    this->m_errors.front() = std::sqrt(this->m_handlers->rr().dot(residual,residual));
     for (int a = 0; a < n; a++) {
       m_alpha[a] = (this->m_handlers->qr().dot(residual, q[a]) - this->m_handlers->qr().dot(residual, q[a + 1])) /
                    (H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1));
-//      std::cout << "alpha[" << a << "] = " << m_alpha[a] << std::endl;
+      //      std::cout << "alpha[" << a << "] = " << m_alpha[a] << std::endl;
       this->m_handlers->qr().axpy(-m_alpha[a], u[a], residual);
       this->m_handlers->qr().axpy(m_alpha[a], u[a + 1], residual);
     }
@@ -175,9 +177,13 @@ protected:
   // for non-linear problems, actions already contains the residual
   void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {}
 
-  double m_norm_thresh = 1e-10; //!< vectors with norm less than threshold can be considered null.
-  double m_svd_thresh = 1e-12;  //!< svd values smaller than this mark the null space
   int m_max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space
+  bool m_strong_Wolfe = true;                              //!< Whether to use strong or weak Wolfe conditions
+  double m_Wolfe_1 = 1e-4; //!< Acceptance parameter for function value; recommended value Nocedal and Wright p142
+  double m_Wolfe_2 = 0.9;  //!< Acceptance parameter for function gradient; recommended value Nocedal and Wright p142
+  double m_linesearch_tolerance = .2; //!< If the predicted line search is within tolerance of 1, don't bother taking it
+  double m_linesearch_grow_factor =
+      3; //!< If the predicted line search step is extrapolation, limit the step to this factor times the current step
 };
 
 } // namespace molpro::linalg::itsolv

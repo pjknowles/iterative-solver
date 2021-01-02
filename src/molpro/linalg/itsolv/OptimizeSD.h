@@ -68,9 +68,6 @@ public:
   void set_options(const Options& options) override {
     SolverTemplate::set_options(options);
     if (auto opt2 = dynamic_cast<const molpro::linalg::itsolv::OptimizeSDOptions*>(&options)) {
-      auto opt = CastOptions::OptimizeSD(options);
-    }
-    if (auto opt2 = dynamic_cast<const molpro::linalg::itsolv::OptimizeSDOptions*>(&options)) {
     auto opt = CastOptions::OptimizeSD(options);
     }
   }

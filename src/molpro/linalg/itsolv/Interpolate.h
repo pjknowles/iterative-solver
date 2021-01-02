@@ -13,8 +13,8 @@ namespace molpro::linalg::itsolv {
 class Interpolate {
 public:
   struct point {
-    double x; //< abscissa
-    double f = std::nan("unset"); //< function value at x
+    double x;                      //< abscissa
+    double f = std::nan("unset");  //< function value at x
     double f1 = std::nan("unset"); //< function first gradient at x
     double f2 = std::nan("unset"); //< function second gradient at x
   };
@@ -35,11 +35,15 @@ public:
    * @brief Find the minimum of the interpolant within a range
    * @param xa first bound of range
    * @param xb second bound of range
-   * @param bracket_factor step length, as a fraction of |xa-xb|, to be taken in initial bracketing of the minimum. Small values result in many function evaluations, but if set too large, the minimum may be stepped over and missed.
-   * @return The minimum point. The result may be one of Interpolate(xa), Interpolate(xb) with non-zero first derivative, if no other minimum was found in the interval
+   * @param bracket_grid number of intervals in |xa-xb|, to be considered in initial bracketing of the minimum. Large
+   * values result in many function evaluations, but if set too small in cases of multiple minima, the global minimum
+   * may not be found.
+   * @return The minimum point. The result may be one of Interpolate(xa), Interpolate(xb) with non-zero first
+   * derivative, if no other minimum was found in the interval
    */
-  Interpolate::point minimize(double xa, double xb, double bracket_factor = 0.001) const;
+  Interpolate::point minimize(double xa, double xb, size_t bracket_grid = 100, size_t max_bracket_grid = 100000) const;
   static std::vector<std::string> interpolants();
+
 private:
   const point m_p0, m_p1;
   const std::string m_interpolant;

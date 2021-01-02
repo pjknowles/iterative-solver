@@ -79,7 +79,7 @@ struct OptimizeF : ::testing::Test {
                      << ", n_working_vectors_max = " << n_working_vectors_max << std::endl;
 
         auto solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>(
-            method, "convergence_threshold=1e-8,n_roots=1,max_size_qspace=6");
+            method, "convergence_threshold=1e-8,max_size_qspace=6");
         int nwork = 1;
         // Create initial subspace. This is iteration 0.
         Rvector x(n, 0), g(n);
@@ -87,9 +87,9 @@ struct OptimizeF : ::testing::Test {
         size_t n_iter = 1;
         for (auto iter = 1; iter < 1000 && nwork > 0; iter++, ++n_iter) {
           auto value = action(x, g);
-//                    std::cout << "Iteration "<<iter<<std::endl;
-//                    std::cout << "x\n"<<x<< std::endl;
-//                    std::cout << "g\n"<<g<< std::endl;
+          //                    std::cout << "Iteration "<<iter<<std::endl;
+          //                    std::cout << "x\n"<<x<< std::endl;
+          //                    std::cout << "g\n"<<g<< std::endl;
           if (solver->add_value(x, value, g)) {
             //            std::cout << "before update, g\n"<<g<< std::endl;
             update(g);
@@ -134,18 +134,23 @@ TEST_F(OptimizeF, small_quadratic_form) {
   }
 }
 
-TEST(Optimize, trig1d){
+TEST(Optimize, trig1d) {
 
   auto solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>(
-      "BFGS", "convergence_threshold=1e-8,max_size_qspace=6,n_roots=1");
-  std::vector<double> x(1),g(1);
-  int nwork=1;
-  x[0]=0.1;
-  for (int iter=0; iter<100; iter++){
+      "BFGS", "convergence_threshold=1e-8,max_size_qspace=2");
+  std::vector<double> x(1), g(1);
+  int nwork = 1;
+  x[0] = 1.0;
+  for (int iter = 0; iter < 100; iter++) {
     double value = std::sin(x[0]);
-    std::cout << "iter="<<iter<<", x="<<x<<", value="<<value<<std::endl;
+    std::cout << "iter=" << iter << ", x=" << x << ", value=" << value << std::endl;
     g[0] = std::cos(x[0]);
-    solver->add_value(x,value,g);
-    if (solver->end_iteration(x,g)==0) break;
+    auto precon = solver->add_value(x, value, g);
+    std::cout << "add_value returns precon=" << precon << ", x=" << x[0] << ", g=" << g[0] << std::endl;
+    if (precon)
+      g[0] = -g[0];
+    if (solver->end_iteration(x, g) == 0)
+      break;
+    std::cout << "end_iteration returns x=" << x[0] << ", g=" << g[0] << std::endl;
   }
 }

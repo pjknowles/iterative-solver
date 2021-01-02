@@ -186,10 +186,10 @@ public:
     return solution(roots, wrap(parameters), wrap(residual));
   }
   void solution(R& parameters, R& residual) override {
-    std::vector<int> roots(1,0);
+    std::vector<int> roots(1, 0);
     auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
     auto wresidual = std::vector<std::reference_wrapper<R>>{std::ref(residual)};
-    return solution(roots, wparams,wresidual);
+    return solution(roots, wparams, wresidual);
   }
 
   void solution_params(const std::vector<int>& roots, std::vector<R>& parameters) override {
@@ -204,11 +204,10 @@ public:
   };
 
   void solution_params(R& parameters) override {
-    std::vector<int> roots(1,0);
+    std::vector<int> roots(1, 0);
     auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
     return solution_params(roots, wparams);
   }
-
 
   // TODO Implement this
   std::vector<size_t> suggest_p(const CVecRef<R>& solution, const CVecRef<R>& residual, size_t max_number,
@@ -271,7 +270,7 @@ protected:
                           std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Statistics> stats,
                           std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_xspace(std::move(xspace)), m_subspace_solver(std::move(solver)),
-        m_stats(std::move(stats)), m_logger(std::move(logger)) {}
+        m_stats(std::move(stats)), m_logger(std::move(logger)) {set_n_roots(1);}
 
   //! Implementation class should overload this to set errors in the current values (e.g. change in eigenvalues)
   virtual void set_value_errors() {}
@@ -323,8 +322,8 @@ protected:
       throw std::runtime_error("asking for more roots than there are solutions");
   }
 
-  std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;   //!< Array handlers
-  std::shared_ptr<subspace::IXSpace<R, Q, P>> m_xspace; //!< manages the subspace and associated data
+  std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers
+  std::shared_ptr<subspace::IXSpace<R, Q, P>> m_xspace;                  //!< manages the subspace and associated data
   std::shared_ptr<subspace::ISubspaceSolver<R, Q, P>> m_subspace_solver; //!< solves the subspace problem
   std::vector<double> m_errors;                                          //!< errors from the most recent solution
   std::vector<double> m_value_errors;                                    //!< value errors from the most recent solution

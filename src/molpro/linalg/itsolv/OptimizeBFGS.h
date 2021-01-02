@@ -2,11 +2,11 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_OPTIMIZEBFGS_H
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
+#include <molpro/linalg/itsolv/Interpolate.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverOptBFGS.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
-#include <molpro/linalg/itsolv/Interpolate.h>
 
 namespace molpro::linalg::itsolv {
 /*!
@@ -44,15 +44,15 @@ public:
     auto& Value = xdata[EqnData::value];
     //    std::cout << "updated value to" << as_string(Value) << std::endl;
 
-//    std::cout << "H "<<as_string(H)<<std::endl;
-//    std::cout << "Value "<<as_string(Value)<<std::endl;
+    //    std::cout << "H "<<as_string(H)<<std::endl;
+    //    std::cout << "Value "<<as_string(Value)<<std::endl;
     while (xspace->size() >= this->m_max_size_qspace) {
-//      std::cout << "delete Q" << std::endl;
+      //      std::cout << "delete Q" << std::endl;
       xspace->eraseq(xspace->size() - 1);
-      Value.resize({xspace->size() , 1});
+      Value.resize({xspace->size(), 1});
     }
-//    std::cout << "H after delete Q "<<as_string(H)<<std::endl;
-//    std::cout << "Value after delete Q "<<as_string(Value)<<std::endl;
+    //    std::cout << "H after delete Q "<<as_string(H)<<std::endl;
+    //    std::cout << "Value after delete Q "<<as_string(Value)<<std::endl;
 
     // augment space with current point
     auto oldValue = Value;
@@ -61,12 +61,12 @@ public:
       Value.slice({1, 0}, {xspace->size() + 1, 1}) = oldValue.slice();
     Value(0, 0) = value;
     auto nwork = this->add_vector(parameters, residual);
-//    std::cout << "H after add_vector "<<as_string(H)<<std::endl;
-//    std::cout << "Value after add_vector "<<as_string(Value)<<std::endl;
+    //    std::cout << "H after add_vector "<<as_string(H)<<std::endl;
+    //    std::cout << "Value after add_vector "<<as_string(Value)<<std::endl;
 
-    if (xspace->size() > 1) {             // see whether a line search is needed
-      auto f0 = Value(1, 0); // the previous point
-      auto f1 = Value(0, 0); // the current point
+    if (xspace->size() > 1) { // see whether a line search is needed
+      auto f0 = Value(1, 0);  // the previous point
+      auto f1 = Value(0, 0);  // the current point
       auto g0 = H(0, 1) - H(1, 1);
       auto g1 = H(0, 0) - H(1, 0);
       bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
@@ -82,23 +82,34 @@ public:
         molpro::cout << "f0 + m_Wolfe_1 * g0=" << f0 + m_Wolfe_1 * g0 << std::endl;
         molpro::cout << "g0=" << g0 << std::endl;
         molpro::cout << "g1=" << g1 << std::endl;
+        molpro::cout << "m_convergence_threshold=" << this->m_convergence_threshold << std::endl;
         molpro::cout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
       }
-      if (g1 < this->m_convergence_threshold or (Wolfe_1 && Wolfe_2))
+      if (std::abs(g1) < this->m_convergence_threshold or (Wolfe_1 && Wolfe_2))
         goto accept;
-      molpro::cout << "taking line search" << std::endl;
-      this->m_logger->msg("Line search step taken", Logger::Info);
-      Interpolate inter({0,f0,g0},{1,f1,g1});
-     auto  [ x, f, g, h] = inter.minimize(-1,2);
-     molpro::cout << "interpolation"<<x<<" f="<<f<<" g="<<g<<" h="<<h<<std::endl;
-     this->m_handlers->rr().scal(1+x,parameters);
-     this->m_handlers->rq().axpy(-x,xspace->paramsq()[1],parameters);
-            return false;
+      molpro::cout << "evaluating line search" << std::endl;
+      Interpolate inter({0, f0, g0}, {1, f1, g1});
+      auto [x, f, g, h] = inter.minimize(-this->m_linesearch_grow_factor, 1 + this->m_linesearch_grow_factor);
+      molpro::cout << "interpolation" << x << " f=" << f << " g=" << g << " h=" << h << std::endl;
+      if (std::abs(x - 1) > m_linesearch_tolerance) {
+        molpro::cout << "taking line search" << std::endl;
+        this->m_logger->msg("Line search step taken", Logger::Info);
+        this->m_handlers->rr().scal(x, parameters);
+        this->m_handlers->rq().axpy(1 - x, xspace->paramsq()[1], parameters);
+        auto erased = f0 < f1 ? 0 : 1;
+        xspace->eraseq(erased);
+        for (int a = xspace->size(); a > erased; a--)
+          Value(a - 1, 0) = Value(a, 0);
+        Value.resize({xspace->size(), 1});
+        m_linesearch = true;
+        return false;
+      }
     }
 
   accept:
+    m_linesearch = false;
     this->m_logger->msg("Quasi-Newton step taken", Logger::Info);
-    m_alpha.resize(xspace->size()-1);
+    m_alpha.resize(xspace->size() - 1);
     const auto& q = xspace->paramsq();
     const auto& u = xspace->actionsq();
     //    this->m_errors.front() = std::sqrt(this->m_handlers->rr().dot(residual,residual));
@@ -115,23 +126,21 @@ public:
   scalar_type value() const override { return this->m_xspace->data[subspace::EqnData::value](0, 0); }
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
-    this->solution_params(this->m_working_set, parameters);
-    if (this->m_errors.front() < this->m_convergence_threshold) {
-      this->m_working_set.clear();
-      return 0;
-    }
-    this->m_working_set.assign(1, 0);
-    auto& z = action.front();
-    const auto& xspace = this->m_xspace;
-    auto& xdata = xspace->data;
-    const auto& H = xdata[subspace::EqnData::H];
-    const auto& S = xdata[subspace::EqnData::S];
-    const auto& q = xspace->paramsq();
-    const auto& u = xspace->actionsq();
+    if (not m_linesearch) { // action is expected to hold the preconditioned residual
+      this->solution_params(this->m_working_set, parameters);
+      if (this->m_errors.front() < this->m_convergence_threshold) {
+        this->m_working_set.clear();
+        return 0;
+      }
+      this->m_working_set.assign(1, 0);
+      auto& z = action.front();
+      const auto& xspace = this->m_xspace;
+      auto& xdata = xspace->data;
+      const auto& H = xdata[subspace::EqnData::H];
+      const auto& S = xdata[subspace::EqnData::S];
+      const auto& q = xspace->paramsq();
+      const auto& u = xspace->actionsq();
 
-    auto signal = solver_signal();
-    //    std::cout << "end_iteration signal=" << signal << std::endl;
-    if (signal == 0) { // action is expected to hold the preconditioned residual
       for (int a = m_alpha.size() - 1; a >= 0; a--) {
         auto beta = -(this->m_handlers->qr().dot(z, u[a]) - this->m_handlers->qr().dot(z, u[a + 1])) /
                     (H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1));
@@ -141,7 +150,6 @@ public:
         this->m_handlers->qr().axpy(+m_alpha[a] - beta, q[a + 1], z);
       }
       this->m_handlers->rr().axpy(1, z, parameters.front());
-    } else if (signal == 1) { // residual not used, simply leave parameters alone
     }
     this->m_stats->iterations++;
     return this->errors().front() < this->m_convergence_threshold ? 0 : 1;
@@ -208,6 +216,7 @@ public:
 
 protected:
   std::vector<double> m_alpha;
+  bool m_linesearch;
 
 protected:
   int solver_signal() const {
@@ -227,9 +236,10 @@ protected:
   bool m_strong_Wolfe = true;                              //!< Whether to use strong or weak Wolfe conditions
   double m_Wolfe_1 = 1e-4; //!< Acceptance parameter for function value; recommended value Nocedal and Wright p142
   double m_Wolfe_2 = 0.9;  //!< Acceptance parameter for function gradient; recommended value Nocedal and Wright p142
-  double m_linesearch_tolerance = .2; //!< If the predicted line search is within tolerance of 1, don't bother taking it
+  double m_linesearch_tolerance = .2; //!< If the predicted line search is within tolerance of the recently-evaluated
+                                      //!< point, don't bother taking it, but proceed to Quasi-Newton instead
   double m_linesearch_grow_factor =
-      3; //!< If the predicted line search step is extrapolation, limit the step to this factor times the current step
+      2; //!< If the predicted line search step is extrapolation, limit the step to this factor times the current step
 };
 
 } // namespace molpro::linalg::itsolv

@@ -195,9 +195,6 @@ public:
       if (opt.linesearch_grow_factor)
         m_linesearch_grow_factor = opt.linesearch_grow_factor.value();
     }
-    if (auto opt2 = dynamic_cast<const molpro::linalg::itsolv::OptimizeSDOptions*>(&options)) {
-      auto opt = CastOptions::OptimizeSD(options);
-    }
   }
 
   std::shared_ptr<Options> get_options() const override {

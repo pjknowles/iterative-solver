@@ -35,18 +35,10 @@ public:
       m_logger->msg("value = " + as_string(kValue, 15), Logger::Info);
     }
     auto kDim = kH.rows();
-    int kVerbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
-    auto dH = kH;
-    auto dDim = kDim - 1;
-    dH.resize({dDim, dDim});
-    for (size_t i = 0; i < dDim; i++)
-      for (size_t j = 0; j < dDim; j++)
-        dH(i, j) = kH(i, j) - kH(i + 1, j) - kH(i, j + 1) + kH(i + 1, j + 1);
-    m_logger->msg("dH = " + as_string(kH, 15), Logger::Info);
     m_solutions.resize({1, kDim});
     m_solutions.slice().fill(0);
     m_solutions(0, 0) = 1;
-    m_errors.assign(1, kH(0, 0));
+    m_errors.assign(1, kH(0, 0)); // FIXME
     if (m_logger->data_dump) {
       m_logger->msg("solution = " + as_string(m_solutions), Logger::Info);
     }
@@ -73,9 +65,6 @@ protected:
   Matrix<value_type> m_solutions;       //!< solution matrix with row vectors
   std::vector<value_type_abs> m_errors; //!< errors in subspace solutions
   std::shared_ptr<Logger> m_logger{};
-
-public:
-  value_type_abs m_svd_solver_threshold = 1.0e-14; //!< threshold to select null space during SVD in eigenproblem
 };
 
 } // namespace molpro::linalg::itsolv::subspace

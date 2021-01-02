@@ -58,20 +58,10 @@ public:
     return result;
   }
 
-  //! Set threshold on the norm of parameters that should be considered null
-  void set_norm_thresh(double thresh) { m_norm_thresh = thresh; }
-  double get_norm_thresh() const { return m_norm_thresh; }
-  //! Set the smallest singular value in the subspace that can be allowed when
-  //! constructing the working set. Smaller singular values will lead to deletion of parameters
-  void set_svd_thresh(double thresh) { m_svd_thresh = thresh; }
-  double get_svd_thresh() const { return m_svd_thresh; }
-
   void set_options(const Options& options) override {
     SolverTemplate::set_options(options);
     if (auto opt2 = dynamic_cast<const molpro::linalg::itsolv::OptimizeSDOptions*>(&options)) {
       auto opt = CastOptions::OptimizeSD(options);
-//      if (opt.norm_thresh)
-//        set_norm_thresh(opt.norm_thresh.value());
     }
     if (auto opt2 = dynamic_cast<const molpro::linalg::itsolv::OptimizeSDOptions*>(&options)) {
     auto opt = CastOptions::OptimizeSD(options);
@@ -81,7 +71,6 @@ public:
   std::shared_ptr<Options> get_options() const override {
     auto opt = std::make_shared<OptimizeSDOptions>();
     opt->copy(*SolverTemplate::get_options());
-//    opt->norm_thresh = get_norm_thresh();
     return opt;
   }
 
@@ -127,8 +116,6 @@ protected:
   // for non-linear problems, actions already contains the residual
   void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {}
 
-  double m_norm_thresh = 1e-10; //!< vectors with norm less than threshold can be considered null.
-  double m_svd_thresh = 1e-12;  //!< svd values smaller than this mark the null space
 };
 
 } // namespace molpro::linalg::itsolv

@@ -20,6 +20,7 @@ function test_OptimizeF(matrix, n) BIND(C)
       thresh = thresh, lmppx=.true.)
   nwork = 1
   c = 0
+  c(1) = 1
   do i = 1, 1000
     g = matmul(matrix, c - 1)
     value = 0.5d0 * dot_product(g, c - 1)
@@ -29,10 +30,10 @@ function test_OptimizeF(matrix, n) BIND(C)
       end do
     end if
     nwork = Iterative_Solver_End_Iteration(c, g);
-    !    write (6, *) 'error ', Iterative_Solver_Errors()
     if (nwork.le.0) exit
   end do
   error = sqrt(dot_product(c - 1, c - 1))
+!  write (6,*) 'difference error ',error, thresh
   if (error.gt.thresh) then
     write (6, *) 'OptimizeF has failed ',value
     test_OptimizeF = 0

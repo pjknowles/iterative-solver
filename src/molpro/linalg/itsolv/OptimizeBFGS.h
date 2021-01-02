@@ -166,6 +166,13 @@ public:
     return end_iteration(wparams, wactions);
   }
 
+  void set_value_errors() override {
+    auto& Value = this->m_xspace->data[subspace::EqnData::value];
+    this->m_value_errors.assign(1, std::numeric_limits<double>::max());
+    if (this->m_xspace->size() > 1 and Value(0, 0) < Value(1, 0))
+      this->m_value_errors.front() = Value(1, 0) - Value(0, 0);
+  }
+
   //! Set a limit on the maximum size of Q space. This does not include the size of the working space (R) and the D
   //! space
   void set_max_size_qspace(int n) { m_max_size_qspace = n; }

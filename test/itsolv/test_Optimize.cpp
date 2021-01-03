@@ -133,11 +133,46 @@ TEST_F(OptimizeF, small_quadratic_form) {
     test_quadratic_form("SD", std::to_string(n) + "/" + std::to_string(param));
   }
 }
+auto
+rosenbrock(const std::vector<double>& x, double a=1, double b=100) {
+  double f{0};
+  std::vector<double> f1(x.size(),0);
+  for (size_t i = 0; i < x.size() - 1; i++) {
+    f +=  std::pow(a  - x[i], 2) + b * std::pow(std::pow(x[i], 2) - x[i + 1], 2);
+    f1[i] -= 2 * (a - x[i]);
+    f1[i] += 4 * b * x[i] * (std::pow(x[i], 2) - x[i + 1]);
+    f1[i + 1] -= 2 * b * (std::pow(x[i], 2) - x[i + 1]);
+  }
+  return std::tuple{x,f,f1};
+}
+TEST(Optimize, Rosenbrock) {
+
+  for (size_t n = 2; n < 7; n++) {
+    auto solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>(
+        "BFGS", "convergence_threshold=1e-8,max_size_qspace=6");
+    std::vector<double> x(n, -4), g(n);
+    x[0] = -3.0;
+    for (int iter = 0; iter < 10000; iter++) {
+      auto [xx, value, g] = rosenbrock(x);
+//      std::cout << "iter=" << iter << ", x=" << x << ", value=" << value << std::endl;
+      auto precon = solver->add_value(x, value, g);
+//      std::cout << "add_value returns precon=" << precon << ", x=" << x << ", g=" << g[0] << std::endl;
+      if (precon)
+        g[0] = -g[0]/800;
+      if (solver->end_iteration(x, g) == 0)
+        break;
+//      std::cout << "end_iteration returns x=" << x << ", g=" << g << std::endl;
+    }
+    std::cout << solver->statistics()<<std::endl;
+    EXPECT_THAT(x, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()),
+                                        std::vector<double>(x.size(), double(1))));
+  }
+}
 
 TEST(Optimize, trig1d) {
 
-  auto solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>(
-      "BFGS", "convergence_threshold=1e-8,max_size_qspace=2");
+  auto solver =
+      molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>("BFGS", "convergence_threshold=1e-8,max_size_qspace=2");
   std::vector<double> x(1), g(1);
   int nwork = 1;
   x[0] = 1.0;

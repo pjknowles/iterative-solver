@@ -24,10 +24,10 @@ public:
   using typename SolverTemplate::scalar_type;
   using typename SolverTemplate::value_type;
   using typename SolverTemplate::value_type_abs;
-  using SubspaceSolver = subspace::SubspaceSolverOptSD<R,Q,P>;
+  using SubspaceSolver = subspace::SubspaceSolverOptSD<R, Q, P>;
 
   explicit OptimizeSD(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
-                    const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
+                      const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
       : SolverTemplate(std::make_shared<subspace::XSpace<R, Q, P>>(handlers, logger_),
                        std::static_pointer_cast<subspace::ISubspaceSolver<R, Q, P>>(
                            std::make_shared<subspace::SubspaceSolverOptSD<R, Q, P>>(logger_)),
@@ -41,14 +41,7 @@ public:
       return 0;
     }
     this->m_working_set.assign(1, 0);
-    auto signal = solver_signal();
-    if (signal ==
-        0) { // action is expected to hold the preconditioned residual, and here we should add it to parameters
-      this->m_handlers->rr().axpy(1, action.front(), parameters.front());
-    } else if (signal == 1) { // residual not used, simply leave parameters alone
-    } else {                  // L-BFGS
-      throw std::logic_error("L-BFGS not yet implemented");
-    }
+    this->m_handlers->rr().axpy(1, action.front(), parameters.front());
     this->m_stats->iterations++;
     return 1;
   }
@@ -68,7 +61,7 @@ public:
   void set_options(const Options& options) override {
     SolverTemplate::set_options(options);
     if (auto opt2 = dynamic_cast<const molpro::linalg::itsolv::OptimizeSDOptions*>(&options)) {
-    auto opt = CastOptions::OptimizeSD(options);
+      auto opt = CastOptions::OptimizeSD(options);
     }
   }
 
@@ -95,7 +88,7 @@ public:
     xdata[EqnData::value].resize({n + 1, 1});
     xdata[EqnData::value](0, 0) = value;
     auto nwork = this->add_vector(parameters, residual);
-    return nwork > 0 && solver_signal() != 1;
+    return nwork > 0;
   }
 
   size_t end_iteration(R& parameters, R& actions) override {
@@ -107,19 +100,8 @@ public:
   scalar_type value() const override { return this->m_xspace->data[subspace::EqnData::value](0, 0); }
 
 protected:
-  int solver_signal() const {
-    int signal = 0;
-    using namespace subspace;
-    auto& xspace = this->m_xspace;
-    auto& xdata = xspace->data;
-    if (xdata.find(EqnData::signals) != xdata.end() && xdata[EqnData::signals].empty())
-      signal = xdata[EqnData::signals](0, 0);
-//    molpro::cout << "signal " << signal << std::endl;
-    return signal;
-  }
   // for non-linear problems, actions already contains the residual
   void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {}
-
 };
 
 } // namespace molpro::linalg::itsolv

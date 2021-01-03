@@ -133,7 +133,6 @@ TEST_F(OptimizeF, small_quadratic_form) {
     test_quadratic_form("SD", std::to_string(n) + "/" + std::to_string(param));
   }
 }
-//struct {std::vector<double> x; double f; std::vector<double> f1;}
 auto
 rosenbrock(const std::vector<double>& x, double a=1, double b=100) {
   double f{0};
@@ -148,24 +147,23 @@ rosenbrock(const std::vector<double>& x, double a=1, double b=100) {
 }
 TEST(Optimize, Rosenbrock) {
 
-  for (size_t n = 2; n < 4; n++) {
+  for (size_t n = 2; n < 7; n++) {
     auto solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>(
         "BFGS", "convergence_threshold=1e-8,max_size_qspace=6");
     std::vector<double> x(n, -4), g(n);
-    int nwork = 1;
     x[0] = -3.0;
-    double value;
     for (int iter = 0; iter < 10000; iter++) {
       auto [xx, value, g] = rosenbrock(x);
-      std::cout << "iter=" << iter << ", x=" << x << ", value=" << value << std::endl;
+//      std::cout << "iter=" << iter << ", x=" << x << ", value=" << value << std::endl;
       auto precon = solver->add_value(x, value, g);
-      std::cout << "add_value returns precon=" << precon << ", x=" << x << ", g=" << g[0] << std::endl;
+//      std::cout << "add_value returns precon=" << precon << ", x=" << x << ", g=" << g[0] << std::endl;
       if (precon)
-        g[0] = -g[0];
+        g[0] = -g[0]/800;
       if (solver->end_iteration(x, g) == 0)
         break;
-      std::cout << "end_iteration returns x=" << x << ", g=" << g << std::endl;
+//      std::cout << "end_iteration returns x=" << x << ", g=" << g << std::endl;
     }
+    std::cout << solver->statistics()<<std::endl;
     EXPECT_THAT(x, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()),
                                         std::vector<double>(x.size(), double(1))));
   }

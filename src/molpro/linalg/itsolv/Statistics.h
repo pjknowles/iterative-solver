@@ -14,6 +14,8 @@ struct Statistics {
   int d_creations = 0;
   int best_r_creations = 0;
   int current_r_creations = 0;
+  int line_searches = 0;
+  int line_search_steps = 0;
 };
 inline std::ostream& operator<<(std::ostream& o, const Statistics& statistics) {
   if (statistics.iterations > 0)
@@ -32,6 +34,10 @@ inline std::ostream& operator<<(std::ostream& o, const Statistics& statistics) {
     o << statistics.best_r_creations << " best R vectors, ";
   if (statistics.current_r_creations > 0)
     o << statistics.current_r_creations << " current R vectors, ";
+  if (statistics.line_searches > 0)
+    o << statistics.line_searches << " line searches, ";
+  if (statistics.line_search_steps > 0)
+    o << statistics.line_search_steps << " line search steps, ";
   o << "\b\b";
 
   return o;

@@ -71,7 +71,7 @@ public:
       bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
       bool Wolfe_2 = m_strong_Wolfe ? g1 >= m_Wolfe_2 * g0 : std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
       auto step = S(0, 0) - S(1, 0) - S(0, 1) + S(1, 1);
-      if (true) {
+      if (false) {
         molpro::cout << "Size of Q=" << xspace->size() << std::endl;
         molpro::cout << "step=" << step << std::endl;
         molpro::cout << "f0=" << f0 << std::endl;
@@ -86,20 +86,20 @@ public:
       }
       if (std::abs(g1) < this->m_convergence_threshold or (Wolfe_1 && Wolfe_2))
         goto accept;
-      molpro::cout << "evaluating line search" << std::endl;
+      //      molpro::cout << "evaluating line search" << std::endl;
       Interpolate inter({0, f0, g0}, {1, f1, g1});
       auto [x, f, g, h] = inter.minimize(-this->m_linesearch_grow_factor, 1 + this->m_linesearch_grow_factor);
-      molpro::cout << "interpolation" << x << " f=" << f << " g=" << g << " h=" << h << std::endl;
+      //      molpro::cout << "interpolation" << x << " f=" << f << " g=" << g << " h=" << h << std::endl;
       if (std::abs(x - 1) > m_linesearch_tolerance) {
-        molpro::cout << "taking line search" << std::endl;
+        //        molpro::cout << "taking line search" << std::endl;
         this->m_logger->msg("Line search step taken", Logger::Info);
         this->m_handlers->rr().scal(x, parameters);
         this->m_handlers->rq().axpy(1 - x, xspace->paramsq()[1], parameters);
         auto erased = f0 < f1 ? 0 : 1;
-        std::cout << "Value before erasure: "<<as_string(Value)<<std::endl;
-        std::cout << "erased="<<erased<<"; removing point with value "<<Value(erased,0)<<std::endl;
+        //        std::cout << "Value before erasure: "<<as_string(Value)<<std::endl;
+        //        std::cout << "erased="<<erased<<"; removing point with value "<<Value(erased,0)<<std::endl;
         xspace->eraseq(erased);
-        std::cout << "Value after erasure: "<<as_string(Value)<<std::endl;
+        //        std::cout << "Value after erasure: "<<as_string(Value)<<std::endl;
         m_linesearch = true;
         return false;
       }
@@ -126,6 +126,7 @@ public:
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
     if (not m_linesearch) { // action is expected to hold the preconditioned residual
+      m_last_iteration_linesearching = false;
       this->solution_params(this->m_working_set, parameters);
       if (this->m_errors.front() < this->m_convergence_threshold) {
         this->m_working_set.clear();
@@ -149,6 +150,12 @@ public:
         this->m_handlers->qr().axpy(+m_alpha[a] - beta, q[a + 1], z);
       }
       this->m_handlers->rr().axpy(1, z, parameters.front());
+    }
+    else {
+      this->m_stats->line_search_steps++;
+      if (not m_last_iteration_linesearching)
+        this->m_stats->line_searches++;
+      m_last_iteration_linesearching = true;
     }
     this->m_stats->iterations++;
     return this->errors().front() < this->m_convergence_threshold ? 0 : 1;
@@ -220,6 +227,7 @@ public:
 protected:
   std::vector<double> m_alpha;
   bool m_linesearch;
+  bool m_last_iteration_linesearching = false;
 
 protected:
   // for non-linear problems, actions already contains the residual

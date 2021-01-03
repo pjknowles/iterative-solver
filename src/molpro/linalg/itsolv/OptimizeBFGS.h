@@ -49,7 +49,6 @@ public:
     while (xspace->size() >= this->m_max_size_qspace) {
       //      std::cout << "delete Q" << std::endl;
       xspace->eraseq(xspace->size() - 1);
-      Value.resize({xspace->size(), 1});
     }
     //    std::cout << "H after delete Q "<<as_string(H)<<std::endl;
     //    std::cout << "Value after delete Q "<<as_string(Value)<<std::endl;
@@ -97,10 +96,10 @@ public:
         this->m_handlers->rr().scal(x, parameters);
         this->m_handlers->rq().axpy(1 - x, xspace->paramsq()[1], parameters);
         auto erased = f0 < f1 ? 0 : 1;
+        std::cout << "Value before erasure: "<<as_string(Value)<<std::endl;
+        std::cout << "erased="<<erased<<"; removing point with value "<<Value(erased,0)<<std::endl;
         xspace->eraseq(erased);
-        for (int a = xspace->size(); a > erased; a--)
-          Value(a - 1, 0) = Value(a, 0);
-        Value.resize({xspace->size(), 1});
+        std::cout << "Value after erasure: "<<as_string(Value)<<std::endl;
         m_linesearch = true;
         return false;
       }
@@ -223,16 +222,6 @@ protected:
   bool m_linesearch;
 
 protected:
-  int solver_signal() const {
-    int signal = 0;
-    using namespace subspace;
-    auto& xspace = this->m_xspace;
-    auto& xdata = xspace->data;
-    if (xdata.find(EqnData::signals) != xdata.end() && xdata[EqnData::signals].empty())
-      signal = xdata[EqnData::signals](0, 0);
-    //    molpro::cout << "signal " << signal << std::endl;
-    return signal;
-  }
   // for non-linear problems, actions already contains the residual
   void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {}
 

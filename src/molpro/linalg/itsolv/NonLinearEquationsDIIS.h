@@ -4,8 +4,8 @@
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
-#include <molpro/linalg/itsolv/subspace/XSpace.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverDIIS.h>
+#include <molpro/linalg/itsolv/subspace/XSpace.h>
 
 namespace molpro::linalg::itsolv {
 /*!
@@ -26,7 +26,7 @@ public:
   using typename SolverTemplate::value_type_abs;
 
   explicit NonLinearEquationsDIIS(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
-                    const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
+                                  const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
       : SolverTemplate(std::make_shared<subspace::XSpace<R, Q, P>>(handlers, logger_),
                        std::static_pointer_cast<subspace::ISubspaceSolver<R, Q, P>>(
                            std::make_shared<subspace::SubspaceSolverDIIS<R, Q, P>>(logger_)),
@@ -40,13 +40,10 @@ public:
       return 0;
     }
     this->m_working_set.assign(1, 0);
-    auto signal = solver_signal();
-    if (signal ==
-        0) { // action is expected to hold the preconditioned residual, and here we should add it to parameters
+    bool precon = true; // TODO implement
+    if (precon) { // action is expected to hold the preconditioned residual, and here we should add it to parameters
       this->m_handlers->rr().axpy(1, action.front(), parameters.front());
-    } else if (signal == 1) { // residual not used, simply leave parameters alone
-    } else {                  // L-BFGS
-      throw std::logic_error("L-BFGS not yet implemented");
+    } else { // residual not used, simply leave parameters alone
     }
     this->m_stats->iterations++;
     return 1;
@@ -104,16 +101,6 @@ public:
   }
 
 protected:
-  int solver_signal() const {
-    int signal = 0;
-    using namespace subspace;
-    auto& xspace = this->m_xspace;
-    auto& xdata = xspace->data;
-    if (xdata.find(EqnData::signals) != xdata.end() && xdata[EqnData::signals].empty())
-      signal = xdata[EqnData::signals](0, 0);
-//    molpro::cout << "signal " << signal << std::endl;
-    return signal;
-  }
   // for non-linear problems, actions already contains the residual
   void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {}
 

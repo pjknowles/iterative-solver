@@ -518,7 +518,7 @@ extern "C" int64_t mpicomm_global() {
     int64_t size;
     PPIDD_Size(&size);
     if (size > 0)
-      return MPI_Comm_c2f(PPIDD_Worker_comm());
+      return PPIDD_Worker_comm();
   }
 #else
 #ifdef LINEARALGEBRA_ARRAY_GA

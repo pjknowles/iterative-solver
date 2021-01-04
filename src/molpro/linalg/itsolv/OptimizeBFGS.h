@@ -63,39 +63,39 @@ public:
     //    std::cout << "H after add_vector "<<as_string(H)<<std::endl;
     //    std::cout << "Value after add_vector "<<as_string(Value)<<std::endl;
 
-    if (xspace->size() > 1) { // see whether a line search is needed
-      auto f0 = Value(1, 0);  // the previous point
-      auto f1 = Value(0, 0);  // the current point
-      auto g0 = H(0, 1) - H(1, 1);
-      auto g1 = H(0, 0) - H(1, 0);
-      bool Wolfe_1 = f1 <= f0 + m_Wolfe_1 * g0;
-      bool Wolfe_2 = m_strong_Wolfe ? g1 >= m_Wolfe_2 * g0 : std::abs(g1) <= m_Wolfe_2 * std::abs(g0);
+    if (xspace->size() > 1) {      // see whether a line search is needed
+      auto fprev = Value(1, 0);    // the previous point
+      auto fcurrent = Value(0, 0); // the current point
+      auto gprev = H(0, 1) - H(1, 1);
+      auto gcurrent = H(0, 0) - H(1, 0);
+      bool Wolfe_1 = fcurrent <= fprev + m_Wolfe_1 * gprev;
+      bool Wolfe_2 = m_strong_Wolfe ? gcurrent >= m_Wolfe_2 * gprev : std::abs(gcurrent) <= m_Wolfe_2 * std::abs(gprev);
       auto step = S(0, 0) - S(1, 0) - S(0, 1) + S(1, 1);
       if (false) {
         molpro::cout << "Size of Q=" << xspace->size() << std::endl;
         molpro::cout << "step=" << step << std::endl;
-        molpro::cout << "f0=" << f0 << std::endl;
-        molpro::cout << "f1=" << f1 << std::endl;
+        molpro::cout << "fprev=" << fprev << std::endl;
+        molpro::cout << "fcurrent=" << fcurrent << std::endl;
         molpro::cout << " m_Wolfe_1 =" << m_Wolfe_1 << std::endl;
-        molpro::cout << " m_Wolfe_1 * g0=" << m_Wolfe_1 * g0 << std::endl;
-        molpro::cout << "f0 + m_Wolfe_1 * g0=" << f0 + m_Wolfe_1 * g0 << std::endl;
-        molpro::cout << "g0=" << g0 << std::endl;
-        molpro::cout << "g1=" << g1 << std::endl;
+        molpro::cout << " m_Wolfe_1 * gprev=" << m_Wolfe_1 * gprev << std::endl;
+        molpro::cout << "fprev + m_Wolfe_1 * gprev=" << fprev + m_Wolfe_1 * gprev << std::endl;
+        molpro::cout << "gprev=" << gprev << std::endl;
+        molpro::cout << "gcurrent=" << gcurrent << std::endl;
         molpro::cout << "m_convergence_threshold=" << this->m_convergence_threshold << std::endl;
         molpro::cout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
       }
-      if (std::abs(g1) < this->m_convergence_threshold or (Wolfe_1 && Wolfe_2))
+      if (std::abs(gcurrent) < this->m_convergence_threshold or (Wolfe_1 && Wolfe_2))
         goto accept;
       //      molpro::cout << "evaluating line search" << std::endl;
-      Interpolate inter({0, f0, g0}, {1, f1, g1});
-      auto [x, f, g, h] = inter.minimize(-this->m_linesearch_grow_factor, 1 + this->m_linesearch_grow_factor);
+      Interpolate inter({-1, fprev, gprev}, {0, fcurrent, gcurrent});
+      auto [x, f, g, h] = inter.minimize(-1 - this->m_linesearch_grow_factor, this->m_linesearch_grow_factor);
       //      molpro::cout << "interpolation" << x << " f=" << f << " g=" << g << " h=" << h << std::endl;
-      if (std::abs(x - 1) > m_linesearch_tolerance) {
+      if (std::abs(x) > m_linesearch_tolerance) {
         //        molpro::cout << "taking line search" << std::endl;
         this->m_logger->msg("Line search step taken", Logger::Info);
-        this->m_handlers->rr().scal(x, parameters);
-        this->m_handlers->rq().axpy(1 - x, xspace->paramsq()[1], parameters);
-        auto erased = f0 < f1 ? 0 : 1;
+        this->m_handlers->rr().scal(1 + x, parameters);
+        this->m_handlers->rq().axpy(-x, xspace->paramsq()[1], parameters);
+        auto erased = fprev < fcurrent ? 0 : 1;
         //        std::cout << "Value before erasure: "<<as_string(Value)<<std::endl;
         //        std::cout << "erased="<<erased<<"; removing point with value "<<Value(erased,0)<<std::endl;
         xspace->eraseq(erased);
@@ -150,8 +150,7 @@ public:
         this->m_handlers->qr().axpy(+m_alpha[a] - beta, q[a + 1], z);
       }
       this->m_handlers->rr().axpy(1, z, parameters.front());
-    }
-    else {
+    } else {
       this->m_stats->line_search_steps++;
       if (not m_last_iteration_linesearching)
         this->m_stats->line_searches++;

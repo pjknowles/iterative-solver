@@ -79,9 +79,9 @@ PROGRAM Linear_Eigensystem_Example
   if (rank == 0) then
     WRITE (6, *) 'P-space=', nP, ', dimension=', n, ', roots=', nroot
   end if
-  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Eigensystem_Example_P', pcomm = MPI_COMM_WORLD, &
+  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Eigensystem_Example_P',  &
                                                                                   thresh = 1d-8, thresh_value = 1d-14, &
-                                                                                  verbosity = 1)
+     hermitian=.true.,                                                                             verbosity = 1)
   offsets(0) = 0
   DO i = 1, nP
     offsets(i) = i
@@ -96,15 +96,15 @@ PROGRAM Linear_Eigensystem_Example
   nwork =  Iterative_Solver_Add_P(nP, offsets, indices, coefficients, pp, c, g, fproc=apply_on_p)
   !g = 0.0d0
   DO iter = 1, 100
-    IF (rank == 0) THEN
-      PRINT *, 'ITERATION #', iter
-      PRINT *, 'nwork after Add_Vector():', nwork
-    END IF
+!    IF (rank == 0) THEN
+!      PRINT *, 'ITERATION #', iter
+!      PRINT *, 'nwork after Add_Vector():', nwork
+!    END IF
     allocate(we(nwork), stat=alloc_stat)
     we = Iterative_Solver_Working_Set_Eigenvalues(nwork)
-    IF (rank == 0) THEN
-      PRINT *, 'Working set roots after Add_Vector():', we
-    END IF
+!    IF (rank == 0) THEN
+!      PRINT *, 'Working set roots after Add_Vector():', we
+!    END IF
     DO root = 1, nwork
       DO j = 1, n
         g(j, root) = - g(j, root) * 1.0d0 / (m(j, j) - we(root) + 1e-15)
@@ -117,9 +117,9 @@ PROGRAM Linear_Eigensystem_Example
     END IF
     allocate(we(nwork), stat=alloc_stat)
     we = Iterative_Solver_Working_Set_Eigenvalues(nwork)
-    IF (rank == 0) THEN
-      PRINT *, 'Working set roots after End_Iteration():', we
-    END IF
+!    IF (rank == 0) THEN
+!      PRINT *, 'Working set roots after End_Iteration():', we
+!    END IF
     deallocate(we)
     g = MATMUL(m, c)
     nwork = Iterative_Solver_Add_Vector(c, g)

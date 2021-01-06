@@ -77,7 +77,10 @@ void swap(DistrArrayGA &a1, DistrArrayGA &a2) noexcept {
   swap(a1.m_ga_allocated, a2.m_ga_allocated);
 }
 
-DistrArrayGA::~DistrArrayGA() { GA_Destroy(m_ga_handle); }
+DistrArrayGA::~DistrArrayGA() {
+  if (m_ga_allocated)
+    GA_Destroy(m_ga_handle);
+}
 
 void DistrArrayGA::error(const std::string &message) const { GA_Error(const_cast<char *>(message.c_str()), 1); }
 

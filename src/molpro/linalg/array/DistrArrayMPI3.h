@@ -46,6 +46,11 @@ public:
    */
   DistrArrayMPI3(std::unique_ptr<Distribution> distribution, MPI_Comm commun);
 
+  //! Create distributed array using external buffer for the local section
+  DistrArrayMPI3(std::unique_ptr<Distribution> distribution, MPI_Comm commun, Span<value_type> buffer);
+  //! Create distributed array using external buffer for the local section
+  DistrArrayMPI3(size_t dimension, MPI_Comm commun, Span<value_type> buffer);
+
   //! Copy constructor allocates the buffer if source is not empty
   DistrArrayMPI3(const DistrArrayMPI3 &source);
   DistrArrayMPI3(const DistrArray &source);
@@ -84,6 +89,7 @@ protected:
   void _get_put(index_type lo, index_type hi, const value_type *buf, RMAType option);
   //! does gather or scatter or scatter_acc
   void _gather_scatter(const std::vector<index_type> &indices, std::vector<value_type> &data, RMAType option);
+  void allocate_buffer();
 };
 
 } // namespace molpro::linalg::array

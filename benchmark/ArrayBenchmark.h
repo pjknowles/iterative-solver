@@ -54,7 +54,6 @@ auto allocate<array::DistrArrayHDF5>(size_t n) {
   handle->open_group("/");
   handle->close_file();
   auto result = std::make_unique<array::DistrArrayHDF5>(handle, n);
-  result->open_access();
   return result;
 }
 #endif

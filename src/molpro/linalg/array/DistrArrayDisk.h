@@ -74,12 +74,6 @@ protected:
   ~DistrArrayDisk() override;
 
 public:
-  //! Opens access to the storage on disk, creating the underlying storage object if it does not exist. Assume
-  //! collective, but not all implementations might require that.
-  virtual void open_access() = 0;
-  //! Close access to the storage on disk, buffer is flushed to disk. Assume collective, but not all implementations
-  //! might require that.
-  virtual void close_access() = 0;
   //! Writes the memory view buffer.
   virtual void flush();
   //! Erase the array from disk.

@@ -66,7 +66,7 @@ public:
    * @param source a distributed array
    * @param file_handle handle for opening the HDF5 group where array is/will be stored.
    */
-  DistrArrayHDF5(const DistrArray &source, const std::shared_ptr<util::PHDF5Handle>& file_handle);
+  DistrArrayHDF5(const DistrArray &source, const std::shared_ptr<util::PHDF5Handle> &file_handle);
 
   /*!
    * @brief Create a copy of source array using a temporary file which will be erased on destruction
@@ -128,8 +128,8 @@ public:
   bool dataset_is_open() const;
 
 private:
-  void open_access() override;
-  void close_access() override;
+  void open_access();
+  void close_access();
 };
 
 } // namespace molpro::linalg::array

@@ -67,12 +67,6 @@ public:
   void scatter(const std::vector<index_type> &indices, const std::vector<value_type> &data) override;
   void scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data) override;
   std::vector<value_type> vec() const override;
-
-private:
-  //! Dummy
-  void open_access() override {}
-  //! Dummy
-  void close_access() override {}
 };
 
 } // namespace molpro::linalg::array

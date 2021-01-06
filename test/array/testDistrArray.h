@@ -26,8 +26,6 @@ struct TestDistrArray : public ::testing::Test {};
 TYPED_TEST_SUITE_P(TestDistrArray);
 
 TYPED_TEST_P(TestDistrArray, constructor) {
-  LockMPI3 lock{mpi_comm};
-  auto proxy = lock.scope();
   size_t dim = 100;
   TypeParam a{dim, mpi_comm};
 }

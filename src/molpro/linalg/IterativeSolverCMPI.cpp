@@ -25,15 +25,17 @@
 
 using molpro::Profiler;
 using molpro::linalg::array::Span;
+using molpro::linalg::array::util::Distribution;
 using molpro::linalg::array::util::gather_all;
+using molpro::linalg::array::util::make_distribution_spread_remainder;
 using molpro::linalg::itsolv::ArrayHandlers;
+using molpro::linalg::itsolv::IterativeSolver;
 using molpro::linalg::itsolv::LinearEigensystem;
+using molpro::linalg::itsolv::LinearEigensystemDavidson;
 using molpro::linalg::itsolv::LinearEquations;
+using molpro::linalg::itsolv::LinearEquationsDavidson;
 using molpro::linalg::itsolv::NonLinearEquations;
 using molpro::linalg::itsolv::Optimize;
-using molpro::linalg::itsolv::IterativeSolver;
-using molpro::linalg::itsolv::LinearEigensystemDavidson;
-using molpro::linalg::itsolv::LinearEquationsDavidson;
 
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
 using Qvector = molpro::linalg::array::DistrArrayMPI3;
@@ -114,16 +116,18 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
   if (!pname.empty()) {
     profiler = molpro::ProfilerSingle::instance(pname, comm);
   }
-  int mpi_rank;
+  int mpi_rank, mpi_size;
   MPI_Comm_rank(comm, &mpi_rank);
+  MPI_Comm_size(comm, &mpi_size);
+  auto distr = make_distribution_spread_remainder<Rvector::index_type>(n, mpi_size);
+  auto range = distr.range(mpi_rank);
+  auto rn = range.second - range.first;
   auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
   std::vector<Rvector> rr;
   rr.reserve(nroot);
   for (size_t root = 0; root < nroot; root++) {
-    rr.emplace_back(n, comm);
-    auto rrrange = rr.back().distribution().range(mpi_rank);
-    auto rrn = rrrange.second - rrrange.first;
-//    rr.back().allocate_buffer(Span<Rvector::value_type>(&const_cast<double*>(rhs)[root * n + rrrange.first], rrn));
+    rr.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr), comm,
+                    Span<Rvector::value_type>(&const_cast<double*>(rhs)[root * n + range.first], rn));
   }
   instances.emplace(
       Instance{molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector, Pvector>(algorithm, "")
@@ -190,16 +194,16 @@ extern "C" void IterativeSolverFinalize() { instances.pop(); }
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync) {
   auto& instance = instances.top();
   MPI_Comm ccomm = instance.comm;
-  int mpi_rank;
+  int mpi_rank, mpi_size;
   MPI_Comm_rank(ccomm, &mpi_rank);
-  Rvector ccc(instance.dimension, ccomm);
-  auto ccrange = ccc.distribution().range(mpi_rank);
-  auto ccn = ccrange.second - ccrange.first;
-//  ccc.allocate_buffer(Span<typename Rvector::value_type>(&parameters[ccrange.first], ccn));
-  Rvector ggg(instance.dimension, ccomm);
-  auto ggrange = ggg.distribution().range(mpi_rank);
-  auto ggn = ggrange.second - ggrange.first;
-//  ggg.allocate_buffer(Span<typename Rvector::value_type>(&action[ggrange.first], ggn));
+  MPI_Comm_size(ccomm, &mpi_size);
+  auto distr = make_distribution_spread_remainder<Rvector::index_type>(instance.dimension, mpi_size);
+  auto range = distr.range(mpi_rank);
+  auto n = range.second - range.first;
+  Rvector ccc(std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
+              Span<typename Rvector::value_type>(&parameters[range.first], n));
+  Rvector ggg(std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
+              Span<typename Rvector::value_type>(&action[range.first], n));
   size_t working_set_size =
       dynamic_cast<molpro::linalg::itsolv::Optimize<Rvector, Qvector, Pvector>*>(instance.solver.get())
               ->add_value(ccc, value, ggg)
@@ -247,20 +251,18 @@ extern "C" size_t IterativeSolverAddVector(size_t buffer_size, double* parameter
   cc.reserve(buffer_size);
   gg.reserve(buffer_size);
   MPI_Comm ccomm = instance.comm;
-  int mpi_rank;
+  int mpi_rank, mpi_size;
   MPI_Comm_rank(ccomm, &mpi_rank);
+  MPI_Comm_size(ccomm, &mpi_size);
+  auto distr = make_distribution_spread_remainder<Rvector::index_type>(instance.dimension, mpi_size);
+  auto range = distr.range(mpi_rank);
+  auto n = range.second - range.first;
   size_t working_set_size = instance.solver->working_set().size();
   for (size_t root = 0; root < working_set_size; root++) {
-    cc.emplace_back(instance.dimension, ccomm);
-    auto ccrange = cc.back().distribution().range(mpi_rank);
-    auto ccn = ccrange.second - ccrange.first;
-//    cc.back().allocate_buffer(
-//        Span<typename Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
-    gg.emplace_back(instance.dimension, ccomm);
-    auto ggrange = gg.back().distribution().range(mpi_rank);
-    auto ggn = ggrange.second - ggrange.first;
-//    gg.back().allocate_buffer(
-//        Span<typename Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
+    cc.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
+                    Span<typename Rvector::value_type>(&parameters[root * instance.dimension + range.first], n));
+    gg.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
+                    Span<typename Rvector::value_type>(&action[root * instance.dimension + range.first], n));
   }
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Update");
@@ -293,19 +295,17 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
   cc.reserve(nroot);
   gg.reserve(nroot);
   MPI_Comm ccomm = instance.comm;
-  int mpi_rank;
+  int mpi_rank, mpi_size;
   MPI_Comm_rank(ccomm, &mpi_rank);
+  MPI_Comm_size(ccomm, &mpi_size);
+  auto distr = make_distribution_spread_remainder<Rvector::index_type>(instance.dimension, mpi_size);
+  auto range = distr.range(mpi_rank);
+  auto n = range.second - range.first;
   for (size_t root = 0; root < nroot; root++) {
-    cc.emplace_back(instance.dimension, ccomm);
-    auto ccrange = cc.back().distribution().range(mpi_rank);
-    auto ccn = ccrange.second - ccrange.first;
-//    cc.back().allocate_buffer(
-//        Span<typename Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
-    gg.emplace_back(instance.dimension, ccomm);
-    auto ggrange = gg.back().distribution().range(mpi_rank);
-    auto ggn = ggrange.second - ggrange.first;
-//    gg.back().allocate_buffer(
-//        Span<typename Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
+    cc.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
+                    Span<typename Rvector::value_type>(&parameters[root * instance.dimension + range.first], n));
+    gg.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
+                    Span<typename Rvector::value_type>(&action[root * instance.dimension + range.first], n));
   }
   std::vector<int> croots;
   for (int i = 0; i < nroot; i++) {
@@ -341,19 +341,17 @@ extern "C" int IterativeSolverEndIteration(size_t buffer_size, double* solution,
   cc.reserve(buffer_size);
   gg.reserve(buffer_size);
   MPI_Comm ccomm = instance.comm;
-  int mpi_rank;
+  int mpi_rank, mpi_size;
   MPI_Comm_rank(ccomm, &mpi_rank);
+  MPI_Comm_size(ccomm, &mpi_size);
+  auto distr = make_distribution_spread_remainder<Rvector::index_type>(instance.dimension, mpi_size);
+  auto range = distr.range(mpi_rank);
+  auto n = range.second - range.first;
   for (size_t root = 0; root < buffer_size; root++) {
-    cc.emplace_back(instance.dimension, ccomm);
-    auto ccrange = cc.back().distribution().range(mpi_rank);
-    auto ccn = ccrange.second - ccrange.first;
-//    cc.back().allocate_buffer(
-//        Span<typename Rvector::value_type>(&solution[root * instance.dimension + ccrange.first], ccn));
-    gg.emplace_back(instance.dimension, ccomm);
-    auto ggrange = gg.back().distribution().range(mpi_rank);
-    auto ggn = ggrange.second - ggrange.first;
-//    gg.back().allocate_buffer(
-//        Span<typename Rvector::value_type>(&residual[root * instance.dimension + ggrange.first], ggn));
+    cc.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
+                    Span<typename Rvector::value_type>(&solution[root * instance.dimension + range.first], n));
+    gg.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
+                    Span<typename Rvector::value_type>(&residual[root * instance.dimension + range.first], n));
   }
   if (instance.prof != nullptr)
     instance.prof->start("EndIter:Call");
@@ -386,17 +384,17 @@ extern "C" size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_
   cc.reserve(buffer_size);
   gg.reserve(buffer_size);
   MPI_Comm ccomm = instance.comm;
-  int mpi_rank;
+  int mpi_rank, mpi_size;
   MPI_Comm_rank(ccomm, &mpi_rank);
+  MPI_Comm_size(ccomm, &mpi_size);
+  auto distr = make_distribution_spread_remainder<Rvector::index_type>(instance.dimension, mpi_size);
+  auto range = distr.range(mpi_rank);
+  auto n = range.second - range.first;
   for (size_t root = 0; root < buffer_size; root++) {
-    cc.emplace_back(instance.dimension, ccomm);
-    auto ccrange = cc.back().distribution().range(mpi_rank);
-    auto ccn = ccrange.second - ccrange.first;
-//    cc.back().allocate_buffer(Span<Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
-    gg.emplace_back(instance.dimension, ccomm);
-    auto ggrange = gg.back().distribution().range(mpi_rank);
-    auto ggn = ggrange.second - ggrange.first;
-//    gg.back().allocate_buffer(Span<Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
+    cc.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
+                    Span<Rvector::value_type>(&parameters[root * instance.dimension + range.first], n));
+    gg.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
+                    Span<Rvector::value_type>(&action[root * instance.dimension + range.first], n));
   }
   std::vector<Pvector> Pvectors;
   Pvectors.reserve(nP);
@@ -474,19 +472,19 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
   cc.reserve(instance.solver->n_roots());
   gg.reserve(instance.solver->n_roots());
   MPI_Comm ccomm = instance.comm;
-  int mpi_rank;
+  int mpi_rank, mpi_size;
   MPI_Comm_rank(ccomm, &mpi_rank);
+  MPI_Comm_size(ccomm, &mpi_size);
+  auto distr = make_distribution_spread_remainder<Rvector::index_type>(instance.dimension, mpi_size);
+  auto range = distr.range(mpi_rank);
+  auto n = range.second - range.first;
   for (size_t root = 0; root < instance.solver->n_roots(); root++) {
-    cc.emplace_back(instance.dimension, ccomm);
-    auto ccrange = cc.back().distribution().range(mpi_rank);
-    auto ccn = ccrange.second - ccrange.first;
-//    cc.back().allocate_buffer(
-//        Span<Rvector::value_type>(&const_cast<double*>(solution)[root * instance.dimension + ccrange.first], ccn));
-    gg.emplace_back(instance.dimension, ccomm);
-    auto ggrange = gg.back().distribution().range(mpi_rank);
-    auto ggn = ggrange.second - ggrange.first;
-//    gg.back().allocate_buffer(
-//        Span<Rvector::value_type>(&const_cast<double*>(residual)[root * instance.dimension + ggrange.first], ggn));
+    cc.emplace_back(
+        std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
+        Span<Rvector::value_type>(&const_cast<double*>(solution)[root * instance.dimension + range.first], n));
+    gg.emplace_back(
+        std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
+        Span<Rvector::value_type>(&const_cast<double*>(residual)[root * instance.dimension + range.first], n));
   }
   auto result = instance.solver->suggest_p(molpro::linalg::itsolv::cwrap(cc), molpro::linalg::itsolv::cwrap(gg),
                                            maximumNumber, threshold);

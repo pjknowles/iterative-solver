@@ -401,7 +401,7 @@ DistrArray::value_type DistrArray::dot(const SparseArray& y) const {
 
 void DistrArray::axpy(value_type a, const SparseArray& y) {
   auto name = std::string{"Array::axpy SparseArray"};
-  if (a == 0 )
+  if (a == 0)
     return;
   if (size() < y.rbegin()->first + 1)
     error(name + " sparse array x is incompatible");

@@ -20,11 +20,8 @@ DistrArrayDisk::DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm com
 DistrArrayDisk::DistrArrayDisk() = default;
 
 DistrArrayDisk::DistrArrayDisk(const DistrArrayDisk& source)
-    : DistrArray(source),
-      m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
-  if (source.m_allocated) {
-    DistrArray::copy(source);
-  }
+    : DistrArray(source), m_distribution(std::make_unique<Distribution>(*source.m_distribution)) {
+  DistrArray::copy(source);
 }
 
 DistrArrayDisk::DistrArrayDisk(DistrArrayDisk&& source) noexcept

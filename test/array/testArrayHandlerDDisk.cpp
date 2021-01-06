@@ -53,32 +53,28 @@ public:
 };
 
 TEST_F(ArrayHandlerDDiskF, constructor_default) {
+  size_t const size = 11;
   LockMPI3 lock{mpi_comm};
   auto a = ArrayHandlerDDisk<DistrArrayHDF5>();
-  auto x = DistrArrayHDF5(fhandle_n1);
+  auto x = DistrArrayHDF5(fhandle_n1, size);
   auto y = a.copy(x);
   ASSERT_NE(y.file_handle(), x.file_handle());
   ASSERT_TRUE(y.file_handle()->erase_file_on_destroy());
 }
 
 TEST_F(ArrayHandlerDDiskF, constructor_erase_on_default) {
+  size_t const size = 11;
   LockMPI3 lock{mpi_comm};
   auto copy_func = [this](const auto& source) {
     fhandle_n2->set_erase_file_on_destroy(true);
     return DistrArrayHDF5(source, fhandle_n2);
   };
   auto a = ArrayHandlerDDisk<DistrArrayHDF5>(copy_func);
-  auto x = DistrArrayHDF5(fhandle_n1);
-  {
-    auto y = a.copy(x);
-    auto l = lock.scope();
-    EXPECT_TRUE(fhandle_n2->erase_file_on_destroy());
-    ASSERT_EQ(y.file_handle(), fhandle_n2);
-  }
-  {
-    auto l = lock.scope();
-    ASSERT_FALSE(file_exists(fhandle_n2->file_name()));
-  }
+  auto x = DistrArrayHDF5(fhandle_n1, size);
+  auto y = a.copy(x);
+  auto l = lock.scope();
+  EXPECT_TRUE(fhandle_n2->erase_file_on_destroy());
+  ASSERT_EQ(y.file_handle(), fhandle_n2);
 }
 
 TEST(ArrayHandlerDDisk, default_handler) {

@@ -19,40 +19,15 @@ DistrArrayHDF5::DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_ha
     : DistrArrayDisk(std::move(distribution), file_handle->communicator()), m_file_handle(file_handle) {
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");
+  DistrArrayHDF5::open_access();
 }
 
 DistrArrayHDF5::DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle, size_t dimension)
     : DistrArrayHDF5(file_handle, std::make_unique<Distribution>(util::make_distribution_spread_remainder<index_type>(
                                       dimension, mpi_size(file_handle->communicator())))) {}
 
-DistrArrayHDF5::DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle)
-    : DistrArrayDisk(std::make_unique<Distribution>(std::vector<index_type>{0, 0}), file_handle->communicator()),
-      m_file_handle(file_handle) {
-  m_file_handle->open_group();
-  if (m_file_handle->group_is_open() && dataset_exists()) {
-    DistrArrayHDF5::open_access();
-    auto space = H5Dget_space(m_dataset);
-    auto n = H5Sget_simple_extent_ndims(space);
-    if (n < 0)
-      DistrArray::error("failed to get number of dimensions in dataset");
-    if (n != 1)
-      DistrArray::error("dataset does not correspond to a 1D array");
-    hsize_t dims;
-    n = H5Sget_simple_extent_dims(space, &dims, nullptr);
-    if (n < 0)
-      DistrArray::error("failed to get dimensions in dataset");
-    // create a new array
-    DistrArrayHDF5 t{m_file_handle, dims};
-    swap(*this, t);
-    t.m_file_handle.reset();
-  }
-  m_file_handle->close_file();
-}
-
-DistrArrayHDF5::DistrArrayHDF5(const DistrArray &source, std::shared_ptr<util::PHDF5Handle> file_handle)
-    : DistrArrayDisk(std::make_unique<Distribution>(source.distribution()), source.communicator()),
-      m_file_handle(std::move(file_handle)) {
-  DistrArrayHDF5::open_access();
+DistrArrayHDF5::DistrArrayHDF5(const DistrArray &source, const std::shared_ptr<util::PHDF5Handle> &file_handle)
+    : DistrArrayHDF5(file_handle, std::make_unique<Distribution>(source.distribution())) {
   DistrArrayHDF5::copy(source);
 }
 

@@ -43,8 +43,6 @@ DistrArrayHDF5 &DistrArrayHDF5::operator=(DistrArrayHDF5 &&source) noexcept {
 }
 
 DistrArrayHDF5::~DistrArrayHDF5() {
-  if (m_allocated && dataset_is_open())
-    DistrArrayHDF5::flush();
   if (dataset_is_open())
     DistrArrayHDF5::close_access();
 }
@@ -69,8 +67,6 @@ void swap(DistrArrayHDF5 &x, DistrArrayHDF5 &y) noexcept {
   swap(x.m_dimension, y.m_dimension);
   swap(x.m_communicator, y.m_communicator);
   swap(x.m_allocated, y.m_allocated);
-  swap(x.m_view_buffer, y.m_view_buffer);
-  swap(x.m_owned_buffer, y.m_owned_buffer);
   swap(x.m_distribution, y.m_distribution);
   swap(x.m_file_handle, y.m_file_handle);
   swap(x.m_dataset, y.m_dataset);

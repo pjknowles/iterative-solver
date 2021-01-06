@@ -29,8 +29,6 @@ DistrArrayDisk::DistrArrayDisk(DistrArrayDisk&& source) noexcept
   using std::swap;
   if (source.m_allocated) {
     swap(m_allocated, source.m_allocated);
-    swap(m_view_buffer, source.m_view_buffer);
-    swap(m_owned_buffer, source.m_owned_buffer);
   }
 }
 
@@ -41,31 +39,26 @@ DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source) : m_sou
   index_type hi;
   std::tie(m_start, hi) = source.distribution().range(rank);
   m_size = hi - m_start;
-  if (!source.m_allocated) {
-    m_snapshot_buffer.resize(m_size);
-    m_buffer = &m_snapshot_buffer[0];
-    m_dump = true;
-    source.get(start(), start() + size(), m_buffer);
-  } else {
-    m_buffer = source.m_view_buffer.data();
-    m_dump = false;
-  }
+  m_snapshot_buffer.resize(m_size);
+  m_buffer = &m_snapshot_buffer[0];
+  source.get(start(), start() + size(), m_buffer);
 }
 
-bool DistrArrayDisk::LocalBufferDisk::is_snapshot() { return !m_snapshot_buffer.empty(); }
+DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source, const Span<value_type>& buffer)
+    : m_source{source} {
+  int rank = mpi_rank(source.communicator());
+  index_type hi;
+  std::tie(m_start, hi) = source.distribution().range(rank);
+  m_size = hi - m_start;
+  if (m_size > buffer.size())
+    source.error("LocalBufferDisk(): attempting to construct from a buffer that is too small");
+  m_buffer = buffer.empty() ? nullptr : &buffer[0];
+  source.get(start(), start() + size(), m_buffer);
+}
 
 DistrArrayDisk::LocalBufferDisk::~LocalBufferDisk() {
-  if (m_dump)
+  if (do_dump)
     m_source.put(start(), start() + size(), m_buffer);
-}
-
-void DistrArrayDisk::flush() {
-  if (!m_allocated)
-    return;
-  auto rank = mpi_rank(communicator());
-  index_type lo, hi;
-  std::tie(lo, hi) = distribution().range(rank);
-  put(lo, hi, m_view_buffer.data());
 }
 
 const DistrArray::Distribution& DistrArrayDisk::distribution() const {
@@ -80,7 +73,16 @@ std::unique_ptr<DistrArray::LocalBuffer> DistrArrayDisk::local_buffer() {
 
 std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer() const {
   auto l = std::make_unique<LocalBufferDisk>(*const_cast<DistrArrayDisk*>(this));
-  l->dump() = false;
+  l->do_dump = false;
+  return l;
+}
+
+std::unique_ptr<DistrArray::LocalBuffer> DistrArrayDisk::local_buffer(const Span<value_type>& buffer) {
+  return std::make_unique<LocalBufferDisk>(*this, buffer);
+}
+std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer(const Span<value_type>& buffer) const {
+  auto l = std::make_unique<LocalBufferDisk>(*const_cast<DistrArrayDisk*>(this), buffer);
+  l->do_dump = false;
   return l;
 }
 

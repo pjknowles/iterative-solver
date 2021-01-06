@@ -61,9 +61,7 @@ class DistrArrayDisk : public DistrArray {
 public:
   using disk_array = void; //!< a compile time tag that this is a distributed disk array
 protected:
-  bool m_allocated = false;       //!< Flags that the memory view buffer has been allocated
-  Span<value_type> m_view_buffer; //!< memory view buffer either wraps allocated buffer or stores user supplied buffer
-  std::vector<value_type> m_owned_buffer;       //!< buffer allocated by the class
+  bool m_allocated = false;                     //!< Flags that the memory view buffer has been allocated
   std::unique_ptr<Distribution> m_distribution; //!< describes distribution of array among processes
   using DistrArray::DistrArray;
 
@@ -74,27 +72,23 @@ protected:
   ~DistrArrayDisk() override;
 
 public:
-  //! Writes the memory view buffer.
-  virtual void flush();
   //! Erase the array from disk.
   virtual void erase() = 0;
   [[nodiscard]] const Distribution &distribution() const override;
 
 protected:
-  //! Loads the whole local buffer from disk
+  //! Reads the whole local buffer from disk into memory. By default the buffer is written to disk on destruction,
+  //! unless do_dump is false.
   class LocalBufferDisk : public DistrArray::LocalBuffer {
   public:
     explicit LocalBufferDisk(DistrArrayDisk &source);
+    explicit LocalBufferDisk(DistrArrayDisk &source, const span::Span<value_type> &buffer);
     ~LocalBufferDisk() override;
-    //! Prints true if the buffer is a snapshot and not a memory view
-    bool is_snapshot();
-    //! access dumping flag. If true, than buffer is dumped to file on destruction.
-    bool &dump() { return m_dump; };
-    const bool &dump() const { return m_dump; };
+    //! If true, than buffer is dumped to file on destruction.
+    bool do_dump = true;
 
   protected:
-    bool m_dump = true;                        //! If true than snapshot buffer is dumped to disk on destruction
-    std::vector<value_type> m_snapshot_buffer; //!< buffer for storing a snap shot when memory view is not allocated
+    std::vector<value_type> m_snapshot_buffer; //!< when external buffer is not provided
     DistrArrayDisk &m_source;                  //!< keep a handle on source to dump data to disk
   };
 
@@ -105,6 +99,10 @@ protected:
 public:
   [[nodiscard]] std::unique_ptr<LocalBuffer> local_buffer() override;
   [[nodiscard]] std::unique_ptr<const LocalBuffer> local_buffer() const override;
+  //! Access local section, reading it into the provided buffer
+  [[nodiscard]] std::unique_ptr<LocalBuffer> local_buffer(const span::Span<value_type> &buffer);
+  //! Read-only access to the local section, reading it into the provided buffer
+  [[nodiscard]] std::unique_ptr<const LocalBuffer> local_buffer(const span::Span<value_type> &buffer) const;
   [[nodiscard]] std::unique_ptr<LocalBufferChunked> local_buffer_chunked();
   [[nodiscard]] std::unique_ptr<const LocalBufferChunked> local_buffer_chunked() const;
 

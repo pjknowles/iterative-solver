@@ -51,8 +51,6 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
   swap(x.m_dimension, y.m_dimension);
   swap(x.m_communicator, y.m_communicator);
   swap(x.m_allocated, y.m_allocated);
-  swap(x.m_view_buffer, y.m_view_buffer);
-  swap(x.m_owned_buffer, y.m_owned_buffer);
   swap(x.m_distribution, y.m_distribution);
   swap(x.m_file, y.m_file);
   swap(x.m_dir, y.m_dir);

@@ -168,9 +168,9 @@ TYPED_TEST_P(TestDistrArray, select_max_dot) {
 }
 
 template <typename Array>
-class DistArrayInitializationF : public Array, public ::testing::Test {
+class DistArrayInitialization : public Array {
 public:
-  DistArrayInitializationF() : Array(dim, mpi_comm), lock(mpi_comm), m_comm_rank{0} {
+  DistArrayInitialization() : Array(dim, mpi_comm), lock(mpi_comm), m_comm_rank{0} {
     MPI_Comm_rank(mpi_comm, &m_comm_rank);
   };
   LockMPI3 lock;
@@ -178,9 +178,12 @@ public:
   static const size_t dim = 30;
 };
 
-TYPED_TEST_SUITE_P(DistArrayInitializationF);
+template <typename Array>
+class DistArrayBasicF : public DistArrayInitialization<Array>, public ::testing::Test {};
 
-TYPED_TEST_P(DistArrayInitializationF, size) {
+TYPED_TEST_SUITE_P(DistArrayBasicF);
+
+TYPED_TEST_P(DistArrayBasicF, size) {
   {
     auto l = this->lock.scope();
     ASSERT_EQ(TypeParam::m_dimension, TypeParam::size());
@@ -188,7 +191,7 @@ TYPED_TEST_P(DistArrayInitializationF, size) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistArrayInitializationF, empty) {
+TYPED_TEST_P(DistArrayBasicF, empty) {
   {
     auto l = this->lock.scope();
     ASSERT_TRUE(TypeParam::empty());
@@ -196,7 +199,7 @@ TYPED_TEST_P(DistArrayInitializationF, empty) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistArrayInitializationF, allocate_buffer) {
+TYPED_TEST_P(DistArrayBasicF, allocate_buffer) {
   TypeParam::allocate_buffer();
   {
     auto l = this->lock.scope();
@@ -205,7 +208,7 @@ TYPED_TEST_P(DistArrayInitializationF, allocate_buffer) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistArrayInitializationF, zero) {
+TYPED_TEST_P(DistArrayBasicF, zero) {
   TypeParam::allocate_buffer();
   TypeParam::zero();
   TypeParam::sync();
@@ -216,7 +219,12 @@ TYPED_TEST_P(DistArrayInitializationF, zero) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistArrayInitializationF, vec) {
+template <typename Array>
+class DistArrayBasicRMAF : public DistArrayInitialization<Array>, public ::testing::Test {};
+
+TYPED_TEST_SUITE_P(DistArrayBasicRMAF);
+
+TYPED_TEST_P(DistArrayBasicRMAF, vec) {
   TypeParam::allocate_buffer();
   TypeParam::zero();
   TypeParam::sync();
@@ -229,7 +237,7 @@ TYPED_TEST_P(DistArrayInitializationF, vec) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistArrayInitializationF, get) {
+TYPED_TEST_P(DistArrayBasicRMAF, get) {
   TypeParam::allocate_buffer();
   TypeParam::zero();
   TypeParam::sync();
@@ -248,7 +256,7 @@ TYPED_TEST_P(DistArrayInitializationF, get) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistArrayInitializationF, put) {
+TYPED_TEST_P(DistArrayBasicRMAF, put) {
   TypeParam::allocate_buffer();
   {
     auto l = this->lock.scope();
@@ -261,7 +269,7 @@ TYPED_TEST_P(DistArrayInitializationF, put) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistArrayInitializationF, fill) {
+TYPED_TEST_P(DistArrayBasicF, fill) {
   TypeParam::allocate_buffer();
   TypeParam::zero();
   TypeParam::sync();
@@ -284,7 +292,7 @@ TYPED_TEST_P(DistArrayInitializationF, fill) {
 }
 
 template <typename Array>
-class DistrArrayRangeF : public ::testing::Test, public Array {
+class DistrArrayRangeF : public Array {
 public:
   //! Stores a range in the buffer {1, 2, 3, 4, 5, .., dim}
   DistrArrayRangeF() : Array((size_t)dim, mpi_comm), lock(mpi_comm), p_rank(0), p_size(0) {
@@ -309,9 +317,12 @@ public:
   std::vector<typename Array::value_type> sub_values;
 };
 
-TYPED_TEST_SUITE_P(DistrArrayRangeF);
+template <typename Array>
+class DistrArrayRangeRMAF : public DistrArrayRangeF<Array>, public ::testing::Test {};
 
-TYPED_TEST_P(DistrArrayRangeF, gather) {
+TYPED_TEST_SUITE_P(DistrArrayRangeRMAF);
+
+TYPED_TEST_P(DistrArrayRangeRMAF, gather) {
   TypeParam::sync();
   auto from_ga_buffer = TypeParam::gather(this->sub_indices);
   {
@@ -321,7 +332,7 @@ TYPED_TEST_P(DistrArrayRangeF, gather) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistrArrayRangeF, scatter) {
+TYPED_TEST_P(DistrArrayRangeRMAF, scatter) {
   TypeParam::zero();
   TypeParam::sync();
   {
@@ -335,7 +346,7 @@ TYPED_TEST_P(DistrArrayRangeF, scatter) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistrArrayRangeF, scatter_acc) {
+TYPED_TEST_P(DistrArrayRangeRMAF, scatter_acc) {
   TypeParam::sync();
   {
     auto proxy = this->lock.scope();
@@ -352,7 +363,7 @@ TYPED_TEST_P(DistrArrayRangeF, scatter_acc) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistrArrayRangeF, at) {
+TYPED_TEST_P(DistrArrayRangeRMAF, at) {
   TypeParam::sync();
   auto from_ga_buffer = std::vector<double>();
   for (int i = 0; i < this->dim; ++i) {
@@ -365,7 +376,12 @@ TYPED_TEST_P(DistrArrayRangeF, at) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistrArrayRangeF, min_loc_n) {
+template <typename Array>
+class DistrArrayRangeMinMaxF : public DistrArrayRangeF<Array>, public ::testing::Test {};
+
+TYPED_TEST_SUITE_P(DistrArrayRangeMinMaxF);
+
+TYPED_TEST_P(DistrArrayRangeMinMaxF, min_loc_n) {
   int n = 10;
   auto ref_minloc_ind = std::vector<size_t>(n);
   std::iota(ref_minloc_ind.begin(), ref_minloc_ind.end(), 0);
@@ -377,7 +393,7 @@ TYPED_TEST_P(DistrArrayRangeF, min_loc_n) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistrArrayRangeF, min_loc_n_reverse) {
+TYPED_TEST_P(DistrArrayRangeMinMaxF, min_loc_n_reverse) {
   int n = 10;
   std::reverse(this->values.begin(), this->values.end());
   if (this->p_rank == 0)
@@ -393,7 +409,7 @@ TYPED_TEST_P(DistrArrayRangeF, min_loc_n_reverse) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistrArrayRangeF, max_n) {
+TYPED_TEST_P(DistrArrayRangeMinMaxF, max_n) {
   int n = 10;
   auto ref_minloc_ind = std::vector<size_t>(n);
   std::iota(ref_minloc_ind.rbegin(), ref_minloc_ind.rend(), TypeParam::size() - n);
@@ -407,7 +423,7 @@ TYPED_TEST_P(DistrArrayRangeF, max_n) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistrArrayRangeF, min_abs_n) {
+TYPED_TEST_P(DistrArrayRangeMinMaxF, min_abs_n) {
   auto loc_buffer = TypeParam::local_buffer();
   for (size_t i = 0; i < loc_buffer->size(); ++i)
     if ((i + loc_buffer->start()) % 2 == 1)
@@ -426,7 +442,7 @@ TYPED_TEST_P(DistrArrayRangeF, min_abs_n) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistrArrayRangeF, max_abs_n) {
+TYPED_TEST_P(DistrArrayRangeMinMaxF, max_abs_n) {
   auto loc_buffer = TypeParam::local_buffer();
   for (size_t i = 0; i < loc_buffer->size(); ++i)
     if ((i + loc_buffer->start()) % 2 == 1)
@@ -445,7 +461,12 @@ TYPED_TEST_P(DistrArrayRangeF, max_abs_n) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistrArrayRangeF, scal_double) {
+template <typename Array>
+class DistrArrayRangeLinAlgF : public DistrArrayRangeF<Array>, public ::testing::Test {};
+
+TYPED_TEST_SUITE_P(DistrArrayRangeLinAlgF);
+
+TYPED_TEST_P(DistrArrayRangeLinAlgF, scal_double) {
   double alpha = 1.5;
   TypeParam::scal(alpha);
   TypeParam::sync();
@@ -459,7 +480,7 @@ TYPED_TEST_P(DistrArrayRangeF, scal_double) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistrArrayRangeF, add_double) {
+TYPED_TEST_P(DistrArrayRangeLinAlgF, add_double) {
   double alpha = 100.;
   TypeParam::add(alpha);
   TypeParam::sync();
@@ -473,7 +494,7 @@ TYPED_TEST_P(DistrArrayRangeF, add_double) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistrArrayRangeF, sub_double) {
+TYPED_TEST_P(DistrArrayRangeLinAlgF, sub_double) {
   double alpha = 100.;
   TypeParam::sub(alpha);
   sync();
@@ -487,7 +508,7 @@ TYPED_TEST_P(DistrArrayRangeF, sub_double) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistrArrayRangeF, recip) {
+TYPED_TEST_P(DistrArrayRangeLinAlgF, recip) {
   TypeParam::recip();
   TypeParam::sync();
   for (auto &el : this->values)
@@ -501,9 +522,9 @@ TYPED_TEST_P(DistrArrayRangeF, recip) {
 }
 
 template <typename Array>
-class DistrArrayCollectiveOpF : public ::testing::Test {
+class DistrArrayCollectiveLinAlgF : public ::testing::Test {
 public:
-  DistrArrayCollectiveOpF() : lock(mpi_comm), p_rank(0), p_size(0), a(dim, mpi_comm), b(dim, mpi_comm) {
+  DistrArrayCollectiveLinAlgF() : lock(mpi_comm), p_rank(0), p_size(0), a(dim, mpi_comm), b(dim, mpi_comm) {
     MPI_Comm_rank(mpi_comm, &p_rank);
     MPI_Comm_size(mpi_comm, &p_size);
     a.allocate_buffer();
@@ -537,9 +558,9 @@ public:
   std::map<size_t, double> sparse_array;  // sparse selection of range_beta elements
 };
 
-TYPED_TEST_SUITE_P(DistrArrayCollectiveOpF);
+TYPED_TEST_SUITE_P(DistrArrayCollectiveLinAlgF);
 
-TYPED_TEST_P(DistrArrayCollectiveOpF, add) {
+TYPED_TEST_P(DistrArrayCollectiveLinAlgF, add) {
   this->a.fill(this->alpha);
   this->b.fill(this->beta);
   this->a.add(this->b);
@@ -554,7 +575,7 @@ TYPED_TEST_P(DistrArrayCollectiveOpF, add) {
   this->a.sync();
 }
 
-TYPED_TEST_P(DistrArrayCollectiveOpF, sub) {
+TYPED_TEST_P(DistrArrayCollectiveLinAlgF, sub) {
   this->a.fill(this->alpha);
   this->b.fill(this->beta);
   this->a.sub(this->b);
@@ -569,7 +590,7 @@ TYPED_TEST_P(DistrArrayCollectiveOpF, sub) {
   this->a.sync();
 }
 
-TYPED_TEST_P(DistrArrayCollectiveOpF, axpy) {
+TYPED_TEST_P(DistrArrayCollectiveLinAlgF, axpy) {
   double scale = -3.0;
   this->a.fill(this->alpha);
   this->b.fill(this->beta);
@@ -585,7 +606,7 @@ TYPED_TEST_P(DistrArrayCollectiveOpF, axpy) {
   this->a.sync();
 }
 
-TYPED_TEST_P(DistrArrayCollectiveOpF, axpy_map) {
+TYPED_TEST_P(DistrArrayCollectiveLinAlgF, axpy_map) {
   this->a.fill(this->alpha);
   double scale = 5.0;
   this->a.axpy(scale, this->sparse_array);
@@ -602,7 +623,7 @@ TYPED_TEST_P(DistrArrayCollectiveOpF, axpy_map) {
   this->a.sync();
 }
 
-TYPED_TEST_P(DistrArrayCollectiveOpF, dot_array) {
+TYPED_TEST_P(DistrArrayCollectiveLinAlgF, dot_array) {
   if (this->p_rank == 0) {
     this->a.put(0, this->dim, this->range_alpha.data());
     this->b.put(0, this->dim, this->range_beta.data());
@@ -617,7 +638,7 @@ TYPED_TEST_P(DistrArrayCollectiveOpF, dot_array) {
   this->a.sync();
 }
 
-TYPED_TEST_P(DistrArrayCollectiveOpF, dot_map) {
+TYPED_TEST_P(DistrArrayCollectiveLinAlgF, dot_map) {
   if (this->p_rank == 0)
     this->a.put(0, this->dim, this->range_alpha.data());
   this->a.sync();
@@ -633,7 +654,7 @@ TYPED_TEST_P(DistrArrayCollectiveOpF, dot_map) {
   this->a.sync();
 }
 
-TYPED_TEST_P(DistrArrayCollectiveOpF, times) {
+TYPED_TEST_P(DistrArrayCollectiveLinAlgF, times) {
   this->a.fill(this->alpha);
   this->b.fill(this->beta);
   TypeParam c{this->a};
@@ -655,7 +676,7 @@ TYPED_TEST_P(DistrArrayCollectiveOpF, times) {
 }
 
 // c[i] -= a[i]/(b[i]+shift)
-TYPED_TEST_P(DistrArrayCollectiveOpF, divide_append_negative) {
+TYPED_TEST_P(DistrArrayCollectiveLinAlgF, divide_append_negative) {
   double shift = 0.5;
   this->a.fill(this->alpha);
   this->b.fill(this->beta);
@@ -678,7 +699,7 @@ TYPED_TEST_P(DistrArrayCollectiveOpF, divide_append_negative) {
 }
 
 // c[i] += a[i]/(b[i]+shift)
-TYPED_TEST_P(DistrArrayCollectiveOpF, divide_append_positive) {
+TYPED_TEST_P(DistrArrayCollectiveLinAlgF, divide_append_positive) {
   double shift = 0.5;
   this->a.fill(this->alpha);
   this->b.fill(this->beta);
@@ -701,7 +722,7 @@ TYPED_TEST_P(DistrArrayCollectiveOpF, divide_append_positive) {
 }
 
 // c[i] = a[i]/(b[i]+shift)
-TYPED_TEST_P(DistrArrayCollectiveOpF, divide_overwrite_positive) {
+TYPED_TEST_P(DistrArrayCollectiveLinAlgF, divide_overwrite_positive) {
   double shift = 0.5;
   this->a.fill(this->alpha);
   this->b.fill(this->beta);
@@ -723,14 +744,16 @@ TYPED_TEST_P(DistrArrayCollectiveOpF, divide_overwrite_positive) {
   this->a.sync();
 }
 
-REGISTER_TYPED_TEST_SUITE_P(DistArrayInitializationF, size, empty, allocate_buffer, zero, vec, get, put, fill);
-REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeF, gather, scatter, scatter_acc, at, min_loc_n, min_loc_n_reverse, max_n,
-                            min_abs_n, max_abs_n, scal_double, add_double, sub_double, recip);
+REGISTER_TYPED_TEST_SUITE_P(DistArrayBasicF, size, empty, allocate_buffer, zero, fill);
+REGISTER_TYPED_TEST_SUITE_P(DistArrayBasicRMAF, vec, get, put);
+REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeRMAF, gather, scatter, scatter_acc, at);
+REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeMinMaxF, min_loc_n, min_loc_n_reverse, max_n, min_abs_n, max_abs_n);
+REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeLinAlgF, scal_double, add_double, sub_double, recip);
 REGISTER_TYPED_TEST_SUITE_P(TestDistrArray, constructor, constructor_copy, constructor_copy_allocated,
                             copy_assignment_op, copy_assignment_op_allocated, constructor_move,
                             constructor_move_allocated, move_assignment_op, move_assignment_op_allocated,
                             select_max_dot);
-REGISTER_TYPED_TEST_SUITE_P(DistrArrayCollectiveOpF, add, sub, axpy, axpy_map, dot_array, dot_map, times,
+REGISTER_TYPED_TEST_SUITE_P(DistrArrayCollectiveLinAlgF, add, sub, axpy, axpy_map, dot_array, dot_map, times,
                             divide_append_negative, divide_append_positive, divide_overwrite_positive);
 
 #endif // LINEARALGEBRA_TEST_ARRAY_TESTDISTRARRAY_H

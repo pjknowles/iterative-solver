@@ -56,7 +56,6 @@ public:
 
   friend void swap(DistrArrayMPI3 &a1, DistrArrayMPI3 &a2) noexcept;
   void sync() const override;
-  bool empty() const override;
 
 protected:
   struct LocalBufferMPI3 : public DistrArray::LocalBuffer {

@@ -49,7 +49,6 @@ public:
 
 TEST(DistrArrayFile, constructor_default) {
   auto a = DistrArrayFile();
-  ASSERT_TRUE(a.empty());
 }
 
 TEST(DistrArrayFile, constructor_size) {
@@ -59,7 +58,6 @@ TEST(DistrArrayFile, constructor_size) {
     {
       auto l = lock.scope();
       EXPECT_EQ(a.size(), 100);
-      ASSERT_FALSE(a.empty());
     }
   }
 }
@@ -92,7 +90,6 @@ TEST(DistrArrayFile, constructor_copy_from_distr_array) {
     auto l = lock.scope();
     EXPECT_EQ(a_disk.communicator(), a_mem.communicator());
     EXPECT_EQ(a_disk.size(), a_mem.size());
-    EXPECT_FALSE(a_disk.empty());
     EXPECT_TRUE(a_disk.distribution().compatible(a_mem.distribution()));
   }
 }

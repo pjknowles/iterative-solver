@@ -52,10 +52,8 @@ DistrArrayHDF5::DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_ha
 DistrArrayHDF5::DistrArrayHDF5(const DistrArray &source, std::shared_ptr<util::PHDF5Handle> file_handle)
     : DistrArrayDisk(std::make_unique<Distribution>(source.distribution()), source.communicator()),
       m_file_handle(std::move(file_handle)) {
-  if (!source.empty()) {
-    DistrArrayHDF5::open_access();
-    DistrArrayHDF5::copy(source);
-  }
+  DistrArrayHDF5::open_access();
+  DistrArrayHDF5::copy(source);
 }
 
 DistrArrayHDF5::DistrArrayHDF5(DistrArrayHDF5 &&source) noexcept
@@ -139,11 +137,6 @@ void DistrArrayHDF5::close_access() {
     H5Dclose(m_dataset);
   m_dataset = dataset_default;
   m_file_handle->close_file();
-}
-
-bool DistrArrayHDF5::empty() const {
-  auto res = DistrArrayDisk::empty() && !dataset_is_open();
-  return res;
 }
 
 void DistrArrayHDF5::erase() {

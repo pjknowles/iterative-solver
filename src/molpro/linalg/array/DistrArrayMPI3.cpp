@@ -38,22 +38,15 @@ DistrArrayMPI3::~DistrArrayMPI3() {
   }
 }
 
-
-bool DistrArrayMPI3::empty() const { return !m_allocated; }
-
 DistrArrayMPI3::DistrArrayMPI3(const DistrArrayMPI3& source)
     : DistrArray(source.size(), source.communicator()),
       m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
-  if (!source.empty()) {
-    DistrArray::copy(source);
-  }
+  DistrArray::copy(source);
 }
 
 DistrArrayMPI3::DistrArrayMPI3(const DistrArray& source)
     : DistrArray(source), m_distribution(std::make_unique<Distribution>(source.distribution())) {
-  if (!source.empty()) {
-    DistrArray::copy(source);
-  }
+  DistrArray::copy(source);
 }
 
 DistrArrayMPI3::DistrArrayMPI3(DistrArrayMPI3&& source) noexcept
@@ -65,7 +58,7 @@ DistrArrayMPI3::DistrArrayMPI3(DistrArrayMPI3&& source) noexcept
 DistrArrayMPI3& DistrArrayMPI3::operator=(const DistrArrayMPI3& source) {
   if (this == &source)
     return *this;
-  if (source.empty() || empty() || !compatible(source)) {
+  if (!compatible(source)) {
     DistrArrayMPI3 t{source};
     swap(*this, t);
   } else {
@@ -90,10 +83,8 @@ void swap(DistrArrayMPI3& a1, DistrArrayMPI3& a2) noexcept {
 }
 
 void DistrArrayMPI3::sync() const {
-  if (!empty()) {
-    MPI_Win_flush_all(m_win);
-    MPI_Win_sync(m_win);
-  }
+  MPI_Win_flush_all(m_win);
+  MPI_Win_sync(m_win);
   MPI_Barrier(m_communicator);
 }
 
@@ -118,8 +109,6 @@ void DistrArrayMPI3::_get_put(index_type lo, index_type hi, const value_type* bu
   auto name = std::string{"DistrArrayMPI3::_get_put"};
   if (hi > m_dimension)
     error(name + " out of bounds");
-  if (empty())
-    error(name + " called on an empty array");
   index_type p_lo, p_hi;
   std::tie(p_lo, p_hi) = m_distribution->cover(lo, hi);
   auto* curr_buf = const_cast<value_type*>(buf);
@@ -179,8 +168,6 @@ void DistrArrayMPI3::_gather_scatter(const std::vector<index_type>& indices, std
     error(name + " out of bounds");
   if (indices.size() > data.size())
     error(name + " data buffer is too small");
-  if (empty())
-    error(name + " called on an empty array");
   auto requests = std::vector<MPI_Request>(indices.size());
   for (size_t i = 0; i < indices.size(); ++i) {
     int p;

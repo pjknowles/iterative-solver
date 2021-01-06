@@ -32,9 +32,7 @@ DistrArrayGA::DistrArrayGA(const DistrArrayGA &source)
     : DistrArray(source.m_dimension, source.m_communicator), m_comm_rank(source.m_comm_rank),
       m_comm_size(source.m_comm_size), m_ga_chunk(source.m_ga_chunk),
       m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
-  if (!source.empty()) {
-    DistrArrayGA::copy(source);
-  }
+  DistrArrayGA::copy(source);
 }
 
 DistrArrayGA::DistrArrayGA(DistrArrayGA &&source) noexcept
@@ -48,7 +46,7 @@ DistrArrayGA::DistrArrayGA(DistrArrayGA &&source) noexcept
 DistrArrayGA &DistrArrayGA::operator=(const DistrArrayGA &source) {
   if (this == &source)
     return *this;
-  if (source.empty() || empty() || !compatible(source)) {
+  if (!compatible(source)) {
     DistrArrayGA t{source};
     swap(*this, t);
   } else {
@@ -76,12 +74,7 @@ void swap(DistrArrayGA &a1, DistrArrayGA &a2) noexcept {
   swap(a1.m_ga_allocated, a2.m_ga_allocated);
 }
 
-DistrArrayGA::~DistrArrayGA() {
-  if (!DistrArrayGA::empty())
-    GA_Destroy(m_ga_handle);
-}
-
-bool DistrArrayGA::empty() const { return !m_ga_allocated; }
+DistrArrayGA::~DistrArrayGA() { GA_Destroy(m_ga_handle); }
 
 void DistrArrayGA::error(const std::string &message) const { GA_Error(const_cast<char *>(message.c_str()), 1); }
 
@@ -91,8 +84,6 @@ void DistrArrayGA::sync() const {
 }
 
 DistrArrayGA::LocalBufferGA::LocalBufferGA(DistrArrayGA &source) : DistrArray::LocalBuffer{} {
-  if (source.empty())
-    return;
   int lo, hi, ld{0};
   NGA_Distribution(source.m_ga_handle, source.m_comm_rank, &lo, &hi);
   NGA_Access(source.m_ga_handle, &lo, &hi, &m_buffer, &ld);
@@ -119,8 +110,6 @@ DistrArrayGA::value_type DistrArrayGA::at(index_type ind) const {
   auto name = std::string{"DistrArrayGA::at"};
   if (ind >= m_dimension)
     error(name + " out of bounds");
-  if (empty())
-    error(name + " called on empty array");
   check_ga_ind_overlow(ind);
   double buffer;
   int lo = ind, high = ind, ld = 1;
@@ -131,7 +120,7 @@ DistrArrayGA::value_type DistrArrayGA::at(index_type ind) const {
 void DistrArrayGA::set(index_type ind, value_type val) { put(ind, ind + 1, &val); }
 
 void DistrArrayGA::get(index_type lo, index_type hi, value_type *buf) const {
-  if (empty() || lo >= hi)
+  if (lo >= hi)
     return;
   auto name = std::string{"DistrArrayGA::get"};
   check_ga_ind_overlow(lo);
@@ -152,8 +141,6 @@ void DistrArrayGA::put(index_type lo, index_type hi, const value_type *data) {
   if (lo >= hi)
     return;
   auto name = std::string{"DistrArrayGA::put"};
-  if (empty())
-    error(name + " attempting to put data into an empty array");
   check_ga_ind_overlow(lo);
   check_ga_ind_overlow(hi);
   int ld, ilo = lo, ihi = int(hi) - 1;
@@ -162,8 +149,6 @@ void DistrArrayGA::put(index_type lo, index_type hi, const value_type *data) {
 
 std::vector<DistrArrayGA::value_type> DistrArrayGA::gather(const std::vector<index_type> &indices) const {
   auto name = std::string{"DistrArrayGA::gather"};
-  if (empty())
-    return {};
   for (auto el : indices)
     check_ga_ind_overlow(el);
   int n = indices.size();
@@ -179,8 +164,6 @@ std::vector<DistrArrayGA::value_type> DistrArrayGA::gather(const std::vector<ind
 
 void DistrArrayGA::scatter(const std::vector<index_type> &indices, const std::vector<value_type> &data) {
   auto name = std::string{"DistrArrayGA::scatter"};
-  if (empty())
-    error(name + " attempting to scatter into an empty array");
   for (auto el : indices)
     check_ga_ind_overlow(el);
   int n = indices.size();
@@ -194,8 +177,6 @@ void DistrArrayGA::scatter(const std::vector<index_type> &indices, const std::ve
 
 void DistrArrayGA::scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data) {
   auto name = std::string{"DistrArrayGA::scatter_acc"};
-  if (empty())
-    error(name + " attempting to scatter_acc into an empty array");
   for (auto el : indices)
     check_ga_ind_overlow(el);
   int n = indices.size();
@@ -210,8 +191,6 @@ void DistrArrayGA::scatter_acc(std::vector<index_type> &indices, const std::vect
 }
 
 std::vector<DistrArrayGA::value_type> DistrArrayGA::vec() const {
-  if (empty())
-    return {};
   check_ga_ind_overlow(m_dimension);
   auto name = std::string{"DistrArrayGA::vec"};
   std::vector<double> vec(m_dimension);
@@ -223,8 +202,6 @@ std::vector<DistrArrayGA::value_type> DistrArrayGA::vec() const {
 
 void DistrArrayGA::acc(index_type lo, index_type hi, const value_type *data) {
   auto name = std::string{"DistrArrayGA::acc"};
-  if (empty())
-    error(name + " attempting to accumulate an empty array");
   check_ga_ind_overlow(lo);
   check_ga_ind_overlow(hi);
   double scaling_constant = 1;

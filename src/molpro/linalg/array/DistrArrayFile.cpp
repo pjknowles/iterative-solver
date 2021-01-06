@@ -5,7 +5,6 @@
 #include <molpro/linalg/array/util/temp_file.h>
 #include <utility>
 
-
 namespace molpro::linalg::array {
 namespace {
 int mpi_size(MPI_Comm comm) {
@@ -27,22 +26,18 @@ DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::strin
 
 DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm, const std::string& directory)
     : DistrArrayDisk(std::move(distribution), comm), m_dir(fs::absolute(fs::path(directory))), m_file(make_file()) {
-    if (m_distribution->border().first != 0)
-      DistrArray::error("Distribution of array must start from 0");
+  if (m_distribution->border().first != 0)
+    DistrArray::error("Distribution of array must start from 0");
 }
 
 DistrArrayFile::DistrArrayFile(const DistrArrayFile& source)
     : DistrArrayDisk(source), m_dir(source.m_dir), m_file(make_file()) {
-    if (!source.empty()){
-    DistrArrayFile::copy(source);
-    }
-  }
+  DistrArrayFile::copy(source);
+}
 
 DistrArrayFile::DistrArrayFile(const DistrArray& source)
     : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator()) {
-  if (!source.empty()) {
-    DistrArrayFile::copy(source);
-  }
+  DistrArrayFile::copy(source);
 }
 
 DistrArrayFile& DistrArrayFile::operator=(DistrArrayFile&& source) noexcept {
@@ -76,8 +71,7 @@ bool DistrArrayFile::compatible(const DistrArrayFile& source) const {
 
 std::fstream DistrArrayFile::make_file() {
   std::fstream file;
-  std::string file_name =
-      util::temp_file_name(m_dir.string() + "/", "");
+  std::string file_name = util::temp_file_name(m_dir.string() + "/", "");
   file.open(file_name.c_str(), std::ios::out | std::ios::binary);
   file.close();
   file.open(file_name.c_str(), std::ios::out | std::ios::in | std::ios::binary);
@@ -87,10 +81,6 @@ std::fstream DistrArrayFile::make_file() {
 
 void DistrArrayFile::open_access() {}
 void DistrArrayFile::close_access() {}
-
-bool DistrArrayFile::empty() const {
-  return !m_file.is_open();
-}
 
 void DistrArrayFile::erase() {}
 
@@ -107,7 +97,7 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
     return;
   DistrArray::index_type length = hi - lo;
   int current = m_file.tellg();
-  if (current < length )
+  if (current < length)
     return;
   int rank;
   MPI_Comm_rank(m_communicator, &rank);
@@ -184,7 +174,7 @@ void DistrArrayFile::scatter(const std::vector<index_type>& indices, const std::
     error("Only local array indices can be accessed via DistrArrayFile.gather() function");
   }
   for (auto i : indices) {
-    set(i, data[i-*minmax.first]);
+    set(i, data[i - *minmax.first]);
   }
 }
 

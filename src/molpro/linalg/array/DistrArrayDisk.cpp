@@ -77,8 +77,6 @@ const DistrArray::Distribution& DistrArrayDisk::distribution() const {
   return *m_distribution;
 }
 
-bool DistrArrayDisk::empty() const { return !m_allocated; }
-
 std::unique_ptr<DistrArray::LocalBuffer> DistrArrayDisk::local_buffer() {
   return std::make_unique<LocalBufferDisk>(*this);
 }

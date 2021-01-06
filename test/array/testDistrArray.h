@@ -40,7 +40,6 @@ TYPED_TEST_P(TestDistrArray, constructor_copy) {
   auto proxy = lock.scope();
   ASSERT_EQ(b.size(), a.size());
   ASSERT_EQ(b.communicator(), a.communicator());
-  ASSERT_EQ(a.empty(), b.empty());
 }
 
 TYPED_TEST_P(TestDistrArray, constructor_copy_allocated) {
@@ -53,7 +52,6 @@ TYPED_TEST_P(TestDistrArray, constructor_copy_allocated) {
   auto proxy = lock.scope();
   ASSERT_EQ(b.size(), a.size());
   ASSERT_EQ(b.communicator(), a.communicator());
-  ASSERT_EQ(a.empty(), b.empty());
   ASSERT_THAT(*b.local_buffer(), Each(DoubleEq(alpha)));
 }
 
@@ -69,7 +67,6 @@ TYPED_TEST_P(TestDistrArray, copy_assignment_op_allocated) {
   auto proxy = lock.scope();
   ASSERT_EQ(b.size(), a.size());
   ASSERT_EQ(b.communicator(), a.communicator());
-  ASSERT_EQ(a.empty(), b.empty());
   ASSERT_THAT(*b.local_buffer(), Each(DoubleEq(alpha)));
 }
 
@@ -81,7 +78,6 @@ TYPED_TEST_P(TestDistrArray, constructor_move) {
   auto proxy = lock.scope();
   ASSERT_EQ(b.size(), dim);
   ASSERT_EQ(b.communicator(), mpi_comm);
-  ASSERT_TRUE(b.empty());
 }
 
 TYPED_TEST_P(TestDistrArray, constructor_move_allocated) {
@@ -94,7 +90,6 @@ TYPED_TEST_P(TestDistrArray, constructor_move_allocated) {
   auto proxy = lock.scope();
   ASSERT_EQ(b.size(), dim);
   ASSERT_EQ(b.communicator(), mpi_comm);
-  ASSERT_FALSE(b.empty());
   ASSERT_THAT(*b.local_buffer(), Each(DoubleEq(alpha)));
 }
 
@@ -110,8 +105,6 @@ TYPED_TEST_P(TestDistrArray, move_assignment_op_allocated) {
   auto proxy = lock.scope();
   ASSERT_EQ(b.size(), dim);
   ASSERT_EQ(b.communicator(), mpi_comm);
-  ASSERT_FALSE(b.empty());
-  ASSERT_TRUE(a.empty());
   ASSERT_THAT(*b.local_buffer(), Each(DoubleEq(alpha)));
 }
 
@@ -162,21 +155,8 @@ TYPED_TEST_P(DistArrayBasicF, size) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistArrayBasicF, empty) {
-  {
-    auto l = this->lock.scope();
-    ASSERT_TRUE(TypeParam::empty());
-  }
-  TypeParam::sync();
-}
-
 TYPED_TEST_P(DistArrayBasicF, zero) {
   TypeParam::zero();
-  TypeParam::sync();
-  {
-    auto l = this->lock.scope();
-    ASSERT_FALSE(TypeParam::empty());
-  }
   TypeParam::sync();
 }
 
@@ -698,7 +678,7 @@ TYPED_TEST_P(DistrArrayCollectiveLinAlgF, divide_overwrite_positive) {
   this->a.sync();
 }
 
-REGISTER_TYPED_TEST_SUITE_P(DistArrayBasicF, size, empty, zero, fill);
+REGISTER_TYPED_TEST_SUITE_P(DistArrayBasicF, size, zero, fill);
 REGISTER_TYPED_TEST_SUITE_P(DistArrayBasicRMAF, vec, get, put);
 REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeRMAF, gather, scatter, scatter_acc, at);
 REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeMinMaxF, min_loc_n, min_loc_n_reverse, max_n, min_abs_n, max_abs_n);

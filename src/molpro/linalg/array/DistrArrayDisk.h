@@ -120,7 +120,6 @@ public:
   //! Close access to the storage on disk, buffer is flushed to disk. Assume collective, but not all implementations
   //! might require that.
   virtual void close_access() = 0;
-  bool empty() const override;
   //! Writes the memory view buffer.
   virtual void flush();
   //! Erase the array from disk.

@@ -113,8 +113,6 @@ public:
 
   void open_access() override;
   void close_access() override;
-  //! @returns true if array is not accessible through file nor memory view. Returns false otherwise.
-  bool empty() const override;
   //! Removes link to the array dataset from the hdf5 file. This does not reduce the file size, consider using h5repack.
   void erase() override;
   value_type at(index_type ind) const override;

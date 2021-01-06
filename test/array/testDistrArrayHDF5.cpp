@@ -58,7 +58,6 @@ TEST_F(DistrArrayHDF5_SetUp, constructor_dummy_with_fhandle) {
   auto a = DistrArrayHDF5{fhandle_n1};
   EXPECT_EQ(a.communicator(), fhandle_n1->communicator());
   EXPECT_EQ(a.size(), 0);
-  EXPECT_TRUE(a.empty());
   EXPECT_FALSE(a.dataset_is_open());
 }
 
@@ -71,7 +70,6 @@ TEST_F(DistrArrayHDF5_SetUp, constructor_fhandle_size) {
     EXPECT_EQ(a.communicator(), fhandle_n1->communicator());
     EXPECT_EQ(a.size(), size);
     EXPECT_EQ(a.file_handle(), fhandle_n1);
-    EXPECT_TRUE(a.empty());
     EXPECT_FALSE(a.dataset_is_open());
   }
   a.close_access();
@@ -98,7 +96,6 @@ TEST_F(DistrArrayHDF5_SetUp, constructor_move) {
   EXPECT_EQ(b.file_handle(), fhandle_n1);
   EXPECT_EQ(b.communicator(), fhandle_n1->communicator());
   EXPECT_EQ(b.size(), size);
-  EXPECT_TRUE(b.empty());
 }
 
 TEST_F(DistrArrayHDF5_SetUp, compatible) {
@@ -123,7 +120,6 @@ TEST_F(DistrArrayHDF5_SetUp, constructor_copy_from_distr_array) {
     EXPECT_EQ(a_disk.file_handle(), fhandle_n1);
     EXPECT_EQ(a_disk.communicator(), a_mem.communicator());
     EXPECT_EQ(a_disk.size(), a_mem.size());
-    EXPECT_FALSE(a_disk.empty());
     EXPECT_TRUE(a_disk.distribution().compatible(a_mem.distribution()));
   }
   a_disk.open_access();
@@ -180,7 +176,6 @@ TEST_F(DistrArrayHDF5_Fixture, allocate_buffer_flush) {
   LockMPI3 lock{mpi_comm};
   {
     auto l = lock.scope();
-    ASSERT_FALSE(a->empty());
     auto buffer = a->local_buffer();
     a->fill(val);
     EXPECT_THAT(*buffer, Each(DoubleEq(val)));

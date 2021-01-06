@@ -54,12 +54,6 @@ public:
   const size_t size = 30;
 };
 
-TEST(DistrArrayHDF5, constructor_default) {
-  auto a = DistrArrayHDF5{};
-  ScopeLock l{mpi_comm};
-  ASSERT_TRUE(a.empty());
-}
-
 TEST_F(DistrArrayHDF5_SetUp, constructor_dummy_with_fhandle) {
   auto a = DistrArrayHDF5{fhandle_n1};
   EXPECT_EQ(a.communicator(), fhandle_n1->communicator());
@@ -110,17 +104,11 @@ TEST_F(DistrArrayHDF5_SetUp, constructor_move) {
 TEST_F(DistrArrayHDF5_SetUp, compatible) {
   auto a = DistrArrayHDF5{fhandle_n1, size};
   auto b = DistrArrayHDF5{fhandle_n1};
-  auto c = DistrArrayHDF5{};
   ScopeLock l{mpi_comm};
   EXPECT_TRUE(a.compatible(a));
   EXPECT_TRUE(b.compatible(b));
-  EXPECT_TRUE(c.compatible(c));
   EXPECT_FALSE(a.compatible(b));
-  EXPECT_FALSE(a.compatible(c));
-  EXPECT_FALSE(a.compatible(c));
-  EXPECT_FALSE(b.compatible(c));
   EXPECT_EQ(a.compatible(b), b.compatible(a));
-  EXPECT_EQ(a.compatible(c), c.compatible(a));
 }
 
 #ifdef LINEARALGEBRA_ARRAY_MPI3
@@ -166,21 +154,21 @@ TEST_F(DistrArrayHDF5_SetUp, CreateTempCopy) {
 struct DistrArrayHDF5_Fixture : DistrArrayHDF5_SetUp {
   void SetUp() override {
     DistrArrayHDF5_SetUp::SetUp();
-    a = DistrArrayHDF5(fhandle_n1, size);
-    a.open_access();
+    a = std::make_unique<DistrArrayHDF5>(fhandle_n1, size);
+    a->open_access();
   }
   void TearDown() override {
-    a.close_access();
+    a->close_access();
     DistrArrayHDF5_SetUp::TearDown();
   }
 
-  DistrArrayHDF5 a;
+  std::unique_ptr<DistrArrayHDF5> a;
 };
 
 TEST_F(DistrArrayHDF5_Fixture, put_get) {
   auto ref_vec = std::vector<double>(size, 0.3);
-  a.put(0, size, &ref_vec[0]);
-  auto vec = a.get(0, size);
+  a->put(0, size, &ref_vec[0]);
+  auto vec = a->get(0, size);
   ScopeLock l{mpi_comm};
   ASSERT_EQ(vec.size(), size);
   EXPECT_THAT(vec, Pointwise(DoubleEq(), ref_vec));
@@ -189,26 +177,26 @@ TEST_F(DistrArrayHDF5_Fixture, put_get) {
 TEST_F(DistrArrayHDF5_Fixture, allocate_buffer_flush) {
   const double val = 11.;
   const double zero = 0.;
-  a.fill(zero);
-  a.allocate_buffer();
+  a->fill(zero);
+  a->allocate_buffer();
   LockMPI3 lock{mpi_comm};
   {
     auto l = lock.scope();
-    ASSERT_FALSE(a.empty());
-    auto buffer = a.local_buffer();
-    a.fill(val);
+    ASSERT_FALSE(a->empty());
+    auto buffer = a->local_buffer();
+    a->fill(val);
     EXPECT_THAT(*buffer, Each(DoubleEq(val)));
   }
-  auto vec = a.vec();
+  auto vec = a->vec();
   {
     auto l = lock.scope();
     EXPECT_THAT(vec, Each(DoubleEq(zero)));
   }
-  a.sync();
-  a.flush();
-  a.sync();
-  a.free_buffer();
-  vec = a.vec();
+  a->sync();
+  a->flush();
+  a->sync();
+  a->free_buffer();
+  vec = a->vec();
   {
     auto l = lock.scope();
     EXPECT_THAT(vec, Each(DoubleEq(val)));

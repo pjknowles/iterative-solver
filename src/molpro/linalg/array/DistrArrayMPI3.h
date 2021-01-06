@@ -25,7 +25,7 @@ protected:
   bool m_allocated = false;                     //!< whether the window has been created
 
 public:
-  DistrArrayMPI3();
+  DistrArrayMPI3() = delete;
 
   /*!
    * @brief Creates distributed array using MPI3 RMA routines and default distribution.

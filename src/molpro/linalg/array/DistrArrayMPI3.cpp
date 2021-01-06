@@ -19,8 +19,6 @@ int comm_rank(MPI_Comm comm) {
 }
 } // namespace
 
-DistrArrayMPI3::DistrArrayMPI3() = default;
-
 DistrArrayMPI3::DistrArrayMPI3(size_t dimension, MPI_Comm commun)
     : DistrArrayMPI3(std::make_unique<Distribution>(
                          util::make_distribution_spread_remainder<index_type>(dimension, comm_size(commun))),

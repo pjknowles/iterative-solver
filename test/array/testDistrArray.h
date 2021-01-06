@@ -58,26 +58,15 @@ TYPED_TEST_P(TestDistrArray, constructor_copy_allocated) {
   ASSERT_THAT(*b.local_buffer(), Each(DoubleEq(alpha)));
 }
 
-TYPED_TEST_P(TestDistrArray, copy_assignment_op) {
-  LockMPI3 lock{mpi_comm};
-  size_t dim = 100;
-  TypeParam a{dim, mpi_comm};
-  TypeParam b{};
-  b = a;
-  auto proxy = lock.scope();
-  ASSERT_EQ(b.size(), a.size());
-  ASSERT_EQ(b.communicator(), a.communicator());
-  ASSERT_EQ(a.empty(), b.empty());
-}
-
 TYPED_TEST_P(TestDistrArray, copy_assignment_op_allocated) {
   LockMPI3 lock{mpi_comm};
   size_t dim = 100;
   double alpha = 1;
+  double beta = 11;
   TypeParam a{dim, mpi_comm};
   a.allocate_buffer();
   a.fill(alpha);
-  TypeParam b{};
+  TypeParam b{dim, mpi_comm};
   b = a;
   auto proxy = lock.scope();
   ASSERT_EQ(b.size(), a.size());
@@ -112,27 +101,15 @@ TYPED_TEST_P(TestDistrArray, constructor_move_allocated) {
   ASSERT_THAT(*b.local_buffer(), Each(DoubleEq(alpha)));
 }
 
-TYPED_TEST_P(TestDistrArray, move_assignment_op) {
-  LockMPI3 lock{mpi_comm};
-  size_t dim = 100;
-  TypeParam &&a{dim, mpi_comm};
-  TypeParam b{};
-  b = std::move(a);
-  auto proxy = lock.scope();
-  ASSERT_EQ(b.size(), dim);
-  ASSERT_EQ(b.communicator(), mpi_comm);
-  ASSERT_TRUE(b.empty());
-  ASSERT_TRUE(a.empty());
-}
-
 TYPED_TEST_P(TestDistrArray, move_assignment_op_allocated) {
   LockMPI3 lock{mpi_comm};
   size_t dim = 100;
   double alpha = 1;
+  double beta = 11;
   TypeParam &&a{dim, mpi_comm};
   a.allocate_buffer();
   a.fill(alpha);
-  TypeParam b{};
+  TypeParam b{dim, mpi_comm};
   b = std::move(a);
   auto proxy = lock.scope();
   ASSERT_EQ(b.size(), dim);
@@ -750,9 +727,8 @@ REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeRMAF, gather, scatter, scatter_acc, a
 REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeMinMaxF, min_loc_n, min_loc_n_reverse, max_n, min_abs_n, max_abs_n);
 REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeLinAlgF, scal_double, add_double, sub_double, recip);
 REGISTER_TYPED_TEST_SUITE_P(TestDistrArray, constructor, constructor_copy, constructor_copy_allocated,
-                            copy_assignment_op, copy_assignment_op_allocated, constructor_move,
-                            constructor_move_allocated, move_assignment_op, move_assignment_op_allocated,
-                            select_max_dot);
+                            copy_assignment_op_allocated, constructor_move, constructor_move_allocated,
+                            move_assignment_op_allocated, select_max_dot);
 REGISTER_TYPED_TEST_SUITE_P(DistrArrayCollectiveLinAlgF, add, sub, axpy, axpy_map, dot_array, dot_map, times,
                             divide_append_negative, divide_append_positive, divide_overwrite_positive);
 

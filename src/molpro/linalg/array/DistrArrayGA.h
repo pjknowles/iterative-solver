@@ -22,7 +22,7 @@ protected:
   std::unique_ptr<Distribution> m_distribution;
 
 public:
-  DistrArrayGA();
+  DistrArrayGA() = delete;
   DistrArrayGA(size_t dimension, MPI_Comm commun);
   //! Make a copy of source, allocating buffer if necessary.
   DistrArrayGA(const DistrArrayGA &source);

@@ -23,8 +23,6 @@ int get_communicator_rank(MPI_Comm comm) {
 
 } // namespace
 
-DistrArrayGA::DistrArrayGA() = default;
-
 DistrArrayGA::DistrArrayGA(size_t dimension, MPI_Comm comm)
     : DistrArray(dimension, comm), m_comm_rank(get_communicator_rank(comm)), m_comm_size(get_communicator_size(comm)) {}
 

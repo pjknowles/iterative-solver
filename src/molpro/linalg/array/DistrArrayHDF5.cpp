@@ -58,8 +58,6 @@ DistrArrayHDF5::DistrArrayHDF5(const DistrArray &source, std::shared_ptr<util::P
   }
 }
 
-DistrArrayHDF5::DistrArrayHDF5() = default;
-
 DistrArrayHDF5::DistrArrayHDF5(DistrArrayHDF5 &&source) noexcept
     : DistrArrayDisk(std::move(source)), m_file_handle(std::move(source.m_file_handle)), m_dataset(source.m_dataset) {
   source.m_dataset = DistrArrayHDF5::dataset_default;

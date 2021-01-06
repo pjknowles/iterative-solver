@@ -38,6 +38,8 @@ public:
   DistrArrayFile &operator=(const DistrArrayFile &source) = delete;
   DistrArrayFile &operator=(DistrArrayFile &&source) noexcept;
   
+  static DistrArrayFile CreateTempCopy(const DistrArray &source, const std::string &directory = ".");
+  
   friend void swap(DistrArrayFile &x, DistrArrayFile &y) noexcept;
   
   //! Flushes the buffer if file access is open

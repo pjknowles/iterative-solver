@@ -64,6 +64,7 @@ protected:
   void check_ga_ind_overlow(index_type ind) const;
 
   Distribution make_distribution() const;
+  void allocate_buffer();
 };
 
 } // namespace molpro::linalg::array

@@ -24,7 +24,9 @@ int get_communicator_rank(MPI_Comm comm) {
 } // namespace
 
 DistrArrayGA::DistrArrayGA(size_t dimension, MPI_Comm comm)
-    : DistrArray(dimension, comm), m_comm_rank(get_communicator_rank(comm)), m_comm_size(get_communicator_size(comm)) {}
+    : DistrArray(dimension, comm), m_comm_rank(get_communicator_rank(comm)), m_comm_size(get_communicator_size(comm)) {
+  allocate_buffer();
+}
 
 std::map<MPI_Comm, int> DistrArrayGA::_ga_pgroups{};
 
@@ -32,6 +34,7 @@ DistrArrayGA::DistrArrayGA(const DistrArrayGA &source)
     : DistrArray(source.m_dimension, source.m_communicator), m_comm_rank(source.m_comm_rank),
       m_comm_size(source.m_comm_size), m_ga_chunk(source.m_ga_chunk),
       m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
+  allocate_buffer();
   DistrArrayGA::copy(source);
 }
 
@@ -78,10 +81,7 @@ DistrArrayGA::~DistrArrayGA() { GA_Destroy(m_ga_handle); }
 
 void DistrArrayGA::error(const std::string &message) const { GA_Error(const_cast<char *>(message.c_str()), 1); }
 
-void DistrArrayGA::sync() const {
-  auto name = std::string{"DistrArrayGA::sync"};
-  GA_Pgroup_sync(m_ga_pgroup);
-}
+void DistrArrayGA::sync() const { GA_Pgroup_sync(m_ga_pgroup); }
 
 DistrArrayGA::LocalBufferGA::LocalBufferGA(DistrArrayGA &source) : DistrArray::LocalBuffer{} {
   int lo, hi, ld{0};
@@ -122,7 +122,6 @@ void DistrArrayGA::set(index_type ind, value_type val) { put(ind, ind + 1, &val)
 void DistrArrayGA::get(index_type lo, index_type hi, value_type *buf) const {
   if (lo >= hi)
     return;
-  auto name = std::string{"DistrArrayGA::get"};
   check_ga_ind_overlow(lo);
   check_ga_ind_overlow(hi);
   int ld, ilo = lo, ihi = int(hi) - 1;
@@ -140,7 +139,6 @@ std::vector<DistrArrayGA::value_type> DistrArrayGA::get(index_type lo, index_typ
 void DistrArrayGA::put(index_type lo, index_type hi, const value_type *data) {
   if (lo >= hi)
     return;
-  auto name = std::string{"DistrArrayGA::put"};
   check_ga_ind_overlow(lo);
   check_ga_ind_overlow(hi);
   int ld, ilo = lo, ihi = int(hi) - 1;
@@ -148,7 +146,6 @@ void DistrArrayGA::put(index_type lo, index_type hi, const value_type *data) {
 }
 
 std::vector<DistrArrayGA::value_type> DistrArrayGA::gather(const std::vector<index_type> &indices) const {
-  auto name = std::string{"DistrArrayGA::gather"};
   for (auto el : indices)
     check_ga_ind_overlow(el);
   int n = indices.size();
@@ -163,7 +160,6 @@ std::vector<DistrArrayGA::value_type> DistrArrayGA::gather(const std::vector<ind
 }
 
 void DistrArrayGA::scatter(const std::vector<index_type> &indices, const std::vector<value_type> &data) {
-  auto name = std::string{"DistrArrayGA::scatter"};
   for (auto el : indices)
     check_ga_ind_overlow(el);
   int n = indices.size();
@@ -176,7 +172,6 @@ void DistrArrayGA::scatter(const std::vector<index_type> &indices, const std::ve
 }
 
 void DistrArrayGA::scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data) {
-  auto name = std::string{"DistrArrayGA::scatter_acc"};
   for (auto el : indices)
     check_ga_ind_overlow(el);
   int n = indices.size();
@@ -192,7 +187,6 @@ void DistrArrayGA::scatter_acc(std::vector<index_type> &indices, const std::vect
 
 std::vector<DistrArrayGA::value_type> DistrArrayGA::vec() const {
   check_ga_ind_overlow(m_dimension);
-  auto name = std::string{"DistrArrayGA::vec"};
   std::vector<double> vec(m_dimension);
   double *buffer = vec.data();
   int lo = 0, hi = int(m_dimension) - 1, ld;
@@ -201,7 +195,6 @@ std::vector<DistrArrayGA::value_type> DistrArrayGA::vec() const {
 }
 
 void DistrArrayGA::acc(index_type lo, index_type hi, const value_type *data) {
-  auto name = std::string{"DistrArrayGA::acc"};
   check_ga_ind_overlow(lo);
   check_ga_ind_overlow(hi);
   double scaling_constant = 1;
@@ -225,6 +218,33 @@ DistrArrayGA::Distribution DistrArrayGA::make_distribution() const {
     chunk_borders.push_back(hi);
   }
   return {chunk_borders};
+}
+
+void DistrArrayGA::allocate_buffer() {
+  if (_ga_pgroups.find(m_communicator) == _ga_pgroups.end()) {
+    //  global processor ranks
+    int loc_size, glob_size, glob_rank;
+    MPI_Comm_size(m_communicator, &loc_size);
+    MPI_Comm_size(GA_MPI_Comm(), &glob_size);
+    MPI_Comm_rank(GA_MPI_Comm(), &glob_rank);
+    auto glob_ranks = std::vector<int>(loc_size);
+    MPI_Allgather(&glob_rank, 1, MPI_INT, glob_ranks.data(), 1, MPI_INT, m_communicator);
+    // create new GA processor group
+    m_ga_pgroup = GA_Pgroup_create(glob_ranks.data(), loc_size);
+    _ga_pgroups[m_communicator] = m_ga_pgroup;
+  } else
+    m_ga_pgroup = _ga_pgroups[m_communicator];
+  m_ga_handle = NGA_Create_handle();
+  NGA_Set_pgroup(m_ga_handle, m_ga_pgroup);
+  auto dims = (int)m_dimension;
+  NGA_Set_data(m_ga_handle, 1, &dims, C_DBL);
+  NGA_Set_array_name(m_ga_handle, (char *)"Array");
+  NGA_Set_chunk(m_ga_handle, &m_ga_chunk);
+  auto succ = GA_Allocate(m_ga_handle);
+  if (!succ)
+    error("Failed to allocate");
+  m_ga_allocated = true;
+  m_distribution = std::make_unique<Distribution>(make_distribution());
 }
 
 } // namespace molpro::linalg::array

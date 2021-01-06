@@ -101,6 +101,7 @@ TYPED_TEST_P(TestDistrArray, move_assignment_op_allocated) {
   TypeParam &&a{dim, mpi_comm};
   a.fill(alpha);
   TypeParam b{dim, mpi_comm};
+  b.fill(beta);
   b = std::move(a);
   auto proxy = lock.scope();
   ASSERT_EQ(b.size(), dim);

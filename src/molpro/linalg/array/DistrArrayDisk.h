@@ -120,16 +120,6 @@ public:
   //! Close access to the storage on disk, buffer is flushed to disk. Assume collective, but not all implementations
   //! might require that.
   virtual void close_access() = 0;
-  void allocate_buffer() override;
-  /*!
-   * @brief  Uses a provided buffer.
-   *
-   * If a buffer has already been allocated than its content is copied into the new buffer. Any old LocalBuffer
-   * instances will still be using the old buffer.
-   *
-   * @param buffer memory view buffer to use.
-   */
-  void allocate_buffer(Span<value_type> buffer);
   bool empty() const override;
   //! Release the allocated buffer. @note buffer is not flushed.
   void free_buffer() override;

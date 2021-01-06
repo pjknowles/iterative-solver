@@ -35,42 +35,6 @@ DistrArrayMPI3::~DistrArrayMPI3() {
     DistrArrayMPI3::free_buffer();
 }
 
-void DistrArrayMPI3::allocate_buffer() {
-  if (!empty())
-    return;
-  if (!m_distribution)
-    error("Cannot allocate an array without distribution");
-  int rank;
-  MPI_Comm_rank(m_communicator, &rank);
-  index_type lo, hi;
-  std::tie(lo, hi) = m_distribution->range(rank);
-  MPI_Aint n = hi - lo;
-  double* base = nullptr;
-  int size_of_type = sizeof(value_type);
-  n *= size_of_type;
-  MPI_Win_allocate(n, size_of_type, MPI_INFO_NULL, m_communicator, &base, &m_win);
-  MPI_Win_lock_all(0, m_win);
-  m_allocated = true;
-}
-
-void DistrArrayMPI3::allocate_buffer(Span<value_type> buffer) {
-  if (!empty())
-    return;
-  if (!m_distribution)
-    error("Cannot allocate an array without distribution");
-  int rank;
-  MPI_Comm_rank(m_communicator, &rank);
-  index_type lo, hi;
-  std::tie(lo, hi) = m_distribution->range(rank);
-  MPI_Aint n = hi - lo;
-  if (buffer.size() < n)
-    error("Specified external buffer is too small");
-  int size_of_type = sizeof(value_type);
-  n *= size_of_type;
-  MPI_Win_create(&buffer[0], n, size_of_type, MPI_INFO_NULL, m_communicator, &m_win);
-  MPI_Win_lock_all(0, m_win);
-  m_allocated = true;
-}
 
 bool DistrArrayMPI3::empty() const { return !m_allocated; }
 
@@ -78,7 +42,6 @@ DistrArrayMPI3::DistrArrayMPI3(const DistrArrayMPI3& source)
     : DistrArray(source.size(), source.communicator()),
       m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
   if (!source.empty()) {
-    DistrArrayMPI3::allocate_buffer();
     DistrArray::copy(source);
   }
 }
@@ -86,7 +49,6 @@ DistrArrayMPI3::DistrArrayMPI3(const DistrArrayMPI3& source)
 DistrArrayMPI3::DistrArrayMPI3(const DistrArray& source)
     : DistrArray(source), m_distribution(std::make_unique<Distribution>(source.distribution())) {
   if (!source.empty()) {
-    DistrArrayMPI3::allocate_buffer();
     DistrArray::copy(source);
   }
 }
@@ -105,7 +67,6 @@ DistrArrayMPI3& DistrArrayMPI3::operator=(const DistrArrayMPI3& source) {
     DistrArrayMPI3 t{source};
     swap(*this, t);
   } else {
-    allocate_buffer();
     copy(source);
   }
   return *this;

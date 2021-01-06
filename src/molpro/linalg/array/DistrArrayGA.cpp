@@ -33,7 +33,6 @@ DistrArrayGA::DistrArrayGA(const DistrArrayGA &source)
       m_comm_size(source.m_comm_size), m_ga_chunk(source.m_ga_chunk),
       m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
   if (!source.empty()) {
-    DistrArrayGA::allocate_buffer();
     DistrArrayGA::copy(source);
   }
 }
@@ -54,7 +53,6 @@ DistrArrayGA &DistrArrayGA::operator=(const DistrArrayGA &source) {
     DistrArrayGA t{source};
     swap(*this, t);
   } else {
-    allocate_buffer();
     copy(source);
   }
   return *this;
@@ -88,35 +86,6 @@ bool DistrArrayGA::empty() const { return !m_ga_allocated; }
 
 void DistrArrayGA::error(const std::string &message) const { GA_Error(const_cast<char *>(message.c_str()), 1); }
 
-void DistrArrayGA::allocate_buffer() {
-  if (!empty())
-    return;
-  auto name = std::string{"DistrArrayGA::allocate_buffer"};
-  if (_ga_pgroups.find(m_communicator) == _ga_pgroups.end()) {
-    //  global processor ranks
-    int loc_size, glob_size, glob_rank;
-    MPI_Comm_size(m_communicator, &loc_size);
-    MPI_Comm_size(GA_MPI_Comm(), &glob_size);
-    MPI_Comm_rank(GA_MPI_Comm(), &glob_rank);
-    auto glob_ranks = std::vector<int>(loc_size);
-    MPI_Allgather(&glob_rank, 1, MPI_INT, glob_ranks.data(), 1, MPI_INT, m_communicator);
-    // create new GA processor group
-    m_ga_pgroup = GA_Pgroup_create(glob_ranks.data(), loc_size);
-    _ga_pgroups[m_communicator] = m_ga_pgroup;
-  } else
-    m_ga_pgroup = _ga_pgroups[m_communicator];
-  m_ga_handle = NGA_Create_handle();
-  NGA_Set_pgroup(m_ga_handle, m_ga_pgroup);
-  auto dims = (int)m_dimension;
-  NGA_Set_data(m_ga_handle, 1, &dims, C_DBL);
-  NGA_Set_array_name(m_ga_handle, (char *)"Array");
-  NGA_Set_chunk(m_ga_handle, &m_ga_chunk);
-  auto succ = GA_Allocate(m_ga_handle);
-  if (!succ)
-    error("Failed to allocate");
-  m_ga_allocated = true;
-  m_distribution = std::make_unique<Distribution>(make_distribution());
-}
 
 void DistrArrayGA::free_buffer() {
   if (!DistrArrayGA::empty()) {

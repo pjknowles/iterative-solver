@@ -48,7 +48,6 @@ TYPED_TEST_P(TestDistrArray, constructor_copy_allocated) {
   size_t dim = 100;
   double alpha = 1;
   TypeParam a{dim, mpi_comm};
-  a.allocate_buffer();
   a.fill(alpha);
   TypeParam b(a);
   auto proxy = lock.scope();
@@ -64,7 +63,6 @@ TYPED_TEST_P(TestDistrArray, copy_assignment_op_allocated) {
   double alpha = 1;
   double beta = 11;
   TypeParam a{dim, mpi_comm};
-  a.allocate_buffer();
   a.fill(alpha);
   TypeParam b{dim, mpi_comm};
   b = a;
@@ -91,7 +89,6 @@ TYPED_TEST_P(TestDistrArray, constructor_move_allocated) {
   size_t dim = 100;
   double alpha = 1;
   TypeParam &&a{dim, mpi_comm};
-  a.allocate_buffer();
   a.fill(alpha);
   TypeParam b(std::move(a));
   auto proxy = lock.scope();
@@ -107,7 +104,6 @@ TYPED_TEST_P(TestDistrArray, move_assignment_op_allocated) {
   double alpha = 1;
   double beta = 11;
   TypeParam &&a{dim, mpi_comm};
-  a.allocate_buffer();
   a.fill(alpha);
   TypeParam b{dim, mpi_comm};
   b = std::move(a);
@@ -125,8 +121,6 @@ TYPED_TEST_P(TestDistrArray, select_max_dot) {
   const size_t n = 5; // values to select
   TypeParam x{dim, mpi_comm};
   TypeParam y{dim, mpi_comm};
-  x.allocate_buffer();
-  y.allocate_buffer();
   y.fill(1);
   int rank, comm_size;
   MPI_Comm_rank(mpi_comm, &rank);
@@ -176,17 +170,7 @@ TYPED_TEST_P(DistArrayBasicF, empty) {
   TypeParam::sync();
 }
 
-TYPED_TEST_P(DistArrayBasicF, allocate_buffer) {
-  TypeParam::allocate_buffer();
-  {
-    auto l = this->lock.scope();
-    ASSERT_FALSE(TypeParam::empty());
-  }
-  TypeParam::sync();
-}
-
 TYPED_TEST_P(DistArrayBasicF, zero) {
-  TypeParam::allocate_buffer();
   TypeParam::zero();
   TypeParam::sync();
   {
@@ -202,7 +186,6 @@ class DistArrayBasicRMAF : public DistArrayInitialization<Array>, public ::testi
 TYPED_TEST_SUITE_P(DistArrayBasicRMAF);
 
 TYPED_TEST_P(DistArrayBasicRMAF, vec) {
-  TypeParam::allocate_buffer();
   TypeParam::zero();
   TypeParam::sync();
   {
@@ -215,7 +198,6 @@ TYPED_TEST_P(DistArrayBasicRMAF, vec) {
 }
 
 TYPED_TEST_P(DistArrayBasicRMAF, get) {
-  TypeParam::allocate_buffer();
   TypeParam::zero();
   TypeParam::sync();
   {
@@ -234,7 +216,6 @@ TYPED_TEST_P(DistArrayBasicRMAF, get) {
 }
 
 TYPED_TEST_P(DistArrayBasicRMAF, put) {
-  TypeParam::allocate_buffer();
   {
     auto l = this->lock.scope();
     auto range = std::vector<double>(this->dim);
@@ -247,7 +228,6 @@ TYPED_TEST_P(DistArrayBasicRMAF, put) {
 }
 
 TYPED_TEST_P(DistArrayBasicF, fill) {
-  TypeParam::allocate_buffer();
   TypeParam::zero();
   TypeParam::sync();
   auto ref_values = std::vector<double>(this->dim, 0.);
@@ -275,7 +255,6 @@ public:
   DistrArrayRangeF() : Array((size_t)dim, mpi_comm), lock(mpi_comm), p_rank(0), p_size(0) {
     MPI_Comm_rank(mpi_comm, &p_rank);
     MPI_Comm_size(mpi_comm, &p_size);
-    Array::allocate_buffer();
     values.resize(dim);
     std::iota(values.begin(), values.end(), 1.);
     auto buffer = Array::local_buffer();
@@ -504,8 +483,6 @@ public:
   DistrArrayCollectiveLinAlgF() : lock(mpi_comm), p_rank(0), p_size(0), a(dim, mpi_comm), b(dim, mpi_comm) {
     MPI_Comm_rank(mpi_comm, &p_rank);
     MPI_Comm_size(mpi_comm, &p_size);
-    a.allocate_buffer();
-    b.allocate_buffer();
     range_alpha.resize(dim);
     range_beta.resize(dim);
     std::iota(range_alpha.begin(), range_alpha.end(), 0);
@@ -721,7 +698,7 @@ TYPED_TEST_P(DistrArrayCollectiveLinAlgF, divide_overwrite_positive) {
   this->a.sync();
 }
 
-REGISTER_TYPED_TEST_SUITE_P(DistArrayBasicF, size, empty, allocate_buffer, zero, fill);
+REGISTER_TYPED_TEST_SUITE_P(DistArrayBasicF, size, empty, zero, fill);
 REGISTER_TYPED_TEST_SUITE_P(DistArrayBasicRMAF, vec, get, put);
 REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeRMAF, gather, scatter, scatter_acc, at);
 REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeMinMaxF, min_loc_n, min_loc_n_reverse, max_n, min_abs_n, max_abs_n);

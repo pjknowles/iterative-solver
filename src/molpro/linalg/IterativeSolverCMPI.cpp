@@ -123,7 +123,7 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
     rr.emplace_back(n, comm);
     auto rrrange = rr.back().distribution().range(mpi_rank);
     auto rrn = rrrange.second - rrrange.first;
-    rr.back().allocate_buffer(Span<Rvector::value_type>(&const_cast<double*>(rhs)[root * n + rrrange.first], rrn));
+//    rr.back().allocate_buffer(Span<Rvector::value_type>(&const_cast<double*>(rhs)[root * n + rrrange.first], rrn));
   }
   instances.emplace(
       Instance{molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector, Pvector>(algorithm, "")
@@ -195,11 +195,11 @@ extern "C" size_t IterativeSolverAddValue(double value, double* parameters, doub
   Rvector ccc(instance.dimension, ccomm);
   auto ccrange = ccc.distribution().range(mpi_rank);
   auto ccn = ccrange.second - ccrange.first;
-  ccc.allocate_buffer(Span<typename Rvector::value_type>(&parameters[ccrange.first], ccn));
+//  ccc.allocate_buffer(Span<typename Rvector::value_type>(&parameters[ccrange.first], ccn));
   Rvector ggg(instance.dimension, ccomm);
   auto ggrange = ggg.distribution().range(mpi_rank);
   auto ggn = ggrange.second - ggrange.first;
-  ggg.allocate_buffer(Span<typename Rvector::value_type>(&action[ggrange.first], ggn));
+//  ggg.allocate_buffer(Span<typename Rvector::value_type>(&action[ggrange.first], ggn));
   size_t working_set_size =
       dynamic_cast<molpro::linalg::itsolv::Optimize<Rvector, Qvector, Pvector>*>(instance.solver.get())
               ->add_value(ccc, value, ggg)
@@ -254,13 +254,13 @@ extern "C" size_t IterativeSolverAddVector(size_t buffer_size, double* parameter
     cc.emplace_back(instance.dimension, ccomm);
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
-    cc.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
+//    cc.back().allocate_buffer(
+//        Span<typename Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
     gg.emplace_back(instance.dimension, ccomm);
     auto ggrange = gg.back().distribution().range(mpi_rank);
     auto ggn = ggrange.second - ggrange.first;
-    gg.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
+//    gg.back().allocate_buffer(
+//        Span<typename Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
   }
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Update");
@@ -299,13 +299,13 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
     cc.emplace_back(instance.dimension, ccomm);
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
-    cc.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
+//    cc.back().allocate_buffer(
+//        Span<typename Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
     gg.emplace_back(instance.dimension, ccomm);
     auto ggrange = gg.back().distribution().range(mpi_rank);
     auto ggn = ggrange.second - ggrange.first;
-    gg.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
+//    gg.back().allocate_buffer(
+//        Span<typename Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
   }
   std::vector<int> croots;
   for (int i = 0; i < nroot; i++) {
@@ -347,13 +347,13 @@ extern "C" int IterativeSolverEndIteration(size_t buffer_size, double* solution,
     cc.emplace_back(instance.dimension, ccomm);
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
-    cc.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&solution[root * instance.dimension + ccrange.first], ccn));
+//    cc.back().allocate_buffer(
+//        Span<typename Rvector::value_type>(&solution[root * instance.dimension + ccrange.first], ccn));
     gg.emplace_back(instance.dimension, ccomm);
     auto ggrange = gg.back().distribution().range(mpi_rank);
     auto ggn = ggrange.second - ggrange.first;
-    gg.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&residual[root * instance.dimension + ggrange.first], ggn));
+//    gg.back().allocate_buffer(
+//        Span<typename Rvector::value_type>(&residual[root * instance.dimension + ggrange.first], ggn));
   }
   if (instance.prof != nullptr)
     instance.prof->start("EndIter:Call");
@@ -392,11 +392,11 @@ extern "C" size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_
     cc.emplace_back(instance.dimension, ccomm);
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
-    cc.back().allocate_buffer(Span<Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
+//    cc.back().allocate_buffer(Span<Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
     gg.emplace_back(instance.dimension, ccomm);
     auto ggrange = gg.back().distribution().range(mpi_rank);
     auto ggn = ggrange.second - ggrange.first;
-    gg.back().allocate_buffer(Span<Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
+//    gg.back().allocate_buffer(Span<Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
   }
   std::vector<Pvector> Pvectors;
   Pvectors.reserve(nP);
@@ -480,13 +480,13 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
     cc.emplace_back(instance.dimension, ccomm);
     auto ccrange = cc.back().distribution().range(mpi_rank);
     auto ccn = ccrange.second - ccrange.first;
-    cc.back().allocate_buffer(
-        Span<Rvector::value_type>(&const_cast<double*>(solution)[root * instance.dimension + ccrange.first], ccn));
+//    cc.back().allocate_buffer(
+//        Span<Rvector::value_type>(&const_cast<double*>(solution)[root * instance.dimension + ccrange.first], ccn));
     gg.emplace_back(instance.dimension, ccomm);
     auto ggrange = gg.back().distribution().range(mpi_rank);
     auto ggn = ggrange.second - ggrange.first;
-    gg.back().allocate_buffer(
-        Span<Rvector::value_type>(&const_cast<double*>(residual)[root * instance.dimension + ggrange.first], ggn));
+//    gg.back().allocate_buffer(
+//        Span<Rvector::value_type>(&const_cast<double*>(residual)[root * instance.dimension + ggrange.first], ggn));
   }
   auto result = instance.solver->suggest_p(molpro::linalg::itsolv::cwrap(cc), molpro::linalg::itsolv::cwrap(gg),
                                            maximumNumber, threshold);

@@ -115,7 +115,6 @@ TEST_F(DistrArrayHDF5_SetUp, compatible) {
 TEST_F(DistrArrayHDF5_SetUp, constructor_copy_from_distr_array) {
   const double val = 0.5;
   auto a_mem = molpro::linalg::array::DistrArrayMPI3(size, mpi_comm);
-  a_mem.allocate_buffer();
   a_mem.fill(val);
   auto a_disk = DistrArrayHDF5{a_mem, fhandle_n1};
   LockMPI3 lock{mpi_comm};
@@ -178,7 +177,6 @@ TEST_F(DistrArrayHDF5_Fixture, allocate_buffer_flush) {
   const double val = 11.;
   const double zero = 0.;
   a->fill(zero);
-  a->allocate_buffer();
   LockMPI3 lock{mpi_comm};
   {
     auto l = lock.scope();

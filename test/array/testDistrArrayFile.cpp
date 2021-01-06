@@ -83,7 +83,6 @@ TEST_F(DistrArrayFile_Fixture, constructor_copy) {
 TEST(DistrArrayFile, constructor_copy_from_distr_array) {
   const double val = 0.5;
   auto a_mem = molpro::linalg::array::DistrArrayMPI3(100, mpi_comm);
-  a_mem.allocate_buffer();
   a_mem.fill(val);
   auto a_disk = DistrArrayFile{a_mem};
   LockMPI3 lock{mpi_comm};

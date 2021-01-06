@@ -23,7 +23,6 @@ DistrArrayDisk::DistrArrayDisk(const DistrArrayDisk& source)
     : DistrArray(source),
       m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
   if (source.m_allocated) {
-    DistrArrayDisk::allocate_buffer();
     DistrArray::copy(source);
   }
 }
@@ -61,38 +60,6 @@ bool DistrArrayDisk::LocalBufferDisk::is_snapshot() { return !m_snapshot_buffer.
 DistrArrayDisk::LocalBufferDisk::~LocalBufferDisk() {
   if (m_dump)
     m_source.put(start(), start() + size(), m_buffer);
-}
-
-void DistrArrayDisk::allocate_buffer() {
-  if (m_allocated)
-    return;
-  auto rank = mpi_rank(communicator());
-  index_type lo, hi;
-  std::tie(lo, hi) = distribution().range(rank);
-  size_t sz = hi - lo;
-  if (m_owned_buffer.size() < sz)
-    m_owned_buffer.resize(sz);
-  m_view_buffer = Span<value_type>(&m_owned_buffer[0], m_owned_buffer.size());
-  m_allocated = true;
-}
-
-void DistrArrayDisk::allocate_buffer(Span<value_type> buffer) {
-  auto rank = mpi_rank(communicator());
-  index_type lo, hi;
-  std::tie(lo, hi) = distribution().range(rank);
-  size_t sz = hi - lo;
-  if (buffer.size() < sz)
-    error("provided buffer is too small");
-  if (m_allocated) {
-    std::copy(begin(m_view_buffer), end(m_view_buffer), begin(buffer));
-    free_buffer();
-  }
-  swap(m_view_buffer, buffer);
-  m_allocated = true;
-  if (!m_owned_buffer.empty()) {
-    m_owned_buffer.clear();
-    m_owned_buffer.shrink_to_fit();
-  }
 }
 
 void DistrArrayDisk::free_buffer() {

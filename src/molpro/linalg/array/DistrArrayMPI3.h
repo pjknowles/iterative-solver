@@ -56,15 +56,6 @@ public:
 
   friend void swap(DistrArrayMPI3 &a1, DistrArrayMPI3 &a2) noexcept;
   void sync() const override;
-  void allocate_buffer() override;
-  /*!
-   * @brief Use an external buffer for the local section of the array.
-   *
-   * The buffer must be >= size of local array section
-   *
-   * @param buffer external buffer
-   */
-  void allocate_buffer(Span<value_type> buffer);
   void free_buffer() override;
   bool empty() const override;
 

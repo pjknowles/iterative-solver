@@ -19,7 +19,7 @@ TEST(DistrArrayMPI3, allocate_buffer_external) {
   auto buffer = std::vector<double>(dim);
   LockMPI3 lock(mpi_comm);
   auto a = DistrArrayMPI3(dim, mpi_comm);
-  a.allocate_buffer({&buffer[0], buffer.size()});
+//  a.allocate_buffer({&buffer[0], buffer.size()});
   {
     auto l = lock.scope();
     ASSERT_FALSE(a.empty());

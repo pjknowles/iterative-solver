@@ -31,7 +31,7 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
 }
 
 DistrArrayFile::DistrArrayFile(const DistrArrayFile& source)
-    : DistrArrayDisk(source), m_dir(source.m_dir), m_file(make_file()) {
+    : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator(), source.m_dir) {
   DistrArrayFile::copy(source);
 }
 
@@ -78,11 +78,6 @@ std::fstream DistrArrayFile::make_file() {
   unlink(file_name.c_str());
   return file;
 }
-
-void DistrArrayFile::open_access() {}
-void DistrArrayFile::close_access() {}
-
-void DistrArrayFile::erase() {}
 
 DistrArray::value_type DistrArrayFile::at(DistrArray::index_type ind) const {
   value_type val;

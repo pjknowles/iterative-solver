@@ -37,7 +37,6 @@ public:
   //! swap content of two arrays. Not collective.
   friend void swap(DistrArrayGA &a1, DistrArrayGA &a2) noexcept;
   void sync() const override;
-  void free_buffer() override;
   bool empty() const override;
 
 protected:

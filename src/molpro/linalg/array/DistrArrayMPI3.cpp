@@ -31,8 +31,11 @@ DistrArrayMPI3::DistrArrayMPI3(std::unique_ptr<Distribution> distribution, MPI_C
 }
 
 DistrArrayMPI3::~DistrArrayMPI3() {
-  if (m_allocated)
-    DistrArrayMPI3::free_buffer();
+  if (m_allocated) {
+    MPI_Win_unlock_all(m_win);
+    MPI_Win_free(&m_win);
+    m_allocated = false;
+  }
 }
 
 
@@ -63,7 +66,6 @@ DistrArrayMPI3& DistrArrayMPI3::operator=(const DistrArrayMPI3& source) {
   if (this == &source)
     return *this;
   if (source.empty() || empty() || !compatible(source)) {
-    free_buffer();
     DistrArrayMPI3 t{source};
     swap(*this, t);
   } else {
@@ -85,14 +87,6 @@ void swap(DistrArrayMPI3& a1, DistrArrayMPI3& a2) noexcept {
   swap(a1.m_distribution, a2.m_distribution);
   swap(a1.m_allocated, a2.m_allocated);
   swap(a1.m_win, a2.m_win);
-}
-
-void DistrArrayMPI3::free_buffer() {
-  if (m_allocated) {
-    MPI_Win_unlock_all(m_win);
-    MPI_Win_free(&m_win);
-    m_allocated = false;
-  }
 }
 
 void DistrArrayMPI3::sync() const {

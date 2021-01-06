@@ -113,8 +113,6 @@ public:
   size_t size() const { return m_dimension; };
   //! Checks that arrays are of the same dimensionality
   bool compatible(const DistrArray &other) const;
-  //! frees the buffer
-  virtual void free_buffer() = 0;
   //! checks if array has been allocated
   virtual bool empty() const;
 

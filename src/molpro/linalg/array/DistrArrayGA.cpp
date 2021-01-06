@@ -49,7 +49,6 @@ DistrArrayGA &DistrArrayGA::operator=(const DistrArrayGA &source) {
   if (this == &source)
     return *this;
   if (source.empty() || empty() || !compatible(source)) {
-    free_buffer();
     DistrArrayGA t{source};
     swap(*this, t);
   } else {
@@ -85,14 +84,6 @@ DistrArrayGA::~DistrArrayGA() {
 bool DistrArrayGA::empty() const { return !m_ga_allocated; }
 
 void DistrArrayGA::error(const std::string &message) const { GA_Error(const_cast<char *>(message.c_str()), 1); }
-
-
-void DistrArrayGA::free_buffer() {
-  if (!DistrArrayGA::empty()) {
-    GA_Destroy(m_ga_handle);
-    m_ga_allocated = false;
-  }
-}
 
 void DistrArrayGA::sync() const {
   auto name = std::string{"DistrArrayGA::sync"};

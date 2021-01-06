@@ -121,8 +121,6 @@ public:
   //! might require that.
   virtual void close_access() = 0;
   bool empty() const override;
-  //! Release the allocated buffer. @note buffer is not flushed.
-  void free_buffer() override;
   //! Writes the memory view buffer.
   virtual void flush();
   //! Erase the array from disk.

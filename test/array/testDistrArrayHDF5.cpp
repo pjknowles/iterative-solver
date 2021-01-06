@@ -193,7 +193,6 @@ TEST_F(DistrArrayHDF5_Fixture, allocate_buffer_flush) {
   a->sync();
   a->flush();
   a->sync();
-  a->free_buffer();
   vec = a->vec();
   {
     auto l = lock.scope();

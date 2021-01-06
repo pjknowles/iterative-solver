@@ -62,13 +62,6 @@ DistrArrayDisk::LocalBufferDisk::~LocalBufferDisk() {
     m_source.put(start(), start() + size(), m_buffer);
 }
 
-void DistrArrayDisk::free_buffer() {
-  m_view_buffer = Span<value_type>{};
-  m_owned_buffer.clear();
-  m_owned_buffer.shrink_to_fit();
-  m_allocated = false;
-}
-
 void DistrArrayDisk::flush() {
   if (!m_allocated)
     return;

@@ -51,6 +51,12 @@ DistrArrayFile& DistrArrayFile::operator=(DistrArrayFile&& source) noexcept {
   return *this;
 }
 
+DistrArrayFile DistrArrayFile::CreateTempCopy(const DistrArray& source, const std::string& directory) {
+  DistrArrayFile t(std::make_unique<Distribution>(source.distribution()), source.communicator(), directory);
+  t.copy(source);
+  return t;
+}
+
 void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
   using std::swap;
   swap(x.m_dimension, y.m_dimension);

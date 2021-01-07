@@ -70,8 +70,8 @@ public:
   Task(Task &&other) = default;
 
   template <class Func, typename... Args>
-  static Task create(Func &&f, Args &&... args) {
-    return {std::async(std::forward<Func>(f), std::forward<Args>(args)...)};
+  static Task create(Func &&f, Args &&...args) {
+    return {std::async(std::launch::async, std::forward<Func>(f), std::forward<Args>(args)...)};
   }
 
   ~Task() { wait(); }

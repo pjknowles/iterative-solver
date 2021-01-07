@@ -87,69 +87,64 @@ std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer(cons
 }
 
 std::unique_ptr<Task<void>> DistrArrayDisk::tput(index_type lo, index_type hi, const value_type* data) {
-  return std::make_unique<Task<void>>(
-      Task<void>::create(std::launch::async, [lo, hi, data, this]() { this->put(lo, hi, data); }));
+  return std::make_unique<Task<void>>(Task<void>::create([lo, hi, data, this]() { this->put(lo, hi, data); }));
 }
 
 std::unique_ptr<Task<void>> DistrArrayDisk::tget(index_type lo, index_type hi, value_type* buf) {
-  return std::make_unique<Task<void>>(
-      Task<void>::create(std::launch::async, [lo, hi, buf, this]() { this->get(lo, hi, buf); }));
+  return std::make_unique<Task<void>>(Task<void>::create([lo, hi, buf, this]() { this->get(lo, hi, buf); }));
 }
 
 std::unique_ptr<Task<std::vector<DistrArrayDisk::value_type>>> DistrArrayDisk::tget(index_type lo, index_type hi) {
   return std::make_unique<Task<std::vector<value_type>>>(
-      Task<std::vector<value_type>>::create(std::launch::async, [lo, hi, this]() { return this->get(lo, hi); }));
+      Task<std::vector<value_type>>::create([lo, hi, this]() { return this->get(lo, hi); }));
 }
 
 std::unique_ptr<Task<DistrArrayDisk::value_type>> DistrArrayDisk::tat(index_type ind) const {
-  return std::make_unique<Task<value_type>>(Task<value_type>::create(
-      std::launch::async, [ ind, this ]() -> auto { return this->at(ind); }));
+  return std::make_unique<Task<value_type>>(
+      Task<value_type>::create([ ind, this ]() -> auto { return this->at(ind); }));
 }
 
 std::unique_ptr<Task<void>> DistrArrayDisk::tset(index_type ind, value_type val) {
-  return std::make_unique<Task<void>>(Task<void>::create(
-      std::launch::async, [ ind, val, this ]() -> auto { return this->set(ind, val); }));
+  return std::make_unique<Task<void>>(Task<void>::create([ ind, val, this ]() -> auto { return this->set(ind, val); }));
 }
 
 std::unique_ptr<Task<void>> DistrArrayDisk::tacc(DistrArray::index_type lo, DistrArray::index_type hi,
                                                  const DistrArray::value_type* data) {
-  return std::make_unique<Task<void>>(Task<void>::create(
-      std::launch::async, [ lo, hi, data, this ]() -> auto { return this->acc(lo, hi, data); }));
+  return std::make_unique<Task<void>>(
+      Task<void>::create([ lo, hi, data, this ]() -> auto { return this->acc(lo, hi, data); }));
 }
 
 std::unique_ptr<Task<std::vector<DistrArrayDisk::value_type>>>
 DistrArrayDisk::tgather(const std::vector<index_type>& indices) const {
-  return std::make_unique<Task<std::vector<value_type>>>(Task<std::vector<value_type>>::create(
-      std::launch::async, [&indices, this ]() -> auto { return this->gather(indices); }));
+  return std::make_unique<Task<std::vector<value_type>>>(
+      Task<std::vector<value_type>>::create([&indices, this ]() -> auto { return this->gather(indices); }));
 }
 
 std::unique_ptr<Task<void>> DistrArrayDisk::tscatter(const std::vector<index_type>& indices,
                                                      const std::vector<value_type>& data) {
-  return std::make_unique<Task<void>>(Task<void>::create(
-      std::launch::async, [&indices, &data, this ]() -> auto { return this->scatter(indices, data); }));
+  return std::make_unique<Task<void>>(
+      Task<void>::create([&indices, &data, this ]() -> auto { return this->scatter(indices, data); }));
 }
 
 std::unique_ptr<Task<void>> DistrArrayDisk::tscatter_acc(std::vector<index_type>& indices,
                                                          const std::vector<value_type>& data) {
-  return std::make_unique<Task<void>>(Task<void>::create(
-      std::launch::async, [&indices, &data, this ]() -> auto { return this->scatter_acc(indices, data); }));
+  return std::make_unique<Task<void>>(
+      Task<void>::create([&indices, &data, this ]() -> auto { return this->scatter_acc(indices, data); }));
 }
 
 std::unique_ptr<Task<std::vector<DistrArrayDisk::value_type>>> DistrArrayDisk::tvec() const {
-  return std::make_unique<Task<std::vector<value_type>>>(Task<std::vector<value_type>>::create(
-      std::launch::async, [this]() -> auto { return this->vec(); }));
+  return std::make_unique<Task<std::vector<value_type>>>(
+      Task<std::vector<value_type>>::create([this]() -> auto { return this->vec(); }));
 }
 
 std::unique_ptr<Task<std::unique_ptr<DistrArray::LocalBuffer>>> DistrArrayDisk::tlocal_buffer() {
   return std::make_unique<Task<std::unique_ptr<DistrArray::LocalBuffer>>>(
-      Task<std::unique_ptr<DistrArray::LocalBuffer>>::create(
-          std::launch::async, [this]() -> auto { return this->local_buffer(); }));
+      Task<std::unique_ptr<DistrArray::LocalBuffer>>::create([this]() -> auto { return this->local_buffer(); }));
 }
 
 std::unique_ptr<Task<std::unique_ptr<const DistrArray::LocalBuffer>>> DistrArrayDisk::tlocal_buffer() const {
   return std::make_unique<Task<std::unique_ptr<const DistrArray::LocalBuffer>>>(
-      Task<std::unique_ptr<const DistrArray::LocalBuffer>>::create(
-          std::launch::async, [this]() -> auto { return this->local_buffer(); }));
+      Task<std::unique_ptr<const DistrArray::LocalBuffer>>::create([this]() -> auto { return this->local_buffer(); }));
 }
 
 } // namespace molpro::linalg::array

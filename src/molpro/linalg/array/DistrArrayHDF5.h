@@ -33,8 +33,6 @@ public:
   static constexpr int dataset_default = -1; //!< default value for dataset id
   const std::string dataset_name = "array";  //!< name of HDF5 dataset where array is stored
 
-  //! Constructor for a blank object. The blank is only useful as a temporary. Move a valid object inside the blank to
-  //! make it usable.
   DistrArrayHDF5() = delete;
   DistrArrayHDF5(const DistrArrayHDF5 &source) = delete;
   //! Takes ownership of source content.
@@ -97,7 +95,6 @@ public:
 
   friend void swap(DistrArrayHDF5 &x, DistrArrayHDF5 &y) noexcept;
 
-  //! Flushes the buffer if file access is open
   ~DistrArrayHDF5() override;
 
   bool compatible(const DistrArrayHDF5 &source) const;

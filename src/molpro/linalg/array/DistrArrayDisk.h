@@ -5,11 +5,6 @@
 #include "molpro/linalg/array/Span.h"
 
 namespace molpro::linalg::array {
-namespace util {
-template <typename Result>
-class Task;
-
-} // namespace util
 /*!
  * @brief Distributed array located primarily on disk
  *
@@ -26,35 +21,16 @@ class Task;
  *
  * More efficient linear algebra operations are implemented using ChunkedLocalBuffer.
  *
- *
- * IO can be done with a thread
- * ----------------------------
- *
- * Some RMA operations have a threaded implementation their names are prefixed with "t", e.g tput(), tget(). The
- * underlying IO operation is done in a separate thread allowing user to overlap it with computation. The separate
- * thread is managed by util::Task.
- *
- * tlocal_buffer() also uses a thread for loading the data from disk. If the LocalBuffer uses the memory view than the
- * task will be completed immediately.
- *
- * @warning Mixing threaded read and write operations can lead to undefined behaviour
- * @warning DistrArrayDisk is **NOT** thread safe by itself, even though it uses threads for I/O. That is, multiple
- * threads calling DistrArrayDisk routines can lead to undefined behavior.
+ * IO can be done in a separate thread using util::Task.
  *
  * @code{.cpp}
+ * #include <molpro/linalg/array/util.h>
  * auto da = DistrArrayDisk{...};
- * da.open_access();
- * ...
- * da.put(lo,hi, data); // Normal put as in base class is guaranteed to finish
- * da.tput(lo, hi, data); // same as put, because DiskIO syncs on destruction
- * auto t = da.tput(); // does I/O in a thread
+ * da.put(lo,hi, data); // Normal put same as in the base class is guaranteed to finish
+ * auto t = util::Task::create([&](){da.put(lo, hi, data)}); // does I/O in a new thread
  * // do something time consuming
  * t.wait(); // wait for the thread to finish the I/O
  * @endcode
- *
- * @code{.cpp}
- * @endcode
- *
  *
  */
 class DistrArrayDisk : public DistrArray {
@@ -105,29 +81,6 @@ public:
   [[nodiscard]] std::unique_ptr<const LocalBuffer> local_buffer(const span::Span<value_type> &buffer) const;
   [[nodiscard]] std::unique_ptr<LocalBufferChunked> local_buffer_chunked();
   [[nodiscard]] std::unique_ptr<const LocalBufferChunked> local_buffer_chunked() const;
-
-  //! Writes section of array to disk in a separate thread, bypassing the memory view.
-  //! @return Task manager that can test and/or wait for completion
-  std::unique_ptr<util::Task<void>> tput(index_type lo, index_type hi, const value_type *data);
-  /*!
-   * @brief Reads section of array from disk in a separate thread
-   * @warning Reading and writing bypasses the memory-view, the buffer should be flushed before
-   * @return Task manager that can test and/or wait for completion
-   */
-  std::unique_ptr<util::Task<void>> tget(index_type lo, index_type hi, value_type *buf);
-  std::unique_ptr<util::Task<std::vector<value_type>>> tget(index_type lo, index_type hi);
-  std::unique_ptr<util::Task<value_type>> tat(index_type ind) const;
-  std::unique_ptr<util::Task<void>> tset(index_type ind, value_type val);
-  std::unique_ptr<util::Task<void>> tacc(index_type lo, index_type hi, const value_type *data);
-  std::unique_ptr<util::Task<std::vector<value_type>>> tgather(const std::vector<index_type> &indices) const;
-  std::unique_ptr<util::Task<void>> tscatter(const std::vector<index_type> &indices,
-                                             const std::vector<value_type> &data);
-  std::unique_ptr<util::Task<void>> tscatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data);
-  std::unique_ptr<util::Task<std::vector<value_type>>> tvec() const;
-
-  //! Loads the local buffer in a separate thread
-  std::unique_ptr<util::Task<std::unique_ptr<LocalBuffer>>> tlocal_buffer();
-  std::unique_ptr<util::Task<std::unique_ptr<const LocalBuffer>>> tlocal_buffer() const;
 };
 
 double dot(const DistrArrayDisk &x, const DistrArrayDisk &y);

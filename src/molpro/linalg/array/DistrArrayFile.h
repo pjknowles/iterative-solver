@@ -5,7 +5,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "molpro/linalg/array/DistrArrayDisk.h"
+#include <molpro/linalg/array/DistrArrayDisk.h>
 
 namespace molpro::linalg::array {
 
@@ -28,9 +28,7 @@ protected:
   std::fstream make_file();
 
 public:
-  //! Constructor for a blank object. The blank is only useful as a temporary. Move a valid object inside the blank to
-  //! make it usable.
-  DistrArrayFile();
+  DistrArrayFile() = delete;
   DistrArrayFile(const DistrArrayFile &source);
   DistrArrayFile(DistrArrayFile &&source) noexcept;
   explicit DistrArrayFile(size_t dimension, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");

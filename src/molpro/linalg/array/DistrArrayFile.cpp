@@ -14,8 +14,6 @@ int mpi_size(MPI_Comm comm) {
 }
 } // namespace
 
-DistrArrayFile::DistrArrayFile() = default;
-
 DistrArrayFile::DistrArrayFile(DistrArrayFile&& source) noexcept
     : DistrArrayDisk(std::move(source)), m_dir(std::move(source.m_dir)), m_file(std::move(source.m_file)) {}
 

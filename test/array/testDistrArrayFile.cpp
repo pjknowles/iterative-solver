@@ -26,9 +26,8 @@ using ::testing::Pointwise;
 
 class DistrArrayFile_Fixture : public ::testing::Test {
 public:
-  DistrArrayFile_Fixture() = default;
-  void SetUp() override{
-    a = DistrArrayFile(size, mpi_comm);
+  DistrArrayFile_Fixture() : a(DistrArrayFile(size, mpi_comm)) {}
+  void SetUp() override {
     auto dist = a.distribution();
     MPI_Comm_rank(mpi_comm, &mpi_rank);
     MPI_Comm_size(mpi_comm, &mpi_size);
@@ -46,10 +45,6 @@ public:
   std::vector<int> chunks, displs;
   DistrArrayFile a;
 };
-
-TEST(DistrArrayFile, constructor_default) {
-  auto a = DistrArrayFile();
-}
 
 TEST(DistrArrayFile, constructor_size) {
   {
@@ -72,9 +67,9 @@ TEST_F(DistrArrayFile_Fixture, constructor_copy) {
   MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, w.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
   ScopeLock l{mpi_comm};
   EXPECT_THAT(v, Pointwise(DoubleEq(), w));
-//  b = a; // TODO operator=() not working yet
-//  b.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
-//  EXPECT_THAT(v, Pointwise(DoubleEq(), w));
+  //  b = a; // TODO operator=() not working yet
+  //  b.get(dist.range(mpi_rank).first, dist.range(mpi_rank).second, v.data());
+  //  EXPECT_THAT(v, Pointwise(DoubleEq(), w));
 }
 
 #ifdef LINEARALGEBRA_ARRAY_MPI3
@@ -112,7 +107,7 @@ TEST_F(DistrArrayFile_Fixture, assignment_move) {
   std::vector<double> v(size);
   std::iota(v.begin(), v.end(), 0.5);
   a.put(left, right, &(*(v.cbegin() + left)));
-  auto b = DistrArrayFile();
+  auto b = DistrArrayFile(1);
   b = std::move(a);
   std::vector<double> w(size, 0);
   b.get(left, right, &(*(w.begin() + left)));
@@ -125,17 +120,11 @@ TEST_F(DistrArrayFile_Fixture, assignment_move) {
 TEST(DistrArrayFile, compatible) {
   auto a = DistrArrayFile{100, mpi_comm};
   auto b = DistrArrayFile{1000, mpi_comm};
-  auto c = DistrArrayFile{};
   ScopeLock l{mpi_comm};
   EXPECT_TRUE(a.compatible(a));
   EXPECT_TRUE(b.compatible(b));
-  EXPECT_TRUE(c.compatible(c));
   EXPECT_FALSE(a.compatible(b));
-  EXPECT_FALSE(a.compatible(c));
-  EXPECT_FALSE(b.compatible(c));
   EXPECT_EQ(a.compatible(b), b.compatible(a));
-  EXPECT_EQ(b.compatible(c), c.compatible(b));
-  EXPECT_EQ(a.compatible(c), c.compatible(a));
 }
 
 TEST_F(DistrArrayFile_Fixture, writeread) {
@@ -153,7 +142,7 @@ TEST_F(DistrArrayFile_Fixture, accumulate) {
   std::vector<double> v(size), w(size), x(size), y(size);
   std::iota(v.begin(), v.end(), 0.5);
   std::iota(w.begin(), w.end(), 0.5);
-  std::transform(v.begin(), v.end(), w.begin(), x.begin(), [](auto& l, auto& r){return l + r;});
+  std::transform(v.begin(), v.end(), w.begin(), x.begin(), [](auto& l, auto& r) { return l + r; });
   a.put(left, right, &(*(v.cbegin() + left)));
   a.acc(left, right, &(*(w.begin() + left)));
   a.get(left, right, &(*(y.begin() + left)));
@@ -165,9 +154,9 @@ TEST_F(DistrArrayFile_Fixture, accumulate) {
 TEST_F(DistrArrayFile_Fixture, gather) {
   std::vector<double> v(size), w(size);
   int n = -2;
-  std::generate(v.begin(), v.end(), [&n]{ return n+=2; });
+  std::generate(v.begin(), v.end(), [&n] { return n += 2; });
   a.put(left, right, &(*(v.cbegin() + left)));
-  std::vector<DistrArrayFile::index_type> x(size/mpi_size);
+  std::vector<DistrArrayFile::index_type> x(size / mpi_size);
   std::iota(x.begin(), x.end(), left);
   auto tmp = a.gather(x);
   for (int i = 0; i < x.size(); i++) {
@@ -181,11 +170,11 @@ TEST_F(DistrArrayFile_Fixture, gather) {
 TEST_F(DistrArrayFile_Fixture, scatter) {
   std::vector<double> v(size, 0), w(size), y(size);
   int n = -2;
-  std::generate(w.begin(), w.end(), [&n]{ return n+=2; });
+  std::generate(w.begin(), w.end(), [&n] { return n += 2; });
   a.put(left, right, &(*(v.cbegin() + left)));
-  std::vector<DistrArrayFile::index_type> x(size/mpi_size);
+  std::vector<DistrArrayFile::index_type> x(size / mpi_size);
   std::iota(x.begin(), x.end(), left);
-  std::vector<double> tmp(size/mpi_size);
+  std::vector<double> tmp(size / mpi_size);
   for (int i = 0; i < x.size(); i++) {
     tmp[i] = w[i + left];
   }
@@ -200,11 +189,11 @@ TEST_F(DistrArrayFile_Fixture, scatter_acc) {
   std::vector<double> v(size), w(size), y(size);
   std::iota(v.begin(), v.end(), 0);
   int n = -2;
-  std::generate(w.begin(), w.end(), [&n]{ return n+=2; });
+  std::generate(w.begin(), w.end(), [&n] { return n += 2; });
   a.put(left, right, &(*(v.cbegin() + left)));
-  std::vector<DistrArrayFile::index_type> x(size/mpi_size);
+  std::vector<DistrArrayFile::index_type> x(size / mpi_size);
   std::iota(x.begin(), x.end(), left);
-  std::vector<double> tmp(size/mpi_size);
+  std::vector<double> tmp(size / mpi_size);
   for (int i = 0; i < x.size(); i++) {
     tmp[i] = v[i + left];
   }

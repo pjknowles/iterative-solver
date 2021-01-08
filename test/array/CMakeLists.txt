@@ -21,9 +21,14 @@ add_executable(test-${PROJECT_NAME}-ArrayHandler.exe testArrayHandler.cpp testAr
 target_link_libraries(test-${PROJECT_NAME}-ArrayHandler.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
 gtest_discover_tests(test-${PROJECT_NAME}-ArrayHandler.exe)
 
-add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp file_util.h
-        testUtil.cpp test_temp_file.cpp
-        )
+if(LINEARALGEBRA_ARRAY_HDF5)
+    add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp file_util.h testUtil.cpp test_temp_file.cpp
+            )
+else()
+    add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp file_util.h testUtil.cpp
+            )
+endif()
+
 target_link_libraries(test-${PROJECT_NAME}-array-util.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
 gtest_discover_tests(test-${PROJECT_NAME}-array-util.exe)
 

@@ -113,11 +113,11 @@ public:
     const auto& u = xspace->actionsq();
     //    this->m_errors.front() = std::sqrt(this->m_handlers->rr().dot(residual,residual));
     for (int a = 0; a < m_alpha.size(); a++) {
-      m_alpha[a] = (this->m_handlers->qr().dot(residual, q[a]) - this->m_handlers->qr().dot(residual, q[a + 1])) /
+      m_alpha[a] = (this->m_handlers->rq().dot(residual, q[a]) - this->m_handlers->rq().dot(residual, q[a + 1])) /
                    (H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1));
       //      std::cout << "alpha[" << a << "] = " << m_alpha[a] << std::endl;
-      this->m_handlers->qr().axpy(-m_alpha[a], u[a], residual);
-      this->m_handlers->qr().axpy(m_alpha[a], u[a + 1], residual);
+      this->m_handlers->rq().axpy(-m_alpha[a], u[a], residual);
+      this->m_handlers->rq().axpy(m_alpha[a], u[a + 1], residual);
     }
     return nwork > 0;
   }
@@ -142,12 +142,12 @@ public:
       const auto& u = xspace->actionsq();
 
       for (int a = m_alpha.size() - 1; a >= 0; a--) {
-        auto beta = -(this->m_handlers->qr().dot(z, u[a]) - this->m_handlers->qr().dot(z, u[a + 1])) /
+        auto beta = -(this->m_handlers->rq().dot(z, u[a]) - this->m_handlers->rq().dot(z, u[a + 1])) /
                     (H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1));
         //        std::cout << "alpha[" << a << "] = " << m_alpha[a] << std::endl;
         //        std::cout << "beta[" << a << "] = " << beta << std::endl;
-        this->m_handlers->qr().axpy(-m_alpha[a] + beta, q[a], z);
-        this->m_handlers->qr().axpy(+m_alpha[a] - beta, q[a + 1], z);
+        this->m_handlers->rq().axpy(-m_alpha[a] + beta, q[a], z);
+        this->m_handlers->rq().axpy(+m_alpha[a] - beta, q[a + 1], z);
       }
       this->m_handlers->rr().axpy(1, z, parameters.front());
     } else {

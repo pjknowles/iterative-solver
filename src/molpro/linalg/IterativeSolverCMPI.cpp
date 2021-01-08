@@ -14,6 +14,7 @@
 #endif
 
 #include <molpro/linalg/array/DistrArrayHDF5.h>
+#include <molpro/linalg/array/DistrArrayFile.h>
 #include <molpro/linalg/array/DistrArrayMPI3.h>
 #include <molpro/linalg/array/Span.h>
 #include <molpro/linalg/array/util/Distribution.h>
@@ -36,7 +37,12 @@ using molpro::linalg::itsolv::LinearEigensystemDavidson;
 using molpro::linalg::itsolv::LinearEquationsDavidson;
 
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
-using Qvector = molpro::linalg::array::DistrArrayMPI3;
+#ifdef LINEARALGEBRA_ARRAY_HDF5
+using Qvector = molpro::linalg::array::DistrArrayHDF5;
+#else
+using Qvector = molpro::linalg::array::DistrArrayFile;
+//using Qvector = molpro::linalg::array::DistrArrayMPI3;
+#endif
 using Pvector = std::map<size_t, double>;
 // instantiate the factory
 #include <molpro/linalg/itsolv/SolverFactory-implementation.h>

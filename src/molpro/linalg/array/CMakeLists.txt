@@ -7,7 +7,7 @@ endif()
 find_package(Threads)
 
 if (MPI AND LINEARALGEBRA_ARRAY_HDF5 AND NOT HDF5_IS_PARALLEL)
-    message(FATAL_ERROR "Parallel HDF5 is required when building LinearAlgebra with MPI on")
+    message(FATAL_ERROR "Parallel HDF5 is required when building LinearAlgebra with MPI and HDF5 on")
 endif ()
 
 LibraryManager_Append(${PROJECT_NAME}

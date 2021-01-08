@@ -6,8 +6,8 @@ cache:
 build100:
   tags:
     - linux-farm
-#  only:
-#    - schedules
+  only:
+    - schedules
   timeout: 60m
   script:
     - BUILDTYPE=Release

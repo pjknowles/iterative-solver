@@ -1,10 +1,12 @@
 if (MPI)
     set(HDF5_PREFER_PARALLEL ON)
 endif ()
-find_package(HDF5 REQUIRED COMPONENTS C)
+if (LINEARALGEBRA_ARRAY_HDF5)
+    find_package(HDF5 REQUIRED COMPONENTS C)
+endif()
 find_package(Threads)
 
-if (MPI AND NOT HDF5_IS_PARALLEL)
+if (MPI AND LINEARALGEBRA_ARRAY_HDF5 AND NOT HDF5_IS_PARALLEL)
     message(FATAL_ERROR "Parallel HDF5 is required when building LinearAlgebra with MPI on")
 endif ()
 

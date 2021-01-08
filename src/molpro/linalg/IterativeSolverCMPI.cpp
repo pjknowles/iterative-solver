@@ -13,7 +13,7 @@
 #include "ga.h"
 #endif
 
-#ifdef LINEARALGEBRA_ARRAY_GA
+#ifdef LINEARALGEBRA_ARRAY_HDF5
 #include <molpro/linalg/array/DistrArrayHDF5.h>
 #else
 #include <molpro/linalg/array/DistrArrayFile.h>

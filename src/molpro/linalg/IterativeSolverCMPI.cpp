@@ -41,7 +41,6 @@ using Rvector = molpro::linalg::array::DistrArrayMPI3;
 using Qvector = molpro::linalg::array::DistrArrayHDF5;
 #else
 using Qvector = molpro::linalg::array::DistrArrayFile;
-//using Qvector = molpro::linalg::array::DistrArrayMPI3;
 #endif
 using Pvector = std::map<size_t, double>;
 // instantiate the factory

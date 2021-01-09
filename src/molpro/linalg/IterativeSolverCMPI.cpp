@@ -195,30 +195,45 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
 
 extern "C" void IterativeSolverFinalize() { instances.pop(); }
 
-extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync) {
+std::vector<Rvector> CreateDistrArray(size_t nvec, double* data) {
   auto& instance = instances.top();
   MPI_Comm ccomm = instance.comm;
   int mpi_rank;
   MPI_Comm_rank(ccomm, &mpi_rank);
-  Rvector ccc(instance.dimension, ccomm);
-  auto ccrange = ccc.distribution().range(mpi_rank);
-  auto ccn = ccrange.second - ccrange.first;
-  ccc.allocate_buffer(Span<typename Rvector::value_type>(&parameters[ccrange.first], ccn));
-  Rvector ggg(instance.dimension, ccomm);
-  auto ggrange = ggg.distribution().range(mpi_rank);
-  auto ggn = ggrange.second - ggrange.first;
-  ggg.allocate_buffer(Span<typename Rvector::value_type>(&action[ggrange.first], ggn));
+  std::vector<Rvector> c;
+  c.reserve(nvec);
+  for (size_t ivec = 0; ivec < nvec; ivec++) {
+    c.emplace_back(instance.dimension, ccomm);
+    auto crange = c.back().distribution().range(mpi_rank);
+    auto clength = crange.second - crange.first;
+    c.back().allocate_buffer(
+        Span<typename Rvector::value_type>(&data[ivec * instance.dimension + crange.first], clength));
+  }
+  return c;
+}
+
+void synchronize(size_t nvec, std::vector<Rvector>& c, double* data) {
+  auto& instance = instances.top();
+  MPI_Comm ccomm = instance.comm;
+  for (size_t ivec = 0; ivec < nvec; ivec++) {
+    gather_all(c[ivec].distribution(), ccomm, &data[ivec * instance.dimension]);
+  }
+}
+
+extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync) {
+  auto& instance = instances.top();
+  auto ccc = CreateDistrArray(1, parameters);
+  auto ggg = CreateDistrArray(1, action);
   size_t working_set_size =
       dynamic_cast<molpro::linalg::itsolv::Optimize<Rvector, Qvector, Pvector>*>(instance.solver.get())
-              ->add_value(ccc, value, ggg)
+              ->add_value(ccc[0], value, ggg[0])
           ? 1
           : 0;
-  if (sync) { // throw an error if communicator was not passed?
-    gather_all(ccc.distribution(), ccomm, &parameters[0]);
-    gather_all(ggg.distribution(), ccomm, &action[0]);
+  if (sync) {
+    synchronize(1, ccc, parameters);
+    synchronize(1, ggg, action);
   }
   return working_set_size;
-  return 0;
 }
 
 void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
@@ -246,30 +261,14 @@ void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& 
 }
 
 extern "C" size_t IterativeSolverAddVector(size_t buffer_size, double* parameters, double* action, int sync) {
-  std::vector<Rvector> cc, gg;
   if (instances.empty())
     throw std::runtime_error("IterativeSolver not initialised properly");
   auto& instance = instances.top();
   if (instance.prof != nullptr)
     instance.prof->start("AddVector");
-  cc.reserve(buffer_size);
-  gg.reserve(buffer_size);
-  MPI_Comm ccomm = instance.comm;
-  int mpi_rank;
-  MPI_Comm_rank(ccomm, &mpi_rank);
   size_t working_set_size = instance.solver->working_set().size();
-  for (size_t root = 0; root < working_set_size; root++) {
-    cc.emplace_back(instance.dimension, ccomm);
-    auto ccrange = cc.back().distribution().range(mpi_rank);
-    auto ccn = ccrange.second - ccrange.first;
-    cc.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
-    gg.emplace_back(instance.dimension, ccomm);
-    auto ggrange = gg.back().distribution().range(mpi_rank);
-    auto ggn = ggrange.second - ggrange.first;
-    gg.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
-  }
+  auto cc = CreateDistrArray(working_set_size, parameters);
+  auto gg = CreateDistrArray(working_set_size, action);
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Update");
   working_set_size = instance.solver->add_vector(cc, gg);
@@ -278,43 +277,25 @@ extern "C" size_t IterativeSolverAddVector(size_t buffer_size, double* parameter
 
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Sync");
-  for (size_t root = 0; root < working_set_size; root++) {
-    if (sync) {
-      gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
-      gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
-    }
+  if (sync) {
+    synchronize(instance.solver->working_set().size(), cc, parameters);
+    synchronize(instance.solver->working_set().size(), gg, action);
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Sync");
-  // if (mpi_rank == 0)
-  //  instance.solver->report();
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector");
   return working_set_size;
 }
 
 extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameters, double* action, int sync) {
-  std::vector<Rvector> cc, gg;
+  if (instances.empty())
+    throw std::runtime_error("IterativeSolver not initialised properly");
   auto& instance = instances.top();
   if (instance.prof != nullptr)
     instance.prof->start("Solution");
-  cc.reserve(nroot);
-  gg.reserve(nroot);
-  MPI_Comm ccomm = instance.comm;
-  int mpi_rank;
-  MPI_Comm_rank(ccomm, &mpi_rank);
-  for (size_t root = 0; root < nroot; root++) {
-    cc.emplace_back(instance.dimension, ccomm);
-    auto ccrange = cc.back().distribution().range(mpi_rank);
-    auto ccn = ccrange.second - ccrange.first;
-    cc.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
-    gg.emplace_back(instance.dimension, ccomm);
-    auto ggrange = gg.back().distribution().range(mpi_rank);
-    auto ggn = ggrange.second - ggrange.first;
-    gg.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
-  }
+  auto cc = CreateDistrArray(nroot, parameters);
+  auto gg = CreateDistrArray(nroot, action);
   std::vector<int> croots;
   for (int i = 0; i < nroot; i++) {
     croots.push_back(*(roots + i));
@@ -327,42 +308,24 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
 
   if (instance.prof != nullptr)
     instance.prof->start("Solution:Sync");
-  for (size_t root = 0; root < nroot; root++) {
-    if (sync) {
-      gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
-      gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
-    }
+  if (sync) {
+    synchronize(nroot, cc, parameters);
+    synchronize(nroot, gg, action);
   }
   if (instance.prof != nullptr)
     instance.prof->stop("Solution:Sync");
-  // if (mpi_rank == 0)
-  //  instance.solver->report();
   if (instance.prof != nullptr)
     instance.prof->stop("Solution");
 }
 
 extern "C" int IterativeSolverEndIteration(size_t buffer_size, double* solution, double* residual, int sync) {
-  std::vector<Rvector> cc, gg;
+  if (instances.empty())
+    throw std::runtime_error("IterativeSolver not initialised properly");
   auto& instance = instances.top();
   if (instance.prof != nullptr)
     instance.prof->start("EndIter");
-  cc.reserve(buffer_size);
-  gg.reserve(buffer_size);
-  MPI_Comm ccomm = instance.comm;
-  int mpi_rank;
-  MPI_Comm_rank(ccomm, &mpi_rank);
-  for (size_t root = 0; root < buffer_size; root++) {
-    cc.emplace_back(instance.dimension, ccomm);
-    auto ccrange = cc.back().distribution().range(mpi_rank);
-    auto ccn = ccrange.second - ccrange.first;
-    cc.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&solution[root * instance.dimension + ccrange.first], ccn));
-    gg.emplace_back(instance.dimension, ccomm);
-    auto ggrange = gg.back().distribution().range(mpi_rank);
-    auto ggn = ggrange.second - ggrange.first;
-    gg.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&residual[root * instance.dimension + ggrange.first], ggn));
-  }
+  auto cc = CreateDistrArray(buffer_size, solution);
+  auto gg = CreateDistrArray(buffer_size, residual);
   if (instance.prof != nullptr)
     instance.prof->start("EndIter:Call");
   int result = instance.solver->end_iteration(cc, gg);
@@ -370,11 +333,9 @@ extern "C" int IterativeSolverEndIteration(size_t buffer_size, double* solution,
     instance.prof->stop("EndIter:Call");
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Sync");
-  for (size_t root = 0; root < instance.solver->working_set().size(); root++) {
-    if (sync) {
-      gather_all(cc[root].distribution(), ccomm, &solution[root * instance.dimension]);
-      gather_all(gg[root].distribution(), ccomm, &residual[root * instance.dimension]);
-    }
+  if (sync) { // should be over instance.solver->working_set().size()
+    synchronize(instance.solver->working_set().size(), cc, solution);
+    synchronize(instance.solver->working_set().size(), gg, residual);
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Sync");
@@ -386,30 +347,15 @@ extern "C" int IterativeSolverEndIteration(size_t buffer_size, double* solution,
 extern "C" size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
                                       int sync, void (*func)(const double*, double*, const size_t, const size_t*)) {
-  std::vector<Rvector> cc, gg;
   auto& instance = instances.top();
   instance.apply_on_p_fort = func;
   if (instance.prof != nullptr)
     instance.prof->start("AddP");
-  cc.reserve(buffer_size);
-  gg.reserve(buffer_size);
-  MPI_Comm ccomm = instance.comm;
-  int mpi_rank;
-  MPI_Comm_rank(ccomm, &mpi_rank);
-  for (size_t root = 0; root < buffer_size; root++) {
-    cc.emplace_back(instance.dimension, ccomm);
-    auto ccrange = cc.back().distribution().range(mpi_rank);
-    auto ccn = ccrange.second - ccrange.first;
-    cc.back().allocate_buffer(Span<Rvector::value_type>(&parameters[root * instance.dimension + ccrange.first], ccn));
-    gg.emplace_back(instance.dimension, ccomm);
-    auto ggrange = gg.back().distribution().range(mpi_rank);
-    auto ggn = ggrange.second - ggrange.first;
-    gg.back().allocate_buffer(Span<Rvector::value_type>(&action[root * instance.dimension + ggrange.first], ggn));
-  }
+  auto cc = CreateDistrArray(buffer_size, parameters);
+  auto gg = CreateDistrArray(buffer_size, action);
   std::vector<Pvector> Pvectors;
   Pvectors.reserve(nP);
   for (size_t p = 0; p < nP; p++) {
-    // std::map<size_t, Rvector::value_type> ppp;
     Pvector ppp;
     for (size_t k = offsets[p]; k < offsets[p + 1]; k++)
       ppp.insert(std::pair<size_t, Rvector::value_type>(indices[k], coefficients[k]));
@@ -430,11 +376,9 @@ extern "C" size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_
     instance.prof->stop("AddP:Call");
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Sync");
-  for (size_t root = 0; root < working_set_size; root++) {
-    if (sync) {
-      gather_all(cc[root].distribution(), ccomm, &parameters[root * instance.dimension]);
-      gather_all(gg[root].distribution(), ccomm, &action[root * instance.dimension]);
-    }
+  if (sync) {
+    synchronize(working_set_size, cc, parameters);
+    synchronize(working_set_size, gg, action);
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddP:Sync");

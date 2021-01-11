@@ -22,6 +22,16 @@ build111:
     - export MPIPROCS=2
     - BUILDTYPE=Release
     - BUILD=build/FORTRAN=1/MPI=1/PPIDD=1 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DFORTRAN=1 -DMPI=1 -DPPIDD=1 $OLDPWD && time cmake --build . -- -j2 && (time ctest || ctest -V)
+build1110:
+  tags:
+    - linux-farm
+  #  only:
+  #    - schedules
+  timeout: 60m
+  script:
+    - export MPIPROCS=2
+    - BUILDTYPE=Release
+    - BUILD=build/FORTRAN=1/MPI=1/PPIDD=1/HDF5=0 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DFORTRAN=1 -DMPI=1 -DPPIDD=1 -DLINEARALGEBRA_ARRAY_HDF5=OFF $OLDPWD && time cmake --build . -- -j2 && (time ctest || ctest -V)
 build000:
   tags:
     - linux-farm
@@ -51,7 +61,7 @@ build011:
     - export MPIPROCS=2
     - BUILDTYPE=Release
     - BUILD=build/FORTRAN=0/MPI=1/PPIDD=1 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DFORTRAN=0 -DMPI=1 -DPPIDD=1 $OLDPWD && time cmake --build . -j2 && (time ctest || ctest -V)
-clang011:
+clang110:
   tags:
     - linux-farm
 #  only:

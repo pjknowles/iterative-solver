@@ -2,10 +2,12 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/data)
 foreach (fil empty_file inner_group_dataset.hdf5 single_dataset.hdf5)
     configure_file("data/${fil}" "${CMAKE_CURRENT_BINARY_DIR}/data/${file}" COPYONLY)
 endforeach ()
-add_executable(test-${PROJECT_NAME}-HDF5Handle.exe testHDF5Handle.cpp)
-target_link_libraries(test-${PROJECT_NAME}-HDF5Handle.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
-target_compile_definitions(test-${PROJECT_NAME}-HDF5Handle.exe PUBLIC "ARRAY_DATA=\"${CMAKE_CURRENT_BINARY_DIR}/data\"")
-gtest_discover_tests(test-${PROJECT_NAME}-HDF5Handle.exe)
+if (LINEARALGEBRA_ARRAY_HDF5)
+    add_executable(test-${PROJECT_NAME}-HDF5Handle.exe testHDF5Handle.cpp)
+    target_link_libraries(test-${PROJECT_NAME}-HDF5Handle.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
+    target_compile_definitions(test-${PROJECT_NAME}-HDF5Handle.exe PUBLIC "ARRAY_DATA=\"${CMAKE_CURRENT_BINARY_DIR}/data\"")
+    gtest_discover_tests(test-${PROJECT_NAME}-HDF5Handle.exe)
+endif()
 
 add_executable(test-${PROJECT_NAME}-Span.exe testSpan.cpp)
 target_link_libraries(test-${PROJECT_NAME}-Span.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
@@ -19,9 +21,14 @@ add_executable(test-${PROJECT_NAME}-ArrayHandler.exe testArrayHandler.cpp testAr
 target_link_libraries(test-${PROJECT_NAME}-ArrayHandler.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
 gtest_discover_tests(test-${PROJECT_NAME}-ArrayHandler.exe)
 
-add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp file_util.h
-        testUtil.cpp test_temp_file.cpp
-        )
+if(LINEARALGEBRA_ARRAY_HDF5)
+    add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp file_util.h testUtil.cpp test_temp_file.cpp
+            )
+else()
+    add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp file_util.h testUtil.cpp
+            )
+endif()
+
 target_link_libraries(test-${PROJECT_NAME}-array-util.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
 gtest_discover_tests(test-${PROJECT_NAME}-array-util.exe)
 

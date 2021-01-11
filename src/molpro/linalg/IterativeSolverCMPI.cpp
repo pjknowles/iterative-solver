@@ -89,7 +89,7 @@ std::vector<Rvector> CreateDistrArray(size_t nvec, double* data) {
   return c;
 }
 
-std::vector<Rvector> CreateDistrArrayConst(size_t nvec, const double* data) {
+std::vector<Rvector> CreateDistrArray(size_t nvec, const double* data) {
   auto& instance = instances.top();
   MPI_Comm ccomm = instance.comm;
   int mpi_rank;
@@ -202,7 +202,7 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
                ,
                profiler, n, comm});
   auto& instance = instances.top();
-  auto rr = CreateDistrArrayConst(nroot, rhs);
+  auto rr = CreateDistrArray(nroot, rhs);
   //auto solver = dynamic_cast<LinearEquations<Rvector, Qvector, Pvector>*>(instance.solver.get());
   auto solverLinearEquations = dynamic_cast<LinearEquationsDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get());
   //solver->set_n_roots(nroot);
@@ -434,8 +434,8 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
   auto& instance = instances.top();
   if (instance.prof != nullptr)
     instance.prof->start("SuggestP");
-  auto cc = CreateDistrArrayConst(instance.solver->n_roots(), solution);
-  auto gg = CreateDistrArrayConst(instance.solver->n_roots(), residual);
+  auto cc = CreateDistrArray(instance.solver->n_roots(), solution);
+  auto gg = CreateDistrArray(instance.solver->n_roots(), residual);
   auto result = instance.solver->suggest_p(molpro::linalg::itsolv::cwrap(cc), molpro::linalg::itsolv::cwrap(gg),
                                            maximumNumber, threshold);
   for (size_t i = 0; i < result.size(); i++) {

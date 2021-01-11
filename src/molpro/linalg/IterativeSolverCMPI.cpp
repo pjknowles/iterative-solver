@@ -448,35 +448,3 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
 }
 
 extern "C" void IterativeSolverPrintStatistics() { molpro::cout << instances.top().solver->statistics() << std::endl; }
-
-extern "C" int64_t mpicomm_self() {
-  int flag;
-  MPI_Initialized(&flag);
-  if (!flag)
-    return 0;
-  return MPI_Comm_c2f(MPI_COMM_SELF);
-}
-
-extern "C" int64_t mpicomm_global() {
-  int flag;
-  MPI_Initialized(&flag);
-  if (!flag) {
-    MPI_Init(0, nullptr);
-    return MPI_Comm_c2f(MPI_COMM_WORLD);
-  }
-#ifdef HAVE_PPIDD_H
-  {
-    int64_t size;
-    PPIDD_Size(&size);
-    if (size > 0)
-      return PPIDD_Worker_comm();
-  }
-#else
-#ifdef LINEARALGEBRA_ARRAY_GA
-  if (GA_MPI_Comm() != NULL && GA_MPI_Comm() != MPI_COMM_NULL) {
-    return MPI_Comm_c2f(GA_MPI_Comm());
-  }
-#endif
-#endif
-  return MPI_Comm_c2f(MPI_COMM_WORLD);
-}

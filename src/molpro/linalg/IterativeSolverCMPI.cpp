@@ -114,7 +114,7 @@ void DistrArraySynchronize(size_t nvec, std::vector<Rvector>& c, double* data) {
   }
 }
 
-std::pair<size_t, size_t> DistrArrayRange() {
+std::pair<size_t, size_t> DistrArrayDefaultRange() {
   auto& instance = instances.top();
   int mpi_rank, comm_size;
   MPI_Comm_rank(instance.comm, &mpi_rank);
@@ -124,19 +124,23 @@ std::pair<size_t, size_t> DistrArrayRange() {
   return range;
 }
 
+std::pair<size_t, size_t> DistrArrayGetRange(Rvector& rvec) {
+  auto& instance = instances.top();
+  int mpi_rank;
+  MPI_Comm_rank(instance.comm, &mpi_rank);
+  auto range = rvec.distribution().range(mpi_rank);
+  return range;
+}
+
 void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
   auto& instance = instances.top();
-  MPI_Comm ccomm = instance.comm;
-  int mpi_rank, mpi_size;
-  MPI_Comm_rank(ccomm, &mpi_rank);
-  MPI_Comm_size(ccomm, &mpi_size);
   std::vector<size_t> ranges;
   size_t update_size = pvectors.size();
   ranges.reserve(update_size * 2);
   for (size_t k = 0; k < update_size; ++k) {
-    auto range = action[k].get().distribution().range(mpi_rank);
-    ranges.push_back(range.first);
-    ranges.push_back(range.second);
+    //auto range = action[k].get().distribution().range(mpi_rank);
+    ranges.push_back(DistrArrayGetRange(action[k].get()).first);
+    ranges.push_back(DistrArrayGetRange(action[k].get()).second);
   }
   std::vector<double> pvecs_to_send;
   for (size_t i = 0; i < update_size; i++) {
@@ -178,7 +182,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nro
     solverDavidson->logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
     solverDavidson->logger->data_dump = false;
   }
-  std::tie(*range_begin, *range_end) = DistrArrayRange();
+  std::tie(*range_begin, *range_end) = DistrArrayDefaultRange();
 }
 
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t* range_begin, size_t* range_end,
@@ -209,7 +213,7 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
   //solver->set_convergence_threshold(thresh);
   //solver->set_convergence_threshold_value(thresh_value);
   // instance.solver->m_verbosity = verbosity;
-  std::tie(*range_begin, *range_end) = DistrArrayRange();
+  std::tie(*range_begin, *range_end) = DistrArrayDefaultRange();
 }
 
 extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t* range_begin, size_t* range_end,
@@ -227,7 +231,7 @@ extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t* ra
   auto& instance = instances.top();
   instance.solver->set_convergence_threshold(thresh);
   // instance.solver->m_verbosity = verbosity;
-  std::tie(*range_begin, *range_end) = DistrArrayRange();
+  std::tie(*range_begin, *range_end) = DistrArrayDefaultRange();
 }
 
 extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin, size_t* range_end, double thresh,
@@ -247,7 +251,7 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
   instance.solver->set_convergence_threshold(thresh);
   instance.solver->set_convergence_threshold_value(thresh_value);
   // instance.solver->m_verbosity = verbosity;
-  std::tie(*range_begin, *range_end) = DistrArrayRange();
+  std::tie(*range_begin, *range_end) = DistrArrayDefaultRange();
 }
 
 extern "C" void IterativeSolverFinalize() { instances.pop(); }

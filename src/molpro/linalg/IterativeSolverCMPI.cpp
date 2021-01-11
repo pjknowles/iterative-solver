@@ -38,6 +38,7 @@ using molpro::linalg::itsolv::Optimize;
 using molpro::linalg::itsolv::IterativeSolver;
 using molpro::linalg::itsolv::LinearEigensystemDavidson;
 using molpro::linalg::itsolv::LinearEquationsDavidson;
+using molpro::linalg::array::util::make_distribution_spread_remainder;
 
 using Rvector = molpro::linalg::array::DistrArrayMPI3;
 #ifdef LINEARALGEBRA_ARRAY_HDF5
@@ -113,6 +114,16 @@ void synchronize(size_t nvec, std::vector<Rvector>& c, double* data) {
   }
 }
 
+std::pair<size_t, size_t> DistrArrayRange() {
+  auto& instance = instances.top();
+  auto d = make_distribution_spread_remainder<size_t>(instance.dimension, comm_size(instance.comm));
+  int mpi_rank, res;
+  MPI_Comm_rank(instance.comm, &mpi_rank);
+  MPI_Comm_size(instance.comm, &res);
+  auto range = d.range(mpi_rank);
+  return range;
+}
+
 void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
   auto& instance = instances.top();
   MPI_Comm ccomm = instance.comm;
@@ -154,29 +165,20 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nro
                              profiler, nQ, comm});
   auto& instance = instances.top();
   instance.solver->set_n_roots(nroot);
-  LinearEigensystemDavidson<Rvector, Qvector, Pvector>* solver_cast =
+  LinearEigensystemDavidson<Rvector, Qvector, Pvector>* solverDavidson =
       dynamic_cast<LinearEigensystemDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get());
-  if (solver_cast) {
-    solver_cast->set_hermiticity(hermitian);
-    solver_cast->set_convergence_threshold(thresh);
-    solver_cast->set_convergence_threshold_value(thresh_value);
+  if (solverDavidson) {
+    solverDavidson->set_hermiticity(hermitian);
+    solverDavidson->set_convergence_threshold(thresh);
+    solverDavidson->set_convergence_threshold_value(thresh_value);
     //    solver_cast->propose_rspace_norm_thresh = 1.0e-14;
     //    solver_cast->set_max_size_qspace(10);
     //    solver_cast->set_reset_D(50);
-    solver_cast->logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
-    solver_cast->logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
-    solver_cast->logger->data_dump = false;
+    solverDavidson->logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
+    solverDavidson->logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
+    solverDavidson->logger->data_dump = false;
   }
-  //TODO: we just need range here, no reason to allocate vectors
-  std::vector<Rvector> x;
-  std::vector<Rvector> g;
-  for (size_t root = 0; root < instance.solver->n_roots(); root++) {
-    x.emplace_back(nQ, comm);
-    g.emplace_back(nQ, comm);
-  }
-  int mpi_rank;
-  MPI_Comm_rank(comm, &mpi_rank);
-  std::tie(*range_begin, *range_end) = x[0].distribution().range(mpi_rank);
+  std::tie(*range_begin, *range_end) = DistrArrayRange();
 }
 
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t* range_begin, size_t* range_end,
@@ -197,16 +199,17 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
                profiler, n, comm});
   auto& instance = instances.top();
   auto rr = CreateDistrArrayConst(nroot, rhs);
-  auto solver = dynamic_cast<LinearEquations<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  //auto solver = dynamic_cast<LinearEquations<Rvector, Qvector, Pvector>*>(instance.solver.get());
   auto solverLinearEquations = dynamic_cast<LinearEquationsDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get());
-  solver->set_n_roots(nroot);
+  //solver->set_n_roots(nroot);
+  solverLinearEquations->set_n_roots(nroot);
   solverLinearEquations->add_equations(rr);
-  solver->set_convergence_threshold(thresh);
-  solver->set_convergence_threshold_value(thresh_value);
+  solverLinearEquations->set_convergence_threshold(thresh);
+  solverLinearEquations->set_convergence_threshold_value(thresh_value);
+  //solver->set_convergence_threshold(thresh);
+  //solver->set_convergence_threshold_value(thresh_value);
   // instance.solver->m_verbosity = verbosity;
-  int mpi_rank;
-  MPI_Comm_rank(comm, &mpi_rank);
-  std::tie(*range_begin, *range_end) = rr[0].distribution().range(mpi_rank);
+  std::tie(*range_begin, *range_end) = DistrArrayRange();
 }
 
 extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t* range_begin, size_t* range_end,
@@ -224,10 +227,7 @@ extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t* ra
   auto& instance = instances.top();
   instance.solver->set_convergence_threshold(thresh);
   // instance.solver->m_verbosity = verbosity;
-  Rvector x(n, comm);
-  int mpi_rank;
-  MPI_Comm_rank(comm, &mpi_rank);
-  std::tie(*range_begin, *range_end) = x.distribution().range(mpi_rank);
+  std::tie(*range_begin, *range_end) = DistrArrayRange();
 }
 
 extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin, size_t* range_end, double thresh,
@@ -247,10 +247,7 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
   instance.solver->set_convergence_threshold(thresh);
   instance.solver->set_convergence_threshold_value(thresh_value);
   // instance.solver->m_verbosity = verbosity;
-  Rvector x(n, comm);
-  int mpi_rank;
-  MPI_Comm_rank(comm, &mpi_rank);
-  std::tie(*range_begin, *range_end) = x.distribution().range(mpi_rank);
+  std::tie(*range_begin, *range_end) = DistrArrayRange();
 }
 
 extern "C" void IterativeSolverFinalize() { instances.pop(); }

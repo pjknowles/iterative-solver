@@ -138,7 +138,6 @@ void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& 
   size_t update_size = pvectors.size();
   ranges.reserve(update_size * 2);
   for (size_t k = 0; k < update_size; ++k) {
-    //auto range = action[k].get().distribution().range(mpi_rank);
     ranges.push_back(DistrArrayGetRange(action[k].get()).first);
     ranges.push_back(DistrArrayGetRange(action[k].get()).second);
   }
@@ -162,9 +161,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nro
   if (!pname.empty()) {
     profiler = molpro::ProfilerSingle::instance(pname, comm);
   }
-  auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
   instances.emplace(Instance{molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector, Pvector>(algorithm, "")
-                             //              std::make_unique<LinearEigensystem<Rvector, Qvector, Pvector>>(handlers)
                              ,
                              profiler, nQ, comm});
   auto& instance = instances.top();
@@ -195,23 +192,17 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
   if (!pname.empty()) {
     profiler = molpro::ProfilerSingle::instance(pname, comm);
   }
-  auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
   instances.emplace(
       Instance{molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector, Pvector>(algorithm, "")
-               //        std::make_unique<LinearEquations<Rvector, Qvector, Pvector>>(rr, handlers, aughes)
                ,
                profiler, n, comm});
   auto& instance = instances.top();
   auto rr = CreateDistrArray(nroot, rhs);
-  //auto solver = dynamic_cast<LinearEquations<Rvector, Qvector, Pvector>*>(instance.solver.get());
   auto solverLinearEquations = dynamic_cast<LinearEquationsDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get());
-  //solver->set_n_roots(nroot);
   solverLinearEquations->set_n_roots(nroot);
   solverLinearEquations->add_equations(rr);
   solverLinearEquations->set_convergence_threshold(thresh);
   solverLinearEquations->set_convergence_threshold_value(thresh_value);
-  //solver->set_convergence_threshold(thresh);
-  //solver->set_convergence_threshold_value(thresh_value);
   // instance.solver->m_verbosity = verbosity;
   std::tie(*range_begin, *range_end) = DistrArrayDefaultRange();
 }
@@ -225,7 +216,6 @@ extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t* ra
   if (!pname.empty()) {
     profiler = molpro::ProfilerSingle::instance(pname, comm);
   }
-  auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
   instances.emplace(Instance{
       molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector, Pvector>(algorithm, ""), profiler, n, comm});
   auto& instance = instances.top();
@@ -243,7 +233,6 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
   if (!pname.empty()) {
     profiler = molpro::ProfilerSingle::instance(pname, comm);
   }
-  auto handlers = std::make_shared<ArrayHandlers<Rvector, Qvector, Pvector>>();
   instances.emplace(
       Instance{molpro::linalg::itsolv::create_Optimize<Rvector, Qvector, Pvector>(algorithm, ""), profiler, n, comm});
   auto& instance = instances.top();
@@ -257,18 +246,32 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
 extern "C" void IterativeSolverFinalize() { instances.pop(); }
 
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync) {
+  if (instances.empty())
+    throw std::runtime_error("IterativeSolver not initialised properly");
   auto& instance = instances.top();
+  if (instance.prof != nullptr)
+    instance.prof->start("AddValue");
   auto ccc = CreateDistrArray(1, parameters);
   auto ggg = CreateDistrArray(1, action);
+  if (instance.prof != nullptr)
+    instance.prof->start("AddValue:Call");
   size_t working_set_size =
       dynamic_cast<molpro::linalg::itsolv::Optimize<Rvector, Qvector, Pvector>*>(instance.solver.get())
               ->add_value(ccc[0], value, ggg[0])
           ? 1
           : 0;
+  if (instance.prof != nullptr)
+    instance.prof->stop("AddValue:Call");
+  if (instance.prof != nullptr)
+    instance.prof->start("AddValue:Sync");
   if (sync) {
     DistrArraySynchronize(1, ccc, parameters);
     DistrArraySynchronize(1, ggg, action);
   }
+  if (instance.prof != nullptr)
+    instance.prof->stop("AddValue:Sync");
+  if (instance.prof != nullptr)
+    instance.prof->stop("AddValue");
   return working_set_size;
 }
 
@@ -282,10 +285,10 @@ extern "C" size_t IterativeSolverAddVector(size_t buffer_size, double* parameter
   auto cc = CreateDistrArray(working_set_size, parameters);
   auto gg = CreateDistrArray(working_set_size, action);
   if (instance.prof != nullptr)
-    instance.prof->start("AddVector:Update");
+    instance.prof->start("AddVector:Call");
   working_set_size = instance.solver->add_vector(cc, gg);
   if (instance.prof != nullptr)
-    instance.prof->stop("AddVector:Update");
+    instance.prof->stop("AddVector:Call");
 
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Sync");

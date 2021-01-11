@@ -3,7 +3,6 @@
 #include <memory>
 #include <mpi.h>
 #include <stack>
-#include <string>
 #include <tuple>
 #ifdef HAVE_PPIDD_H
 #include <ppidd.h>
@@ -22,7 +21,6 @@
 #include <molpro/linalg/array/Span.h>
 #include <molpro/linalg/array/util/Distribution.h>
 #include <molpro/linalg/array/util/gather_all.h>
-#include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/LinearEigensystemDavidson.h>
 #include <molpro/linalg/itsolv/LinearEquationsDavidson.h>
 #include <molpro/linalg/itsolv/SolverFactory.h>

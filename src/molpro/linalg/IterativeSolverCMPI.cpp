@@ -106,7 +106,7 @@ std::vector<Rvector> CreateDistrArrayConst(size_t nvec, const double* data) {
   return c;
 }
 
-void synchronize(size_t nvec, std::vector<Rvector>& c, double* data) {
+void DistrArraySynchronize(size_t nvec, std::vector<Rvector>& c, double* data) {
   auto& instance = instances.top();
   MPI_Comm ccomm = instance.comm;
   for (size_t ivec = 0; ivec < nvec; ivec++) {
@@ -116,10 +116,10 @@ void synchronize(size_t nvec, std::vector<Rvector>& c, double* data) {
 
 std::pair<size_t, size_t> DistrArrayRange() {
   auto& instance = instances.top();
-  auto d = make_distribution_spread_remainder<size_t>(instance.dimension, comm_size(instance.comm));
-  int mpi_rank, res;
+  int mpi_rank, comm_size;
   MPI_Comm_rank(instance.comm, &mpi_rank);
-  MPI_Comm_size(instance.comm, &res);
+  MPI_Comm_size(instance.comm, &comm_size);
+  auto d = make_distribution_spread_remainder<size_t>(instance.dimension, comm_size);
   auto range = d.range(mpi_rank);
   return range;
 }
@@ -262,8 +262,8 @@ extern "C" size_t IterativeSolverAddValue(double value, double* parameters, doub
           ? 1
           : 0;
   if (sync) {
-    synchronize(1, ccc, parameters);
-    synchronize(1, ggg, action);
+    DistrArraySynchronize(1, ccc, parameters);
+    DistrArraySynchronize(1, ggg, action);
   }
   return working_set_size;
 }
@@ -286,8 +286,8 @@ extern "C" size_t IterativeSolverAddVector(size_t buffer_size, double* parameter
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Sync");
   if (sync) {
-    synchronize(instance.solver->working_set().size(), cc, parameters);
-    synchronize(instance.solver->working_set().size(), gg, action);
+    DistrArraySynchronize(instance.solver->working_set().size(), cc, parameters);
+    DistrArraySynchronize(instance.solver->working_set().size(), gg, action);
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Sync");
@@ -317,8 +317,8 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
   if (instance.prof != nullptr)
     instance.prof->start("Solution:Sync");
   if (sync) {
-    synchronize(nroot, cc, parameters);
-    synchronize(nroot, gg, action);
+    DistrArraySynchronize(nroot, cc, parameters);
+    DistrArraySynchronize(nroot, gg, action);
   }
   if (instance.prof != nullptr)
     instance.prof->stop("Solution:Sync");
@@ -342,8 +342,8 @@ extern "C" int IterativeSolverEndIteration(size_t buffer_size, double* solution,
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Sync");
   if (sync) { // should be over instance.solver->working_set().size()
-    synchronize(instance.solver->working_set().size(), cc, solution);
-    synchronize(instance.solver->working_set().size(), gg, residual);
+    DistrArraySynchronize(instance.solver->working_set().size(), cc, solution);
+    DistrArraySynchronize(instance.solver->working_set().size(), gg, residual);
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddVector:Sync");
@@ -385,8 +385,8 @@ extern "C" size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Sync");
   if (sync) {
-    synchronize(working_set_size, cc, parameters);
-    synchronize(working_set_size, gg, action);
+    DistrArraySynchronize(working_set_size, cc, parameters);
+    DistrArraySynchronize(working_set_size, gg, action);
   }
   if (instance.prof != nullptr)
     instance.prof->stop("AddP:Sync");

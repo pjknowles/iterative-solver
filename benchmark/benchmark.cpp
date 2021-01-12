@@ -1,4 +1,5 @@
 #include "ArrayBenchmark.h"
+#include <iostream>
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif

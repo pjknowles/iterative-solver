@@ -1,5 +1,5 @@
 #include "IterativeSolverC.h"
-#include "molpro/ProfilerSingle.h"
+#include "molpro/Profiler.h"
 #include <memory>
 #include <mpi.h>
 #include <stack>
@@ -157,7 +157,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nro
   std::string pname(fname);
   MPI_Comm comm = MPI_Comm_f2c(fcomm);
   if (!pname.empty()) {
-    profiler = molpro::ProfilerSingle::instance(pname, comm);
+    profiler = Profiler::single(pname);
   }
   instances.emplace(Instance{molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector, Pvector>(algorithm, "")
                              ,
@@ -188,7 +188,7 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
   std::string pname(fname);
   MPI_Comm comm = MPI_Comm_f2c(fcomm);
   if (!pname.empty()) {
-    profiler = molpro::ProfilerSingle::instance(pname, comm);
+    profiler = Profiler::single(pname);
   }
   instances.emplace(
       Instance{molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector, Pvector>(algorithm, "")
@@ -212,7 +212,7 @@ extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t* ra
   std::string pname(fname);
   MPI_Comm comm = MPI_Comm_f2c(fcomm);
   if (!pname.empty()) {
-    profiler = molpro::ProfilerSingle::instance(pname, comm);
+    profiler = Profiler::single(pname);
   }
   instances.emplace(Instance{
       molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector, Pvector>(algorithm, ""), profiler, n, comm});
@@ -229,7 +229,7 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
   std::string pname(fname);
   MPI_Comm comm = MPI_Comm_f2c(fcomm);
   if (!pname.empty()) {
-    profiler = molpro::ProfilerSingle::instance(pname, comm);
+    profiler = Profiler::single(pname);
   }
   instances.emplace(
       Instance{molpro::linalg::itsolv::create_Optimize<Rvector, Qvector, Pvector>(algorithm, ""), profiler, n, comm});
@@ -258,18 +258,18 @@ extern "C" size_t IterativeSolverAddValue(double value, double* parameters, doub
               ->add_value(ccc[0], value, ggg[0])
           ? 1
           : 0;
-  if (instance.prof != nullptr)
-    instance.prof->stop("AddValue:Call");
-  if (instance.prof != nullptr)
+  if (instance.prof != nullptr) {
+    instance.prof->stop();
     instance.prof->start("AddValue:Sync");
+  }
   if (sync) {
     DistrArraySynchronize(1, ccc, parameters);
     DistrArraySynchronize(1, ggg, action);
   }
-  if (instance.prof != nullptr)
-    instance.prof->stop("AddValue:Sync");
-  if (instance.prof != nullptr)
-    instance.prof->stop("AddValue");
+  if (instance.prof != nullptr) {
+    instance.prof->stop();
+    instance.prof->stop();
+  }
   return working_set_size;
 }
 
@@ -285,19 +285,18 @@ extern "C" size_t IterativeSolverAddVector(size_t buffer_size, double* parameter
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Call");
   working_set_size = instance.solver->add_vector(cc, gg);
-  if (instance.prof != nullptr)
-    instance.prof->stop("AddVector:Call");
-
-  if (instance.prof != nullptr)
+  if (instance.prof != nullptr) {
+    instance.prof->stop();
     instance.prof->start("AddVector:Sync");
+  }
   if (sync) {
     DistrArraySynchronize(instance.solver->working_set().size(), cc, parameters);
     DistrArraySynchronize(instance.solver->working_set().size(), gg, action);
   }
-  if (instance.prof != nullptr)
-    instance.prof->stop("AddVector:Sync");
-  if (instance.prof != nullptr)
-    instance.prof->stop("AddVector");
+  if (instance.prof != nullptr) {
+    instance.prof->stop();
+    instance.prof->stop();
+  }
   return working_set_size;
 }
 
@@ -316,19 +315,18 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
   if (instance.prof != nullptr)
     instance.prof->start("Solution:Call");
   instance.solver->solution(croots, cc, gg);
-  if (instance.prof != nullptr)
-    instance.prof->stop("Solution:Call");
-
-  if (instance.prof != nullptr)
+  if (instance.prof != nullptr) {
+    instance.prof->stop();
     instance.prof->start("Solution:Sync");
+  }
   if (sync) {
     DistrArraySynchronize(nroot, cc, parameters);
     DistrArraySynchronize(nroot, gg, action);
   }
-  if (instance.prof != nullptr)
-    instance.prof->stop("Solution:Sync");
-  if (instance.prof != nullptr)
-    instance.prof->stop("Solution");
+  if (instance.prof != nullptr) {
+    instance.prof->stop();
+    instance.prof->stop();
+  }
 }
 
 extern "C" int IterativeSolverEndIteration(size_t buffer_size, double* solution, double* residual, int sync) {
@@ -342,18 +340,18 @@ extern "C" int IterativeSolverEndIteration(size_t buffer_size, double* solution,
   if (instance.prof != nullptr)
     instance.prof->start("EndIter:Call");
   int result = instance.solver->end_iteration(cc, gg);
-  if (instance.prof != nullptr)
-    instance.prof->stop("EndIter:Call");
-  if (instance.prof != nullptr)
+  if (instance.prof != nullptr) {
+    instance.prof->stop();
     instance.prof->start("AddVector:Sync");
-  if (sync) { // should be over instance.solver->working_set().size()
+  }
+  if (sync) {
     DistrArraySynchronize(instance.solver->working_set().size(), cc, solution);
     DistrArraySynchronize(instance.solver->working_set().size(), gg, residual);
   }
-  if (instance.prof != nullptr)
-    instance.prof->stop("AddVector:Sync");
-  if (instance.prof != nullptr)
-    instance.prof->stop("EndIter");
+  if (instance.prof != nullptr) {
+    instance.prof->stop();
+    instance.prof->stop();
+  }
   return result;
 }
 
@@ -385,18 +383,18 @@ extern "C" size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_
       molpro::linalg::itsolv::cwrap(Pvectors),
       Span<Rvector::value_type>(&const_cast<double*>(pp)[0], (instance.solver->dimensions().oP + nP) * nP),
       molpro::linalg::itsolv::wrap(cc), molpro::linalg::itsolv::wrap(gg), apply_on_p);
-  if (instance.prof != nullptr)
-    instance.prof->stop("AddP:Call");
-  if (instance.prof != nullptr)
+  if (instance.prof != nullptr) {
+    instance.prof->stop();
     instance.prof->start("AddP:Sync");
+  }
   if (sync) {
     DistrArraySynchronize(working_set_size, cc, parameters);
     DistrArraySynchronize(working_set_size, gg, action);
   }
-  if (instance.prof != nullptr)
-    instance.prof->stop("AddP:Sync");
-  if (instance.prof != nullptr)
-    instance.prof->stop("AddP");
+  if (instance.prof != nullptr) {
+    instance.prof->stop();
+    instance.prof->stop();
+  }
   return working_set_size;
 }
 
@@ -443,7 +441,7 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
     indices[i] = result[i];
   }
   if (instance.prof != nullptr)
-    instance.prof->stop("SuggestP");
+    instance.prof->stop();
   return result.size();
 }
 

@@ -30,10 +30,9 @@ PROGRAM Linear_Eigensystem_Example
   DO i = 1, n
     m(i, i) = 3 * i
   END DO
-  p=Profiler('Eigensystem_Example', MPI_COMM_WORLD)
-  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Eigensystem_Example',  &
-                                                                                  thresh = 1d-7, thresh_value = 1d-14, &
-                                                                                  verbosity = 1)
+  p=Profiler('Eigensystem_Example', 1, 0)
+  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, thresh = 1d-7, thresh_value = 1d-14, verbosity = 1, &
+                                                      pname = 'Eigensystem_Example', mpicomm = MPI_COMM_WORLD)
   c = 0
   DO i = 1, nroot
     c(i, i) = 1;
@@ -78,5 +77,8 @@ PROGRAM Linear_Eigensystem_Example
   END IF
   deallocate(we)
   CALL Iterative_Solver_Finalize
+  call p%print(6)
+  call p%print(6, cumulative = .false.)
+  call p%destroy()
   call MPI_FINALIZE(ierr)
 END PROGRAM Linear_Eigensystem_Example

@@ -75,13 +75,12 @@ PROGRAM Linear_Eigensystem_Example
   DO i = 1, n
     m(i, i) = 3 * i
   END DO
-  prof=Profiler('Eigensystem_Example_P',MPI_COMM_WORLD)
+  prof=Profiler('Eigensystem_Example_P', 1, 0)
   if (rank == 0) then
     WRITE (6, *) 'P-space=', nP, ', dimension=', n, ', roots=', nroot
   end if
-  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Eigensystem_Example_P',  &
-                                                                                  thresh = 1d-8, thresh_value = 1d-14, &
-     hermitian=.true.,                                                                             verbosity = 1)
+  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, thresh = 1d-8, thresh_value = 1d-14, hermitian=.true., &
+                                              verbosity = 1, pname = 'Eigensystem_Example_P', mpicomm = MPI_COMM_WORLD)
   offsets(0) = 0
   DO i = 1, nP
     offsets(i) = i
@@ -146,5 +145,7 @@ PROGRAM Linear_Eigensystem_Example
     write(*,*) "Residual after the call to Solution: ", g(:,1)
   end if
   CALL Iterative_Solver_Finalize
+  call prof%print(6)
+  call prof%destroy()
   call MPI_FINALIZE(ierr)
 END PROGRAM Linear_Eigensystem_Example

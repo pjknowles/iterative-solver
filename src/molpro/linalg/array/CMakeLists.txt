@@ -54,7 +54,7 @@ if (MPI)
         if ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 8.0.0))
             message(STATUS "Using std::experimental::filesystem")
             target_compile_definitions(${PROJECT_NAME} PUBLIC USE_EXPERIMENTAL_FILESYSTEM)
-            target_link_options(${PROJECT_NAME} PUBLIC "-lstdc++fs")
+            target_link_libraries(${PROJECT_NAME} PUBLIC "stdc++fs")
         endif ()
     endif ()
 

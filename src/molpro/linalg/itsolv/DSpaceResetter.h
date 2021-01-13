@@ -17,7 +17,7 @@ void resize_qspace(subspace::IXSpace<R, Q, P>& xspace, const subspace::Matrix<va
   logger.msg("resize_qspace()", Logger::Trace);
   auto q_delete = limit_qspace_size(xspace.dimensions(), m_max_Qsize_after_reset, solutions, logger);
   logger.msg("delete Q parameter indices = ", q_delete.begin(), q_delete.end(), Logger::Debug);
-  std::sort(begin(q_delete), end(q_delete), std::greater());
+  std::sort(begin(q_delete), end(q_delete), std::greater<int>());
   for (auto iq : q_delete)
     xspace.eraseq(iq);
 }
@@ -49,7 +49,7 @@ auto max_overlap_with_R(const CVecRef<R>& rparams, const CVecRef<Q>& qparams, ar
     q_max_overlap.push_back(q_indices[i_max]);
     q_indices.erase(q_indices.begin() + i_max);
   }
-  std::sort(std::begin(q_max_overlap), std::end(q_max_overlap), std::greater());
+  std::sort(std::begin(q_max_overlap), std::end(q_max_overlap), std::greater<int>());
   return q_max_overlap;
 }
 

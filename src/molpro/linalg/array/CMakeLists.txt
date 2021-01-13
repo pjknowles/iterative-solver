@@ -3,7 +3,7 @@ if (MPI)
 endif ()
 if (LINEARALGEBRA_ARRAY_HDF5)
     find_package(HDF5 REQUIRED COMPONENTS C)
-endif()
+endif ()
 find_package(Threads)
 
 if (MPI AND LINEARALGEBRA_ARRAY_HDF5 AND NOT HDF5_IS_PARALLEL)
@@ -15,7 +15,7 @@ if (LINEARALGEBRA_ARRAY_HDF5)
             SOURCES HDF5Handle.cpp
             PUBLIC_HEADER HDF5Handle.h
             )
-endif()
+endif ()
 
 LibraryManager_Append(${PROJECT_NAME}
         PUBLIC_HEADER ArrayHandler.h ArrayHandlerIterable.h ArrayHandlerSparse.h
@@ -31,7 +31,7 @@ if (LINEARALGEBRA_ARRAY_HDF5)
     target_link_libraries(${PROJECT_NAME} PUBLIC ${HDF5_LIBRARIES})
     target_include_directories(${PROJECT_NAME} PUBLIC ${HDF5_INCLUDE_DIRS})
     target_compile_definitions(${PROJECT_NAME} PUBLIC ${HDF5_DEFINITIONS})
-endif()
+endif ()
 
 if (MPI)
     LibraryManager_Append(${PROJECT_NAME}
@@ -44,13 +44,20 @@ if (MPI)
                 SOURCES PHDF5Handle.cpp
                 PUBLIC_HEADER PHDF5Handle.h
                 )
-    endif()
+    endif ()
 
     if (LINEARALGEBRA_ARRAY_MPI3)
         message(STATUS "Building ${PROJECT_NAME} with MPI3 Array")
         target_compile_definitions(${PROJECT_NAME} PUBLIC LINEARALGEBRA_ARRAY_MPI3 LINEARALGEBRA_ARRAY_FILE)
         LibraryManager_Append(${PROJECT_NAME} SOURCES DistrArrayMPI3.cpp DistrArrayFile.cpp
-                                              PUBLIC_HEADER DistrArrayMPI3.h DistrArrayFile.h)
+                PUBLIC_HEADER DistrArrayMPI3.h DistrArrayFile.h)
+        message(STATUS "CMAKE_CXX_COMPILER_ID ${CMAKE_CXX_COMPILER_ID}")
+        message(STATUS "CMAKE_CXX_COMPILER_VERSION ${CMAKE_CXX_COMPILER_VERSION}")
+        if ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 8.0.0))
+            message(STATUS "Using std::experimental::filesystem")
+            target_compile_definitions(${PROJECT_NAME} PUBLIC USE_EXPERIMENTAL_FILESYSTEM)
+            target_link_options(${PROJECT_NAME} PUBLIC "-lstdc++fs")
+        endif ()
     endif ()
 
     if (LINEARALGEBRA_ARRAY_GA)

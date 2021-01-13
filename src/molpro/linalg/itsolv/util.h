@@ -92,7 +92,7 @@ void construct_solutions(const VecRef<R>& params, const std::vector<int>& roots,
  */
 template <class Container>
 void delete_parameters(std::vector<int> indices, Container& params) {
-  std::sort(std::begin(indices), std::end(indices), std::greater());
+  std::sort(std::begin(indices), std::end(indices), std::greater<int>());
   for (auto i : indices)
     params.erase(begin(params) + i);
 }

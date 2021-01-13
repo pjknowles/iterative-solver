@@ -3,13 +3,21 @@
 
 #include <fstream>
 #include <iostream>
+#ifdef USE_EXPERIMENTAL_FILESYSTEM
+#include <experimental/filesystem>
+#else
 #include <filesystem>
+#endif
 
 #include "molpro/linalg/array/DistrArrayDisk.h"
 
 namespace molpro::linalg::array {
 
+#ifdef USE_EXPERIMENTAL_FILESYSTEM
+namespace fs = std::experimental::filesystem;
+#else
 namespace fs = std::filesystem;
+#endif
 /*!
  * @brief Distributed array storing the buffer on disk using temporary local files.
  *

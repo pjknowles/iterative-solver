@@ -549,7 +549,7 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
   if (!q_delete.empty()) {
     auto [dparams, dactions] =
         construct_dspace(solutions, xspace, q_delete, res_norm_thresh, svd_thresh, handlers.qq(), logger);
-    std::sort(begin(q_delete), end(q_delete), std::greater());
+    std::sort(begin(q_delete), end(q_delete), std::greater<int>());
     for (auto iq : q_delete)
       xspace.eraseq(iq);
     auto wdparams = wrap(dparams);

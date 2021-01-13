@@ -303,7 +303,7 @@ struct LinearEigensystemF : ::testing::Test {
         for (const auto& ee : expected_eigensolutions) {
           EXPECT_NEAR(ee.first, solver->eigenvalues()[root], 1e-10);
           auto overlap_with_reference = std::inner_product(parameters.at(root).begin(), parameters.at(root).end(),
-                                                           ee.second.begin(), 0., std::plus(), std::multiplies());
+                                                           ee.second.begin(), 0., std::plus<double>(), std::multiplies<double>());
           EXPECT_NEAR(std::abs(overlap_with_reference), 1., options->convergence_threshold.value());
           root++;
           if (root >= solver->n_roots())

@@ -51,8 +51,6 @@ if (MPI)
         target_compile_definitions(${PROJECT_NAME} PUBLIC LINEARALGEBRA_ARRAY_MPI3 LINEARALGEBRA_ARRAY_FILE)
         LibraryManager_Append(${PROJECT_NAME} SOURCES DistrArrayMPI3.cpp DistrArrayFile.cpp
                 PUBLIC_HEADER DistrArrayMPI3.h DistrArrayFile.h)
-        message(STATUS "CMAKE_CXX_COMPILER_ID ${CMAKE_CXX_COMPILER_ID}")
-        message(STATUS "CMAKE_CXX_COMPILER_VERSION ${CMAKE_CXX_COMPILER_VERSION}")
         if ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 8.0.0))
             message(STATUS "Using std::experimental::filesystem")
             target_compile_definitions(${PROJECT_NAME} PUBLIC USE_EXPERIMENTAL_FILESYSTEM)

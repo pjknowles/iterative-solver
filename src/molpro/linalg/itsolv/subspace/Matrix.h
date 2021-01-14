@@ -268,7 +268,7 @@ protected:
     ~CSlice() = default;
     CSlice(const CSlice&) = delete;
     CSlice(CSlice&&) noexcept = default;
-    CSlice& operator=(CSlice&&) noexcept = default;
+    CSlice& operator=(CSlice&&) = default;
     T operator()(size_t i, size_t j) const { return const_cast<Slice&>(m_slice)(i, j); }
 
   protected:

@@ -3,21 +3,22 @@
 
 #include <fstream>
 #include <iostream>
-#ifdef USE_EXPERIMENTAL_FILESYSTEM
-#include <experimental/filesystem>
-#else
-#include <filesystem>
-#endif
+ #if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || (defined(__cplusplus) && __cplusplus >= 201703L)) && defined(__has_include)
+ #if __has_include(<filesystem>) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500)
+ #define GHC_USE_STD_FS
+ #include <filesystem>
+ namespace fs = std::filesystem;
+ #endif
+ #endif
+ #ifndef GHC_USE_STD_FS
+ #include "ghc/filesystem.h"
+ namespace fs = ghc::filesystem;
+ #endif
 
 #include "molpro/linalg/array/DistrArrayDisk.h"
 
 namespace molpro::linalg::array {
 
-#ifdef USE_EXPERIMENTAL_FILESYSTEM
-namespace fs = std::experimental::filesystem;
-#else
-namespace fs = std::filesystem;
-#endif
 /*!
  * @brief Distributed array storing the buffer on disk using temporary local files.
  *

@@ -50,12 +50,7 @@ if (MPI)
         message(STATUS "Building ${PROJECT_NAME} with MPI3 Array")
         target_compile_definitions(${PROJECT_NAME} PUBLIC LINEARALGEBRA_ARRAY_MPI3 LINEARALGEBRA_ARRAY_FILE)
         LibraryManager_Append(${PROJECT_NAME} SOURCES DistrArrayMPI3.cpp DistrArrayFile.cpp
-                PUBLIC_HEADER DistrArrayMPI3.h DistrArrayFile.h)
-        if ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 8.0.0))
-            message(STATUS "Using std::experimental::filesystem")
-            target_compile_definitions(${PROJECT_NAME} PUBLIC USE_EXPERIMENTAL_FILESYSTEM)
-            target_link_libraries(${PROJECT_NAME} PUBLIC "stdc++fs")
-        endif ()
+                PUBLIC_HEADER DistrArrayMPI3.h DistrArrayFile.h ghc/filesystem.h)
     endif ()
 
     if (LINEARALGEBRA_ARRAY_GA)

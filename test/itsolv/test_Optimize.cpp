@@ -52,7 +52,7 @@ struct OptimizeF : ::testing::Test {
 
   void update(Rvector& psg) {
     for (size_t i = 0; i < n; i++)
-      psg[i] = -psg[i] / hmat(i, i);
+      psg[i] = psg[i] / hmat(i, i);
   }
 
   void test_quadratic_form(const std::string& method, const std::string& title = "",
@@ -143,8 +143,10 @@ TEST(Optimize, Rosenbrock) {
 //      molpro::cout << "iter=" << iter << ", x=" << x << ", value=" << value << std::endl;
       auto precon = solver->add_value(x, value, g);
 //      molpro::cout << "add_value returns precon=" << precon << ", x=" << x << ", g=" << g[0] << std::endl;
-      if (precon)
-        g[0] = -g[0]/800;
+      if (precon) {
+        for (auto& gg:g) gg=-gg; // the old bug
+        g[0] = -g[0]/800; // the old bug // TODO fix this properly
+      }
       if (solver->end_iteration(x, g) == 0)
         break;
 //      molpro::cout << "end_iteration returns x=" << x << ", g=" << g << std::endl;
@@ -168,8 +170,8 @@ TEST(Optimize, trig1d) {
     g[0] = std::cos(x[0]);
     auto precon = solver->add_value(x, value, g);
     molpro::cout << "add_value returns precon=" << precon << ", x=" << x[0] << ", g=" << g[0] << std::endl;
-    if (precon)
-      g[0] = -g[0];
+//    if (precon)
+//      g[0] = g[0];
     if (solver->end_iteration(x, g) == 0)
       break;
     molpro::cout << "end_iteration returns x=" << x[0] << ", g=" << g[0] << std::endl;

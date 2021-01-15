@@ -26,7 +26,7 @@ function test_OptimizeF(matrix, n) BIND(C)
     value = 0.5d0 * dot_product(g, c - 1)
     if(Iterative_Solver_Add_Value(value, c, g)) then
       do j = 1, n
-        g(j) = -g(j) / matrix(j, j)
+        g(j) = g(j) / matrix(j, j)
       end do
     end if
     nwork = Iterative_Solver_End_Iteration(c, g);

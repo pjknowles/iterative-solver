@@ -41,7 +41,7 @@ public:
       return 0;
     }
     this->m_working_set.assign(1, 0);
-    this->m_handlers->rr().axpy(1, action.front(), parameters.front());
+    this->m_handlers->rr().axpy(-1, action.front(), parameters.front());
     this->m_stats->iterations++;
     return 1;
   }

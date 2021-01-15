@@ -35,9 +35,9 @@ PROGRAM QuasiNewton_Example
         write (6,*) 'g ',g
     IF (Iterative_Solver_Add_Value(e, c, g)) THEN
       if (forced) then
-        c = c - g / [(m(j, j), j = 1, n)]
+        g = g / [(m(j, j), j = 1, n)]
       else
-        c = c - g / ([(m(j, j), j = 1, n)] - e + 1d-15) &
+        g = g / ([(m(j, j), j = 1, n)] - e + 1d-15) &
             + (sum([(c(j)*g(j),j=1,n)])/sum([(c(j)**2,j=1,n)])) * c &
                 / ([(m(j, j), j = 1, n)] - e + 1d-15)
       end if

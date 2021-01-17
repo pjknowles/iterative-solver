@@ -5,7 +5,7 @@ include(FetchContent)
 FetchContent_Declare(
         LibraryManager
         GIT_REPOSITORY https://gitlab+deploy-token-178345:RQZa2rmdwnV7Hdwg8XEq@gitlab.com/molpro/LibraryManager.git
-        GIT_TAG 0e80fc8
+        GIT_TAG fef21c35ac00abea4d810ee8c8dbc34dcf8fa2e8
 )
 FetchContent_MakeAvailable(LibraryManager)
 

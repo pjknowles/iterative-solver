@@ -1,6 +1,5 @@
 if (FORTRAN
         AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL "Intel"  # avoid the challenge of linking C++ and Fortran with Intel
-        AND OFF # TODO reinstate Fortran examples when Fortran support is reinstated
         )
     set(ITERATIVESOLVER_FORTRAN_EXAMPLES
             LinearEigensystemExampleF-Pspace-adaptive.F90
@@ -14,7 +13,9 @@ set(EXAMPLES
 if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)
     list(APPEND EXAMPLES
             )
-    if (FORTRAN)
+    if (FORTRAN
+            AND MPIFORTRAN
+            )
         list(APPEND EXAMPLES
                 LinearEigensystemExampleF-mpi.F90
                 LinearEigensystemExampleF-Pspace-mpi.F90
@@ -22,7 +23,7 @@ if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)
     endif ()
 endif ()
 
-if (FORTRAN AND MPI)
+if (FORTRAN AND MPI AND MPIFORTRAN)
     find_package(MPI COMPONENTS Fortran)
     message("MPI_Fortran_LIBRARIES=${MPI_Fortran_LIBRARIES}")
 endif ()

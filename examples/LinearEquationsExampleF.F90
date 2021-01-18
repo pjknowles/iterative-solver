@@ -11,7 +11,7 @@ PROGRAM Linear_Equations_Example
   DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g, rhs
   DOUBLE PRECISION, DIMENSION (nroot) :: error
   DOUBLE PRECISION :: augmented_hessian
-  INTEGER :: i, j, root, iaug
+  INTEGER :: i, j, root, iaug, nwork
   LOGICAL :: converged
   PRINT *, 'Fortran binding of IterativeSolver'
   DO i = 1, n; m(i, i) = alpha * i + 2 * i - 2; DO j = 1, n; IF (i.NE.j) m(i, j) = i + j - 2;
@@ -20,6 +20,7 @@ PROGRAM Linear_Equations_Example
   DO i = 1, nroot; DO j = 1, n; rhs(j, i) = 1 / DBLE(j + i - 1);
   END DO;
   END DO
+  nwork = nroot
   DO iaug = 1, SIZE(augmented_hessian_factors)
     augmented_hessian = augmented_hessian_factors(iaug)
     PRINT *, 'solve linear system with augmented hessian factor ', augmented_hessian
@@ -28,17 +29,16 @@ PROGRAM Linear_Equations_Example
     ENDDO
     DO i = 1, n
       g = MATMUL(m, c)
-      IF (Iterative_Solver_Add_Vector(c, g)) THEN
-        DO root = 1, nroot
+      nwork = Iterative_Solver_Add_Vector(c, g)
+        DO root = 1, nwork
           DO j = 1, n
             c(j, root) = c(j, root) - g(j, root) / m(j, j)
           END DO
         END DO
-      END IF
-      converged = Iterative_Solver_End_Iteration(c, g, error)
-      IF (converged) EXIT
+      nwork = Iterative_Solver_End_Iteration(c, g)
+      IF (nwork .LE. 0) EXIT
     END DO
-    PRINT *, 'error =', error
+    PRINT *, 'error =', Iterative_Solver_Errors()
     DO i = 1, nroot
       PRINT *, 'solution ', c(1 : MIN(n, 10), i)
     END DO

@@ -2,7 +2,7 @@ if (FORTRAN
         AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL "Intel"  # avoid the challenge of linking C++ and Fortran with Intel
         )
     set(ITERATIVESOLVER_FORTRAN_EXAMPLES
-            LinearEigensystemExampleF-Pspace-adaptive.F90
+#            LinearEigensystemExampleF-Pspace-adaptive.F90
             LinearEquationsExampleF.F90
             )
 endif ()

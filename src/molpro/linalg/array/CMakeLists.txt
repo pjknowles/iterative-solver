@@ -38,6 +38,10 @@ if (MPI)
             SOURCES DistrArray.cpp DistrArrayDisk.cpp util.cpp
             PUBLIC_HEADER DistrArray.h DistrArrayDisk.h util.h
             )
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(${PROJECT_NAME} PUBLIC "-pthread") # needed for DistrArrayDisk
+        target_link_options(${PROJECT_NAME} PUBLIC "-pthread") # needed for DistrArrayDisk
+    endif ()
 
     if (LINEARALGEBRA_ARRAY_HDF5)
         LibraryManager_Append(${PROJECT_NAME}

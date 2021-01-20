@@ -1,9 +1,6 @@
 PROGRAM Linear_Eigensystem_Benchmark
   USE Iterative_Solver
   USE ProfilerF
-#ifdef HAVE_MPI_H
-  include 'mpif.h'
-#endif
   TYPE(Profiler) :: p
   INTEGER, PARAMETER :: n = 2000000, nroot = 3
   !DOUBLE PRECISION, DIMENSION (n, n) :: m
@@ -12,18 +9,20 @@ PROGRAM Linear_Eigensystem_Benchmark
   DOUBLE PRECISION :: su
   INTEGER :: i, j, root, ierr
   LOGICAL :: converged, update
+  interface
+    subroutine mpi_init() BIND (C, name = 'mpi_init')
+    end subroutine mpi_init
+    subroutine mpi_finalize() BIND (C, name = 'mpi_finalize')
+    end subroutine mpi_finalize
+!    function mpi_comm_global() BIND (C, name = 'mpi_comm_global')
+!      use iso_c_binding, only: c_int64_t
+!      integer(c_int64_t) mpi_comm_global
+!    end function mpi_comm_global
+  end interface
   PRINT *, 'Fortran binding of IterativeSolver'
-#ifdef HAVE_MPI_H
-  call MPI_Init(ierr)
-  PRINT *, 'Using parallel version'
-  p=Profiler('Benchmark',MPI_COMM_WORLD)
-  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Benchmark', pcomm = MPI_COMM_WORLD, thresh = 1d-7, &
-                                                      verbosity = 1)
-#else
-  PRINT *, 'Using serial version'
-  p=Profiler('Benchmark')   
+  CALL mpi_init
+  p=Profiler('Benchmark')
   CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, pname = 'Benchmark', thresh = 1d-7, verbosity = 1)
-#endif
   !m = 1; DO i = 1, n; m(i, i) = 3 * i; END DO
   c = 0; DO i = 1, nroot; c(i, i) = 1; ENDDO
   DO i = 1, n
@@ -60,7 +59,5 @@ PROGRAM Linear_Eigensystem_Benchmark
   CALL Iterative_Solver_Finalize
   call p%stop('Finalize')
   call p%print(6)
-#ifdef HAVE_MPI_H
-  call MPI_Finalize(ierr)
-#endif
+  call mpi_finalize
 END PROGRAM Linear_Eigensystem_Benchmark

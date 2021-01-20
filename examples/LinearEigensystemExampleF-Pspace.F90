@@ -4,6 +4,16 @@
 !> A P-space is explicitly declared.
 PROGRAM Linear_Eigensystem_Example
   USE Iterative_Solver
+  interface
+    subroutine mpi_init() BIND (C, name = 'mpi_init')
+    end subroutine mpi_init
+    subroutine mpi_finalize() BIND (C, name = 'mpi_finalize')
+    end subroutine mpi_finalize
+    !    function mpi_comm_global() BIND (C, name = 'mpi_comm_global')
+    !      use iso_c_binding, only: c_int64_t
+    !      integer(c_int64_t) mpi_comm_global
+    !    end function mpi_comm_global
+  end interface
 
   INTEGER, PARAMETER :: n = 20, nroot = 3, nP = 10
   DOUBLE PRECISION, DIMENSION (n, n) :: m
@@ -61,4 +71,5 @@ PROGRAM Linear_Eigensystem_Example
     update = Iterative_Solver_Add_Vector(c, g, p)
   END DO
   CALL Iterative_Solver_Finalize
+  CALL mpi_finalize
 END PROGRAM Linear_Eigensystem_Example

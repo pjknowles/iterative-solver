@@ -4,7 +4,16 @@
 !> A P-space is discovered.
 PROGRAM Linear_Eigensystem_Example
   USE Iterative_Solver
-
+  interface
+    subroutine mpi_init() BIND (C, name = 'mpi_init')
+    end subroutine mpi_init
+    subroutine mpi_finalize() BIND (C, name = 'mpi_finalize')
+    end subroutine mpi_finalize
+    !    function mpi_comm_global() BIND (C, name = 'mpi_comm_global')
+    !      use iso_c_binding, only: c_int64_t
+    !      integer(c_int64_t) mpi_comm_global
+    !    end function mpi_comm_global
+  end interface
   INTEGER, PARAMETER :: n = 1000, nroot = 3, nP = 50
   DOUBLE PRECISION, DIMENSION (n, n) :: m
   DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g
@@ -89,4 +98,5 @@ PROGRAM Linear_Eigensystem_Example
   DO i = 1, nroot
     PRINT *, 'solution ', c(1 : MIN(n, 10), i)
   END DO
+  CALL mpi_finalize
 END PROGRAM Linear_Eigensystem_Example

@@ -40,48 +40,28 @@ public:
                            std::make_shared<subspace::SubspaceSolverLinEig<R, Q, P>>(logger_)),
                        handlers, std::make_shared<Statistics>(), logger_),
         logger(logger_) {
-    set_hermiticity(m_hermiticity);
+    set_hermiticity(true);
+    this->set_n_roots(1);
     this->m_normalise_solution = false;
   }
 
   /*!
-   * \brief Proposes new parameters for the subspace from the preconditioned residuals.
-   *
-   * After add_vector solves the subspace problem it returns the new solution and residual. The residual should be
-   * preconditioned, i.e. using Davidson method, to accelerate convergence. The updated residual is used in this
-   * function to propose new Q space parameters orthonormal to the old space. They are returned in parameters so that
-   * corresponding actions can be calculated and used in add_vector in the next iteration.
-   *
-   * Every n_reset_D iterations the D space has to be reset. If working set does not cover all solutions than resetting
-   * is done over multiple iterations. During this time, there are no deletions from the Q space.
-   * This is done by temporarily increasing maximum allowed size of Q space.
+   * \brief constructs next perturbed wavefunction
    *
    * @param parameters output new parameters for the subspace.
    * @param residual preconditioned residuals.
    * @return number of significant parameters to calculate the action for
    */
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
-    if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace->dimensions())) {
-      m_resetting_in_progress = true;
-      this->m_working_set = m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->solutions(),
-                                                  propose_rspace_norm_thresh, propose_rspace_svd_thresh,
-                                                  *this->m_handlers, *this->m_logger);
-    } else {
-      m_resetting_in_progress = false;
-      this->m_working_set = detail::propose_rspace(*this, parameters, action, *this->m_xspace, *this->m_subspace_solver,
-                                                   *this->m_handlers, *this->m_logger, propose_rspace_svd_thresh,
-                                                   propose_rspace_norm_thresh, m_max_size_qspace);
-    }
-    this->m_stats->iterations++;
-    return this->working_set().size();
+    return end_iteration(parameters.front().get(),action.front().get());
   }
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
-    return end_iteration(wrap(parameters), wrap(action));
+    return end_iteration(parameters.front(),action.front());
   }
   size_t end_iteration(R& parameters, R& actions) override {
-    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
-    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
-    return end_iteration(wparams, wactions);
+    // TODO implement RSPT next wavefunction
+    // TODO implement RSPT energies
+    return this->m_errors.front()<this->m_convergence_threshold ? 0:1;
   }
 
 
@@ -120,18 +100,6 @@ public:
     cout << std::defaultfloat << std::endl;
   }
 
-  //! Set the period in iterations for resetting the D space
-  void set_reset_D(size_t n) { m_dspace_resetter.set_nreset(n); }
-  size_t get_reset_D() const { return m_dspace_resetter.get_nreset(); }
-  //! Set the maximum size of Q space after resetting the D space
-  void set_reset_D_maxQ_size(size_t n) { m_dspace_resetter.set_max_Qsize(n); }
-  int get_reset_D_maxQ_size() const { return m_dspace_resetter.get_max_Qsize(); }
-  int get_max_size_qspace() const { return m_max_size_qspace; }
-  void set_max_size_qspace(int n) {
-    m_max_size_qspace = n;
-    if (m_dspace_resetter.get_max_Qsize() > m_max_size_qspace)
-      m_dspace_resetter.set_max_Qsize(m_max_size_qspace);
-  }
   void set_hermiticity(bool hermitian) override {
     m_hermiticity = hermitian;
     auto xspace = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
@@ -139,34 +107,21 @@ public:
     auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
     subspace_solver->set_hermiticity(hermitian);
   }
-  bool get_hermiticity() const override { return m_hermiticity; }
 
   void set_options(const Options& options) override {
     SolverTemplate::set_options(options);
     auto opt = CastOptions::LinearEigensystem(options);
-    if (opt.reset_D)
-      set_reset_D(opt.reset_D.value());
-    if (opt.reset_D_max_Q_size)
-      set_reset_D_maxQ_size(opt.reset_D_max_Q_size.value());
-    if (opt.max_size_qspace)
-      set_max_size_qspace(opt.max_size_qspace.value());
     if (opt.norm_thresh)
       propose_rspace_norm_thresh = opt.norm_thresh.value();
     if (opt.svd_thresh)
       propose_rspace_svd_thresh = opt.svd_thresh.value();
-    if (opt.hermiticity)
-      set_hermiticity(opt.hermiticity.value());
   }
 
   std::shared_ptr<Options> get_options() const override {
     auto opt = std::make_shared<LinearEigensystemRSPTOptions>();
     opt->copy(*SolverTemplate::get_options());
-    opt->reset_D = get_reset_D();
-    opt->reset_D_max_Q_size = get_reset_D_maxQ_size();
-    opt->max_size_qspace = get_max_size_qspace();
     opt->norm_thresh = propose_rspace_norm_thresh;
     opt->svd_thresh = propose_rspace_svd_thresh;
-    opt->hermiticity = get_hermiticity();
     return opt;
   }
 
@@ -183,11 +138,8 @@ protected:
       this->m_handlers->rr().axpy(-eigvals.at(roots[i]), params.at(i), actions.at(i));
   }
 
-  int m_max_size_qspace = std::numeric_limits<int>::max(); //!< maximum size of Q space
-  detail::DSpaceResetter<Q> m_dspace_resetter;             //!< resets D space
-  bool m_hermiticity = false;                              //!< whether the problem is hermitian or not
+  bool m_hermiticity = true;                              //!< whether the problem is hermitian or not
   std::vector<double> m_last_values;                       //!< The values from the previous iteration
-  bool m_resetting_in_progress = false;                    //!< whether D space resetting is in progress
 };
 
 } // namespace molpro::linalg::itsolv

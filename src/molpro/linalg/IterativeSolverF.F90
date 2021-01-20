@@ -65,7 +65,7 @@ CONTAINS
         !< One gives a single progress-report line each iteration.
         CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
         INTEGER(KIND=mpicomm_kind), INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
-        CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
+        CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm, eg Davidson
         INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
         INTERFACE
             SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, range_begin, range_end, thresh, thresh_value, &
@@ -332,7 +332,7 @@ CONTAINS
         !< One gives a single progress-report line each iteration.
         CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
         INTEGER, INTENT(in), OPTIONAL :: mpicomm !< Profiler communicator
-        CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
+        CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm, eg DIIS
         INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
         INTERFACE
             SUBROUTINE Iterative_Solver_DIIS_InitializeC(nq, range_begin, range_end, thresh, verbosity, &
@@ -516,10 +516,11 @@ CONTAINS
     !
     !>@brief For most methods, does nothing; for Optimize it is required.
     !> Also write progress to standard output
-    !> \param solution The current solution, after interpolation and updating with the preconditioned residual.
-    !> \param residual The residual after interpolation.
-    !> \param error Error indicator for each sought root.
-    !> \return .TRUE. if convergence reached for all roots
+    !> \param solution On exit, the new vectors targeting roots in the working set.
+    !> \param residual On entry, the preconditioned residual. On exit, undefined.
+    !> \param synchronize Whether to synchronize any distributed storage of parameters before return.
+    !>        The default is the safe .TRUE. but can be .FALSE. if appropriate.
+    !> \return The size of the working set
     FUNCTION Iterative_Solver_End_Iteration1(solution, residual, synchronize, buffer_size)
         USE iso_c_binding
         INTEGER :: Iterative_Solver_End_Iteration
@@ -572,6 +573,10 @@ CONTAINS
     !> \param pp The P-P block of the matrix, dimensioned (number of existing P + nP, nP)
     !> \param parameters On input, the current solution or expansion vector. On exit, the interpolated solution vector.
     !> \param action On input, the residual for parameters (non-linear), or action of matrix on parameters (linear).
+    !> \param fproc
+    !> \param synchronize Whether to synchronize any distributed storage of parameters and action before return.
+    !>        Unnecessary if the client preconditioner is diagonal, but otherwise should be done.
+    !>        The default is the safe .TRUE. but can be .FALSE. if appropriate.
     !> On exit, the expected (non-linear) or actual (linear) residual of the interpolated parameters.
     FUNCTION Iterative_Solver_Add_P(nP, offsets, indices, coefficients, pp, parameters, action, fproc, synchronize)
         USE iso_c_binding

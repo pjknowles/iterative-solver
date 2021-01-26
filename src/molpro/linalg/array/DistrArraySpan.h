@@ -7,7 +7,8 @@ class DistrArraySpan : public DistrArray {
 private:
   std::unique_ptr<Distribution> m_distribution;     //!< describes distribution of array among processes
   bool m_allocated = false;                         //!< whether the window has been created
-  std::unique_ptr<LocalBuffer> m_buffer = nullptr;  //!< pointer to the beginning of the local mapped buffer
+  //std::unique_ptr<LocalBuffer> m_buffer = nullptr;  //!< pointer to the beginning of the local mapped buffer
+  Span<value_type> m_span;
   
 public:
   DistrArraySpan() = default;
@@ -30,6 +31,7 @@ public:
 protected:
   struct LocalBufferSpan : public DistrArray::LocalBuffer {
     explicit LocalBufferSpan(Span<value_type> &source);
+    explicit LocalBufferSpan(const Span<value_type> &source);
   };
 
 public:

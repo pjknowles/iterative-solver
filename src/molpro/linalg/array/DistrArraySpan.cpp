@@ -29,7 +29,7 @@ DistrArraySpan::DistrArraySpan(const DistrArraySpan& source)
     : DistrArray(source.size(), source.communicator()),
        m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
   if (!source.empty()) {
-    DistrArraySpan::allocate_buffer(*source.m_buffer); // TODO: is object slicing OK here??
+    DistrArraySpan::allocate_buffer(source.m_span);
   }
 }
 
@@ -41,9 +41,8 @@ DistrArraySpan::DistrArraySpan(const DistrArray& source)
 }
 
 DistrArraySpan::DistrArraySpan(DistrArraySpan&& source) noexcept
-    : DistrArray(source.m_dimension, source.m_communicator), m_buffer(std::move(source.m_buffer)),
+    : DistrArray(source.m_dimension, source.m_communicator), m_span(std::move(source.m_span)),
       m_allocated(source.m_allocated), m_distribution(std::move(source.m_distribution)) {
-  source.m_buffer = nullptr;
   source.m_allocated = false;
 }
 
@@ -55,7 +54,7 @@ DistrArraySpan& DistrArraySpan::operator=(const DistrArraySpan& source) {
     DistrArraySpan t{source};
     swap(*this, t);
   } else {
-    allocate_buffer(*source.m_buffer);  // TODO: OK???
+    allocate_buffer(source.m_span);
   }
   return *this;
 }
@@ -72,12 +71,12 @@ void swap(DistrArraySpan& a1, DistrArraySpan& a2) noexcept {
   swap(a1.m_communicator, a2.m_communicator);
   swap(a1.m_distribution, a2.m_distribution);
   swap(a1.m_allocated, a2.m_allocated);
-  swap(a1.m_buffer, a2.m_buffer);
+  swap(a1.m_span, a2.m_span);
 }
 
 void DistrArraySpan::free_buffer() {
   if (m_allocated) {
-    m_buffer = nullptr;
+    // TODO: what to do with m_span?
     m_allocated = false;
   }
 }
@@ -89,12 +88,13 @@ void DistrArraySpan::allocate_buffer(Span<value_type> buffer) {
     return;
   if (!m_distribution)
     error("Cannot allocate an array without distribution");
-  m_buffer = std::make_unique<LocalBufferSpan>(buffer);
+  //m_buffer = std::make_unique<LocalBufferSpan>(buffer);
+  m_span = buffer;
   int rank = MPI_Comm_rank(m_communicator, &rank);
   index_type lo, hi;
   std::tie(lo, hi) = m_distribution->range(rank);
   size_t n = hi - lo;
-  if (m_buffer->size() < n)
+  if (m_span.size() < n)
     error("Specified external buffer is too small");
   m_allocated = true;
 }
@@ -105,6 +105,12 @@ DistrArraySpan::LocalBufferSpan::LocalBufferSpan(Span<value_type>& source) {
   m_size = source.size();
 }
 
+DistrArraySpan::LocalBufferSpan::LocalBufferSpan(const Span<value_type>& source) {
+  // TODO: is there a smarter way of doing this (i.e. using Span copy-constructor)???
+  m_buffer = const_cast<value_type*>(source.data());
+  m_size = source.size();
+}
+
 bool DistrArraySpan::empty() const { return !m_allocated; }
 
 const DistrArray::Distribution& DistrArraySpan::distribution() const {
@@ -112,6 +118,15 @@ const DistrArray::Distribution& DistrArraySpan::distribution() const {
     error("allocate buffer before asking for distribution");
   return *m_distribution;
 }
+
+std::unique_ptr<DistrArray::LocalBuffer> DistrArraySpan::local_buffer() {
+  return std::make_unique<LocalBufferSpan>(m_span);
+}
+
+std::unique_ptr<const DistrArray::LocalBuffer> DistrArraySpan::local_buffer() const {
+  return std::make_unique<const LocalBufferSpan>(m_span);
+}
+
 
 
 } // molpro::linalg::array

@@ -8,7 +8,7 @@ private:
   std::unique_ptr<Distribution> m_distribution;     //!< describes distribution of array among processes
   bool m_allocated = false;                         //!< whether the window has been created
   //std::unique_ptr<LocalBuffer> m_buffer = nullptr;  //!< pointer to the beginning of the local mapped buffer
-  Span<value_type> m_span;
+  Span<value_type> m_span;                          //!< Span over provided buffer
   
 public:
   DistrArraySpan() = default;
@@ -48,7 +48,7 @@ public:
   void scatter(const std::vector<index_type> &indices, const std::vector<value_type> &data) override;
   void scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data) override;
   [[nodiscard]] std::vector<value_type> vec() const override;
-  void error(const std::string &message) const override;
 };
+
 } // molpro::linalg::array
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYSPAN_H

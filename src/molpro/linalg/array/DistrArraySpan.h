@@ -12,8 +12,8 @@ private:
   
 public:
   DistrArraySpan() = default;
-  DistrArraySpan(size_t dimension, MPI_Comm commun);
-  DistrArraySpan(std::unique_ptr<Distribution> distribution, MPI_Comm commun);
+  DistrArraySpan(size_t dimension, MPI_Comm commun = MPI_COMM_WORLD);
+  DistrArraySpan(std::unique_ptr<Distribution> distribution, MPI_Comm commun = MPI_COMM_WORLD);
   DistrArraySpan(const DistrArraySpan &source);
   explicit DistrArraySpan(const DistrArray &source);
   DistrArraySpan(DistrArraySpan &&source) noexcept;

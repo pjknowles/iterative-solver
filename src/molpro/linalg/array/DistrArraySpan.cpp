@@ -91,7 +91,8 @@ void DistrArraySpan::allocate_buffer(Span<value_type> buffer) {
     error("Cannot allocate an array without distribution");
   //m_buffer = std::make_unique<LocalBufferSpan>(buffer);
   m_span = buffer;
-  int rank = MPI_Comm_rank(m_communicator, &rank);
+  int rank;
+  MPI_Comm_rank(m_communicator, &rank);
   index_type lo, hi;
   std::tie(lo, hi) = m_distribution->range(rank);
   size_t n = hi - lo;

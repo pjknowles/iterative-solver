@@ -18,6 +18,7 @@
 #include <molpro/linalg/array/DistrArrayFile.h>
 #endif
 #include <molpro/linalg/array/DistrArrayMPI3.h>
+#include <molpro/linalg/array/DistrArraySpan.h>
 #include <molpro/linalg/array/Span.h>
 #include <molpro/linalg/array/util/Distribution.h>
 #include <molpro/linalg/array/util/gather_all.h>
@@ -38,7 +39,8 @@ using molpro::linalg::itsolv::LinearEigensystemDavidson;
 using molpro::linalg::itsolv::LinearEquationsDavidson;
 using molpro::linalg::array::util::make_distribution_spread_remainder;
 
-using Rvector = molpro::linalg::array::DistrArrayMPI3;
+//using Rvector = molpro::linalg::array::DistrArrayMPI3;
+using Rvector = molpro::linalg::array::DistrArraySpan;
 #ifdef LINEARALGEBRA_ARRAY_HDF5
 using Qvector = molpro::linalg::array::DistrArrayHDF5;
 #else

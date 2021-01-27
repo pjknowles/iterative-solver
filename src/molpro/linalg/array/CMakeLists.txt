@@ -35,8 +35,8 @@ endif ()
 
 if (MPI)
     LibraryManager_Append(${PROJECT_NAME}
-            SOURCES DistrArray.cpp DistrArrayDisk.cpp util.cpp
-            PUBLIC_HEADER DistrArray.h DistrArrayDisk.h util.h
+            SOURCES DistrArray.cpp DistrArrayDisk.cpp DistrArrayFile.cpp DistrArraySpan.cpp util.cpp
+            PUBLIC_HEADER DistrArray.h DistrArrayDisk.h DistrArrayFile.h DistrArraySpan.h util.h
             )
     if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         target_compile_options(${PROJECT_NAME} PUBLIC "-pthread") # needed for DistrArrayDisk
@@ -53,8 +53,8 @@ if (MPI)
     if (LINEARALGEBRA_ARRAY_MPI3)
         message(STATUS "Building ${PROJECT_NAME} with MPI3 Array")
         target_compile_definitions(${PROJECT_NAME} PUBLIC LINEARALGEBRA_ARRAY_MPI3 LINEARALGEBRA_ARRAY_FILE)
-        LibraryManager_Append(${PROJECT_NAME} SOURCES DistrArrayMPI3.cpp DistrArrayFile.cpp
-                PUBLIC_HEADER DistrArrayMPI3.h DistrArrayFile.h ghc/filesystem.h)
+        LibraryManager_Append(${PROJECT_NAME} SOURCES DistrArrayMPI3.cpp
+                PUBLIC_HEADER DistrArrayMPI3.h ghc/filesystem.h)
     endif ()
 
     if (LINEARALGEBRA_ARRAY_GA)

@@ -40,6 +40,7 @@ if (MPI)
             )
     if (LINEARALGEBRA_ARRAY_MPI3)
         target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayMPI3.cpp testDistrArrayFile.cpp
+                        testDistrArraySpan.cpp
                         testArrayHandlerDistr.cpp testArrayHandlerDistrSparse.cpp testArrayHandlers.cpp)
     endif ()
     if (LINEARALGEBRA_ARRAY_GA)

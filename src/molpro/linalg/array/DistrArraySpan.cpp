@@ -129,7 +129,9 @@ std::unique_ptr<const DistrArray::LocalBuffer> DistrArraySpan::local_buffer() co
 }
 
 DistrArray::value_type DistrArraySpan::at(DistrArray::index_type ind) const {
-  return m_span[ind];
+  value_type val;
+  get(ind, ind + 1, &val);
+  return val;
 }
 
 void DistrArraySpan::set(DistrArray::index_type ind, DistrArray::value_type val) { put(ind, ind + 1, &val); }

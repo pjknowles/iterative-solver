@@ -21,10 +21,7 @@ DistrArraySpan::DistrArraySpan(std::unique_ptr<Distribution> distribution, MPI_C
     : DistrArray(distribution->border().second, commun), m_distribution(std::move(distribution)) {
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");
-    //TODO: Empty on construction - OK???
 }
-
-// DistrArraySpan::~DistrArraySpan() {}
 
 DistrArraySpan::DistrArraySpan(const DistrArraySpan& source)
     : DistrArray(source.size(), source.communicator()),
@@ -44,13 +41,13 @@ DistrArraySpan::DistrArraySpan(const DistrArray& source)
 DistrArraySpan::DistrArraySpan(DistrArraySpan&& source) noexcept
     : DistrArray(source.m_dimension, source.m_communicator), m_span(std::move(source.m_span)),
       m_allocated(source.m_allocated), m_distribution(std::move(source.m_distribution)) {
-  source.m_allocated = false; //TODO: and source.m_span?
+  source.m_allocated = false;
 }
 
 DistrArraySpan& DistrArraySpan::operator=(const DistrArraySpan& source) {
   if (this == &source)
     return *this;
-  if (source.empty() || empty() || !compatible(source)) { // TODO: not sure about this case
+  if (source.empty() || empty() || !compatible(source)) {
     free_buffer();
     DistrArraySpan t{source};
     swap(*this, t);

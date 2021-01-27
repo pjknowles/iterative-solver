@@ -1,25 +1,25 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYSPAN_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYSPAN_H
 #include <molpro/linalg/array/DistrArray.h>
+#include <molpro/mpi.h>
+using molpro::mpi::comm_global;
 
 namespace molpro::linalg::array {
 class DistrArraySpan : public DistrArray {
 private:
   std::unique_ptr<Distribution> m_distribution;     //!< describes distribution of array among processes
   bool m_allocated = false;                         //!< whether the window has been created
-  //std::unique_ptr<LocalBuffer> m_buffer = nullptr;  //!< pointer to the beginning of the local mapped buffer
   Span<value_type> m_span;                          //!< Span over provided buffer
   
 public:
   DistrArraySpan() = default;
-  DistrArraySpan(size_t dimension, MPI_Comm commun = MPI_COMM_WORLD);
-  DistrArraySpan(std::unique_ptr<Distribution> distribution, MPI_Comm commun = MPI_COMM_WORLD);
+  DistrArraySpan(size_t dimension, MPI_Comm commun = comm_global());
+  DistrArraySpan(std::unique_ptr<Distribution> distribution, MPI_Comm commun = comm_global());
   DistrArraySpan(const DistrArraySpan &source);
   explicit DistrArraySpan(const DistrArray &source);
   DistrArraySpan(DistrArraySpan &&source) noexcept;
   DistrArraySpan &operator=(const DistrArraySpan &source);
   DistrArraySpan &operator=(DistrArraySpan &&source) noexcept;
-  //~DistrArraySpan() override;
   
   friend void swap(DistrArraySpan &a1, DistrArraySpan &a2) noexcept;
   //void sync() const override;

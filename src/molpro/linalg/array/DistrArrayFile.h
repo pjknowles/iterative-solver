@@ -16,6 +16,9 @@
  #endif
 
 #include "molpro/linalg/array/DistrArrayDisk.h"
+#include <molpro/mpi.h>
+
+using molpro::mpi::comm_global;
 
 namespace molpro::linalg::array {
 
@@ -40,8 +43,8 @@ public:
   DistrArrayFile();
   DistrArrayFile(const DistrArrayFile &source);
   DistrArrayFile(DistrArrayFile &&source) noexcept;
-  explicit DistrArrayFile(size_t dimension, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");
-  explicit DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm = MPI_COMM_WORLD, const std::string &directory = ".");
+  explicit DistrArrayFile(size_t dimension, MPI_Comm comm = comm_global(), const std::string &directory = ".");
+  explicit DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm = comm_global(), const std::string &directory = ".");
   explicit DistrArrayFile(const DistrArray &source);
   
   DistrArrayFile &operator=(const DistrArrayFile &source) = delete;

@@ -30,8 +30,8 @@ public:
   
 protected:
   struct LocalBufferSpan : public DistrArray::LocalBuffer {
-    explicit LocalBufferSpan(Span<value_type> &source);
-    explicit LocalBufferSpan(const Span<value_type> &source);
+    explicit LocalBufferSpan(DistrArraySpan &source);
+    explicit LocalBufferSpan(const DistrArraySpan &source);
   };
 
 public:

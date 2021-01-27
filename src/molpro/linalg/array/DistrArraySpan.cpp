@@ -100,16 +100,30 @@ void DistrArraySpan::allocate_buffer(Span<value_type> buffer) {
   m_allocated = true;
 }
 
-DistrArraySpan::LocalBufferSpan::LocalBufferSpan(Span<value_type>& source) {
-  // TODO: is there a smarter way of doing this (i.e. using Span copy-constructor)???
-  m_buffer = source.data();
-  m_size = source.size();
+DistrArraySpan::LocalBufferSpan::LocalBufferSpan(DistrArraySpan& source) {
+  if (!source.m_allocated)
+    source.error("attempting to access local buffer of empty array");
+  int rank;
+  MPI_Comm_rank(source.communicator(), &rank);
+  index_type hi;
+  std::tie(m_start, hi) = source.distribution().range(rank);
+  m_buffer = source.m_span.data();
+  m_size = source.m_span.size();
+  if (m_size != (hi - m_start))
+    source.error("size of mapped buffer different from the local distribution size");
 }
 
-DistrArraySpan::LocalBufferSpan::LocalBufferSpan(const Span<value_type>& source) {
-  // TODO: is there a smarter way of doing this (i.e. using Span copy-constructor)???
-  m_buffer = const_cast<value_type*>(source.data());
-  m_size = source.size();
+DistrArraySpan::LocalBufferSpan::LocalBufferSpan(const DistrArraySpan& source) {
+  if (!source.m_allocated)
+    source.error("attempting to access local buffer of empty array");
+  int rank;
+  MPI_Comm_rank(source.communicator(), &rank);
+  index_type hi;
+  std::tie(m_start, hi) = source.distribution().range(rank);
+  m_buffer = const_cast<value_type*>(source.m_span.data());
+  m_size = source.m_span.size();
+  if (m_size != (hi - m_start))
+    source.error("size of mapped buffer different from the local distribution size");
 }
 
 bool DistrArraySpan::empty() const { return !m_allocated; }
@@ -121,11 +135,11 @@ const DistrArray::Distribution& DistrArraySpan::distribution() const {
 }
 
 std::unique_ptr<DistrArray::LocalBuffer> DistrArraySpan::local_buffer() {
-  return std::make_unique<LocalBufferSpan>(m_span);
+  return std::make_unique<LocalBufferSpan>(*this);
 }
 
 std::unique_ptr<const DistrArray::LocalBuffer> DistrArraySpan::local_buffer() const {
-  return std::make_unique<const LocalBufferSpan>(m_span);
+  return std::make_unique<const LocalBufferSpan>(*this);
 }
 
 DistrArray::value_type DistrArraySpan::at(DistrArray::index_type ind) const {

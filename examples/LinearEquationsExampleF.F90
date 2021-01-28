@@ -4,6 +4,16 @@
 PROGRAM Linear_Equations_Example
   USE Iterative_Solver
   IMPLICIT NONE
+  interface
+    subroutine mpi_init() BIND (C, name = 'mpi_init')
+    end subroutine mpi_init
+    subroutine mpi_finalize() BIND (C, name = 'mpi_finalize')
+    end subroutine mpi_finalize
+    !    function mpi_comm_global() BIND (C, name = 'mpi_comm_global')
+    !      use iso_c_binding, only: c_int64_t
+    !      integer(c_int64_t) mpi_comm_global
+    !    end function mpi_comm_global
+  end interface
   INTEGER, PARAMETER :: n = 300, nroot = 2
   DOUBLE PRECISION, PARAMETER :: alpha = 300
   DOUBLE PRECISION, DIMENSION(5), PARAMETER :: augmented_hessian_factors = [0.0_8, .001_8, .01_8, .1_8, 1.0_8]
@@ -14,6 +24,7 @@ PROGRAM Linear_Equations_Example
   INTEGER :: i, j, root, iaug, nwork
   LOGICAL :: converged
   PRINT *, 'Fortran binding of IterativeSolver'
+  call mpi_init
   DO i = 1, n; m(i, i) = alpha * i + 2 * i - 2; DO j = 1, n; IF (i.NE.j) m(i, j) = i + j - 2;
   END DO;
   END DO
@@ -45,4 +56,5 @@ PROGRAM Linear_Equations_Example
     Call Iterative_Solver_Print_Statistics
     CALL Iterative_Solver_Finalize
   ENDDO
+  CALL mpi_finalize
 END PROGRAM Linear_Equations_Example

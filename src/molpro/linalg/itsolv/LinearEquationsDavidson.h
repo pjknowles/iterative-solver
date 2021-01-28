@@ -111,12 +111,12 @@ public:
     subspace_solver->set_hermiticity(hermitian);
   }
   bool get_hermiticity() const override { return m_hermiticity; }
-  //!@copydoc SubspaceSolverLinEig::set_augmented_hessian()
+  //!@copydoc subspace::SubspaceSolverLinEig::set_augmented_hessian()
   void set_augmented_hessian(const double parameter) {
     auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
     subspace_solver->set_augmented_hessian(parameter);
   }
-  //!@copydoc SubspaceSolverLinEig::get_augmented_hessian()
+  //!@copydoc subspace::SubspaceSolverLinEig::get_augmented_hessian()
   double get_augmented_hessian() const {
     auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
     return subspace_solver->get_augmented_hessian();

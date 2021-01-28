@@ -65,6 +65,7 @@ std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::S
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>
 std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold) {
   assert(false); // Complex not implemented here
+  return {};
 }
 
 template <typename value_type>

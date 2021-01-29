@@ -150,6 +150,10 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
       subspaceEigenvectors.col(k) = eigvec.col(ll);
     }
   }
+  
+  // TODO: Need to address the case of near-zero eigenvalues (as below for non-hermitian case) and clean-up
+  //  non-hermitian case
+  
   //   molpro::cout << "sorted eigenvalues\n"<<subspaceEigenvalues<<std::endl;
   //   molpro::cout << "sorted eigenvectors\n"<<subspaceEigenvectors<<std::endl;
   if (!hermitian) {

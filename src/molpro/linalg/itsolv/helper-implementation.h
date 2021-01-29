@@ -44,8 +44,9 @@ std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::S
   if (m.empty())
     return {};
   auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), nrows, ncols);
-  auto svd = Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>, Eigen::NoQRPreconditioner>(
-      mat, Eigen::ComputeThinV);
+  //auto svd = Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>, Eigen::NoQRPreconditioner>(
+  //        mat, Eigen::ComputeThinV);
+  auto svd = Eigen::BDCSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(mat, Eigen::ComputeThinV);
   auto svd_system = std::list<SVD<value_type>>{};
   auto sv = svd.singularValues();
   for (int i = int(ncols) - 1; i >= 0; --i) {

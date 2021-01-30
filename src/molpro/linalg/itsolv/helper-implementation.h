@@ -38,14 +38,32 @@ int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, con
   return -1;
 }
 
-template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>
-std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold) {
-  assert(m.size() == nrows * ncols);
-  if (m.empty())
-    return {};
+template<typename value_type>
+std::list<SVD<value_type>> svd_system_small(size_t nrows, size_t ncols, const array::Span<value_type>& m,
+                                            double threshold) {
   auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), nrows, ncols);
-  //auto svd = Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>, Eigen::NoQRPreconditioner>(
-  //        mat, Eigen::ComputeThinV);
+  auto svd = Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>, Eigen::NoQRPreconditioner>(
+      mat, Eigen::ComputeThinV);
+  auto svd_system = std::list<SVD<value_type>>{};
+  auto sv = svd.singularValues();
+  for (int i = int(ncols) - 1; i >= 0; --i) {
+    if (std::abs(sv(i)) < threshold) {
+      auto t = SVD<value_type>{};
+      t.value = sv(i);
+      t.v.reserve(ncols);
+      for (size_t j = 0; j < ncols; ++j) {
+        t.v.emplace_back(svd.matrixV()(j, i));
+      }
+      svd_system.emplace_back(std::move(t));
+    }
+  }
+  return svd_system;
+}
+
+template<typename value_type>
+std::list<SVD<value_type>> svd_system_large(size_t nrows, size_t ncols, const array::Span<value_type>& m,
+                                            double threshold) {
+  auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), nrows, ncols);
   auto svd = Eigen::BDCSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(mat, Eigen::ComputeThinV);
   auto svd_system = std::list<SVD<value_type>>{};
   auto sv = svd.singularValues();
@@ -61,6 +79,18 @@ std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::S
     }
   }
   return svd_system;
+}
+
+template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>
+std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold) {
+  assert(m.size() == nrows * ncols);
+  if (m.empty())
+    return {};
+  if (nrows < 16) {
+    return svd_system_small<value_type>(nrows, ncols, m, threshold);
+  } else {
+    return svd_system_large<value_type>(nrows, ncols, m, threshold);
+  }
 }
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>

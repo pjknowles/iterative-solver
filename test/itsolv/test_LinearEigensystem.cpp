@@ -176,8 +176,8 @@ struct LinearEigensystemF : ::testing::Test {
     return std::make_tuple(pspace, PP);
   }
 
-  auto set_options(std::unique_ptr<LinearEigensystem<Rvector, Qvector, Pvector>>& solver, const int nroot,
-                   const int np, bool hermitian) {
+  auto set_options(std::unique_ptr<LinearEigensystem<Rvector, Qvector, Pvector>>& solver, const int nroot, const int np,
+                   bool hermitian) {
     auto options = CastOptions::LinearEigensystem(solver->get_options());
     options->n_roots = nroot;
     options->convergence_threshold = 1.0e-8;
@@ -234,6 +234,19 @@ struct LinearEigensystemF : ::testing::Test {
     check_eigenvectors_map(expected_eigensolutions, expected_eigenvalues);
     if (verbosity > 0)
       std::cout << "expected eigenvalues " << expected_eigenvalues << std::endl;
+    {
+      molpro::cout << "\n\n*** " << title << " by perturbation theory" << std::endl;
+      auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector, Pvector>("RSPT");
+      int nwork = 1;
+      auto [x, g] = initialize_subspace(0, 1, 1, solver);
+      for (auto iter = 1; iter < 5; iter++) {
+        action(x, g);
+        nwork = solver->add_vector(x, g);
+        update(g, solver->working_set_eigenvalues());
+        solver->report();
+        nwork = solver->end_iteration(x, g);
+      }
+    }
     for (int nroot = 1; nroot <= n && nroot <= 28; nroot += std::max(size_t{1}, n / 10)) {
       for (auto np = 0; np <= n && np <= 100 && (hermitian or np == 0); np += std::max(nroot, int(n) / 5)) {
         molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n
@@ -302,8 +315,9 @@ struct LinearEigensystemF : ::testing::Test {
         int root = 0;
         for (const auto& ee : expected_eigensolutions) {
           EXPECT_NEAR(ee.first, solver->eigenvalues()[root], 1e-10);
-          auto overlap_with_reference = std::inner_product(parameters.at(root).begin(), parameters.at(root).end(),
-                                                           ee.second.begin(), 0., std::plus<double>(), std::multiplies<double>());
+          auto overlap_with_reference =
+              std::inner_product(parameters.at(root).begin(), parameters.at(root).end(), ee.second.begin(), 0.,
+                                 std::plus<double>(), std::multiplies<double>());
           EXPECT_NEAR(std::abs(overlap_with_reference), 1., options->convergence_threshold.value());
           root++;
           if (root >= solver->n_roots())
@@ -315,7 +329,7 @@ struct LinearEigensystemF : ::testing::Test {
 };
 
 TEST_F(LinearEigensystemF, file_eigen) {
-  for (const auto& file : std::vector<std::string>{"phenol", "bh", "hf"}) {
+  for (const auto& file : std::vector<std::string>{"bh", "hf", "phenol"}) {
     load_matrix(file, file == "phenol" ? 0 : 1e-8);
     test_eigen(file);
   }

@@ -4,11 +4,11 @@
 #include <molpro/linalg/itsolv/Options.h>
 namespace molpro::linalg::itsolv {
 /*!
- * @brief Allows setting and getting of options for LinearEquationsRSPT instance via IterativeSolver base class
+ * @brief Allows setting and getting of options for LinearEigensystemRSPT instance via IterativeSolver base class
  */
-struct LinearEquationsRSPTOptions : public LinearEquationsOptions {
-  LinearEquationsRSPTOptions() = default;
-  LinearEquationsRSPTOptions(const options_map& opt);
+struct LinearEigensystemRSPTOptions : public LinearEigensystemOptions {
+  LinearEigensystemRSPTOptions() = default;
+  LinearEigensystemRSPTOptions(const options_map& opt);
 
   std::optional<double> norm_thresh;
   std::optional<double> svd_thresh;

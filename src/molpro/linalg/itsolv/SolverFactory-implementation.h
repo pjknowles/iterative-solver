@@ -3,6 +3,7 @@
 #include "OptimizeSD.h"
 #include "OptimizeSDOptions.h"
 #include <molpro/linalg/itsolv/LinearEigensystemDavidson.h>
+#include <molpro/linalg/itsolv/LinearEigensystemRSPT.h>
 #include <molpro/linalg/itsolv/LinearEquationsDavidson.h>
 #include <molpro/linalg/itsolv/NonLinearEquationsDIIS.h>
 #include <molpro/linalg/itsolv/OptimizeBFGS.h>
@@ -30,9 +31,17 @@ template <class R, class Q, class P>
 std::unique_ptr<LinearEigensystem<R, Q, P>>
 SolverFactory<R, Q, P>::create(const LinearEigensystemOptions& options,
                                const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers) {
-  auto solver = std::make_unique<LinearEigensystemDavidson<R, Q, P>>(handlers);
-  solver->set_options(options);
-  return solver;
+  Options* options_ptr = &const_cast<LinearEigensystemOptions&>(options);
+  if (auto options_child = dynamic_cast<LinearEigensystemDavidsonOptions*>(options_ptr); options_child) {
+    auto solver = std::make_unique<LinearEigensystemDavidson<R, Q, P>>(handlers);
+    solver->set_options(options);
+    return solver;
+  }
+  if (auto options_child = dynamic_cast<LinearEigensystemRSPTOptions*>(options_ptr); options_child) {
+    auto solver = std::make_unique<LinearEigensystemRSPT<R, Q, P>>(handlers);
+    solver->set_options(options);
+    return solver;
+  }
 }
 
 template <class R, class Q, class P>

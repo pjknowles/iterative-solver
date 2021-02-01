@@ -3,7 +3,7 @@
 
 namespace molpro::linalg::itsolv {
 
-LinearEquationsRSPTOptions::LinearEquationsRSPTOptions(const options_map& opt) : LinearEquationsOptions(opt) {
+LinearEigensystemRSPTOptions::LinearEigensystemRSPTOptions(const options_map& opt) : LinearEigensystemOptions(opt) {
   auto facet = util::StringFacet{};
   auto opt_upper = util::capitalize_keys(opt, facet);
   if (auto key = facet.toupper("norm_thresh"); opt_upper.count(key)) {

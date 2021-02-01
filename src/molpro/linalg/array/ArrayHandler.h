@@ -11,6 +11,9 @@
 #include <vector>
 
 #include <molpro/linalg/array/type_traits.h>
+#include <molpro/linalg/itsolv/wrap_util.h>
+
+using molpro::linalg::itsolv::VecRef;
 
 namespace molpro::linalg::array {
 namespace util {
@@ -169,7 +172,10 @@ public:
   virtual void scal(value_type alpha, AL &x) = 0;
   virtual void fill(value_type alpha, AL &x) = 0;
   virtual void axpy(value_type alpha, const AR &x, AL &y) = 0;
+  virtual std::vector<value_type> multiple_axpy(const std::vector<value_type> alphas, const VecRef<AL> &x,
+                                                                                            VecRef<AR> &y) = 0;
   virtual value_type dot(const AL &x, const AR &y) = 0;
+  virtual std::vector<value_type> multiple_dot(const VecRef<AL> &x, const VecRef<AR> &y) = 0;
   /*!
    * @brief Select n indices with largest by absolute value contributions to the dot product
    *

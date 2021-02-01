@@ -15,6 +15,7 @@
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 
 using molpro::linalg::itsolv::VecRef;
+using molpro::linalg::itsolv::CVecRef;
 using molpro::linalg::itsolv::subspace::Matrix;
 
 namespace molpro::linalg::array {
@@ -174,10 +175,9 @@ public:
   virtual void scal(value_type alpha, AL &x) = 0;
   virtual void fill(value_type alpha, AL &x) = 0;
   virtual void axpy(value_type alpha, const AR &x, AL &y) = 0;
-  virtual Matrix<value_type> multiple_axpy(const std::vector<value_type> alphas, const VecRef<AL> &x,
-                                                                                            VecRef<AR> &y) = 0;
+  virtual void gemm_outer(const std::vector<value_type> alphas, const CVecRef<AL> &x, VecRef<AR> &y) = 0;
   virtual value_type dot(const AL &x, const AR &y) = 0;
-  virtual Matrix<value_type> multiple_dot(const VecRef<AL> &x, const VecRef<AR> &y) = 0;
+  virtual Matrix<value_type> gemm_inner(const CVecRef<AL> &x, const CVecRef<AR> &y) = 0;
   /*!
    * @brief Select n indices with largest by absolute value contributions to the dot product
    *

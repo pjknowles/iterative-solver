@@ -11,7 +11,7 @@
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
-#include <molpro/linalg/itsolv/subspace/SubspaceSolverLinEig.h>
+#include <molpro/linalg/itsolv/subspace/SubspaceSolverRSPT.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
 #include <molpro/linalg/itsolv/LinearEigensystemRSPTOptions.h>
 
@@ -39,13 +39,13 @@ public:
                                  const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
       : SolverTemplate(std::make_shared<subspace::XSpace<R, Q, P>>(handlers, logger_),
                        std::static_pointer_cast<subspace::ISubspaceSolver<R, Q, P>>(
-                           std::make_shared<subspace::SubspaceSolverLinEig<R, Q, P>>(logger_)),
+                           std::make_shared<subspace::SubspaceSolverRSPT<R, Q, P>>(logger_)),
                        handlers, std::make_shared<Statistics>(), logger_),
         logger(logger_) {
 //    set_hermiticity(true);
             auto xspace = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
             xspace->set_hermiticity(true);
-            auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
+            auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverRSPT<R, Q, P>>(this->m_subspace_solver);
             subspace_solver->set_hermiticity(true);
     this->set_n_roots(1);
     this->m_normalise_solution = false;
@@ -66,6 +66,7 @@ public:
   }
   size_t end_iteration(R& parameters, R& actions) override {
     // TODO implement RSPT next wavefunction
+    std::cout << "xspace size "<<this->m_xspace->size()<<std::endl;
     // TODO implement RSPT energies
     return this->m_errors.front() < this->m_convergence_threshold ? 0 : 1;
   }
@@ -110,7 +111,7 @@ public:
 //    m_hermiticity = hermitian;
     auto xspace = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
     xspace->set_hermiticity(hermitian);
-    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
+    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverRSPT<R, Q, P>>(this->m_subspace_solver);
     subspace_solver->set_hermiticity(hermitian);
   }
 
@@ -148,7 +149,7 @@ protected:
     if (n==0) m_rspt_values.assign(1,0);
     m_rspt_values.push_back(this->m_handlers->rr().dot(c,hc));
     this->m_handlers->rr().axpy(-m_rspt_values[0], c, hc);
-    for (int k=0; k<q.size(); k++)
+    for (int k=0; k<q.size()-1; k++)
       this->m_handlers->rq().axpy(-m_rspt_values[n-k], q.at(k), hc);
   }
 

@@ -68,8 +68,10 @@ public:
         }
       }
     }
+#ifdef HAVE_MPI_H
     MPI_Allreduce(MPI_IN_PLACE, const_cast<value_type*>(mat.data().data()), mat.size(), MPI_DOUBLE, MPI_SUM,
                   xx.at(0).get().communicator());
+#endif
     return mat;
   }
   

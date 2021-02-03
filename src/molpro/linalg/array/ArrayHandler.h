@@ -10,7 +10,9 @@
 #include <string>
 #include <vector>
 #include <numeric>
+#ifdef HAVE_MPI_H
 #include <mpi.h>
+#endif
 
 #include <molpro/linalg/array/type_traits.h>
 #include <molpro/linalg/itsolv/wrap_util.h>

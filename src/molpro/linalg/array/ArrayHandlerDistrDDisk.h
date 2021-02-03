@@ -52,8 +52,10 @@ public:
         mat(i, j) = std::inner_product(begin(*loc_x), end(*loc_x), begin(*loc_y), (value_type)0);
       }
     }
+#ifdef HAVE_MPI_H
     MPI_Allreduce(MPI_IN_PLACE, const_cast<value_type *>(mat.data().data()), mat.size(), MPI_DOUBLE, MPI_SUM,
                   xx[0].get().communicator());
+#endif
     return mat;
   }
   

@@ -27,7 +27,11 @@ public:
   void axpy(value_type alpha, const AR &x, AL &y) override { y.axpy(alpha, x); }
 
   value_type dot(const AL &x, const AR &y) override { return x.dot(y); }
-
+  
+  void gemm_outer(const Matrix<value_type> alphas, const CVecRef<AR> &xx, const VecRef<AL> &yy) override {}
+  
+  Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) override {}
+  
   std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {
     return x.select_max_dot(n, y);
   }

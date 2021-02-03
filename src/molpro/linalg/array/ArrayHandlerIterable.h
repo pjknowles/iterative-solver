@@ -73,7 +73,25 @@ public:
     using std::end;
     return std::inner_product(begin(x), end(x), begin(y), (value_type)0);
   };
-
+  
+  void gemm_outer(const Matrix<value_type> alphas, const CVecRef<AR> &xx, const VecRef<AL> &yy) override {
+    for (size_t ii = 0; ii < alphas.cols(); ++ii) {
+      for (size_t jj = 0; jj < alphas.rows(); ++jj) {
+        this->axpy(alphas(ii, jj), xx[ii].get(), yy[jj].get());
+      }
+    }
+  }
+  
+  Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) override {
+    auto mat = Matrix<value_type>({xx.size(), yy.size()});
+    for (size_t ii = 0; ii < mat.cols(); ++ii) {
+      for (size_t jj = 0; jj < mat.rows(); ++jj) {
+        mat(ii, jj) = this->dot(xx[ii].get(), yy[jj].get());
+      }
+    }
+    return mat;
+  }
+  
   std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {
     if (n > x.size() || n > y.size())
       error("ArrayHandlerIterable::select_max_dot() n is too large");

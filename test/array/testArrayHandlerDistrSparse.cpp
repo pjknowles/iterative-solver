@@ -4,10 +4,16 @@
 #include "parallel_util.h"
 #include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
 #include <molpro/linalg/array/DistrArrayMPI3.h>
+#include <molpro/linalg/array/DistrArraySpan.h>
+#include <molpro/linalg/array/DistrArrayFile.h>
 #include <molpro/linalg/array/util.h>
+#include <molpro/linalg/itsolv/ArrayHandlers.h>
 
 using molpro::linalg::array::ArrayHandlerDistrSparse;
 using molpro::linalg::array::DistrArrayMPI3;
+using molpro::linalg::itsolv::ArrayHandlers;
+using molpro::linalg::array::DistrArraySpan;
+using molpro::linalg::array::DistrArrayFile;
 using molpro::linalg::array::util::LockMPI3;
 using molpro::linalg::test::mpi_comm;
 
@@ -19,6 +25,13 @@ using ::testing::Pointwise;
 TEST(TestArrayHandlerDistrSparse, constructor) {
   auto handler = ArrayHandlerDistrSparse<DistrArrayMPI3, std::map<size_t, double>>{};
 }
+
+//TEST(TestArrayHandlerDistrSpanSparse, constructor) {
+//  //auto handler = ArrayHandlerDistrSparse<DistrArraySpan, std::map<size_t, double>>{};
+//  const std::shared_ptr<ArrayHandlers<DistrArraySpan, DistrArrayFile, std::map<size_t, double>>>& handlers =
+//                                                   std::make_shared<ArrayHandlers<DistrArraySpan,
+//                                                                    DistrArrayFile, std::map<size_t, double>>>();
+//}
 
 TEST(TestArrayHandlerDistrSparse, axpy) {
   const size_t dim = 20;

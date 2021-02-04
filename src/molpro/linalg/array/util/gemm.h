@@ -22,8 +22,8 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     auto loc_x = xx.at(ii).get().local_buffer();
     for (size_t jj = 0; jj < alphas.rows(); ++jj) {
       auto loc_y = yy[jj].get().local_buffer();
-        for (size_t i = 0; i < loc_x->size(); ++i)
-          (*loc_y)[i] += alphas(ii, jj) * (*loc_x)[i];
+      for (size_t i = 0; i < loc_x->size(); ++i)
+        (*loc_y)[i] += alphas(ii, jj) * (*loc_x)[i];
     }
   }
 }

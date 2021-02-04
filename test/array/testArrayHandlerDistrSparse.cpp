@@ -18,11 +18,11 @@ using ::testing::DoubleEq;
 using ::testing::Each;
 using ::testing::Pointwise;
 
-TEST(TestArrayHandlerDistrSparse, constructor) {
+TEST(TestArrayHandlerMPI3Sparse, constructor) {
   auto handler = ArrayHandlerDistrSparse<DistrArrayMPI3, std::map<size_t, double>>{};
 }
 
-TEST(TestArrayHandlerDistrSpanSparse, constructor) {
+TEST(TestArrayHandlerSpanSparse, constructor) {
   auto handler = ArrayHandlerDistrSparse<DistrArraySpan, std::map<size_t, double>>{};
 }
 

@@ -23,9 +23,10 @@ gtest_discover_tests(test-${PROJECT_NAME}-ArrayHandler.exe)
 
 if(LINEARALGEBRA_ARRAY_HDF5)
     add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp file_util.h testUtil.cpp test_temp_file.cpp
+                   testGemm.cpp
             )
 else()
-    add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp file_util.h testUtil.cpp
+    add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp file_util.h testUtil.cpp testGemm.cpp
             )
 endif()
 

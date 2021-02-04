@@ -25,6 +25,7 @@
 #include <molpro/linalg/itsolv/LinearEigensystemDavidson.h>
 #include <molpro/linalg/itsolv/LinearEquationsDavidson.h>
 #include <molpro/linalg/itsolv/SolverFactory.h>
+#include <molpro/linalg/itsolv/wrap.h>
 
 using molpro::Profiler;
 using molpro::linalg::array::Span;
@@ -38,6 +39,8 @@ using molpro::linalg::itsolv::IterativeSolver;
 using molpro::linalg::itsolv::LinearEigensystemDavidson;
 using molpro::linalg::itsolv::LinearEquationsDavidson;
 using molpro::linalg::array::util::make_distribution_spread_remainder;
+using molpro::linalg::itsolv::wrap;
+using molpro::linalg::itsolv::cwrap;
 
 //using Rvector = molpro::linalg::array::DistrArrayMPI3;
 using Rvector = molpro::linalg::array::DistrArraySpan;
@@ -382,9 +385,9 @@ extern "C" size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_
   if (instance.prof != nullptr)
     instance.prof->start("AddP:Call");
   size_t working_set_size = instance.solver->add_p(
-      molpro::linalg::itsolv::cwrap(Pvectors),
+      cwrap(Pvectors),
       Span<Rvector::value_type>(&const_cast<double*>(pp)[0], (instance.solver->dimensions().oP + nP) * nP),
-      molpro::linalg::itsolv::wrap(cc), molpro::linalg::itsolv::wrap(gg), apply_on_p);
+      wrap(cc), wrap(gg), apply_on_p);
   if (instance.prof != nullptr) {
     instance.prof->stop();
     instance.prof->start("AddP:Sync");
@@ -437,8 +440,8 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
     instance.prof->start("SuggestP");
   auto cc = CreateDistrArray(instance.solver->n_roots(), solution);
   auto gg = CreateDistrArray(instance.solver->n_roots(), residual);
-  auto result = instance.solver->suggest_p(molpro::linalg::itsolv::cwrap(cc), molpro::linalg::itsolv::cwrap(gg),
-                                           maximumNumber, threshold);
+  auto result = instance.solver->suggest_p(cwrap(cc), molpro::linalg::itsolv::cwrap(gg), maximumNumber,
+                                            threshold);
   for (size_t i = 0; i < result.size(); i++) {
     indices[i] = result[i];
   }

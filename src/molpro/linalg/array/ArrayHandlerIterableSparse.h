@@ -2,7 +2,11 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLESPARSE_H
 #include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/array/util/select_max_dot.h>
+#include <molpro/linalg/array/util/gemm.h>
 #include <numeric>
+
+using molpro::linalg::array::util::gemm_outer_default;
+using molpro::linalg::array::util::gemm_inner_default;
 
 namespace molpro::linalg::array {
 template <typename AL, typename AR, bool = has_mapped_type_v<AR>>
@@ -46,21 +50,11 @@ public:
   };
   
   void gemm_outer(const Matrix<value_type> alphas, const CVecRef<AR> &xx, const VecRef<AL> &yy) override {
-    for (size_t ii = 0; ii < alphas.cols(); ++ii) {
-      for (size_t jj = 0; jj < alphas.rows(); ++jj) {
-        this->axpy(alphas(ii, jj), xx[ii].get(), yy[jj].get());
-      }
-    }
+    gemm_outer_default(*this, alphas, xx, yy);
   }
   
   Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) override {
-    auto mat = Matrix<value_type>({xx.size(), yy.size()});
-    for (size_t ii = 0; ii < mat.cols(); ++ii) {
-      for (size_t jj = 0; jj < mat.rows(); ++jj) {
-        mat(ii, jj) = this->dot(xx[ii].get(), yy[jj].get());
-      }
-    }
-    return mat;
+    return gemm_inner_default(*this, xx, yy);
   }
   
   std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {

@@ -185,35 +185,12 @@ public:
    * Perform axpy() on multiple pairs of containers in an efficient manner
    */
   virtual void gemm_outer(const Matrix<value_type> alphas, const CVecRef<AR> &xx, const VecRef<AL> &yy) = 0;
-  //{
-  //  for (size_t ii = 0; ii < alphas.cols(); ++ii) {
-  //    auto loc_x = xx.at(ii).get().local_buffer();
-  //    for (size_t jj = 0; jj < alphas.rows(); ++jj) {
-  //      auto loc_y = yy[jj].get().local_buffer();
-  //        for (size_t i = 0; i < loc_x->size(); ++i)
-  //          (*loc_y)[i] += alphas(ii, jj) * (*loc_x)[i];
-  //    }
-  //  }
-  //};
   
   /*!
    * Perform dot() on multiple pairs of containers in an efficient manner
    */
   virtual Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) = 0;
-  //{
-  //  auto mat = Matrix<value_type>({xx.size(), yy.size()});
-  //  for (size_t i = 0; i < mat.cols(); ++i) {
-  //    auto loc_y = yy.at(i).get().local_buffer();
-  //    for (size_t j = 0; j < mat.rows(); ++j) {
-  //      auto loc_x = xx.at(j).get().local_buffer();
-  //      mat(i, j) = std::inner_product(begin(*loc_x), end(*loc_x), begin(*loc_y), (value_type)0);
-  //    }
-  //  }
-  //  // TODO: OK to assume communicator is the same for all containers?
-  //  MPI_Allreduce(MPI_IN_PLACE, const_cast<value_type*>(mat.data().data()), mat.size(), MPI_DOUBLE, MPI_SUM,
-  //                xx[0].get().communicator());
-  //  return mat;
-  //}
+  
   /*!
    * @brief Select n indices with largest by absolute value contributions to the dot product
    *

@@ -1,6 +1,10 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDEFAULT_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDEFAULT_H
 #include <molpro/linalg/array/ArrayHandler.h>
+#include <molpro/linalg/array/util/gemm.h>
+
+using molpro::linalg::array::util::gemm_outer_default;
+using molpro::linalg::array::util::gemm_inner_default;
 
 namespace molpro::linalg::array {
 
@@ -28,9 +32,13 @@ public:
 
   value_type dot(const AL &x, const AR &y) override { return x.dot(y); }
   
-  void gemm_outer(const Matrix<value_type> alphas, const CVecRef<AR> &xx, const VecRef<AL> &yy) override {}
+  void gemm_outer(const Matrix<value_type> alphas, const CVecRef<AR> &xx, const VecRef<AL> &yy) override {
+    gemm_outer_default(*this, alphas, xx, yy);
+  }
   
-  Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) override {}
+  Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) override {
+    return gemm_inner_default(*this, xx, yy);
+  }
   
   std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {
     return x.select_max_dot(n, y);

@@ -1,6 +1,10 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDDISK_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDDISK_H
 #include <molpro/linalg/array/ArrayHandler.h>
+#include <molpro/linalg/array/util/gemm.h>
+
+using molpro::linalg::array::util::gemm_outer_distr_distr;
+using molpro::linalg::array::util::gemm_inner_distr_distr;
 
 namespace molpro::linalg::array {
 
@@ -44,30 +48,11 @@ public:
   value_type dot(const AL &x, const AR &y) override { return x.dot(y); }
   
   void gemm_outer(const Matrix<value_type> alphas, const CVecRef<AR> &xx, const VecRef<AL> &yy) override {
-    for (size_t ii = 0; ii < alphas.cols(); ++ii) {
-      auto loc_x = xx.at(ii).get().local_buffer();
-      for (size_t jj = 0; jj < alphas.rows(); ++jj) {
-        auto loc_y = yy[jj].get().local_buffer();
-        for (size_t i = 0; i < loc_x->size(); ++i)
-          (*loc_y)[i] += alphas(ii, jj) * (*loc_x)[i];
-      }
-    }
+    gemm_outer_distr_distr(alphas, xx, yy);
   }
   
   Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) override {
-    auto mat = Matrix<value_type>({xx.size(), yy.size()});
-    for (size_t i = 0; i < mat.cols(); ++i) {
-      auto loc_y = yy.at(i).get().local_buffer();
-      for (size_t j = 0; j < mat.rows(); ++j) {
-        auto loc_x = xx.at(j).get().local_buffer();
-        mat(i, j) = std::inner_product(begin(*loc_x), end(*loc_x), begin(*loc_y), (value_type)0);
-      }
-    }
-#ifdef HAVE_MPI_H
-    MPI_Allreduce(MPI_IN_PLACE, const_cast<value_type *>(mat.data().data()), mat.size(), MPI_DOUBLE, MPI_SUM,
-                  xx[0].get().communicator());
-#endif
-    return mat;
+    return gemm_inner_distr_distr(xx, yy);
   }
   
   std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {

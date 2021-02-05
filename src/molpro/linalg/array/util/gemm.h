@@ -18,11 +18,11 @@ namespace molpro::linalg::array::util {
 template <class AL, class AR = AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR> &xx,
                             const VecRef<AL> &yy) {
-  for (size_t ii = 0; ii < alphas.cols(); ++ii) {
+  for (size_t ii = 0; ii < alphas.rows(); ++ii) {
     auto loc_x = xx.at(ii).get().local_buffer();
-    for (size_t jj = 0; jj < alphas.rows(); ++jj) {
+    for (size_t jj = 0; jj < alphas.cols(); ++jj) {
       auto loc_y = yy[jj].get().local_buffer();
-      for (size_t i = 0; i < loc_x->size(); ++i)
+      for (size_t i = 0; i < loc_y->size(); ++i)
         (*loc_y)[i] += alphas(ii, jj) * (*loc_x)[i];
     }
   }
@@ -31,9 +31,9 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
 template <class AL, class AR = AL>
 void gemm_outer_distr_sparse(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR> &xx,
                              const VecRef<AL> &yy) {
-  for (size_t ii = 0; ii < alphas.cols(); ++ii) {
-    auto loc_y = yy.at(ii).get().local_buffer();
-    for (size_t jj = 0; jj < alphas.rows(); ++jj) {
+  for (size_t ii = 0; ii < alphas.rows(); ++ii) {
+    auto loc_y = yy[ii].get().local_buffer();
+    for (size_t jj = 0; jj < alphas.cols(); ++jj) {
       if (loc_y->size() > 0) {
         size_t i;
         typename array::mapped_or_value_type_t<AL> v;
@@ -50,9 +50,9 @@ void gemm_outer_distr_sparse(const Matrix<typename array::mapped_or_value_type_t
 template <class Handler, class AL, class AR = AL>
 void gemm_outer_default(Handler &handler, const Matrix<typename Handler::value_type> alphas,
                         const CVecRef<AR> &xx, const VecRef<AL> &yy) {
-  for (size_t ii = 0; ii < alphas.cols(); ++ii) {
-    for (size_t jj = 0; jj < alphas.rows(); ++jj) {
-      handler.axpy(alphas(ii, jj), xx[ii].get(), yy[jj].get());
+  for (size_t ii = 0; ii < alphas.rows(); ++ii) {
+    for (size_t jj = 0; jj < alphas.cols(); ++jj) {
+      handler.axpy(alphas(ii, jj), xx.at(ii).get(), yy[jj].get());
     }
   }
 }
@@ -61,17 +61,17 @@ template <class AL, class AR = AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
                                                                           const CVecRef<AR> &yy) {
   using value_type = typename array::mapped_or_value_type_t<AL>;
-  auto mat = Matrix<value_type>({xx.size(), yy.size()});
-  for (size_t i = 0; i < mat.cols(); ++i) {
+  auto mat = Matrix<value_type>({yy.size(), xx.size()});
+  for (size_t i = 0; i < mat.rows(); ++i) {
     auto loc_y = yy.at(i).get().local_buffer();
-    for (size_t j = 0; j < mat.rows(); ++j) {
+    for (size_t j = 0; j < mat.cols(); ++j) {
       auto loc_x = xx.at(j).get().local_buffer();
       mat(i, j) = std::inner_product(begin(*loc_x), end(*loc_x), begin(*loc_y), (value_type)0);
     }
   }
 #ifdef HAVE_MPI_H
   MPI_Allreduce(MPI_IN_PLACE, const_cast<value_type *>(mat.data().data()), mat.size(), MPI_DOUBLE, MPI_SUM,
-                xx[0].get().communicator());
+                xx.at(0).get().communicator());
 #endif
   return mat;
 }
@@ -81,9 +81,9 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_sparse(const
                                                                            const CVecRef<AR> &yy) {
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
-  for (size_t i = 0; i < mat.cols(); ++i) {
+  for (size_t i = 0; i < mat.rows(); ++i) {
     auto loc_x = xx.at(i).get().local_buffer();
-    for (size_t j = 0; j < mat.rows(); ++j) {
+    for (size_t j = 0; j < mat.cols(); ++j) {
       mat(i, j) = 0;
       if (loc_x->size() > 0) {
         size_t k;
@@ -106,9 +106,9 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_sparse(const
 template <class Handler, class AL, class AR = AL>
 Matrix<typename Handler::value_type> gemm_inner_default(Handler &handler, const CVecRef<AL> &xx, const CVecRef<AR> &yy) {
   auto mat = Matrix<typename Handler::value_type>({xx.size(), yy.size()});
-  for (size_t ii = 0; ii < mat.cols(); ++ii) {
-    for (size_t jj = 0; jj < mat.rows(); ++jj) {
-      mat(ii, jj) = handler.dot(xx[ii].get(), yy[jj].get());
+  for (size_t ii = 0; ii < mat.rows(); ++ii) {
+    for (size_t jj = 0; jj < mat.cols(); ++jj) {
+      mat(ii, jj) = handler.dot(xx.at(ii).get(), yy.at(jj).get());
     }
   }
   return mat;

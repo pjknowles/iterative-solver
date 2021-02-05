@@ -23,10 +23,9 @@ gtest_discover_tests(test-${PROJECT_NAME}-ArrayHandler.exe)
 
 if(LINEARALGEBRA_ARRAY_HDF5)
     add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp file_util.h testUtil.cpp test_temp_file.cpp
-                   testGemm.cpp
             )
 else()
-    add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp file_util.h testUtil.cpp testGemm.cpp
+    add_executable(test-${PROJECT_NAME}-array-util.exe testDistribution.cpp file_util.h testUtil.cpp
             )
 endif()
 
@@ -38,6 +37,7 @@ if (MPI)
             main.cpp
             testLockMPI3.cpp
             testDistrFlags.cpp
+            testGemm.cpp
             )
     if (LINEARALGEBRA_ARRAY_MPI3)
         target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayMPI3.cpp testDistrArrayFile.cpp

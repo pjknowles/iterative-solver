@@ -239,7 +239,7 @@ TEST(TestGemm, distrsparse_inner) {
 }
 
 TEST(TestGemm, ddisksparse_inner) {
-  auto handler = ArrayHandlerDistrSparse<DistrArrayFile,std::map<size_t, double>>{};
+  auto handler = ArrayHandlerDDiskSparse<DistrArrayFile,std::map<size_t, double>>{};
   size_t n = 10;
   size_t dim = 10;
   std::vector<std::vector<double>> vx(n, std::vector<double>(dim));

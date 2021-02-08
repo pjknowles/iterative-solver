@@ -1,4 +1,4 @@
-#if not defined(PPIDD_IMPL_DEFAULT) or PPIDD_IMPL_DEFAULT == PPIDD_IMPL_GA_MPI
+#ifdef LINEARALGEBRA_ARRAY_GA
 #include "DistrArrayGA.h"
 #include "util/Distribution.h"
 

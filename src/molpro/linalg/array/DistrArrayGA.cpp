@@ -1,3 +1,4 @@
+#if not defined(PPIDD_IMPL_DEFAULT) or PPIDD_IMPL_DEFAULT == PPIDD_IMPL_GA_MPI
 #include "DistrArrayGA.h"
 #include "util/Distribution.h"
 
@@ -293,3 +294,5 @@ DistrArrayGA::Distribution DistrArrayGA::make_distribution() const {
 }
 
 } // namespace molpro::linalg::array
+
+#endif

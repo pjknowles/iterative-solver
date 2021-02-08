@@ -9,11 +9,11 @@
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
+#include <molpro/linalg/itsolv/LinearEigensystemRSPTOptions.h>
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverRSPT.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
-#include <molpro/linalg/itsolv/LinearEigensystemRSPTOptions.h>
 
 namespace molpro::linalg::itsolv {
 
@@ -42,11 +42,11 @@ public:
                            std::make_shared<subspace::SubspaceSolverRSPT<R, Q, P>>(logger_)),
                        handlers, std::make_shared<Statistics>(), logger_),
         logger(logger_) {
-//    set_hermiticity(true);
-            auto xspace = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
-            xspace->set_hermiticity(true);
-            auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverRSPT<R, Q, P>>(this->m_subspace_solver);
-            subspace_solver->set_hermiticity(true);
+    //    set_hermiticity(true);
+    auto xspace = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
+    xspace->set_hermiticity(true);
+    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverRSPT<R, Q, P>>(this->m_subspace_solver);
+    subspace_solver->set_hermiticity(true);
     this->set_n_roots(1);
     this->m_normalise_solution = false;
   }
@@ -66,7 +66,7 @@ public:
   }
   size_t end_iteration(R& parameters, R& actions) override {
     // TODO implement RSPT next wavefunction
-    std::cout << "xspace size "<<this->m_xspace->size()<<std::endl;
+    std::cout << "xspace size " << this->m_xspace->size() << std::endl;
     // TODO implement RSPT energies
     return this->m_errors.front() < this->m_convergence_threshold ? 0 : 1;
   }
@@ -84,23 +84,23 @@ public:
     return eval;
   }
 
-//  void set_value_errors() override {
-//    auto current_values = this->m_subspace_solver->eigenvalues();
-//    this->m_value_errors.assign(current_values.size(), std::numeric_limits<scalar_type>::max());
-//    for (size_t i = 0; i < std::min(m_last_values.size(), current_values.size()); i++)
-//      this->m_value_errors[i] = std::abs(current_values[i] - m_last_values[i]);
-//    if (!m_resetting_in_progress)
-//      m_last_values = current_values;
-//  }
+  //  void set_value_errors() override {
+  //    auto current_values = this->m_subspace_solver->eigenvalues();
+  //    this->m_value_errors.assign(current_values.size(), std::numeric_limits<scalar_type>::max());
+  //    for (size_t i = 0; i < std::min(m_last_values.size(), current_values.size()); i++)
+  //      this->m_value_errors[i] = std::abs(current_values[i] - m_last_values[i]);
+  //    if (!m_resetting_in_progress)
+  //      m_last_values = current_values;
+  //  }
 
   void report(std::ostream& cout) const override {
     SolverTemplate::report(cout);
-//    cout << "errors " << std::scientific;
-//    auto& err = this->m_errors;
-//    std::copy(begin(err), end(err), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
-//    cout << std::endl;
-//    cout << "eigenvalues ";
-//    auto ev = eigenvalues();
+    //    cout << "errors " << std::scientific;
+    //    auto& err = this->m_errors;
+    //    std::copy(begin(err), end(err), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
+    //    cout << std::endl;
+    //    cout << "eigenvalues ";
+    //    auto ev = eigenvalues();
     cout << "Perturbed energies ";
     cout << std::fixed << std::setprecision(14);
     std::copy(begin(m_rspt_values), end(m_rspt_values), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
@@ -108,14 +108,14 @@ public:
   }
 
   void set_hermiticity(bool hermitian) override {
-//    m_hermiticity = hermitian;
+    //    m_hermiticity = hermitian;
     auto xspace = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
     xspace->set_hermiticity(hermitian);
     auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverRSPT<R, Q, P>>(this->m_subspace_solver);
     subspace_solver->set_hermiticity(hermitian);
   }
 
-  bool get_hermiticity() const override { return true;}
+  bool get_hermiticity() const override { return true; }
 
   void set_options(const Options& options) override {
     SolverTemplate::set_options(options);
@@ -146,11 +146,14 @@ protected:
     const auto& n = q.size();
     const auto& c = params.back();
     auto& hc = actions.back();
-    if (n==0) m_rspt_values.assign(1,0);
-    m_rspt_values.push_back(this->m_handlers->rr().dot(c,hc));
+    molpro::cout << "construct_residual n=" << n << std::endl;
+    if (n == 1)
+      m_rspt_values.assign(1, 0);
+    m_rspt_values.push_back(this->m_handlers->rr().dot(c, hc));
+    molpro::cout << "m_rspt_values[" << m_rspt_values.size() - 1 << "]=" << m_rspt_values.back() << std::endl;
     this->m_handlers->rr().axpy(-m_rspt_values[0], c, hc);
-    for (int k=0; k<q.size()-1; k++)
-      this->m_handlers->rq().axpy(-m_rspt_values[n-k], q.at(k), hc);
+    for (int k = 0; k < q.size() - 1; k++)
+      this->m_handlers->rq().axpy(-m_rspt_values[n - k], q.at(k), hc);
   }
 
   std::vector<double> m_rspt_values; //!< perturbation series for the eigenvalue

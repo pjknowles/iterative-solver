@@ -6,6 +6,8 @@ add_executable(test-${PROJECT_NAME}-itsolv.exe test_wrap.cpp test_util.cpp testD
 target_link_libraries(test-${PROJECT_NAME}-itsolv.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
 gtest_discover_tests(test-${PROJECT_NAME}-itsolv.exe)
 
+file(COPY ../../examples/bh.h0 DESTINATION .)
+file(COPY ../../examples/hf.h0 DESTINATION .)
 file(COPY ../../examples/bh.hamiltonian DESTINATION .)
 file(COPY ../../examples/hf.hamiltonian DESTINATION .)
 file(COPY ../../examples/phenol.hamiltonian DESTINATION .)

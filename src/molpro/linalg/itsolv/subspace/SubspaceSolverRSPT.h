@@ -16,11 +16,12 @@ public:
   void solve(IXSpace<R, Q, P>& xspace, const size_t nroots_max) override {
     SubspaceSolverLinEig<RT, QT, PT>::solve_eigenvalue(xspace, nroots_max);
     std::cout << "variational subspace solution " << as_string(this->m_solutions) << std::endl;
+    molpro::cout << this->m_eigenvalues.front()<<std::endl;
     std::cout << "rows " << this->m_solutions.rows() << std::endl;
     std::cout << "cols " << this->m_solutions.cols() << std::endl;
     auto n = this->m_solutions.cols();
     this->m_solutions.slice().fill(0);
-    if (n > 1)
+//    if (n > 1)
       this->m_solutions(0, n - 1) = 1;
     std::cout << "perturbational subspace solution " << as_string(this->m_solutions) << std::endl;
   }

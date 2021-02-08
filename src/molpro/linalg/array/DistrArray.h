@@ -91,7 +91,7 @@ class DistrArray {
 public:
   using distributed_array = void; //!< a compile time tag that this is a distributed array
   using value_type = double;
-  using index_type = unsigned long int;
+  using index_type = size_t;
   using SparseArray = std::map<unsigned long int, double>;
   using Distribution = util::Distribution<index_type>;
 

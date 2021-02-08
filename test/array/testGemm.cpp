@@ -21,7 +21,6 @@
 #include <molpro/linalg/array/DistrArrayMPI3.h>
 #endif
 #include <molpro/linalg/array/util.h>
-#include <molpro/linalg/array/util/gemm.h>
 #include <molpro/linalg/itsolv/wrap.h>
 #include <molpro/linalg/array/util/Distribution.h>
 #include <molpro/linalg/array/Span.h>
@@ -44,7 +43,6 @@ using molpro::linalg::array::DistrArrayMPI3;
 using molpro::linalg::array::Span;
 using molpro::linalg::array::util::LockMPI3;
 using molpro::linalg::array::util::ScopeLock;
-//using molpro::linalg::test::mpi_comm;
 using molpro::linalg::itsolv::wrap;
 using molpro::linalg::itsolv::cwrap;
 using molpro::linalg::itsolv::subspace::Matrix;
@@ -269,7 +267,7 @@ TEST(TestGemm, ddisksparse_inner) {
   EXPECT_THAT(vgemm, Pointwise(DoubleEq(), vref));
 }
 
-TEST(TestGemm, distrdistr_outer) {
+TEST(TestGemm, distr_outer) {
   auto handler = ArrayHandlerDistr<DistrArraySpan,DistrArraySpan>{};
   size_t n = 10;
   size_t dim = 10;
@@ -321,5 +319,216 @@ TEST(TestGemm, distrdistr_outer) {
   //  }
     EXPECT_THAT(vy[i], Pointwise(DoubleEq(), vz[i]));
   //  std::cout << std::endl;
+  }
+}
+
+TEST(TestGemm, distrddisk_outer) {
+  auto handler = ArrayHandlerDistrDDisk<DistrArraySpan,DistrArrayFile>{};
+  size_t n = 10;
+  size_t dim = 10;
+  std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim)),
+      vz(n, std::vector<double>(dim));
+  std::vector<DistrArraySpan> cx, cy;
+  std::vector<DistrArrayFile> cz;
+  cx.reserve(n);
+  cy.reserve(n);
+  cz.reserve(n);
+  int mpi_rank, mpi_size;
+  MPI_Comm_rank(comm_global(), &mpi_rank);
+  MPI_Comm_size(comm_global(), &mpi_size);
+  for (size_t i = 0; i < n; i++) {
+    std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
+    std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
+    std::iota(vz[i].begin(), vz[i].end(), i + 0.5);
+    cx.emplace_back(dim);
+    cy.emplace_back(dim);
+    cz.emplace_back(dim);
+    auto crange = cx.back().distribution().range(mpi_rank);
+    auto clength = crange.second - crange.first;
+    cx.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength));
+    cy.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength));
+    cz.back().put(crange.first, crange.second, &(*(vz[i].cbegin() + crange.first)));
+  }
+  std::vector<double> coeff(n*n);
+  std::iota(coeff.begin(), coeff.end(), 1);
+  std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
+  Matrix<double> alpha(coeff, mat_dim);
+  handler.gemm_outer(alpha, cwrap(cz),wrap(cx));
+  for (size_t i = 0; i < n; i++) {
+    for (size_t j = 0; j < n; j++) {
+      handler.axpy(alpha(i, j), cz[i], cy[j]);
+    }
+  }
+  for (size_t i = 0; i < n; i++) {
+    EXPECT_THAT(vy[i], Pointwise(DoubleEq(), vx[i]));
+  }
+}
+
+TEST(TestGemm, ddiskdistr_outer) {
+  auto handler = ArrayHandlerDDiskDistr<DistrArrayFile,DistrArraySpan>{};
+  size_t n = 10;
+  size_t dim = 10;
+  std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim)),
+      vz(n, std::vector<double>(dim));
+  std::vector<DistrArrayFile> cx, cy;
+  std::vector<DistrArraySpan> cz;
+  cx.reserve(n);
+  cy.reserve(n);
+  cz.reserve(n);
+  int mpi_rank, mpi_size;
+  MPI_Comm_rank(comm_global(), &mpi_rank);
+  MPI_Comm_size(comm_global(), &mpi_size);
+  for (size_t i = 0; i < n; i++) {
+    std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
+    std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
+    std::iota(vz[i].begin(), vz[i].end(), i + 0.5);
+    cx.emplace_back(dim);
+    cy.emplace_back(dim);
+    cz.emplace_back(dim);
+    auto crange = cx.back().distribution().range(mpi_rank);
+    auto clength = crange.second - crange.first;
+    cx.back().put(crange.first, crange.second, &(*(vx[i].cbegin() + crange.first)));
+    cy.back().put(crange.first, crange.second, &(*(vy[i].cbegin() + crange.first)));
+    cz.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vz[i][crange.first], clength));
+  }
+  std::vector<double> coeff(n*n);
+  std::iota(coeff.begin(), coeff.end(), 1);
+  std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
+  Matrix<double> alpha(coeff, mat_dim);
+  handler.gemm_outer(alpha, cwrap(cz),wrap(cx));
+  for (size_t i = 0; i < n; i++) {
+    for (size_t j = 0; j < n; j++) {
+      handler.axpy(alpha(i, j), cz[i], cy[j]);
+    }
+  }
+  for (size_t i = 0; i < n; i++) {
+    std::vector<double> tx(dim, 0), ty(dim, 0);
+    auto crange = cx.back().distribution().range(mpi_rank);
+    cx[i].get(crange.first, crange.second, &(*(tx.begin() + crange.first)));
+    cy[i].get(crange.first, crange.second, &(*(ty.begin() + crange.first)));
+    EXPECT_THAT(ty, Pointwise(DoubleEq(), tx));
+  }
+}
+
+TEST(TestGemm, ddisk_outer) {
+  auto handler = ArrayHandlerDDisk<DistrArrayFile,DistrArrayFile>{};
+  size_t n = 10;
+  size_t dim = 10;
+  std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim)),
+      vz(n, std::vector<double>(dim));
+  std::vector<DistrArrayFile> cx, cy, cz;
+  cx.reserve(n);
+  cy.reserve(n);
+  cz.reserve(n);
+  int mpi_rank, mpi_size;
+  MPI_Comm_rank(comm_global(), &mpi_rank);
+  MPI_Comm_size(comm_global(), &mpi_size);
+  for (size_t i = 0; i < n; i++) {
+    std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
+    std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
+    std::iota(vz[i].begin(), vz[i].end(), i + 0.5);
+    cx.emplace_back(dim);
+    cy.emplace_back(dim);
+    cz.emplace_back(dim);
+    auto crange = cx.back().distribution().range(mpi_rank);
+    cx.back().put(crange.first, crange.second, &(*(vx[i].cbegin() + crange.first)));
+    cy.back().put(crange.first, crange.second, &(*(vy[i].cbegin() + crange.first)));
+    cz.back().put(crange.first, crange.second, &(*(vz[i].cbegin() + crange.first)));
+  }
+  std::vector<double> coeff(n*n);
+  std::iota(coeff.begin(), coeff.end(), 1);
+  std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
+  Matrix<double> alpha(coeff, mat_dim);
+  handler.gemm_outer(alpha, cwrap(cz),wrap(cx));
+  for (size_t i = 0; i < n; i++) {
+    for (size_t j = 0; j < n; j++) {
+      handler.axpy(alpha(i, j), cz[i], cy[j]);
+    }
+  }
+  for (size_t i = 0; i < n; i++) {
+    std::vector<double> tx(dim, 0), ty(dim, 0);
+    auto crange = cx.back().distribution().range(mpi_rank);
+    cx[i].get(crange.first, crange.second, &(*(tx.begin() + crange.first)));
+    cy[i].get(crange.first, crange.second, &(*(ty.begin() + crange.first)));
+    EXPECT_THAT(ty, Pointwise(DoubleEq(), tx));
+  }
+}
+
+TEST(TestGemm, distrsparse_outer) {
+  auto handler = ArrayHandlerDistrSparse<DistrArraySpan,std::map<size_t, double>>{};
+  size_t n = 10;
+  size_t dim = 10;
+  std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim));
+  std::vector<std::map<size_t, double>> my(n);
+  std::vector<DistrArraySpan> cx, cy;
+  cx.reserve(n);
+  cy.reserve(n);
+  int mpi_rank, mpi_size;
+  MPI_Comm_rank(comm_global(), &mpi_rank);
+  MPI_Comm_size(comm_global(), &mpi_size);
+  for (size_t i = 0; i < n; i++) {
+    std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
+    std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
+    my[i] = std::map<size_t, double>{{1, i+1.0}, {3, i+2.0}, {6, i+3.0}, {9, i+4.0}};
+    cx.emplace_back(dim);
+    cy.emplace_back(dim);
+    auto crange = cx.back().distribution().range(mpi_rank);
+    auto clength = crange.second - crange.first;
+    cx.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength));
+    cy.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength));
+  }
+  std::vector<double> coeff(n*n);
+  std::iota(coeff.begin(), coeff.end(), 1);
+  std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
+  Matrix<double> alpha(coeff, mat_dim);
+  handler.gemm_outer(alpha, cwrap(my),wrap(cx));
+  for (size_t i = 0; i < n; i++) {
+    for (size_t j = 0; j < n; j++) {
+      handler.axpy(alpha(i, j), my[j], cy[i]);
+    }
+  }
+  for (size_t i = 0; i < n; i++) {
+    EXPECT_THAT(vy[i], Pointwise(DoubleEq(), vx[i]));
+  }
+}
+
+TEST(TestGemm, ddisksparse_outer) {
+  auto handler = ArrayHandlerDDiskSparse<DistrArrayFile,std::map<size_t, double>>{};
+  size_t n = 10;
+  size_t dim = 10;
+  std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim));
+  std::vector<std::map<size_t, double>> my(n);
+  std::vector<DistrArrayFile> cx, cy;
+  cx.reserve(n);
+  cy.reserve(n);
+  int mpi_rank, mpi_size;
+  MPI_Comm_rank(comm_global(), &mpi_rank);
+  MPI_Comm_size(comm_global(), &mpi_size);
+  for (size_t i = 0; i < n; i++) {
+    std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
+    std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
+    my[i] = std::map<size_t, double>{{1, i+1.0}, {3, i+2.0}, {6, i+3.0}, {9, i+4.0}};
+    cx.emplace_back(dim);
+    cy.emplace_back(dim);
+    auto crange = cx.back().distribution().range(mpi_rank);
+    cx.back().put(crange.first, crange.second, &(*(vx[i].cbegin() + crange.first)));
+    cy.back().put(crange.first, crange.second, &(*(vy[i].cbegin() + crange.first)));
+  }
+  std::vector<double> coeff(n*n);
+  std::iota(coeff.begin(), coeff.end(), 1);
+  std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
+  Matrix<double> alpha(coeff, mat_dim);
+  handler.gemm_outer(alpha, cwrap(my),wrap(cx));
+  for (size_t i = 0; i < n; i++) {
+    for (size_t j = 0; j < n; j++) {
+      handler.axpy(alpha(i, j), my[j], cy[i]);
+    }
+  }
+  for (size_t i = 0; i < n; i++) {
+    std::vector<double> tx(dim, 0), ty(dim, 0);
+    auto crange = cx.back().distribution().range(mpi_rank);
+    cx[i].get(crange.first, crange.second, &(*(tx.begin() + crange.first)));
+    cy[i].get(crange.first, crange.second, &(*(ty.begin() + crange.first)));
+    EXPECT_THAT(ty, Pointwise(DoubleEq(), tx));
   }
 }

@@ -63,6 +63,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
                                                                           const CVecRef<AR> &yy) {
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
+  if (xx.size() == 0 || yy.size() == 0) return mat;
   for (size_t j = 0; j < mat.cols(); ++j) {
     auto loc_y = yy.at(j).get().local_buffer();
     for (size_t i = 0; i < mat.rows(); ++i) {
@@ -82,6 +83,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_sparse(const
                                                                            const CVecRef<AR> &yy) {
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
+  if (xx.size() == 0 || yy.size() == 0) return mat;
   for (size_t i = 0; i < mat.rows(); ++i) {
     auto loc_x = xx.at(i).get().local_buffer();
     for (size_t j = 0; j < mat.cols(); ++j) {
@@ -107,6 +109,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_sparse(const
 template <class Handler, class AL, class AR = AL>
 Matrix<typename Handler::value_type> gemm_inner_default(Handler &handler, const CVecRef<AL> &xx, const CVecRef<AR> &yy) {
   auto mat = Matrix<typename Handler::value_type>({xx.size(), yy.size()});
+  if (xx.size() == 0 || yy.size() == 0) return mat;
   for (size_t ii = 0; ii < mat.rows(); ++ii) {
     for (size_t jj = 0; jj < mat.cols(); ++jj) {
       mat(ii, jj) = handler.dot(xx.at(ii).get(), yy.at(jj).get());

@@ -428,9 +428,14 @@ auto modified_gram_schmidt(const VecRef<R>& rparams, const subspace::Matrix<valu
   auto orthogonalise = [&overlap, &rparams, nR](const auto& xparams, auto& handler, const size_t oX, const size_t nX) {
     for (size_t i = 0; i < nX; ++i) {
       auto norm = std::abs(overlap(oX + i, oX + i));
-      for (size_t j = 0; j < nR; ++j) {
-        auto ov = handler.dot(rparams[j], xparams.at(i));
-        handler.axpy(-ov / norm, xparams.at(i), rparams[j]);
+      if (nR > 0) {
+        auto dot_mat = handler.gemm_inner(cwrap(rparams), cwrap_arg(xparams.at(i).get()));
+        std::pair<size_t, size_t> mcoeff_dim = std::make_pair(1, nR);
+        Matrix<double> mcoeff(dot_mat.data(), mcoeff_dim);
+        for (size_t j = 0; j < nR; ++j) {
+          mcoeff(0, j) = -mcoeff(0, j) / norm;
+        }
+        handler.gemm_outer(mcoeff, cwrap_arg(xparams.at(i).get()), rparams);
       }
     }
   };

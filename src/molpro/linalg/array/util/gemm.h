@@ -3,6 +3,7 @@
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
+#include <iostream>
 #include <vector>
 #include <numeric>
 #include <molpro/linalg/array/type_traits.h>
@@ -61,11 +62,11 @@ template <class AL, class AR = AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
                                                                           const CVecRef<AR> &yy) {
   using value_type = typename array::mapped_or_value_type_t<AL>;
-  auto mat = Matrix<value_type>({yy.size(), xx.size()});
-  for (size_t i = 0; i < mat.rows(); ++i) {
-    auto loc_y = yy.at(i).get().local_buffer();
-    for (size_t j = 0; j < mat.cols(); ++j) {
-      auto loc_x = xx.at(j).get().local_buffer();
+  auto mat = Matrix<value_type>({xx.size(), yy.size()});
+  for (size_t j = 0; j < mat.cols(); ++j) {
+    auto loc_y = yy.at(j).get().local_buffer();
+    for (size_t i = 0; i < mat.rows(); ++i) {
+      auto loc_x = xx.at(i).get().local_buffer();
       mat(i, j) = std::inner_product(begin(*loc_x), end(*loc_x), begin(*loc_y), (value_type)0);
     }
   }

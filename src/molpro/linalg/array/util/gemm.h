@@ -32,9 +32,9 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
 template <class AL, class AR = AL>
 void gemm_outer_distr_sparse(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR> &xx,
                              const VecRef<AL> &yy) {
-  for (size_t ii = 0; ii < alphas.rows(); ++ii) {
+  for (size_t ii = 0; ii < alphas.cols(); ++ii) {
     auto loc_y = yy[ii].get().local_buffer();
-    for (size_t jj = 0; jj < alphas.cols(); ++jj) {
+    for (size_t jj = 0; jj < alphas.rows(); ++jj) {
       if (loc_y->size() > 0) {
         size_t i;
         typename array::mapped_or_value_type_t<AL> v;

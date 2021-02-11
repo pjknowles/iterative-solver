@@ -6,6 +6,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_LINEAREIGENSYSTEMRSPT_H_
 
 #include <iterator>
+#include <molpro/linalg/array/DistrArraySpan.h>
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
@@ -65,9 +66,11 @@ public:
     return end_iteration(parameters.front(), action.front());
   }
   size_t end_iteration(R& parameters, R& actions) override {
-    // TODO implement RSPT next wavefunction
-    std::cout << "xspace size " << this->m_xspace->size() << std::endl;
-    // TODO implement RSPT energies
+    auto n = this->m_xspace->size();
+    if (n == 1)
+      this->m_handlers->rr().fill(0, parameters);
+    this->m_handlers->rr().axpy(-1, actions, parameters);
+
     return this->m_errors.front() < this->m_convergence_threshold ? 0 : 1;
   }
 
@@ -94,7 +97,7 @@ public:
   //  }
 
   void report(std::ostream& cout) const override {
-    SolverTemplate::report(cout);
+//    SolverTemplate::report(cout);
     //    cout << "errors " << std::scientific;
     //    auto& err = this->m_errors;
     //    std::copy(begin(err), end(err), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
@@ -102,7 +105,7 @@ public:
     //    cout << "eigenvalues ";
     //    auto ev = eigenvalues();
     cout << "Perturbed energies ";
-    cout << std::fixed << std::setprecision(14);
+    cout << std::fixed << std::setprecision(8);
     std::copy(begin(m_rspt_values), end(m_rspt_values), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
     cout << std::defaultfloat << std::endl;
   }
@@ -140,20 +143,43 @@ public:
   //!< constructing the working set. Smaller singular values will lead to
   //!< deletion of parameters from the Q space
 protected:
+  static std::string str(const array::DistrArraySpan& a) {
+    std::vector<double> v(a.size());
+    a.get(0, a.size(), v.data());
+    return str(v);
+  }
+  static std::string str(const std::vector<double>& a) {
+    std::string result;
+    for (const auto& e : a)
+      result += std::to_string(e) + " ";
+    return result;
+  }
   void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {
     auto xspace = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
     const auto& q = xspace->paramsq();
     const auto& n = q.size();
     const auto& c = params.back();
     auto& hc = actions.back();
-    molpro::cout << "construct_residual n=" << n << std::endl;
+//    molpro::cout << "construct_residual n=" << n << std::endl;
+//    molpro::cout << "construct_residual c=" << str(c) << std::endl;
+//    molpro::cout << "construct_residual hc=" << str(hc) << std::endl;
+//    for (auto i = 0; i < n; i++)
+//      molpro::cout << "construct_residual q[" << i << "].dot(c)=" << this->m_handlers->qr().dot(q.at(i), c)
+//                   << std::endl;
+//    for (auto i = 0; i < n; i++)
+//      molpro::cout << "construct_residual q[" << i << "].dot(hc)=" << this->m_handlers->qr().dot(q.at(i), hc)
+//                   << std::endl;
+    // q.at(k) holds psi(n-k-1)
     if (n == 1)
       m_rspt_values.assign(1, 0);
-    m_rspt_values.push_back(this->m_handlers->rr().dot(c, hc));
-    molpro::cout << "m_rspt_values[" << m_rspt_values.size() - 1 << "]=" << m_rspt_values.back() << std::endl;
+    m_rspt_values.push_back(this->m_handlers->qr().dot(q.at(n-1), hc));
+//    molpro::cout << "m_rspt_values[" << m_rspt_values.size() - 1 << "]=" << m_rspt_values.back() << std::endl;
+//    molpro::cout << "m_rspt_values " << str(m_rspt_values)<<std::endl;
     this->m_handlers->rr().axpy(-m_rspt_values[0], c, hc);
-    for (int k = 0; k < q.size() - 1; k++)
-      this->m_handlers->rq().axpy(-m_rspt_values[n - k], q.at(k), hc);
+    for (int k = 0; k < n; k++) {
+//      molpro::cout << "axpy E[" << n - k << "] c[" << k << "]" << std::endl;
+      this->m_handlers->rq().axpy(-m_rspt_values[n - k], q.at(n-k-1), hc);
+    }
   }
 
   std::vector<double> m_rspt_values; //!< perturbation series for the eigenvalue

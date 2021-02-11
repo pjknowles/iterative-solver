@@ -42,6 +42,7 @@ SolverFactory<R, Q, P>::create(const LinearEigensystemOptions& options,
     solver->set_options(options);
     return solver;
   }
+  throw std::logic_error("SolverFactory failed to cast to solver");
 }
 
 template <class R, class Q, class P>

@@ -39,21 +39,22 @@ struct RSPT : ::testing::Test {
     for (auto i = 0; i < n; i++)
       for (auto j = 0; j < n; j++)
         f >> hmat(i, j);
+    //    std::cout << "hmat\n" << hmat << std::endl;
     // split degeneracies
     for (auto i = 0; i < n; i++)
       hmat(i, i) += degeneracy_split * i;
+    //    std::cout << "hmat\n" << hmat << std::endl;
     h0.resize(n);
     std::ifstream f0(std::string{"./"} + file + ".h0");
     for (auto i = 0; i < n; i++)
       f0 >> h0(i);
-    std::cout << "h0" << h0.adjoint() << std::endl;
+    //    std::cout << "h0 " << h0.adjoint() << std::endl;
   }
 
   void action(const Rvector& psx, Rvector& outputs) {
     auto x = Eigen::Map<const Eigen::VectorXd>(psx.data(), psx.size());
     auto r = Eigen::Map<Eigen::VectorXd>(outputs.data(), psx.size());
-    r.fill(0);
-    r += hmat * x;
+    r = hmat * x;
   }
   template <class scalar>
   scalar dot(const std::vector<scalar>& a, const std::vector<scalar>& b) {
@@ -66,7 +67,7 @@ struct RSPT : ::testing::Test {
       if (h0(i) < e0)
         e0 = h0(i);
     for (size_t i = 0; i < n; i++) {
-      psg[i] = -psg[i] / (1e-12 - e0 + h0(i));
+      psg[i] = psg[i] / (1e-12 - e0 + h0(i));
     }
   }
 
@@ -86,23 +87,26 @@ struct RSPT : ::testing::Test {
       Rvector x(n, 0);
       Rvector g(n, 0);
       initial_guess(x);
-      for (auto iter = 1; iter < 5; iter++) {
+      for (auto iter = 1; iter < 10; iter++) {
         action(x, g);
-        std::cout << "x " << x << std::endl;
-        std::cout << "g " << g << std::endl;
+//        std::cout << "x " << x << std::endl;
+//        std::cout << "g " << g << std::endl;
         nwork = solver->add_vector(x, g);
-        std::cout << "g after add_vector " << g << std::endl;
-        update(g); // TODO e0
-        std::cout << "g after update " << g << std::endl;
-        solver->report();
+//        std::cout << "g after add_vector " << g << std::endl;
+        update(g);
+//        std::cout << "g after update " << g << std::endl;
+//        std::cout << "x after update " << x << std::endl;
         nwork = solver->end_iteration(x, g);
+//        std::cout << "g after end_iteration " << g << std::endl;
+//        std::cout << "x after end_iteration " << x << std::endl;
+        solver->report();
       }
     }
   }
 };
 
 TEST_F(RSPT, file_eigen) {
-  for (const auto& file : std::vector<std::string>{"bh", "hf"}) {
+  for (const auto& file : std::vector<std::string>{"he", "bh", "hf"}) {
     load_matrix(file, file == "phenol" ? 0 : 1e-8);
     test_eigen(file);
   }

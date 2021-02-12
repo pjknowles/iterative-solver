@@ -14,12 +14,15 @@ LibraryManager_Project(FORTRAN_OPTION MPI_OPTION)
 ##############################
 ### Options
 
+if (NOT MPI AND FORTRAN)
+    message(FATAL_ERROR "Fortran serial implementation for LinearAlgebra is not yet ready") # TODO complete Fortran Serial implementation
+endif ()
 option(PPIDD "Whether to build on PPIDD" OFF)
-option(LINEARALGEBRA_ARRAY_MPI3 "Build with MPI3 implementation of distributed array" ON)
-option(LINEARALGEBRA_ARRAY_GA "Build with GA implementation of distributed array" ON)
-option(LINEARALGEBRA_ARRAY_HDF5 "Build with HDF5 implementation of distributed array" ON)
+option(LINEARALGEBRA_ARRAY_MPI3 "Build with MPI3 implementation of distributed array" ${MPI})
+option(LINEARALGEBRA_ARRAY_GA "Build with GA implementation of distributed array" ${MPI})
+option(LINEARALGEBRA_ARRAY_HDF5 "Build with HDF5 implementation of distributed array" ${MPI})
 option(MPIFORTRAN "Build MPI fortran examples, using fortran MPI library" OFF)
-if (PPIDD)
+if (PPIDD AND NOT PPIDD-GA)
     set(LINEARALGEBRA_ARRAY_GA OFF)
 endif ()
 ##############################

@@ -484,7 +484,7 @@ TEST(TestGemm, distrsparse_outer) {
   handler.gemm_outer(alpha, cwrap(my),wrap(cx));
   for (size_t i = 0; i < n; i++) {
     for (size_t j = 0; j < n; j++) {
-      handler.axpy(alpha(i, j), my[j], cy[i]);
+      handler.axpy(alpha(j, i), my[j], cy[i]);
     }
   }
   for (size_t i = 0; i < n; i++) {
@@ -521,7 +521,7 @@ TEST(TestGemm, ddisksparse_outer) {
   handler.gemm_outer(alpha, cwrap(my),wrap(cx));
   for (size_t i = 0; i < n; i++) {
     for (size_t j = 0; j < n; j++) {
-      handler.axpy(alpha(i, j), my[j], cy[i]);
+      handler.axpy(alpha(j, i), my[j], cy[i]);
     }
   }
   for (size_t i = 0; i < n; i++) {

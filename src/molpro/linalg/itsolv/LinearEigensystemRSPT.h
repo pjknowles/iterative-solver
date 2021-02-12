@@ -6,7 +6,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_LINEAREIGENSYSTEMRSPT_H_
 
 #include <iterator>
-#include <molpro/linalg/array/DistrArraySpan.h>
+//#include <molpro/linalg/array/DistrArraySpan.h>
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
@@ -143,11 +143,11 @@ public:
   //!< constructing the working set. Smaller singular values will lead to
   //!< deletion of parameters from the Q space
 protected:
-  static std::string str(const array::DistrArraySpan& a) {
-    std::vector<double> v(a.size());
-    a.get(0, a.size(), v.data());
-    return str(v);
-  }
+//  static std::string str(const array::DistrArraySpan& a) {
+//    std::vector<double> v(a.size());
+//    a.get(0, a.size(), v.data());
+//    return str(v);
+//  }
   static std::string str(const std::vector<double>& a) {
     std::string result;
     for (const auto& e : a)

@@ -25,6 +25,11 @@ option(MPIFORTRAN "Build MPI fortran examples, using fortran MPI library" OFF)
 if (PPIDD AND NOT PPIDD-GA)
     set(LINEARALGEBRA_ARRAY_GA OFF)
 endif ()
+message(STATUS "LinearAlgebra: MPI=${MPI}")
+message(STATUS "LinearAlgebra: FORTRAN=${FORTRAN}")
+message(STATUS "LinearAlgebra: LINEARALGEBRA_ARRAY_MPI3=${LINEARALGEBRA_ARRAY_MPI3}")
+message(STATUS "LinearAlgebra: LINEARALGEBRA_ARRAY_GA=${LINEARALGEBRA_ARRAY_GA}")
+message(STATUS "LinearAlgebra: LINEARALGEBRA_ARRAY_HDF5=${LINEARALGEBRA_ARRAY_HDF5}")
 ##############################
 
 

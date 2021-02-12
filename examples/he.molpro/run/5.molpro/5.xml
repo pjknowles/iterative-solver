@@ -1,0 +1,71 @@
+<?xml version="1.0"?>
+<molpro xmlns="http://www.molpro.net/schema/molpro-output"
+  xmlns:xsd="http://www.w3.org/1999/XMLSchema"
+  xmlns:cml="http://www.xml-cml.org/schema"
+  xmlns:stm="http://www.xml-cml.org/schema"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+ <job>
+  <jobstep command="RHF-SCF" commandset="SCFPRO">
+   <cml:molecule>
+    <cml:symmetry pointGroup="D2h">
+     <cml:transform3 title="generator" id="X">
+      -1  0  0  0  0  1  0  0  0  0  1  0  0  0  0  1
+     </cml:transform3>
+     <cml:transform3 title="generator" id="Y">
+       1  0  0  0  0 -1  0  0  0  0  1  0  0  0  0  1
+     </cml:transform3>
+     <cml:transform3 title="generator" id="Z">
+       1  0  0  0  0  1  0  0  0  0 -1  0  0  0  0  1
+     </cml:transform3>
+    </cml:symmetry>
+    <cml:atomArray>
+     <cml:atom id="a1" elementType="He" x3="0.0" y3="0.0" z3="0.0"/>
+    </cml:atomArray>
+    <cml:bondArray>
+    </cml:bondArray>
+   </cml:molecule>
+   <property name="Energy" method="RHF" principal="true" stateSymmetry="1" stateNumber="1"
+     value="-2.86115334478248"/>
+   <property name="Dipole moment" method="RHF" principal="true" stateSymmetry="1"
+     stateNumber="1" value="0.0 0.0 0.0"/>
+   <time start="06:48:30" end="06:48:31" cpu="0.35" system="0.2" real="0.57"/>
+   <storage units="megabyte" memory="0.0" sf="0.0" df="34.66" eaf="0.0"/>
+  </jobstep>
+  <jobstep command="FCI" commandset="FCI">
+   <time start="06:48:31" end="06:48:31" cpu="0.0" system="0.0" real="0.0"/>
+   <storage units="megabyte" memory="0.0" sf="0.0" df="34.66" eaf="0.0"/>
+  </jobstep>
+  <jobstep command="FCI" commandset="FCI">
+   <property name="Energy" method="FCI" principal="true" stateSymmetry="1" stateNumber="1"
+     value="-2.87899018961235"/>
+   <time start="06:48:31" end="06:48:31" cpu="0.01" system="0.01" real="0.01"/>
+   <storage units="megabyte" memory="0.0" sf="0.0" df="34.66" eaf="0.0"/>
+  </jobstep>
+  <stm:metadataList>
+   <stm:metadata name="dc:date" content="2021-02-11T06:48:31+00:00"/>
+   <stm:metadata name="dc:creator" content="peterk"/>
+   <stm:metadata name="cmlm:insilico" content="Molpro"/>
+  </stm:metadataList>
+  <platform>
+   <version major="2020" minor="2" SHA="4e93ca8b22d6fe3ac1999d8e76424dbca61d736b"
+     integer_bits="64" parallelism="serial">
+    2020.2
+    <date year="2021" month="2" day="11" hour="6" minute="48" second="30">
+     2021-02-11T06:48:30
+    </date>
+   </version>
+   <licence id="peterk"/>
+   <parallel processes="1" nodes="1" all_processes="1" openmp="1"/>
+   <dimensions natom="400" nvalence="500" nvalence_pno="1000" nbasis="12000" nstate="100"
+     nsymm="16" nrec="512" nprim="2" ncol="100"/>
+  </platform>
+  <input>
+   <p>geometry={he}</p>
+   <p>basis={s,he,minao;c;p,he,cc-pvdz}</p>
+   <p>rhf</p>
+   <p>{fci;hamilton}</p>
+   <p>{fci;moller,,,,,,,,,5}</p>
+  </input>
+  <diagnostics warnings="0"/>
+ </job>
+</molpro>

@@ -1,4 +1,3 @@
-#ifdef LINEARALGEBRA_ARRAY_GA
 #include "DistrArrayGA.h"
 #include "util/Distribution.h"
 
@@ -294,5 +293,3 @@ DistrArrayGA::Distribution DistrArrayGA::make_distribution() const {
 }
 
 } // namespace molpro::linalg::array
-
-#endif

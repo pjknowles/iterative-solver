@@ -13,6 +13,8 @@ int mpi_size(MPI_Comm comm) {
 }
 }
 
+DistrArraySpan::DistrArraySpan() = default;
+
 DistrArraySpan::DistrArraySpan(size_t dimension, MPI_Comm commun)
     : DistrArraySpan(std::make_unique<Distribution>(
       util::make_distribution_spread_remainder<index_type>(dimension, mpi_size(commun))), commun) {}
@@ -43,6 +45,8 @@ DistrArraySpan::DistrArraySpan(DistrArraySpan&& source) noexcept
       m_allocated(source.m_allocated), m_distribution(std::move(source.m_distribution)) {
   source.m_allocated = false;
 }
+
+DistrArraySpan::~DistrArraySpan() {}
 
 DistrArraySpan& DistrArraySpan::operator=(const DistrArraySpan& source) {
   if (this == &source)

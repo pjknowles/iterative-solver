@@ -6,13 +6,13 @@ using molpro::mpi::comm_global;
 
 namespace molpro::linalg::array {
 class DistrArraySpan : public DistrArray {
-private:
+protected:
   std::unique_ptr<Distribution> m_distribution;     //!< describes distribution of array among processes
   bool m_allocated = false;                         //!< whether the window has been created
   Span<value_type> m_span;                          //!< Span over provided buffer
   
 public:
-  DistrArraySpan() = default;
+  DistrArraySpan();
   DistrArraySpan(size_t dimension, MPI_Comm commun = comm_global());
   DistrArraySpan(std::unique_ptr<Distribution> distribution, MPI_Comm commun = comm_global());
   DistrArraySpan(const DistrArraySpan &source);
@@ -20,6 +20,7 @@ public:
   DistrArraySpan(DistrArraySpan &&source) noexcept;
   DistrArraySpan &operator=(const DistrArraySpan &source);
   DistrArraySpan &operator=(DistrArraySpan &&source) noexcept;
+  ~DistrArraySpan() override;
   
   friend void swap(DistrArraySpan &a1, DistrArraySpan &a2) noexcept;
   //void sync() const override;

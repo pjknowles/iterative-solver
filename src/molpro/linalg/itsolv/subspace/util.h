@@ -26,21 +26,16 @@ struct Overlap {};
 template <class R, class Q, class Z, class W>
 struct Overlap<R, Q, Z, W, true, true, true> {
   static Matrix<double> _(const CVecRef<R>& left, const CVecRef<Q>& right, array::ArrayHandler<Z, W>& handler) {
-    auto m = Matrix<double>({left.size(), right.size()});
-    for (size_t i = 0; i < m.rows(); ++i)
-      for (size_t j = 0; j < m.cols(); ++j)
-        m(i, j) = handler.dot(left[i], right[j]);
-    return m;
+    return handler.gemm_inner(left, right);
   }
 };
 
 template <class R, class Q, class Z, class W>
 struct Overlap<R, Q, Z, W, true, false, false> {
   static Matrix<double> _(const CVecRef<R>& left, const CVecRef<Q>& right, array::ArrayHandler<Z, W>& handler) {
+    auto mat = handler.gemm_inner(right, left);
     auto m = Matrix<double>({left.size(), right.size()});
-    for (size_t i = 0; i < m.rows(); ++i)
-      for (size_t j = 0; j < m.cols(); ++j)
-        m(i, j) = handler.dot(right[j], left[i]);
+    transpose_copy(m, mat);
     return m;
   }
 };

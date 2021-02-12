@@ -80,7 +80,7 @@ pages:
     - mkdir -p $PUBLIC
     - BUILD=$PWD/cmake-build
     - PROJECT_NAME=LinearAlgebra
-    - mkdir -p $BUILD && cd $BUILD && time cmake -DFORTRAN=1 -DMPI=0 -DPPIDD=0 $OLDPWD && time cmake --build . --target ${PROJECT_NAME}-doc -j
+    - mkdir -p $BUILD && cd $BUILD && time cmake -DFORTRAN=1 -DMPI=1 -DPPIDD=0 $OLDPWD && time cmake --build . --target ${PROJECT_NAME}-doc -j
     - mkdir -p $BUILD/docs/$PROJECT_NAME/html/DoxygenTagFiles && cp $BUILD/docs/$PROJECT_NAME/$PROJECT_NAME.tag $BUILD/docs/$PROJECT_NAME/html/DoxygenTagFiles
     - . $BUILD/project_version.sh ; rsync -a --delete $BUILD/docs/*/html/ $PUBLIC/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     - rm -f  $PUBLIC/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}

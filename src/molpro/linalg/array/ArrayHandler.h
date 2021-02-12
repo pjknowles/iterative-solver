@@ -9,8 +9,18 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <numeric>
+#ifdef HAVE_MPI_H
+#include <mpi.h>
+#endif
 
 #include <molpro/linalg/array/type_traits.h>
+#include <molpro/linalg/itsolv/wrap_util.h>
+#include <molpro/linalg/itsolv/subspace/Matrix.h>
+
+using molpro::linalg::itsolv::VecRef;
+using molpro::linalg::itsolv::CVecRef;
+using molpro::linalg::itsolv::subspace::Matrix;
 
 namespace molpro::linalg::array {
 namespace util {
@@ -170,6 +180,17 @@ public:
   virtual void fill(value_type alpha, AL &x) = 0;
   virtual void axpy(value_type alpha, const AR &x, AL &y) = 0;
   virtual value_type dot(const AL &x, const AR &y) = 0;
+  
+  /*!
+   * Perform axpy() on multiple pairs of containers in an efficient manner
+   */
+  virtual void gemm_outer(const Matrix<value_type> alphas, const CVecRef<AR> &xx, const VecRef<AL> &yy) = 0;
+  
+  /*!
+   * Perform dot() on multiple pairs of containers in an efficient manner
+   */
+  virtual Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) = 0;
+  
   /*!
    * @brief Select n indices with largest by absolute value contributions to the dot product
    *

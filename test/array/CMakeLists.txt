@@ -37,6 +37,7 @@ if (MPI)
             main.cpp
             testLockMPI3.cpp
             testDistrFlags.cpp
+            testGemm.cpp
             )
     if (LINEARALGEBRA_ARRAY_MPI3)
         target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayMPI3.cpp testDistrArrayFile.cpp

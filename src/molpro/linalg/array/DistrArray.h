@@ -297,6 +297,10 @@ public:
 
   //! stops application with an error
   virtual void error(const std::string &message) const;
+  
+  value_type operator [] (size_t index) {
+    return (*this->local_buffer())[index];
+  };
 
 protected:
   virtual void _divide(const DistrArray &y, const DistrArray &z, value_type shift, bool append, bool negative);

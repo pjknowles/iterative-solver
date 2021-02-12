@@ -4,10 +4,12 @@
 #include "parallel_util.h"
 #include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
 #include <molpro/linalg/array/DistrArrayMPI3.h>
+#include <molpro/linalg/array/DistrArraySpan.h>
 #include <molpro/linalg/array/util.h>
 
 using molpro::linalg::array::ArrayHandlerDistrSparse;
 using molpro::linalg::array::DistrArrayMPI3;
+using molpro::linalg::array::DistrArraySpan;
 using molpro::linalg::array::util::LockMPI3;
 using molpro::linalg::test::mpi_comm;
 
@@ -16,8 +18,12 @@ using ::testing::DoubleEq;
 using ::testing::Each;
 using ::testing::Pointwise;
 
-TEST(TestArrayHandlerDistrSparse, constructor) {
+TEST(TestArrayHandlerMPI3Sparse, constructor) {
   auto handler = ArrayHandlerDistrSparse<DistrArrayMPI3, std::map<size_t, double>>{};
+}
+
+TEST(TestArrayHandlerSpanSparse, constructor) {
+  auto handler = ArrayHandlerDistrSparse<DistrArraySpan, std::map<size_t, double>>{};
 }
 
 TEST(TestArrayHandlerDistrSparse, axpy) {

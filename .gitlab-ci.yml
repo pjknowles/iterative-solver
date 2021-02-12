@@ -6,8 +6,8 @@ cache:
 build100:
   tags:
     - linux-farm
-  only:
-    - schedules
+  rules:
+    - when: never # TODO complete Fortran Serial implementation
   timeout: 60m
   script:
     - BUILDTYPE=Release

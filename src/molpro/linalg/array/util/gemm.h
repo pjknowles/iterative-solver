@@ -41,7 +41,7 @@ void gemm_outer_distr_sparse(const Matrix<typename array::mapped_or_value_type_t
         for (auto it = xx.at(jj).get().lower_bound(loc_y->start());
              it != xx.at(jj).get().upper_bound(loc_y->start() + loc_y->size() - 1); ++it) {
           std::tie(i, v) = *it;
-          (*loc_y)[i - loc_y->start()] += alphas(ii, jj) * v;
+          (*loc_y)[i - loc_y->start()] += alphas(jj, ii) * v;
         }
       }
     }

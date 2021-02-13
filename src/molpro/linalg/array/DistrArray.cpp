@@ -169,7 +169,7 @@ void DistrArray::_divide(const DistrArray& y, const DistrArray& z, DistrArray::v
 namespace util {
 std::map<size_t, double> select_max_dot_broadcast(size_t n, std::map<size_t, double>& local_selection,
                                                   MPI_Comm communicator) {
-  auto indices = std::vector<unsigned long>();
+  auto indices = std::vector<DistrArray::index_type>();
   auto values = std::vector<double>();
   indices.reserve(n);
   values.reserve(n);
@@ -197,7 +197,7 @@ std::map<size_t, double> select_max_dot_broadcast(size_t n, std::map<size_t, dou
     using pair_t = std::pair<double, size_t>;
     auto pq = std::priority_queue<pair_t, std::vector<pair_t>, std::greater<>>();
     for (size_t i = 0; i < n; ++i)
-      pq.emplace(std::numeric_limits<double>::min(), std::numeric_limits<unsigned long>::max());
+      pq.emplace(std::numeric_limits<double>::min(), std::numeric_limits<DistrArray::index_type>::max());
     for (size_t i = 0, ii = 0; i < comm_size; ++i) {
       for (size_t j = 0; j < n - n_dummy_elements[i]; ++j, ++ii) {
         pq.emplace(values[ii], indices[ii]);
@@ -266,13 +266,13 @@ std::map<size_t, DistrArray::value_type> DistrArray::select_max_dot(size_t n, co
 
 namespace util {
 template <class Compare>
-std::list<std::pair<unsigned long, double>> extrema(const DistrArray& x, int n) {
+std::list<std::pair<DistrArray::index_type, double>> extrema(const DistrArray& x, int n) {
   if (x.empty())
     return {};
   auto buffer = x.local_buffer();
   auto length = buffer->size();
   auto nmin = length > n ? n : length;
-  auto loc_extrema = std::list<std::pair<unsigned long, double>>();
+  auto loc_extrema = std::list<std::pair<DistrArray::index_type, double>>();
   for (size_t i = 0; i < nmin; ++i)
     loc_extrema.emplace_back(buffer->start() + i, (*buffer)[i]);
   auto compare = Compare();
@@ -282,8 +282,8 @@ std::list<std::pair<unsigned long, double>> extrema(const DistrArray& x, int n) 
     loc_extrema.sort(compare_pair);
     loc_extrema.pop_back();
   }
-  auto indices_loc = std::vector<unsigned long>(n, x.size() + 1);
-  auto indices_glob = std::vector<unsigned long>(n);
+  auto indices_loc = std::vector<DistrArray::index_type>(n, x.size() + 1);
+  auto indices_glob = std::vector<DistrArray::index_type>(n);
   auto values_loc = std::vector<double>(n);
   auto values_glob = std::vector<double>(n);
   size_t ind = 0;
@@ -343,7 +343,7 @@ std::list<std::pair<unsigned long, double>> extrema(const DistrArray& x, int n) 
   MPI_Ibcast(indices_glob.data(), n, MPI_UNSIGNED_LONG, 0, x.communicator(), &requests[0]);
   MPI_Ibcast(values_glob.data(), n, MPI_DOUBLE, 0, x.communicator(), &requests[1]);
   MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
-  auto map_extrema = std::list<std::pair<unsigned long, double>>();
+  auto map_extrema = std::list<std::pair<DistrArray::index_type, double>>();
   for (size_t i = 0; i < n; ++i)
     map_extrema.emplace_back(indices_glob[i], values_glob[i]);
   return map_extrema;

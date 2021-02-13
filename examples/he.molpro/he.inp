@@ -1,6 +1,0 @@
-geometry={he}
-basis={s,he,minao;c;p,he,cc-pvdz}
-rhf
-mp4
-{fci;hamilton}
-{fci;moller,,,,10,,,,,5}

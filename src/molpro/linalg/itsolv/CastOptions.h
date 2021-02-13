@@ -1,6 +1,5 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_CASTOPTIONS_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_CASTOPTIONS_H
-#include "LinearEigensystemRSPTOptions.h"
 #include <memory>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/LinearEigensystemDavidsonOptions.h>
@@ -41,9 +40,6 @@ public:
   }
   static const LinearEigensystemDavidsonOptions& LinearEigensystem(const Options& options) {
     return cast<LinearEigensystemDavidsonOptions>(options, "LinearEigensystemOptions");
-  }
-  static const LinearEigensystemRSPTOptions& LinearEigensystemRSPT(const Options& options) {
-    return cast<LinearEigensystemRSPTOptions>(options, "LinearEigensystemRSPTOptions");
   }
   static LinearEigensystemDavidsonOptions& LinearEigensystem(Options& options) {
     const auto& opt = const_cast<const Options&>(options);

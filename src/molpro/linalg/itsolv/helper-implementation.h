@@ -38,11 +38,9 @@ int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, con
   return -1;
 }
 
-template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>
-std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold) {
-  assert(m.size() == nrows * ncols);
-  if (m.empty())
-    return {};
+template<typename value_type>
+std::list<SVD<value_type>> svd_system_small(size_t nrows, size_t ncols, const array::Span<value_type>& m,
+                                            double threshold) {
   auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), nrows, ncols);
   auto svd = Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>, Eigen::NoQRPreconditioner>(
       mat, Eigen::ComputeThinV);
@@ -60,6 +58,39 @@ std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::S
     }
   }
   return svd_system;
+}
+
+template<typename value_type>
+std::list<SVD<value_type>> svd_system_large(size_t nrows, size_t ncols, const array::Span<value_type>& m,
+                                            double threshold) {
+  auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), nrows, ncols);
+  auto svd = Eigen::BDCSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(mat, Eigen::ComputeThinV);
+  auto svd_system = std::list<SVD<value_type>>{};
+  auto sv = svd.singularValues();
+  for (int i = int(ncols) - 1; i >= 0; --i) {
+    if (std::abs(sv(i)) < threshold) {
+      auto t = SVD<value_type>{};
+      t.value = sv(i);
+      t.v.reserve(ncols);
+      for (size_t j = 0; j < ncols; ++j) {
+        t.v.emplace_back(svd.matrixV()(j, i));
+      }
+      svd_system.emplace_back(std::move(t));
+    }
+  }
+  return svd_system;
+}
+
+template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>
+std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold) {
+  assert(m.size() == nrows * ncols);
+  if (m.empty())
+    return {};
+  if (nrows < 16) {
+    return svd_system_small<value_type>(nrows, ncols, m, threshold);
+  } else {
+    return svd_system_large<value_type>(nrows, ncols, m, threshold);
+  }
 }
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>
@@ -150,62 +181,68 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
       subspaceEigenvectors.col(k) = eigvec.col(ll);
     }
   }
+  
+  // TODO: Need to address the case of near-zero eigenvalues (as below for non-hermitian case) and clean-up
+  //  non-hermitian case
+  
   //   molpro::cout << "sorted eigenvalues\n"<<subspaceEigenvalues<<std::endl;
   //   molpro::cout << "sorted eigenvectors\n"<<subspaceEigenvectors<<std::endl;
-  Eigen::MatrixXcd ovlTimesVec(subspaceEigenvectors.cols(), subspaceEigenvectors.rows()); // FIXME templating
-  for (auto repeat = 0; repeat < 3; ++repeat)
-    for (Eigen::Index k = 0; k < subspaceEigenvectors.cols(); k++) {
-      if (std::abs(subspaceEigenvalues(k)) <
-          1e-12) { // special case of zero eigenvalue -- make some real non-zero vector definitely in the null space
-        subspaceEigenvectors.col(k).real() += double(0.3256897) * subspaceEigenvectors.col(k).imag();
-        subspaceEigenvectors.col(k).imag().setZero();
-      }
-      if (hermitian)
-        for (Eigen::Index l = 0; l < k; l++) {
-          //        auto ovl =
-          //            (subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * subspaceEigenvectors.col(k))(
-          //            0, 0); (ovlTimesVec.row(l) * subspaceEigenvectors.col(k))(0,0);
-          //            ovlTimesVec.row(l).dot(subspaceEigenvectors.col(k));
-          //        auto norm =
-          //            (subspaceEigenvectors.col(l).adjoint() * subspaceOverlap * subspaceEigenvectors.col(l))(
-          //                0,
-          //                0);
-          //      molpro::cout << "k="<<k<<", l="<<l<<", ovl="<<ovl<<" norm="<<norm<<std::endl;
-          //      molpro::cout << subspaceEigenvectors.col(k).transpose()<<std::endl;
-          //      molpro::cout << subspaceEigenvectors.col(l).transpose()<<std::endl;
-          subspaceEigenvectors.col(k) -= subspaceEigenvectors.col(l) * // ovl;// / norm;
-                                         ovlTimesVec.row(l).dot(subspaceEigenvectors.col(k));
-          //        molpro::cout<<"immediately after projection " << k<<l<<" "<<
-          //        (subspaceEigenvectors.col(l).adjoint() * subspaceOverlap * subspaceEigenvectors.col(k))( 0,
-          //        0)<<std::endl;
+  if (!hermitian) {
+    Eigen::MatrixXcd ovlTimesVec(subspaceEigenvectors.cols(), subspaceEigenvectors.rows()); // FIXME templating
+    for (auto repeat = 0; repeat < 3; ++repeat)
+      for (Eigen::Index k = 0; k < subspaceEigenvectors.cols(); k++) {
+        if (std::abs(subspaceEigenvalues(k)) <
+            1e-12) { // special case of zero eigenvalue -- make some real non-zero vector definitely in the null space
+          subspaceEigenvectors.col(k).real() += double(0.3256897) * subspaceEigenvectors.col(k).imag();
+          subspaceEigenvectors.col(k).imag().setZero();
         }
-      //      for (Eigen::Index l = 0; l < k; l++) molpro::cout<<"after projection loop " << k<<l<<" "<<
-      //      (subspaceEigenvectors.col(l).adjoint() * subspaceOverlap * subspaceEigenvectors.col(k))( 0,
-      //      0)<<std::endl; molpro::cout <<
-      //      "eigenvector"<<std::endl<<subspaceEigenvectors.col(k).adjoint()<<std::endl;
-      auto ovl =
-          //          (subspaceEigenvectors.col(k).adjoint() * subspaceOverlap *
-          //          subspaceEigenvectors.col(k))(0,0);
-          subspaceEigenvectors.col(k).adjoint().dot(S * subspaceEigenvectors.col(k));
-      subspaceEigenvectors.col(k) /= std::sqrt(ovl.real());
-      ovlTimesVec.row(k) = subspaceEigenvectors.col(k).adjoint() * S;
-      //      for (Eigen::Index l = 0; l < k; l++)
-      //      molpro::cout<<"after normalisation " << k<<l<<" "<< (subspaceEigenvectors.col(l).adjoint() *
-      //      subspaceOverlap * subspaceEigenvectors.col(k))( 0, 0)<<std::endl; molpro::cout <<
-      //      "eigenvector"<<std::endl<<subspaceEigenvectors.col(k).adjoint()<<std::endl;
-      // phase
-      Eigen::Index lmax = 0;
-      for (Eigen::Index l = 0; l < subspaceEigenvectors.rows(); l++) {
-        if (std::abs(subspaceEigenvectors(l, k)) > std::abs(subspaceEigenvectors(lmax, k)))
-          lmax = l;
+        if (hermitian)
+          for (Eigen::Index l = 0; l < k; l++) {
+            //        auto ovl =
+            //            (subspaceEigenvectors.col(l).adjoint() * m_subspaceOverlap * subspaceEigenvectors.col(k))(
+            //            0, 0); (ovlTimesVec.row(l) * subspaceEigenvectors.col(k))(0,0);
+            //            ovlTimesVec.row(l).dot(subspaceEigenvectors.col(k));
+            //        auto norm =
+            //            (subspaceEigenvectors.col(l).adjoint() * subspaceOverlap * subspaceEigenvectors.col(l))(
+            //                0,
+            //                0);
+            //      molpro::cout << "k="<<k<<", l="<<l<<", ovl="<<ovl<<" norm="<<norm<<std::endl;
+            //      molpro::cout << subspaceEigenvectors.col(k).transpose()<<std::endl;
+            //      molpro::cout << subspaceEigenvectors.col(l).transpose()<<std::endl;
+            subspaceEigenvectors.col(k) -= subspaceEigenvectors.col(l) * // ovl;// / norm;
+                                           ovlTimesVec.row(l).dot(subspaceEigenvectors.col(k));
+            //        molpro::cout<<"immediately after projection " << k<<l<<" "<<
+            //        (subspaceEigenvectors.col(l).adjoint() * subspaceOverlap * subspaceEigenvectors.col(k))( 0,
+            //        0)<<std::endl;
+          }
+        //      for (Eigen::Index l = 0; l < k; l++) molpro::cout<<"after projection loop " << k<<l<<" "<<
+        //      (subspaceEigenvectors.col(l).adjoint() * subspaceOverlap * subspaceEigenvectors.col(k))( 0,
+        //      0)<<std::endl; molpro::cout <<
+        //      "eigenvector"<<std::endl<<subspaceEigenvectors.col(k).adjoint()<<std::endl;
+        auto ovl =
+            //          (subspaceEigenvectors.col(k).adjoint() * subspaceOverlap *
+            //          subspaceEigenvectors.col(k))(0,0);
+            subspaceEigenvectors.col(k).adjoint().dot(S * subspaceEigenvectors.col(k));
+        subspaceEigenvectors.col(k) /= std::sqrt(ovl.real());
+        ovlTimesVec.row(k) = subspaceEigenvectors.col(k).adjoint() * S;
+        //      for (Eigen::Index l = 0; l < k; l++)
+        //      molpro::cout<<"after normalisation " << k<<l<<" "<< (subspaceEigenvectors.col(l).adjoint() *
+        //      subspaceOverlap * subspaceEigenvectors.col(k))( 0, 0)<<std::endl; molpro::cout <<
+        //      "eigenvector"<<std::endl<<subspaceEigenvectors.col(k).adjoint()<<std::endl;
+        // phase
+        Eigen::Index lmax = 0;
+        for (Eigen::Index l = 0; l < subspaceEigenvectors.rows(); l++) {
+          if (std::abs(subspaceEigenvectors(l, k)) > std::abs(subspaceEigenvectors(lmax, k)))
+            lmax = l;
+        }
+        if (subspaceEigenvectors(lmax, k).real() < 0)
+          subspaceEigenvectors.col(k) = -subspaceEigenvectors.col(k);
+        //      for (Eigen::Index l = 0; l < k; l++)
+        //      molpro::cout << k<<l<<" "<<
+        //                       (subspaceEigenvectors.col(l).adjoint() * subspaceOverlap *
+        //                       subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
       }
-      if (subspaceEigenvectors(lmax, k).real() < 0)
-        subspaceEigenvectors.col(k) = -subspaceEigenvectors.col(k);
-      //      for (Eigen::Index l = 0; l < k; l++)
-      //      molpro::cout << k<<l<<" "<<
-      //                       (subspaceEigenvectors.col(l).adjoint() * subspaceOverlap *
-      //                       subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
-    }
+  } // if (!hermitian)
   //     molpro::cout << "eigenvalues"<<std::endl<<subspaceEigenvalues<<std::endl;
   //     molpro::cout << "eigenvectors"<<std::endl<<subspaceEigenvectors<<std::endl;
   // TODO complex should be implemented with a specialised function

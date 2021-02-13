@@ -3,4 +3,3 @@ basis,minao
 rhf
 {fci;state,28}
 {fci;state,28;all}
-{fci;state,28;moller,,,,,,,,,5}

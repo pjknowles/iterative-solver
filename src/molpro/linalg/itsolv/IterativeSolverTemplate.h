@@ -37,18 +37,23 @@ void construct_solution(const VecRef<R>& params, const std::vector<int>& roots,
   for (size_t i = 0; i < roots.size(); ++i) {
     handlers.rr().fill(0, params.at(i));
   }
+  subspace::Matrix<double> rp_mat(std::make_pair(pparams.size(), roots.size())),
+                           rq_mat(std::make_pair(qparams.size(), roots.size())),
+                           rd_mat(std::make_pair(dparams.size(), roots.size()));
   for (size_t i = 0; i < roots.size(); ++i) {
-    auto root = roots[i];
     for (size_t j = 0; j < pparams.size(); ++j) {
-      handlers.rp().axpy(solutions(root, oP + j), pparams.at(j), params.at(i));
+      rp_mat(j, i) = solutions(roots[i], oP+j);
     }
     for (size_t j = 0; j < qparams.size(); ++j) {
-      handlers.rq().axpy(solutions(root, oQ + j), qparams.at(j), params.at(i));
+      rq_mat(j, i) = solutions(roots[i], oQ+j);
     }
     for (size_t j = 0; j < dparams.size(); ++j) {
-      handlers.rq().axpy(solutions(root, oD + j), dparams.at(j), params.at(i));
+      rd_mat(j, i) = solutions(roots[i], oD+j);
     }
   }
+  handlers.rp().gemm_outer(rp_mat, cwrap(pparams), params);
+  handlers.rq().gemm_outer(rq_mat, cwrap(qparams), params);
+  handlers.rq().gemm_outer(rd_mat, cwrap(dparams), params);
 }
 
 template <typename T>

@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<plist>
+	<dict>
+		<key>output_backups</key>
+		<string>3</string>
+		<key>last_output_backup</key>
+		<string>4</string>
+		<key>_private_sjef_project_completed_job</key>
+		<string>localhost:73990</string>
+		<key>_private_sjef_project_backend_inactive</key>
+		<string>1</string>
+		<key>_status</key>
+		<string>4</string>
+		<key>run_input_hash</key>
+		<string>11095643272127804296</string>
+		<key>_private_sjef_project_backend_inactive_synced</key>
+		<string>0</string>
+		<key>backend</key>
+		<string>local</string>
+	</dict>
+</plist>

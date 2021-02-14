@@ -3,3 +3,4 @@ basis,minao
 rhf
 fci
 {fci;state,11;all}
+{fci;moller}

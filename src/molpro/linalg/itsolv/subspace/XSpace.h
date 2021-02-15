@@ -148,7 +148,7 @@ public:
     data = null_data<EqnData::H, EqnData::S, EqnData::rhs>();
   };
 
-  //! Updata parameters in Q space and corresponding equation data
+  //! Update parameters in Q space and corresponding equation data
   void update_qspace(const CVecRef<R>& params, const CVecRef<R>& actions) override {
     m_logger->msg("QSpace::update_qspace", Logger::Trace);
     auto new_data = xspace::update_qspace_data(params, actions, cparamsp(), cparamsq(), cactionsq(), cparamsd(),

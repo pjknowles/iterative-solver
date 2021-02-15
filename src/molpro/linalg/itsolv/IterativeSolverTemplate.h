@@ -144,6 +144,7 @@ public:
     auto cwactions = cwrap<R>(begin(actions), begin(actions) + nW);
     m_stats->r_creations += nW;
     m_xspace->update_qspace(cwparams, cwactions);
+    m_stats->q_creations += 2*nW;
     return solve_and_generate_working_set(parameters, actions);
   }
 

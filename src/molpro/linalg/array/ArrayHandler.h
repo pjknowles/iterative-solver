@@ -164,9 +164,20 @@ struct RefEqual {
 template <class AL, class AR = AL>
 class ArrayHandler {
 protected:
-  ArrayHandler() = default;
+  //ArrayHandler() = default;
+  ArrayHandler() : m_counter(std::make_shared<Counter>()) {};
   ArrayHandler(const ArrayHandler &) = default;
-
+  
+  struct Counter {
+    int scal = 0;
+    int dot = 0;
+    int axpy = 0;
+    int copy = 0;
+    int gemm_inner = 0;
+    int gemm_outer = 0;
+  };
+  
+  std::shared_ptr<Counter> m_counter;
 public:
   using value_type_L = typename array::mapped_or_value_type_t<AL>;
   using value_type_R = typename array::mapped_or_value_type_t<AR>;
@@ -202,6 +213,8 @@ public:
    * @return map of indices and corresponding x,y product
    */
   virtual std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) = 0;
+  
+  Counter& counter() {return *m_counter;}
 
   //! Destroys ArrayHandler instance and invalidates any LazyHandler it created. Invalidated handler will not evaluate.
   virtual ~ArrayHandler() {
@@ -241,6 +254,7 @@ protected:
       out[zi].get() = dot(xx[xi].get(), yy[yi].get());
     }
   }
+  
 
   /*!
    * @brief Registers operations for lazy evaluation. Evaluation is triggered by calling eval() or on destruction.

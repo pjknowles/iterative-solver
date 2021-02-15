@@ -16,6 +16,7 @@ struct Statistics {
   int current_r_creations = 0;
   int line_searches = 0;
   int line_search_steps = 0;
+  int rr_dot = 0;
 };
 inline std::ostream& operator<<(std::ostream& o, const Statistics& statistics) {
   if (statistics.iterations > 0)
@@ -38,6 +39,8 @@ inline std::ostream& operator<<(std::ostream& o, const Statistics& statistics) {
     o << statistics.line_searches << " line searches, ";
   if (statistics.line_search_steps > 0)
     o << statistics.line_search_steps << " line search steps, ";
+  if (statistics.rr_dot > 0)
+    o << statistics.rr_dot << " dot products between R vectors ";
   o << "\b\b";
 
   return o;

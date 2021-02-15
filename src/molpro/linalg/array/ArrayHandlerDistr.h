@@ -22,6 +22,7 @@ public:
 
   using ArrayHandler<AL, AR>::lazy_handle;
   using ArrayHandler<AL, AR>::error;
+  using ArrayHandler<AL, AR>::counter;
 
   AL copy(const AR &source) override { return AL{source}; };
 
@@ -33,7 +34,7 @@ public:
 
   void axpy(value_type alpha, const AR &x, AL &y) override { y.axpy(alpha, x); }
 
-  value_type dot(const AL &x, const AR &y) override { return x.dot(y); }
+  value_type dot(const AL &x, const AR &y) override { counter().dot++; return x.dot(y); }
   
   void gemm_outer(const Matrix<value_type> alphas, const CVecRef<AR> &xx, const VecRef<AL> &yy) override {
     gemm_outer_distr_distr(alphas, xx, yy);

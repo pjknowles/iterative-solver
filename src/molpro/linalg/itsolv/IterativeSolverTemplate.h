@@ -146,7 +146,7 @@ public:
     m_xspace->update_qspace(cwparams, cwactions);
     m_stats->q_creations += 2*nW;
     auto working_set = solve_and_generate_working_set(parameters, actions);
-    util::accumulate_handler_calls(m_stats, m_handlers);
+    util::accumulate_handler_calls<R, Q, P>(m_stats, m_handlers);
     return working_set;
   }
 
@@ -169,7 +169,7 @@ public:
       m_apply_p = std::move(apply_p);
     m_xspace->update_pspace(pparams, pp_action_matrix);
     auto working_set = solve_and_generate_working_set(parameters, actions);
-    util::accumulate_handler_calls(m_stats, m_handlers);
+    util::accumulate_handler_calls<R, Q, P>(m_stats, m_handlers);
     return working_set;
   };
 
@@ -190,7 +190,7 @@ public:
     if (m_apply_p)
       m_apply_p(pvectors, m_xspace->cparamsp(), residual);
     construct_residual(roots, cwrap(parameters), residual);
-    util::accumulate_handler_calls(m_stats, m_handlers);
+    util::accumulate_handler_calls<R, Q, P>(m_stats, m_handlers);
   };
 
   void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {

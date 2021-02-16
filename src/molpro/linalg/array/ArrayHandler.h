@@ -165,7 +165,7 @@ template <class AL, class AR = AL>
 class ArrayHandler {
 protected:
   //ArrayHandler() = default;
-  ArrayHandler() : m_counter(std::make_shared<Counter>()) {};
+  ArrayHandler() : m_counter(std::make_unique<Counter>()) {};
   ArrayHandler(const ArrayHandler &) = default;
   
   struct Counter {
@@ -177,7 +177,7 @@ protected:
     int gemm_outer = 0;
   };
   
-  std::shared_ptr<Counter> m_counter;
+  std::unique_ptr<Counter> m_counter;
 public:
   using value_type_L = typename array::mapped_or_value_type_t<AL>;
   using value_type_R = typename array::mapped_or_value_type_t<AR>;
@@ -214,7 +214,7 @@ public:
    */
   virtual std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) = 0;
   
-  Counter& counter() {return *m_counter;}
+  const Counter& counter() const {return *m_counter;}
 
   //! Destroys ArrayHandler instance and invalidates any LazyHandler it created. Invalidated handler will not evaluate.
   virtual ~ArrayHandler() {

@@ -33,15 +33,17 @@ public:
 
   void fill(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerDistr for unary operations"); };
 
-  void axpy(value_type alpha, const AR &x, AL &y) override { y.axpy(alpha, x); };
+  void axpy(value_type alpha, const AR &x, AL &y) override { this->m_counter->axpy++; y.axpy(alpha, x); };
 
-  value_type dot(const AL &x, const AR &y) override { return x.dot(y); };
+  value_type dot(const AL &x, const AR &y) override { this->m_counter->dot++; return x.dot(y); };
   
   void gemm_outer(const Matrix<value_type> alphas, const CVecRef<AR> &xx, const VecRef<AL> &yy) override {
+    this->m_counter->gemm_outer++;
     gemm_outer_distr_sparse(alphas, xx, yy);
   }
   
   Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) override {
+    this->m_counter->gemm_inner++;
     return gemm_inner_distr_sparse(xx, yy);
   }
   

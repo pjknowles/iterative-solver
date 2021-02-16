@@ -9,6 +9,7 @@
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/wrap.h>
+#include <molpro/linalg/itsolv/util.h>
 #include <stack>
 
 namespace molpro::linalg::itsolv {

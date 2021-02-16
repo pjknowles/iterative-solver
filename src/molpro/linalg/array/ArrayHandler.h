@@ -215,6 +215,22 @@ public:
   
   const Counter& counter() const {return *m_counter;}
   
+  std::string counter_to_string(std::string L, std::string R){
+    std::string output = "";
+    if (m_counter->scal > 0) output.append(std::to_string(m_counter->scal) + " scaling operations of the " + L +
+                                            " vectors, ");
+    if (m_counter->copy > 0) output.append(std::to_string(m_counter->copy) + " " + L + "<-" + R + " copy operations, ");
+    if (m_counter->dot > 0) output.append(std::to_string(m_counter->dot) + " dot product operations between the " + L +
+                                           " and " + R + " vectors, ");
+    if (m_counter->axpy > 0) output.append(std::to_string(m_counter->axpy) + " axpy (" + R + " = a*" + L + " + " + R +
+                                           ") operations, ");
+    if (m_counter->gemm_inner > 0) output.append(std::to_string(m_counter->gemm_inner) +
+                                              " gemm_inner operations between the " + L + " and " + R + " vectors, ");
+    if (m_counter->gemm_outer > 0) output.append(std::to_string(m_counter->gemm_outer) +
+                                              " gemm_outer operations between the " + L + " and " + R + " vectors, ");
+    return output;
+  };
+  
   void clear_counter() {
     m_counter->scal = 0;
     m_counter->copy = 0;

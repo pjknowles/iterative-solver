@@ -111,49 +111,5 @@ private:
   const std::ctype<char>& facet = std::use_facet<std::ctype<char>>(std::locale());
 };
 
-template <class R, class Q, class P>
-void accumulate_handler_calls(std::shared_ptr<Statistics> stats, std::shared_ptr<ArrayHandlers<R,Q,P>> handlers) {
-  stats->r_scal += handlers->rr().counter().scal;
-  stats->r_scal += handlers->rq().counter().scal;
-  stats->r_scal += handlers->rp().counter().scal;
-  stats->rr_dot += handlers->rr().counter().dot;
-  stats->rr_axpy += handlers->rr().counter().axpy;
-  stats->rr_copy += handlers->rr().counter().copy;
-  stats->rr_gemm_inner += handlers->rr().counter().gemm_inner;
-  stats->rr_gemm_outer += handlers->rr().counter().gemm_outer;
-  stats->q_scal += handlers->qq().counter().scal;
-  stats->q_scal += handlers->qr().counter().scal;
-  stats->q_scal += handlers->qp().counter().scal;
-  stats->qq_dot += handlers->qq().counter().dot;
-  stats->qq_axpy += handlers->qq().counter().axpy;
-  stats->qq_copy += handlers->qq().counter().copy;
-  stats->qq_gemm_inner += handlers->qq().counter().gemm_inner;
-  stats->qq_gemm_outer += handlers->qq().counter().gemm_outer;
-  stats->qr_dot += handlers->qr().counter().dot;
-  stats->qr_axpy += handlers->qr().counter().axpy;
-  stats->qr_copy += handlers->qr().counter().copy;
-  stats->qr_gemm_inner += handlers->qr().counter().gemm_inner;
-  stats->qr_gemm_outer += handlers->qr().counter().gemm_outer;
-  stats->rq_dot += handlers->rq().counter().dot;
-  stats->rq_axpy += handlers->rq().counter().axpy;
-  stats->rq_copy += handlers->rq().counter().copy;
-  stats->rq_gemm_inner += handlers->rq().counter().gemm_inner;
-  stats->rq_gemm_outer += handlers->rq().counter().gemm_outer;
-  stats->rp_dot += handlers->rp().counter().dot;
-  stats->rp_axpy += handlers->rp().counter().axpy;
-  stats->rp_gemm_inner += handlers->rp().counter().gemm_inner;
-  stats->rp_gemm_outer += handlers->rp().counter().gemm_outer;
-  stats->qp_dot += handlers->qp().counter().dot;
-  stats->qp_axpy += handlers->qp().counter().axpy;
-  stats->qp_gemm_inner += handlers->qp().counter().gemm_inner;
-  stats->qp_gemm_outer += handlers->qp().counter().gemm_outer;
-  handlers->rr().clear_counter();
-  handlers->qq().clear_counter();
-  handlers->rq().clear_counter();
-  handlers->qr().clear_counter();
-  handlers->rp().clear_counter();
-  handlers->qp().clear_counter();
-};
-
 } // namespace molpro::linalg::itsolv::util
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_UTIL_H

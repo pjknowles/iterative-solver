@@ -68,7 +68,7 @@ public:
                                                    propose_rspace_norm_thresh, m_max_size_qspace);
     }
     this->m_stats->iterations++;
-    util::accumulate_handler_calls<R, Q, P>(this->m_stats, this->m_handlers);
+    read_handler_counts(this->m_stats, this->m_handlers);
     return this->working_set().size();
   }
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {

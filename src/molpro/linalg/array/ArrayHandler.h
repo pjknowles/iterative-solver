@@ -215,7 +215,16 @@ public:
   virtual std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) = 0;
   
   const Counter& counter() const {return *m_counter;}
-
+  
+  void clear_counter() {
+    m_counter->scal = 0;
+    m_counter->copy = 0;
+    m_counter->dot = 0;
+    m_counter->axpy = 0;
+    m_counter->gemm_inner = 0;
+    m_counter->gemm_outer = 0;
+  }
+  
   //! Destroys ArrayHandler instance and invalidates any LazyHandler it created. Invalidated handler will not evaluate.
   virtual ~ArrayHandler() {
     std::for_each(m_lazy_handles.begin(), m_lazy_handles.end(), [](auto &el) {

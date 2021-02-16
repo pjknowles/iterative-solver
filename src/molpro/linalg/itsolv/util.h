@@ -147,6 +147,12 @@ void accumulate_handler_calls(std::shared_ptr<Statistics> stats, std::shared_ptr
   stats->qp_axpy += handlers->qp().counter().axpy;
   stats->qp_gemm_inner += handlers->qp().counter().gemm_inner;
   stats->qp_gemm_outer += handlers->qp().counter().gemm_outer;
+  handlers->rr().clear_counter();
+  handlers->qq().clear_counter();
+  handlers->rq().clear_counter();
+  handlers->qr().clear_counter();
+  handlers->rp().clear_counter();
+  handlers->qp().clear_counter();
 };
 
 } // namespace molpro::linalg::itsolv::util

@@ -164,7 +164,6 @@ struct RefEqual {
 template <class AL, class AR = AL>
 class ArrayHandler {
 protected:
-  //ArrayHandler() = default;
   ArrayHandler() : m_counter(std::make_unique<Counter>()) {};
   ArrayHandler(const ArrayHandler &) = default;
   

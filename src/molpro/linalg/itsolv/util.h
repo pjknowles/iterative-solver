@@ -3,7 +3,6 @@
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/wrap.h>
-#include <molpro/linalg/itsolv/Statistics.h>
 
 #include <locale>
 #include <string>

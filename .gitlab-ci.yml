@@ -17,6 +17,8 @@ build111:
     - linux-farm
 #  only:
 #    - schedules
+  except:
+    - tags
   timeout: 60m
   script:
     - export MPIPROCS=2
@@ -27,6 +29,8 @@ build1110:
     - linux-farm
   #  only:
   #    - schedules
+  except:
+    - tags
   timeout: 60m
   script:
     - export MPIPROCS=2
@@ -37,6 +41,8 @@ build000:
     - linux-farm
 #  only:
 #    - merge_requests
+  except:
+    - tags
   timeout: 60m
   script:
     - BUILDTYPE=Release
@@ -46,6 +52,8 @@ build010:
     - linux-farm
   only:
     - schedules
+  except:
+    - tags
   timeout: 60m
   script:
     - export MPIPROCS=2
@@ -66,6 +74,8 @@ clang110:
     - linux-farm
 #  only:
 #    - merge_requests
+  except:
+    - tags
   timeout: 60m
   script:
     - export MPIPROCS=2
@@ -74,7 +84,7 @@ clang110:
 pages:
   stage: deploy
   only:
-    - master
+    - tags
   script:
     - PUBLIC=$PWD/public
     - mkdir -p $PUBLIC

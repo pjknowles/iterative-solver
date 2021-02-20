@@ -9,6 +9,7 @@
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/wrap.h>
+#include <molpro/linalg/itsolv/util.h>
 #include <stack>
 
 namespace molpro::linalg::itsolv {
@@ -144,7 +145,10 @@ public:
     auto cwactions = cwrap<R>(begin(actions), begin(actions) + nW);
     m_stats->r_creations += nW;
     m_xspace->update_qspace(cwparams, cwactions);
-    return solve_and_generate_working_set(parameters, actions);
+    m_stats->q_creations += 2*nW;
+    auto working_set = solve_and_generate_working_set(parameters, actions);
+    read_handler_counts(m_stats, m_handlers);
+    return working_set;
   }
 
 public:
@@ -165,7 +169,9 @@ public:
     if (apply_p)
       m_apply_p = std::move(apply_p);
     m_xspace->update_pspace(pparams, pp_action_matrix);
-    return solve_and_generate_working_set(parameters, actions);
+    auto working_set = solve_and_generate_working_set(parameters, actions);
+    read_handler_counts(m_stats, m_handlers);
+    return working_set;
   };
 
   void clearP() override {}
@@ -185,6 +191,7 @@ public:
     if (m_apply_p)
       m_apply_p(pvectors, m_xspace->cparamsp(), residual);
     construct_residual(roots, cwrap(parameters), residual);
+    read_handler_counts(m_stats, m_handlers);
   };
 
   void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {
@@ -304,6 +311,7 @@ protected:
       detail::update_errors(errors, cwrap(action), m_handlers->rr());
       for (size_t i = 0; i < roots.size(); ++i)
         temp_solutions.emplace_back(m_handlers->qr().copy(parameters[i]), m_handlers->qr().copy(action[i]));
+      m_stats->q_creations += 2*roots.size();
       m_subspace_solver->set_error(roots, errors);
     }
     set_value_errors();

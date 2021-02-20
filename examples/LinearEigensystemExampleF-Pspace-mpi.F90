@@ -144,6 +144,7 @@ PROGRAM Linear_Eigensystem_Example
     write(*,*) "Solution vector after the call to Solution(): ", c(:,1)
     write(*,*) "Residual after the call to Solution: ", g(:,1)
   end if
+  CALL Iterative_Solver_Print_Statistics
   CALL Iterative_Solver_Finalize
   call prof%print(6)
   call prof%destroy()

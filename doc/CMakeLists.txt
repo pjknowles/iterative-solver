@@ -11,6 +11,6 @@ endforeach ()
 
 DependencyManagerDocs_Add(${PROJECT_NAME}
         FILES ../README.md LibraryDesign.md IterativeSolver.dox Arrays.dox ArrayHandlers.dox VecRef.dox
-        DOC_URL "https://molpro.gitlab.io/IterativeSolver/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+        DOC_URL "https://molpro.gitlab.io/linearalgebra/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
         DEPENDS Profiler # projects whose documentation has to be built before current project.
         )

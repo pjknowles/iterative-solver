@@ -28,6 +28,7 @@ std::tuple<DistrArrayFile::index_type, DistrArrayFile::index_type, DistrArrayFil
 }
 
 void DistrArrayFile::update_records() {
+  if (!file) return;
   if (file->registry.empty()) {
     m_frecs = {0, std::get<2>(local_bounds()) - 1};
     file->registry.emplace(m_frecs);
@@ -58,8 +59,10 @@ DistrArrayFile::DistrArrayFile() = default;
 
 DistrArrayFile::DistrArrayFile(DistrArrayFile&& source) noexcept
     : DistrArrayDisk(std::move(source)), m_frecs(std::move(source.m_frecs)) {
-      source.m_lrec = false;
-      m_lrec = true;
+      if (source.m_lrec) {
+        source.m_lrec = false;
+        m_lrec = true;
+      }
       //std::cout << "Move constructor called; registry size = " << file->registry.size() << std::endl;
     }
 
@@ -72,10 +75,14 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
     : DistrArrayDisk(std::move(distribution), comm) {
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");
-  if (!file) {
+  if (!file && std::get<2>(local_bounds()) != 0) {
     file = std::make_unique<util::FileAttributes>(make_file(fs::absolute(fs::path(directory))));
   }
   update_records();
+  //int rank;
+  //MPI_Comm_rank(m_communicator, &rank);
+  //std::cout << "constructor: rank " << rank << " distribution: " << m_distribution->range(rank).first << " " << m_distribution->range(rank).second << " no file? " << (!file) <<" rec? " << m_lrec << " bounds: " << m_frecs.first << " " << m_frecs.second << " registry length " << file->registry.size() << std::endl;
+  
   //std::cout << "Constructor called; registry size = " << file->registry.size() << std::endl;
 }
 
@@ -103,6 +110,9 @@ DistrArrayFile& DistrArrayFile::operator=(DistrArrayFile&& source) noexcept {
 
 DistrArrayFile DistrArrayFile::CreateTempCopy(const DistrArray& source, const std::string& directory) {
   DistrArrayFile t(std::make_unique<Distribution>(source.distribution()), source.communicator(), directory);
+  //int rank;
+  //MPI_Comm_rank(t.m_communicator, &rank);
+  //std::cout << "rank " << rank << " rec? " << t.m_lrec << " bounds: " << t.m_frecs.first << " " << t.m_frecs.second << std::endl;
   t.copy(source);
   return t;
 }
@@ -152,8 +162,15 @@ void DistrArrayFile::open_access() {}
 void DistrArrayFile::close_access() {}
 
 bool DistrArrayFile::empty() const {
-  if (!file) return true;
-  return !(file->object.is_open());
+  //std::cout << "inside empty, rec? " << m_lrec << " no file? " << (!file) << " bounds: " << m_frecs.first << " " << m_frecs.second << std::endl;
+  //if (!file) return false;
+  if (file) {
+    return !(file->object.is_open());
+  } else if (std::get<2>(local_bounds()) == 0) {
+    return false;
+  } else {
+    return true;
+  }
 }
 
 void DistrArrayFile::erase() {}

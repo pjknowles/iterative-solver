@@ -184,7 +184,6 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
     //          << std::endl;
     return;
   }
-  //std::cout << "Get: offset = " << offset << " length= " << length << " indices: " << lo << ", " << hi-1 <<std::endl;
   file->object.seekg(offset * sizeof(DistrArray::value_type));
   file->object.read((char*)buf, length * sizeof(DistrArray::value_type));
 }

@@ -106,9 +106,9 @@ TEST(DistrArrayFile, constructor_copy_from_distr_array) {
 }
 #endif
 
-TEST(DistrArrayFile, handler_copies) {
+TEST_F(DistrArrayFile_Fixture, handler_copies) {
   auto handler = ArrayHandlerDDiskDistr<DistrArrayFile, DistrArraySpan>{};
-  size_t n = 3, dim = 3;
+  size_t n = 3, dim = size;
   std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim));
   std::vector<DistrArraySpan> mem_vecs;
   std::vector<DistrArrayFile> file_vecs;
@@ -119,31 +119,16 @@ TEST(DistrArrayFile, handler_copies) {
   MPI_Comm_size(comm_global(), &mpi_size);
   for (size_t i = 0; i < n; i++) {
     std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
-    //std::cout << "vx["<< i << "] vector";
-    //for (auto j : vx[i]){
-    //  std::cout << j << " ";
-    //}
-    //std::cout << std::endl;
     mem_vecs.emplace_back(dim);
     auto crange = mem_vecs.back().distribution().range(mpi_rank);
     auto clength = crange.second - crange.first;
-    //mem_vecs.back().put(crange.first, crange.second, &(*(vx[i].cbegin() + crange.first)));
     mem_vecs.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength));
     file_vecs.emplace_back(handler.copy(mem_vecs.back()));
-    //std::cout << "file_vecs["<< i << "] vector";
-    //vy[i] = file_vecs[i].vec();
-    //for (auto j : vy[i]){
-    //  std::cout << j << " ";
-    //}
-    //std::cout << std::endl;
   }
   for (size_t i = 0; i < n; i++) {
-    vy[i] = file_vecs[i].vec();
-    //std::cout << "vy["<< i << "] vector";
-    //for (auto j : vy[i]){
-    //  std::cout << j << " ";
-    //}
-    //std::cout << std::endl;
+    file_vecs[i].get(left, right, &(*(vy[i].begin() + left)));
+    //vy[i] = file_vecs[i].vec();
+    MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, vy[i].data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
     EXPECT_THAT(vx[i], Pointwise(DoubleEq(), vy[i]));
   }
 }

@@ -178,6 +178,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nro
     //    solver_cast->propose_rspace_norm_thresh = 1.0e-14;
     //    solver_cast->set_max_size_qspace(10);
     //    solver_cast->set_reset_D(50);
+    //solverDavidson->logger->max_trace_level = molpro::linalg::itsolv::Logger::Info;
     solverDavidson->logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
     solverDavidson->logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
     solverDavidson->logger->data_dump = false;
@@ -284,12 +285,11 @@ extern "C" size_t IterativeSolverAddVector(size_t buffer_size, double* parameter
   auto& instance = instances.top();
   if (instance.prof != nullptr)
     instance.prof->start("AddVector");
-  size_t working_set_size = instance.solver->working_set().size();
-  auto cc = CreateDistrArray(working_set_size, parameters);
-  auto gg = CreateDistrArray(working_set_size, action);
+  auto cc = CreateDistrArray(buffer_size, parameters);
+  auto gg = CreateDistrArray(buffer_size, action);
   if (instance.prof != nullptr)
     instance.prof->start("AddVector:Call");
-  working_set_size = instance.solver->add_vector(cc, gg);
+  auto working_set_size = instance.solver->add_vector(cc, gg);
   if (instance.prof != nullptr) {
     instance.prof->stop();
     instance.prof->start("AddVector:Sync");
@@ -334,7 +334,7 @@ extern "C" void IterativeSolverSolution(int nroot, int* roots, double* parameter
   }
 }
 
-extern "C" int IterativeSolverEndIteration(size_t buffer_size, double* solution, double* residual, int sync) {
+extern "C" size_t IterativeSolverEndIteration(size_t buffer_size, double* solution, double* residual, int sync) {
   if (instances.empty())
     throw std::runtime_error("IterativeSolver not initialised properly");
   auto& instance = instances.top();
@@ -344,7 +344,7 @@ extern "C" int IterativeSolverEndIteration(size_t buffer_size, double* solution,
   auto gg = CreateDistrArray(buffer_size, residual);
   if (instance.prof != nullptr)
     instance.prof->start("EndIter:Call");
-  int result = instance.solver->end_iteration(cc, gg);
+  auto result = instance.solver->end_iteration(cc, gg);
   if (instance.prof != nullptr) {
     instance.prof->stop();
     instance.prof->start("AddVector:Sync");

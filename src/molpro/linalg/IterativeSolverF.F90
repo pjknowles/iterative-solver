@@ -523,7 +523,7 @@ CONTAINS
     !> \return The size of the working set
     FUNCTION Iterative_Solver_End_Iteration1(solution, residual, synchronize, buffer_size)
         USE iso_c_binding
-        INTEGER :: Iterative_Solver_End_Iteration
+        INTEGER :: Iterative_Solver_End_Iteration1
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
         DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
@@ -532,7 +532,7 @@ CONTAINS
             FUNCTION Iterative_Solver_End_Iteration_C(buffer_size, solution, residual, lsync) &
                 BIND(C, name = 'IterativeSolverEndIteration')
                 USE iso_c_binding
-                INTEGER(c_int) Iterative_Solver_End_Iteration_C
+                INTEGER(c_size_t) Iterative_Solver_End_Iteration_C
                 INTEGER(c_size_t), INTENT(in), VALUE :: buffer_size
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: solution
                 REAL(c_double), DIMENSION(*), INTENT(inout) :: residual
@@ -547,14 +547,14 @@ CONTAINS
         IF (PRESENT(synchronize)) THEN
             IF (.NOT. synchronize) lsyncC = 0
         END IF
-        Iterative_Solver_End_Iteration1 = Iterative_Solver_End_Iteration_C( &
+        Iterative_Solver_End_Iteration1 = int(Iterative_Solver_End_Iteration_C( &
             buffer_sizeC, &
-            solution, residual, lsyncC)
+            solution, residual, lsyncC))
     END FUNCTION Iterative_Solver_End_Iteration1
 
     FUNCTION Iterative_Solver_End_Iteration2(solution, residual, synchronize)
         USE iso_c_binding
-        INTEGER :: Iterative_Solver_End_Iteration
+        INTEGER :: Iterative_Solver_End_Iteration2
         DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: solution
         DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: residual
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
@@ -682,28 +682,30 @@ CONTAINS
 
     !> \brief the lowest eigenvalues of the reduced problem, for the number of roots sought.
     FUNCTION Iterative_Solver_Eigenvalues()
-        DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: Iterative_Solver_Eigenvalues
+        !DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: Iterative_Solver_Eigenvalues
+        DOUBLE PRECISION, DIMENSION(m_nroot) :: Iterative_Solver_Eigenvalues
         INTERFACE
             SUBROUTINE IterativeSolverEigenvalues(eigenvalues) BIND(C, name = 'IterativeSolverEigenvalues')
                 USE iso_c_binding
                 REAL(C_double), DIMENSION(*), INTENT(inout) :: eigenvalues
             END SUBROUTINE IterativeSolverEigenvalues
         END INTERFACE
-        ALLOCATE (Iterative_Solver_Eigenvalues(m_nroot))
+        !ALLOCATE (Iterative_Solver_Eigenvalues(m_nroot))
         CALL IterativeSolverEigenvalues(Iterative_Solver_Eigenvalues)
     END FUNCTION Iterative_Solver_Eigenvalues
 
     !> \brief the eigenvalues of the reduced problem, for the number of roots in working set (not yet converged).
     FUNCTION Iterative_Solver_Working_Set_Eigenvalues(working_set_size)
-        DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: Iterative_Solver_Working_Set_Eigenvalues
+        !DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: Iterative_Solver_Working_Set_Eigenvalues
         INTEGER, INTENT(in) :: working_set_size
+        DOUBLE PRECISION, DIMENSION(working_set_size) :: Iterative_Solver_Working_Set_Eigenvalues
         INTERFACE
             SUBROUTINE IterativeSolverWorkingSetEigenvalues(eigenvalues) BIND(C, name = 'IterativeSolverWorkingSetEigenvalues')
                 USE iso_c_binding
                 REAL(C_double), DIMENSION(*), INTENT(inout) :: eigenvalues
             END SUBROUTINE IterativeSolverWorkingSetEigenvalues
         END INTERFACE
-        ALLOCATE (Iterative_Solver_Working_Set_Eigenvalues(int(working_set_size, c_size_t)))
+        !ALLOCATE (Iterative_Solver_Working_Set_Eigenvalues(int(working_set_size, c_size_t)))
         CALL IterativeSolverWorkingSetEigenvalues(Iterative_Solver_Working_Set_Eigenvalues)
     END FUNCTION Iterative_Solver_Working_Set_Eigenvalues
     !> @brief Convert from Fortran string to C string

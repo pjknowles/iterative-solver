@@ -105,6 +105,7 @@ std::vector<int> select_working_set(const size_t nw, const std::vector<T>& error
   auto working_set = std::vector<int>{};
   auto end = (ordered_errors.size() < nw ? ordered_errors.end() : next(begin(ordered_errors), nw));
   std::transform(begin(ordered_errors), end, std::back_inserter(working_set), [](const auto& el) { return el.second; });
+  std::sort(working_set.begin(), working_set.end());
   return working_set;
 }
 
@@ -302,16 +303,19 @@ protected:
     m_subspace_solver->solve(*m_xspace, n_roots());
     auto nsol = m_subspace_solver->size();
     std::vector<std::pair<Q, Q>> temp_solutions{};
-    for (const auto& batch : detail::parameter_batches(nsol, parameters.size())) {
+    const auto batches = detail::parameter_batches(nsol, parameters.size());
+    for (const auto& batch : batches) {
       auto [start_sol, end_sol] = batch;
       auto roots = std::vector<int>(end_sol - start_sol);
       std::iota(begin(roots), end(roots), start_sol);
       solution(roots, parameters, action);
       auto errors = std::vector<scalar_type>(roots.size(), 0);
       detail::update_errors(errors, cwrap(action), m_handlers->rr());
-      for (size_t i = 0; i < roots.size(); ++i)
-        temp_solutions.emplace_back(m_handlers->qr().copy(parameters[i]), m_handlers->qr().copy(action[i]));
-      m_stats->q_creations += 2*roots.size();
+      if (batches.size() > 1) {
+        for (size_t i = 0; i < roots.size(); ++i)
+          temp_solutions.emplace_back(m_handlers->qr().copy(parameters[i]), m_handlers->qr().copy(action[i]));
+        m_stats->q_creations += 2 * roots.size();
+      }
       m_subspace_solver->set_error(roots, errors);
     }
     set_value_errors();
@@ -320,8 +324,17 @@ protected:
                                                m_convergence_threshold_value);
     for (size_t i = 0; i < m_working_set.size(); ++i) {
       auto root = m_working_set[i];
-      m_handlers->rq().copy(parameters[i], temp_solutions.at(root).first);
-      m_handlers->rq().copy(action[i], temp_solutions.at(root).second);
+      if (batches.size() > 1) {
+        m_handlers->rq().copy(parameters[i], temp_solutions.at(root).first);
+        m_handlers->rq().copy(action[i], temp_solutions.at(root).second);
+      } else {
+        if (root < i)
+          throw std::logic_error("incorrect ordering of roots");
+        if (root > i) {
+          m_handlers->rr().copy(parameters[i], parameters[root]);
+          m_handlers->rr().copy(action[i], action[root]);
+        }
+      }
     }
     m_logger->msg("add_vector::errors = ", begin(m_errors), end(m_errors), Logger::Trace, 6);
     return m_working_set.size();

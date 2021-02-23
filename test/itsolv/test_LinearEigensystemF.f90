@@ -9,9 +9,9 @@ function test_LinearEigensystemF(matrix, n, np, nroot, hermitian, expected_eigen
   double precision, intent(in), dimension(nroot) :: expected_eigenvalues
 
   double precision, dimension(n, nroot) :: c, g
-  double precision, dimension(nroot) :: eigs
-  doubleprecision :: eigk, error
-  integer :: nwork, i, j, k
+  double precision, allocatable, dimension(:) :: eigs
+  double precision :: eigk, error
+  integer :: nwork, i, j, k, alloc_stat
   integer, dimension(nroot) :: guess
   double precision :: guess_value
   double precision, parameter :: thresh = 1d-8
@@ -42,18 +42,24 @@ function test_LinearEigensystemF(matrix, n, np, nroot, hermitian, expected_eigen
   do i = 1, 1000
     g = matmul(matrix, c)
     nwork = Iterative_Solver_Add_Vector(c, g);
-    eigs = Iterative_Solver_Working_Set_Eigenvalues(nroot)
-!    write (6, *) 'working set eigenvalues ', eigs(:nwork)
+    !write (6, *) 'errors after Add_Vector', Iterative_Solver_Errors()
+    if (nwork.le.0) exit
+    allocate(eigs(nwork), stat=alloc_stat)
+    eigs = Iterative_Solver_Working_Set_Eigenvalues(nwork)
+    !write (6, *) 'working set eigenvalues ', eigs
     do k = 1, nwork
       eigk = eigs(k)
       do j = 1, n
         g(j, k) = -g(j, k) / (matrix(j, j) + 1e-12 - eigk)
       end do
     end do
+    deallocate(eigs)
     nwork = Iterative_Solver_End_Iteration(c, g);
+    !write (6, *) 'errors after End_Iteration', Iterative_Solver_Errors()
     if (nwork.le.0) exit
   end do
   write (6, *) 'errors ', Iterative_Solver_Errors()
+  allocate(eigs(nroot), stat=alloc_stat)
   eigs = Iterative_Solver_Eigenvalues()
   error = sqrt(dot_product(eigs - expected_eigenvalues, eigs - expected_eigenvalues))
   if (error.gt.thresh) then
@@ -63,6 +69,7 @@ function test_LinearEigensystemF(matrix, n, np, nroot, hermitian, expected_eigen
     write (6, *) 'difference ', sqrt(dot_product(eigs - expected_eigenvalues, eigs - expected_eigenvalues))
     test_LinearEigensystemF = 0
   end if
+  deallocate(eigs)
   call Iterative_Solver_Finalize
 
 end function test_LinearEigensystemF

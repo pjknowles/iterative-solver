@@ -28,7 +28,8 @@ std::tuple<DistrArrayFile::index_type, DistrArrayFile::index_type, DistrArrayFil
 }
 
 void DistrArrayFile::update_records() {
-  if (!file) return;
+  //if (!file) return;
+  if (std::get<2>(local_bounds()) == 0) return;
   if (file->registry.empty()) {
     m_frecs = {0, std::get<2>(local_bounds()) - 1};
     file->registry.emplace(m_frecs);
@@ -75,7 +76,8 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
     : DistrArrayDisk(std::move(distribution), comm) {
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");
-  if (!file && std::get<2>(local_bounds()) != 0) {
+  //if (!file && std::get<2>(local_bounds()) != 0) {
+  if (!file) {
     file = std::make_unique<util::FileAttributes>(make_file(fs::absolute(fs::path(directory))));
   }
   update_records();
@@ -133,8 +135,10 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
 DistrArrayFile::~DistrArrayFile() {
   if (file) {
     //std::cout << "Destructor called; registry size = " << file->registry.size() << " has a record? " << m_lrec << std::endl;
-    if (m_lrec) file->registry.erase(m_frecs);
-    if (file->registry.empty()) file.reset();
+    if (m_lrec) {
+      file->registry.erase(m_frecs);
+      if (file->registry.empty()) file.reset();
+    }
   }
 }
 
@@ -163,14 +167,14 @@ void DistrArrayFile::close_access() {}
 
 bool DistrArrayFile::empty() const {
   //std::cout << "inside empty, rec? " << m_lrec << " no file? " << (!file) << " bounds: " << m_frecs.first << " " << m_frecs.second << std::endl;
-  //if (!file) return false;
-  if (file) {
-    return !(file->object.is_open());
-  } else if (std::get<2>(local_bounds()) == 0) {
-    return false;
-  } else {
-    return true;
-  }
+  //if (file) {
+  //  return !(file->object.is_open());
+  //} else if (std::get<2>(local_bounds()) == 0) {
+  //  return false;
+  //} else {
+  //  return true;
+  //}
+  return (!file);
 }
 
 void DistrArrayFile::erase() {}

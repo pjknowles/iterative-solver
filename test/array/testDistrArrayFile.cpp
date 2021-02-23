@@ -7,17 +7,24 @@
 #include "parallel_util.h"
 
 #include <molpro/linalg/array/DistrArrayFile.h>
+#include <molpro/linalg/array/DistrArraySpan.h>
 #include <molpro/linalg/array/util.h>
 #include <molpro/linalg/array/util/Distribution.h>
+#include <molpro/linalg/array/default_handler.h>
 
 #ifdef LINEARALGEBRA_ARRAY_MPI3
 #include <molpro/linalg/array/DistrArrayMPI3.h>
+using molpro::linalg::array::DistrArrayMPI3;
 #endif
 
 using molpro::linalg::array::DistrArrayFile;
+using molpro::linalg::array::DistrArraySpan;
 using molpro::linalg::array::util::LockMPI3;
 using molpro::linalg::array::util::ScopeLock;
 using molpro::linalg::test::mpi_comm;
+using molpro::linalg::array::default_handler;
+using molpro::linalg::array::ArrayHandlerDDiskDistr;
+using molpro::linalg::array::Span;
 
 using ::testing::ContainerEq;
 using ::testing::DoubleEq;
@@ -68,7 +75,7 @@ TEST_F(DistrArrayFile_Fixture, constructor_copy) {
   std::vector<double> v(size);
   std::iota(v.begin(), v.end(), 0.5);
   a.put(left, right, &(*(v.cbegin() + left)));
-  std::vector<double> w(size, 0);
+  std::vector<double> w(size, 0), x(size, 0);
   auto b = a;
   b.get(left, right, &(*(w.begin() + left)));
   MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, w.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
@@ -98,6 +105,33 @@ TEST(DistrArrayFile, constructor_copy_from_distr_array) {
   }
 }
 #endif
+
+TEST_F(DistrArrayFile_Fixture, handler_copies) {
+  auto handler = ArrayHandlerDDiskDistr<DistrArrayFile, DistrArraySpan>{};
+  size_t n = 3, dim = size;
+  std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim));
+  std::vector<DistrArraySpan> mem_vecs;
+  std::vector<DistrArrayFile> file_vecs;
+  mem_vecs.reserve(n);
+  file_vecs.reserve(n);
+  int mpi_rank, mpi_size;
+  MPI_Comm_rank(comm_global(), &mpi_rank);
+  MPI_Comm_size(comm_global(), &mpi_size);
+  for (size_t i = 0; i < n; i++) {
+    std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
+    mem_vecs.emplace_back(dim);
+    auto crange = mem_vecs.back().distribution().range(mpi_rank);
+    auto clength = crange.second - crange.first;
+    mem_vecs.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength));
+    file_vecs.emplace_back(handler.copy(mem_vecs.back()));
+  }
+  for (size_t i = 0; i < n; i++) {
+    file_vecs[i].get(left, right, &(*(vy[i].begin() + left)));
+    //vy[i] = file_vecs[i].vec();
+    MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, vy[i].data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
+    EXPECT_THAT(vx[i], Pointwise(DoubleEq(), vy[i]));
+  }
+}
 
 TEST_F(DistrArrayFile_Fixture, constructor_move) {
   std::vector<double> v(size);

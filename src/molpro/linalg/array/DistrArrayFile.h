@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <set>
  #if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || (defined(__cplusplus) && __cplusplus >= 201703L)) && defined(__has_include)
  #if __has_include(<filesystem>) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500)
  #define GHC_USE_STD_FS
@@ -21,7 +22,13 @@
 using molpro::mpi::comm_global;
 
 namespace molpro::linalg::array {
-
+namespace util {
+struct FileAttributes {
+  explicit FileAttributes(std::fstream stream) : object(std::move(stream)){};
+  std::fstream object;
+  std::set<std::pair<size_t, size_t>> registry; //! keeps records of start and end lines of an array (object)
+};
+}
 /*!
  * @brief Distributed array storing the buffer on disk using temporary local files.
  *
@@ -32,12 +39,15 @@ namespace molpro::linalg::array {
  *
  */
 class DistrArrayFile : public DistrArrayDisk {
-protected:
-  fs::path m_dir = fs::current_path();
-  mutable std::fstream m_file;
+private:
   //! creates a file, opens it and @returns m_file fstream
-  std::fstream make_file();
+  static std::fstream make_file(const fs::path &dir = fs::current_path());
+  std::pair<index_type, index_type> m_frecs; //! start and end indices of an array (object)
+  bool m_lrec = false;
+  [[nodiscard]] std::tuple<index_type, index_type, index_type> local_bounds() const; //! returns local array boundaries and size
+  void update_records(); //! Add a new pair of local array boundaries records; update frecs
 public:
+  static std::unique_ptr<util::FileAttributes> file;
   //! Constructor for a blank object. The blank is only useful as a temporary. Move a valid object inside the blank to
   //! make it usable.
   DistrArrayFile();

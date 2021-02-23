@@ -86,11 +86,11 @@ std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::S
   assert(m.size() == nrows * ncols);
   if (m.empty())
     return {};
-  //if (nrows < 16) {
+  if (nrows < 16) {
     return svd_system_small<value_type>(nrows, ncols, m, threshold);
-  //} else {
-  //  return svd_system_large<value_type>(nrows, ncols, m, threshold);
-  //}
+  } else {
+    return svd_system_large<value_type>(nrows, ncols, m, threshold);
+  }
 }
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>

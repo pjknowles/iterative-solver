@@ -28,17 +28,13 @@ std::tuple<DistrArrayFile::index_type, DistrArrayFile::index_type, DistrArrayFil
 }
 
 void DistrArrayFile::update_records() {
-  //if (!file) return;
   if (std::get<2>(local_bounds()) == 0) return;
   if (file->registry.empty()) {
     m_frecs = {0, std::get<2>(local_bounds()) - 1};
     file->registry.emplace(m_frecs);
   } else {
     std::set<std::pair<size_t, size_t>>::reverse_iterator rec;
-    //std::cout << "iterating over registry pairs..." << std::endl;
     for (rec = file->registry.rbegin(); rec != file->registry.rend(); ++rec) {
-      //std::cout << "pair: " << (*rec).first << " " << (*rec).second << std::endl;
-      //std::cout << "previous pair: " << (*std::next(rec)).first << " " << (*std::next(rec)).second << std::endl;
       if ((*rec).first != 0 && (*rec).first - (*std::next(rec)).second > 1) {
         rec = std::next(rec);
         break;
@@ -48,7 +44,6 @@ void DistrArrayFile::update_records() {
         break;
       }
     }
-    //std::cout << "final previous pair: " << (*rec).first << " " << (*rec).second << std::endl;
     size_t first_rec = (*rec).second + 1;
     m_frecs = {first_rec, first_rec + std::get<2>(local_bounds()) - 1};
     file->registry.emplace(m_frecs);
@@ -64,7 +59,6 @@ DistrArrayFile::DistrArrayFile(DistrArrayFile&& source) noexcept
         source.m_lrec = false;
         m_lrec = true;
       }
-      //std::cout << "Move constructor called; registry size = " << file->registry.size() << std::endl;
     }
 
 DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::string& directory)
@@ -76,16 +70,10 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
     : DistrArrayDisk(std::move(distribution), comm) {
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");
-  //if (!file && std::get<2>(local_bounds()) != 0) {
   if (!file) {
     file = std::make_unique<util::FileAttributes>(make_file(fs::absolute(fs::path(directory))));
   }
   update_records();
-  //int rank;
-  //MPI_Comm_rank(m_communicator, &rank);
-  //std::cout << "constructor: rank " << rank << " distribution: " << m_distribution->range(rank).first << " " << m_distribution->range(rank).second << " no file? " << (!file) <<" rec? " << m_lrec << " bounds: " << m_frecs.first << " " << m_frecs.second << " registry length " << file->registry.size() << std::endl;
-  
-  //std::cout << "Constructor called; registry size = " << file->registry.size() << std::endl;
 }
 
 DistrArrayFile::DistrArrayFile(const DistrArrayFile& source)
@@ -94,7 +82,6 @@ DistrArrayFile::DistrArrayFile(const DistrArrayFile& source)
   if (!source.empty()){
     DistrArrayFile::copy(source);
   }
-  //std::cout << "Copy constructor called; registry size = " << file->registry.size() << std::endl;
 }
 
 DistrArrayFile::DistrArrayFile(const DistrArray& source)
@@ -112,9 +99,6 @@ DistrArrayFile& DistrArrayFile::operator=(DistrArrayFile&& source) noexcept {
 
 DistrArrayFile DistrArrayFile::CreateTempCopy(const DistrArray& source, const std::string& directory) {
   DistrArrayFile t(std::make_unique<Distribution>(source.distribution()), source.communicator(), directory);
-  //int rank;
-  //MPI_Comm_rank(t.m_communicator, &rank);
-  //std::cout << "rank " << rank << " rec? " << t.m_lrec << " bounds: " << t.m_frecs.first << " " << t.m_frecs.second << std::endl;
   t.copy(source);
   return t;
 }
@@ -131,10 +115,8 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
   swap(x.m_lrec, y.m_lrec);
 }
 
-//DistrArrayFile::~DistrArrayFile() = default;
 DistrArrayFile::~DistrArrayFile() {
   if (file) {
-    //std::cout << "Destructor called; registry size = " << file->registry.size() << " has a record? " << m_lrec << std::endl;
     if (m_lrec) {
       file->registry.erase(m_frecs);
       if (file->registry.empty()) file.reset();
@@ -166,14 +148,6 @@ void DistrArrayFile::open_access() {}
 void DistrArrayFile::close_access() {}
 
 bool DistrArrayFile::empty() const {
-  //std::cout << "inside empty, rec? " << m_lrec << " no file? " << (!file) << " bounds: " << m_frecs.first << " " << m_frecs.second << std::endl;
-  //if (file) {
-  //  return !(file->object.is_open());
-  //} else if (std::get<2>(local_bounds()) == 0) {
-  //  return false;
-  //} else {
-  //  return true;
-  //}
   return (!file);
 }
 
@@ -201,8 +175,6 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
   file->object.seekg(0, std::ios::end);
   int current = file->object.tellg();
   if (current < (offset + length)*sizeof(DistrArray::value_type)) {
-    //std::cout << "Oops, current=" << current << "less than " << (offset + length) * sizeof(DistrArray::value_type)
-    //          << std::endl;
     return;
   }
   file->object.seekg(offset * sizeof(DistrArray::value_type));
@@ -229,7 +201,6 @@ void DistrArrayFile::put(DistrArray::index_type lo, DistrArray::index_type hi, c
   }
   DistrArray::index_type offset = m_frecs.first + lo - lo_loc;
   DistrArray::index_type length = hi - lo;
-  //std::cout << "Put: offset = " << offset << " length= " << length << " indices: " << lo << ", " << hi-1 <<std::endl;
   file->object.seekp(offset * sizeof(DistrArray::value_type));
   file->object.write((const char*)data, length * sizeof(DistrArray::value_type));
 }

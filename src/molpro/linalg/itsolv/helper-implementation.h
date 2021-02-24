@@ -88,6 +88,7 @@ std::list<SVD<value_type>> svd_system_large(size_t nrows, size_t ncols, const ar
   return svd_system;
 }
 
+#if defined have_mkl || defined have_cblas
 template<typename value_type>
 std::list<SVD<value_type>> svd_lapacke(size_t nrows, size_t ncols, const array::Span<value_type>& mat,
                                             double threshold) {
@@ -96,11 +97,8 @@ std::list<SVD<value_type>> svd_lapacke(size_t nrows, size_t ncols, const array::
   int n = ncols;
   int sdim = std::min(m, n);
   std::vector<double> sv(sdim), u(nrows*nrows), v(ncols*ncols);
-  info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', int(nrows), int(ncols), mat.data(), int(ncols), sv.data(), u, int(nrows), v, int(ncols));
-  //auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), nrows, ncols);
-  //auto svd = Eigen::BDCSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(mat, Eigen::ComputeThinV);
+  info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', int(nrows), int(ncols), const_cast<double*>(mat.data()), int(ncols), sv.data(), u.data(), int(nrows), v.data(), int(ncols));
   auto svd_system = std::list<SVD<value_type>>{};
-  //auto sv = svd.singularValues();
   for (int i = int(ncols) - 1; i >= 0; --i) {
     if (std::abs(sv[i]) < threshold) {
       auto t = SVD<value_type>{};
@@ -114,6 +112,7 @@ std::list<SVD<value_type>> svd_lapacke(size_t nrows, size_t ncols, const array::
   }
   return svd_system;
 }
+#endif
 
 template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>
 std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold) {

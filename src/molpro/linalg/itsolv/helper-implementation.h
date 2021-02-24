@@ -53,6 +53,19 @@ std::list<SVD<value_type>> svd_system_small(size_t nrows, size_t ncols, const ar
       mat, Eigen::ComputeThinV);
   auto svd_system = std::list<SVD<value_type>>{};
   auto sv = svd.singularValues();
+  //std::cout << "Singular values: ";
+  //for (int i = 0; i < sv.size(); ++i) {
+  //  std::cout << sv(i) << " ";
+  //}
+  //std::cout << std::endl;
+  //std::cout << "V-matrix: " << std::endl;
+  //for (int i = int(ncols) - 1; i >= 0; --i) {
+  //  for (size_t j = 0; j < ncols; ++j) {
+  //    std::cout << "(" << j << "," << i << ") " << svd.matrixV()(j, i) << "  ";
+  //  }
+  //  std::cout << std::endl;
+  //}
+  //std::cout << std::endl;
   for (int i = int(ncols) - 1; i >= 0; --i) {
     if (std::abs(sv(i)) < threshold) {
       auto t = SVD<value_type>{};
@@ -92,6 +105,7 @@ std::list<SVD<value_type>> svd_system_large(size_t nrows, size_t ncols, const ar
 template<typename value_type>
 std::list<SVD<value_type>> svd_lapacke(size_t nrows, size_t ncols, const array::Span<value_type>& mat,
                                             double threshold) {
+  //std::cout << "Using LAPACKE SVD:" << std::endl;
   int info;
   int m = nrows;
   int n = ncols;
@@ -99,13 +113,26 @@ std::list<SVD<value_type>> svd_lapacke(size_t nrows, size_t ncols, const array::
   std::vector<double> sv(sdim), u(nrows*nrows), v(ncols*ncols);
   info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', int(nrows), int(ncols), const_cast<double*>(mat.data()), int(ncols), sv.data(), u.data(), int(nrows), v.data(), int(ncols));
   auto svd_system = std::list<SVD<value_type>>{};
+  //std::cout << "Singular values: ";
+  //for (int i = 0; i < sv.size(); ++i) {
+  //  std::cout << sv[i] << " ";
+  //}
+  //std::cout << std::endl;
+  //std::cout << "V-matrix: " << std::endl;
+  //for (int i = int(ncols) - 1; i >= 0; --i) {
+  //  for (size_t j = 0; j < ncols; ++j) {
+  //    std::cout << "(" << i << "," << j << ") " << v[i*ncols+j] << "  ";
+  //  }
+  //  std::cout << std::endl;
+  //}
+  //std::cout << std::endl;
   for (int i = int(ncols) - 1; i >= 0; --i) {
     if (std::abs(sv[i]) < threshold) {
       auto t = SVD<value_type>{};
       t.value = sv[i];
       t.v.reserve(ncols);
       for (size_t j = 0; j < ncols; ++j) {
-        t.v.emplace_back(v[j*nrows + i]);
+        t.v.emplace_back(v[i*ncols + j]);
       }
       svd_system.emplace_back(std::move(t));
     }

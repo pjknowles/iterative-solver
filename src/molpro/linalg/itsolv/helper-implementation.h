@@ -46,26 +46,13 @@ int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, con
 }
 
 template<typename value_type>
-std::list<SVD<value_type>> svd_system_small(size_t nrows, size_t ncols, const array::Span<value_type>& m,
+std::list<SVD<value_type>> svd_eigen_jacobi(size_t nrows, size_t ncols, const array::Span<value_type>& m,
                                             double threshold) {
   auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), nrows, ncols);
   auto svd = Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>, Eigen::NoQRPreconditioner>(
       mat, Eigen::ComputeThinV);
   auto svd_system = std::list<SVD<value_type>>{};
   auto sv = svd.singularValues();
-  //std::cout << "Singular values: ";
-  //for (int i = 0; i < sv.size(); ++i) {
-  //  std::cout << sv(i) << " ";
-  //}
-  //std::cout << std::endl;
-  //std::cout << "V-matrix: " << std::endl;
-  //for (int i = int(ncols) - 1; i >= 0; --i) {
-  //  for (size_t j = 0; j < ncols; ++j) {
-  //    std::cout << "(" << j << "," << i << ") " << svd.matrixV()(j, i) << "  ";
-  //  }
-  //  std::cout << std::endl;
-  //}
-  //std::cout << std::endl;
   for (int i = int(ncols) - 1; i >= 0; --i) {
     if (std::abs(sv(i)) < threshold) {
       auto t = SVD<value_type>{};
@@ -81,7 +68,7 @@ std::list<SVD<value_type>> svd_system_small(size_t nrows, size_t ncols, const ar
 }
 
 template<typename value_type>
-std::list<SVD<value_type>> svd_system_large(size_t nrows, size_t ncols, const array::Span<value_type>& m,
+std::list<SVD<value_type>> svd_eigen_bdcsvd(size_t nrows, size_t ncols, const array::Span<value_type>& m,
                                             double threshold) {
   auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), nrows, ncols);
   auto svd = Eigen::BDCSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(mat, Eigen::ComputeThinV);
@@ -112,19 +99,6 @@ std::list<SVD<value_type>> svd_lapacke_dgesdd(size_t nrows, size_t ncols, const 
   std::vector<double> sv(sdim), u(nrows*nrows), v(ncols*ncols);
   info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', int(nrows), int(ncols), const_cast<double*>(mat.data()), int(ncols), sv.data(), u.data(), int(nrows), v.data(), int(ncols));
   auto svd_system = std::list<SVD<value_type>>{};
-  //std::cout << "Singular values: ";
-  //for (int i = 0; i < sv.size(); ++i) {
-  //  std::cout << sv[i] << " ";
-  //}
-  //std::cout << std::endl;
-  //std::cout << "V-matrix: " << std::endl;
-  //for (int i = int(ncols) - 1; i >= 0; --i) {
-  //  for (size_t j = 0; j < ncols; ++j) {
-  //    std::cout << "(" << i << "," << j << ") " << v[i*ncols+j] << "  ";
-  //  }
-  //  std::cout << std::endl;
-  //}
-  //std::cout << std::endl;
   for (int i = int(ncols) - 1; i >= 0; --i) {
     if (std::abs(sv[i]) < threshold) {
       auto t = SVD<value_type>{};
@@ -150,19 +124,6 @@ std::list<SVD<value_type>> svd_lapacke_dgesvd(size_t nrows, size_t ncols, const 
   double superb[sdim - 1];
   info = LAPACKE_dgesvd(LAPACK_ROW_MAJOR, 'N', 'A', int(nrows), int(ncols), const_cast<double*>(mat.data()), int(ncols), sv.data(), u.data(), int(nrows), v.data(), int(ncols), superb);
   auto svd_system = std::list<SVD<value_type>>{};
-  //std::cout << "Singular values: ";
-  //for (int i = 0; i < sv.size(); ++i) {
-  //  std::cout << sv[i] << " ";
-  //}
-  //std::cout << std::endl;
-  //std::cout << "V-matrix: " << std::endl;
-  //for (int i = int(ncols) - 1; i >= 0; --i) {
-  //  for (size_t j = 0; j < ncols; ++j) {
-  //    std::cout << "(" << i << "," << j << ") " << v[i*ncols+j] << "  ";
-  //  }
-  //  std::cout << std::endl;
-  //}
-  //std::cout << std::endl;
   for (int i = int(ncols) - 1; i >= 0; --i) {
     if (std::abs(sv[i]) < threshold) {
       auto t = SVD<value_type>{};
@@ -187,8 +148,8 @@ std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::S
   if (nrows > 16) return svd_lapacke_dgesdd<value_type>(nrows, ncols, m, threshold);
   return svd_lapacke_dgesvd<value_type>(nrows, ncols, m, threshold);
 #endif
-  return svd_system_small<value_type>(nrows, ncols, m, threshold);
-  //return svd_system_large<value_type>(nrows, ncols, m, threshold);
+  return svd_eigen_jacobi<value_type>(nrows, ncols, m, threshold);
+  //return svd_eigen_bdcsvd<value_type>(nrows, ncols, m, threshold);
 }
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>

@@ -103,15 +103,52 @@ std::list<SVD<value_type>> svd_system_large(size_t nrows, size_t ncols, const ar
 
 #if defined have_mkl || defined have_cblas
 template<typename value_type>
-std::list<SVD<value_type>> svd_lapacke(size_t nrows, size_t ncols, const array::Span<value_type>& mat,
-                                            double threshold) {
-  //std::cout << "Using LAPACKE SVD:" << std::endl;
+std::list<SVD<value_type>> svd_lapacke_dgesdd(size_t nrows, size_t ncols, const array::Span<value_type>& mat,
+                                              double threshold) {
   int info;
   int m = nrows;
   int n = ncols;
   int sdim = std::min(m, n);
   std::vector<double> sv(sdim), u(nrows*nrows), v(ncols*ncols);
   info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', int(nrows), int(ncols), const_cast<double*>(mat.data()), int(ncols), sv.data(), u.data(), int(nrows), v.data(), int(ncols));
+  auto svd_system = std::list<SVD<value_type>>{};
+  //std::cout << "Singular values: ";
+  //for (int i = 0; i < sv.size(); ++i) {
+  //  std::cout << sv[i] << " ";
+  //}
+  //std::cout << std::endl;
+  //std::cout << "V-matrix: " << std::endl;
+  //for (int i = int(ncols) - 1; i >= 0; --i) {
+  //  for (size_t j = 0; j < ncols; ++j) {
+  //    std::cout << "(" << i << "," << j << ") " << v[i*ncols+j] << "  ";
+  //  }
+  //  std::cout << std::endl;
+  //}
+  //std::cout << std::endl;
+  for (int i = int(ncols) - 1; i >= 0; --i) {
+    if (std::abs(sv[i]) < threshold) {
+      auto t = SVD<value_type>{};
+      t.value = sv[i];
+      t.v.reserve(ncols);
+      for (size_t j = 0; j < ncols; ++j) {
+        t.v.emplace_back(v[i*ncols + j]);
+      }
+      svd_system.emplace_back(std::move(t));
+    }
+  }
+  return svd_system;
+}
+
+template<typename value_type>
+std::list<SVD<value_type>> svd_lapacke_dgesvd(size_t nrows, size_t ncols, const array::Span<value_type>& mat,
+                                              double threshold) {
+  int info;
+  int m = nrows;
+  int n = ncols;
+  int sdim = std::min(m, n);
+  std::vector<double> sv(sdim), u(nrows*nrows), v(ncols*ncols);
+  double superb[sdim - 1];
+  info = LAPACKE_dgesvd(LAPACK_ROW_MAJOR, 'N', 'A', int(nrows), int(ncols), const_cast<double*>(mat.data()), int(ncols), sv.data(), u.data(), int(nrows), v.data(), int(ncols), superb);
   auto svd_system = std::list<SVD<value_type>>{};
   //std::cout << "Singular values: ";
   //for (int i = 0; i < sv.size(); ++i) {
@@ -147,7 +184,8 @@ std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::S
   if (m.empty())
     return {};
 #if defined have_mkl || defined have_cblas
-  if (nrows > 16) return svd_lapacke<value_type>(nrows, ncols, m, threshold);
+  if (nrows > 16) return svd_lapacke_dgesdd<value_type>(nrows, ncols, m, threshold);
+  return svd_lapacke_dgesvd<value_type>(nrows, ncols, m, threshold);
 #endif
   return svd_system_small<value_type>(nrows, ncols, m, threshold);
   //return svd_system_large<value_type>(nrows, ncols, m, threshold);

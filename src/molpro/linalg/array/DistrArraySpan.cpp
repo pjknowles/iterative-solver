@@ -13,46 +13,37 @@ int mpi_size(MPI_Comm comm) {
 }
 }
 
-DistrArraySpan::DistrArraySpan() = default;
-
-DistrArraySpan::DistrArraySpan(size_t dimension, MPI_Comm commun)
+DistrArraySpan::DistrArraySpan(size_t dimension, Span<value_type> buffer, MPI_Comm commun)
     : DistrArraySpan(std::make_unique<Distribution>(
-      util::make_distribution_spread_remainder<index_type>(dimension, mpi_size(commun))), commun) {}
+      util::make_distribution_spread_remainder<index_type>(dimension, mpi_size(commun))), buffer, commun) {}
       
-DistrArraySpan::DistrArraySpan(std::unique_ptr<Distribution> distribution, MPI_Comm commun)
+DistrArraySpan::DistrArraySpan(std::unique_ptr<Distribution> distribution, Span<value_type> buffer, MPI_Comm commun)
     : DistrArray(distribution->border().second, commun), m_distribution(std::move(distribution)) {
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");
+  allocate_buffer(buffer);
 }
 
 DistrArraySpan::DistrArraySpan(const DistrArraySpan& source)
     : DistrArray(source.size(), source.communicator()),
        m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
-  if (!source.empty()) {
     DistrArraySpan::allocate_buffer(source.m_span);
-  }
 }
 
 DistrArraySpan::DistrArraySpan(const DistrArray& source)
     : DistrArray(source), m_distribution(std::make_unique<Distribution>(source.distribution())) {
-  if (!source.empty()) {
-    DistrArraySpan::allocate_buffer(Span<value_type>(&(*source.local_buffer())[0], source.size()));
-  }
+  DistrArraySpan::allocate_buffer(Span<value_type>(&(*source.local_buffer())[0], source.size()));
 }
 
 DistrArraySpan::DistrArraySpan(DistrArraySpan&& source) noexcept
     : DistrArray(source.m_dimension, source.m_communicator), m_span(std::move(source.m_span)),
       m_allocated(source.m_allocated), m_distribution(std::move(source.m_distribution)) {
-  source.m_allocated = false;
 }
-
-DistrArraySpan::~DistrArraySpan() {}
 
 DistrArraySpan& DistrArraySpan::operator=(const DistrArraySpan& source) {
   if (this == &source)
     return *this;
-  if (source.empty() || empty() || !compatible(source)) {
-    free_buffer();
+  if (!compatible(source)) {
     DistrArraySpan t{source};
     swap(*this, t);
   } else {
@@ -76,21 +67,9 @@ void swap(DistrArraySpan& a1, DistrArraySpan& a2) noexcept {
   swap(a1.m_span, a2.m_span);
 }
 
-void DistrArraySpan::free_buffer() {
-  if (m_allocated) {
-    // TODO: what to do with m_span?
-    m_allocated = false;
-  }
-}
-
-void DistrArraySpan::allocate_buffer() {} //TODO: Doesn't make sense to have it... Or should we allocate empty space?
-
 void DistrArraySpan::allocate_buffer(Span<value_type> buffer) {
-  //if (!empty())  // TODO: OK to be "re-writable"?
-  //  return;
   if (!m_distribution)
     error("Cannot allocate an array without distribution");
-  //m_buffer = std::make_unique<LocalBufferSpan>(buffer);
   m_span = buffer;
   int rank;
   MPI_Comm_rank(m_communicator, &rank);
@@ -127,8 +106,6 @@ DistrArraySpan::LocalBufferSpan::LocalBufferSpan(const DistrArraySpan& source) {
   if (m_size != (hi - m_start))
     source.error("size of mapped buffer different from the local distribution size");
 }
-
-bool DistrArraySpan::empty() const { return !m_allocated; }
 
 const DistrArray::Distribution& DistrArraySpan::distribution() const {
   if (!m_distribution)

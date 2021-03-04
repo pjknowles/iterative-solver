@@ -40,10 +40,6 @@ using molpro::linalg::itsolv::LinearEquations;
 using molpro::linalg::itsolv::LinearEquationsDavidson;
 using molpro::linalg::itsolv::NonLinearEquations;
 using molpro::linalg::itsolv::Optimize;
-using molpro::linalg::itsolv::IterativeSolver;
-using molpro::linalg::itsolv::LinearEigensystemDavidson;
-using molpro::linalg::itsolv::LinearEquationsDavidson;
-using molpro::linalg::array::util::make_distribution_spread_remainder;
 using molpro::linalg::itsolv::wrap;
 using molpro::linalg::itsolv::cwrap;
 
@@ -102,8 +98,9 @@ std::vector<Rvector> CreateDistrArray(size_t nvec, double* data) {
   std::vector<Rvector> c;
   c.reserve(nvec);
   for (size_t ivec = 0; ivec < nvec; ivec++) {
-    c.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
-                   Span<typename Rvector::value_type>(&data[ivec * instance.dimension + range.first], rn));
+    c.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr),
+                   Span<typename Rvector::value_type>(&data[ivec * instance.dimension + range.first], rn),
+                   ccomm);
   }
   return c;
 }
@@ -120,8 +117,9 @@ std::vector<Rvector> CreateDistrArray(size_t nvec, const double* data) {
   std::vector<Rvector> c;
   c.reserve(nvec);
   for (size_t ivec = 0; ivec < nvec; ivec++) {
-    c.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr), ccomm,
-                   Span<typename Rvector::value_type>(&const_cast<double*>(data)[ivec * instance.dimension + range.first], rn));
+    c.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr),
+                   Span<typename Rvector::value_type>(&const_cast<double*>(data)[ivec * instance.dimension
+                                                                                            + range.first], rn), ccomm);
   }
   return c;
 }

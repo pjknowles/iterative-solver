@@ -25,6 +25,7 @@ using molpro::linalg::test::mpi_comm;
 using molpro::linalg::array::default_handler;
 using molpro::linalg::array::ArrayHandlerDDiskDistr;
 using molpro::linalg::array::Span;
+using molpro::linalg::array::util::make_distribution_spread_remainder;
 
 using ::testing::ContainerEq;
 using ::testing::DoubleEq;
@@ -110,10 +111,9 @@ TEST_F(DistrArrayFile_Fixture, handler_copies) {
   MPI_Comm_size(comm_global(), &mpi_size);
   for (size_t i = 0; i < n; i++) {
     std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
-    mem_vecs.emplace_back(dim);
-    auto crange = mem_vecs.back().distribution().range(mpi_rank);
+    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
     auto clength = crange.second - crange.first;
-    mem_vecs.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength));
+    mem_vecs.emplace_back(dim, Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength), comm_global());
     file_vecs.emplace_back(handler.copy(mem_vecs.back()));
   }
   for (size_t i = 0; i < n; i++) {

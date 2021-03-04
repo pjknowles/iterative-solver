@@ -1,7 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYFILE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYFILE_H
 
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <set>

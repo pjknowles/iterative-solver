@@ -114,7 +114,6 @@ TEST(ArrayHandlerDistrDDisk_file, default_handler) {
 TEST(ArrayHandlerDDiskDistr_File, constructor_copy_from_distr_array) {
   const double val = 0.5;
   auto a_mem = DistrArrayMPI3(100, mpi_comm);
-  a_mem.allocate_buffer();
   a_mem.fill(val);
   //auto a_disk = DistrArrayFile(100, mpi_comm);
   auto h = default_handler<DistrArrayFile, DistrArrayMPI3>::value{};
@@ -126,7 +125,6 @@ TEST(ArrayHandlerDDiskDistr_File, constructor_copy_from_distr_array) {
     auto l = lock.scope();
     EXPECT_EQ(a_disk.communicator(), a_mem.communicator());
     EXPECT_EQ(a_disk.size(), a_mem.size());
-    EXPECT_FALSE(a_disk.empty());
     EXPECT_TRUE(a_disk.distribution().compatible(a_mem.distribution()));
   }
 }

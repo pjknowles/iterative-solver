@@ -113,12 +113,6 @@ public:
   size_t size() const { return m_dimension; };
   //! Checks that arrays are of the same dimensionality
   bool compatible(const DistrArray &other) const;
-  //! allocates memory to the array without initializing it with any value. Blocking, collective operation.
-  virtual void allocate_buffer() = 0;
-  //! frees the buffer
-  virtual void free_buffer() = 0;
-  //! checks if array has been allocated
-  virtual bool empty() const;
 
   /*! @name Local buffer
    * Access the section of the array local to this process

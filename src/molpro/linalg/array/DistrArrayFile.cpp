@@ -5,7 +5,6 @@
 #include <molpro/linalg/array/util/temp_file.h>
 #include <utility>
 
-
 namespace molpro::linalg::array {
 namespace {
 int mpi_size(MPI_Comm comm) {
@@ -51,15 +50,13 @@ void DistrArrayFile::update_records() {
   m_lrec = true;
 }
 
-DistrArrayFile::DistrArrayFile() = default;
-
 DistrArrayFile::DistrArrayFile(DistrArrayFile&& source) noexcept
     : DistrArrayDisk(std::move(source)), m_frecs(std::move(source.m_frecs)) {
-      if (source.m_lrec) {
-        source.m_lrec = false;
-        m_lrec = true;
-      }
-    }
+  if (source.m_lrec) {
+    source.m_lrec = false;
+    m_lrec = true;
+  }
+}
 
 DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::string& directory)
     : DistrArrayFile(std::make_unique<Distribution>(
@@ -77,18 +74,13 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
 }
 
 DistrArrayFile::DistrArrayFile(const DistrArrayFile& source)
-    : DistrArrayDisk(source) {
-  update_records();
-  if (!source.empty()){
-    DistrArrayFile::copy(source);
-  }
+    : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator()) {
+  DistrArrayFile::copy(source);
 }
 
 DistrArrayFile::DistrArrayFile(const DistrArray& source)
     : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator()) {
-  if (!source.empty()) {
-    DistrArrayFile::copy(source);
-  }
+  DistrArrayFile::copy(source);
 }
 
 DistrArrayFile& DistrArrayFile::operator=(DistrArrayFile&& source) noexcept {
@@ -108,8 +100,6 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
   swap(x.m_dimension, y.m_dimension);
   swap(x.m_communicator, y.m_communicator);
   swap(x.m_allocated, y.m_allocated);
-  swap(x.m_view_buffer, y.m_view_buffer);
-  swap(x.m_owned_buffer, y.m_owned_buffer);
   swap(x.m_distribution, y.m_distribution);
   swap(x.m_frecs, y.m_frecs);
   swap(x.m_lrec, y.m_lrec);
@@ -143,15 +133,6 @@ std::fstream DistrArrayFile::make_file(const fs::path &dir) {
   unlink(file_name.c_str());
   return tfile;
 }
-
-void DistrArrayFile::open_access() {}
-void DistrArrayFile::close_access() {}
-
-bool DistrArrayFile::empty() const {
-  return (!file);
-}
-
-void DistrArrayFile::erase() {}
 
 DistrArray::value_type DistrArrayFile::at(DistrArray::index_type ind) const {
   value_type val;
@@ -241,7 +222,7 @@ void DistrArrayFile::scatter(const std::vector<index_type>& indices, const std::
     error("Only local array indices can be accessed via DistrArrayFile.gather() function");
   }
   for (auto i : indices) {
-    set(i, data[i-*minmax.first]); //TODO: check it shouldn't be data[*minmax.first++]??
+    set(i, data[i - *minmax.first]); //TODO: check it shouldn't be data[*minmax.first++]??
   }
 }
 

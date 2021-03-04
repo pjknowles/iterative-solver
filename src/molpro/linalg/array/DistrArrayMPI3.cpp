@@ -19,8 +19,6 @@ int comm_rank(MPI_Comm comm) {
 }
 } // namespace
 
-DistrArrayMPI3::DistrArrayMPI3() = default;
-
 DistrArrayMPI3::DistrArrayMPI3(size_t dimension, MPI_Comm commun)
     : DistrArrayMPI3(std::make_unique<Distribution>(
                          util::make_distribution_spread_remainder<index_type>(dimension, comm_size(commun))),
@@ -30,67 +28,28 @@ DistrArrayMPI3::DistrArrayMPI3(std::unique_ptr<Distribution> distribution, MPI_C
     : DistrArray(distribution->border().second, commun), m_distribution(std::move(distribution)) {
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");
+  allocate_buffer();
 }
 
 DistrArrayMPI3::~DistrArrayMPI3() {
-  if (m_allocated)
-    DistrArrayMPI3::free_buffer();
+  if (m_allocated) {
+    MPI_Win_unlock_all(m_win);
+    MPI_Win_free(&m_win);
+    m_allocated = false;
+  }
 }
-
-void DistrArrayMPI3::allocate_buffer() {
-  if (!empty())
-    return;
-  if (!m_distribution)
-    error("Cannot allocate an array without distribution");
-  int rank;
-  MPI_Comm_rank(m_communicator, &rank);
-  index_type lo, hi;
-  std::tie(lo, hi) = m_distribution->range(rank);
-  MPI_Aint n = hi - lo;
-  double* base = nullptr;
-  int size_of_type = sizeof(value_type);
-  n *= size_of_type;
-  MPI_Win_allocate(n, size_of_type, MPI_INFO_NULL, m_communicator, &base, &m_win);
-  MPI_Win_lock_all(0, m_win);
-  m_allocated = true;
-}
-
-void DistrArrayMPI3::allocate_buffer(Span<value_type> buffer) {
-  if (!empty())
-    return;
-  if (!m_distribution)
-    error("Cannot allocate an array without distribution");
-  int rank;
-  MPI_Comm_rank(m_communicator, &rank);
-  index_type lo, hi;
-  std::tie(lo, hi) = m_distribution->range(rank);
-  MPI_Aint n = hi - lo;
-  if (buffer.size() < n)
-    error("Specified external buffer is too small");
-  int size_of_type = sizeof(value_type);
-  n *= size_of_type;
-  MPI_Win_create(&buffer[0], n, size_of_type, MPI_INFO_NULL, m_communicator, &m_win);
-  MPI_Win_lock_all(0, m_win);
-  m_allocated = true;
-}
-
-bool DistrArrayMPI3::empty() const { return !m_allocated; }
 
 DistrArrayMPI3::DistrArrayMPI3(const DistrArrayMPI3& source)
     : DistrArray(source.size(), source.communicator()),
       m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
-  if (!source.empty()) {
-    DistrArrayMPI3::allocate_buffer();
-    DistrArray::copy(source);
-  }
+  allocate_buffer();
+  DistrArray::copy(source);
 }
 
 DistrArrayMPI3::DistrArrayMPI3(const DistrArray& source)
     : DistrArray(source), m_distribution(std::make_unique<Distribution>(source.distribution())) {
-  if (!source.empty()) {
-    DistrArrayMPI3::allocate_buffer();
-    DistrArray::copy(source);
-  }
+  allocate_buffer();
+  DistrArray::copy(source);
 }
 
 DistrArrayMPI3::DistrArrayMPI3(DistrArrayMPI3&& source) noexcept
@@ -102,12 +61,10 @@ DistrArrayMPI3::DistrArrayMPI3(DistrArrayMPI3&& source) noexcept
 DistrArrayMPI3& DistrArrayMPI3::operator=(const DistrArrayMPI3& source) {
   if (this == &source)
     return *this;
-  if (source.empty() || empty() || !compatible(source)) {
-    free_buffer();
+  if (!compatible(source)) {
     DistrArrayMPI3 t{source};
     swap(*this, t);
   } else {
-    allocate_buffer();
     copy(source);
   }
   return *this;
@@ -128,19 +85,46 @@ void swap(DistrArrayMPI3& a1, DistrArrayMPI3& a2) noexcept {
   swap(a1.m_win, a2.m_win);
 }
 
-void DistrArrayMPI3::free_buffer() {
-  if (m_allocated) {
-    MPI_Win_unlock_all(m_win);
-    MPI_Win_free(&m_win);
-    m_allocated = false;
-  }
+void DistrArrayMPI3::allocate_buffer() {
+  if (!m_distribution)
+    error("Cannot allocate an array without distribution");
+  int rank;
+  MPI_Comm_rank(m_communicator, &rank);
+  index_type lo, hi;
+  std::tie(lo, hi) = m_distribution->range(rank);
+  MPI_Aint n = hi - lo;
+  double* base = nullptr;
+  int size_of_type = sizeof(value_type);
+  n *= size_of_type;
+  MPI_Win_allocate(n, size_of_type, MPI_INFO_NULL, m_communicator, &base, &m_win);
+  MPI_Win_lock_all(0, m_win);
+  m_allocated = true;
 }
 
+DistrArrayMPI3::DistrArrayMPI3(std::unique_ptr<Distribution> distribution, MPI_Comm commun, Span<value_type> buffer)
+    : DistrArray(distribution->border().second, commun), m_distribution(std::move(distribution)) {
+  int rank;
+  MPI_Comm_rank(m_communicator, &rank);
+  index_type lo, hi;
+  std::tie(lo, hi) = m_distribution->range(rank);
+  MPI_Aint n = hi - lo;
+  if (buffer.size() < n)
+    error("Specified external buffer is too small");
+  int size_of_type = sizeof(value_type);
+  n *= size_of_type;
+  MPI_Win_create(&buffer[0], n, size_of_type, MPI_INFO_NULL, m_communicator, &m_win);
+  MPI_Win_lock_all(0, m_win);
+  m_allocated = true;
+}
+
+DistrArrayMPI3::DistrArrayMPI3(size_t dimension, MPI_Comm commun, Span<value_type> buffer)
+    : DistrArrayMPI3(std::make_unique<Distribution>(
+                         util::make_distribution_spread_remainder<index_type>(dimension, comm_size(commun))),
+                     commun, buffer) {}
+
 void DistrArrayMPI3::sync() const {
-  if (!empty()) {
-    MPI_Win_flush_all(m_win);
-    MPI_Win_sync(m_win);
-  }
+  MPI_Win_flush_all(m_win);
+  MPI_Win_sync(m_win);
   MPI_Barrier(m_communicator);
 }
 
@@ -165,8 +149,6 @@ void DistrArrayMPI3::_get_put(index_type lo, index_type hi, const value_type* bu
   auto name = std::string{"DistrArrayMPI3::_get_put"};
   if (hi > m_dimension)
     error(name + " out of bounds");
-  if (empty())
-    error(name + " called on an empty array");
   index_type p_lo, p_hi;
   std::tie(p_lo, p_hi) = m_distribution->cover(lo, hi);
   auto* curr_buf = const_cast<value_type*>(buf);
@@ -226,8 +208,6 @@ void DistrArrayMPI3::_gather_scatter(const std::vector<index_type>& indices, std
     error(name + " out of bounds");
   if (indices.size() > data.size())
     error(name + " data buffer is too small");
-  if (empty())
-    error(name + " called on an empty array");
   auto requests = std::vector<MPI_Request>(indices.size());
   for (size_t i = 0; i < indices.size(); ++i) {
     int p;

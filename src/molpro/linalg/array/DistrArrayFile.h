@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYFILE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYFILE_H
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <set>
@@ -35,7 +36,8 @@ struct FileAttributes {
  * On construction, file and corresponding stream object are being created and file is then closed (to be opened using
  * open_access()). On destruction, file is being deleted.
  *
- * @warning Only local operations will be currently supported, if RMA operations are requested, exception will be thrown.
+ * @warning Only local operations will be currently supported, if RMA operations are requested, exception will be
+ * thrown.
  *
  */
 class DistrArrayFile : public DistrArrayDisk {
@@ -50,33 +52,27 @@ public:
   static std::unique_ptr<util::FileAttributes> file;
   //! Constructor for a blank object. The blank is only useful as a temporary. Move a valid object inside the blank to
   //! make it usable.
-  DistrArrayFile();
+  DistrArrayFile() = delete;
   DistrArrayFile(const DistrArrayFile &source);
   DistrArrayFile(DistrArrayFile &&source) noexcept;
   explicit DistrArrayFile(size_t dimension, MPI_Comm comm = comm_global(), const std::string &directory = ".");
   explicit DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm = comm_global(), const std::string &directory = ".");
   explicit DistrArrayFile(const DistrArray &source);
-  
+
   DistrArrayFile &operator=(const DistrArrayFile &source) = delete;
   DistrArrayFile &operator=(DistrArrayFile &&source) noexcept;
   
   static DistrArrayFile CreateTempCopy(const DistrArray &source, const std::string &directory = ".");
   
   friend void swap(DistrArrayFile &x, DistrArrayFile &y) noexcept;
-  
+
   //! Flushes the buffer if file access is open
   ~DistrArrayFile() override;
-  
+
   bool compatible(const DistrArrayFile &source) const;
- 
+
   //! Dummy
-  void open_access() override;
-  //! Dummy
-  void close_access() override;
-  //! @returns true if array is not accessible through file nor memory view. Returns false otherwise.
-  bool empty() const override;
-  //! Dummy
-  void erase() override;
+  void erase() override {}
   //! @returns element at given index
   value_type at(index_type ind) const override;
   //! Writes value at a given index

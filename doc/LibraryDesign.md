@@ -52,4 +52,25 @@ the corresponding solver with dynamic casts. This is the main reason why the opt
 
 ## Distributed Arrays
 
-WIP
+In parallel computing it is often necessary to distribute an array over multiple processes. Each process stores a
+small section of the array without overlapping. There are multiple implementations of this approach including
+Global Arrays, MPI3 windows, parallel HDF5 and others.
+We provide a simple interface to different implementations of distributed arrays to allow cross-compatibility and
+simplify their usage.
+
+There are three aspects to consider:
+1. distribution across processes and access to the local section
+2. linear algebra operations that require only local sections
+3. remote memory access (RMA) operations for accessing data on a different process
+
+The distribution can be defined using molpro::linalg::array::util::Distribution and the abstract class 
+molpro::linalg::array::DistrArray defines common functionality such as checking that two distributed arrays are 
+compatible and accessing the local buffer.
+
+The linear algebra operations only require local sections and can be supported by all distributed arrays. However, some
+implementations can use more efficient algorithms (e.g. buffering local section in chunks when loading from disk),
+so the linear algebra operations have to be virtual functions in the base class.
+
+Not all implementation can or need to support RMA operations, however most will. We decided to make RMA operations
+part of the abstract base class, even though they might not always be implemented thus breaking the Liskov substitution
+principle. 

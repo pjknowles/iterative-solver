@@ -36,7 +36,6 @@ auto allocate(size_t n) {
 template <>
 auto allocate<array::DistrArrayMPI3>(size_t n) {
   auto result = std::make_unique<array::DistrArrayMPI3>(n, MPI_COMM_WORLD);
-  result->allocate_buffer();
   return result;
 }
 #endif
@@ -44,7 +43,6 @@ auto allocate<array::DistrArrayMPI3>(size_t n) {
 template <>
 auto allocate<array::DistrArrayGA>(size_t n) {
   auto result = std::make_unique<array::DistrArrayGA>(n, GA_MPI_Comm());
-  result->allocate_buffer();
   return result;
 }
 #endif
@@ -56,7 +54,6 @@ auto allocate<array::DistrArrayHDF5>(size_t n) {
   handle->open_group("/");
   handle->close_file();
   auto result = std::make_unique<array::DistrArrayHDF5>(handle, n);
-  result->open_access();
   return result;
 }
 #endif

@@ -4,13 +4,7 @@
 #include <cmath>
 #include <cstddef>
 #include <molpro/linalg/itsolv/helper.h>
-#if __has_include(<mkl_lapacke.h>)
-#include <mkl_lapacke.h>
-#define have_mkl
-#elif __has_include(<lapacke.h>)
-#include <lapacke.h>
-#define have_cblas
-#endif
+#include <molpro/lapacke.h>
 
 namespace molpro::linalg::itsolv {
 
@@ -88,7 +82,7 @@ std::list<SVD<value_type>> svd_eigen_bdcsvd(size_t nrows, size_t ncols, const ar
   return svd_system;
 }
 
-#if defined have_mkl || defined have_cblas
+#if defined HAVE_CBLAS
 template<typename value_type>
 std::list<SVD<value_type>> svd_lapacke_dgesdd(size_t nrows, size_t ncols, const array::Span<value_type>& mat,
                                               double threshold) {
@@ -144,7 +138,7 @@ std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::S
   assert(m.size() == nrows * ncols);
   if (m.empty())
     return {};
-#if defined have_mkl || defined have_cblas
+#if defined HAVE_CBLAS
   if (nrows > 16) return svd_lapacke_dgesdd<value_type>(nrows, ncols, m, threshold);
   return svd_lapacke_dgesvd<value_type>(nrows, ncols, m, threshold);
 #endif

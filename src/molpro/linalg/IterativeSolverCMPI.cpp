@@ -29,16 +29,17 @@
 
 using molpro::Profiler;
 using molpro::linalg::array::Span;
+using molpro::linalg::array::util::Distribution;
 using molpro::linalg::array::util::gather_all;
+using molpro::linalg::array::util::make_distribution_spread_remainder;
 using molpro::linalg::itsolv::ArrayHandlers;
+using molpro::linalg::itsolv::IterativeSolver;
 using molpro::linalg::itsolv::LinearEigensystem;
+using molpro::linalg::itsolv::LinearEigensystemDavidson;
 using molpro::linalg::itsolv::LinearEquations;
+using molpro::linalg::itsolv::LinearEquationsDavidson;
 using molpro::linalg::itsolv::NonLinearEquations;
 using molpro::linalg::itsolv::Optimize;
-using molpro::linalg::itsolv::IterativeSolver;
-using molpro::linalg::itsolv::LinearEigensystemDavidson;
-using molpro::linalg::itsolv::LinearEquationsDavidson;
-using molpro::linalg::array::util::make_distribution_spread_remainder;
 using molpro::linalg::itsolv::wrap;
 using molpro::linalg::itsolv::cwrap;
 
@@ -75,19 +76,31 @@ struct Instance {
 std::stack<Instance> instances;
 } // namespace
 
+std::pair<size_t, size_t> DistrArrayDefaultRange() {
+  auto& instance = instances.top();
+  int mpi_rank, comm_size;
+  MPI_Comm_rank(instance.comm, &mpi_rank);
+  MPI_Comm_size(instance.comm, &comm_size);
+  auto d = make_distribution_spread_remainder<size_t>(instance.dimension, comm_size);
+  auto range = d.range(mpi_rank);
+  return range;
+}
+
 std::vector<Rvector> CreateDistrArray(size_t nvec, double* data) {
   auto& instance = instances.top();
   MPI_Comm ccomm = instance.comm;
-  int mpi_rank;
-  MPI_Comm_rank(ccomm, &mpi_rank);
+  int mpi_rank, comm_size;
+  MPI_Comm_rank(instance.comm, &mpi_rank);
+  MPI_Comm_size(instance.comm, &comm_size);
+  auto distr = make_distribution_spread_remainder<size_t>(instance.dimension, comm_size);
+  auto range = distr.range(mpi_rank);
+  auto rn = range.second - range.first;
   std::vector<Rvector> c;
   c.reserve(nvec);
   for (size_t ivec = 0; ivec < nvec; ivec++) {
-    c.emplace_back(instance.dimension, ccomm);
-    auto crange = c.back().distribution().range(mpi_rank);
-    auto clength = crange.second - crange.first;
-    c.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&data[ivec * instance.dimension + crange.first], clength));
+    c.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr),
+                   Span<typename Rvector::value_type>(&data[ivec * instance.dimension + range.first], rn),
+                   ccomm);
   }
   return c;
 }
@@ -95,16 +108,18 @@ std::vector<Rvector> CreateDistrArray(size_t nvec, double* data) {
 std::vector<Rvector> CreateDistrArray(size_t nvec, const double* data) {
   auto& instance = instances.top();
   MPI_Comm ccomm = instance.comm;
-  int mpi_rank;
-  MPI_Comm_rank(ccomm, &mpi_rank);
+  int mpi_rank, comm_size;
+  MPI_Comm_rank(instance.comm, &mpi_rank);
+  MPI_Comm_size(instance.comm, &comm_size);
+  auto distr = make_distribution_spread_remainder<size_t>(instance.dimension, comm_size);
+  auto range = distr.range(mpi_rank);
+  auto rn = range.second - range.first;
   std::vector<Rvector> c;
   c.reserve(nvec);
   for (size_t ivec = 0; ivec < nvec; ivec++) {
-    c.emplace_back(instance.dimension, ccomm);
-    auto crange = c.back().distribution().range(mpi_rank);
-    auto clength = crange.second - crange.first;
-    c.back().allocate_buffer(
-        Span<typename Rvector::value_type>(&const_cast<double*>(data)[ivec * instance.dimension + crange.first], clength));
+    c.emplace_back(std::make_unique<Distribution<Rvector::index_type>>(distr),
+                   Span<typename Rvector::value_type>(&const_cast<double*>(data)[ivec * instance.dimension
+                                                                                            + range.first], rn), ccomm);
   }
   return c;
 }
@@ -117,15 +132,6 @@ void DistrArraySynchronize(size_t nvec, std::vector<Rvector>& c, double* data) {
   }
 }
 
-std::pair<size_t, size_t> DistrArrayDefaultRange() {
-  auto& instance = instances.top();
-  int mpi_rank, comm_size;
-  MPI_Comm_rank(instance.comm, &mpi_rank);
-  MPI_Comm_size(instance.comm, &comm_size);
-  auto d = make_distribution_spread_remainder<size_t>(instance.dimension, comm_size);
-  auto range = d.range(mpi_rank);
-  return range;
-}
 
 std::pair<size_t, size_t> DistrArrayGetRange(Rvector& rvec) {
   auto& instance = instances.top();

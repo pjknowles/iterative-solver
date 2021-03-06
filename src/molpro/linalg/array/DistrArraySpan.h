@@ -12,22 +12,18 @@ protected:
   Span<value_type> m_span;                          //!< Span over provided buffer
   
 public:
-  DistrArraySpan();
-  DistrArraySpan(size_t dimension, MPI_Comm commun = comm_global());
-  DistrArraySpan(std::unique_ptr<Distribution> distribution, MPI_Comm commun = comm_global());
+  DistrArraySpan() = delete;
+  DistrArraySpan(size_t dimension, Span<value_type> buffer, MPI_Comm commun = comm_global());
+  DistrArraySpan(std::unique_ptr<Distribution> distribution, Span<value_type> buffer, MPI_Comm commun = comm_global());
   DistrArraySpan(const DistrArraySpan &source);
   explicit DistrArraySpan(const DistrArray &source);
   DistrArraySpan(DistrArraySpan &&source) noexcept;
   DistrArraySpan &operator=(const DistrArraySpan &source);
   DistrArraySpan &operator=(DistrArraySpan &&source) noexcept;
-  ~DistrArraySpan() override;
   
   friend void swap(DistrArraySpan &a1, DistrArraySpan &a2) noexcept;
   //void sync() const override;
-  void allocate_buffer() override;
   void allocate_buffer(Span<value_type> buffer);
-  void free_buffer() override;
-  [[nodiscard]] bool empty() const override;
   
 protected:
   struct LocalBufferSpan : public DistrArray::LocalBuffer {

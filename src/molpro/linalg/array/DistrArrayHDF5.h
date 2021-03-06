@@ -33,9 +33,7 @@ public:
   static constexpr int dataset_default = -1; //!< default value for dataset id
   const std::string dataset_name = "array";  //!< name of HDF5 dataset where array is stored
 
-  //! Constructor for a blank object. The blank is only useful as a temporary. Move a valid object inside the blank to
-  //! make it usable.
-  DistrArrayHDF5();
+  DistrArrayHDF5() = delete;
   DistrArrayHDF5(const DistrArrayHDF5 &source) = delete;
   //! Takes ownership of source content.
   DistrArrayHDF5(DistrArrayHDF5 &&source) noexcept;
@@ -62,20 +60,11 @@ public:
    */
   DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle, std::unique_ptr<Distribution> distribution);
   /*!
-   * @brief Create a dummy disk array with a file assigned.
-   *
-   * If the group contains dataset with dataset_name, than dimension will be read from it. Otherwise, the disk array
-   * object will be a dummy, still useful for later copying a valid array into it.
-   *
-   * @param file_handle handle for opening the HDF5 group where array is/will be stored.
-   */
-  explicit DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle);
-  /*!
    * @brief Creates a disk array by copying source to disk.
    * @param source a distributed array
    * @param file_handle handle for opening the HDF5 group where array is/will be stored.
    */
-  DistrArrayHDF5(const DistrArray &source, std::shared_ptr<util::PHDF5Handle> file_handle);
+  DistrArrayHDF5(const DistrArray &source, const std::shared_ptr<util::PHDF5Handle> &file_handle);
 
   /*!
    * @brief Create a copy of source array using a temporary file which will be erased on destruction
@@ -106,15 +95,10 @@ public:
 
   friend void swap(DistrArrayHDF5 &x, DistrArrayHDF5 &y) noexcept;
 
-  //! Flushes the buffer if file access is open
   ~DistrArrayHDF5() override;
 
   bool compatible(const DistrArrayHDF5 &source) const;
 
-  void open_access() override;
-  void close_access() override;
-  //! @returns true if array is not accessible through file nor memory view. Returns false otherwise.
-  bool empty() const override;
   //! Removes link to the array dataset from the hdf5 file. This does not reduce the file size, consider using h5repack.
   void erase() override;
   value_type at(index_type ind) const override;
@@ -139,6 +123,10 @@ public:
   int dataset_exists() const;
   //! True if dataset is currently open, implies that file and group is open as well.
   bool dataset_is_open() const;
+
+private:
+  void open_access();
+  void close_access();
 };
 
 } // namespace molpro::linalg::array

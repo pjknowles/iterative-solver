@@ -46,6 +46,7 @@ using molpro::linalg::array::util::ScopeLock;
 using molpro::linalg::itsolv::wrap;
 using molpro::linalg::itsolv::cwrap;
 using molpro::linalg::itsolv::subspace::Matrix;
+using molpro::linalg::array::util::make_distribution_spread_remainder;
 
 using ::testing::ContainerEq;
 using ::testing::DoubleEq;
@@ -66,12 +67,10 @@ TEST(TestGemm, distr_inner) {
   for (size_t i = 0; i < n; i++) {
     std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
     std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
-    cx.emplace_back(dim);
-    cy.emplace_back(dim);
-    auto crange = cx.back().distribution().range(mpi_rank);
+    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
     auto clength = crange.second - crange.first;
-    cx.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength));
-    cy.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength));
+    cx.emplace_back(dim, Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength), comm_global());
+    cy.emplace_back(dim, Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength), comm_global());
   }
   std::vector<double> vref(n*n), vgemm(n*n);
   std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
@@ -83,20 +82,6 @@ TEST(TestGemm, distr_inner) {
       ref_dot(i, j) = handler.dot(cx[i], cy[j]);
     }
   }
-  //std::cout << "ref dot:" << std::endl;
-  //for (size_t i = 0; i < n; i++) {
-  //  for (size_t j = 0; j < n; j++) {
-  //    std::cout << ref_dot(i, j) << " ";
-  //  }
-  //  std::cout << std::endl;
-  //}
-  //std::cout << "gemm dot:" << std::endl;
-  //for (size_t i = 0; i < n; i++) {
-  //  for (size_t j = 0; j < n; j++) {
-  //    std::cout << gemm_dot(i, j) << " ";
-  //  }
-  //  std::cout << std::endl;
-  //}
   EXPECT_THAT(vgemm, Pointwise(DoubleEq(), vref));
 }
 
@@ -116,11 +101,10 @@ TEST(TestGemm, ddiskdistr_inner) {
     std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
     std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
     cx.emplace_back(dim);
-    cy.emplace_back(dim);
     auto crange = cx.back().distribution().range(mpi_rank);
     auto clength = crange.second - crange.first;
     cx.back().put(crange.first, crange.second, &(*(vx[i].cbegin() + crange.first)));
-    cy.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength));
+    cy.emplace_back(dim, Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength), comm_global());
   }
   std::vector<double> vref(n*n), vgemm(n*n);
   std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
@@ -151,11 +135,10 @@ TEST(TestGemm, distrddisk_inner) {
     std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
     std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
     cx.emplace_back(dim);
-    cy.emplace_back(dim);
     auto crange = cx.back().distribution().range(mpi_rank);
     auto clength = crange.second - crange.first;
     cx.back().put(crange.first, crange.second, &(*(vx[i].cbegin() + crange.first)));
-    cy.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength));
+    cy.emplace_back(dim, Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength), comm_global());
   }
   std::vector<double> vref(n*n), vgemm(n*n);
   std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
@@ -187,7 +170,7 @@ TEST(TestGemm, ddisk_inner) {
     std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
     cx.emplace_back(dim);
     cy.emplace_back(dim);
-    auto crange = cx.back().distribution().range(mpi_rank);
+    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
     cx.back().put(crange.first, crange.second, &(*(vx[i].cbegin() + crange.first)));
     cy.back().put(crange.first, crange.second, &(*(vy[i].cbegin() + crange.first)));
   }
@@ -218,10 +201,9 @@ TEST(TestGemm, distrsparse_inner) {
   for (size_t i = 0; i < n; i++) {
     std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
     my[i] = std::map<size_t, double>{{1, i+1.0}, {3, i+2.0}, {6, i+3.0}, {9, i+4.0}};
-    cx.emplace_back(dim);
-    auto crange = cx.back().distribution().range(mpi_rank);
+    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
     auto clength = crange.second - crange.first;
-    cx.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength));
+    cx.emplace_back(dim, Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength), comm_global());
   }
   std::vector<double> vref(n*n), vgemm(n*n);
   std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
@@ -251,7 +233,7 @@ TEST(TestGemm, ddisksparse_inner) {
     std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
     my[i] = std::map<size_t, double>{{1, i+1.0}, {3, i+2.0}, {6, i+3.0}, {9, i+4.0}};
     cx.emplace_back(dim);
-    auto crange = cx.back().distribution().range(mpi_rank);
+    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
     cx.back().put(crange.first, crange.second, &(*(vx[i].cbegin() + crange.first)));
   }
   std::vector<double> vref(n*n), vgemm(n*n);
@@ -284,14 +266,11 @@ TEST(TestGemm, distr_outer) {
     std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
     std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
     std::iota(vz[i].begin(), vz[i].end(), i + 0.5);
-    cx.emplace_back(dim);
-    cy.emplace_back(dim);
-    cz.emplace_back(dim);
-    auto crange = cx.back().distribution().range(mpi_rank);
+    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
     auto clength = crange.second - crange.first;
-    cx.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength));
-    cy.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength));
-    cz.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vz[i][crange.first], clength));
+    cx.emplace_back(dim, Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength), comm_global());
+    cy.emplace_back(dim, Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength), comm_global());
+    cz.emplace_back(dim, Span<DistrArraySpan::value_type>(&vz[i][crange.first], clength), comm_global());
   }
   std::vector<double> coeff(n*n);
   std::iota(coeff.begin(), coeff.end(), 1);
@@ -303,22 +282,8 @@ TEST(TestGemm, distr_outer) {
       handler.axpy(alpha(i, j), cx[i], cz[j]);
     }
   }
-  //std::cout << "ref vecs:" << std::endl;
-  //for (size_t i = 0; i < n; i++) {
-  //  std::cout << "vec["<<i<<"]: ";
-  //  for (size_t j = 0; j < dim; j++) {
-  //    std::cout << vz[i][j] << " ";
-  //  }
-  //  std::cout << std::endl;
-  //}
-  //std::cout << "gemm vecs:" << std::endl;
   for (size_t i = 0; i < n; i++) {
-  //  std::cout << "vec["<<i<<"]: ";
-  //  for (size_t j = 0; j < dim; j++) {
-  //    std::cout << vy[i][j] << " ";
-  //  }
     EXPECT_THAT(vy[i], Pointwise(DoubleEq(), vz[i]));
-  //  std::cout << std::endl;
   }
 }
 
@@ -340,13 +305,11 @@ TEST(TestGemm, distrddisk_outer) {
     std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
     std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
     std::iota(vz[i].begin(), vz[i].end(), i + 0.5);
-    cx.emplace_back(dim);
-    cy.emplace_back(dim);
     cz.emplace_back(dim);
-    auto crange = cx.back().distribution().range(mpi_rank);
+    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
     auto clength = crange.second - crange.first;
-    cx.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength));
-    cy.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength));
+    cx.emplace_back(dim, Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength), comm_global());
+    cy.emplace_back(dim, Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength), comm_global());
     cz.back().put(crange.first, crange.second, &(*(vz[i].cbegin() + crange.first)));
   }
   std::vector<double> coeff(n*n);
@@ -384,12 +347,11 @@ TEST(TestGemm, ddiskdistr_outer) {
     std::iota(vz[i].begin(), vz[i].end(), i + 0.5);
     cx.emplace_back(dim);
     cy.emplace_back(dim);
-    cz.emplace_back(dim);
-    auto crange = cx.back().distribution().range(mpi_rank);
+    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
     auto clength = crange.second - crange.first;
     cx.back().put(crange.first, crange.second, &(*(vx[i].cbegin() + crange.first)));
     cy.back().put(crange.first, crange.second, &(*(vy[i].cbegin() + crange.first)));
-    cz.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vz[i][crange.first], clength));
+    cz.emplace_back(dim, Span<DistrArraySpan::value_type>(&vz[i][crange.first], clength), comm_global());
   }
   std::vector<double> coeff(n*n);
   std::iota(coeff.begin(), coeff.end(), 1);
@@ -403,7 +365,7 @@ TEST(TestGemm, ddiskdistr_outer) {
   }
   for (size_t i = 0; i < n; i++) {
     std::vector<double> tx(dim, 0), ty(dim, 0);
-    auto crange = cx.back().distribution().range(mpi_rank);
+    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
     cx[i].get(crange.first, crange.second, &(*(tx.begin() + crange.first)));
     cy[i].get(crange.first, crange.second, &(*(ty.begin() + crange.first)));
     EXPECT_THAT(ty, Pointwise(DoubleEq(), tx));
@@ -430,7 +392,7 @@ TEST(TestGemm, ddisk_outer) {
     cx.emplace_back(dim);
     cy.emplace_back(dim);
     cz.emplace_back(dim);
-    auto crange = cx.back().distribution().range(mpi_rank);
+    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
     cx.back().put(crange.first, crange.second, &(*(vx[i].cbegin() + crange.first)));
     cy.back().put(crange.first, crange.second, &(*(vy[i].cbegin() + crange.first)));
     cz.back().put(crange.first, crange.second, &(*(vz[i].cbegin() + crange.first)));
@@ -470,12 +432,10 @@ TEST(TestGemm, distrsparse_outer) {
     std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
     std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
     my[i] = std::map<size_t, double>{{1, i+1.0}, {3, i+2.0}, {6, i+3.0}, {9, i+4.0}};
-    cx.emplace_back(dim);
-    cy.emplace_back(dim);
-    auto crange = cx.back().distribution().range(mpi_rank);
+    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
     auto clength = crange.second - crange.first;
-    cx.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength));
-    cy.back().allocate_buffer(Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength));
+    cx.emplace_back(dim, Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength), comm_global());
+    cy.emplace_back(dim, Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength), comm_global());
   }
   std::vector<double> coeff(n*n);
   std::iota(coeff.begin(), coeff.end(), 1);

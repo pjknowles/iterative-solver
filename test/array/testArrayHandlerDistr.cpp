@@ -24,8 +24,6 @@ TEST(TestArrayHandlerDistr, lazy_dot) {
   static const int dim = 11;
   std::vector<DistrArrayMPI3> xx{N, DistrArrayMPI3(dim, mpi_comm)};
   std::vector<DistrArrayMPI3> yy{N, DistrArrayMPI3(dim, mpi_comm)};
-  std::for_each(xx.begin(), xx.end(), [](auto& x) { x.allocate_buffer(); });
-  std::for_each(yy.begin(), yy.end(), [](auto& y) { y.allocate_buffer(); });
   auto result = std::vector<value_type>(N * N);
   auto ref_dot = std::vector<value_type>(N * N);
   auto vec = std::vector<double>(dim);

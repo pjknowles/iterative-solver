@@ -31,7 +31,6 @@ TEST(TestArrayHandlerDistrSparse, axpy) {
   const double alpha = 2.;
   const double beta = 0.5;
   auto y = DistrArrayMPI3(dim, mpi_comm);
-  y.allocate_buffer();
   y.fill(beta);
   auto y_ref = std::vector<double>(dim, beta);
   auto x = std::map<size_t, double>{{1, 1.0}, {3, 2.0}, {6, 3.0}, {11, 4.0}};
@@ -51,7 +50,6 @@ TEST(TestArrayHandlerDistrSparse, dot) {
   const size_t dim = 20;
   const double alpha = 0.5;
   auto x = DistrArrayMPI3(dim, mpi_comm);
-  x.allocate_buffer();
   x.fill(alpha);
   x.sync();
   auto y = std::map<size_t, double>{{1, 1.0}, {3, 2.0}, {6, 3.0}, {11, 4.0}};

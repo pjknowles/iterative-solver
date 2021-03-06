@@ -22,7 +22,7 @@ protected:
   std::unique_ptr<Distribution> m_distribution;
 
 public:
-  DistrArrayGA();
+  DistrArrayGA() = delete;
   DistrArrayGA(size_t dimension, MPI_Comm commun);
   //! Make a copy of source, allocating buffer if necessary.
   DistrArrayGA(const DistrArrayGA &source);
@@ -37,9 +37,6 @@ public:
   //! swap content of two arrays. Not collective.
   friend void swap(DistrArrayGA &a1, DistrArrayGA &a2) noexcept;
   void sync() const override;
-  void allocate_buffer() override;
-  void free_buffer() override;
-  bool empty() const override;
 
 protected:
   struct LocalBufferGA : public DistrArray::LocalBuffer {
@@ -67,6 +64,7 @@ protected:
   void check_ga_ind_overlow(index_type ind) const;
 
   Distribution make_distribution() const;
+  void allocate_buffer();
 };
 
 } // namespace molpro::linalg::array

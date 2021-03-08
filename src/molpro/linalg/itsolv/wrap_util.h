@@ -50,8 +50,8 @@ std::vector<size_t> find_ref(const CVecRef<R>& wparams, const CVecRef<R>& wparam
  * @param indices indices to remove
  * @return
  */
-template <typename T, typename I>
-auto remove_elements(std::vector<T> params, const std::vector<I>& indices) {
+template <typename T, typename U>
+auto remove_elements(std::vector<T> params, const std::vector<U>& indices) {
   const auto n = params.size();
   for (size_t i = 0, j = 0; i < n; ++i) {
     if (std::find(begin(indices), end(indices), i) != end(indices)) {

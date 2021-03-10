@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDISTRSPARSE_H
 #include "molpro/linalg/array/ArrayHandler.h"
 #include <molpro/linalg/array/util/gemm.h>
+#include <stdexcept>
 
 using molpro::linalg::array::util::gemm_outer_distr_sparse;
 using molpro::linalg::array::util::gemm_inner_distr_sparse;
@@ -23,7 +24,7 @@ public:
   using typename ArrayHandler<AL, AR>::ProxyHandle;
 
   AL copy(const AR &source) override {
-    static_assert(true, "General copy from sparse to dense is ill-defined");
+    throw std::logic_error("General copy from sparse to dense is ill-defined");
   };
 
   void copy(AL &x, const AR &y) override { static_assert(true, "General copy from sparse to dense is ill-defined"); };

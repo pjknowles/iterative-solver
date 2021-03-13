@@ -246,7 +246,7 @@ std::map<size_t, DistrArray::value_type> DistrArray::select_max_dot(size_t n, co
 
 namespace util {
 template <class Compare>
-std::list<std::pair<unsigned long, double>> extrema(const DistrArray& x, int n) {
+std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> extrema(const DistrArray& x, int n) {
   if (x.size() == 0)
     return {};
   auto buffer = x.local_buffer();

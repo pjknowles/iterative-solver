@@ -200,9 +200,29 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
   //    molpro::cout << "s.eigenvectors()\n"<<s.eigenvectors()<<std::endl;
   subspaceEigenvalues = s.eigenvalues();
   if (s.eigenvalues().imag().norm() < 1e-10 and s.eigenvectors().imag().norm() < 1e-10) { // real eigenvectors
+//    molpro::cout << "eigenvalues and eigenvectors near-enough real"<<std::endl;
     subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors().real();
-
+    subspaceEigenvalues = subspaceEigenvalues.real();
+  } else if (s.eigenvalues().imag().norm() < 1e-10) { // real eigenvalues
+    //   molpro::cout << "eigenvalues near-enough real"<<std::endl;
+    subspaceEigenvalues = subspaceEigenvalues.real();
+    subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors();
+    if (hermitian) {
+//        for (int i = 0; i < subspaceEigenvectors.cols(); i++) {
+//            std::cout << "Eigenvalue " << subspaceEigenvalues(i) << std::endl;
+//            std::cout << "Eigenvector " << subspaceEigenvectors.col(i) << std::endl;
+//        }
+      subspaceEigenvectors = subspaceEigenvectors.real();
+      for (int j = 0; j < subspaceEigenvectors.cols(); j++) {
+        subspaceEigenvectors.col(j) /= std::sqrt(subspaceEigenvectors.col(j).dot(S*subspaceEigenvectors.col(j)));
+        for (int k = j + 1; k < subspaceEigenvectors.cols(); k++) {
+          subspaceEigenvectors.col(k) -=
+                  subspaceEigenvectors.col(j) * subspaceEigenvectors.col(j).dot(S*subspaceEigenvectors.col(k));
+        }
+      }
+    }
   } else { // complex eigenvectors
+//    molpro::cout << "eigenvalues not near-enough real"<<std::endl;
 #ifdef __INTEL_COMPILER
     molpro::cout << "Hbar\n" << Hbar << std::endl;
     molpro::cout << "Eigenvalues\n" << s.eigenvalues() << std::endl;
@@ -234,12 +254,13 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
       subspaceEigenvectors.col(k) = eigvec.col(ll);
     }
   }
-  
+
   // TODO: Need to address the case of near-zero eigenvalues (as below for non-hermitian case) and clean-up
   //  non-hermitian case
-  
+
   //   molpro::cout << "sorted eigenvalues\n"<<subspaceEigenvalues<<std::endl;
   //   molpro::cout << "sorted eigenvectors\n"<<subspaceEigenvectors<<std::endl;
+//  molpro::cout << "hermitian="<<hermitian<<std::endl;
   if (!hermitian) {
     Eigen::MatrixXcd ovlTimesVec(subspaceEigenvectors.cols(), subspaceEigenvectors.rows()); // FIXME templating
     for (auto repeat = 0; repeat < 3; ++repeat)
@@ -296,14 +317,14 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
         //                       subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
       }
   } // if (!hermitian)
-  //     molpro::cout << "eigenvalues"<<std::endl<<subspaceEigenvalues<<std::endl;
-  //     molpro::cout << "eigenvectors"<<std::endl<<subspaceEigenvectors<<std::endl;
+//       molpro::cout << "eigenvalues"<<std::endl<<subspaceEigenvalues<<std::endl;
+//       molpro::cout << "eigenvectors"<<std::endl<<subspaceEigenvectors<<std::endl;
   // TODO complex should be implemented with a specialised function
   // TODO real should be implemented with always-executed runtime assertion that eigensolution turns out to be real
   auto complex_error_vecs = (subspaceEigenvectors - subspaceEigenvectors.real()).norm();
   auto complex_error_vals = (subspaceEigenvalues - subspaceEigenvalues.real()).norm();
-  assert(complex_error_vecs < 1e-12);
-  assert(complex_error_vals < 1e-12);
+  assert(complex_error_vecs < 1e-10);
+  assert(complex_error_vals < 1e-10);
   eigenvectors.resize(dimension * Hbar.cols());
   eigenvalues.resize(Hbar.cols());
   //    if constexpr (std::is_class<value_type>::value) {

@@ -68,3 +68,5 @@ endif ()
 
 file(COPY bh.hamiltonian DESTINATION .)
 file(COPY hf.hamiltonian DESTINATION .)
+
+add_subdirectory(foreign-container)

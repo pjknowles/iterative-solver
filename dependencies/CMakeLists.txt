@@ -5,7 +5,7 @@ include(FetchContent)
 FetchContent_Declare(
         dependency_manager
         GIT_REPOSITORY https://gitlab.com/dependencymanager/dependency-manager.git
-        GIT_TAG 0.1.5
+        GIT_TAG 0.2.0
 )
 FetchContent_MakeAvailable(dependency_manager)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" PARENT_SCOPE)

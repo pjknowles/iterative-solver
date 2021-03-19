@@ -1,16 +1,13 @@
 #include "IterativeSolverC.h"
 #include "molpro/Profiler.h"
 #include <memory>
-#include <mpi.h>
 #include <stack>
 #include <tuple>
-#ifdef HAVE_PPIDD_H
-#include <ppidd.h>
-#endif
 #ifdef LINEARALGEBRA_ARRAY_GA
 #include "ga-mpi.h"
 #include "ga.h"
 #endif
+#include <molpro/mpi.h>
 
 #ifdef LINEARALGEBRA_ARRAY_HDF5
 #include <molpro/linalg/array/DistrArrayHDF5.h>

@@ -2,12 +2,7 @@
 #define ITERATIVESOLVER_TEST_H
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#ifdef HAVE_MPI_H
-#include <mpi.h>
-#endif
-#ifdef HAVE_PPIDD_H
-#include <ppidd.h>
-#endif
+#include <molpro/mpi.h>
 static int mpi_rank = 0;
 static int mpi_size = 1;
 class MPIEnvironment : public ::testing::Environment {

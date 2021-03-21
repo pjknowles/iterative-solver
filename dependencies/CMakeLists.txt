@@ -41,7 +41,7 @@ if (NOT PPIDD AND (MPI AND LINEARALGEBRA_ARRAY_GA))
             include(FetchContent)
             FetchContent_Declare(
                     ga
-                    GIT_REPOSITORY https://github.com/GlobalArrays/ga
+                    GIT_REPOSITORY https://github.com/GlobalArrays/ga.git
                     GIT_TAG 2518e23433385bfa3726d507b8cd0d7ed038021b
             )
             FetchContent_MakeAvailable(ga)

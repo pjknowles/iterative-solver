@@ -22,17 +22,12 @@ public:
 
   void solve(IXSpace<R, Q, P>& xspace, const size_t nroots_max) override {
     m_logger->msg("SubspaceSolverDIIS::solve", Logger::Trace);
-    assert(xspace.data.end() != xspace.data.find(EqnData::value));
-    auto values = xspace.data[EqnData::value];
-    assert(xspace.size() == values.size());
 
     auto kH = xspace.data[EqnData::H];
     auto kS = xspace.data[EqnData::S];
-    auto kValue = xspace.data[EqnData::value];
     if (m_logger->data_dump) {
       m_logger->msg("S = " + as_string(kS), Logger::Info);
       m_logger->msg("H = " + as_string(kH, 15), Logger::Info);
-      m_logger->msg("value = " + as_string(kValue, 15), Logger::Info);
     }
     auto kDim = kH.rows();
     int kVerbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;

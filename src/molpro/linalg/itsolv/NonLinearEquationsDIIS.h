@@ -42,7 +42,7 @@ public:
     this->m_working_set.assign(1, 0);
     bool precon = true; // TODO implement
     if (precon) { // action is expected to hold the preconditioned residual, and here we should add it to parameters
-      this->m_handlers->rr().axpy(1, action.front(), parameters.front());
+      this->m_handlers->rr().axpy(-1, action.front(), parameters.front());
     } else { // residual not used, simply leave parameters alone
     }
     this->m_stats->iterations++;

@@ -570,7 +570,7 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
     // FIXME Optionally, solve the subspace problem again and get an estimate of the error due to new D
   }
   // Use modified GS to orthonormalise z against P+Q+D, removing any null parameters.
-  auto wresidual = wrap<R>(residuals.begin(), residuals.begin() + solver.working_set().size());
+  auto wresidual = wrap(residuals.begin(), residuals.begin() + solver.working_set().size());
   normalise(wresidual, handlers.rr(), logger);
   const auto full_overlap =
       append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),

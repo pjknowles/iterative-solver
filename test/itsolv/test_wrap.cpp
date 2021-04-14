@@ -173,14 +173,14 @@ TEST(cwrap, const_VecRef_to_CVecRef) {
 
 TEST(cwrap, forward_iterator) {
   auto params = std::vector<int>{1, 2, 3, 4, 5, 6};
-  VecRef<int> wparams = wrap<int>(begin(params), end(params));
+  VecRef<int> wparams = wrap(begin(params), end(params));
   ASSERT_EQ(wparams.size(), params.size());
   ASSERT_THAT(wparams, Pointwise(Eq(), params));
 }
 
 TEST(cwrap, const_forward_iterator) {
   const auto params = std::vector<int>{1, 2, 3, 4, 5, 6};
-  CVecRef<int> wparams = cwrap<int>(begin(params), end(params));
+  CVecRef<int> wparams = cwrap(begin(params), end(params));
   ASSERT_TRUE(std::is_const_v<decltype(wparams)::value_type::type>);
   ASSERT_EQ(wparams.size(), params.size());
   ASSERT_THAT(wparams, Pointwise(Eq(), params));
@@ -188,8 +188,8 @@ TEST(cwrap, const_forward_iterator) {
 
 TEST(cwrap, forward_iterator_on_VecRef) {
   auto params = std::vector<int>{1, 2, 3, 4, 5, 6};
-  VecRef<int> wparams = wrap<int>(begin(params), end(params));
-  VecRef<int> wparams2 = wrap<int>(begin(wparams), end(wparams));
+  VecRef<int> wparams = wrap(begin(params), end(params));
+  VecRef<int> wparams2 = wrap(begin(wparams), end(wparams));
   ASSERT_EQ(wparams.size(), wparams2.size());
   ASSERT_THAT(wparams2, Pointwise(Eq(), wparams));
   ASSERT_TRUE(CompareEqualVecRef{}(wparams2, wparams));

@@ -122,7 +122,7 @@ public:
         solution_params.emplace_back(util::construct_zeroed_copy(rparams.front().get(), handlers.qr()));
       auto roots = std::vector<int>(nC);
       std::iota(begin(roots), end(roots), 0);
-      util::construct_solutions(wrap<Q>(begin(solution_params), end(solution_params)), roots, solutions_proj, {},
+      util::construct_solutions(wrap(begin(solution_params), end(solution_params)), roots, solutions_proj, {},
                                 xspace.cparamsq(), xspace.cparamsd(), 0, 0, dims.nQ, handlers.qq(), handlers.qp(),
                                 handlers.qq());
       VecRef<Q> null_params, null_actions;
@@ -133,7 +133,7 @@ public:
       handlers.rq().copy(rparams[i], solution_params.front());
       solution_params.pop_front();
     }
-    const auto wparams = cwrap<R>(begin(rparams), begin(rparams) + nR);
+    const auto wparams = cwrap(begin(rparams), begin(rparams) + nR);
     auto q_delete = max_overlap_with_R(wparams, xspace.cparamsq(), handlers.rq(), logger);
     for (auto i : q_delete)
       xspace.eraseq(i);

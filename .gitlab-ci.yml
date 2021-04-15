@@ -94,7 +94,7 @@ pages:
     - mkdir -p $BUILD/docs/$PROJECT_NAME/html/DoxygenTagFiles && cp $BUILD/docs/$PROJECT_NAME/$PROJECT_NAME.tag $BUILD/docs/$PROJECT_NAME/html/DoxygenTagFiles
     - . $BUILD/project_version.sh ; rsync -a --delete $BUILD/docs/*/html/ $PUBLIC/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     - rm -f  $PUBLIC/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}/${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    - if [ $(git describe --tags --abbrev=0 --always HEAD) = $(git describe --tags --abbrev=0 --always origin/master) ]; then cd $PUBLIC; rm -f latest; ln -s ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR} latest ; rm -f ./index.html; cd ..; fi
+    - if [ $(git describe --tags --abbrev=0 --always HEAD) = $(git describe --tags --abbrev=0 --always master) ]; then cd $PUBLIC; rm -f latest; ln -s ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR} latest ; rm -f ./index.html; cd ..; fi
     - echo '<head><meta http-equiv="refresh" content="0; URL=latest"></head>' > $PUBLIC/index.html
   artifacts:
     paths:

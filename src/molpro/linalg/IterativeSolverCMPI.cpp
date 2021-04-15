@@ -264,7 +264,7 @@ extern "C" size_t IterativeSolverAddValue(double value, double* parameters, doub
     instance.prof->start("AddValue:Call");
   size_t working_set_size =
       dynamic_cast<molpro::linalg::itsolv::Optimize<Rvector, Qvector, Pvector>*>(instance.solver.get())
-              ->add_value(ccc[0], value, ggg[0])
+              ->add_vector(ccc[0], ggg[0], value)
           ? 1
           : 0;
   if (instance.prof != nullptr) {

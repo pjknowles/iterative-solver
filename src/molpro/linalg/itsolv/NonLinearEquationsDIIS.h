@@ -33,6 +33,8 @@ public:
                        handlers, std::make_shared<Statistics>(), logger_),
         logger(logger_) {}
 
+  bool nonlinear() const override { return true; }
+
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
     this->solution_params(this->m_working_set, parameters);
     if (this->m_errors.front() < this->m_convergence_threshold) {

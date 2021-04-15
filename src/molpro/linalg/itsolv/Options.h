@@ -7,6 +7,15 @@
 #include <string>
 
 namespace molpro::linalg::itsolv {
+
+//! Specifies how much detail `IterativeSolver::solve` should write to output
+enum class Verbosity {
+  None = 0,      //!< no output
+  Summary = 1,   //!< only summary at the start and end of solve
+  Iteration = 2, //!< Summary plus minimal results at each iteration
+  Detailed = 3   //!< Iteration plus more detail such as operation count
+};
+
 //! Access point for different options in iterative solvers
 struct Options {
   virtual ~Options() = default;
@@ -18,6 +27,8 @@ struct Options {
   Options(const options_map& opt);
   std::optional<double> convergence_threshold; //!< convergence threshold
   std::optional<int> n_roots;                  //!< number of roots to solve for
+  std::optional<Verbosity> verbosity;          //!< verbosity level during IterativeSolver::solve()
+  std::optional<int> max_iter;                 //!< maximum number of iterations during IterativeSolver::solve()
 
   /*!
    * @brief copies options from source object

@@ -52,6 +52,10 @@ public:
     this->m_normalise_solution = false;
   }
 
+  bool nonlinear() const override { return false; }
+
+  bool linearEigensystem() const override { return true; }
+
   /*!
    * \brief constructs next perturbed wavefunction
    *
@@ -79,7 +83,7 @@ public:
 
   std::vector<scalar_type> eigenvalues() const override { return this->m_subspace_solver->eigenvalues(); }
 
-  std::vector<scalar_type> working_set_eigenvalues() const override {
+  virtual std::vector<scalar_type> working_set_eigenvalues() const override {
     auto eval = std::vector<scalar_type>{};
     for (auto i : this->working_set()) {
       eval.emplace_back(this->m_subspace_solver->eigenvalues().at(i));
@@ -97,7 +101,7 @@ public:
   //  }
 
   void report(std::ostream& cout) const override {
-//    SolverTemplate::report(cout);
+    //    SolverTemplate::report(cout);
     //    cout << "errors " << std::scientific;
     //    auto& err = this->m_errors;
     //    std::copy(begin(err), end(err), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
@@ -143,11 +147,11 @@ public:
   //!< constructing the working set. Smaller singular values will lead to
   //!< deletion of parameters from the Q space
 protected:
-//  static std::string str(const array::DistrArraySpan& a) {
-//    std::vector<double> v(a.size());
-//    a.get(0, a.size(), v.data());
-//    return str(v);
-//  }
+  //  static std::string str(const array::DistrArraySpan& a) {
+  //    std::vector<double> v(a.size());
+  //    a.get(0, a.size(), v.data());
+  //    return str(v);
+  //  }
   static std::string str(const std::vector<double>& a) {
     std::string result;
     for (const auto& e : a)
@@ -160,25 +164,25 @@ protected:
     const auto& n = q.size();
     const auto& c = params.back();
     auto& hc = actions.back();
-//    molpro::cout << "construct_residual n=" << n << std::endl;
-//    molpro::cout << "construct_residual c=" << str(c) << std::endl;
-//    molpro::cout << "construct_residual hc=" << str(hc) << std::endl;
-//    for (auto i = 0; i < n; i++)
-//      molpro::cout << "construct_residual q[" << i << "].dot(c)=" << this->m_handlers->qr().dot(q.at(i), c)
-//                   << std::endl;
-//    for (auto i = 0; i < n; i++)
-//      molpro::cout << "construct_residual q[" << i << "].dot(hc)=" << this->m_handlers->qr().dot(q.at(i), hc)
-//                   << std::endl;
+    //    molpro::cout << "construct_residual n=" << n << std::endl;
+    //    molpro::cout << "construct_residual c=" << str(c) << std::endl;
+    //    molpro::cout << "construct_residual hc=" << str(hc) << std::endl;
+    //    for (auto i = 0; i < n; i++)
+    //      molpro::cout << "construct_residual q[" << i << "].dot(c)=" << this->m_handlers->qr().dot(q.at(i), c)
+    //                   << std::endl;
+    //    for (auto i = 0; i < n; i++)
+    //      molpro::cout << "construct_residual q[" << i << "].dot(hc)=" << this->m_handlers->qr().dot(q.at(i), hc)
+    //                   << std::endl;
     // q.at(k) holds psi(n-k-1)
     if (n == 1)
       m_rspt_values.assign(1, 0);
-    m_rspt_values.push_back(this->m_handlers->qr().dot(q.at(n-1), hc));
-//    molpro::cout << "m_rspt_values[" << m_rspt_values.size() - 1 << "]=" << m_rspt_values.back() << std::endl;
-//    molpro::cout << "m_rspt_values " << str(m_rspt_values)<<std::endl;
+    m_rspt_values.push_back(this->m_handlers->qr().dot(q.at(n - 1), hc));
+    //    molpro::cout << "m_rspt_values[" << m_rspt_values.size() - 1 << "]=" << m_rspt_values.back() << std::endl;
+    //    molpro::cout << "m_rspt_values " << str(m_rspt_values)<<std::endl;
     this->m_handlers->rr().axpy(-m_rspt_values[0], c, hc);
     for (int k = 0; k < n; k++) {
-//      molpro::cout << "axpy E[" << n - k << "] c[" << k << "]" << std::endl;
-      this->m_handlers->rq().axpy(-m_rspt_values[n - k], q.at(n-k-1), hc);
+      //      molpro::cout << "axpy E[" << n - k << "] c[" << k << "]" << std::endl;
+      this->m_handlers->rq().axpy(-m_rspt_values[n - k], q.at(n - k - 1), hc);
     }
   }
 

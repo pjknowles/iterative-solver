@@ -1,7 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_STATISTICS_H_
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_STATISTICS_H_
-#include <ostream>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
+#include <ostream>
 
 namespace molpro::linalg::itsolv {
 /*!
@@ -27,7 +27,7 @@ struct Statistics {
 };
 
 template <typename R, typename Q, typename P>
-void read_handler_counts(std::shared_ptr<Statistics> stats, std::shared_ptr<ArrayHandlers<R,Q,P>> handlers){
+void read_handler_counts(std::shared_ptr<Statistics> stats, std::shared_ptr<ArrayHandlers<R, Q, P>> handlers) {
   stats->rr_ops = handlers->rr().counter_to_string("R", "R");
   stats->qr_ops = handlers->qr().counter_to_string("Q", "R");
   stats->rq_ops = handlers->rq().counter_to_string("R", "Q");

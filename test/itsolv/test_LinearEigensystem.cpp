@@ -25,9 +25,10 @@ using molpro::linalg::itsolv::LinearEigensystem;
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::wrap;
 #ifndef NOFORTRAN
-extern "C" int test_lineareigensystemf(double* matrix, size_t n, size_t np, size_t nroot, int hermitian,
-                                       double* eigenvalues);
+extern "C" int test_lineareigensystemf(double *matrix, size_t n, size_t np, size_t nroot, int hermitian,
+                                       double *eigenvalues);
 #endif
+
 struct LinearEigensystemF : ::testing::Test {
   using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
   using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
@@ -37,7 +38,7 @@ struct LinearEigensystemF : ::testing::Test {
   size_t verbosity = 0;
   MatrixXdc hmat;
 
-  void load_matrix(int dimension, const std::string& type = "", double param = 1, bool hermitian = true) {
+  void load_matrix(int dimension, const std::string &type = "", double param = 1, bool hermitian = true) {
     n = dimension;
     hmat.resize(n, n);
     hmat.fill(1);
@@ -48,7 +49,8 @@ struct LinearEigensystemF : ::testing::Test {
         for (int j = 0; j < i; j++)
           hmat(i, j) *= .95;
   }
-  void load_matrix(const std::string& file, double degeneracy_split = 0) {
+
+  void load_matrix(const std::string &file, double degeneracy_split = 0) {
     std::ifstream f(std::string{"./"} + file + ".hamiltonian");
     f >> n;
     hmat.resize(n, n);
@@ -60,19 +62,23 @@ struct LinearEigensystemF : ::testing::Test {
       hmat(i, i) += degeneracy_split * i;
   }
 
-  void action(const std::vector<Rvector>& psx, std::vector<Rvector>& outputs) {
+  void action(const std::vector<Rvector> &psx, std::vector<Rvector> &outputs) { action(wrap(psx), wrap(outputs)); }
+
+  void action(const CVecRef<Rvector> &psx, const VecRef<Rvector> &outputs) {
     for (size_t k = 0; k < psx.size(); k++) {
-      auto x = Eigen::Map<const Eigen::VectorXd>(psx.at(k).data(), psx.at(k).size());
-      auto r = Eigen::Map<Eigen::VectorXd>(outputs.at(k).data(), psx.at(k).size());
+      auto x = Eigen::Map<const Eigen::VectorXd>(psx.at(k).get().data(), psx.at(k).get().size());
+      auto r = Eigen::Map<Eigen::VectorXd>(outputs.at(k).get().data(), psx.at(k).get().size());
       r.fill(0);
       r += hmat * x;
     }
   }
+
   template <class scalar>
-  scalar dot(const std::vector<scalar>& a, const std::vector<scalar>& b) {
+  scalar dot(const std::vector<scalar> &a, const std::vector<scalar> &b) {
     return std::inner_product(std::begin(a), std::end(a), std::begin(b), scalar(0));
   }
-  void residual(const std::vector<Rvector>& psx, std::vector<Rvector>& actions, const std::vector<double>& evals) {
+
+  void residual(const std::vector<Rvector> &psx, std::vector<Rvector> &actions, const std::vector<double> &evals) {
     action(psx, actions);
     for (size_t k = 0; k < psx.size(); k++) {
       auto x = Eigen::Map<const Eigen::VectorXd>(psx.at(k).data(), psx.at(k).size());
@@ -81,11 +87,17 @@ struct LinearEigensystemF : ::testing::Test {
     }
   }
 
-  void update(std::vector<Rvector>& psg, std::vector<scalar> shift = std::vector<scalar>()) {
-    for (size_t k = 0; k < psg.size() && k < shift.size(); k++)
+  void update(std::vector<Rvector> &psg, const std::vector<scalar> &shift = std::vector<scalar>()) {
+    update(wrap(psg), shift);
+  }
+
+  void update(const VecRef<Rvector> &psg, const std::vector<scalar> &shift = std::vector<scalar>()) {
+    for (size_t k = 0; k < psg.size() && k < shift.size(); k++) {
+      auto &g = psg[k].get();
       for (size_t i = 0; i < n; i++) {
-        psg[k][i] = -psg[k][i] / (1e-12 - shift[k] + hmat(i, i));
+        g[i] *= -1. / (1e-12 - shift[k] + hmat(i, i));
       }
+    }
   }
 
   std::tuple<std::map<double, std::vector<double>>, std::vector<double>> solve_full_problem(bool hermitian) {
@@ -108,10 +120,10 @@ struct LinearEigensystemF : ::testing::Test {
   }
 
   // testing the test: that sort of eigenvalues is the same thing as std::map sorting of keys
-  void check_eigenvectors_map(const std::map<double, std::vector<double>>& expected_eigensolutions,
-                              const std::vector<double>& expected_eigenvalues) {
+  void check_eigenvectors_map(const std::map<double, std::vector<double>> &expected_eigensolutions,
+                              const std::vector<double> &expected_eigenvalues) {
     std::vector<double> testing;
-    for (const auto& ee : expected_eigensolutions)
+    for (const auto &ee : expected_eigensolutions)
       testing.push_back(ee.first);
     ASSERT_THAT(expected_eigenvalues, ::testing::Pointwise(::testing::DoubleEq(), testing));
   }
@@ -126,7 +138,7 @@ struct LinearEigensystemF : ::testing::Test {
     return std::make_tuple(x, g);
   }
 
-  auto initial_guess(std::vector<Rvector>& x) {
+  auto initial_guess(std::vector<Rvector> &x) {
     const auto n_roots = x.size();
     std::vector<size_t> guess;
     std::vector<double> diagonals;
@@ -140,12 +152,12 @@ struct LinearEigensystemF : ::testing::Test {
     }
   }
 
-  void apply_p(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
+  void apply_p(const std::vector<vectorP> &pvectors, const CVecRef<Pvector> &pspace, const VecRef<Rvector> &action) {
     for (size_t i = 0; i < pvectors.size(); i++) {
-      auto& actioni = (action[i]).get();
+      auto &actioni = (action[i]).get();
       for (size_t pi = 0; pi < pspace.size(); pi++) {
-        const auto& p = pspace[pi].get();
-        for (const auto& pel : p)
+        const auto &p = pspace[pi].get();
+        for (const auto &pel : p)
           for (size_t j = 0; j < n; j++)
             actioni[j] += hmat(j, pel.first) * pel.second * pvectors[i][pi];
       }
@@ -166,8 +178,8 @@ struct LinearEigensystemF : ::testing::Test {
         *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
       }
       PP.reserve(np * np);
-      for (const auto& i : pspace)
-        for (const auto& j : pspace) {
+      for (const auto &i : pspace)
+        for (const auto &j : pspace) {
           const size_t kI = i.begin()->first;
           const size_t kJ = j.begin()->first;
           PP.push_back(hmat(kI, kJ));
@@ -176,8 +188,8 @@ struct LinearEigensystemF : ::testing::Test {
     return std::make_tuple(pspace, PP);
   }
 
-  auto set_options(std::unique_ptr<LinearEigensystem<Rvector, Qvector, Pvector>>& solver, const int nroot,
-                   const int np, bool hermitian) {
+  auto set_options(std::unique_ptr<LinearEigensystem<Rvector, Qvector, Pvector>> &solver, const int nroot, const int np,
+                   bool hermitian) {
     auto options = CastOptions::LinearEigensystem(solver->get_options());
     options->n_roots = nroot;
     options->convergence_threshold = 1.0e-8;
@@ -186,6 +198,7 @@ struct LinearEigensystemF : ::testing::Test {
     options->max_size_qspace = std::max(6 * nroot, std::min(int(n), std::min(1000, 6 * nroot)) - np);
     options->reset_D = 8;
     options->hermiticity = hermitian;
+    options->verbosity = molpro::linalg::itsolv::Verbosity::Summary;
     solver->set_options(*options);
     options = CastOptions::LinearEigensystem(solver->get_options());
     molpro::cout << "convergence threshold = " << options->convergence_threshold.value()
@@ -206,10 +219,10 @@ struct LinearEigensystemF : ::testing::Test {
 
   // Create initial subspace. This is iteration 0.
   auto initialize_subspace(const size_t np, const size_t nroot, const size_t n_working_vectors_max,
-                           std::unique_ptr<LinearEigensystem<Rvector, Qvector, Pvector>>& solver) {
+                           std::unique_ptr<LinearEigensystem<Rvector, Qvector, Pvector>> &solver) {
     auto [x, g] = create_containers(nroot);
     if (np) {
-      auto apply_p_wrapper = [this](const auto& pvectors, const auto& pspace, const auto& action) {
+      auto apply_p_wrapper = [this](const auto &pvectors, const auto &pspace, const auto &action) {
         return this->apply_p(pvectors, pspace, action);
       };
       auto [pspace, PP] = initial_pspace(np);
@@ -228,7 +241,7 @@ struct LinearEigensystemF : ::testing::Test {
     return std::make_tuple(x, g);
   };
 
-  void test_eigen(const std::string& title = "", const int n_working_vectors_max = 0) {
+  void test_eigen(const std::string &title = "", const int n_working_vectors_max = 0, const bool simple = false) {
     bool hermitian = check_mat_hermiticity();
     auto [expected_eigensolutions, expected_eigenvalues] = solve_full_problem(hermitian);
     check_eigenvectors_map(expected_eigensolutions, expected_eigenvalues);
@@ -249,6 +262,18 @@ struct LinearEigensystemF : ::testing::Test {
         int nwork = nroot;
         auto [x, g] = initialize_subspace(np, nroot, n_working_vectors_max, solver);
         size_t n_iter = 2;
+        //                if (simple) {
+        //                    auto apply_r = [this](const CVecRef<Rvector> &param, const VecRef<Rvector> &action) ->
+        //                    double {
+        //                        this->action(param, action);
+        //                        return 0.;
+        //                    };
+        //                    auto precondition = [&s = solver, this](const VecRef<Rvector> &residual,
+        //                                                            const VecRef<Rvector> &params) {
+        //                        update(residual, s->working_set_eigenvalues());
+        //                    };
+        //                    solver->solve_obsolete(wrap(x), wrap(g), apply_r, precondition);
+        //                } else {
         for (auto iter = 1; iter < 100; iter++, ++n_iter) {
           action(x, g);
           nwork = solver->add_vector(x, g);
@@ -265,10 +290,11 @@ struct LinearEigensystemF : ::testing::Test {
           if (nwork == 0)
             break;
         }
+        //                }
         if (verbosity > 0)
           solver->report();
         std::cout << "Error={ ";
-        for (const auto& e : solver->errors())
+        for (const auto &e : solver->errors())
           std::cout << e << " ";
         std::cout << "} after " << solver->statistics().iterations << " iterations, "
                   << solver->statistics().r_creations << " R vectors" << std::endl;
@@ -287,7 +313,9 @@ struct LinearEigensystemF : ::testing::Test {
         const auto nR_creations = solver->statistics().r_creations;
         if (verbosity > 0)
           std::cout << "R creations = " << nR_creations << std::endl;
-        EXPECT_LE(nR_creations, (nroot + 1) * n_iter);
+        if (not simple) {
+          EXPECT_LE(nR_creations, (nroot + 1) * n_iter);
+        }
         std::vector<std::vector<double>> parameters, residuals;
         std::vector<int> roots;
         for (int root = 0; root < solver->n_roots(); root++) {
@@ -297,13 +325,14 @@ struct LinearEigensystemF : ::testing::Test {
         }
         solver->solution(roots, parameters, residuals);
         residual(parameters, residuals, solver->eigenvalues());
-        for (const auto& r : residuals)
+        for (const auto &r : residuals)
           EXPECT_LE(std::sqrt(dot(r, r)), options->convergence_threshold.value());
         int root = 0;
-        for (const auto& ee : expected_eigensolutions) {
+        for (const auto &ee : expected_eigensolutions) {
           EXPECT_NEAR(ee.first, solver->eigenvalues()[root], 1e-10);
-          auto overlap_with_reference = std::inner_product(parameters.at(root).begin(), parameters.at(root).end(),
-                                                           ee.second.begin(), 0., std::plus<double>(), std::multiplies<double>());
+          auto overlap_with_reference =
+              std::inner_product(parameters.at(root).begin(), parameters.at(root).end(), ee.second.begin(), 0.,
+                                 std::plus<double>(), std::multiplies<double>());
           EXPECT_NEAR(std::abs(overlap_with_reference), 1., options->convergence_threshold.value());
           root++;
           if (root >= solver->n_roots())
@@ -315,7 +344,7 @@ struct LinearEigensystemF : ::testing::Test {
 };
 
 TEST_F(LinearEigensystemF, file_eigen) {
-  for (const auto& file : std::vector<std::string>{"phenol", "bh", "hf"}) {
+  for (const auto &file : std::vector<std::string>{"phenol", "bh", "hf"}) {
     load_matrix(file, file == "phenol" ? 0 : 1e-8);
     test_eigen(file);
   }
@@ -331,6 +360,7 @@ TEST_F(LinearEigensystemF, n_eigen) {
     test_eigen(std::to_string(n) + "/" + std::to_string(param));
   }
 }
+
 TEST_F(LinearEigensystemF, nonhermitian_eigen) {
   size_t n = 30;
   double param = 1;
@@ -348,6 +378,7 @@ TEST_F(LinearEigensystemF, small_eigen) {
     load_matrix(n, "", param);
     test_eigen(std::to_string(n) + "/" + std::to_string(param));
     test_eigen(std::to_string(n) + "/" + std::to_string(param), 1);
+    test_eigen(std::to_string(n) + "/" + std::to_string(param), 0, true);
   }
 }
 
@@ -375,7 +406,7 @@ TEST_F(LinearEigensystemF, symmetry_eigen) {
 TEST_F(LinearEigensystemF, solution) {
   size_t n = 10;
   auto solution_residual = std::vector<Rvector>(n);
-  std::for_each(solution_residual.begin(), solution_residual.end(), [&n](auto& el) { el.assign(n, 0); });
+  std::for_each(solution_residual.begin(), solution_residual.end(), [&n](auto &el) { el.assign(n, 0); });
   double param = 1;
   load_matrix(n, "", param);
   for (size_t nroot = 1; nroot < n; ++nroot) {

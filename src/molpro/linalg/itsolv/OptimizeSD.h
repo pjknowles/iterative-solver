@@ -34,6 +34,8 @@ public:
                        handlers, std::make_shared<Statistics>(), logger_),
         logger(logger_) {}
 
+  bool nonlinear() const override { return true; }
+
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
     this->solution_params(this->m_working_set, parameters);
     if (this->m_errors.front() < this->m_convergence_threshold) {
@@ -73,22 +75,22 @@ public:
 
   void report(std::ostream& cout) const override {
     SolverTemplate::report(cout);
-    cout << "value " << value() << ", errors " << std::scientific;
+    cout << "value " << this->value() << ", errors " << std::scientific;
     auto& err = this->m_errors;
     std::copy(begin(err), end(err), std::ostream_iterator<value_type_abs>(molpro::cout, ", "));
     cout << std::defaultfloat << std::endl;
   }
   std::shared_ptr<Logger> logger;
 
-  bool add_value(R& parameters, value_type value, R& residual) override {
+  int add_vector(R& parameters, R& residual, value_type value) override {
     using namespace subspace;
     auto& xspace = this->m_xspace;
     auto& xdata = xspace->data;
     const auto n = this->m_xspace->dimensions().nX;
     xdata[EqnData::value].resize({n + 1, 1});
     xdata[EqnData::value](0, 0) = value;
-    auto nwork = this->add_vector(parameters, residual);
-    return nwork > 0;
+    auto nwork = IterativeSolverTemplate<Optimize, R, Q, P>::add_vector(parameters, residual);
+    return nwork;
   }
 
   size_t end_iteration(R& parameters, R& actions) override {
@@ -96,8 +98,6 @@ public:
     auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
     return end_iteration(wparams, wactions);
   }
-
-  scalar_type value() const override { return this->m_xspace->data[subspace::EqnData::value](0, 0); }
 
 protected:
   // for non-linear problems, actions already contains the residual

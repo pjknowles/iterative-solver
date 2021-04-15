@@ -76,7 +76,7 @@ struct OptimizeF : ::testing::Test {
           //                    molpro::cout << "Iteration "<<iter<<std::endl;
           //                    molpro::cout << "x\n"<<x<< std::endl;
           //                    molpro::cout << "g\n"<<g<< std::endl;
-          if (solver->add_value(x, value, g)) {
+          if (solver->add_vector(x, g, value) > 0) {
             //            molpro::cout << "before update, g\n"<<g<< std::endl;
             update(g);
           }
@@ -140,8 +140,8 @@ TEST(Optimize, Rosenbrock) {
     for (int iter = 0; iter < 10000; iter++) {
       auto [xx, value, g] = rosenbrock(x);
       //      molpro::cout << "iter=" << iter << ", x=" << x << ", value=" << value << std::endl;
-      auto precon = solver->add_value(x, value, g);
-      //      molpro::cout << "add_value returns precon=" << precon << ", x=" << x << ", g=" << g[0] << std::endl;
+      auto precon = solver->add_vector(x, g, value) > 0;
+      //      molpro::cout << "add_vector returns precon=" << precon << ", x=" << x << ", g=" << g[0] << std::endl;
       if (precon)
         for (auto& gg : g)
           gg /= 2;
@@ -166,7 +166,7 @@ TEST(Optimize, trig1d) {
     double value = std::sin(x[0]);
     molpro::cout << "iter=" << iter << ", x=" << x << ", value=" << value << std::endl;
     g[0] = std::cos(x[0]);
-    auto precon = solver->add_value(x, value, g);
+    auto precon = solver->add_vector(x, g, value) > 0;
     molpro::cout << "add_value returns precon=" << precon << ", x=" << x[0] << ", g=" << g[0] << std::endl;
     //    if (precon)
     //      g[0] = g[0];

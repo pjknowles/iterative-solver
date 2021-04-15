@@ -83,9 +83,8 @@ public:
              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
   virtual std::unique_ptr<LinearEquations<R, Q, P>>
-  create(const LinearEquationsOptions& options,
-         const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
-             std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
+  create(const LinearEquationsOptions& options, const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                                                    std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>());
 
   virtual std::unique_ptr<NonLinearEquations<R, Q, P>>
   create(const NonLinearEquationsOptions& options = NonLinearEquationsOptions{},
@@ -118,9 +117,9 @@ create_LinearEigensystem(const std::string& method = "Davidson", const std::stri
                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
                              std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
   auto optionsmap = util::StringFacet::parse_keyval_string(options);
-if (method == "Davidson" or method.empty())
-return SolverFactory<R, Q, P>{}.create(LinearEigensystemDavidsonOptions{optionsmap}, handlers);
-if (method == "RSPT")
+  if (method == "Davidson" or method.empty())
+    return SolverFactory<R, Q, P>{}.create(LinearEigensystemDavidsonOptions{optionsmap}, handlers);
+  if (method == "RSPT")
     return SolverFactory<R, Q, P>{}.create(LinearEigensystemRSPTOptions{optionsmap}, handlers);
   throw std::runtime_error("Unimplemented method " + method);
 }

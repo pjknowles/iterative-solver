@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVERTEMPLATE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVERTEMPLATE_H
+#include <cmath>
 #include <iostream>
 #include <molpro/iostream.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
@@ -8,8 +9,8 @@
 #include <molpro/linalg/itsolv/subspace/IXSpace.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/subspace/util.h>
-#include <molpro/linalg/itsolv/wrap.h>
 #include <molpro/linalg/itsolv/util.h>
+#include <molpro/linalg/itsolv/wrap.h>
 #include <stack>
 
 namespace molpro::linalg::itsolv {
@@ -39,17 +40,16 @@ void construct_solution(const VecRef<R>& params, const std::vector<int>& roots,
     handlers.rr().fill(0, params.at(i));
   }
   subspace::Matrix<double> rp_mat(std::make_pair(pparams.size(), roots.size())),
-                           rq_mat(std::make_pair(qparams.size(), roots.size())),
-                           rd_mat(std::make_pair(dparams.size(), roots.size()));
+      rq_mat(std::make_pair(qparams.size(), roots.size())), rd_mat(std::make_pair(dparams.size(), roots.size()));
   for (size_t i = 0; i < roots.size(); ++i) {
     for (size_t j = 0; j < pparams.size(); ++j) {
-      rp_mat(j, i) = solutions(roots[i], oP+j);
+      rp_mat(j, i) = solutions(roots[i], oP + j);
     }
     for (size_t j = 0; j < qparams.size(); ++j) {
-      rq_mat(j, i) = solutions(roots[i], oQ+j);
+      rq_mat(j, i) = solutions(roots[i], oQ + j);
     }
     for (size_t j = 0; j < dparams.size(); ++j) {
-      rd_mat(j, i) = solutions(roots[i], oD+j);
+      rd_mat(j, i) = solutions(roots[i], oD + j);
     }
   }
   handlers.rp().gemm_outer(rp_mat, cwrap(pparams), params);
@@ -130,8 +130,7 @@ public:
   IterativeSolverTemplate<Solver, R, Q, P>& operator=(const IterativeSolverTemplate<Solver, R, Q, P>&) = delete;
   IterativeSolverTemplate<Solver, R, Q, P>& operator=(IterativeSolverTemplate<Solver, R, Q, P>&&) noexcept = default;
 
-public:
-  size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions) override {
+  int add_vector(const VecRef<R>& parameters, const VecRef<R>& actions) override {
     m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations),
                   Logger::Trace);
     m_logger->msg("IterativeSolverTemplate::add_vector  size of {params, actions, working_set} = " +
@@ -146,17 +145,16 @@ public:
     auto cwactions = cwrap(begin(actions), begin(actions) + nW);
     m_stats->r_creations += nW;
     m_xspace->update_qspace(cwparams, cwactions);
-    m_stats->q_creations += 2*nW;
+    m_stats->q_creations += 2 * nW;
     auto working_set = solve_and_generate_working_set(parameters, actions);
     read_handler_counts(m_stats, m_handlers);
     return working_set;
   }
 
-public:
-  size_t add_vector(std::vector<R>& parameters, std::vector<R>& actions) override {
+  int add_vector(std::vector<R>& parameters, std::vector<R>& actions) override {
     return add_vector(wrap(parameters), wrap(actions));
   }
-  size_t add_vector(R& parameters, R& actions) override {
+  int add_vector(R& parameters, R& actions, value_type value = 0) override {
     auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
     auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
     return add_vector(wparams, wactions);
@@ -243,6 +241,8 @@ public:
       set_n_roots(options.n_roots.value());
     if (options.convergence_threshold)
       set_convergence_threshold(options.convergence_threshold.value());
+    if (options.verbosity)
+      set_verbosity(options.verbosity.value());
   }
 
   std::shared_ptr<Options> get_options() const override {
@@ -274,8 +274,46 @@ public:
   double convergence_threshold() const override { return m_convergence_threshold; }
   void set_convergence_threshold_value(double thresh) override { m_convergence_threshold_value = thresh; }
   double convergence_threshold_value() const override { return m_convergence_threshold_value; }
+  void set_verbosity(Verbosity v) override { m_verbosity = v; }
+  Verbosity get_verbosity() const override { return m_verbosity; }
+  void set_max_iter(int n) override { m_max_iter = n; }
+  int get_max_iter() const override { return m_max_iter; }
   //! Access dimensions of the subspace
   const subspace::Dimensions& dimensions() const override { return m_xspace->dimensions(); }
+  scalar_type value() const override {
+    return m_xspace->data.count(subspace::EqnData::value) > 0 ? m_xspace->data[subspace::EqnData::value](0, 0)
+                                                              : nan("molpro::linalg::itsolv::IterativeSolver::value");
+  }
+
+  bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem) override {
+    if (parameters.empty())
+      throw std::runtime_error("Empty container passed to IterativeSolver::solve()");
+    if (parameters.size() != actions.size())
+      throw std::runtime_error("Inconsistent container sizes in IterativeSolver::solve()");
+    auto nwork = parameters.size();
+    for (auto iter = 0; iter < this->m_max_iter && nwork > 0; iter++) {
+      value_type value;
+      if (this->nonlinear()) {
+        value = problem.residual(*parameters.begin(), *actions.begin());
+        nwork = this->add_vector(*parameters.begin(), *actions.begin(), value);
+      } else {
+        problem.action(cwrap(parameters.begin(), parameters.begin() + nwork),
+                       wrap(actions.begin(), actions.begin() + nwork));
+        nwork = this->add_vector(parameters, actions);
+      }
+      if (nwork > 0)
+        problem.precondition(wrap(actions.begin(), actions.begin() + nwork), this->working_set_eigenvalues());
+      nwork = this->end_iteration(parameters, actions);
+      if (this->m_verbosity >= Verbosity::Iteration)
+        report();
+    }
+    if (this->m_verbosity == Verbosity::Summary)
+      report();
+    if (this->m_verbosity >= Verbosity::Summary and
+        *std::max_element(m_errors.begin(), m_errors.end()) > m_convergence_threshold)
+      std::cerr << "Solver has not converged to threshold " << m_convergence_threshold << std::endl;
+    return nwork == 0 and *std::max_element(m_errors.begin(), m_errors.end()) <= m_convergence_threshold;
+  }
 
 protected:
   IterativeSolverTemplate(std::shared_ptr<subspace::IXSpace<R, Q, P>> xspace,
@@ -283,14 +321,16 @@ protected:
                           std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Statistics> stats,
                           std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_xspace(std::move(xspace)), m_subspace_solver(std::move(solver)),
-        m_stats(std::move(stats)), m_logger(std::move(logger)) {set_n_roots(1);}
+        m_stats(std::move(stats)), m_logger(std::move(logger)) {
+    set_n_roots(1);
+  }
 
   //! Implementation class should overload this to set errors in the current values (e.g. change in eigenvalues)
   virtual void set_value_errors() {}
   //! Constructs residual for given roots provided their parameters and actions
   virtual void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params,
                                   const VecRef<R>& actions) = 0;
-
+  virtual bool linearEigensystem() const { return false; }
   /*!
    * @brief Solves the subspace problems and selects the working set of roots, returning their parameters and residual
    * in parameters and action
@@ -354,14 +394,16 @@ protected:
   std::vector<double> m_errors;                                          //!< errors from the most recent solution
   std::vector<double> m_value_errors;                                    //!< value errors from the most recent solution
   std::vector<int> m_working_set;                                        //!< indices of roots in the working set
-  size_t m_nroots{0};                      //!< number of roots the solver is searching for
-  double m_convergence_threshold{1.0e-10}; //!< residual norms less than this mark a converged solution
+  size_t m_nroots{0};                     //!< number of roots the solver is searching for
+  double m_convergence_threshold{1.0e-9}; //!< residual norms less than this mark a converged solution
   double m_convergence_threshold_value{
-      std::numeric_limits<double>::max()}; //!< value changes less than this mark a converged solution
-  std::shared_ptr<Statistics> m_stats;     //!< accumulates statistics of operations performed by the solver
-  std::shared_ptr<Logger> m_logger;        //!< logger
-  bool m_normalise_solution = false;       //!< whether to normalise the solutions
-  fapply_on_p_type m_apply_p = {};         //!< function that evaluates effect of action on the P space projection
+      std::numeric_limits<double>::max()};      //!< value changes less than this mark a converged solution
+  std::shared_ptr<Statistics> m_stats;          //!< accumulates statistics of operations performed by the solver
+  std::shared_ptr<Logger> m_logger;             //!< logger
+  bool m_normalise_solution = false;            //!< whether to normalise the solutions
+  fapply_on_p_type m_apply_p = {};              //!< function that evaluates effect of action on the P space projection
+  Verbosity m_verbosity = Verbosity::Iteration; //!< how much output to print in solve()
+  int m_max_iter = 100;                         //!< maximum number of iterations in solve()
 };
 
 } // namespace molpro::linalg::itsolv

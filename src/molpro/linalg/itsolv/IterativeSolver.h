@@ -14,6 +14,49 @@
 namespace molpro::linalg::itsolv {
 
 /*!
+ * @example ExampleProblem.h
+ * Example of a problem-defining class
+ */
+/*!
+ * @brief Abstract class defining the problem-specific interface for the simplified solver interface to IterativeSolver
+ * @tparam R the type of container for solutions and residuals
+ */
+template <typename R>
+class Problem {
+public:
+  Problem() = default;
+  virtual ~Problem() = default;
+  using container_t = R;
+
+  /*!
+   * @brief Calculate the residual vector. Used by non-linear solvers (NonLinearEquations, Optimize) only.
+   * @param parameters The trial solution for which the residual is to be calculated
+   * @param residual The residual vector
+   * @return In the case where the residual is an exact differential, the corresponding function value. Used by Optimize
+   * but not NonLinearEquations.
+   */
+  virtual double residual(const R& parameters, R& residual) const { return 0; }
+
+  /*!
+   * @brief Calculate the action of the kernel matrix on a set of parameters. Used by linear solvers, but not by the
+   * non-linear solvers (NonLinearEquations, Optimize).
+   * @param parameters The trial solutions for which the action is to be calculated
+   * @param action The action vectors
+   */
+  virtual void action(const CVecRef<R>& parameters, const VecRef<R>& action) const { return; }
+
+  /*!
+   * @brief Apply preconditioning to a residual vector in order to predict a step towards the solution
+   * @param residual On entry, assumed to be the residual. On exit, the negative of the predicted step.
+   * @param shift When called from LinearEigensystem, contains the corresponding current eigenvalue estimates for each
+   * of the parameter vectors in the set. All other solvers pass a vector of zeroes.
+   */
+  virtual void precondition(const VecRef<R>& residual, const std::vector<typename R::value_type>& shift) const {
+    return;
+  }
+};
+
+/*!
  * @brief Base class defining the interface common to all iterative solvers
  *
  * @tparam R container for "working-set" vectors. These are typically implemented in memory, and are created by the
@@ -42,18 +85,52 @@ public:
   IterativeSolver<R, Q, P>& operator=(IterativeSolver<R, Q, P>&&) noexcept = default;
 
   /*!
+   * @example LinearEigensystemExample.cpp
+   * Example for solving linear eigensystem
+   * @example LinearEigensystemMultirootExample.cpp
+   * Example for solving linear eigensystem, simultaneously tracking multiple roots
+   * @example LinearEquationsExample.cpp
+   * Example for solving inhomogeneous linear equations
+   * @example NonLinearEquationsExample.cpp
+   * Example for solving non-linear equations
+   * @example OptimizeExample.cpp
+   * Example for minimising a function
+   */
+  /*!
+   * @brief Simplified one-call solver
+   * @param parameters A set of scratch vectors. On entry, these vectors should be filled with starting guesses.
+   * Where possible, the number of vectors should be equal to the number of solutions sought, but a smaller array is
+   * permitted.
+   * @param actions A set of scratch vectors. It should have the same size as parameters.
+   * @param problem A Problem object defining the problem to be solved
+   * @return true if the solution was found
+   */
+  //  virtual bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem) = 0; // TODO
+  //  make abstract when all concretizations are done
+  virtual bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem) { return false; }
+  virtual bool solve(R& parameters, R& actions, const Problem<R>& problem) {
+    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
+    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
+    return solve(wparams, wactions, problem);
+  }
+  virtual bool solve(std::vector<R>& parameters, std::vector<R>& actions, const Problem<R>& problem) {
+    return solve(wrap(parameters), wrap(actions), problem);
+  }
+
+  /*!
    * \brief Take, typically, a current solution and residual, and add it to the solution space.
    * \param parameters On input, the current solution or expansion vector. On exit, undefined.
    * \param actions On input, the residual for parameters (non-linear), or action of matrix
    * on parameters (linear). On exit, a vector set that should be preconditioned before returning to end_iteration().
-   * \param apply_p A function that evaluates the action of the matrix on vectors in the P space
-   * \return The size of the new working set.
+   * \param value The value of the objective function for parameters. Used only in Optimize classes.
+   * \return The size of the new working set. In non-linear optimisation, the special value -1 can also be returned,
+   * indicating that preconditioning should not be carried out on action.
    */
-  virtual size_t add_vector(const VecRef<R>& parameters, const VecRef<R>& actions) = 0;
+  virtual int add_vector(const VecRef<R>& parameters, const VecRef<R>& actions) = 0;
 
   // FIXME this should be removed in favour of VecRef interface
-  virtual size_t add_vector(std::vector<R>& parameters, std::vector<R>& action) = 0;
-  virtual size_t add_vector(R& parameters, R& action) = 0;
+  virtual int add_vector(std::vector<R>& parameters, std::vector<R>& action) = 0;
+  virtual int add_vector(R& parameters, R& action, value_type value = 0) = 0;
 
   /*!
    * \brief Add P-space vectors to the expansion set for linear methods.
@@ -64,7 +141,6 @@ public:
    * \param parameters Used as scratch working space
    * \param action  On exit, the  residual of the interpolated solution.
    * The contribution from the new, and any existing, P parameters is missing, and should be added in subsequently.
-   * \param parametersP On exit, the interpolated solution projected onto the P space.
    * \param apply_p A function that evaluates the action of the matrix on vectors in the P space
    * \return The number of vectors contained in parameters, action, parametersP
    */
@@ -107,6 +183,10 @@ public:
    * @brief Working set of roots that are not yet converged
    */
   virtual const std::vector<int>& working_set() const = 0;
+  //! The calculated eigenvalues for roots in the working set (eigenvalue problems) or zero (otherwise)
+  virtual std::vector<scalar_type> working_set_eigenvalues() const {
+    return std::vector<scalar_type>(working_set().size(), 0);
+  }
   //! Total number of roots we are solving for, including the ones that are already converged
   virtual size_t n_roots() const = 0;
   virtual void set_n_roots(size_t nroots) = 0;
@@ -125,12 +205,26 @@ public:
   virtual void set_convergence_threshold_value(double thresh) = 0;
   //! Reports the value convergence threshold
   virtual double convergence_threshold_value() const = 0;
+  virtual void set_verbosity(Verbosity v) = 0;
+  virtual Verbosity get_verbosity() const = 0;
+  virtual void set_max_iter(int n) = 0;
+  virtual int get_max_iter() const = 0;
   virtual const subspace::Dimensions& dimensions() const = 0;
   // FIXME Missing parameters: SVD threshold
   //! Set all spcecified options. This is no different than using setters, but can be used with forward declaration.
   virtual void set_options(const Options& options) = 0;
   //! Return all options. This is no different than using getters, but can be used with forward declaration.
   virtual std::shared_ptr<Options> get_options() const = 0;
+  /*!
+   * @brief Report the function value for the current optimum solution
+   * @return
+   */
+  virtual scalar_type value() const = 0;
+  /*!
+   * @brief Report whether the class is a non-linear solver
+   * @return
+   */
+  virtual bool nonlinear() const = 0;
 };
 
 /*!
@@ -142,8 +236,6 @@ public:
   using typename IterativeSolver<R, Q, P>::scalar_type;
   //! The calculated eigenvalues of the subspace matrix
   virtual std::vector<scalar_type> eigenvalues() const = 0;
-  //! The calculated eigenvalues for roots in the working set
-  virtual std::vector<scalar_type> working_set_eigenvalues() const = 0;
   //! Sets hermiticity of kernel
   virtual void set_hermiticity(bool hermitian) = 0;
   //! Gets hermiticity of kernel, if true than it is hermitian, otherwise it is not
@@ -166,28 +258,7 @@ public:
 
 //! Optimises to a stationary point using methods such as L-BFGS
 template <class R, class Q, class P>
-class Optimize : public IterativeSolver<R, Q, P> {
-public:
-  using typename IterativeSolver<R, Q, P>::value_type;
-  using typename IterativeSolver<R, Q, P>::scalar_type;
-  /*!
-   * \brief Take a current solution, objective function value and residual, and return new solution.
-   * \param parameters On input, the current solution. On exit, the interpolated solution vector.
-   * \param value The value of the objective function for parameters.
-   * \param residual On input, the residual for parameters. On exit, the expected (non-linear) residual of the
-   * interpolated parameters.
-   * \return whether it is expected that the client should precondition the returned residual
-   * before the subsequent call to endIteration(). If false, there is no need to do so, as the preconditioned
-   * residual will not be used in making the next iterate. This does not indicate convergence, which is indicated
-   * rather by the return of an empty working set by endIteration().
-   */
-  virtual bool add_value(R& parameters, value_type value, R& residual) = 0;
-  /*!
-   * @brief Report the function value for the current optimum solution
-   * @return
-   */
-  virtual scalar_type value() const = 0;
-};
+class Optimize : public IterativeSolver<R, Q, P> {};
 
 //! Solves non-linear system of equations using methods such as DIIS
 template <class R, class Q, class P>

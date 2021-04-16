@@ -1,6 +1,6 @@
 !> @examples LinearEquationsExampleF.F90
 !> This is an examples of simplest use of the LinearEquations framework for iterative
-!> finding of the lowest few eigensolutions of a large matrix.
+!> solution of linear equations
 PROGRAM Linear_Equations_Example
   USE Iterative_Solver
   IMPLICIT NONE

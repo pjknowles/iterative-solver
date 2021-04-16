@@ -38,7 +38,7 @@ public:
   };
 
   /*!
-   * @brief Maps fist and last index in the array to a pair of chunks encapsulating the corresponding range
+   * @brief Maps first and last index in the array to a pair of chunks encapsulating the corresponding range
    * @param lo first index of range
    * @param hi past-the-end index of range
    * @return pair of first and last chunk indices encapsulating this range, or size() if range is outside of border()

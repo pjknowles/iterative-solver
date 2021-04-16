@@ -9,10 +9,12 @@ endif ()
 set(EXAMPLES
         LinearEigensystemExample-serial.cpp
         LinearEigensystemExample.cpp
+        LinearEigensystemDistrArrayExample.cpp
         LinearEigensystemMultirootExample.cpp
         LinearEquationsExample.cpp
         NonLinearEquationsExample.cpp
         OptimizeExample.cpp
+        OptimizeDistrArrayExample.cpp
         ${ITERATIVESOLVER_FORTRAN_EXAMPLES}
         )
 if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)
@@ -35,7 +37,9 @@ endif ()
 foreach (fil ${EXAMPLES})
     get_filename_component(nam ${fil} NAME_WE)
     set(test_name ${PROJECT_NAME}-${nam})
-    add_executable(${test_name} ${fil} dummy.cpp SolverFactory_implementation.cpp)
+    add_executable(${test_name} ${fil}
+#    dummy.cpp
+            )
     set_target_properties(${test_name}
             PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}

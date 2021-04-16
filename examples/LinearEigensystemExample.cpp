@@ -1,5 +1,4 @@
 #include "ExampleProblem.h"
-//#include <molpro/linalg/array/DistrArrayFile.h>
 #include <iostream>
 #include <molpro/linalg/itsolv/SolverFactory.h>
 
@@ -7,7 +6,6 @@ int main(int argc, char* argv[]) {
   auto problem = ExampleProblem(argc > 1 ? std::stoi(argv[1]) : 20);
   using Rvector = ExampleProblem::container_t;
   using Qvector = ExampleProblem::container_t;
-  // using Qvector = molpro::linalg::array::DistrArrayFile;
   auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
   solver->set_n_roots(argc > 2 ? std::stoi(argv[2]) : 2);
   solver->set_verbosity(molpro::linalg::itsolv::Verbosity::Summary);
@@ -22,3 +20,8 @@ int main(int argc, char* argv[]) {
   for (const auto& ev : solver->eigenvalues())
     std::cout << "Final eigenvalue: " << ev << std::endl;
 }
+
+#include <molpro/linalg/itsolv/SolverFactory-implementation.h>
+#include <vector>
+template class molpro::linalg::itsolv::SolverFactory<std::vector<double>, std::vector<double>,
+                                                     std::map<size_t, double>>;

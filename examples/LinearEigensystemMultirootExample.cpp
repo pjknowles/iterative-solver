@@ -27,3 +27,8 @@ int main(int argc, char* argv[]) {
   for (const auto& ev : solver->eigenvalues())
     std::cout << "Final eigenvalue: " << ev << std::endl;
 }
+
+#include <molpro/linalg/itsolv/SolverFactory-implementation.h>
+#include <vector>
+template class molpro::linalg::itsolv::SolverFactory<std::vector<double>, std::vector<double>,
+                                                     std::map<size_t, double>>;

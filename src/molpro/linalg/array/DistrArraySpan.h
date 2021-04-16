@@ -24,7 +24,7 @@ public:
   friend void swap(DistrArraySpan &a1, DistrArraySpan &a2) noexcept;
   //void sync() const override;
   void allocate_buffer(Span<value_type> buffer);
-  
+
 protected:
   struct LocalBufferSpan : public DistrArray::LocalBuffer {
     explicit LocalBufferSpan(DistrArraySpan &source);

@@ -1,22 +1,41 @@
 #include "DistrArraySpan.h"
 #include "util/Distribution.h"
-#include <string>
 #include <memory>
+#include <molpro/mpi.h>
+#include <string>
+#include <iostream>
 
 namespace molpro::linalg::array {
 
 namespace {
 int mpi_size(MPI_Comm comm) {
+  if (comm == molpro::mpi::comm_global())
+    return molpro::mpi::size_global();
+#ifdef HAVE_MPI_H
+  int size;
+  MPI_Comm_size(comm, &size);
+  return size;
+#endif
+  throw std::logic_error("Attempt to access MPI communicator in serial mode");
+}
+
+int mpi_rank(MPI_Comm comm) {
+  if (comm == molpro::mpi::comm_global())
+    return molpro::mpi::rank_global();
+#ifdef HAVE_MPI_H
   int rank;
-  MPI_Comm_size(comm, &rank);
+  MPI_Comm_rank(comm, &rank);
   return rank;
+#endif
+  throw std::logic_error("Attempt to access MPI communicator in serial mode");
 }
-}
+} // namespace
 
 DistrArraySpan::DistrArraySpan(size_t dimension, Span<value_type> buffer, MPI_Comm commun)
     : DistrArraySpan(std::make_unique<Distribution>(
-      util::make_distribution_spread_remainder<index_type>(dimension, mpi_size(commun))), buffer, commun) {}
-      
+                         util::make_distribution_spread_remainder<index_type>(dimension, mpi_size(commun))),
+                     buffer, commun) {}
+
 DistrArraySpan::DistrArraySpan(std::unique_ptr<Distribution> distribution, Span<value_type> buffer, MPI_Comm commun)
     : DistrArray(distribution->border().second, commun), m_distribution(std::move(distribution)) {
   if (m_distribution->border().first != 0)
@@ -26,8 +45,8 @@ DistrArraySpan::DistrArraySpan(std::unique_ptr<Distribution> distribution, Span<
 
 DistrArraySpan::DistrArraySpan(const DistrArraySpan& source)
     : DistrArray(source.size(), source.communicator()),
-       m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
-    DistrArraySpan::allocate_buffer(source.m_span);
+      m_distribution(source.m_distribution ? std::make_unique<Distribution>(*source.m_distribution) : nullptr) {
+  DistrArraySpan::allocate_buffer(source.m_span);
 }
 
 DistrArraySpan::DistrArraySpan(const DistrArray& source)
@@ -37,8 +56,7 @@ DistrArraySpan::DistrArraySpan(const DistrArray& source)
 
 DistrArraySpan::DistrArraySpan(DistrArraySpan&& source) noexcept
     : DistrArray(source.m_dimension, source.m_communicator), m_span(std::move(source.m_span)),
-      m_allocated(source.m_allocated), m_distribution(std::move(source.m_distribution)) {
-}
+      m_allocated(source.m_allocated), m_distribution(std::move(source.m_distribution)) {}
 
 DistrArraySpan& DistrArraySpan::operator=(const DistrArraySpan& source) {
   if (this == &source)
@@ -71,10 +89,8 @@ void DistrArraySpan::allocate_buffer(Span<value_type> buffer) {
   if (!m_distribution)
     error("Cannot allocate an array without distribution");
   m_span = buffer;
-  int rank;
-  MPI_Comm_rank(m_communicator, &rank);
   index_type lo, hi;
-  std::tie(lo, hi) = m_distribution->range(rank);
+  std::tie(lo, hi) = m_distribution->range(mpi_rank(m_communicator));
   size_t n = hi - lo;
   if (m_span.size() < n)
     error("Specified external buffer is too small");
@@ -84,10 +100,8 @@ void DistrArraySpan::allocate_buffer(Span<value_type> buffer) {
 DistrArraySpan::LocalBufferSpan::LocalBufferSpan(DistrArraySpan& source) {
   if (!source.m_allocated)
     source.error("attempting to access local buffer of empty array");
-  int rank;
-  MPI_Comm_rank(source.communicator(), &rank);
   index_type hi;
-  std::tie(m_start, hi) = source.distribution().range(rank);
+  std::tie(m_start, hi) = source.distribution().range(mpi_rank(source.communicator()));
   m_buffer = source.m_span.data();
   m_size = source.m_span.size();
   if (m_size != (hi - m_start))
@@ -97,10 +111,8 @@ DistrArraySpan::LocalBufferSpan::LocalBufferSpan(DistrArraySpan& source) {
 DistrArraySpan::LocalBufferSpan::LocalBufferSpan(const DistrArraySpan& source) {
   if (!source.m_allocated)
     source.error("attempting to access local buffer of empty array");
-  int rank;
-  MPI_Comm_rank(source.communicator(), &rank);
   index_type hi;
-  std::tie(m_start, hi) = source.distribution().range(rank);
+  std::tie(m_start, hi) = source.distribution().range(mpi_rank(source.communicator()));
   m_buffer = const_cast<value_type*>(source.m_span.data());
   m_size = source.m_span.size();
   if (m_size != (hi - m_start))
@@ -132,17 +144,15 @@ void DistrArraySpan::set(DistrArray::index_type ind, DistrArray::value_type val)
 void DistrArraySpan::get(DistrArray::index_type lo, DistrArray::index_type hi, DistrArray::value_type* buf) const {
   if (lo >= hi)
     return;
-  int rank;
-  MPI_Comm_rank(m_communicator, &rank);
   DistrArray::index_type lo_loc, hi_loc;
-  std::tie(lo_loc, hi_loc) = m_distribution->range(rank);
+  std::tie(lo_loc, hi_loc) = m_distribution->range(mpi_rank(m_communicator));
   if (lo < lo_loc || hi > hi_loc) {
     error("Only local array indices can be accessed via DistrArraySpan.get() function");
   }
   DistrArray::index_type offset = lo - lo_loc;
   DistrArray::index_type length = hi - lo;
-  for (int i = offset; i < offset+length; i++) {
-    buf[i-offset] = m_span[i];
+  for (int i = offset; i < offset + length; i++) {
+    buf[i - offset] = m_span[i];
   }
 }
 
@@ -158,17 +168,15 @@ std::vector<DistrArraySpan::value_type> DistrArraySpan::get(DistrArray::index_ty
 void DistrArraySpan::put(DistrArray::index_type lo, DistrArray::index_type hi, const DistrArray::value_type* data) {
   if (lo >= hi)
     return;
-  int rank;
-  MPI_Comm_rank(m_communicator, &rank);
   DistrArray::index_type lo_loc, hi_loc;
-  std::tie(lo_loc, hi_loc) = m_distribution->range(rank);
+  std::tie(lo_loc, hi_loc) = m_distribution->range(mpi_rank(m_communicator));
   if (lo < lo_loc || hi > hi_loc) {
     error("Only values at local array indices can be written via DistrArraySpan.put() function");
   }
   DistrArray::index_type offset = lo - lo_loc;
   DistrArray::index_type length = hi - lo;
-  for (int i = offset; i < offset+length; i++) {
-    m_span[i] = data[i-offset];
+  for (int i = offset; i < offset + length; i++) {
+    m_span[i] = data[i - offset];
   }
 }
 
@@ -183,11 +191,9 @@ void DistrArraySpan::acc(DistrArray::index_type lo, DistrArray::index_type hi, c
 std::vector<DistrArraySpan::value_type> DistrArraySpan::gather(const std::vector<index_type>& indices) const {
   std::vector<value_type> data;
   data.reserve(indices.size());
-  int rank;
-  MPI_Comm_rank(m_communicator, &rank);
   auto minmax = std::minmax_element(indices.begin(), indices.end());
   DistrArray::index_type lo_loc, hi_loc;
-  std::tie(lo_loc, hi_loc) = m_distribution->range(rank);
+  std::tie(lo_loc, hi_loc) = m_distribution->range(mpi_rank(m_communicator));
   if (*minmax.first < lo_loc || *minmax.second > hi_loc) {
     error("Only local array indices can be accessed via DistrArraySpan.gather() function");
   }
@@ -201,16 +207,14 @@ void DistrArraySpan::scatter(const std::vector<index_type>& indices, const std::
   if (indices.size() != data.size()) {
     error("Length of the indices and data vectors should be the same: DistrArray::scatter()");
   }
-  int rank;
-  MPI_Comm_rank(m_communicator, &rank);
   auto minmax = std::minmax_element(indices.begin(), indices.end());
   DistrArray::index_type lo_loc, hi_loc;
-  std::tie(lo_loc, hi_loc) = m_distribution->range(rank);
+  std::tie(lo_loc, hi_loc) = m_distribution->range(mpi_rank(m_communicator));
   if (*minmax.first < lo_loc || *minmax.second > hi_loc) {
     error("Only local array indices can be accessed via DistrArraySpan.gather() function");
   }
   for (auto i : indices) {
-    set(i, data[i-*minmax.first]);
+    set(i, data[i - *minmax.first]);
   }
 }
 
@@ -222,11 +226,9 @@ void DistrArraySpan::scatter_acc(std::vector<index_type>& indices, const std::ve
 }
 
 std::vector<DistrArraySpan::value_type> DistrArraySpan::vec() const {
-  int rank;
-  MPI_Comm_rank(m_communicator, &rank);
   DistrArray::index_type lo_loc, hi_loc;
-  std::tie(lo_loc, hi_loc) = m_distribution->range(rank);
+  std::tie(lo_loc, hi_loc) = m_distribution->range(mpi_rank(m_communicator));
   return get(lo_loc, hi_loc);
 }
 
-} // molpro::linalg::array
+} // namespace molpro::linalg::array

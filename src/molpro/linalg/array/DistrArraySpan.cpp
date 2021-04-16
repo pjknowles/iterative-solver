@@ -133,9 +133,6 @@ std::unique_ptr<const DistrArray::LocalBuffer> DistrArraySpan::local_buffer() co
   return std::make_unique<const LocalBufferSpan>(*this);
 }
 
-const Span<DistrArraySpan::value_type>& DistrArraySpan::global_buffer() const noexcept { return m_span; }
-Span<DistrArraySpan::value_type>& DistrArraySpan::global_buffer() noexcept { return m_span; }
-
 DistrArray::value_type DistrArraySpan::at(DistrArray::index_type ind) const {
   value_type val;
   get(ind, ind + 1, &val);

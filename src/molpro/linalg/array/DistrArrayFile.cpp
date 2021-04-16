@@ -28,7 +28,7 @@ int mpi_rank(MPI_Comm comm) {
 #endif
   throw std::logic_error("Attempt to access MPI communicator in serial mode");
 }
-} // namespacepace
+} // namespace
 
 std::unique_ptr<util::FileAttributes> DistrArrayFile::file = nullptr;
 

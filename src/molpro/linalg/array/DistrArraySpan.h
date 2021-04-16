@@ -24,12 +24,6 @@ public:
   friend void swap(DistrArraySpan &a1, DistrArraySpan &a2) noexcept;
   //void sync() const override;
   void allocate_buffer(Span<value_type> buffer);
-  /*!
-   * @brief Access to the whole buffer, ie the Span provided at construction.
-   * @return
-   */
-  Span<value_type>&global_buffer() noexcept;
-  const Span<value_type>&global_buffer() const noexcept;
 
 protected:
   struct LocalBufferSpan : public DistrArray::LocalBuffer {

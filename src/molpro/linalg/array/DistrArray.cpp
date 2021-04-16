@@ -163,7 +163,7 @@ void DistrArray::_divide(const DistrArray& y, const DistrArray& z, DistrArray::v
 namespace util {
 std::map<size_t, double> select_max_dot_broadcast(size_t n, std::map<size_t, double>& local_selection,
                                                   MPI_Comm communicator) {
-#ifdef HAVE_MPI
+#ifdef HAVE_MPI_H
   auto indices = std::vector<DistrArray::index_type>();
   auto values = std::vector<double>();
   indices.reserve(n);

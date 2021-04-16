@@ -5,7 +5,7 @@
 #include <list>
 #include <map>
 #include <memory>
-#include <mpi.h>
+#include <molpro/mpi.h>
 #include <vector>
 
 #include <molpro/linalg/array/Span.h>
@@ -96,8 +96,8 @@ public:
   using Distribution = util::Distribution<index_type>;
 
 protected:
-  index_type m_dimension = 0;              //!< number of elements in the array
-  MPI_Comm m_communicator = MPI_COMM_NULL; //!< Outer communicator
+  index_type m_dimension = 0; //!< number of elements in the array
+  MPI_Comm m_communicator;    //!< Outer communicator
   //! Initializes array without allocating any memory
   DistrArray(size_t dimension, MPI_Comm commun);
   DistrArray() = default;
@@ -291,10 +291,8 @@ public:
 
   //! stops application with an error
   virtual void error(const std::string &message) const;
-  
-  value_type operator [] (size_t index) {
-    return (*this->local_buffer())[index];
-  };
+
+  value_type operator[](size_t index) { return (*this->local_buffer())[index]; };
 
 protected:
   virtual void _divide(const DistrArray &y, const DistrArray &z, value_type shift, bool append, bool negative);

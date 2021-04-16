@@ -33,7 +33,6 @@ if (LINEARALGEBRA_ARRAY_HDF5)
     target_compile_definitions(${PROJECT_NAME} PUBLIC ${HDF5_DEFINITIONS})
 endif ()
 
-if (MPI)
     LibraryManager_Append(${PROJECT_NAME}
             SOURCES DistrArray.cpp DistrArrayDisk.cpp DistrArrayFile.cpp DistrArraySpan.cpp util.cpp
             PUBLIC_HEADER DistrArray.h DistrArrayDisk.h DistrArrayFile.h DistrArraySpan.h util.h
@@ -43,6 +42,7 @@ if (MPI)
         target_link_options(${PROJECT_NAME} PUBLIC "-pthread") # needed for DistrArrayDisk
     endif ()
 
+if (MPI)
     if (LINEARALGEBRA_ARRAY_HDF5)
         LibraryManager_Append(${PROJECT_NAME}
                 SOURCES PHDF5Handle.cpp

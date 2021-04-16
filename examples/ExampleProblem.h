@@ -3,17 +3,18 @@
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <vector>
 
-using _Rvector_ = std::vector<double>;
-class ExampleProblem : public molpro::linalg::itsolv::Problem<_Rvector_> {
+class ExampleProblem : public molpro::linalg::itsolv::Problem<std::vector<double>> {
 protected:
   double matrix(int i, int j) const { return i == j ? i + 1 : 0.001 * ((i + j)%n); }
 
 public:
+  using Problem::container_t;
+  using Problem::value_t;
   const size_t n;
   ExampleProblem(int n = 10) : n(n) {}
 
-  void precondition(const VecRef<_Rvector_> &action,
-                    const std::vector<typename _Rvector_::value_type> &shift) const override {
+  void precondition(const VecRef<container_t> &action,
+                    const std::vector<value_t> &shift) const override {
     for (int k = 0; k < action.size(); k++) {
       auto &a = action[k].get();
       for (int i = 0; i < a.size(); i++)
@@ -21,8 +22,8 @@ public:
     }
   }
 
-  double residual(const _Rvector_ &v, _Rvector_ &a) const override {
-    double value = 0;
+  value_t residual(const container_t &v, container_t &a) const override {
+    value_t value = 0;
     for (int i = 0; i < a.size(); i++) {
       a[i] = 0;
       for (int j = 0; j < a.size(); j++)
@@ -32,7 +33,7 @@ public:
     return value;
   }
 
-  void action(const CVecRef<_Rvector_> &parameters, const VecRef<_Rvector_> &actions) const override {
+  void action(const CVecRef<container_t> &parameters, const VecRef<container_t> &actions) const override {
     for (size_t k = 0; k < parameters.size(); k++) {
       const auto &v = parameters[k].get();
       auto &a = actions[k].get();

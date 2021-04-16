@@ -17,3 +17,8 @@ int main(int argc, char* argv[]) {
     std::cout << "converged in " << solver->statistics().iterations << " iterations" << std::endl;
   solver->solution(c, g);
 }
+
+#include <molpro/linalg/itsolv/SolverFactory-implementation.h>
+#include <vector>
+template class molpro::linalg::itsolv::SolverFactory<std::vector<double>, std::vector<double>,
+                                                     std::map<size_t, double>>;

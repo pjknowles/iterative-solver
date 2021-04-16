@@ -27,6 +27,7 @@ public:
   Problem() = default;
   virtual ~Problem() = default;
   using container_t = R;
+  using value_t = typename R::value_type;
 
   /*!
    * @brief Calculate the residual vector. Used by non-linear solvers (NonLinearEquations, Optimize) only.
@@ -35,7 +36,7 @@ public:
    * @return In the case where the residual is an exact differential, the corresponding function value. Used by Optimize
    * but not NonLinearEquations.
    */
-  virtual double residual(const R& parameters, R& residual) const { return 0; }
+  virtual value_t residual(const R& parameters, R& residual) const { return 0; }
 
   /*!
    * @brief Calculate the action of the kernel matrix on a set of parameters. Used by linear solvers, but not by the
@@ -51,7 +52,7 @@ public:
    * @param shift When called from LinearEigensystem, contains the corresponding current eigenvalue estimates for each
    * of the parameter vectors in the set. All other solvers pass a vector of zeroes.
    */
-  virtual void precondition(const VecRef<R>& residual, const std::vector<typename R::value_type>& shift) const {
+  virtual void precondition(const VecRef<R>& residual, const std::vector<value_t>& shift) const {
     return;
   }
 };
@@ -89,12 +90,16 @@ public:
    * Example for solving linear eigensystem
    * @example LinearEigensystemMultirootExample.cpp
    * Example for solving linear eigensystem, simultaneously tracking multiple roots
+   * @example LinearEigensystemDistrArrayExample.cpp
+   * Example for solving linear eigensystem, history vectors on disk, optional MPI
    * @example LinearEquationsExample.cpp
    * Example for solving inhomogeneous linear equations
    * @example NonLinearEquationsExample.cpp
    * Example for solving non-linear equations
    * @example OptimizeExample.cpp
    * Example for minimising a function
+   * @example OptimizeDistrArrayExample.cpp
+   * Example for minimising a function, history vectors on disk, optional MPI
    */
   /*!
    * @brief Simplified one-call solver

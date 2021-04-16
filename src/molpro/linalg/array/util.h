@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include <mpi.h>
+#include <molpro/mpi.h>
 
 namespace molpro::linalg::array::util {
 

@@ -15,7 +15,9 @@ namespace molpro::linalg::itsolv {
 
 /*!
  * @example ExampleProblem.h
- * Example of a problem-defining class
+ * Simple example of a problem-defining class
+ * @example ExampleProblemDistrArray.h
+ * Example of a problem-defining class with distributed data
  */
 /*!
  * @brief Abstract class defining the problem-specific interface for the simplified solver interface to IterativeSolver

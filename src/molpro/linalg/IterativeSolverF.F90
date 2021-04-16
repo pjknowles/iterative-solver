@@ -828,3 +828,11 @@ CONTAINS
     !  CALL Iterative_Solver_Finalize
     !END SUBROUTINE Iterative_Solver_Test
 END MODULE Iterative_Solver
+
+!> @examples LinearEigensystemExampleF.F90
+!> This is an example of simplest use of the LinearEigensystem framework for iterative
+!> finding of the lowest few eigensolutions of a large matrix.
+
+!> @example LinearEquationsExampleF.F90
+!> This is an examples of simplest use of the LinearEquations framework for iterative
+!> solution of linear equations

@@ -1,5 +1,5 @@
 !> @examples LinearEigensystemExampleF.F90
-!> This is an examples of simplest use of the LinearEigensystem framework for iterative
+!> This is an example of simplest use of the LinearEigensystem framework for iterative
 !> finding of the lowest few eigensolutions of a large matrix.
 PROGRAM Linear_Eigensystem_Example
   USE Iterative_Solver

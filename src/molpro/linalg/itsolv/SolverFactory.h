@@ -70,7 +70,7 @@ namespace molpro::linalg::itsolv {
  *
  */
 
-template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 class SolverFactory {
 public:
   virtual ~SolverFactory() = default;
@@ -103,7 +103,7 @@ public:
 };
 
 // free-function factory invocation
-template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 std::unique_ptr<LinearEigensystem<R, Q, P>>
 create_LinearEigensystem(const LinearEigensystemOptions& options,
                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
@@ -111,7 +111,7 @@ create_LinearEigensystem(const LinearEigensystemOptions& options,
   return SolverFactory<R, Q, P>{}.create(options, handlers);
 }
 
-template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 std::unique_ptr<LinearEigensystem<R, Q, P>>
 create_LinearEigensystem(const std::string& method = "Davidson", const std::string& options = "",
                          const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
@@ -124,7 +124,7 @@ create_LinearEigensystem(const std::string& method = "Davidson", const std::stri
   throw std::runtime_error("Unimplemented method " + method);
 }
 
-template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 std::unique_ptr<LinearEquations<R, Q, P>>
 create_LinearEquations(const LinearEquationsOptions& options,
                        const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
@@ -132,7 +132,7 @@ create_LinearEquations(const LinearEquationsOptions& options,
   return SolverFactory<R, Q, P>{}.create(options, handlers);
 }
 
-template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 std::unique_ptr<LinearEquations<R, Q, P>>
 create_LinearEquations(const std::string& method = "Davidson", const std::string& options = "",
                        const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
@@ -143,7 +143,7 @@ create_LinearEquations(const std::string& method = "Davidson", const std::string
   throw std::runtime_error("Unimplemented method " + method);
 }
 
-template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 std::unique_ptr<NonLinearEquations<R, Q, P>>
 create_NonLinearEquations(const NonLinearEquationsOptions& options = NonLinearEquationsOptions{},
                           const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
@@ -151,7 +151,7 @@ create_NonLinearEquations(const NonLinearEquationsOptions& options = NonLinearEq
   return SolverFactory<R, Q, P>{}.create(options, handlers);
 }
 
-template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 std::unique_ptr<NonLinearEquations<R, Q, P>>
 create_NonLinearEquations(const std::string& method = "DIIS", const std::string& options = "",
                           const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
@@ -162,7 +162,7 @@ create_NonLinearEquations(const std::string& method = "DIIS", const std::string&
   throw std::runtime_error("Unimplemented method " + method);
 }
 
-template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 std::unique_ptr<Optimize<R, Q, P>>
 create_Optimize(const OptimizeOptions& options = OptimizeOptions{},
                 const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
@@ -170,7 +170,7 @@ create_Optimize(const OptimizeOptions& options = OptimizeOptions{},
   return SolverFactory<R, Q, P>{}.create(options, handlers);
 }
 
-template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 std::unique_ptr<Optimize<R, Q, P>>
 create_Optimize(const std::string& method = "BFGS", const std::string& options = "",
                 const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =

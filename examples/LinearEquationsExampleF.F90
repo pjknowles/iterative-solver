@@ -14,7 +14,7 @@ PROGRAM Linear_Equations_Example
     !      integer(c_int64_t) mpi_comm_global
     !    end function mpi_comm_global
   end interface
-  INTEGER, PARAMETER :: n = 300, nroot = 2
+  INTEGER, PARAMETER :: n = 30, nroot = 2
   DOUBLE PRECISION, PARAMETER :: alpha = 300
   DOUBLE PRECISION, DIMENSION(5), PARAMETER :: augmented_hessian_factors = [0.0_8, .001_8, .01_8, .1_8, 1.0_8]
   DOUBLE PRECISION, DIMENSION (n, n) :: m

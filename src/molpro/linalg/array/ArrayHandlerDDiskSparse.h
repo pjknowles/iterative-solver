@@ -46,9 +46,13 @@ public:
     this->m_counter->gemm_inner++;
     return gemm_inner_distr_sparse(xx, yy);
   }
-  
+
   std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {
     return x.select_max_dot(n, y);
+  }
+
+  std::map<size_t, value_type_abs> select(size_t n, const AL &x, bool max = false, bool ignore_sign = false) override {
+    return x.select(n, max, ignore_sign);
   }
   
   ProxyHandle lazy_handle() override { return this->lazy_handle(*this); };

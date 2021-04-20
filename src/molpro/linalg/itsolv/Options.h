@@ -29,6 +29,8 @@ struct Options {
   std::optional<int> n_roots;                  //!< number of roots to solve for
   std::optional<Verbosity> verbosity;          //!< verbosity level during IterativeSolver::solve()
   std::optional<int> max_iter;                 //!< maximum number of iterations during IterativeSolver::solve()
+  std::optional<double> max_p;                 //!< maximum size of P space
+  std::optional<double> p_threshold;           //!< threshold for selecting P space
 
   /*!
    * @brief copies options from source object

@@ -16,7 +16,7 @@ namespace molpro::linalg::itsolv {
  * @tparam R The class encapsulating solution and residual vectors
  * @tparam Q Used internally as a class for storing vectors on backing store
  */
-template <class R, class Q, class P = std::map<size_t, typename R::value_type>>
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 class NonLinearEquationsDIIS : public IterativeSolverTemplate<NonLinearEquations, R, Q, P> {
 public:
   using SolverTemplate = IterativeSolverTemplate<NonLinearEquations, R, Q, P>;

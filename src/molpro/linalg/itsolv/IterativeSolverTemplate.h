@@ -278,6 +278,10 @@ public:
   Verbosity get_verbosity() const override { return m_verbosity; }
   void set_max_iter(int n) override { m_max_iter = n; }
   int get_max_iter() const override { return m_max_iter; }
+  void set_max_p(int n) override { m_max_p = n; }
+  int get_max_p() const override { return m_max_p; }
+  void set_p_threshold(double threshold) override { m_p_threshold = threshold; }
+  int get_p_threshold() const override { return m_p_threshold; }
   //! Access dimensions of the subspace
   const subspace::Dimensions& dimensions() const override { return m_xspace->dimensions(); }
   scalar_type value() const override {
@@ -285,24 +289,78 @@ public:
                                                               : nan("molpro::linalg::itsolv::IterativeSolver::value");
   }
 
-  bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem) override {
+  bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
+             bool generate_initial_guess = false) override {
     if (parameters.empty())
       throw std::runtime_error("Empty container passed to IterativeSolver::solve()");
     if (parameters.size() != actions.size())
       throw std::runtime_error("Inconsistent container sizes in IterativeSolver::solve()");
+    this->m_logger->max_trace_level = Logger::None;
+    if (this->m_verbosity == Verbosity::Detailed) {
+      this->m_logger->max_trace_level = Logger::Info;
+      this->m_logger->data_dump = true;
+    }
+    bool use_diagonals = problem.diagonals(actions.at(0));
+    std::unique_ptr<Q> diagonals;
+    if (use_diagonals)
+      diagonals.reset(new Q{m_handlers->qr().copy(actions.at(0))});
+    if (generate_initial_guess) {
+      if (not use_diagonals)
+        throw std::runtime_error("Default initial guess requested, but diagonal elements are not available");
+      auto guess = m_handlers->qq().select(parameters.size(), *diagonals);
+      size_t root = 0;
+      if (this->m_verbosity >= Verbosity::Summary)
+        molpro::cout << "Initial guess generated from diagonal elements" << std::endl;
+      for (const auto& g : guess) {
+        m_handlers->rp().copy(parameters[root], P{{g.first, 1}});
+        if (this->m_verbosity >= Verbosity::Detailed)
+          molpro::cout << " initial guess " << g.first << std::endl;
+        root++;
+      }
+    }
     auto nwork = parameters.size();
+    std::vector<P> pspace;
+    if (use_diagonals and m_max_p > 0) {
+      auto selectp = m_handlers->qq().select(m_max_p, *diagonals);
+      for (auto s = selectp.begin(); s != selectp.end(); s++)
+        if (s->second > selectp.begin()->second + m_p_threshold) {
+          selectp.erase(s, selectp.end());
+          break;
+        }
+      if (this->m_verbosity >= Verbosity::Summary and not selectp.empty())
+        molpro::cout << selectp.size() << "-dimensional P space obtained with threshold " << m_p_threshold
+                     << " and limit " << m_max_p << std::endl;
+      if (this->m_verbosity >= Verbosity::Detailed)
+        for (const auto& s : selectp)
+          molpro::cout << "P space element " << s.first << " : " << s.second << std::endl;
+      for (const auto& s : selectp)
+        pspace.emplace_back((P){{s.first, s.second}});
+      fapply_on_p_type apply_on_p = [&problem](const std::vector<std::vector<value_type>>& pcoeff,
+                                               const CVecRef<P>& pparams, const VecRef<R>& actions) {
+        problem.p_action(pcoeff, pparams, actions);
+      };
+      auto action_matrix = problem.pp_action_matrix(pspace);
+      nwork = add_p(cwrap(pspace), array::Span<value_type>(action_matrix.data(), action_matrix.size()), parameters,
+                    actions, apply_on_p);
+    }
     for (auto iter = 0; iter < this->m_max_iter && nwork > 0; iter++) {
       value_type value;
       if (this->nonlinear()) {
         value = problem.residual(*parameters.begin(), *actions.begin());
         nwork = this->add_vector(*parameters.begin(), *actions.begin(), value);
-      } else {
+      } else if (iter > 0 or pspace.empty()) {
         problem.action(cwrap(parameters.begin(), parameters.begin() + nwork),
                        wrap(actions.begin(), actions.begin() + nwork));
         nwork = this->add_vector(parameters, actions);
       }
-      if (nwork > 0)
-        problem.precondition(wrap(actions.begin(), actions.begin() + nwork), this->working_set_eigenvalues());
+      if (nwork > 0) {
+        if (use_diagonals) {
+          m_handlers->rq().copy(parameters.at(0), *diagonals);
+          problem.precondition(wrap(actions.begin(), actions.begin() + nwork), this->working_set_eigenvalues(),
+                               parameters.at(0));
+        } else
+          problem.precondition(wrap(actions.begin(), actions.begin() + nwork), this->working_set_eigenvalues());
+      }
       nwork = this->end_iteration(parameters, actions);
       if (this->m_verbosity >= Verbosity::Iteration)
         report();
@@ -404,6 +462,8 @@ protected:
   fapply_on_p_type m_apply_p = {};              //!< function that evaluates effect of action on the P space projection
   Verbosity m_verbosity = Verbosity::Iteration; //!< how much output to print in solve()
   int m_max_iter = 100;                         //!< maximum number of iterations in solve()
+  double m_max_p = 0;                           //!< maximum size of P space
+  double m_p_threshold = std::numeric_limits<double>::max(); //!< threshold for selecting P space
 };
 
 } // namespace molpro::linalg::itsolv

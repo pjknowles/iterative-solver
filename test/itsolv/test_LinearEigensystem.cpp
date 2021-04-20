@@ -373,7 +373,7 @@ TEST_F(LinearEigensystemF, nonhermitian_eigen) {
 }
 
 TEST_F(LinearEigensystemF, small_eigen) {
-  for (int n = 1; n < 20; n++) {
+  for (int n = 1; n < 5; n++) {
     double param = 1;
     load_matrix(n, "", param);
     test_eigen(std::to_string(n) + "/" + std::to_string(param));
@@ -383,7 +383,7 @@ TEST_F(LinearEigensystemF, small_eigen) {
 }
 
 TEST_F(LinearEigensystemF, symmetry_eigen) {
-  for (int n = 1; n < 10; n++) {
+  for (int n = 1; n < 6; n++) {
     double param = 1;
     load_matrix(n, "", param);
     for (auto i = 0; i < n; i++)

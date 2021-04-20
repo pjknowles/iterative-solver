@@ -5,18 +5,18 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <numeric>
 #include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <numeric>
 
 #include <molpro/linalg/array/type_traits.h>
-#include <molpro/linalg/itsolv/wrap_util.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
+#include <molpro/linalg/itsolv/wrap_util.h>
 
-using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::CVecRef;
+using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::subspace::Matrix;
 
 namespace molpro::linalg::array {
@@ -38,7 +38,7 @@ struct OperationRegister {
   //! @tparam N if N >= 0 order operations by grouping identical Nth arguments together, otherwise no reordering
   //! @tparam ArgEqual functor bool operator()(const Arg&, const Arg&); returning true if two Nth arguments are equal
   template <int N, class ArgEqual>
-  void push(const Args &... args, ArgEqual equal) {
+  void push(const Args &...args, ArgEqual equal) {
     auto &&new_op = OP{args...};
     auto &ref = std::get<N>(new_op);
     auto rend = std::find_if(m_register.rbegin(), m_register.rend(), [&ref, &equal](const auto &el) {
@@ -52,7 +52,7 @@ struct OperationRegister {
   }
 
   //! Register each operation as it comes with no reordering.
-  void push(const Args &... args) { m_register.push_back({args...}); }
+  void push(const Args &...args) { m_register.push_back({args...}); }
 
   bool empty() { return m_register.empty(); }
   void clear() { m_register.clear(); }
@@ -161,9 +161,9 @@ struct RefEqual {
 template <class AL, class AR = AL>
 class ArrayHandler {
 protected:
-  ArrayHandler() : m_counter(std::make_unique<Counter>()) {};
+  ArrayHandler() : m_counter(std::make_unique<Counter>()){};
   ArrayHandler(const ArrayHandler &) = default;
-  
+
   struct Counter {
     int scal = 0;
     int dot = 0;
@@ -172,8 +172,9 @@ protected:
     int gemm_inner = 0;
     int gemm_outer = 0;
   };
-  
+
   std::unique_ptr<Counter> m_counter;
+
 public:
   using value_type_L = typename array::mapped_or_value_type_t<AL>;
   using value_type_R = typename array::mapped_or_value_type_t<AR>;
@@ -187,17 +188,17 @@ public:
   virtual void fill(value_type alpha, AL &x) = 0;
   virtual void axpy(value_type alpha, const AR &x, AL &y) = 0;
   virtual value_type dot(const AL &x, const AR &y) = 0;
-  
+
   /*!
    * Perform axpy() on multiple pairs of containers in an efficient manner
    */
   virtual void gemm_outer(const Matrix<value_type> alphas, const CVecRef<AR> &xx, const VecRef<AL> &yy) = 0;
-  
+
   /*!
    * Perform dot() on multiple pairs of containers in an efficient manner
    */
   virtual Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) = 0;
-  
+
   /*!
    * @brief Select n indices with largest by absolute value contributions to the dot product
    *
@@ -209,25 +210,39 @@ public:
    * @return map of indices and corresponding x,y product
    */
   virtual std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) = 0;
-  
-  const Counter& counter() const {return *m_counter;}
-  
-  std::string counter_to_string(std::string L, std::string R){
+
+  /*!
+   * @brief Select n indices with largest (or smallest) actual (or absolute) value
+   * @param n number of indices to select
+   * @param x array to examine
+   * @param max If true, select largest values, otherwise smallest
+   * @param ignore_sign If true, consider std::abs() of elements
+   * @return map of indices and corresponding values
+   */
+  virtual std::map<size_t, value_type> select(size_t n, const AL &x, bool max = false, bool ignore_sign = false) = 0;
+
+  const Counter &counter() const { return *m_counter; }
+
+  std::string counter_to_string(std::string L, std::string R) {
     std::string output = "";
-    if (m_counter->scal > 0) output.append(std::to_string(m_counter->scal) + " scaling operations of the " + L +
-                                            " vectors, ");
-    if (m_counter->copy > 0) output.append(std::to_string(m_counter->copy) + " " + L + "<-" + R + " copy operations, ");
-    if (m_counter->dot > 0) output.append(std::to_string(m_counter->dot) + " dot product operations between the " + L +
-                                           " and " + R + " vectors, ");
-    if (m_counter->axpy > 0) output.append(std::to_string(m_counter->axpy) + " axpy (" + R + " = a*" + L + " + " + R +
-                                           ") operations, ");
-    if (m_counter->gemm_inner > 0) output.append(std::to_string(m_counter->gemm_inner) +
-                                              " gemm_inner operations between the " + L + " and " + R + " vectors, ");
-    if (m_counter->gemm_outer > 0) output.append(std::to_string(m_counter->gemm_outer) +
-                                              " gemm_outer operations between the " + L + " and " + R + " vectors, ");
+    if (m_counter->scal > 0)
+      output.append(std::to_string(m_counter->scal) + " scaling operations of the " + L + " vectors, ");
+    if (m_counter->copy > 0)
+      output.append(std::to_string(m_counter->copy) + " " + L + "<-" + R + " copy operations, ");
+    if (m_counter->dot > 0)
+      output.append(std::to_string(m_counter->dot) + " dot product operations between the " + L + " and " + R +
+                    " vectors, ");
+    if (m_counter->axpy > 0)
+      output.append(std::to_string(m_counter->axpy) + " axpy (" + R + " = a*" + L + " + " + R + ") operations, ");
+    if (m_counter->gemm_inner > 0)
+      output.append(std::to_string(m_counter->gemm_inner) + " gemm_inner operations between the " + L + " and " + R +
+                    " vectors, ");
+    if (m_counter->gemm_outer > 0)
+      output.append(std::to_string(m_counter->gemm_outer) + " gemm_outer operations between the " + L + " and " + R +
+                    " vectors, ");
     return output;
   };
-  
+
   void clear_counter() {
     m_counter->scal = 0;
     m_counter->copy = 0;
@@ -236,7 +251,7 @@ public:
     m_counter->gemm_inner = 0;
     m_counter->gemm_outer = 0;
   }
-  
+
   //! Destroys ArrayHandler instance and invalidates any LazyHandler it created. Invalidated handler will not evaluate.
   virtual ~ArrayHandler() {
     std::for_each(m_lazy_handles.begin(), m_lazy_handles.end(), [](auto &el) {
@@ -275,7 +290,6 @@ protected:
       out[zi].get() = dot(xx[xi].get(), yy[yi].get());
     }
   }
-  
 
   /*!
    * @brief Registers operations for lazy evaluation. Evaluation is triggered by calling eval() or on destruction.
@@ -372,13 +386,13 @@ protected:
     ProxyHandle(std::shared_ptr<LazyHandle> handle) : m_lazy_handle{std::move(handle)} {}
 
     template <typename... Args>
-    void axpy(Args &&... args) {
+    void axpy(Args &&...args) {
       m_lazy_handle->axpy(std::forward<Args>(args)...);
       if (m_off)
         eval();
     }
     template <typename... Args>
-    void dot(Args &&... args) {
+    void dot(Args &&...args) {
       m_lazy_handle->dot(std::forward<Args>(args)...);
       if (m_off)
         eval();

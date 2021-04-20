@@ -5,14 +5,12 @@
 int main(int argc, char* argv[]) {
   auto problem = ExampleProblem(argc > 1 ? std::stoi(argv[1]) : 20);
   using Rvector = ExampleProblem::container_t;
-  using Qvector = ExampleProblem::container_t;
-  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector>("Davidson");
   solver->set_n_roots(argc > 2 ? std::stoi(argv[2]) : 2);
-  solver->set_verbosity(molpro::linalg::itsolv::Verbosity::Summary);
+//  solver->set_verbosity(molpro::linalg::itsolv::Verbosity::Detailed);
   solver->set_max_iter(100);
-  Rvector c(problem.n, 0), g(problem.n);
-  c[0] = 1;
-  if (not solver->solve(c, g, problem))
+  Rvector c(problem.n), g(problem.n);
+  if (not solver->solve(c, g, problem, true))
     std::cout << "failed" << std::endl;
   else
     std::cout << "converged in " << solver->statistics().iterations << " iterations" << std::endl;

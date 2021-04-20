@@ -29,7 +29,7 @@ namespace molpro::linalg::itsolv {
  * @tparam Q
  * @tparam P
  */
-template <class R, class Q, class P>
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 class LinearEigensystemRSPT : public IterativeSolverTemplate<LinearEigensystem, R, Q, P> {
 public:
   using SolverTemplate = IterativeSolverTemplate<LinearEigensystem, R, Q, P>;

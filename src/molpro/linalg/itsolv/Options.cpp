@@ -17,6 +17,12 @@ Options::Options(const options_map& opt) {
   if (auto key = facet.toupper("convergence_threshold"); opt_upper.count(key)) {
     convergence_threshold = std::stod(opt_upper.at(key));
   }
+  if (auto key = facet.toupper("max_p"); opt_upper.count(key)) {
+    max_p = std::stoi(opt_upper.at(key));
+  }
+  if (auto key = facet.toupper("p_threshold"); opt_upper.count(key)) {
+    p_threshold = std::stod(opt_upper.at(key));
+  }
 }
 
 } // namespace molpro::linalg::itsolv

@@ -284,6 +284,7 @@ public:
 
   [[nodiscard]] std::map<size_t, value_type> select_max_dot(size_t n, const DistrArray &y) const;
   [[nodiscard]] std::map<size_t, value_type> select_max_dot(size_t n, const SparseArray &y) const;
+  [[nodiscard]] std::map<size_t, value_type> select(size_t n, bool max = false, bool ignore_sign = false) const;
   //! @}
 
   //! Set all local elements to zero.

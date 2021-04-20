@@ -7,7 +7,6 @@ if (FORTRAN
             )
 endif ()
 set(EXAMPLES
-        LinearEigensystemExample-serial.cpp
         LinearEigensystemExample.cpp
         LinearEigensystemDistrArrayExample.cpp
         LinearEigensystemMultirootExample.cpp

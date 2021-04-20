@@ -112,7 +112,7 @@ struct OptimizeF : ::testing::Test {
 };
 
 TEST_F(OptimizeF, small_quadratic_form) {
-  for (int n = 2; n < 51; n++) {
+  for (int n = 2; n < 31; n+=9) {
     double param = 10;
     load_matrix(n, "", param);
     test_quadratic_form("BFGS", std::to_string(n) + "/" + std::to_string(param));

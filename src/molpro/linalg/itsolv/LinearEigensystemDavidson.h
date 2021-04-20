@@ -1,6 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMDAVIDSON_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMDAVIDSON_H
 #include <iterator>
+#include <map>
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
@@ -22,7 +23,7 @@ namespace molpro::linalg::itsolv {
  * @tparam Q
  * @tparam P
  */
-template <class R, class Q, class P>
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 class LinearEigensystemDavidson : public IterativeSolverTemplate<LinearEigensystem, R, Q, P> {
 public:
   using SolverTemplate = IterativeSolverTemplate<LinearEigensystem, R, Q, P>;

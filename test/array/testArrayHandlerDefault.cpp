@@ -29,12 +29,17 @@ struct DefaultArray {
     ++count_select_max_dot;
     return {};
   }
+  std::map<size_t, value_type> select(size_t n, bool max = false, bool ignore_sign = false) const {
+    ++count_select;
+    return {};
+  }
   int count_copy = 0;
   int count_scal = 0;
   int count_fill = 0;
   int count_axpy = 0;
   mutable int count_dot = 0;
   mutable int count_select_max_dot = 0;
+  mutable int count_select = 0;
 };
 
 TEST(TestArrayHandlerDefault, constructor) {

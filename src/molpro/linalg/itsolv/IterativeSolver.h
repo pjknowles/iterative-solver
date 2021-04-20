@@ -7,11 +7,42 @@
 #include <molpro/linalg/itsolv/subspace/Dimensions.h>
 #include <molpro/linalg/itsolv/wrap.h>
 
+#include <molpro/linalg/array/DistrArray.h>
+#include <molpro/linalg/array/util/Distribution.h>
+
 #include <memory>
 #include <ostream>
 #include <vector>
 
 namespace molpro::linalg::itsolv {
+
+template <typename T, typename = std::enable_if_t<std::is_base_of<molpro::linalg::array::DistrArray, T>::value>>
+void precondition_default(const VecRef<T>& action, const std::vector<double>& shift, const T& diagonals) {
+  auto diagonals_local_buffer = diagonals.local_buffer();
+  for (int k = 0; k < action.size(); k++) {
+    auto action_local_buffer = action[k].get().local_buffer();
+    auto& distribution = action[k].get().distribution();
+    auto range = distribution.range(molpro::mpi::rank_global());
+    for (auto i = range.first; i < range.second; i++)
+      (*action_local_buffer)[i - range.first] /= ((*diagonals_local_buffer)[i - range.first] - shift[k] + 1e-15);
+  }
+}
+
+template <typename T>
+void precondition_default(const VecRef<std::vector<T>>& action, const std::vector<double>& shift,
+                          const std::vector<T>& diagonals) {
+  for (int k = 0; k < action.size(); k++) {
+    auto& a = action[k].get();
+    for (int i = 0; i < a.size(); i++)
+      a[i] /= (diagonals[i] - shift[k] + 1e-15);
+  }
+}
+
+template <typename T, typename = std::enable_if_t<!std::is_base_of<molpro::linalg::array::DistrArray, T>::value>,
+          class = void>
+void precondition_default(const VecRef<T>& action, const std::vector<double>& shift, const T& diagonals) {
+  throw std::logic_error("Unimplemented preconditioner");
+}
 
 /*!
  * @example ExampleProblem.h
@@ -23,7 +54,7 @@ namespace molpro::linalg::itsolv {
  * @brief Abstract class defining the problem-specific interface for the simplified solver interface to IterativeSolver
  * @tparam R the type of container for solutions and residuals
  */
-template <typename R>
+template <typename R, typename P = std::map<size_t, typename R::value_type>>
 class Problem {
 public:
   Problem() = default;
@@ -49,13 +80,55 @@ public:
   virtual void action(const CVecRef<R>& parameters, const VecRef<R>& action) const { return; }
 
   /*!
+   * @brief Optionally provide the diagonal elements of the underlying kernel. If implemented and returning true, the
+   * provided diagonals will be used by IterativeSolver for preconditioning (and therefore the precondition() function
+   * does not need to be implemented), and, in the case of linear problems, for selection of the P space. Otherwise,
+   * preconditioning will be done with precondition(), and any P space has to be provided manually.
+   * @param d On exit, contains the diagonal elements
+   * @return Whether diagonals have been provided.
+   */
+  virtual bool diagonals(container_t& d) const { return false; }
+
+  /*!
    * @brief Apply preconditioning to a residual vector in order to predict a step towards the solution
    * @param residual On entry, assumed to be the residual. On exit, the negative of the predicted step.
    * @param shift When called from LinearEigensystem, contains the corresponding current eigenvalue estimates for each
    * of the parameter vectors in the set. All other solvers pass a vector of zeroes.
    */
-  virtual void precondition(const VecRef<R>& residual, const std::vector<value_t>& shift) const {
-    return;
+  virtual void precondition(const VecRef<R>& residual, const std::vector<value_t>& shift) const { return; }
+
+  /*!
+   * @brief Apply preconditioning to a residual vector in order to predict a step towards the solution
+   * @param residual On entry, assumed to be the residual. On exit, the negative of the predicted step.
+   * @param shift When called from LinearEigensystem, contains the corresponding current eigenvalue estimates for each
+   * of the parameter vectors in the set. All other solvers pass a vector of zeroes.
+   * @param diagonals The diagonal elements of the underlying kernel
+   */
+  virtual void precondition(const VecRef<R>& residual, const std::vector<value_t>& shift, const R& diagonals) const {
+    precondition_default(residual, shift, diagonals);
+  }
+
+  /*!
+   * @brief Calculate the kernel matrix in the P space
+   * @param pparams Specification of the P space
+   * @return
+   */
+  virtual std::vector<double> pp_action_matrix(const std::vector<P>& pparams) const {
+    if (not pparams.empty())
+      throw std::logic_error("P-space unavailable: unimplemented pp_action_matrix() in Problem class");
+    return std::vector<double>(0);
+  }
+
+  /*!
+   * @brief Calculate the action of the kernel matrix on a set of vectors in the P space
+   * @param p_coefficients The projection of the vectors onto to the P space
+   * @param pparams Specification of the P space
+   * @param actions On exit, the computed action has been added to the original contents
+   */
+  virtual void p_action(const std::vector<std::vector<value_t>>& p_coefficients, const CVecRef<P>& pparams,
+                        const VecRef<container_t>& actions) const {
+    if (not pparams.empty())
+      throw std::logic_error("P-space unavailable: unimplemented p_action() in Problem class");
   }
 };
 
@@ -110,18 +183,20 @@ public:
    * permitted.
    * @param actions A set of scratch vectors. It should have the same size as parameters.
    * @param problem A Problem object defining the problem to be solved
+   * @param generate_initial_guess Whether to start with a guess based on diagonal elements (true) or on the contents of
+   * parameters (false)
    * @return true if the solution was found
    */
-  //  virtual bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem) = 0; // TODO
-  //  make abstract when all concretizations are done
-  virtual bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem) { return false; }
-  virtual bool solve(R& parameters, R& actions, const Problem<R>& problem) {
+  virtual bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
+                     bool generate_initial_guess = false) = 0;
+  virtual bool solve(R& parameters, R& actions, const Problem<R>& problem, bool generate_initial_guess = false) {
     auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
     auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
-    return solve(wparams, wactions, problem);
+    return solve(wparams, wactions, problem, generate_initial_guess);
   }
-  virtual bool solve(std::vector<R>& parameters, std::vector<R>& actions, const Problem<R>& problem) {
-    return solve(wrap(parameters), wrap(actions), problem);
+  virtual bool solve(std::vector<R>& parameters, std::vector<R>& actions, const Problem<R>& problem,
+                     bool generate_initial_guess = false) {
+    return solve(wrap(parameters), wrap(actions), problem, generate_initial_guess);
   }
 
   /*!
@@ -216,6 +291,10 @@ public:
   virtual Verbosity get_verbosity() const = 0;
   virtual void set_max_iter(int n) = 0;
   virtual int get_max_iter() const = 0;
+  virtual void set_max_p(int n) = 0;
+  virtual int get_max_p() const = 0;
+  virtual void set_p_threshold(double thresh) = 0;
+  virtual int get_p_threshold() const = 0;
   virtual const subspace::Dimensions& dimensions() const = 0;
   // FIXME Missing parameters: SVD threshold
   //! Set all spcecified options. This is no different than using setters, but can be used with forward declaration.

@@ -1,5 +1,6 @@
 #include "DistrArray.h"
 #include "util/select_max_dot.h"
+#include "util/select.h"
 #include <algorithm>
 #include <functional>
 #include <iostream>
@@ -248,6 +249,18 @@ std::map<size_t, DistrArray::value_type> DistrArray::select_max_dot(size_t n, co
   auto xbuf = local_buffer();
   auto local_selection = util::select_max_dot_iter_sparse<LocalBuffer, SparseArray, value_type, value_type>(
       std::min(n, xbuf->size()), *xbuf, y);
+  auto shifted_local_selection = decltype(local_selection)();
+  for (auto& el : local_selection)
+    shifted_local_selection.emplace(xbuf->start() + el.first, el.second);
+  return util::select_max_dot_broadcast(n, shifted_local_selection, communicator());
+}
+
+std::map<size_t, DistrArray::value_type> DistrArray::select(size_t n, bool max, bool ignore_sign) const {
+  if (n > size())
+    error("DistrArray::select: n is too large");
+  auto xbuf = local_buffer();
+  auto local_selection =
+      util::select<LocalBuffer, value_type>(std::min(n, xbuf->size()), *xbuf, max, ignore_sign);
   auto shifted_local_selection = decltype(local_selection)();
   for (auto& el : local_selection)
     shifted_local_selection.emplace(xbuf->start() + el.first, el.second);

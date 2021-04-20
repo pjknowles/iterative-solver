@@ -192,7 +192,7 @@ void print_solutions(const std::vector<Rvector>& solutions) {
 void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, double augmented_hessian) {
   auto d = (mat - mat.transpose()).norm();
   bool hermitian = d < 1e-10;
-  const auto n_root_max = rhs.cols();
+  const auto n_root_max = rhs.cols() > 3 ? 3 : rhs.cols();
   const auto nX = mat.rows();
   auto reference_solutions = solve_full_problem(mat, rhs, augmented_hessian);
   bool verbose = false;
@@ -262,9 +262,9 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
 
 TEST(LinearEquations, simple_symmetric_system) {
   double p = .1;
-  size_t n_min = 1, n_max = 20;
+  size_t n_min = 1, n_max = 10;
   double augmented_hessian = 0;
-  for (size_t n = n_min; n <= n_max; ++n) {
+  for (size_t n = n_min; n <= n_max; n+=3) {
     auto [mat, rhs] = construct_simple_symmetric_system(n, p);
     auto update = [](const auto& params, const auto& actions, auto n_work) {};
     std::cout << "\nsimple_symmetric_system: n = " << n << std::endl;

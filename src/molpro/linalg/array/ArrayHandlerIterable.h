@@ -1,13 +1,14 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLE_H
-#include <molpro/linalg/array/ArrayHandler.h>
-#include <molpro/linalg/array/util/select_max_dot.h>
-#include <molpro/linalg/array/util/gemm.h>
 #include <cstddef>
+#include <molpro/linalg/array/ArrayHandler.h>
+#include <molpro/linalg/array/util/gemm.h>
+#include <molpro/linalg/array/util/select.h>
+#include <molpro/linalg/array/util/select_max_dot.h>
 #include <numeric>
 
-using molpro::linalg::array::util::gemm_outer_default;
 using molpro::linalg::array::util::gemm_inner_default;
+using molpro::linalg::array::util::gemm_outer_default;
 
 namespace molpro::linalg::array {
 namespace util {
@@ -76,19 +77,25 @@ public:
     using std::end;
     return std::inner_product(begin(x), end(x), begin(y), (value_type)0);
   };
-  
+
   void gemm_outer(const Matrix<value_type> alphas, const CVecRef<AR> &xx, const VecRef<AL> &yy) override {
     gemm_outer_default(*this, alphas, xx, yy);
   }
-  
+
   Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) override {
     return gemm_inner_default(*this, xx, yy);
   }
-  
+
   std::map<size_t, value_type_abs> select_max_dot(size_t n, const AL &x, const AR &y) override {
     if (n > x.size() || n > y.size())
       error("ArrayHandlerIterable::select_max_dot() n is too large");
     return util::select_max_dot<AL, AR, value_type, value_type_abs>(n, x, y);
+  }
+
+  std::map<size_t, value_type> select(size_t n, const AL &x, bool max = false, bool ignore_sign = false) override {
+    if (n > x.size())
+      error("ArrayHandlerIterable::select() n is too large");
+    return util::select<AL, value_type>(n, x, max, ignore_sign);
   }
 
   ProxyHandle lazy_handle() override { return this->lazy_handle(*this); };

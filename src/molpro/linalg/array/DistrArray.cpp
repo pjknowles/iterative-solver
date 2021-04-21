@@ -193,7 +193,7 @@ std::map<size_t, double> select_max_dot_broadcast(size_t n, std::map<size_t, dou
     using pair_t = std::pair<double, size_t>;
     auto pq = std::priority_queue<pair_t, std::vector<pair_t>, std::greater<>>();
     for (size_t i = 0; i < n; ++i)
-      pq.emplace(std::numeric_limits<double>::min(), std::numeric_limits<DistrArray::index_type>::max());
+      pq.emplace(-std::numeric_limits<double>::max(), std::numeric_limits<DistrArray::index_type>::max());
     for (size_t i = 0, ii = 0; i < comm_size; ++i) {
       for (size_t j = 0; j < n - n_dummy_elements[i]; ++j, ++ii) {
         pq.emplace(values[ii], indices[ii]);

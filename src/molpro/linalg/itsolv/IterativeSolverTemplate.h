@@ -328,13 +328,14 @@ public:
           break;
         }
       if (this->m_verbosity >= Verbosity::Summary and not selectp.empty())
-        molpro::cout << selectp.size() << "-dimensional P space obtained with threshold " << m_p_threshold
-                     << " and limit " << m_max_p << std::endl;
+        molpro::cout << selectp.size() << "-dimensional P space selected with threshold "
+                     << (m_p_threshold < 1e20 ? std::to_string(m_p_threshold) : "infinity") << " and limit " << m_max_p
+                     << std::endl;
       if (this->m_verbosity >= Verbosity::Detailed)
         for (const auto& s : selectp)
           molpro::cout << "P space element " << s.first << " : " << s.second << std::endl;
       for (const auto& s : selectp)
-        pspace.emplace_back((P){{s.first, s.second}});
+        pspace.emplace_back((P){{s.first, 1}});
       fapply_on_p_type apply_on_p = [&problem](const std::vector<std::vector<value_type>>& pcoeff,
                                                const CVecRef<P>& pparams, const VecRef<R>& actions) {
         problem.p_action(pcoeff, pparams, actions);
@@ -462,7 +463,7 @@ protected:
   fapply_on_p_type m_apply_p = {};              //!< function that evaluates effect of action on the P space projection
   Verbosity m_verbosity = Verbosity::Iteration; //!< how much output to print in solve()
   int m_max_iter = 100;                         //!< maximum number of iterations in solve()
-  double m_max_p = 0;                           //!< maximum size of P space
+  size_t m_max_p = 0;                           //!< maximum size of P space
   double m_p_threshold = std::numeric_limits<double>::max(); //!< threshold for selecting P space
 };
 

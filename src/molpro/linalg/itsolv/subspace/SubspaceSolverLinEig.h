@@ -37,7 +37,6 @@ protected:
     if (m_logger->data_dump) {
       m_logger->msg("S = " + as_string(s), Logger::Info);
       m_logger->msg("H = " + as_string(h, 15), Logger::Info);
-      m_logger->msg("rhs = " + as_string(h, 15), Logger::Info);
     }
     auto dim = h.rows();
     auto evec = std::vector<value_type>{};

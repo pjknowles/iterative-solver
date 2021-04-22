@@ -294,7 +294,7 @@ public:
   virtual void set_max_p(int n) = 0;
   virtual int get_max_p() const = 0;
   virtual void set_p_threshold(double thresh) = 0;
-  virtual int get_p_threshold() const = 0;
+  virtual double get_p_threshold() const = 0;
   virtual const subspace::Dimensions& dimensions() const = 0;
   // FIXME Missing parameters: SVD threshold
   //! Set all spcecified options. This is no different than using setters, but can be used with forward declaration.

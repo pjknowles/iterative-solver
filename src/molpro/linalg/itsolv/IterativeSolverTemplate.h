@@ -281,7 +281,7 @@ public:
   void set_max_p(int n) override { m_max_p = n; }
   int get_max_p() const override { return m_max_p; }
   void set_p_threshold(double threshold) override { m_p_threshold = threshold; }
-  int get_p_threshold() const override { return m_p_threshold; }
+  double get_p_threshold() const override { return m_p_threshold; }
   //! Access dimensions of the subspace
   const subspace::Dimensions& dimensions() const override { return m_xspace->dimensions(); }
   scalar_type value() const override {

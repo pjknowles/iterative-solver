@@ -38,6 +38,7 @@ public:
   bool nonlinear() const override { return true; }
 
   int add_vector(R& parameters, R& residual, value_type value) override {
+    auto prof = this->m_profiler->push("itsolv::add_vector");
     using namespace subspace;
     auto& xspace = this->m_xspace;
     auto& xdata = xspace->data;
@@ -125,6 +126,7 @@ public:
   }
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
+    auto prof = this->m_profiler->push("itsolv::end_iteration");
     if (not m_linesearch) { // action is expected to hold the preconditioned residual
       m_last_iteration_linesearching = false;
       this->solution_params(this->m_working_set, parameters);

@@ -10,6 +10,7 @@
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/util.h>
 #include <molpro/linalg/itsolv/wrap_util.h>
+#include <molpro/profiler/Profiler.h>
 
 namespace molpro::linalg::itsolv::detail {
 
@@ -542,16 +543,20 @@ template <class R, class Q, class P, typename value_type_abs>
 auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameters, const VecRef<R>& residuals,
                     subspace::IXSpace<R, Q, P>& xspace, subspace::ISubspaceSolver<R, Q, P>& subspace_solver,
                     ArrayHandlers<R, Q, P>& handlers, Logger& logger, value_type_abs svd_thresh,
-                    value_type_abs res_norm_thresh, int max_size_qspace) {
+                    value_type_abs res_norm_thresh, int max_size_qspace, molpro::profiler::Profiler& profiler) {
+  auto prof = profiler.push("itsolv::propose_rspace");
   logger.msg("itsolv::detail::propose_rspace", Logger::Trace);
   logger.msg("dimensions {nP, nQ, nD, nW} = " + std::to_string(xspace.dimensions().nP) + ", " +
                  std::to_string(xspace.dimensions().nQ) + ", " + std::to_string(xspace.dimensions().nD) + ", " +
                  std::to_string(solver.working_set().size()),
              Logger::Trace);
+  profiler.start("itsolv::ISubspaceSolver::solutions");
   auto solutions = subspace_solver.solutions();
+  profiler.stop();
   auto q_delete = limit_qspace_size(xspace.dimensions(), max_size_qspace, solutions, logger);
   logger.msg("delete Q parameter indices = ", q_delete.begin(), q_delete.end(), Logger::Debug);
   if (!q_delete.empty()) {
+    auto prof = profiler.push("construct_dspace");
     auto [dparams, dactions] =
         construct_dspace(solutions, xspace, q_delete, res_norm_thresh, svd_thresh, handlers.qq(), logger);
     std::sort(begin(q_delete), end(q_delete), std::greater<int>());
@@ -571,24 +576,32 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
   }
   // Use modified GS to orthonormalise z against P+Q+D, removing any null parameters.
   auto wresidual = wrap(residuals.begin(), residuals.begin() + solver.working_set().size());
+  profiler.start("normalise");
   normalise(wresidual, handlers.rr(), logger);
+  profiler.stop();
+  profiler.start("append_overlap_with_r");
   const auto full_overlap =
       append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
                             xspace.cparamsq(), xspace.cparamsd(), handlers, logger);
+  profiler.stop();
   auto redundant_indices =
       redundant_parameters(full_overlap, xspace.dimensions().nX, wresidual.size(), svd_thresh, logger);
   logger.msg("redundant indices = ", std::begin(redundant_indices), std::end(redundant_indices), Logger::Debug);
   util::delete_parameters(redundant_indices, wresidual);
+  profiler.start("modified_gram_schmidt");
   auto null_param_indices =
       modified_gram_schmidt(wresidual, xspace.data.at(subspace::EqnData::S), xspace.dimensions(), xspace.cparamsp(),
                             xspace.cparamsq(), xspace.cparamsd(), res_norm_thresh, handlers, logger);
+  profiler.stop();
   // Now that there is SVD null_param_indices should always be empty
   logger.msg("null parameters = ", std::begin(null_param_indices), std::end(null_param_indices), Logger::Debug);
   util::delete_parameters(null_param_indices, wresidual);
   normalise(wresidual, handlers.rr(), logger);
   for (size_t i = 0; i < wresidual.size(); ++i)
     handlers.rr().copy(parameters.at(i), wresidual.at(i));
+  profiler.start("get_new_working_set");
   auto new_working_set = get_new_working_set(solver.working_set(), cwrap(residuals), cwrap(wresidual));
+  profiler.stop();
   return new_working_set;
 }
 } // namespace molpro::linalg::itsolv::detail

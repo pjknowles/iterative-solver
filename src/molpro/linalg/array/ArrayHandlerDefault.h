@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDEFAULT_H
 #include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/array/util/gemm.h>
+#include <molpro/Profiler.h>
 
 using molpro::linalg::array::util::gemm_outer_default;
 using molpro::linalg::array::util::gemm_inner_default;
@@ -37,6 +38,7 @@ public:
   }
   
   Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) override {
+    auto prof = molpro::Profiler::single()->push("ArrayHandlerDDiskSparse::gemm_inner_default");
     return gemm_inner_default(*this, xx, yy);
   }
 

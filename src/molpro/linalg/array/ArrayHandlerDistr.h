@@ -3,6 +3,7 @@
 
 #include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/array/util/gemm.h>
+#include <molpro/Profiler.h>
 
 using molpro::linalg::array::util::gemm_outer_distr_distr;
 using molpro::linalg::array::util::gemm_inner_distr_distr;
@@ -43,6 +44,7 @@ public:
   
   Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) override {
     this->m_counter->gemm_inner++;
+    auto prof = molpro::Profiler::single()->push("ArrayHandlerDistr::gemm_inner");
     return gemm_inner_distr_distr(xx, yy);
   }
 

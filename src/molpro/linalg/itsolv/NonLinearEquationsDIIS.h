@@ -6,6 +6,7 @@
 #include <molpro/linalg/itsolv/propose_rspace.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverDIIS.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
+#include <molpro/profiler/Profiler.h>
 
 namespace molpro::linalg::itsolv {
 /*!
@@ -36,6 +37,7 @@ public:
   bool nonlinear() const override { return true; }
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
+    auto prof = this->m_profiler->push("itsolv::end_iteration");
     this->solution_params(this->m_working_set, parameters);
     if (this->m_errors.front() < this->m_convergence_threshold) {
       this->m_working_set.clear();

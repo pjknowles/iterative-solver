@@ -3,6 +3,7 @@
 #include <cmath>
 #include <iostream>
 #include <molpro/iostream.h>
+#include <molpro/profiler/Profiler.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/subspace/ISubspaceSolver.h>
@@ -131,6 +132,7 @@ public:
   IterativeSolverTemplate<Solver, R, Q, P>& operator=(IterativeSolverTemplate<Solver, R, Q, P>&&) noexcept = default;
 
   int add_vector(const VecRef<R>& parameters, const VecRef<R>& actions) override {
+    auto prof = this->m_profiler->push("itsolv::add_vector");
     m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations),
                   Logger::Trace);
     m_logger->msg("IterativeSolverTemplate::add_vector  size of {params, actions, working_set} = " +
@@ -163,6 +165,7 @@ public:
   // FIXME Currently only works if called on an empty subspace. Either enforce it or generalise.
   size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix, const VecRef<R>& parameters,
                const VecRef<R>& actions, fapply_on_p_type apply_p) override {
+    auto prof = this->m_profiler->push("itsolv::add_p");
     if (not pparams.empty() and pparams.size() < n_roots())
       throw std::runtime_error("P space must be empty or at least as large as number of roots sought");
     if (apply_p)
@@ -176,6 +179,7 @@ public:
   void clearP() override {}
 
   void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) override {
+    auto prof = this->m_profiler->push("itsolv::solution");
     check_consistent_number_of_roots_and_solutions(roots, parameters.size());
     detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
                                m_xspace->paramsq(), m_xspace->paramsd(), m_xspace->dimensions().oP,
@@ -288,6 +292,9 @@ public:
     return m_xspace->data.count(subspace::EqnData::value) > 0 ? m_xspace->data[subspace::EqnData::value](0, 0)
                                                               : nan("molpro::linalg::itsolv::IterativeSolver::value");
   }
+//  void set_profiler(molpro::profiler::Profiler& profiler) override { m_profiler.reset(&profiler); }
+  void set_profiler(molpro::profiler::Profiler& profiler) override { m_profiler = std::shared_ptr<molpro::profiler::Profiler>(m_profiler_default, &profiler); }
+  const std::shared_ptr<molpro::profiler::Profiler>& profiler() const override { return m_profiler; }
 
   bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
              bool generate_initial_guess = false) override {
@@ -399,6 +406,7 @@ protected:
    * @return size of the working set
    */
   size_t solve_and_generate_working_set(const VecRef<R>& parameters, const VecRef<R>& action) {
+    auto prof = this->m_profiler->push("itsolv::solve_and_generate_working_set");
     m_subspace_solver->solve(*m_xspace, n_roots());
     auto nsol = m_subspace_solver->size();
     std::vector<std::pair<Q, Q>> temp_solutions{};
@@ -465,6 +473,8 @@ protected:
   int m_max_iter = 100;                         //!< maximum number of iterations in solve()
   size_t m_max_p = 0;                           //!< maximum size of P space
   double m_p_threshold = std::numeric_limits<double>::max(); //!< threshold for selecting P space
+  std::shared_ptr<molpro::profiler::Profiler> m_profiler_default = std::make_shared<molpro::profiler::Profiler>("IterativeSolver");
+  std::shared_ptr<molpro::profiler::Profiler> m_profiler = m_profiler_default;
 };
 
 } // namespace molpro::linalg::itsolv

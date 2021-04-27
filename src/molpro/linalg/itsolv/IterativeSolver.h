@@ -14,6 +14,9 @@
 #include <ostream>
 #include <vector>
 
+namespace molpro::profiler {
+class Profiler;
+}
 namespace molpro::linalg::itsolv {
 
 template <typename T, typename = std::enable_if_t<std::is_base_of<molpro::linalg::array::DistrArray, T>::value>>
@@ -311,6 +314,12 @@ public:
    * @return
    */
   virtual bool nonlinear() const = 0;
+  /*!
+   * @brief Attach a profiler in order to collect performance data
+   * @param profiler
+   */
+  virtual void set_profiler(molpro::profiler::Profiler& profiler) = 0;
+  virtual const std::shared_ptr<molpro::profiler::Profiler>& profiler() const = 0;
 };
 
 /*!

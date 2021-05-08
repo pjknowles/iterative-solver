@@ -425,7 +425,7 @@ auto modified_gram_schmidt(const VecRef<R>& rparams, const subspace::Matrix<valu
                            ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
   logger.msg("modified_gram_schmidt()", Logger::Trace);
   const auto nR = rparams.size(), nP = pparams.size(), nQ = qparams.size(), nD = dparams.size();
-  std::cout << "modified_gram_schmidt() nR="<<nR<<" nQ="<<nQ<<" nD="<<nD<<std::endl;
+  // std::cout << "modified_gram_schmidt() nR="<<nR<<" nQ="<<nQ<<" nD="<<nD<<std::endl;
   assert(nP == dims.nP && nQ == dims.nQ && nD == dims.nD);
   auto orthogonalise = [&overlap, &rparams, nR](const auto& xparams, auto& handler, const size_t oX, const size_t nX) {
     for (size_t i = 0; i < nX; ++i) {

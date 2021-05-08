@@ -4,6 +4,7 @@
 #include <functional>
 #include <thread>
 #include <unistd.h>
+#include <limits>
 
 namespace molpro::linalg::array::util {
 #ifdef HAVE_MPI_H
@@ -26,7 +27,7 @@ std::string temp_file_name(const std::string& base_name, const std::string& suff
   auto time = std::chrono::high_resolution_clock().now().time_since_epoch().count();
   auto tid = hasher(std::this_thread::get_id());
   auto pid = getpid();
-  srand(time + tid + pid);
+  srand(int((time + tid + pid) & std::numeric_limits<int>::max()));
   auto fname = base_name;
   for (int i = 0; i < length; i++)
     fname += chars[rand() % chars.size()];

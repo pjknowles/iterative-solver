@@ -325,7 +325,7 @@ public:
         root++;
       }
     }
-    auto nwork = parameters.size();
+    int nwork = parameters.size();
     std::vector<P> pspace;
     if (use_diagonals and m_max_p > 0) {
       auto selectp = m_handlers->qq().select(m_max_p, *diagonals);

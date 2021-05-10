@@ -19,6 +19,18 @@ class Profiler;
 }
 namespace molpro::linalg::itsolv {
 
+template <typename T>
+struct has_iterator {
+  template <typename C>
+  constexpr static std::true_type test(typename C::iterator*);
+
+  template <typename>
+  constexpr static std::false_type test(...);
+
+  constexpr static bool value =
+      std::is_same<std::true_type, decltype(test<typename std::remove_reference<T>::type>(0))>::value;
+};
+
 template <typename T, typename = std::enable_if_t<std::is_base_of<molpro::linalg::array::DistrArray, T>::value>>
 void precondition_default(const VecRef<T>& action, const std::vector<double>& shift, const T& diagonals) {
   auto diagonals_local_buffer = diagonals.local_buffer();
@@ -31,24 +43,22 @@ void precondition_default(const VecRef<T>& action, const std::vector<double>& sh
   }
 }
 
-template <typename T, template <class> class C
-//          , typename = std::enable_if<C<T>::value_type>
-//          , typename = std::enable_if<(sizeof(C<T>::iterator)>0)>
-    , typename = std::enable_if_t<std::is_copy_assignable_v<typename C<T>::iterator>>
->
-void precondition_default(const VecRef<C<T>>& action, const std::vector<double>& shift, const C<T>& diagonals) {
-//  constexpr typename C<T>::iterator it;
+template <class T>
+void precondition_default(const VecRef<T>& action, const std::vector<double>& shift, const T& diagonals,
+                          typename T::iterator* = nullptr // SFINAE
+) {
   for (int k = 0; k < action.size(); k++) {
     auto& a = action[k].get();
-    for (int i = 0; i < a.size(); i++)
-      a[i] /= (diagonals[i] - shift[k] + 1e-15);
+    std::transform(diagonals.begin(), diagonals.end(), a.begin(), a.begin(),
+                   [shift, k](const auto& first, const auto& second) { return second / (first - shift[k] + 1e-15); });
   }
-//  std::transform
 }
 
 template <typename T, typename = std::enable_if_t<!std::is_base_of<molpro::linalg::array::DistrArray, T>::value>,
           class = void>
-void precondition_default(const VecRef<T>& action, const std::vector<double>& shift, const T& diagonals) {
+void precondition_default(const VecRef<T>& action, const std::vector<double>& shift, const T& diagonals,
+                          typename std::enable_if<!has_iterator<T>::value, void*>::type = nullptr // SFINAE
+) {
   throw std::logic_error("Unimplemented preconditioner");
 }
 
@@ -59,7 +69,8 @@ void precondition_default(const VecRef<T>& action, const std::vector<double>& sh
  * Example of a problem-defining class with distributed data
  */
 /*!
- * @brief Abstract class defining the problem-specific interface for the simplified solver interface to IterativeSolver
+ * @brief Abstract class defining the problem-specific interface for the simplified solver
+ * interface to IterativeSolver
  * @tparam R the type of container for solutions and residuals
  */
 template <typename R, typename P = std::map<size_t, typename R::value_type>>
@@ -71,45 +82,54 @@ public:
   using value_t = typename R::value_type;
 
   /*!
-   * @brief Calculate the residual vector. Used by non-linear solvers (NonLinearEquations, Optimize) only.
+   * @brief Calculate the residual vector. Used by non-linear solvers (NonLinearEquations,
+   * Optimize) only.
    * @param parameters The trial solution for which the residual is to be calculated
    * @param residual The residual vector
-   * @return In the case where the residual is an exact differential, the corresponding function value. Used by Optimize
-   * but not NonLinearEquations.
+   * @return In the case where the residual is an exact differential, the corresponding
+   * function value. Used by Optimize but not NonLinearEquations.
    */
   virtual value_t residual(const R& parameters, R& residual) const { return 0; }
 
   /*!
-   * @brief Calculate the action of the kernel matrix on a set of parameters. Used by linear solvers, but not by the
-   * non-linear solvers (NonLinearEquations, Optimize).
+   * @brief Calculate the action of the kernel matrix on a set of parameters. Used by
+   * linear solvers, but not by the non-linear solvers (NonLinearEquations, Optimize).
    * @param parameters The trial solutions for which the action is to be calculated
    * @param action The action vectors
    */
   virtual void action(const CVecRef<R>& parameters, const VecRef<R>& action) const { return; }
 
   /*!
-   * @brief Optionally provide the diagonal elements of the underlying kernel. If implemented and returning true, the
-   * provided diagonals will be used by IterativeSolver for preconditioning (and therefore the precondition() function
-   * does not need to be implemented), and, in the case of linear problems, for selection of the P space. Otherwise,
-   * preconditioning will be done with precondition(), and any P space has to be provided manually.
+   * @brief Optionally provide the diagonal elements of the underlying kernel. If
+   * implemented and returning true, the provided diagonals will be used by
+   * IterativeSolver for preconditioning (and therefore the precondition() function does
+   * not need to be implemented), and, in the case of linear problems, for selection of
+   * the P space. Otherwise, preconditioning will be done with precondition(), and any P
+   * space has to be provided manually.
    * @param d On exit, contains the diagonal elements
    * @return Whether diagonals have been provided.
    */
   virtual bool diagonals(container_t& d) const { return false; }
 
   /*!
-   * @brief Apply preconditioning to a residual vector in order to predict a step towards the solution
-   * @param residual On entry, assumed to be the residual. On exit, the negative of the predicted step.
-   * @param shift When called from LinearEigensystem, contains the corresponding current eigenvalue estimates for each
-   * of the parameter vectors in the set. All other solvers pass a vector of zeroes.
+   * @brief Apply preconditioning to a residual vector in order to predict a step towards
+   * the solution
+   * @param residual On entry, assumed to be the residual. On exit, the negative of the
+   * predicted step.
+   * @param shift When called from LinearEigensystem, contains the corresponding current
+   * eigenvalue estimates for each of the parameter vectors in the set. All other solvers
+   * pass a vector of zeroes.
    */
   virtual void precondition(const VecRef<R>& residual, const std::vector<value_t>& shift) const { return; }
 
   /*!
-   * @brief Apply preconditioning to a residual vector in order to predict a step towards the solution
-   * @param residual On entry, assumed to be the residual. On exit, the negative of the predicted step.
-   * @param shift When called from LinearEigensystem, contains the corresponding current eigenvalue estimates for each
-   * of the parameter vectors in the set. All other solvers pass a vector of zeroes.
+   * @brief Apply preconditioning to a residual vector in order to predict a step towards
+   * the solution
+   * @param residual On entry, assumed to be the residual. On exit, the negative of the
+   * predicted step.
+   * @param shift When called from LinearEigensystem, contains the corresponding current
+   * eigenvalue estimates for each of the parameter vectors in the set. All other solvers
+   * pass a vector of zeroes.
    * @param diagonals The diagonal elements of the underlying kernel
    */
   virtual void precondition(const VecRef<R>& residual, const std::vector<value_t>& shift, const R& diagonals) const {
@@ -143,22 +163,27 @@ public:
 /*!
  * @brief Base class defining the interface common to all iterative solvers
  *
- * @tparam R container for "working-set" vectors. These are typically implemented in memory, and are created by the
- * client program. R vectors are never created inside IterativeSolver.
- * @tparam Q container for other vectors. These are typically implemented on backing store and/or distributed across
- * processors.  IterativeSolver constructs a number of instances of Q containers to store history.
- * @tparam P a class that specifies the definition of a single P-space vector, which is a strictly sparse vector in the
- * underlying space.
+ * @tparam R container for "working-set" vectors. These are typically implemented in
+ * memory, and are created by the client program. R vectors are never created inside
+ * IterativeSolver.
+ * @tparam Q container for other vectors. These are typically implemented on backing store
+ * and/or distributed across processors.  IterativeSolver constructs a number of instances
+ * of Q containers to store history.
+ * @tparam P a class that specifies the definition of a single P-space vector, which is a
+ * strictly sparse vector in the underlying space.
  */
 template <class R, class Q, class P>
 class IterativeSolver {
 public:
   using value_type = typename R::value_type;                          ///< The underlying type of elements of vectors
-  using scalar_type = typename array::ArrayHandler<R, Q>::value_type; ///< The type of scalar products of vectors
+  using scalar_type = typename array::ArrayHandler<R, Q>::value_type; ///< The type of scalar products of
+                                                                      ///< vectors
   using value_type_abs = typename array::ArrayHandler<R, R>::value_type_abs;
-  using VectorP = std::vector<value_type>; //!< type for vectors projected on to P space, each element is a coefficient
-                                           //!< for the corresponding P space parameter
-  //! Function type for applying matrix to the P space vectors and accumulating result in a residual
+  using VectorP = std::vector<value_type>; //!< type for vectors projected on to P space,
+                                           //!< each element is a coefficient for the
+                                           //!< corresponding P space parameter
+  //! Function type for applying matrix to the P space vectors and accumulating result in
+  //! a residual
   using fapply_on_p_type = std::function<void(const std::vector<VectorP>&, const CVecRef<P>&, const VecRef<R>&)>;
 
   virtual ~IterativeSolver() = default;
@@ -186,13 +211,13 @@ public:
    */
   /*!
    * @brief Simplified one-call solver
-   * @param parameters A set of scratch vectors. On entry, these vectors should be filled with starting guesses.
-   * Where possible, the number of vectors should be equal to the number of solutions sought, but a smaller array is
-   * permitted.
+   * @param parameters A set of scratch vectors. On entry, these vectors should be filled
+   * with starting guesses. Where possible, the number of vectors should be equal to the
+   * number of solutions sought, but a smaller array is permitted.
    * @param actions A set of scratch vectors. It should have the same size as parameters.
    * @param problem A Problem object defining the problem to be solved
-   * @param generate_initial_guess Whether to start with a guess based on diagonal elements (true) or on the contents of
-   * parameters (false)
+   * @param generate_initial_guess Whether to start with a guess based on diagonal
+   * elements (true) or on the contents of parameters (false)
    * @return true if the solution was found
    */
   virtual bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
@@ -208,13 +233,14 @@ public:
   }
 
   /*!
-   * \brief Take, typically, a current solution and residual, and add it to the solution space.
-   * \param parameters On input, the current solution or expansion vector. On exit, undefined.
-   * \param actions On input, the residual for parameters (non-linear), or action of matrix
-   * on parameters (linear). On exit, a vector set that should be preconditioned before returning to end_iteration().
-   * \param value The value of the objective function for parameters. Used only in Optimize classes.
-   * \return The size of the new working set. In non-linear optimisation, the special value -1 can also be returned,
-   * indicating that preconditioning should not be carried out on action.
+   * \brief Take, typically, a current solution and residual, and add it to the solution
+   * space. \param parameters On input, the current solution or expansion vector. On exit,
+   * undefined. \param actions On input, the residual for parameters (non-linear), or
+   * action of matrix on parameters (linear). On exit, a vector set that should be
+   * preconditioned before returning to end_iteration(). \param value The value of the
+   * objective function for parameters. Used only in Optimize classes. \return The size of
+   * the new working set. In non-linear optimisation, the special value -1 can also be
+   * returned, indicating that preconditioning should not be carried out on action.
    */
   virtual int add_vector(const VecRef<R>& parameters, const VecRef<R>& actions) = 0;
 
@@ -225,13 +251,13 @@ public:
   /*!
    * \brief Add P-space vectors to the expansion set for linear methods.
    * \note the apply_p function is stored and used by the solver internally.
-   * \param Pparams the vectors to add. Each Pvector specifies a sparse vector in the underlying space
-   * \param pp_action_matrix Matrix projected onto the existing+new, new P space. It should be provided as a
-   * 1-dimensional array, with the existing+new index running fastest.
-   * \param parameters Used as scratch working space
-   * \param action  On exit, the  residual of the interpolated solution.
-   * The contribution from the new, and any existing, P parameters is missing, and should be added in subsequently.
-   * \param apply_p A function that evaluates the action of the matrix on vectors in the P space
+   * \param Pparams the vectors to add. Each Pvector specifies a sparse vector in the
+   * underlying space \param pp_action_matrix Matrix projected onto the existing+new, new
+   * P space. It should be provided as a 1-dimensional array, with the existing+new index
+   * running fastest. \param parameters Used as scratch working space \param action  On
+   * exit, the  residual of the interpolated solution. The contribution from the new, and
+   * any existing, P parameters is missing, and should be added in subsequently. \param
+   * apply_p A function that evaluates the action of the matrix on vectors in the P space
    * \return The number of vectors contained in parameters, action, parametersP
    */
   virtual size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix,
@@ -273,11 +299,13 @@ public:
    * @brief Working set of roots that are not yet converged
    */
   virtual const std::vector<int>& working_set() const = 0;
-  //! The calculated eigenvalues for roots in the working set (eigenvalue problems) or zero (otherwise)
+  //! The calculated eigenvalues for roots in the working set (eigenvalue problems) or
+  //! zero (otherwise)
   virtual std::vector<scalar_type> working_set_eigenvalues() const {
     return std::vector<scalar_type>(working_set().size(), 0);
   }
-  //! Total number of roots we are solving for, including the ones that are already converged
+  //! Total number of roots we are solving for, including the ones that are already
+  //! converged
   virtual size_t n_roots() const = 0;
   virtual void set_n_roots(size_t nroots) = 0;
   virtual const std::vector<scalar_type>& errors() const = 0;
@@ -305,9 +333,11 @@ public:
   virtual double get_p_threshold() const = 0;
   virtual const subspace::Dimensions& dimensions() const = 0;
   // FIXME Missing parameters: SVD threshold
-  //! Set all spcecified options. This is no different than using setters, but can be used with forward declaration.
+  //! Set all spcecified options. This is no different than using setters, but can be used
+  //! with forward declaration.
   virtual void set_options(const Options& options) = 0;
-  //! Return all options. This is no different than using getters, but can be used with forward declaration.
+  //! Return all options. This is no different than using getters, but can be used with
+  //! forward declaration.
   virtual std::shared_ptr<Options> get_options() const = 0;
   /*!
    * @brief Report the function value for the current optimum solution
@@ -328,7 +358,8 @@ public:
 };
 
 /*!
- * @brief Interface for a specific iterative solver, it can add special member functions or variables.
+ * @brief Interface for a specific iterative solver, it can add special member functions
+ * or variables.
  */
 template <class R, class Q, class P>
 class LinearEigensystem : public IterativeSolver<R, Q, P> {

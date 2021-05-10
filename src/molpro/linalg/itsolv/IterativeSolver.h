@@ -31,14 +31,19 @@ void precondition_default(const VecRef<T>& action, const std::vector<double>& sh
   }
 }
 
-template <typename T>
-void precondition_default(const VecRef<std::vector<T>>& action, const std::vector<double>& shift,
-                          const std::vector<T>& diagonals) {
+template <typename T, template <class> class C
+//          , typename = std::enable_if<C<T>::value_type>
+//          , typename = std::enable_if<(sizeof(C<T>::iterator)>0)>
+    , typename = std::enable_if_t<std::is_copy_assignable_v<typename C<T>::iterator>>
+>
+void precondition_default(const VecRef<C<T>>& action, const std::vector<double>& shift, const C<T>& diagonals) {
+//  constexpr typename C<T>::iterator it;
   for (int k = 0; k < action.size(); k++) {
     auto& a = action[k].get();
     for (int i = 0; i < a.size(); i++)
       a[i] /= (diagonals[i] - shift[k] + 1e-15);
   }
+//  std::transform
 }
 
 template <typename T, typename = std::enable_if_t<!std::is_base_of<molpro::linalg::array::DistrArray, T>::value>,

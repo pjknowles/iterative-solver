@@ -243,7 +243,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
     throw std::runtime_error("Intel compiler does not support working with complex eigen3 entities properly");
 #endif
 //    subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors();
-    std::cout << "subspaceEigenvectors\n" << subspaceEigenvectors << std::endl;
+//    std::cout << "subspaceEigenvectors\n" << subspaceEigenvectors << std::endl;
   }
 
   {

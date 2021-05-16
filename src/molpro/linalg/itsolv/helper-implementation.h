@@ -235,13 +235,14 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
     }
   } else { // complex eigenvectors
 //    molpro::cout << "eigenvalues not near-enough real"<<std::endl;
+//    molpro::cout << "s.eigenvalues() "<< s.eigenvalues().transpose()<<std::endl;
 #ifdef __INTEL_COMPILER
     molpro::cout << "Hbar\n" << Hbar << std::endl;
     molpro::cout << "Eigenvalues\n" << s.eigenvalues() << std::endl;
     molpro::cout << "Eigenvectors\n" << s.eigenvectors() << std::endl;
     throw std::runtime_error("Intel compiler does not support working with complex eigen3 entities properly");
 #endif
-    subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors();
+//    subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors();
     std::cout << "subspaceEigenvectors\n" << subspaceEigenvectors << std::endl;
   }
 

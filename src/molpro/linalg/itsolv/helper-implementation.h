@@ -3,8 +3,8 @@
 #include <Eigen/Dense>
 #include <cmath>
 #include <cstddef>
-#include <molpro/linalg/itsolv/helper.h>
 #include <molpro/lapacke.h>
+#include <molpro/linalg/itsolv/helper.h>
 
 namespace molpro::linalg::itsolv {
 
@@ -39,7 +39,7 @@ int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, con
   return -1;
 }
 
-template<typename value_type>
+template <typename value_type>
 std::list<SVD<value_type>> svd_eigen_jacobi(size_t nrows, size_t ncols, const array::Span<value_type>& m,
                                             double threshold) {
   auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), nrows, ncols);
@@ -61,7 +61,7 @@ std::list<SVD<value_type>> svd_eigen_jacobi(size_t nrows, size_t ncols, const ar
   return svd_system;
 }
 
-template<typename value_type>
+template <typename value_type>
 std::list<SVD<value_type>> svd_eigen_bdcsvd(size_t nrows, size_t ncols, const array::Span<value_type>& m,
                                             double threshold) {
   auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), nrows, ncols);
@@ -83,15 +83,16 @@ std::list<SVD<value_type>> svd_eigen_bdcsvd(size_t nrows, size_t ncols, const ar
 }
 
 #if defined HAVE_CBLAS
-template<typename value_type>
+template <typename value_type>
 std::list<SVD<value_type>> svd_lapacke_dgesdd(size_t nrows, size_t ncols, const array::Span<value_type>& mat,
                                               double threshold) {
   int info;
   int m = nrows;
   int n = ncols;
   int sdim = std::min(m, n);
-  std::vector<double> sv(sdim), u(nrows*nrows), v(ncols*ncols);
-  info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', int(nrows), int(ncols), const_cast<double*>(mat.data()), int(ncols), sv.data(), u.data(), int(nrows), v.data(), int(ncols));
+  std::vector<double> sv(sdim), u(nrows * nrows), v(ncols * ncols);
+  info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', int(nrows), int(ncols), const_cast<double*>(mat.data()), int(ncols),
+                        sv.data(), u.data(), int(nrows), v.data(), int(ncols));
   auto svd_system = std::list<SVD<value_type>>{};
   for (int i = int(ncols) - 1; i >= 0; --i) {
     if (std::abs(sv[i]) < threshold) {
@@ -99,7 +100,7 @@ std::list<SVD<value_type>> svd_lapacke_dgesdd(size_t nrows, size_t ncols, const 
       t.value = sv[i];
       t.v.reserve(ncols);
       for (size_t j = 0; j < ncols; ++j) {
-        t.v.emplace_back(v[i*ncols + j]);
+        t.v.emplace_back(v[i * ncols + j]);
       }
       svd_system.emplace_back(std::move(t));
     }
@@ -107,16 +108,17 @@ std::list<SVD<value_type>> svd_lapacke_dgesdd(size_t nrows, size_t ncols, const 
   return svd_system;
 }
 
-template<typename value_type>
+template <typename value_type>
 std::list<SVD<value_type>> svd_lapacke_dgesvd(size_t nrows, size_t ncols, const array::Span<value_type>& mat,
                                               double threshold) {
   int info;
   int m = nrows;
   int n = ncols;
   int sdim = std::min(m, n);
-  std::vector<double> sv(sdim), u(nrows*nrows), v(ncols*ncols);
+  std::vector<double> sv(sdim), u(nrows * nrows), v(ncols * ncols);
   double superb[sdim - 1];
-  info = LAPACKE_dgesvd(LAPACK_ROW_MAJOR, 'N', 'A', int(nrows), int(ncols), const_cast<double*>(mat.data()), int(ncols), sv.data(), u.data(), int(nrows), v.data(), int(ncols), superb);
+  info = LAPACKE_dgesvd(LAPACK_ROW_MAJOR, 'N', 'A', int(nrows), int(ncols), const_cast<double*>(mat.data()), int(ncols),
+                        sv.data(), u.data(), int(nrows), v.data(), int(ncols), superb);
   auto svd_system = std::list<SVD<value_type>>{};
   for (int i = int(ncols) - 1; i >= 0; --i) {
     if (std::abs(sv[i]) < threshold) {
@@ -124,7 +126,7 @@ std::list<SVD<value_type>> svd_lapacke_dgesvd(size_t nrows, size_t ncols, const 
       t.value = sv[i];
       t.v.reserve(ncols);
       for (size_t j = 0; j < ncols; ++j) {
-        t.v.emplace_back(v[i*ncols + j]);
+        t.v.emplace_back(v[i * ncols + j]);
       }
       svd_system.emplace_back(std::move(t));
     }
@@ -139,11 +141,12 @@ std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::S
   if (m.empty())
     return {};
 #if defined HAVE_CBLAS
-  if (nrows > 16) return svd_lapacke_dgesdd<value_type>(nrows, ncols, m, threshold);
+  if (nrows > 16)
+    return svd_lapacke_dgesdd<value_type>(nrows, ncols, m, threshold);
   return svd_lapacke_dgesvd<value_type>(nrows, ncols, m, threshold);
 #endif
   return svd_eigen_jacobi<value_type>(nrows, ncols, m, threshold);
-  //return svd_eigen_bdcsvd<value_type>(nrows, ncols, m, threshold);
+  // return svd_eigen_bdcsvd<value_type>(nrows, ncols, m, threshold);
 }
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>
@@ -197,27 +200,36 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
   //   Eigen::Dynamic>(svd.singularValues().head(svd.rank())).inverse()<<std::endl; molpro::cout << "S singular
   //   values"<<sv<<std::endl; molpro::cout << "H\n"<<H<<std::endl; molpro::cout << "Hbar\n"<<Hbar<<std::endl;
   Eigen::EigenSolver<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> s(Hbar);
-  //    molpro::cout << "s.eigenvectors()\n"<<s.eigenvectors()<<std::endl;
+  //      molpro::cout << "s.eigenvectors()\n"<<s.eigenvectors()<<std::endl;
   subspaceEigenvalues = s.eigenvalues();
-  if (s.eigenvalues().imag().norm() < 1e-10 and s.eigenvectors().imag().norm() < 1e-10) { // real eigenvectors
-//    molpro::cout << "eigenvalues and eigenvectors near-enough real"<<std::endl;
-    subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors().real();
+  if (s.eigenvalues().imag().norm() < 1e-10) { // real eigenvalues
+//    molpro::cout << "eigenvalues near-enough real" << std::endl;
     subspaceEigenvalues = subspaceEigenvalues.real();
-  } else if (s.eigenvalues().imag().norm() < 1e-10) { // real eigenvalues
-    //   molpro::cout << "eigenvalues near-enough real"<<std::endl;
-    subspaceEigenvalues = subspaceEigenvalues.real();
-    subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors();
+    subspaceEigenvectors = s.eigenvectors();
+    // complex eigenvectors need to be rotated
+    // assume that they come in consecutive pairs
+    for (int i = 0; i < subspaceEigenvectors.cols(); i++) {
+      if (subspaceEigenvectors.col(i).imag().norm() > 1e-10) {
+        int j = i + 1;
+        if (std::abs(subspaceEigenvalues(i) - subspaceEigenvalues(j)) < 1e-10 and
+            subspaceEigenvectors.col(j).imag().norm() > 1e-10) {
+          subspaceEigenvectors.col(j) = subspaceEigenvectors.col(i).imag() / subspaceEigenvectors.col(i).imag().norm();
+          subspaceEigenvectors.col(i) = subspaceEigenvectors.col(i).real() / subspaceEigenvectors.col(i).real().norm();
+        }
+      }
+    }
+    subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * subspaceEigenvectors;
     if (hermitian) {
-//        for (int i = 0; i < subspaceEigenvectors.cols(); i++) {
-//            std::cout << "Eigenvalue " << subspaceEigenvalues(i) << std::endl;
-//            std::cout << "Eigenvector " << subspaceEigenvectors.col(i) << std::endl;
-//        }
+      //    for (int i = 0; i < subspaceEigenvectors.cols(); i++) {
+      //      std::cout << "Eigenvalue " << subspaceEigenvalues(i) << std::endl;
+      //      std::cout << "Eigenvector " << subspaceEigenvectors.col(i).transpose() << std::endl;
+      //    }
       subspaceEigenvectors = subspaceEigenvectors.real();
       for (int j = 0; j < subspaceEigenvectors.cols(); j++) {
-        subspaceEigenvectors.col(j) /= std::sqrt(subspaceEigenvectors.col(j).dot(S*subspaceEigenvectors.col(j)));
+        subspaceEigenvectors.col(j) /= std::sqrt(subspaceEigenvectors.col(j).dot(S * subspaceEigenvectors.col(j)));
         for (int k = j + 1; k < subspaceEigenvectors.cols(); k++) {
           subspaceEigenvectors.col(k) -=
-                  subspaceEigenvectors.col(j) * subspaceEigenvectors.col(j).dot(S*subspaceEigenvectors.col(k));
+              subspaceEigenvectors.col(j) * subspaceEigenvectors.col(j).dot(S * subspaceEigenvectors.col(k));
         }
       }
     }
@@ -230,6 +242,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
     throw std::runtime_error("Intel compiler does not support working with complex eigen3 entities properly");
 #endif
     subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors();
+    std::cout << "subspaceEigenvectors\n" << subspaceEigenvectors << std::endl;
   }
 
   {
@@ -260,7 +273,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
 
   //   molpro::cout << "sorted eigenvalues\n"<<subspaceEigenvalues<<std::endl;
   //   molpro::cout << "sorted eigenvectors\n"<<subspaceEigenvectors<<std::endl;
-//  molpro::cout << "hermitian="<<hermitian<<std::endl;
+  //  molpro::cout << "hermitian="<<hermitian<<std::endl;
   if (!hermitian) {
     Eigen::MatrixXcd ovlTimesVec(subspaceEigenvectors.cols(), subspaceEigenvectors.rows()); // FIXME templating
     for (auto repeat = 0; repeat < 3; ++repeat)
@@ -317,8 +330,8 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
         //                       subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
       }
   } // if (!hermitian)
-//       molpro::cout << "eigenvalues"<<std::endl<<subspaceEigenvalues<<std::endl;
-//       molpro::cout << "eigenvectors"<<std::endl<<subspaceEigenvectors<<std::endl;
+    //       molpro::cout << "eigenvalues"<<std::endl<<subspaceEigenvalues<<std::endl;
+    //       molpro::cout << "eigenvectors"<<std::endl<<subspaceEigenvectors<<std::endl;
   // TODO complex should be implemented with a specialised function
   // TODO real should be implemented with always-executed runtime assertion that eigensolution turns out to be real
   auto complex_error_vecs = (subspaceEigenvectors - subspaceEigenvectors.real()).norm();

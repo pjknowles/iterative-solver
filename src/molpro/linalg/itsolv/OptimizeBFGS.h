@@ -104,6 +104,12 @@ public:
         xspace->eraseq(erased);
         //        std::cout << "Value after erasure: "<<as_string(Value)<<std::endl;
         m_linesearch = true;
+        if (false) {
+          while (xspace->size() >= 2) {
+            std::cout << "delete Q because line searching" << std::endl;
+            xspace->eraseq(xspace->size() - 1);
+          }
+        }
         return -1;
       }
     }
@@ -116,6 +122,12 @@ public:
     const auto& u = xspace->actionsq();
     //    this->m_errors.front() = std::sqrt(this->m_handlers->rr().dot(residual,residual));
     for (int a = 0; a < m_alpha.size(); a++) {
+      if (std::abs(H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1)) <
+          std::max(1e-10 * std::abs(H(a, a)), 1e-15)) {
+        xspace->eraseq(a + 1);
+        this->m_logger->msg("Erase redundant Q", Logger::Info);
+        goto accept;
+      }
       m_alpha[a] = (this->m_handlers->rq().dot(residual, q[a]) - this->m_handlers->rq().dot(residual, q[a + 1])) /
                    (H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1));
       //      std::cout << "alpha[" << a << "] = " << m_alpha[a] << std::endl;

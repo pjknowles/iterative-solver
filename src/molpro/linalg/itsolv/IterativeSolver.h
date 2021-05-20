@@ -311,7 +311,7 @@ public:
   virtual const std::vector<scalar_type>& errors() const = 0;
   virtual const Statistics& statistics() const = 0;
   //! Writes a report to cout output stream
-  virtual void report(std::ostream& cout) const = 0;
+  virtual void report(std::ostream& cout, bool endl = true) const = 0;
   //! Writes a report to std::cout
   virtual void report() const = 0;
 

@@ -260,16 +260,18 @@ public:
 
   const Statistics& statistics() const override { return *m_stats; }
 
-  void report(std::ostream& cout) const override {
+  void report(std::ostream& cout, bool endl = true) const override {
     cout << "iteration " << m_stats->iterations;
     if (not m_errors.empty()) {
       auto it_max_error = std::max_element(m_errors.cbegin(), m_errors.cend());
       if (n_roots() > 1)
-        cout << ", error[" << std::distance(m_errors.cbegin(), it_max_error) << "] = ";
+        cout << ", |residual[" << std::distance(m_errors.cbegin(), it_max_error) << "]| = ";
       else
-        cout << ", error = ";
-      cout << *it_max_error << std::endl;
+        cout << ", |residual| = ";
+      cout << std::scientific << *it_max_error << std::defaultfloat;
     }
+    if (endl)
+      cout << std::endl;
   }
 
   void report() const override { report(molpro::cout); }

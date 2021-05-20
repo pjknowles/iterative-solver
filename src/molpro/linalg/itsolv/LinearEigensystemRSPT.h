@@ -100,7 +100,7 @@ public:
   //      m_last_values = current_values;
   //  }
 
-  void report(std::ostream& cout) const override {
+  void report(std::ostream& cout, bool endl=true) const override {
     //    SolverTemplate::report(cout);
     //    cout << "errors " << std::scientific;
     //    auto& err = this->m_errors;
@@ -111,7 +111,7 @@ public:
     cout << "Perturbed energies ";
     cout << std::fixed << std::setprecision(8);
     std::copy(begin(m_rspt_values), end(m_rspt_values), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
-    cout << std::defaultfloat << std::endl;
+    cout << std::defaultfloat; if (endl) cout << std::endl;
   }
 
   void set_hermiticity(bool hermitian) override {

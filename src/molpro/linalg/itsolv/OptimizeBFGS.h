@@ -87,7 +87,9 @@ public:
         molpro::cout << "m_convergence_threshold=" << this->m_convergence_threshold << std::endl;
         molpro::cout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
       }
-      if (std::abs(gcurrent) < this->m_convergence_threshold or (Wolfe_1 && Wolfe_2))
+      if (
+//          std::abs(gcurrent) < this->m_convergence_threshold or
+          (Wolfe_1 && Wolfe_2))
         goto accept;
       //      molpro::cout << "evaluating line search" << std::endl;
       Interpolate inter({-1, fprev, gprev}, {0, fcurrent, gcurrent});
@@ -228,12 +230,10 @@ public:
     return opt;
   }
 
-  void report(std::ostream& cout) const override {
-    SolverTemplate::report(cout);
-    cout << "value " << this->value() << ", errors " << std::scientific;
-    auto& err = this->m_errors;
-    std::copy(begin(err), end(err), std::ostream_iterator<value_type_abs>(molpro::cout, ", "));
-    cout << std::defaultfloat << std::endl;
+  void report(std::ostream& cout, bool endl=true) const override {
+    SolverTemplate::report(cout, false);
+    cout << ", value " << this->value() <<  (m_linesearch ? ", line-searching" : ", quasi-Newton step");
+    if (endl) cout << std::endl;
   }
   std::shared_ptr<Logger> logger;
 

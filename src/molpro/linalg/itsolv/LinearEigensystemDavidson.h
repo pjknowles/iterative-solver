@@ -107,7 +107,7 @@ public:
       m_last_values = current_values;
   }
 
-  void report(std::ostream& cout) const override {
+  void report(std::ostream& cout, bool endl=true) const override {
     SolverTemplate::report(cout);
     cout << "errors " << std::scientific;
     auto& err = this->m_errors;
@@ -117,7 +117,7 @@ public:
     auto ev = eigenvalues();
     cout << std::fixed << std::setprecision(14);
     std::copy(begin(ev), end(ev), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
-    cout << std::defaultfloat << std::endl;
+    cout << std::defaultfloat; if (endl) cout << std::endl;
   }
 
   //! Set the period in iterations for resetting the D space

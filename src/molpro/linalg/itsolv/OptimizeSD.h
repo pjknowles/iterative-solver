@@ -73,12 +73,10 @@ public:
     return opt;
   }
 
-  void report(std::ostream& cout) const override {
-    SolverTemplate::report(cout);
-    cout << "value " << this->value() << ", errors " << std::scientific;
-    auto& err = this->m_errors;
-    std::copy(begin(err), end(err), std::ostream_iterator<value_type_abs>(molpro::cout, ", "));
-    cout << std::defaultfloat << std::endl;
+  void report(std::ostream& cout, bool endl=true) const override {
+    SolverTemplate::report(cout, false);
+    cout << ", value " << this->value();
+    if (endl) cout << std::endl;
   }
   std::shared_ptr<Logger> logger;
 

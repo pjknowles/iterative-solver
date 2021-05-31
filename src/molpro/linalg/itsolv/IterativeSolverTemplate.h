@@ -449,8 +449,8 @@ protected:
     return m_working_set.size();
   }
 
-  template <typename I>
-  void check_consistent_number_of_roots_and_solutions(const std::vector<I>& roots, const size_t nparams) {
+  template <typename TTT>
+  void check_consistent_number_of_roots_and_solutions(const std::vector<TTT>& roots, const size_t nparams) {
     if (roots.size() > nparams)
       throw std::runtime_error("asking for more roots than parameters");
     if (!roots.empty() && *std::max_element(roots.begin(), roots.end()) >= m_subspace_solver->solutions().size())

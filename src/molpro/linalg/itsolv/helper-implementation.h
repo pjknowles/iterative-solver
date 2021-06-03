@@ -130,7 +130,9 @@ int eigensolver_lapacke_dsyev( std::vector<value_type>& matrix, std::vector<valu
 
   // call to lapack
   status = LAPACKE_dsyev(LAPACK_ROW_MAJOR, compute_eigenvalues_eigenvectors, store_lower_triangle, order, array_copy.data(), leading_dimension, eigenvalues.data());
-  
+
+  eigenvectors = array_copy;  
+
   return status;
 }
 
@@ -143,7 +145,7 @@ int eigensolver_lapacke_dsyev( std::vector<value_type>& matrix, std::vector<valu
  */
 template <typename value_type>
 std::list<SVD<value_type>> eigensolver_lapack_dsyev( std::vector<value_type>& matrix, size_t dimension ){
-  std::vector<double> eigvecs(dimension);
+  std::vector<double> eigvecs(dimension*dimennsion);
   std::vector<double> eigvals(dimension);
 
   // call to lapack
@@ -163,7 +165,7 @@ std::list<SVD<value_type>> eigensolver_lapack_dsyev( std::vector<value_type>& ma
     auto temp_eigenproblem = eigenproblem<value_type>{};
     temp_eigenproblem.value = eigvals[i];
     for (int j=0; j<dimension; j++){
-      temp_eigenproblem.v.emplace_back(eigvecs[i,j]);
+      temp_eigenproblem.v.emplace_back(eigvecs[i+(dimension*j)]);
     }
     eigensystem.emplace_back(temp_eigenproblem);
   }

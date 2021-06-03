@@ -9,37 +9,6 @@
 namespace molpro::linalg::itsolv {
 
 template <typename value_type>
-int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, const std::vector<size_t>& candidates,
-                                 double threshold) {
-  Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> singularTester_(m, ndim, ndim);
-  auto singularTester = singularTester_.block(0, 0, n, n);
-  Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> svd(singularTester, Eigen::ComputeThinV);
-  //    molpro::cout << "propose_singularity_deletion threshold=" << threshold << std::endl;
-  //        molpro::cout << "matrix:\n" << singularTester << std::endl;
-  //        molpro::cout << "singular values:\n" << svd.singularValues().transpose() << std::endl;
-  //        molpro::cout << "V:\n" << svd.matrixV() << std::endl;
-  //        molpro::cout << "candidates:";
-  //        for (const auto& c : candidates)
-  //          molpro::cout << " " << c;
-  //        molpro::cout << std::endl;
-  auto sv = svd.singularValues();
-  std::vector<double> svv;
-  for (auto k = 0; k < n; k++)
-    svv.push_back(sv(k));
-  auto most_singular = std::min_element(svv.begin(), svv.end()) - svv.begin();
-  //        molpro::cout << "most_singular " << most_singular << std::endl;
-  if (svv[most_singular] > threshold)
-    return -1;
-  for (const auto& k : candidates) {
-    //      if (std::fabs(svd.matrixV()(k, most_singular)) > 1e-3)
-    //        molpro::cout << "taking candidate " << k << ": " << svd.matrixV()(k, most_singular) << std::endl;
-    if (std::abs(svd.matrixV()(k, most_singular)) > 1e-3)
-      return (int)k;
-  }
-  return -1;
-}
-
-template <typename value_type>
 std::list<SVD<value_type>> svd_eigen_jacobi(size_t nrows, size_t ncols, const array::Span<value_type>& m,
                                             double threshold) {
   auto mat = Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m.data(), nrows, ncols);

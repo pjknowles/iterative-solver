@@ -186,21 +186,27 @@ std::list<eigenproblem<value_type>> eigensolver_lapack_dsyev( std::vector<value_
 #endif
 
 template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>
-std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold) {
+std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold,
+                                      bool hermitian) {
   assert(m.size() == nrows * ncols);
   if (m.empty())
     return {};
-#if defined HAVE_CBLAS
-  if (nrows > 16)
-    return svd_lapacke_dgesdd<value_type>(nrows, ncols, m, threshold);
-  return svd_lapacke_dgesvd<value_type>(nrows, ncols, m, threshold);
-#endif
-  return svd_eigen_jacobi<value_type>(nrows, ncols, m, threshold);
-  // return svd_eigen_bdcsvd<value_type>(nrows, ncols, m, threshold);
+  if (hermitian) {
+    assert(nrows == ncols);
+    // TODO implementation
+  } else {
+    //#if defined HAVE_LAPACKE
+    //    if (nrows > 16)
+    //      return svd_lapacke_dgesdd<value_type>(nrows, ncols, m, threshold);
+    //    return svd_lapacke_dgesvd<value_type>(nrows, ncols, m, threshold);
+    //#endif
+    return svd_eigen_jacobi<value_type>(nrows, ncols, m, threshold);
+    // return svd_eigen_bdcsvd<value_type>(nrows, ncols, m, threshold);
+  }
 }
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>
-std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold) {
+std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold, bool hermitian) {
   assert(false); // Complex not implemented here
   return {};
 }

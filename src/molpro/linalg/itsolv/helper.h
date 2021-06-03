@@ -14,9 +14,6 @@ struct is_complex : std::false_type {};
 template <typename T>
 struct is_complex<std::complex<T>> : std::true_type {};
 
-template <typename value_type>
-int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, const std::vector<size_t>& candidates,
-                                 double threshold);
 
 //! Stores a singular value and corresponding left and right singular vectors
 template <typename T>
@@ -76,9 +73,6 @@ void solve_DIIS(std::vector<value_type>& solution, const std::vector<value_type>
 /*
  * Explicit instantiation of double type
  */
-extern template int propose_singularity_deletion<double>(size_t n, size_t ndim, const double* m,
-                                                         const std::vector<size_t>& candidates, double threshold);
-
 extern template void printMatrix<double>(const std::vector<double>&, size_t rows, size_t cols, std::string title,
                                          std::ostream& s);
 
@@ -111,11 +105,6 @@ extern template void solve_DIIS<double>(std::vector<double>& solution, const std
 /*
  * Explicit instantiation of std::complex<double> type
  */
-extern template int propose_singularity_deletion<std::complex<double>>(size_t n, size_t ndim,
-                                                                       const std::complex<double>* m,
-                                                                       const std::vector<size_t>& candidates,
-                                                                       double threshold);
-
 extern template void printMatrix<std::complex<double>>(const std::vector<std::complex<double>>&, size_t rows,
                                                        size_t cols, std::string title, std::ostream& s);
 

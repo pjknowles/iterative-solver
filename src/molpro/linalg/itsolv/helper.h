@@ -27,14 +27,6 @@ struct SVD {
   std::vector<value_type> v; //!< right singular vector
 };
 
-//! Equivalent to SVD but for eigenproblems
-template <typename value_type>
-struct eigenproblem {
-  value_type value;
-  std::vector<value_type> v;
-  std::vector<value_type>u = v; // so eigenproblem can be used as a drop-in replacement for SVD
-};
-
 /*!
  * @brief Performs singular value decomposition and returns SVD objects for singular values less than threshold, sorted
  * in ascending order

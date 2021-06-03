@@ -133,6 +133,56 @@ std::list<SVD<value_type>> svd_lapacke_dgesvd(size_t nrows, size_t ncols, const 
   }
   return svd_system;
 }
+
+template <typename value_type>
+int eigensolver_lapacke_dsyev( std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues, size_t dimension){   
+  // magic letters
+  static const char compute_eigenvalues = 'N';
+  static const char compute_eigenvalues_eigenvectors = 'V';
+  static const char store_upper_triangle = 'U';
+  static const char store_lower_triangle = 'L';
+
+  // copy input matrix (lapack overwrites)
+  std::vector<value_type> array_copy;
+  array_copy.resize(dimension*dimension);
+  std::copy (matrix.begin(), matrix.end(), array_copy.begin());
+
+  // set lapack vars
+  lapack_int status;
+  lapack_int leading_dimension = dimension;
+  lapack_int order = dimension;
+
+  // call to lapack
+  status = LAPACKE_dsyev(LAPACK_ROW_MAJOR, compute_eigenvalues_eigenvectors, store_lower_triangle, order, array_copy.data(), leading_dimension, eigenvalues.data());
+  
+  return status;
+}
+
+template <typename value_type>
+std::list<eigenproblem<value_type>> eigensolver_lapack_dsyev( std::vector<value_type>& matrix, size_t dimension ){
+  std::vector<double> eigvecs(dimension);
+  std::vector<double> eigvals(dimension);
+
+  // call to lapack
+  int success = eigensolver_lapacke_dsyev(matrix, eigvecs, eigvals, dimension);
+  // TODO: should raise an exception if this !=0
+
+  auto eigensystem = std::list<eigenproblem<value_type>>{};
+
+  // populate eigensystem
+  for (int i=0; i<dimension; i++){
+    auto temp_eigenproblem = eigenproblem<value_type>{};
+    temp_eigenproblem.value = eigvals[i];
+    for (int j=0; j<dimension; j++){
+      temp_eigenproblem.v.emplace_back(eigvecs[i,j]);
+    }
+    eigensystem.emplace_back(temp_eigenproblem);
+  }
+
+  return eigensystem;
+
+}
+
 #endif
 
 template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>

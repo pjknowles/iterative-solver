@@ -8,7 +8,8 @@ template void printMatrix<value_type>(const std::vector<value_type>&, size_t row
                                       std::ostream& s);
 
 template std::list<SVD<value_type>> svd_system<value_type>(size_t nrows, size_t ncols, const array::Span<value_type>& m,
-                                                           double threshold, bool hermitian = false);
+                                                           double threshold, bool hermitian = false,
+                                                           bool reduce_to_rank = false);
 
 template void eigenproblem<value_type>(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                                        const std::vector<value_type>& matrix, const std::vector<value_type>& metric,

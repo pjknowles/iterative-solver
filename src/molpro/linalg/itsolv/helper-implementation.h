@@ -17,8 +17,8 @@ std::list<SVD<value_type>> svd_eigen_jacobi(size_t nrows, size_t ncols, const ar
   auto svd_system = std::list<SVD<value_type>>{};
   auto sv = svd.singularValues();
   for (int i = int(ncols) - 1; i >= 0; --i) {
-    if (std::abs(sv(i)) < threshold) {
-      auto t = SVD<value_type>{};
+    if (std::abs(sv(i)) < threshold) { // This seems to discard values ABOVE the threshold, not below it - a bug?
+      auto t = SVD<value_type>{}; // it's not scaling this threshold relative to the max singular value. also a bug?
       t.value = sv(i);
       t.v.reserve(ncols);
       for (size_t j = 0; j < ncols; ++j) {
@@ -102,16 +102,21 @@ std::list<SVD<value_type>> svd_lapacke_dgesvd(size_t nrows, size_t ncols, const 
   }
   return svd_system;
 }
+
+#endif
+
 /**
  * A wrapper function for lapacke_dsyev (linear eigensystem solver) from the lapack C interface (lapacke.h).
  * @param[in] matrix the input matrix (will not be altered!). Must be square. Must be dimension*dimension elements long.
  * @param[out] eigenvectors the matrix of eigenvectors, row major ordering. Must be square and the same size as matrix.
  * @param[out] eigenvalues a list of eigenvalues. Must be the length specified by the 'dimension' parameter. 
  * @param[in] dimension length of one axis of the matrix.
- * \returns status. If 0, successful exit. If -i, the ith argument had an illegal value. If i, the algorithm failed to converge.
+ * \returns status. If 0, successful exit. If -i, the ith argument had an illegal value. If i, the algorithm failed to
+ * converge.
  */
 template <typename value_type>
-int eigensolver_lapacke_dsyev( std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues, size_t dimension){   
+int eigensolver_lapacke_dsyev( std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
+                              std::vector<value_type>& eigenvalues, size_t dimension){   
   // magic letters
   static const char compute_eigenvalues = 'N';
   static const char compute_eigenvalues_eigenvectors = 'V';
@@ -129,7 +134,8 @@ int eigensolver_lapacke_dsyev( std::vector<value_type>& matrix, std::vector<valu
   lapack_int order = dimension;
 
   // call to lapack
-  status = LAPACKE_dsyev(LAPACK_ROW_MAJOR, compute_eigenvalues_eigenvectors, store_lower_triangle, order, array_copy.data(), leading_dimension, eigenvalues.data());
+  status = LAPACKE_dsyev(LAPACK_ROW_MAJOR, compute_eigenvalues_eigenvectors, store_lower_triangle, order,
+                          array_copy.data(), leading_dimension, eigenvalues.data());
 
   eigenvectors = array_copy;  
 
@@ -144,25 +150,25 @@ int eigensolver_lapacke_dsyev( std::vector<value_type>& matrix, std::vector<valu
  * matrix, these are equivalent to single values, and S/D (which are both the same).
  */
 template <typename value_type>
-std::list<SVD<value_type>> eigensolver_lapack_dsyev( std::vector<value_type>& matrix, size_t dimension ){
-  std::vector<double> eigvecs(dimension*dimennsion);
+std::list<SVD<value_type>> eigensolver_lapack_dsyev(size_t dimension, std::vector<value_type>& matrix){
+  std::vector<double> eigvecs(dimension*dimension);
   std::vector<double> eigvals(dimension);
 
   // call to lapack
   int success = eigensolver_lapacke_dsyev(matrix, eigvecs, eigvals, dimension);
   if (success < 0){
-    throw std::invalid_argument("Invalid argument of eigensolver_lapack_dsyev: " + success);
+    throw std::invalid_argument("Invalid argument of eigensolver_lapack_dsyev: ");
   }
   if (success > 0){
-    throw std::runtime_error("Lapacke_dsyev (eigensolver) failed to converge. " + success
-    " elements of an intermediate tridiagonal form did not converge to zero.")
+    throw std::runtime_error("Lapacke_dsyev (eigensolver) failed to converge. "
+    " elements of an intermediate tridiagonal form did not converge to zero.");
   }
 
   auto eigensystem = std::list<SVD<value_type>>{};
 
   // populate eigensystem
-  for (int i=0; i<dimension; i++){
-    auto temp_eigenproblem = eigenproblem<value_type>{};
+  for (int i=dimension-1; i>=0; i--){ // note: flipping this axis gives parity with results of eigen::jacobiSVD
+    auto temp_eigenproblem = SVD<value_type>{};
     temp_eigenproblem.value = eigvals[i];
     for (int j=0; j<dimension; j++){
       temp_eigenproblem.v.emplace_back(eigvecs[i+(dimension*j)]);
@@ -174,30 +180,70 @@ std::list<SVD<value_type>> eigensolver_lapack_dsyev( std::vector<value_type>& ma
 
 }
 
-#endif
+template <typename value_type>
+std::list<SVD<value_type>> eigensolver_lapack_dsyev(size_t dimension, const molpro::linalg::array::span::Span<value_type>& matrix){
+  // TODO: this should be the other way around, eigensolver_lapack_dsyev should take a span by default and this should
+  // wrap it with a vector
+  std::vector<value_type> v;
+  v.insert(v.begin(), matrix.begin(), matrix.end());
+  return eigensolver_lapack_dsyev(dimension, v);
+}
+
+template <typename value_type>
+size_t get_rank(std::list<SVD<value_type>> svd_system, value_type threshold) {
+  // compute max
+  value_type max_value = 0;
+  std::list<SVD<double>>::iterator it;
+  for (it = svd_system.begin(); it != svd_system.end(); it++){
+    if (it->value > max_value){
+      max_value = it->value;
+    }
+  }
+  // scale threshold
+  value_type threshold_scaled = threshold * max_value;
+
+  size_t rank;
+  // get rank
+  for (it = svd_system.begin(); it != svd_system.end(); it++){
+    if (it->value > threshold_scaled){
+      rank += 1;
+    }
+  }
+  return rank;
+}
 
 template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>
 std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold,
-                                      bool hermitian) {
+                                      bool hermitian, bool reduce_to_rank) {
+  std::list<SVD<value_type>> svds;
   assert(m.size() == nrows * ncols);
   if (m.empty())
     return {};
   if (hermitian) {
     assert(nrows == ncols);
-    // TODO implementation
+    svds = eigensolver_lapack_dsyev(nrows, m);
   } else {
     //#if defined HAVE_LAPACKE
     //    if (nrows > 16)
     //      return svd_lapacke_dgesdd<value_type>(nrows, ncols, m, threshold);
     //    return svd_lapacke_dgesvd<value_type>(nrows, ncols, m, threshold);
     //#endif
-    return svd_eigen_jacobi<value_type>(nrows, ncols, m, threshold);
+    svds = svd_eigen_jacobi<value_type>(nrows, ncols, m, threshold);
     // return svd_eigen_bdcsvd<value_type>(nrows, ncols, m, threshold);
   }
+
+  // reduce to rank
+  if (reduce_to_rank){
+    size_t rank = get_rank(svds, threshold);
+    for (int i = ncols; i>rank; i--){
+      svds.pop_back();
+    }
+  }
+  return svds;
 }
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>
-std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold, bool hermitian) {
+std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold, bool hermitian, bool reduce_to_rank) {
   assert(false); // Complex not implemented here
   return {};
 }

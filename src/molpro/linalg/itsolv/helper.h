@@ -35,10 +35,10 @@ struct SVD {
  */
 template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t> = nullptr>
 std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold,
-                                      bool hermitian = false);
+                                      bool hermitian = false, bool reduce_to_rank = false);
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int> = 0>
 std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold,
-                                      bool hermitian = false);
+                                      bool hermitian = false, bool reduce_to_rank = false);
 
 template <typename value_type>
 void printMatrix(const std::vector<value_type>&, size_t rows, size_t cols, std::string title = "",
@@ -77,7 +77,7 @@ extern template void printMatrix<double>(const std::vector<double>&, size_t rows
                                          std::ostream& s);
 
 extern template std::list<SVD<double>> svd_system(size_t nrows, size_t ncols, const array::Span<double>& m,
-                                                  double threshold, bool hermitian);
+                                                  double threshold, bool hermitian, bool reduce_to_rank = false);
 
 extern template void eigenproblem<double>(std::vector<double>& eigenvectors, std::vector<double>& eigenvalues,
                                           const std::vector<double>& matrix, const std::vector<double>& metric,
@@ -110,7 +110,8 @@ extern template void printMatrix<std::complex<double>>(const std::vector<std::co
 
 extern template std::list<SVD<std::complex<double>>> svd_system(size_t nrows, size_t ncols,
                                                                 const array::Span<std::complex<double>>& m,
-                                                                double threshold, bool hermitian = false);
+                                                                double threshold, bool hermitian = false,
+                                                                bool reduce_to_rank = false);
 
 extern template void eigenproblem<std::complex<double>>(std::vector<std::complex<double>>& eigenvectors,
                                                         std::vector<std::complex<double>>& eigenvalues,

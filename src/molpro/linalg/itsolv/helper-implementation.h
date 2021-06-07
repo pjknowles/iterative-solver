@@ -190,6 +190,14 @@ std::list<SVD<value_type>> eigensolver_lapack_dsyev(size_t dimension, const molp
 }
 
 template <typename value_type>
+size_t get_rank(std::vector<value_type> eigenvalues, value_type threshold){
+  value_type max = *max_element(eigenvalues.begin(), eigenvalues.end());
+  value_type threshold_scaled = threshold * max;
+  size_t count = std::count_if(eigenvalues.begin(), eigenvalues.end(),[&](auto const& val){ return val >= threshold_scaled; });
+  return count;
+}
+
+template <typename value_type>
 size_t get_rank(std::list<SVD<value_type>> svd_system, value_type threshold) {
   // compute max
   value_type max_value = 0;

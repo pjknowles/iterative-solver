@@ -56,8 +56,8 @@ public:
   //! Swap content of two Spans
   friend void swap(Span<T>& x, Span<T>& y) {
     using std::swap;
-    swap(x.m_buffer, y.m_buffer);
-    swap(x.m_size, y.m_size);
+      swap(x.m_buffer, y.m_buffer);
+      swap(x.m_size, y.m_size);
   }
 
   iterator data() { return m_buffer; }

@@ -37,7 +37,7 @@ else ()
     message(STATUS "LinearAlgebra: Eigen3::Eigen target already defined")
 endif ()
 
-foreach (t test_LinearEigensystem test_LinearEquations test_Optimize test_NonLinearEquations)
+foreach (t test_LinearEigensystem test_LinearEquations test_Optimize test_NonLinearEquations test_svd_system)
     add_executable(${t}.exe ${t}.cpp test.h SolverFactory_implementation.cpp)
     if (FORTRAN)
         target_sources(${t}.exe PRIVATE ${t}F.f90)

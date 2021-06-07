@@ -24,6 +24,22 @@ struct SVD {
   std::vector<value_type> v; //!< right singular vector
 };
 
+template <typename value_type>
+int eigensolver_lapacke_dsyev( std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
+                              std::vector<value_type>& eigenvalues, size_t dimension);
+
+template <typename value_type>
+std::list<SVD<value_type>> eigensolver_lapack_dsyev(size_t dimension, std::vector<value_type>& matrix);
+
+template <typename value_type>
+std::list<SVD<value_type>> eigensolver_lapack_dsyev(size_t dimension, const molpro::linalg::array::span::Span<value_type>& matrix);
+
+template <typename value_type>
+size_t get_rank(std::vector<value_type> eigenvalues, value_type threshold);
+
+template <typename value_type>
+size_t get_rank(std::list<SVD<value_type>> svd_system, value_type threshold);
+
 /*!
  * @brief Performs singular value decomposition and returns SVD objects for singular values less than threshold, sorted
  * in ascending order
@@ -73,6 +89,7 @@ void solve_DIIS(std::vector<value_type>& solution, const std::vector<value_type>
 /*
  * Explicit instantiation of double type
  */
+
 extern template void printMatrix<double>(const std::vector<double>&, size_t rows, size_t cols, std::string title,
                                          std::ostream& s);
 

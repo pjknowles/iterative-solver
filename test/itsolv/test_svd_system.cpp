@@ -39,6 +39,17 @@ void print_matrix( char* desc, lapack_int m, lapack_int n, double* a, lapack_int
     }
 }
 
+void print_matrix( char* desc, lapack_int m, lapack_int n, const double* a, lapack_int lda ) {
+    lapack_int i, j;
+    if (n*lda < 100){
+        printf( "\n %s\n", desc );
+        for( i = 0; i < m; i++ ) {
+                for( j = 0; j < n; j++ ) printf( " %8f", a[i*lda+j] );
+                printf( "\n" );
+        }
+    }
+}
+
 struct SVDSystem : ::testing::Test {
 
 
@@ -50,7 +61,7 @@ TEST_F(SVDSystem, compare_eigen_solvers){
     // set up test
     const size_t dimension = 5;
     double threshold = 0.5;
-    std::vector<double> m = create_test_matrix<double, dimension>();
+    const std::vector<double> m = create_test_matrix<double, dimension>();
 
     // test lapacke eigensolver
     std::vector<double> eigvecs;
@@ -99,8 +110,8 @@ TEST_F(SVDSystem, compare_eigen_solvers){
         EXPECT_NEAR(eigvals[i], svd.singularValues().reverse()[i], 0.0001 );
         EXPECT_NEAR(es.eigenvalues()[i], eigvals[i], 0.0001 );
         for (int j=0; j<dimension; j++){
-            EXPECT_NEAR(abs(eigvecs[i+(j*dimension)]), abs(svd.matrixV().rowwise().reverse()(i,j)), 0.001 );
-            EXPECT_NEAR(abs(eigvecs[i+(j*dimension)]), abs(es.eigenvectors()(i,j)), 0.001 );
+            EXPECT_NEAR(abs(eigvecs[i+(j*dimension)]), abs(svd.matrixV().rowwise().reverse()(i,j)), 0.01 );
+            EXPECT_NEAR(abs(eigvecs[i+(j*dimension)]), abs(es.eigenvectors()(i,j)), 0.01 );
         }
     }
 

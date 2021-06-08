@@ -25,7 +25,7 @@ struct SVD {
 };
 
 template <typename value_type>
-int eigensolver_lapacke_dsyev( std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
+int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
                               std::vector<value_type>& eigenvalues, size_t dimension);
 
 template <typename value_type>

@@ -115,7 +115,7 @@ std::list<SVD<value_type>> svd_lapacke_dgesvd(size_t nrows, size_t ncols, const 
  * converge.
  */
 template <typename value_type>
-int eigensolver_lapacke_dsyev( std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
+int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
                               std::vector<value_type>& eigenvalues, size_t dimension){   
   // magic letters
   static const char compute_eigenvalues = 'N';
@@ -191,6 +191,9 @@ std::list<SVD<value_type>> eigensolver_lapack_dsyev(size_t dimension, const molp
 
 template <typename value_type>
 size_t get_rank(std::vector<value_type> eigenvalues, value_type threshold){
+  if (eigenvalues.size() == 0){
+    return 0;
+  }
   value_type max = *max_element(eigenvalues.begin(), eigenvalues.end());
   value_type threshold_scaled = threshold * max;
   size_t count = std::count_if(eigenvalues.begin(), eigenvalues.end(),[&](auto const& val){ return val >= threshold_scaled; });
@@ -281,19 +284,35 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
   Eigen::MatrixXcd subspaceEigenvectors; // FIXME templating
   Eigen::VectorXcd subspaceEigenvalues;  // FIXME templating
   //   Eigen::GeneralizedEigenSolver<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
-  Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV);
-  svd.setThreshold(svdThreshold);
+
+    std::vector<double> eigvecs;
+    std::vector<double> eigvals;
+    eigvecs.resize(dimension*dimension);
+    eigvals.resize(dimension);
+    int success = eigensolver_lapacke_dsyev(metric, eigvecs, eigvals, dimension);
+    if (success != 0){
+      throw std::runtime_error("Eigensolver did not converge");
+    }
+    size_t rank = get_rank(eigvals, svdThreshold);
+    Eigen::Map<Eigen::VectorXd> singularValues(eigvals.data(), dimension);
+    Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> matrixV(
+        eigvecs.data(), dimension, dimension);
+    Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> matrixU(
+        eigvecs.data(), dimension, dimension);
+    
+  //  Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV); // could use as a fallback
+  
+  //svd.setThreshold(svdThreshold);
   //    molpro::cout << "singular values of overlap " << svd.singularValues().transpose() << std::endl;
   //   auto Hbar = svd.solve(H);
-  if (verbosity > 1 && svd.rank() < S.cols())
-    molpro::cout << "SVD rank " << svd.rank() << " in subspace of dimension " << S.cols() << std::endl;
-  if (verbosity > 2 && svd.rank() < S.cols())
-    molpro::cout << "singular values " << svd.singularValues().transpose() << std::endl;
-  auto svmh = svd.singularValues().head(svd.rank()).eval();
-  for (auto k = 0; k < svd.rank(); k++)
+  if (verbosity > 1 && rank < S.cols())
+    molpro::cout << "SVD rank " << rank << " in subspace of dimension " << S.cols() << std::endl;
+  if (verbosity > 2 && rank < S.cols())
+    molpro::cout << "singular values " << singularValues.transpose() << std::endl;
+  auto svmh = singularValues.head(rank);
+  for (auto k = 0; k < rank; k++)
     svmh(k) = 1 / std::sqrt(svmh(k));
-  auto Hbar = (svmh.asDiagonal()) * (svd.matrixU().leftCols(svd.rank()).adjoint()) * H *
-              svd.matrixV().leftCols(svd.rank()) * (svmh.asDiagonal());
+  auto Hbar = (svmh.asDiagonal()) * (matrixU.leftCols(rank).adjoint()) * H * matrixV.leftCols(rank) * (svmh.asDiagonal());
   //   molpro::cout << "S\n"<<S<<std::endl;
   //   molpro::cout << "S singular values"<<(Eigen::DiagonalMatrix<value_type, Eigen::Dynamic,
   //   Eigen::Dynamic>(svd.singularValues().head(svd.rank())))<<std::endl; molpro::cout << "S inverse singular
@@ -319,7 +338,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
         }
       }
     }
-    subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * subspaceEigenvectors;
+    subspaceEigenvectors = matrixV.leftCols(rank) * svmh.asDiagonal() * subspaceEigenvectors;
     if (hermitian) {
       //    for (int i = 0; i < subspaceEigenvectors.cols(); i++) {
       //      std::cout << "Eigenvalue " << subspaceEigenvalues(i) << std::endl;
@@ -343,7 +362,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
     molpro::cout << "Eigenvectors\n" << s.eigenvectors() << std::endl;
     throw std::runtime_error("Intel compiler does not support working with complex eigen3 entities properly");
 #endif
-    subspaceEigenvectors = svd.matrixV().leftCols(svd.rank()) * svmh.asDiagonal() * s.eigenvectors();
+    subspaceEigenvectors = matrixV.leftCols(rank) * svmh.asDiagonal() * s.eigenvectors();
 //    std::cout << "subspaceEigenvectors\n" << subspaceEigenvectors << std::endl;
   }
 

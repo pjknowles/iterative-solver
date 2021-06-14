@@ -116,7 +116,7 @@ std::list<SVD<value_type>> svd_lapacke_dgesvd(size_t nrows, size_t ncols, const 
  */
 template <typename value_type>
 int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
-                              std::vector<value_type>& eigenvalues, size_t dimension){   
+                              std::vector<value_type>& eigenvalues, const size_t dimension){   
   // magic letters
   static const char compute_eigenvalues = 'N';
   static const char compute_eigenvalues_eigenvectors = 'V';
@@ -124,9 +124,7 @@ int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vecto
   static const char store_lower_triangle = 'L';
 
   // copy input matrix (lapack overwrites)
-  std::vector<value_type> array_copy;
-  array_copy.resize(dimension*dimension);
-  std::copy (matrix.begin(), matrix.end(), array_copy.begin());
+  std::copy (matrix.begin(), matrix.end(), eigenvectors.begin());
 
   // set lapack vars
   lapack_int status;
@@ -135,9 +133,7 @@ int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vecto
 
   // call to lapack
   status = LAPACKE_dsyev(LAPACK_ROW_MAJOR, compute_eigenvalues_eigenvectors, store_lower_triangle, order,
-                          array_copy.data(), leading_dimension, eigenvalues.data());
-
-  eigenvectors = array_copy;  
+                          eigenvectors.data(), leading_dimension, eigenvalues.data());
 
   return status;
 }
@@ -146,18 +142,18 @@ int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vecto
  * A wrapper function for lapacke_dsyev (linear eigensystem solver) from the lapack C interface (lapacke.h).
  * @param[in] matrix the input matrix (will not be altered!). Must be square. Must be dimension*dimension elements long.
  * @param[in] dimension length of one axis of the matrix.
- * \returns a list of instances of SVD, a struct containing one eigenvalue and one eigenvector. For a real, symmetric
- * matrix, these are equivalent to single values, and S/D (which are both the same).
+ * \returns a std::list of instances of SVD, a struct containing one eigenvalue and one eigenvector. For a real,
+ * symmetric matrix, these are equivalent to singular values, and S/D (which are both the same).
  */
 template <typename value_type>
-std::list<SVD<value_type>> eigensolver_lapack_dsyev(size_t dimension, std::vector<value_type>& matrix){
+std::list<SVD<value_type>> eigensolver_lapacke_dsyev(size_t dimension, std::vector<value_type>& matrix){
   std::vector<double> eigvecs(dimension*dimension);
   std::vector<double> eigvals(dimension);
 
   // call to lapack
   int success = eigensolver_lapacke_dsyev(matrix, eigvecs, eigvals, dimension);
   if (success < 0){
-    throw std::invalid_argument("Invalid argument of eigensolver_lapack_dsyev: ");
+    throw std::invalid_argument("Invalid argument of eigensolver_lapacke_dsyev: ");
   }
   if (success > 0){
     throw std::runtime_error("Lapacke_dsyev (eigensolver) failed to converge. "
@@ -180,15 +176,30 @@ std::list<SVD<value_type>> eigensolver_lapack_dsyev(size_t dimension, std::vecto
 
 }
 
+/**
+ * A wrapper function for lapacke_dsyev (linear eigensystem solver) from the lapack C interface (lapacke.h).
+ * @param[in] dimension length of one axis of the matrix.
+ * @param[in] matrix a span wrapping some data structure containing the elements of the matrix. Should be
+ * dimension*dimension in length.
+ * \returns a std::list of instances of SVD, a struct containing one eigenvalue and one eigenvector. For a real,
+ * symmetric matrix, these are equivalent to singular values, and S/D (which are both the same).
+ */
 template <typename value_type>
-std::list<SVD<value_type>> eigensolver_lapack_dsyev(size_t dimension, const molpro::linalg::array::span::Span<value_type>& matrix){
-  // TODO: this should be the other way around, eigensolver_lapack_dsyev should take a span by default and this should
+std::list<SVD<value_type>> eigensolver_lapacke_dsyev(size_t dimension, const molpro::linalg::array::span::Span<value_type>& matrix){
+  // TODO: this should be the other way around, eigensolver_lapacke_dsyev should take a span by default and this should
   // wrap it with a vector
   std::vector<value_type> v;
   v.insert(v.begin(), matrix.begin(), matrix.end());
-  return eigensolver_lapack_dsyev(dimension, v);
+  return eigensolver_lapacke_dsyev(dimension, v);
 }
 
+/**
+ * Get the rank of some matrix, given a threshold.
+ * @param[in] eigenvalues the matrix, as a vector.
+ * @param[in] threshold the threshold. Note that this is the normalised threshold, a value between 0 and 1, relative to
+ * the largest element in the matrix.
+ * \returns the rank. For an empty matrix, returns 0.
+ */
 template <typename value_type>
 size_t get_rank(std::vector<value_type> eigenvalues, value_type threshold){
   if (eigenvalues.size() == 0){
@@ -200,6 +211,13 @@ size_t get_rank(std::vector<value_type> eigenvalues, value_type threshold){
   return count;
 }
 
+/**
+ * Get the rank of some matrix, given a threshold.
+ * @param[in] svd_system a std::list containing SVD objects, such as those created by itsolv::svd_system
+ * @param[in] threshold the threshold. Note that this is the normalised threshold, a value between 0 and 1, relative to
+ * the largest element in the matrix.
+ * \returns the rank. For an empty matrix, returns 0.
+ */
 template <typename value_type>
 size_t get_rank(std::list<SVD<value_type>> svd_system, value_type threshold) {
   // compute max
@@ -232,7 +250,7 @@ std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::S
     return {};
   if (hermitian) {
     assert(nrows == ncols);
-    svds = eigensolver_lapack_dsyev(nrows, m);
+    svds = eigensolver_lapacke_dsyev(nrows, m);
   } else {
     //#if defined HAVE_LAPACKE
     //    if (nrows > 16)
@@ -283,24 +301,38 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
   Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> S(metric.data(), dimension, dimension);
   Eigen::MatrixXcd subspaceEigenvectors; // FIXME templating
   Eigen::VectorXcd subspaceEigenvalues;  // FIXME templating
-  //   Eigen::GeneralizedEigenSolver<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
+  //Eigen::GeneralizedEigenSolver<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> s(H, S);
 
-    std::vector<double> eigvecs;
-    std::vector<double> eigvals;
+  // initialisation of variables
+  Eigen::VectorXd singularValues;
+  Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrixV;
+  Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrixU;
+  std::vector<double> eigvecs;
+  std::vector<double> eigvals;
+  size_t rank;
+
+  // if the matrix is hermitian, we can use lapacke_dsyev
+  if(hermitian){
     eigvecs.resize(dimension*dimension);
     eigvals.resize(dimension);
     int success = eigensolver_lapacke_dsyev(metric, eigvecs, eigvals, dimension);
     if (success != 0){
       throw std::runtime_error("Eigensolver did not converge");
     }
-    size_t rank = get_rank(eigvals, svdThreshold);
-    Eigen::Map<Eigen::VectorXd> singularValues(eigvals.data(), dimension);
-    Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> matrixV(
-        eigvecs.data(), dimension, dimension);
-    Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> matrixU(
-        eigvecs.data(), dimension, dimension);
-    
-  //  Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV); // could use as a fallback
+    singularValues = Eigen::Map<Eigen::VectorXd>(eigvals.data(), dimension);
+    matrixV = Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(eigvecs.data(),
+              dimension, dimension);
+    matrixU = Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(eigvecs.data(),
+              dimension, dimension);
+    rank = get_rank(eigvals, svdThreshold);
+  }
+  else{
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    singularValues = svd.singularValues();
+    matrixV = svd.matrixV();
+    matrixU = svd.matrixU();
+    rank = svd.rank();
+  }
   
   //svd.setThreshold(svdThreshold);
   //    molpro::cout << "singular values of overlap " << svd.singularValues().transpose() << std::endl;
@@ -339,20 +371,6 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
       }
     }
     subspaceEigenvectors = matrixV.leftCols(rank) * svmh.asDiagonal() * subspaceEigenvectors;
-    if (hermitian) {
-      //    for (int i = 0; i < subspaceEigenvectors.cols(); i++) {
-      //      std::cout << "Eigenvalue " << subspaceEigenvalues(i) << std::endl;
-      //      std::cout << "Eigenvector " << subspaceEigenvectors.col(i).transpose() << std::endl;
-      //    }
-      subspaceEigenvectors = subspaceEigenvectors.real();
-      for (int j = 0; j < subspaceEigenvectors.cols(); j++) {
-        subspaceEigenvectors.col(j) /= std::sqrt(subspaceEigenvectors.col(j).dot(S * subspaceEigenvectors.col(j)));
-        for (int k = j + 1; k < subspaceEigenvectors.cols(); k++) {
-          subspaceEigenvectors.col(k) -=
-              subspaceEigenvectors.col(j) * subspaceEigenvectors.col(j).dot(S * subspaceEigenvectors.col(k));
-        }
-      }
-    }
   } else { // complex eigenvectors
 //    molpro::cout << "eigenvalues not near-enough real"<<std::endl;
 //    molpro::cout << "s.eigenvalues() "<< s.eigenvalues().transpose()<<std::endl;

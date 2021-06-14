@@ -26,13 +26,13 @@ struct SVD {
 
 template <typename value_type>
 int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
-                              std::vector<value_type>& eigenvalues, size_t dimension);
+                              std::vector<value_type>& eigenvalues, const size_t dimension);
 
 template <typename value_type>
-std::list<SVD<value_type>> eigensolver_lapack_dsyev(size_t dimension, std::vector<value_type>& matrix);
+std::list<SVD<value_type>> eigensolver_lapacke_dsyev(size_t dimension, std::vector<value_type>& matrix);
 
 template <typename value_type>
-std::list<SVD<value_type>> eigensolver_lapack_dsyev(size_t dimension, const molpro::linalg::array::span::Span<value_type>& matrix);
+std::list<SVD<value_type>> eigensolver_lapacke_dsyev(size_t dimension, const molpro::linalg::array::span::Span<value_type>& matrix);
 
 template <typename value_type>
 size_t get_rank(std::vector<value_type> eigenvalues, value_type threshold);

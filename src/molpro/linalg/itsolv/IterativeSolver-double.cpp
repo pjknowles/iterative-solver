@@ -23,4 +23,7 @@ template void solve_LinearEquations<value_type>(std::vector<value_type>& solutio
 
 template void solve_DIIS<value_type>(std::vector<value_type>& solution, const std::vector<value_type>& matrix,
                                      size_t dimension, double svdThreshold, int verbosity);
+template
+int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
+                               std::vector<value_type>& eigenvalues, size_t dimension);
 } // namespace molpro::linalg::itsolv

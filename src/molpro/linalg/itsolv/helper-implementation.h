@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <molpro/lapacke.h>
 #include <molpro/linalg/itsolv/helper.h>
+#include <iomanip>
 
 namespace molpro::linalg::itsolv {
 
@@ -116,12 +117,19 @@ std::list<SVD<value_type>> svd_lapacke_dgesvd(size_t nrows, size_t ncols, const 
  */
 template <typename value_type>
 int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
-                              std::vector<value_type>& eigenvalues, const size_t dimension){   
+                              std::vector<value_type>& eigenvalues, const size_t dimension){
+
+  if (eigenvectors.size() != matrix.size()){
+    throw std::runtime_error("Matrix of eigenvectors and input matrix are not the same size!");
+  }
+
   // magic letters
   static const char compute_eigenvalues = 'N';
   static const char compute_eigenvalues_eigenvectors = 'V';
   static const char store_upper_triangle = 'U';
   static const char store_lower_triangle = 'L';
+
+  // todo: assert that matrix and eigenvectors
 
   // copy input matrix (lapack overwrites)
   std::copy (matrix.begin(), matrix.end(), eigenvectors.begin());
@@ -132,7 +140,7 @@ int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vecto
   lapack_int order = dimension;
 
   // call to lapack
-  status = LAPACKE_dsyev(LAPACK_ROW_MAJOR, compute_eigenvalues_eigenvectors, store_lower_triangle, order,
+  status = LAPACKE_dsyev(LAPACK_COL_MAJOR, compute_eigenvalues_eigenvectors, store_lower_triangle, order,
                           eigenvectors.data(), leading_dimension, eigenvalues.data());
 
   return status;
@@ -320,9 +328,9 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
       throw std::runtime_error("Eigensolver did not converge");
     }
     singularValues = Eigen::Map<Eigen::VectorXd>(eigvals.data(), dimension);
-    matrixV = Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(eigvecs.data(),
+    matrixV = Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>>(eigvecs.data(),
               dimension, dimension);
-    matrixU = Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(eigvecs.data(),
+    matrixU = Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>>(eigvecs.data(),
               dimension, dimension);
     rank = get_rank(eigvals, svdThreshold);
   }
@@ -345,6 +353,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
   for (auto k = 0; k < rank; k++)
     svmh(k) = 1 / std::sqrt(svmh(k));
   auto Hbar = (svmh.asDiagonal()) * (matrixU.leftCols(rank).adjoint()) * H * matrixV.leftCols(rank) * (svmh.asDiagonal());
+  //std::cout << "\n\nHbar: \n" << Hbar << "\n\n";
   //   molpro::cout << "S\n"<<S<<std::endl;
   //   molpro::cout << "S singular values"<<(Eigen::DiagonalMatrix<value_type, Eigen::Dynamic,
   //   Eigen::Dynamic>(svd.singularValues().head(svd.rank())))<<std::endl; molpro::cout << "S inverse singular
@@ -484,6 +493,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
       subspaceEigenvectors.real();
   Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, 1>> ev(eigenvalues.data(), Hbar.cols());
   ev = subspaceEigenvalues.real();
+
   //    } else {
   //      Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>>(m_evec_xx.data(), dimension, dimension)
   //      =

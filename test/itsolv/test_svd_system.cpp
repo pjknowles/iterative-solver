@@ -91,13 +91,13 @@ TEST_F(SVDSystem, compare_eigen_solvers){
         EXPECT_NEAR(eigvals[i], svd.singularValues().reverse()[i], 0.0001 );
         EXPECT_NEAR(es.eigenvalues()[i], eigvals[i], 0.0001 );
         for (int j=0; j<dimension; j++){
-            EXPECT_NEAR(abs(eigvecs[i+(j*dimension)]), abs(svd.matrixV().rowwise().reverse()(i,j)), 0.01 );
-            EXPECT_NEAR(abs(eigvecs[i+(j*dimension)]), abs(es.eigenvectors()(i,j)), 0.01 );
+            EXPECT_NEAR(abs(eigvecs[i+(j*dimension)]), abs(svd.matrixV().rowwise().reverse()(i,j)), 0.0001 );
+            EXPECT_NEAR(abs(eigvecs[i+(j*dimension)]), abs(es.eigenvectors()(i,j)), 0.0001 );
         }
     }
 
     // print to console if test fails
-    if (HasFatalFailure()){
+    if (true){
         char mstr[2] = "m";
 
         std::cout << "Solution (found using itsolv::eigensolver_lapacke_dsyev) \n";
@@ -110,11 +110,11 @@ TEST_F(SVDSystem, compare_eigen_solvers){
 
         std::cout << "\n\nSolution (found using Eigen:SelfAdjointEigenSolver): \n";
         std::cout << "Eigenvalues:" << std::endl << es.eigenvalues().transpose() << std::endl << std::endl;
-        std::cout << "The matrix of eigenvectors, V:" << std::endl << es.eigenvectors() << std::endl << std::endl;
+        std::cout << "The matrix of eigenvectors, V:" << std::endl << es.eigenvectors().transpose() << std::endl << std::endl;
 
         std::cout << "Comparison with SVD: \n";
-        std::cout << "singular values (reversed order)" << svd.singularValues().transpose().reverse() << std::endl;
-        std::cout << "decomposed matrix: (reversed columns) \n" << svd.matrixV().rowwise().reverse() << std::endl;
+        std::cout << "singular values (reversed order)\n" << svd.singularValues().transpose().reverse() << std::endl;
+        std::cout << "\ndecomposed matrix: (reversed columns) \n" << svd.matrixV().rowwise().reverse().transpose() << std::endl;
         std::cout << "SVD rank " << svd.rank() << " in subspace of dimension " << S.cols() << std::endl;
     }
 

@@ -7,6 +7,12 @@ namespace molpro::linalg::itsolv {
 template void printMatrix<value_type>(const std::vector<value_type>&, size_t rows, size_t cols, std::string title,
                                       std::ostream& s);
 
+template
+int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
+                               std::vector<value_type>& eigenvalues, size_t dimension);
+
+template size_t get_rank<value_type>(std::vector<value_type> eigenvalues, value_type threshold);
+
 template std::list<SVD<value_type>> svd_system<value_type>(size_t nrows, size_t ncols, const array::Span<value_type>& m,
                                                            double threshold, bool hermitian = false,
                                                            bool reduce_to_rank = false);
@@ -23,7 +29,5 @@ template void solve_LinearEquations<value_type>(std::vector<value_type>& solutio
 
 template void solve_DIIS<value_type>(std::vector<value_type>& solution, const std::vector<value_type>& matrix,
                                      size_t dimension, double svdThreshold, int verbosity);
-template
-int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
-                               std::vector<value_type>& eigenvalues, size_t dimension);
+
 } // namespace molpro::linalg::itsolv

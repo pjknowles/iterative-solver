@@ -66,6 +66,7 @@ TEST_F(SVDSystem, compare_eigen_solvers){
     const size_t dimension = 5;
     double threshold = 0.5;
     const std::vector<double> m = create_test_matrix<double, dimension>();
+    int failures = 0;
 
     // test lapacke eigensolver
     std::vector<double> eigvecs;
@@ -94,10 +95,12 @@ TEST_F(SVDSystem, compare_eigen_solvers){
             EXPECT_NEAR(abs(eigvecs[i+(j*dimension)]), abs(svd.matrixV().rowwise().reverse()(i,j)), 0.0001 );
             EXPECT_NEAR(abs(eigvecs[i+(j*dimension)]), abs(es.eigenvectors()(i,j)), 0.0001 );
         }
-    }
+    } // TODO: FIX THE INDEXES HERE - TO BE THE SAME AS THEY ARE BELOW
+
+    failures += ::testing::Test::HasFailure();
 
     // print to console if test fails
-    if (true){
+    if (failures){
         char mstr[2] = "m";
 
         std::cout << "Solution (found using itsolv::eigensolver_lapacke_dsyev) \n";

@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <molpro/lapacke.h>
 #include <molpro/linalg/itsolv/helper.h>
-#include <iomanip>
 
 namespace molpro::linalg::itsolv {
 

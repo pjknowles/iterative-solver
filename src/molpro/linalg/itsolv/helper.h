@@ -14,9 +14,6 @@ struct is_complex : std::false_type {};
 template <typename T>
 struct is_complex<std::complex<T>> : std::true_type {};
 
-template <typename value_type>
-int propose_singularity_deletion(size_t n, size_t ndim, const value_type* m, const std::vector<size_t>& candidates,
-                                 double threshold);
 
 //! Stores a singular value and corresponding left and right singular vectors
 template <typename T>
@@ -26,6 +23,19 @@ struct SVD {
   std::vector<value_type> u; //!< left singular vector
   std::vector<value_type> v; //!< right singular vector
 };
+
+int eigensolver_lapacke_dsyev( const std::vector<double>& matrix, std::vector<double>& eigenvectors,
+                              std::vector<double>& eigenvalues, const size_t dimension);
+
+std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension, std::vector<double>& matrix);
+
+std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension, const molpro::linalg::array::span::Span<double>& matrix);
+
+template <typename value_type>
+size_t get_rank(std::vector<value_type> eigenvalues, value_type threshold);
+
+template <typename value_type>
+size_t get_rank(std::list<SVD<value_type>> svd_system, value_type threshold);
 
 /*!
  * @brief Performs singular value decomposition and returns SVD objects for singular values less than threshold, sorted
@@ -37,9 +47,11 @@ struct SVD {
  * @param threshold singular values less than threshold will be returned
  */
 template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t> = nullptr>
-std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold);
+std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold,
+                                      bool hermitian = false, bool reduce_to_rank = false);
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int> = 0>
-std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold);
+std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::Span<value_type>& m, double threshold,
+                                      bool hermitian = false, bool reduce_to_rank = false);
 
 template <typename value_type>
 void printMatrix(const std::vector<value_type>&, size_t rows, size_t cols, std::string title = "",
@@ -74,14 +86,12 @@ void solve_DIIS(std::vector<value_type>& solution, const std::vector<value_type>
 /*
  * Explicit instantiation of double type
  */
-extern template int propose_singularity_deletion<double>(size_t n, size_t ndim, const double* m,
-                                                         const std::vector<size_t>& candidates, double threshold);
 
 extern template void printMatrix<double>(const std::vector<double>&, size_t rows, size_t cols, std::string title,
                                          std::ostream& s);
 
 extern template std::list<SVD<double>> svd_system(size_t nrows, size_t ncols, const array::Span<double>& m,
-                                                  double threshold);
+                                                  double threshold, bool hermitian, bool reduce_to_rank = false);
 
 extern template void eigenproblem<double>(std::vector<double>& eigenvectors, std::vector<double>& eigenvalues,
                                           const std::vector<double>& matrix, const std::vector<double>& metric,
@@ -109,16 +119,13 @@ extern template void solve_DIIS<double>(std::vector<double>& solution, const std
 /*
  * Explicit instantiation of std::complex<double> type
  */
-extern template int propose_singularity_deletion<std::complex<double>>(size_t n, size_t ndim,
-                                                                       const std::complex<double>* m,
-                                                                       const std::vector<size_t>& candidates,
-                                                                       double threshold);
-
 extern template void printMatrix<std::complex<double>>(const std::vector<std::complex<double>>&, size_t rows,
                                                        size_t cols, std::string title, std::ostream& s);
 
-extern template std::list<SVD<std::complex<double>>>
-svd_system(size_t nrows, size_t ncols, const array::Span<std::complex<double>>& m, double threshold);
+extern template std::list<SVD<std::complex<double>>> svd_system(size_t nrows, size_t ncols,
+                                                                const array::Span<std::complex<double>>& m,
+                                                                double threshold, bool hermitian = false,
+                                                                bool reduce_to_rank = false);
 
 extern template void eigenproblem<std::complex<double>>(std::vector<std::complex<double>>& eigenvectors,
                                                         std::vector<std::complex<double>>& eigenvalues,

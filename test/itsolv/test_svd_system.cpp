@@ -73,7 +73,7 @@ TEST_F(SVDSystem, compare_eigen_solvers){
     std::vector<double> eigvals;
     eigvecs.resize(dimension*dimension);
     eigvals.resize(dimension);
-    int success = molpro::linalg::itsolv::eigensolver_lapacke_dsyev<double>(m, eigvecs, eigvals, dimension);
+    int success = molpro::linalg::itsolv::eigensolver_lapacke_dsyev(m, eigvecs, eigvals, dimension);
     //size_t rank = molpro::linalg::itsolv::get_rank(eigvals, threshold);
     //this causes a linker error for reasons completely unbenknownst to me
     //std::cout << "Rank: " << rank << "\n";
@@ -95,7 +95,7 @@ TEST_F(SVDSystem, compare_eigen_solvers){
             EXPECT_NEAR(abs(eigvecs[i+(j*dimension)]), abs(svd.matrixV().rowwise().reverse()(i,j)), 0.0001 );
             EXPECT_NEAR(abs(eigvecs[i+(j*dimension)]), abs(es.eigenvectors()(i,j)), 0.0001 );
         }
-    } // TODO: FIX THE INDEXES HERE - TO BE THE SAME AS THEY ARE BELOW
+    }
 
     failures += ::testing::Test::HasFailure();
 

@@ -24,9 +24,8 @@ struct SVD {
   std::vector<value_type> v; //!< right singular vector
 };
 
-template <typename value_type>
-int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
-                              std::vector<value_type>& eigenvalues, const size_t dimension);
+int eigensolver_lapacke_dsyev( const std::vector<double>& matrix, std::vector<double>& eigenvectors,
+                              std::vector<double>& eigenvalues, const size_t dimension);
 
 template <typename value_type>
 std::list<SVD<value_type>> eigensolver_lapacke_dsyev(size_t dimension, std::vector<value_type>& matrix);

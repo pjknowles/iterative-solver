@@ -17,8 +17,8 @@ std::list<SVD<value_type>> svd_eigen_jacobi(size_t nrows, size_t ncols, const ar
   auto svd_system = std::list<SVD<value_type>>{};
   auto sv = svd.singularValues();
   for (int i = int(ncols) - 1; i >= 0; --i) {
-    if (std::abs(sv(i)) < threshold) { // This seems to discard values ABOVE the threshold, not below it - a bug?
-      auto t = SVD<value_type>{}; // it's not scaling this threshold relative to the max singular value. also a bug?
+    if (std::abs(sv(i)) < threshold) { // TODO: This seems to discard values ABOVE the threshold, not below it. it's
+      auto t = SVD<value_type>{}; // also not scaling this threshold relative to the max singular value - find out why
       t.value = sv(i);
       t.v.reserve(ncols);
       for (size_t j = 0; j < ncols; ++j) {
@@ -114,12 +114,16 @@ std::list<SVD<value_type>> svd_lapacke_dgesvd(size_t nrows, size_t ncols, const 
  * \returns status. If 0, successful exit. If -i, the ith argument had an illegal value. If i, the algorithm failed to
  * converge.
  */
-template <typename value_type>
-int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vector<value_type>& eigenvectors,
-                              std::vector<value_type>& eigenvalues, const size_t dimension){
+int eigensolver_lapacke_dsyev( const std::vector<double>& matrix, std::vector<double>& eigenvectors,
+                              std::vector<double>& eigenvalues, const size_t dimension){
 
+  // validate input
   if (eigenvectors.size() != matrix.size()){
     throw std::runtime_error("Matrix of eigenvectors and input matrix are not the same size!");
+  }
+
+  if (eigenvectors.size() != dimension*dimension || eigenvalues.size() != dimension){
+    throw std::runtime_error("Size of eigenvectors/eigenvlaues do not match dimension!");
   }
 
   // magic letters
@@ -127,8 +131,6 @@ int eigensolver_lapacke_dsyev( const std::vector<value_type>& matrix, std::vecto
   static const char compute_eigenvalues_eigenvectors = 'V';
   static const char store_upper_triangle = 'U';
   static const char store_lower_triangle = 'L';
-
-  // todo: assert that matrix and eigenvectors
 
   // copy input matrix (lapack overwrites)
   std::copy (matrix.begin(), matrix.end(), eigenvectors.begin());

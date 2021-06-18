@@ -154,8 +154,7 @@ int eigensolver_lapacke_dsyev( const std::vector<double>& matrix, std::vector<do
  * \returns a std::list of instances of SVD, a struct containing one eigenvalue and one eigenvector. For a real,
  * symmetric matrix, these are equivalent to singular values, and S/D (which are both the same).
  */
-template <typename value_type>
-std::list<SVD<value_type>> eigensolver_lapacke_dsyev(size_t dimension, std::vector<value_type>& matrix){
+std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension, std::vector<double>& matrix){
   std::vector<double> eigvecs(dimension*dimension);
   std::vector<double> eigvals(dimension);
 
@@ -169,11 +168,11 @@ std::list<SVD<value_type>> eigensolver_lapacke_dsyev(size_t dimension, std::vect
     " elements of an intermediate tridiagonal form did not converge to zero.");
   }
 
-  auto eigensystem = std::list<SVD<value_type>>{};
+  auto eigensystem = std::list<SVD<double>>{};
 
   // populate eigensystem
   for (int i=dimension-1; i>=0; i--){ // note: flipping this axis gives parity with results of eigen::jacobiSVD
-    auto temp_eigenproblem = SVD<value_type>{};
+    auto temp_eigenproblem = SVD<double>{};
     temp_eigenproblem.value = eigvals[i];
     for (int j=0; j<dimension; j++){
       temp_eigenproblem.v.emplace_back(eigvecs[i+(dimension*j)]);
@@ -193,11 +192,10 @@ std::list<SVD<value_type>> eigensolver_lapacke_dsyev(size_t dimension, std::vect
  * \returns a std::list of instances of SVD, a struct containing one eigenvalue and one eigenvector. For a real,
  * symmetric matrix, these are equivalent to singular values, and S/D (which are both the same).
  */
-template <typename value_type>
-std::list<SVD<value_type>> eigensolver_lapacke_dsyev(size_t dimension, const molpro::linalg::array::span::Span<value_type>& matrix){
+std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension, const molpro::linalg::array::span::Span<double>& matrix){
   // TODO: this should be the other way around, eigensolver_lapacke_dsyev should take a span by default and this should
   // wrap it with a vector
-  std::vector<value_type> v;
+  std::vector<double> v;
   v.insert(v.begin(), matrix.begin(), matrix.end());
   return eigensolver_lapacke_dsyev(dimension, v);
 }

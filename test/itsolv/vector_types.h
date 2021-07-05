@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_TEST_VECTOR_TYPES_H_
 #include <map>
 #include <vector>
+#include <cstddef>
 using scalar = double;
 using Rvector = std::vector<scalar>;
 using Qvector = std::vector<scalar>;

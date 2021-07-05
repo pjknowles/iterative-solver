@@ -60,12 +60,12 @@ void printMatrix(const std::vector<value_type>&, size_t rows, size_t cols, std::
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int> = 0>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, size_t dimension,
-                  bool hermitian, double svdThreshold, int verbosity = 0);
+                  bool hermitian, double svdThreshold, int verbosity);
 
 template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t> = nullptr>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, size_t dimension,
-                  bool hermitian, double svdThreshold, int verbosity = 0);
+                  bool hermitian, double svdThreshold, int verbosity);
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int> = 0>
 void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_type>& eigenvalues,
@@ -91,17 +91,17 @@ extern template void printMatrix<double>(const std::vector<double>&, size_t rows
                                          std::ostream& s);
 
 extern template std::list<SVD<double>> svd_system(size_t nrows, size_t ncols, const array::Span<double>& m,
-                                                  double threshold, bool hermitian, bool reduce_to_rank = false);
+                                                  double threshold, bool hermitian, bool reduce_to_rank);
 
 extern template void eigenproblem<double>(std::vector<double>& eigenvectors, std::vector<double>& eigenvalues,
                                           const std::vector<double>& matrix, const std::vector<double>& metric,
                                           const size_t dimension, bool hermitian, double svdThreshold,
-                                          int verbosity = 0);
+                                          int verbosity);
 
 extern template void eigenproblem<double>(std::vector<double>& eigenvectors, std::vector<double>& eigenvalues,
                                           const std::vector<double>& matrix, const std::vector<double>& metric,
                                           const size_t dimension, bool hermitian, double svdThreshold,
-                                          int verbosity = 0);
+                                          int verbosity);
 
 extern template void solve_LinearEquations<double>(std::vector<double>& solution, std::vector<double>& eigenvalues,
                                                    const std::vector<double>& matrix, const std::vector<double>& metric,
@@ -114,7 +114,7 @@ extern template void solve_LinearEquations<double>(std::vector<double>& solution
                                                    double augmented_hessian, double svdThreshold, int verbosity);
 
 extern template void solve_DIIS<double>(std::vector<double>& solution, const std::vector<double>& matrix,
-                                        const size_t dimension, double svdThreshold, int verbosity = 0);
+                                        const size_t dimension, double svdThreshold, int verbosity);
 
 /*
  * Explicit instantiation of std::complex<double> type
@@ -124,22 +124,22 @@ extern template void printMatrix<std::complex<double>>(const std::vector<std::co
 
 extern template std::list<SVD<std::complex<double>>> svd_system(size_t nrows, size_t ncols,
                                                                 const array::Span<std::complex<double>>& m,
-                                                                double threshold, bool hermitian = false,
-                                                                bool reduce_to_rank = false);
+                                                                double threshold, bool hermitian,
+                                                                bool reduce_to_rank);
 
 extern template void eigenproblem<std::complex<double>>(std::vector<std::complex<double>>& eigenvectors,
                                                         std::vector<std::complex<double>>& eigenvalues,
                                                         const std::vector<std::complex<double>>& matrix,
                                                         const std::vector<std::complex<double>>& metric,
                                                         const size_t dimension, bool hermitian, double svdThreshold,
-                                                        int verbosity = 0);
+                                                        int verbosity);
 
 extern template void eigenproblem<std::complex<double>>(std::vector<std::complex<double>>& eigenvectors,
                                                         std::vector<std::complex<double>>& eigenvalues,
                                                         const std::vector<std::complex<double>>& matrix,
                                                         const std::vector<std::complex<double>>& metric,
                                                         const size_t dimension, bool hermitian, double svdThreshold,
-                                                        int verbosity = 0);
+                                                        int verbosity);
 
 extern template void solve_LinearEquations<std::complex<double>>(
     std::vector<std::complex<double>>& solution, std::vector<std::complex<double>>& eigenvalues,
@@ -155,6 +155,6 @@ extern template void solve_LinearEquations<std::complex<double>>(
 
 extern template void solve_DIIS<std::complex<double>>(std::vector<std::complex<double>>& solution,
                                                       const std::vector<std::complex<double>>& matrix,
-                                                      const size_t dimension, double svdThreshold, int verbosity = 0);
+                                                      const size_t dimension, double svdThreshold, int verbosity);
 } // namespace molpro::linalg::itsolv
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_HELPER_H_

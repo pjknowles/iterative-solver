@@ -24,7 +24,7 @@ struct OptimizeF : ::testing::Test {
     n = dimension;
     hmat.resize(n, n);
     hmat.fill(1);
-    for (int i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
       hmat(i, i) = (i + 2) * param;
     //    molpro::cout << "hmat " << hmat << std::endl;
   }
@@ -59,7 +59,7 @@ struct OptimizeF : ::testing::Test {
                            const int n_working_vectors_max = 0) {
     int nroot = 1;
     {
-      int np = 0;
+//      int np = 0;
       {
         molpro::cout << "\n\n*** " << title << ",  problem dimension " << n << ", method = " << method
                      << ", n_working_vectors_max = " << n_working_vectors_max << std::endl;
@@ -160,7 +160,7 @@ TEST(Optimize, trig1d) {
   auto solver =
       molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>("BFGS", "convergence_threshold=1e-8,max_size_qspace=2");
   std::vector<double> x(1), g(1);
-  int nwork = 1;
+//  int nwork = 1;
   x[0] = 1.0;
   for (int iter = 0; iter < 100; iter++) {
     double value = std::sin(x[0]);

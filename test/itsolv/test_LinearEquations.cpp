@@ -21,14 +21,14 @@ extern "C" int test_linearequationsf(const double* matrix, const double* rhs, si
 namespace {
 struct LinearEquationsPreconditioner {
   explicit LinearEquationsPreconditioner(const MatrixXdr& mat) {
-    const auto n = mat.rows();
+    const size_t n = mat.rows();
     diagonals.resize(n);
     for (size_t i = 0; i < n; ++i)
       diagonals[i] = mat(i, i);
   }
 
   void operator()(std::vector<Rvector>& residuals, const int nwork) const {
-    for (size_t i = 0; i < nwork; ++i) {
+    for (int i = 0; i < nwork; ++i) {
       for (size_t j = 0; j < residuals[i].size(); ++j)
         residuals[i][j] /= diagonals[j];
     }
@@ -74,20 +74,20 @@ auto solve_full_problem(const MatrixXdr& mat, const MatrixXdr& rhs, double augme
   matrix.resize(nX * nX);
   metric.resize(nX * nX);
   rhs_flat.resize(nX * nroot);
-  for (size_t i = 0; i < nX; ++i)
+  for (size_t i = 0; i < size_t(nX); ++i)
     metric[i * (nX + 1)] = 1;
-  for (size_t i = 0, ij = 0; i < nX; ++i)
-    for (size_t j = 0; j < nX; ++j, ++ij)
+  for (size_t i = 0, ij = 0; i < size_t(nX); ++i)
+    for (size_t j = 0; j < size_t(nX); ++j, ++ij)
       matrix[ij] = mat(i, j);
-  for (size_t i = 0, ij = 0; i < nX; ++i)
-    for (size_t j = 0; j < nroot; ++j, ++ij)
+  for (size_t i = 0, ij = 0; i < size_t(nX); ++i)
+    for (size_t j = 0; j < size_t(nroot); ++j, ++ij)
       rhs_flat[ij] = rhs(i, j);
   molpro::linalg::itsolv::solve_LinearEquations(solution, eigenvalues, matrix, metric, rhs_flat, mat.rows(), rhs.cols(),
                                                 augmented_hessian, 1.0e-14, 0);
   std::vector<std::vector<double>> solutions_mat;
-  for (size_t i = 0, ij = 0; i < nroot; ++i) {
+  for (size_t i = 0, ij = 0; i < size_t(nroot); ++i) {
     solutions_mat.emplace_back(nX);
-    for (size_t j = 0; j < nX; ++j, ++ij) {
+    for (size_t j = 0; j < size_t(nX); ++j, ++ij) {
       solutions_mat.back()[j] = solution[ij];
     }
   }
@@ -102,7 +102,7 @@ std::vector<double> residual(const MatrixXdr& mat, const MatrixXdr& rhs, const s
   auto errors = std::vector<double>(nroots);
   for (size_t i = 0; i < nroots; ++i) {
     double norm = 0;
-    for (size_t j = 0; j < nX; ++j) {
+    for (size_t j = 0; j < size_t(nX); ++j) {
       errors[i] += std::pow(rhs(j, i) - actions[i][j], 2);
       norm += std::pow(rhs(j, i), 2);
     }
@@ -130,7 +130,7 @@ auto initial_guess(const MatrixXdr& mat, const size_t n_roots, const MatrixXdr& 
     //    guess.push_back(std::distance(diagonals.begin(), it_min)); // initial guess
     //    *std::min_element(diagonals.begin(), diagonals.end()) = 1e99;
     //    x.back()[guess.back()] = 1; // initial guess
-    for (size_t i = root; i < n; i++)
+    for (size_t i = root; i < size_t(n); i++)
       x.back()[i] = -rhs(root, i) / mat(i, i);
   }
   return std::make_tuple(x, g, guess);
@@ -162,7 +162,7 @@ auto set_options(std::unique_ptr<LinearEquations<Rvector, Qvector, Pvector>>& so
 
 std::vector<std::vector<double>> matrix_to_vector(const MatrixXdr& rhs, const size_t nRHS) {
   auto rhs_vector = std::vector<std::vector<double>>{};
-  const auto nX = rhs.rows();
+  const size_t nX = rhs.rows();
   for (size_t i = 0; i < nRHS; ++i) {
     rhs_vector.emplace_back(nX);
     for (size_t j = 0; j < nX; ++j) {
@@ -199,7 +199,7 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
   if (verbose)
     print_solutions(reference_solutions);
   auto preconditioner = LinearEquationsPreconditioner(mat);
-  for (size_t nroot = 1; nroot <= n_root_max; ++nroot) {
+  for (size_t nroot = 1; nroot <= size_t(n_root_max); ++nroot) {
     auto rhs_vector = matrix_to_vector(rhs, nroot);
     //    std::cout << "mat:\n" << mat << std::endl;
     //    std::cout << "rhs_vector:\n" << rhs_vector << std::endl;
@@ -210,7 +210,7 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
     int nwork = solver->n_roots();
     int max_iter = 100;
     size_t n_iter = 1;
-    for (size_t iter = 0; iter < max_iter; ++iter, ++n_iter) {
+    for (int iter = 0; iter < max_iter; ++iter, ++n_iter) {
       apply_matrix(mat, x, g, nwork);
       if (verbose)
         print_parameters_actions(x, g, nwork);
@@ -226,12 +226,12 @@ void run_test(const MatrixXdr& mat, const MatrixXdr& rhs, const Update& update, 
     solver->report();
     std::vector<std::vector<double>> parameters, actions;
     std::vector<int> roots;
-    for (int root = 0; root < solver->n_roots(); root++) {
+    for (int root = 0; root < int(solver->n_roots()); root++) {
       //    for (int root = 0; root < nroot; root++) {
       parameters.emplace_back(nX);
       actions.emplace_back(nX);
       if (false)
-        for (size_t i = 0; i < nX; ++i) {
+        for (int i = 0; i < nX; ++i) {
           parameters[root][i] = reference_solutions[root][i];
           actions[root][i] = rhs(i, root);
         }

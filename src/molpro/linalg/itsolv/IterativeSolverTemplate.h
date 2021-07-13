@@ -432,7 +432,7 @@ protected:
     m_working_set = detail::select_working_set(parameters.size(), m_errors, m_convergence_threshold, m_value_errors,
                                                m_convergence_threshold_value);
     for (size_t i = 0; i < m_working_set.size(); ++i) {
-      auto root = m_working_set[i];
+      size_t root = m_working_set[i];
       if (batches.size() > 1) {
         m_handlers->rq().copy(parameters[i], temp_solutions.at(root).first);
         m_handlers->rq().copy(action[i], temp_solutions.at(root).second);
@@ -453,7 +453,7 @@ protected:
   void check_consistent_number_of_roots_and_solutions(const std::vector<TTT>& roots, const size_t nparams) {
     if (roots.size() > nparams)
       throw std::runtime_error("asking for more roots than parameters");
-    if (!roots.empty() && *std::max_element(roots.begin(), roots.end()) >= m_subspace_solver->solutions().size())
+    if (!roots.empty() && size_t(*std::max_element(roots.begin(), roots.end())) >= m_subspace_solver->solutions().size())
       throw std::runtime_error("asking for more roots than there are solutions");
   }
 

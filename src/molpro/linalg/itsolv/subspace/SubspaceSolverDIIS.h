@@ -30,7 +30,7 @@ public:
       m_logger->msg("H = " + as_string(kH, 15), Logger::Info);
     }
     auto kDim = kH.rows();
-    int kVerbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
+//    int kVerbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
     auto dH = kH;
     auto dDim = kDim - 1;
     dH.resize({dDim, dDim});

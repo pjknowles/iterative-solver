@@ -49,7 +49,7 @@ public:
 
     //    std::cout << "H "<<as_string(H)<<std::endl;
     //    std::cout << "Value "<<as_string(Value)<<std::endl;
-    while (xspace->size() >= this->m_max_size_qspace) {
+    while (xspace->size() >= size_t(this->m_max_size_qspace)) {
       //      std::cout << "delete Q" << std::endl;
       xspace->eraseq(xspace->size() - 1);
     }
@@ -123,7 +123,7 @@ public:
     const auto& q = xspace->paramsq();
     const auto& u = xspace->actionsq();
     //    this->m_errors.front() = std::sqrt(this->m_handlers->rr().dot(residual,residual));
-    for (int a = 0; a < m_alpha.size(); a++) {
+    for (size_t a = 0; a < m_alpha.size(); a++) {
       if (std::abs(H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1)) <
           std::max(5e-14 * std::abs(H(a, a)), 1e-15)) {
         xspace->eraseq(a + 1);
@@ -153,7 +153,7 @@ public:
       const auto& xspace = this->m_xspace;
       auto& xdata = xspace->data;
       const auto& H = xdata[subspace::EqnData::H];
-      const auto& S = xdata[subspace::EqnData::S];
+//      const auto& S = xdata[subspace::EqnData::S];
       const auto& q = xspace->paramsq();
       const auto& u = xspace->actionsq();
 

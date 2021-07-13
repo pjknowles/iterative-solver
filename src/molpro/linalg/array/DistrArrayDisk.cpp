@@ -5,16 +5,6 @@
 namespace molpro::linalg::array {
 using util::Task;
 namespace {
-int mpi_size(MPI_Comm comm) {
-  if (comm == molpro::mpi::comm_global())
-    return molpro::mpi::size_global();
-#ifdef HAVE_MPI_H
-  int size;
-  MPI_Comm_size(comm, &size);
-  return size;
-#endif
-  throw std::logic_error("Attempt to access MPI communicator in serial mode");
-}
 
 int mpi_rank(MPI_Comm comm) {
   if (comm == molpro::mpi::comm_global())

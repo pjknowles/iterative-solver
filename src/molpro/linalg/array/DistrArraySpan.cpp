@@ -1,9 +1,9 @@
 #include "DistrArraySpan.h"
 #include "util/Distribution.h"
+#include <iostream>
 #include <memory>
 #include <molpro/mpi.h>
 #include <string>
-#include <iostream>
 
 namespace molpro::linalg::array {
 
@@ -55,8 +55,8 @@ DistrArraySpan::DistrArraySpan(const DistrArray& source)
 }
 
 DistrArraySpan::DistrArraySpan(DistrArraySpan&& source) noexcept
-    : DistrArray(source.m_dimension, source.m_communicator), m_span(std::move(source.m_span)),
-      m_allocated(source.m_allocated), m_distribution(std::move(source.m_distribution)) {}
+    : DistrArray(source.m_dimension, source.m_communicator), m_distribution(std::move(source.m_distribution)),
+      m_allocated(source.m_allocated), m_span(std::move(source.m_span)) {}
 
 DistrArraySpan& DistrArraySpan::operator=(const DistrArraySpan& source) {
   if (this == &source)
@@ -151,7 +151,7 @@ void DistrArraySpan::get(DistrArray::index_type lo, DistrArray::index_type hi, D
   }
   DistrArray::index_type offset = lo - lo_loc;
   DistrArray::index_type length = hi - lo;
-  for (int i = offset; i < offset + length; i++) {
+  for (size_t i = offset; i < offset + length; i++) {
     buf[i - offset] = m_span[i];
   }
 }
@@ -175,7 +175,7 @@ void DistrArraySpan::put(DistrArray::index_type lo, DistrArray::index_type hi, c
   }
   DistrArray::index_type offset = lo - lo_loc;
   DistrArray::index_type length = hi - lo;
-  for (int i = offset; i < offset + length; i++) {
+  for (size_t i = offset; i < offset + length; i++) {
     m_span[i] = data[i - offset];
   }
 }

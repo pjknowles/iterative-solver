@@ -176,7 +176,7 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
   }
   DistrArray::index_type offset = m_frecs.first + lo - lo_loc;
   file->object.seekg(0, std::ios::end);
-  int current = file->object.tellg();
+  size_t current = file->object.tellg();
   if (current < (offset + length) * sizeof(DistrArray::value_type)) {
     return;
   }

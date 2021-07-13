@@ -193,7 +193,7 @@ TEST_F(DistrArrayFile_Fixture, gather) {
   std::vector<DistrArrayFile::index_type> x(size / mpi_size);
   std::iota(x.begin(), x.end(), left);
   auto tmp = a.gather(x);
-  for (int i = 0; i < x.size(); i++) {
+  for (size_t i = 0; i < x.size(); i++) {
     w[left + i] = tmp[i];
   }
   MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, w.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
@@ -209,7 +209,7 @@ TEST_F(DistrArrayFile_Fixture, scatter) {
   std::vector<DistrArrayFile::index_type> x(size / mpi_size);
   std::iota(x.begin(), x.end(), left);
   std::vector<double> tmp(size / mpi_size);
-  for (int i = 0; i < x.size(); i++) {
+  for (size_t i = 0; i < x.size(); i++) {
     tmp[i] = w[i + left];
   }
   a.scatter(x, tmp);
@@ -228,7 +228,7 @@ TEST_F(DistrArrayFile_Fixture, scatter_acc) {
   std::vector<DistrArrayFile::index_type> x(size / mpi_size);
   std::iota(x.begin(), x.end(), left);
   std::vector<double> tmp(size / mpi_size);
-  for (int i = 0; i < x.size(); i++) {
+  for (size_t i = 0; i < x.size(); i++) {
     tmp[i] = v[i + left];
   }
   a.scatter_acc(x, tmp);

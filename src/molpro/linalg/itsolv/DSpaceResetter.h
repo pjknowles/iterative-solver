@@ -137,8 +137,8 @@ public:
     auto q_delete = max_overlap_with_R(wparams, xspace.cparamsq(), handlers.rq(), logger);
     for (auto i : q_delete)
       xspace.eraseq(i);
-    if (xspace.dimensions().nQ + nR > m_max_Qsize_after_reset)
-      resize_qspace(xspace, solutions, m_max_Qsize_after_reset > nR ? m_max_Qsize_after_reset - nR : 0, logger);
+    if (xspace.dimensions().nQ + nR > size_t(m_max_Qsize_after_reset))
+      resize_qspace(xspace, solutions, size_t(m_max_Qsize_after_reset) > nR ? m_max_Qsize_after_reset - nR : 0, logger);
     auto new_working_set = std::vector<int>(nR);
     std::iota(begin(new_working_set), end(new_working_set), 0);
     return new_working_set;

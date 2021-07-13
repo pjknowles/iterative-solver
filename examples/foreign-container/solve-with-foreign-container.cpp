@@ -23,7 +23,7 @@ public:
     f >> n;
     //    molpro::cout << "\n*** " << filename << " (dimension " << n << "), " << nroot << " roots" << std::endl;
     matrix.resize(n * n);
-    for (auto i = 0; i < n * n; i++)
+    for (size_t i = 0; i < n * n; i++)
       f >> matrix[i];
   }
 
@@ -34,9 +34,9 @@ public:
   }
 
   void precondition(const VecRef<container_t> &action, const std::vector<double> &shift, const container_t &diagonals) const override {
-    for (int k = 0; k < action.size(); k++) {
+    for (size_t k = 0; k < action.size(); k++) {
       auto &a = action[k].get();
-      for (int i = 0; i < n; i++)
+      for (size_t i = 0; i < n; i++)
         a.data()[i] /= (diagonals.data()[i] - shift[k] + 1e-15);
     }
   }

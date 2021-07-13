@@ -11,8 +11,8 @@ namespace molpro::linalg::array::util {
 HDF5Handle temp_hdf5_handle(const std::string &base_name) {
   auto fname = temp_file_name(base_name, ".hdf5");
   auto handle = HDF5Handle(fname);
-  bool set_erase_file_on_destroy_succeeded = handle.set_erase_file_on_destroy(true);
-  assert(set_erase_file_on_destroy_succeeded);
+  if (not handle.set_erase_file_on_destroy(true))
+    throw std::runtime_error("set_erase_file_on_destroy failed");
   return handle;
 }
 

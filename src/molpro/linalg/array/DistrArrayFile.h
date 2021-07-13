@@ -32,8 +32,8 @@ struct FileAttributes {
 /*!
  * @brief Distributed array storing the buffer on disk using temporary local files.
  *
- * On construction, file and corresponding stream object are being created and file is then closed (to be opened using
- * open_access()). On destruction, file is being deleted.
+ * On construction, file and corresponding stream object are created and file is then closed (to be opened using
+ * open_access()). On destruction, file is deleted.
  *
  * @warning Only local operations will be currently supported, if RMA operations are requested, exception will be
  * thrown.

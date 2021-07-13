@@ -51,6 +51,8 @@ public:
   //! Erase the array from disk.
   virtual void erase() = 0;
   [[nodiscard]] const Distribution &distribution() const override;
+  [[nodiscard]] value_type dot(const DistrArray &y) const override;
+  [[nodiscard]] value_type dot(const SparseArray &y) const override;
 
 protected:
   //! Reads the whole local buffer from disk into memory. By default the buffer is written to disk on destruction,

@@ -14,6 +14,7 @@ set(EXAMPLES
         NonLinearEquationsExample.cpp
         OptimizeExample.cpp
         OptimizeDistrArrayExample.cpp
+        DistrArrayDiskExample.cpp
         ${ITERATIVESOLVER_FORTRAN_EXAMPLES}
         )
 if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)

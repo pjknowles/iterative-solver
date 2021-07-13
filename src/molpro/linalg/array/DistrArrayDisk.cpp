@@ -1,6 +1,7 @@
 #include "DistrArrayDisk.h"
 #include "util.h"
 #include "util/Distribution.h"
+#include <iostream>
 
 namespace molpro::linalg::array {
 using util::Task;
@@ -40,10 +41,13 @@ DistrArrayDisk::DistrArrayDisk(DistrArrayDisk&& source) noexcept
 DistrArrayDisk::~DistrArrayDisk() = default;
 
 DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source) : m_source{source} {
+  std::cout << "LocalBufferDisk constructor " << this << std::endl;
   int rank = mpi_rank(source.communicator());
   index_type hi;
   std::tie(m_start, hi) = source.distribution().range(rank);
   m_size = hi - m_start;
+  std::cout << "LocalBufferDisk " << this << " resizes from  " << m_snapshot_buffer.size() << " to " << m_size
+            << std::endl;
   m_snapshot_buffer.resize(m_size);
   m_buffer = &m_snapshot_buffer[0];
   source.get(start(), start() + size(), m_buffer);
@@ -62,6 +66,7 @@ DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source, const S
 }
 
 DistrArrayDisk::LocalBufferDisk::~LocalBufferDisk() {
+  std::cout << "LocalBufferDisk destructor " << this << ", size = " << m_snapshot_buffer.size() << std::endl;
   if (do_dump)
     m_source.put(start(), start() + size(), m_buffer);
 }
@@ -90,5 +95,10 @@ std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer(cons
   l->do_dump = false;
   return l;
 }
+DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) const {
+  std::cout << "DistrArrayDisk::dot" << std::endl;
+  return DistrArray::dot(y);
+}
+DistrArray::value_type DistrArrayDisk::dot(const DistrArray::SparseArray& y) const { return DistrArray::dot(y); }
 
 } // namespace molpro::linalg::array

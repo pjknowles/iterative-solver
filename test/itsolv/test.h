@@ -3,8 +3,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <molpro/mpi.h>
+#ifdef HAVE_MPI_H
 static int mpi_rank = 0;
 static int mpi_size = 1;
+#endif
 class MPIEnvironment : public ::testing::Environment {
 public:
   virtual void SetUp() {

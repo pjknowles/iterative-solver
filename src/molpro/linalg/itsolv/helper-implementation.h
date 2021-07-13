@@ -481,10 +481,10 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
     //       molpro::cout << "eigenvectors"<<std::endl<<subspaceEigenvectors<<std::endl;
   // TODO complex should be implemented with a specialised function
   // TODO real should be implemented with always-executed runtime assertion that eigensolution turns out to be real
-  auto complex_error_vecs = (subspaceEigenvectors - subspaceEigenvectors.real()).norm();
-  auto complex_error_vals = (subspaceEigenvalues - subspaceEigenvalues.real()).norm();
-  assert(complex_error_vecs < 1e-10);
-  assert(complex_error_vals < 1e-10);
+  if ((subspaceEigenvectors - subspaceEigenvectors.real()).norm() > 1e-10 or
+      (subspaceEigenvalues - subspaceEigenvalues.real()).norm() > 1e-10) {
+    throw std::runtime_error("unexpected complex solution found");
+  }
   eigenvectors.resize(dimension * Hbar.cols());
   eigenvalues.resize(Hbar.cols());
   //    if constexpr (std::is_class<value_type>::value) {

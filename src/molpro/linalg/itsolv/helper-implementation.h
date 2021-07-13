@@ -127,9 +127,9 @@ int eigensolver_lapacke_dsyev( const std::vector<double>& matrix, std::vector<do
   }
 
   // magic letters
-  static const char compute_eigenvalues = 'N';
+//  static const char compute_eigenvalues = 'N';
   static const char compute_eigenvalues_eigenvectors = 'V';
-  static const char store_upper_triangle = 'U';
+//  static const char store_upper_triangle = 'U';
   static const char store_lower_triangle = 'L';
 
   // copy input matrix (lapack overwrites)
@@ -171,10 +171,10 @@ std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension, std::vector<d
   auto eigensystem = std::list<SVD<double>>{};
 
   // populate eigensystem
-  for (int i=dimension-1; i>=0; i--){ // note: flipping this axis gives parity with results of eigen::jacobiSVD
+  for (size_t i=dimension-1; i>=0; i--){ // note: flipping this axis gives parity with results of eigen::jacobiSVD
     auto temp_eigenproblem = SVD<double>{};
     temp_eigenproblem.value = eigvals[i];
-    for (int j=0; j<dimension; j++){
+    for (size_t j=0; j<dimension; j++){
       temp_eigenproblem.v.emplace_back(eigvecs[i+(dimension*j)]);
     }
     eigensystem.emplace_back(temp_eigenproblem);
@@ -270,7 +270,7 @@ std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::S
 
   // reduce to rank
   if (reduce_to_rank){
-    size_t rank = get_rank(svds, threshold);
+    int rank = get_rank(svds, threshold);
     for (int i = ncols; i>rank; i--){
       svds.pop_back();
     }
@@ -316,7 +316,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
   Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrixU;
   std::vector<double> eigvecs;
   std::vector<double> eigvals;
-  size_t rank;
+  int rank;
 
   // if the matrix is hermitian, we can use lapacke_dsyev
   if(hermitian){

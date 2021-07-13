@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
   solver->set_max_iter(100);
   std::vector<Rvector> c, g;
   auto nbuffer = argc > 3 ? std::stoi(argv[3]) : solver->n_roots();
-  for (int root = 0; root < nbuffer; root++) {
+  for (size_t root = 0; root < nbuffer; root++) {
     c.emplace_back(problem.n);
     g.emplace_back(problem.n);
   }

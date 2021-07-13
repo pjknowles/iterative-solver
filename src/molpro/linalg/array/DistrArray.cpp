@@ -204,7 +204,7 @@ std::map<size_t, double> select_max_dot_broadcast(size_t n, std::map<size_t, dou
     auto pq = std::priority_queue<pair_t, std::vector<pair_t>, std::greater<>>();
     for (size_t i = 0; i < n; ++i)
       pq.emplace(-std::numeric_limits<double>::max(), std::numeric_limits<DistrArray::index_type>::max());
-    for (size_t i = 0, ii = 0; i < comm_size; ++i) {
+    for (int i = 0, ii = 0; i < comm_size; ++i) {
       for (size_t j = 0; j < n - n_dummy_elements[i]; ++j, ++ii) {
         pq.emplace(values[ii], indices[ii]);
         pq.pop();
@@ -287,7 +287,7 @@ std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> extrema(con
     return {};
   auto buffer = x.local_buffer();
   auto length = buffer->size();
-  auto nmin = length > n ? n : length;
+  auto nmin = length > size_t(n) ? size_t(n) : length;
   auto loc_extrema = std::list<std::pair<DistrArray::index_type, double>>();
   for (size_t i = 0; i < nmin; ++i)
     loc_extrema.emplace_back(buffer->start() + i, (*buffer)[i]);
@@ -329,8 +329,8 @@ std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> extrema(con
     auto tot_dummy = std::accumulate(begin(ndummy), end(ndummy), 0);
     if (tot_dummy != 0) {
       size_t shift = 0;
-      for (size_t i = 0, ind = 0; i < comm_size; ++i) {
-        for (size_t j = 0; j < n - ndummy[i]; ++j, ++ind) {
+      for (int i = 0, ind = 0; i < comm_size; ++i) {
+        for (int j = 0; j < n - ndummy[i]; ++j, ++ind) {
           indices_loc[ind] = indices_loc[ind + shift];
           values_loc[ind] = values_loc[ind + shift];
         }
@@ -345,7 +345,7 @@ std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> extrema(con
     std::sort(begin(sort_permutation), end(sort_permutation), [&values_loc, &compare](const auto& i1, const auto& i2) {
       return compare(values_loc[i1], values_loc[i2]);
     });
-    for (size_t i = 0; i < n; ++i) {
+    for (int i = 0; i < n; ++i) {
       auto j = sort_permutation[i];
       indices_glob[i] = indices_loc[j];
       values_glob[i] = values_loc[j];
@@ -364,7 +364,7 @@ std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> extrema(con
   MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
 #endif
   auto map_extrema = std::list<std::pair<DistrArray::index_type, double>>();
-  for (size_t i = 0; i < n; ++i)
+  for (int i = 0; i < n; ++i)
     map_extrema.emplace_back(indices_glob[i], values_glob[i]);
   return map_extrema;
 }

@@ -181,7 +181,7 @@ protected:
     //    molpro::cout << "m_rspt_values[" << m_rspt_values.size() - 1 << "]=" << m_rspt_values.back() << std::endl;
     //    molpro::cout << "m_rspt_values " << str(m_rspt_values)<<std::endl;
     this->m_handlers->rr().axpy(-m_rspt_values[0], c, hc);
-    for (int k = 0; k < n; k++) {
+    for (size_t k = 0; k < n; k++) {
       //      molpro::cout << "axpy E[" << n - k << "] c[" << k << "]" << std::endl;
       this->m_handlers->rq().axpy(-m_rspt_values[n - k], q.at(n - k - 1), hc);
     }

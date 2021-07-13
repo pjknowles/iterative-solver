@@ -35,18 +35,18 @@ struct simplified : ::testing::Test {
 
     void precondition(const VecRef<Rvector> &action,
                       const std::vector<typename Rvector::value_type> &shift) const override {
-      for (int k = 0; k < action.size(); k++) {
+      for (size_t k = 0; k < action.size(); k++) {
         auto &a = action[k].get();
-        for (int i = 0; i < a.size(); i++)
+        for (size_t i = 0; i < a.size(); i++)
           a[i] /= (matrix(i, i) + shift[k]);
       }
     }
 
     double residual(const Rvector &v, Rvector &a) const override {
       double value = 0;
-      for (int i = 0; i < a.size(); i++) {
+      for (size_t i = 0; i < a.size(); i++) {
         a[i] = 0;
-        for (int j = 0; j < a.size(); j++)
+        for (size_t j = 0; j < a.size(); j++)
           a[i] += matrix(i, j) * (v[j] - 1);
         value += 0.5 * a[i] * (v[i] - 1);
       }
@@ -57,9 +57,9 @@ struct simplified : ::testing::Test {
       for (size_t k = 0; k < parameters.size(); k++) {
         const auto &v = parameters[k].get();
         auto &a = actions[k].get();
-        for (int i = 0; i < a.size(); i++) {
+        for (size_t i = 0; i < a.size(); i++) {
           a[i] = 0;
-          for (int j = 0; j < a.size(); j++)
+          for (size_t j = 0; j < a.size(); j++)
             a[i] += matrix(i, j) * v[j];
         }
       }

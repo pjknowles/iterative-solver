@@ -107,7 +107,7 @@ TEST_F(HDF5HandleDummyF, open_file_with_name) {
 }
 
 TEST_F(HDF5HandleDummyF, open_file_with_name_check_access_type) {
-  auto id = h->open_file(name_single_dataset, HDF5Handle::Access::read_only);
+  h->open_file(name_single_dataset, HDF5Handle::Access::read_only);
   ASSERT_TRUE(h->file_is_open());
   ASSERT_EQ(h->access_type(), HDF5Handle::Access::read_only);
 }
@@ -197,7 +197,7 @@ TEST_F(HDF5HandleOpenFileCreatF, create_file) {
 
 TEST_F(HDF5HandleOpenFileCreatF, access_type) {
   EXPECT_EQ(h->access_type(), HDF5Handle::Access::none);
-  auto id = h->open_file(file_name, HDF5Handle::Access::read_write);
+  h->open_file(file_name, HDF5Handle::Access::read_write);
   ASSERT_TRUE(h->file_is_open());
   EXPECT_EQ(h->access_type(), HDF5Handle::Access::read_write);
 }
@@ -516,7 +516,7 @@ TEST_F(HDF5HandleUsingExistingObjectF, construct_from_group_no_own__open_and_clo
   EXPECT_TRUE(handle.file_is_open()) << "opens the file";
   EXPECT_TRUE(handle.file_owner()) << "gives ownership to the file";
   unsigned intent = 0;
-  auto err = H5Fget_intent(handle.file_id(), &intent);
+  H5Fget_intent(handle.file_id(), &intent);
   EXPECT_EQ(intent, H5F_ACC_RDONLY) << "the file should be read-only";
   handle.close_group();
   EXPECT_FALSE(handle.group_is_open());

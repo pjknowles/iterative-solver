@@ -46,7 +46,7 @@ public:
     return cast<LinearEigensystemRSPTOptions>(options, "LinearEigensystemRSPTOptions");
   }
   static LinearEigensystemDavidsonOptions& LinearEigensystem(Options& options) {
-    const auto& opt = const_cast<const Options&>(options);
+//    const auto& opt = const_cast<const Options&>(options);
     return const_cast<LinearEigensystemDavidsonOptions&>(cast<LinearEigensystemDavidsonOptions>(options, "LinearEigensystemOptions"));
   }
 
@@ -57,7 +57,7 @@ public:
     return cast<LinearEquationsDavidsonOptions>(options, "LinearEquationsOptions");
   }
   static LinearEquationsDavidsonOptions& LinearEquations(Options& options) {
-    const auto& opt = const_cast<const Options&>(options);
+//    const auto& opt = const_cast<const Options&>(options);
     return const_cast<LinearEquationsDavidsonOptions&>(cast<LinearEquationsDavidsonOptions>(options, "LinearEquationsOptions"));
   }
 
@@ -69,7 +69,7 @@ public:
     return cast<NonLinearEquationsDIISOptions>(options, "NonLinearEquationsDIISOptions");
   }
   static NonLinearEquationsDIISOptions& NonLinearEquationsDIIS(Options& options) {
-    const auto& opt = const_cast<const Options&>(options);
+//    const auto& opt = const_cast<const Options&>(options);
     return const_cast<NonLinearEquationsDIISOptions&>(cast<NonLinearEquationsDIISOptions>(options, "NonLinearEquationsDIISOptions"));
   }
 
@@ -81,7 +81,7 @@ public:
     return cast<OptimizeBFGSOptions>(options, "OptimizeBFGSOptions");
   }
   static OptimizeBFGSOptions& OptimizeBFGS(Options& options) {
-    const auto& opt = const_cast<const Options&>(options);
+//    const auto& opt = const_cast<const Options&>(options);
     return const_cast<OptimizeBFGSOptions&>(cast<OptimizeBFGSOptions>(options, "OptimizeBFGSOptions"));
   }
 
@@ -92,7 +92,7 @@ public:
     return cast<OptimizeSDOptions>(options, "OptimizeSDOptions");
   }
   static OptimizeSDOptions& OptimizeSD(Options& options) {
-    const auto& opt = const_cast<const Options&>(options);
+//    const auto& opt = const_cast<const Options&>(options);
     return const_cast<OptimizeSDOptions&>(cast<OptimizeSDOptions>(options, "OptimizeSDOptions"));
   }
 };

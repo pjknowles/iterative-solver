@@ -42,11 +42,11 @@ struct LinearEigensystemF : ::testing::Test {
     n = dimension;
     hmat.resize(n, n);
     hmat.fill(1);
-    for (int i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
       hmat(i, i) = i * param;
     if (not hermitian)
-      for (int i = 0; i < n; i++)
-        for (int j = 0; j < i; j++)
+      for (size_t i = 0; i < n; i++)
+        for (size_t j = 0; j < i; j++)
           hmat(i, j) *= .95;
   }
 
@@ -54,11 +54,11 @@ struct LinearEigensystemF : ::testing::Test {
     std::ifstream f(std::string{"./"} + file + ".hamiltonian");
     f >> n;
     hmat.resize(n, n);
-    for (auto i = 0; i < n; i++)
-      for (auto j = 0; j < n; j++)
+    for (size_t i = 0; i < n; i++)
+      for (size_t j = 0; j < n; j++)
         f >> hmat(i, j);
     // split degeneracies
-    for (auto i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
       hmat(i, i) += degeneracy_split * i;
   }
 
@@ -111,8 +111,8 @@ struct LinearEigensystemF : ::testing::Test {
       for (size_t j = 0; j < n; ++j, ++ij)
         hmat_row[ij] = hmat(i, j);
     molpro::linalg::itsolv::eigenproblem(eigenvector, expected_eigenvalues, hmat_row, metric, n, hermitian, 1.0e-14, 0);
-    for (int i = 0; i < n; i++)
-      for (int j = 0; j < n; j++)
+    for (size_t i = 0; i < n; i++)
+      for (size_t j = 0; j < n; j++)
         expected_eigensolutions[expected_eigenvalues[i]].push_back(
             eigenvector[n * i + j]); // won't work for degenerate eigenvalues!
     std::sort(expected_eigenvalues.begin(), expected_eigenvalues.end());
@@ -142,7 +142,7 @@ struct LinearEigensystemF : ::testing::Test {
     const auto n_roots = x.size();
     std::vector<size_t> guess;
     std::vector<double> diagonals;
-    for (auto i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; i++) {
       diagonals.push_back(hmat(i, i));
     }
     for (size_t root = 0; root < n_roots; root++) {
@@ -169,7 +169,7 @@ struct LinearEigensystemF : ::testing::Test {
     std::vector<Pvector> pspace;
     if (np > 0) {
       std::vector<double> diagonals;
-      for (auto i = 0; i < n; i++)
+      for (size_t i = 0; i < n; i++)
         diagonals.push_back(hmat(i, i));
       for (size_t p = 0; p < np; p++) {
         std::map<size_t, scalar> pp;
@@ -247,8 +247,8 @@ struct LinearEigensystemF : ::testing::Test {
     check_eigenvectors_map(expected_eigensolutions, expected_eigenvalues);
     if (verbosity > 0)
       std::cout << "expected eigenvalues " << expected_eigenvalues << std::endl;
-    for (int nroot = 1; nroot <= n && nroot <= 28; nroot += std::max(size_t{1}, n / 10)) {
-      for (auto np = 0; np <= n && np <= 100 && (hermitian or np == 0); np += std::max(nroot, int(n) / 5)) {
+    for (int nroot = 1; nroot <= int(n) && nroot <= 28; nroot += std::max(size_t{1}, n / 10)) {
+      for (size_t np = 0; np <= n && np <= 100 && (hermitian or np == 0); np += std::max(nroot, int(n) / 5)) {
         molpro::cout << "\n\n*** " << title << ", " << nroot << " roots, problem dimension " << n
                      << ", pspace dimension " << np << ", n_working_vectors_max = " << n_working_vectors_max
                      << std::endl;
@@ -318,7 +318,7 @@ struct LinearEigensystemF : ::testing::Test {
         }
         std::vector<std::vector<double>> parameters, residuals;
         std::vector<int> roots;
-        for (int root = 0; root < solver->n_roots(); root++) {
+        for (int root = 0; root < int(solver->n_roots()); root++) {
           parameters.emplace_back(n);
           residuals.emplace_back(n);
           roots.push_back(root);
@@ -327,7 +327,7 @@ struct LinearEigensystemF : ::testing::Test {
         residual(parameters, residuals, solver->eigenvalues());
         for (const auto &r : residuals)
           EXPECT_LE(std::sqrt(dot(r, r)), options->convergence_threshold.value());
-        int root = 0;
+        size_t root = 0;
         for (const auto &ee : expected_eigensolutions) {
           EXPECT_NEAR(ee.first, solver->eigenvalues()[root], 1e-10);
           auto overlap_with_reference =
@@ -352,7 +352,6 @@ TEST_F(LinearEigensystemF, file_eigen) {
 
 TEST_F(LinearEigensystemF, n_eigen) {
   size_t n = 100;
-  double param = 1;
   //  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
   //  for (auto param : std::vector<double>{.01, .1, 1}) {
   for (auto param : std::vector<double>{1}) {
@@ -363,7 +362,6 @@ TEST_F(LinearEigensystemF, n_eigen) {
 
 TEST_F(LinearEigensystemF, nonhermitian_eigen) {
   size_t n = 30;
-  double param = 1;
   //  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
   //  for (auto param : std::vector<double>{.01, .1, 1}) {
   for (auto param : std::vector<double>{1}) {

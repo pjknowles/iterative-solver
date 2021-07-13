@@ -26,7 +26,7 @@ struct NonLinearEquationsF : ::testing::Test {
     n = dimension;
     hmat.resize(n, n);
     hmat.fill(1);
-    for (int i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
       hmat(i, i) = (i + 2) * param;
     //            molpro::cout << "hmat " << hmat << std::endl;
   }
@@ -62,7 +62,6 @@ struct NonLinearEquationsF : ::testing::Test {
                            const int n_working_vectors_max = 0) {
     int nroot = 1;
     {
-      int np = 0;
       {
         molpro::cout << "\n\n*** " << title << ",  problem dimension " << n << ", method = " << method
                      << ", n_working_vectors_max = " << n_working_vectors_max << std::endl;
@@ -75,7 +74,7 @@ struct NonLinearEquationsF : ::testing::Test {
         x.front() = 1;
         size_t n_iter = 1;
         for (auto iter = 1; iter < 1000 && nwork > 0; iter++, ++n_iter) {
-          auto value = action(x, g);
+          action(x, g);
           //                                        molpro::cout << "Iteration "<<iter<<std::endl;
           //                                        molpro::cout << "x\n"<<x<< std::endl;
           //                                        molpro::cout << "g\n"<<g<< std::endl;
@@ -166,11 +165,11 @@ TEST(NonLinearEquations, trig) {
     std::vector<double> x(n, .1), g(n);
     for (int iter = 0; iter < 10; iter++) {
       double value = 0;
-      for (int i = 0; i < n; i++) {
+      for (size_t i = 0; i < n; i++) {
         value += std::pow(std::sin((i + 1) * x[i]), 2);
         g[i] = 2 * (i + 1) * std::sin((i + 1) * x[i]) * std::cos((i + 1) * (x[i]));
         double couple = 1e-2;
-        for (int j = 0; j < n; j++) {
+        for (size_t j = 0; j < n; j++) {
           value += couple * x[i] * x[j];
           g[i] += 2 * couple * x[j];
         }
@@ -180,7 +179,7 @@ TEST(NonLinearEquations, trig) {
       //            molpro::cout << "add_vector returns precon=" << precon << ", x=" << x << ", g=" << g[0] <<
       //            std::endl;
       if (precon)
-        for (int i = 0; i < n; i++)
+        for (size_t i = 0; i < n; i++)
           g[i] /= 2 * (i + 1) * (i + 1);
       if (solver->end_iteration(x, g) == 0)
         break;
@@ -197,7 +196,6 @@ TEST(NonLinearEquations, trig1d) {
   auto solver = molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector>(
       "DIIS", "convergence_threshold=1e-8,max_size_qspace=2");
   std::vector<double> x(1), g(1);
-  int nwork = 1;
   x[0] = 1.0;
   for (int iter = 0; iter < 100; iter++) {
     double value = std::sin(x[0]);

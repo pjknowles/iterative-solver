@@ -57,7 +57,7 @@ TYPED_TEST_P(TestDistrArray, copy_assignment_op_allocated) {
   LockMPI3 lock{mpi_comm};
   size_t dim = 100;
   double alpha = 1;
-  double beta = 11;
+//  double beta = 11;
   TypeParam a{dim, mpi_comm};
   a.fill(alpha);
   TypeParam b{dim, mpi_comm};

@@ -42,7 +42,7 @@ Interpolate::point Interpolate::minimize(double xa, double xb, size_t bracket_gr
     auto plow = (*this)(xa);
     auto p0 = (*this)(xa).f > (*this)(xb).f ? plow : (*this)(xb);
     auto p1 = p0;
-    for (int igrid = 0; igrid < ngrid; igrid++) {
+    for (size_t igrid = 0; igrid < ngrid; igrid++) {
       auto phigh = (*this)(plow.x + gridstep);
       //            std::cout << "Try bracket {"<<plow.x<<","<<plow.f<<","<<plow.f1<<"} :
       //            {"<<phigh.x<<","<<phigh.f<<","<<phigh.f1<<"}"<<std::endl;

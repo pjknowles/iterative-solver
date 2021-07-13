@@ -34,7 +34,7 @@ struct has_iterator {
 template <typename T, typename = std::enable_if_t<std::is_base_of<molpro::linalg::array::DistrArray, T>::value>>
 void precondition_default(const VecRef<T>& action, const std::vector<double>& shift, const T& diagonals) {
   auto diagonals_local_buffer = diagonals.local_buffer();
-  for (int k = 0; k < action.size(); k++) {
+  for (size_t k = 0; k < action.size(); k++) {
     auto action_local_buffer = action[k].get().local_buffer();
     auto& distribution = action[k].get().distribution();
     auto range = distribution.range(molpro::mpi::rank_global());
@@ -47,7 +47,7 @@ template <class T>
 void precondition_default(const VecRef<T>& action, const std::vector<double>& shift, const T& diagonals,
                           typename T::iterator* = nullptr // SFINAE
 ) {
-  for (int k = 0; k < action.size(); k++) {
+  for (size_t k = 0; k < action.size(); k++) {
     auto& a = action[k].get();
     std::transform(diagonals.begin(), diagonals.end(), a.begin(), a.begin(),
                    [shift, k](const auto& first, const auto& second) { return second / (first - shift[k] + 1e-15); });

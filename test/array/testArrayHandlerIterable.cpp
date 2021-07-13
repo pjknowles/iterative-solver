@@ -59,7 +59,7 @@ TYPED_TEST_P(TestArrayHandlerIterable, select_max_dot) {
       handler{};
   using value_type_L = typename decltype(handler)::value_type_L;
   using value_type_R = typename decltype(handler)::value_type_R;
-  using value_type = typename decltype(handler)::value_type;
+//  using value_type = typename decltype(handler)::value_type;
   using value_type_abs = typename decltype(handler)::value_type_abs;
   auto x = std::vector<value_type_L>{1, -2, 1, 0, 3, 0, -4, 1};
   auto y = std::vector<value_type_R>{1, 1, 1, 1, 1, 1, 1, 1};

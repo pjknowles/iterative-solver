@@ -41,11 +41,13 @@ TEST(SolverFactory, string_constructor) {
     auto options = dynamic_cast<molpro::linalg::itsolv::Options*>(solver->get_options().get());
     EXPECT_TRUE(options->convergence_threshold.has_value());
     EXPECT_EQ(options->convergence_threshold.value(), 1e-3);
-    if (auto options =
-            dynamic_cast<molpro::linalg::itsolv::NonLinearEquationsDIISOptions*>(solver->get_options().get())) {
-      EXPECT_TRUE(options->norm_thresh.has_value());
-      EXPECT_NE(options->norm_thresh.value_or(777), 777);
-      EXPECT_EQ(options->max_size_qspace.value(), 73);
+    if (method == "DIIS") {
+      if (auto options =
+              dynamic_cast<molpro::linalg::itsolv::NonLinearEquationsDIISOptions*>(solver->get_options().get())) {
+        EXPECT_TRUE(options->norm_thresh.has_value());
+        EXPECT_NE(options->norm_thresh.value_or(777), 777);
+        EXPECT_EQ(options->max_size_qspace.value(), 73);
+      }
     }
   }
 

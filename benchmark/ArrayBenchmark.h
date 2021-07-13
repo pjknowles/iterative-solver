@@ -83,14 +83,14 @@ public:
 
   void dot() {
     auto prof = m_profiler.push("dot");
-    for (auto i = 0; i < m_repeat; i++)
+    for (size_t i = 0; i < m_repeat; i++)
       m_handler->dot(*m_bufferL, *m_bufferR);
     prof += m_size * m_repeat / m_mpi_size;
   }
 
   void axpy() {
     auto prof = m_profiler.push("axpy");
-    for (auto i = 0; i < m_repeat; i++)
+    for (size_t i = 0; i < m_repeat; i++)
       m_handler->axpy(1.0, *m_bufferL, *m_bufferR);
     prof += m_size * m_repeat / m_mpi_size;
   }
@@ -98,7 +98,7 @@ public:
   void copy() {
     auto prof = m_profiler.push("copy");
     auto buffer = allocate<L>(m_bufferL->size());
-    for (auto i = 0; i < m_repeat / m_mpi_size; i++)
+    for (size_t i = 0; i < m_repeat / m_mpi_size; i++)
       *buffer = m_handler->copy(*m_bufferR);
     prof += m_size * m_repeat / m_mpi_size;
   }
@@ -106,22 +106,22 @@ public:
   void fill() {
     using scalar_type = typename L::value_type;
     auto prof = m_profiler.push("fill");
-    for (auto i = 0; i < m_repeat; i++)
+    for (size_t i = 0; i < m_repeat; i++)
       m_handler->fill(static_cast<scalar_type>(1), *m_bufferL);
     prof += m_size * m_repeat / m_mpi_size;
   }
 
   void scal() {
-    using scalar_type = typename L::value_type;
+//    using scalar_type = typename L::value_type;
     if (m_profile_individual)
-      for (auto i = 0; i < m_repeat; i++) {
+      for (size_t i = 0; i < m_repeat; i++) {
         auto prof = m_profiler.push("scal");
         m_handler->scal(1, *m_bufferL);
         prof += m_size / m_mpi_size;
       }
     else {
       auto prof = m_profiler.push("scal");
-      for (auto i = 0; i < m_repeat; i++)
+      for (size_t i = 0; i < m_repeat; i++)
         m_handler->scal(1, *m_bufferL);
       prof += m_size * m_repeat / m_mpi_size;
     }

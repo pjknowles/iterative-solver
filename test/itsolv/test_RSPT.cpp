@@ -37,17 +37,17 @@ struct RSPT : ::testing::Test {
     std::ifstream f(std::string{"./"} + file + ".hamiltonian");
     f >> n;
     hmat.resize(n, n);
-    for (auto i = 0; i < n; i++)
-      for (auto j = 0; j < n; j++)
+    for (size_t i = 0; i < n; i++)
+      for (size_t j = 0; j < n; j++)
         f >> hmat(i, j);
     //    std::cout << "hmat\n" << hmat << std::endl;
     // split degeneracies
-    for (auto i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
       hmat(i, i) += degeneracy_split * i;
     //    std::cout << "hmat\n" << hmat << std::endl;
     h0.resize(n);
     std::ifstream f0(std::string{"./"} + file + ".h0");
-    for (auto i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
       f0 >> h0(i);
     //    std::cout << "h0 " << h0.adjoint() << std::endl;
   }
@@ -76,7 +76,7 @@ struct RSPT : ::testing::Test {
   auto initial_guess(Rvector &x) {
     std::vector<double> diagonals;
     diagonals.reserve(n);
-    for (auto i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
       diagonals.push_back(h0(i));
     x[(std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin())] = 1; // initial guess
   }
@@ -85,7 +85,7 @@ struct RSPT : ::testing::Test {
     {
       molpro::cout << "\n\n*** " << title << " by perturbation theory" << std::endl;
       auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector, Pvector>("RSPT");
-      int nwork = 1;
+//      int nwork = 1;
       Rvector x(n, 0);
       Rvector g(n, 0);
       initial_guess(x);
@@ -93,12 +93,14 @@ struct RSPT : ::testing::Test {
         action(x, g);
         //        std::cout << "x " << x << std::endl;
         //        std::cout << "g " << g << std::endl;
-        nwork = solver->add_vector(x, g);
+//        nwork =
+        solver->add_vector(x, g);
         //        std::cout << "g after add_vector " << g << std::endl;
         update(g);
         //        std::cout << "g after update " << g << std::endl;
         //        std::cout << "x after update " << x << std::endl;
-        nwork = solver->end_iteration(x, g);
+//        nwork =
+        solver->end_iteration(x, g);
         //        std::cout << "g after end_iteration " << g << std::endl;
         //        std::cout << "x after end_iteration " << x << std::endl;
         solver->report();
@@ -168,8 +170,9 @@ struct RSPT : ::testing::Test {
       if (nwork < 1)
         break;
     }
-    if (expected != 0)
+    if (expected != 0) {
       EXPECT_NEAR(e2, expected, 1e-11);
+    }
     return e2;
   }
 };

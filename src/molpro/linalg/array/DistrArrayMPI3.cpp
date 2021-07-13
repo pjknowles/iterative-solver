@@ -12,11 +12,6 @@ int comm_size(MPI_Comm comm) {
   return res;
 }
 
-int comm_rank(MPI_Comm comm) {
-  int res;
-  MPI_Comm_rank(comm, &res);
-  return res;
-}
 } // namespace
 
 DistrArrayMPI3::DistrArrayMPI3(size_t dimension, MPI_Comm commun)
@@ -53,8 +48,8 @@ DistrArrayMPI3::DistrArrayMPI3(const DistrArray& source)
 }
 
 DistrArrayMPI3::DistrArrayMPI3(DistrArrayMPI3&& source) noexcept
-    : DistrArray(source.m_dimension, source.m_communicator), m_win(source.m_win), m_allocated(source.m_allocated),
-      m_distribution(std::move(source.m_distribution)) {
+    : DistrArray(source.m_dimension, source.m_communicator), m_win(source.m_win),
+      m_distribution(std::move(source.m_distribution)), m_allocated(source.m_allocated) {
   source.m_allocated = false;
 }
 
@@ -108,7 +103,7 @@ DistrArrayMPI3::DistrArrayMPI3(std::unique_ptr<Distribution> distribution, MPI_C
   index_type lo, hi;
   std::tie(lo, hi) = m_distribution->range(rank);
   MPI_Aint n = hi - lo;
-  if (buffer.size() < n)
+  if (buffer.size() < size_t(n))
     error("Specified external buffer is too small");
   int size_of_type = sizeof(value_type);
   n *= size_of_type;

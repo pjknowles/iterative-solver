@@ -48,7 +48,7 @@ TYPED_TEST_P(TestArrayHandlerSparse, axpy) {
   ASSERT_EQ(y.size(), y_ref.size());
   auto iy = y.begin();
   auto iy_ref = y_ref.begin();
-  for (auto i = 0; i < y.size(); ++i, ++iy, ++iy_ref) {
+  for (size_t i = 0; i < y.size(); ++i, ++iy, ++iy_ref) {
     EXPECT_DOUBLE_EQ(iy->second, iy_ref->second) << "i = " << std::to_string(i);
     EXPECT_EQ(iy->first, iy_ref->first) << "i = " << std::to_string(i);
   }
@@ -68,7 +68,7 @@ TEST(ArrayHandlerSparse, copy) {
   ASSERT_EQ(x.size(), y.size());
   auto iy = y.begin();
   auto ix = x.begin();
-  for (auto i = 0; i < x.size(); ++i, ++iy, ++ix) {
+  for (size_t i = 0; i < x.size(); ++i, ++iy, ++ix) {
     EXPECT_DOUBLE_EQ(iy->second, ix->second) << "i = " << std::to_string(i);
     EXPECT_EQ(iy->first, ix->first) << "i = " << std::to_string(i);
   }

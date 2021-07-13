@@ -15,7 +15,7 @@ namespace molpro::linalg::array::util {
  */
 class DistrFlags {
 protected:
-  struct Proxy;
+  class Proxy;
   MPI_Comm m_comm = {};         //!< mpi communicator
   MPI_Win m_win = MPI_WIN_NULL; //! empty window handle
   std::shared_ptr<int> m_counter =

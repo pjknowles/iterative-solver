@@ -95,29 +95,34 @@ std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer(cons
   l->do_dump = false;
   return l;
 }
-DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) const {
+
+void DistrArrayDisk::allocate_chunks(){
+  this->chunks.emplace_back(chunk_size);
+  this->chunks.emplace_back(chunk_size);
+}
+
+DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) {
   auto ylb = y.local_buffer();
-  const size_t chunk_size = 3;
+  const size_t chunk_size = this->chunk_size;
   DistrArray::value_type result{0};
-  std::vector<std::vector<DistrArray::value_type>> thischunk;
-  thischunk.emplace_back(chunk_size);
-  thischunk.emplace_back(chunk_size);
+  allocate_chunks();
   //  std::cout << "DistrArrayDisk::dot" << std::endl;
   auto range = this->m_distribution->range(molpro::mpi::rank_global());
   int buffer = 0;
-  for (size_t offset = range.first; offset < range.second; offset += chunk_size) {
+  for (size_t i = 0; i*chunk_size + range.first < range.second; i+=1) {
+    size_t offset = range.first + i*chunk_size;
     int nextbuffer = (buffer + 1) % 2;
     const auto hi = std::min(offset + chunk_size, range.second);
     if (offset == range.first)
-      get(offset, hi, thischunk[buffer].data());
+      get(offset, hi, this->chunks[buffer].data());
     else {
       // complete asynchronous I/O
     }
     if (offset + chunk_size < range.second) {
       const auto hinext = std::min(offset + 2 * chunk_size, range.second);
-      get(offset + chunk_size, hinext, thischunk[nextbuffer].data());
+      get(offset + chunk_size, hinext, this->chunks[nextbuffer].data());
     }
-    result = std::inner_product(begin(thischunk[buffer]), begin(thischunk[buffer]) + hi - offset,
+    result = std::inner_product(begin(this->chunks[buffer]), begin(this->chunks[buffer]) + hi - offset,
                                 ylb->data() + offset - range.first, result);
     buffer = nextbuffer;
   }

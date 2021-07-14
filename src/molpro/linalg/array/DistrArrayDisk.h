@@ -53,6 +53,7 @@ public:
   [[nodiscard]] const Distribution &distribution() const override;
   [[nodiscard]] value_type dot(const DistrArray &y) const override;
   [[nodiscard]] value_type dot(const SparseArray &y) const override;
+  [[nodiscard]] value_type dot(const DistrArray &y);
 
 protected:
   //! Reads the whole local buffer from disk into memory. By default the buffer is written to disk on destruction,
@@ -83,6 +84,13 @@ public:
   [[nodiscard]] std::unique_ptr<const LocalBuffer> local_buffer(const span::Span<value_type> &buffer) const;
   [[nodiscard]] std::unique_ptr<LocalBufferChunked> local_buffer_chunked();
   [[nodiscard]] std::unique_ptr<const LocalBufferChunked> local_buffer_chunked() const;
+
+protected:
+  std::vector<std::vector<DistrArray::value_type>> chunks;
+  int curr_chunk = 0;
+  size_t chunk_size = 1024;
+  void allocate_chunks();
+
 };
 
 double dot(const DistrArrayDisk &x, const DistrArrayDisk &y);

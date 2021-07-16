@@ -79,7 +79,10 @@ void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_
                            const std::vector<value_type>& rhs, size_t dimension, size_t nroot, double augmented_hessian,
                            double svdThreshold, int verbosity);
 
-template <typename value_type>
+template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int> = 0>
+void solve_DIIS(std::vector<value_type>& solution, const std::vector<value_type>& matrix, size_t dimension,
+                double svdThreshold, int verbosity = 0);
+template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t> = nullptr>
 void solve_DIIS(std::vector<value_type>& solution, const std::vector<value_type>& matrix, size_t dimension,
                 double svdThreshold, int verbosity = 0);
 

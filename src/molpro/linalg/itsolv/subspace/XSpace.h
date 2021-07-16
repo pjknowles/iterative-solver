@@ -31,7 +31,8 @@ template <class R, class Q, class P>
 auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, const CVecRef<P>& pparams,
                         const CVecRef<Q>& qparams, const CVecRef<Q>& qactions, const CVecRef<Q>& dparams,
                         const CVecRef<Q>& dactions, const CVecRef<Q>& rhs, const Dimensions& dims,
-                        ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
+                        ArrayHandlers<R, Q, P>& handlers, Logger& logger, bool hermitian = false,
+                        bool action_dot_action = false) {
   auto nQnew = params.size();
   auto data = NewData(nQnew, dims.nX, rhs.size());
   auto& qq = data.qq;
@@ -41,12 +42,26 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
   qx[EqnData::S].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}) = util::overlap(params, pparams, handlers.rp());
   qx[EqnData::S].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}) = util::overlap(params, qparams, handlers.rq());
   qx[EqnData::S].slice({0, dims.oD}, {nQnew, dims.oD + dims.nD}) = util::overlap(params, dparams, handlers.rq());
-  qq[EqnData::H] = util::overlap(params, actions, handlers.rr());
-  qx[EqnData::H].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}) = util::overlap(params, qactions, handlers.rq());
-  qx[EqnData::H].slice({0, dims.oD}, {nQnew, dims.oD + dims.nD}) = util::overlap(params, dactions, handlers.rq());
-  xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}) = util::overlap(pparams, actions, handlers.rp());
-  xq[EqnData::H].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}) = util::overlap(qparams, actions, handlers.qr());
-  xq[EqnData::H].slice({dims.oD, 0}, {dims.oD + dims.nD, nQnew}) = util::overlap(dparams, actions, handlers.qr());
+  qq[EqnData::H] =
+      action_dot_action ? util::overlap(actions, handlers.rr()) : util::overlap(params, actions, handlers.rr());
+  qx[EqnData::H].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}) =
+      util::overlap(action_dot_action ? actions : params, qactions, handlers.rq());
+  qx[EqnData::H].slice({0, dims.oD}, {nQnew, dims.oD + dims.nD}) =
+      util::overlap(action_dot_action ? actions : params, dactions, handlers.rq());
+  if (hermitian) {
+    xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}) = util::overlap(pparams, actions, handlers.rp());
+    //    xq[EqnData::H].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}) = util::overlap(action_dot_action ? qactions :
+    //    qparams, actions, handlers.qr());
+    transpose_copy(xq[EqnData::H].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}),
+                   qx[EqnData::H].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}));
+    transpose_copy(xq[EqnData::H].slice({dims.oD, 0}, {dims.oD + dims.nD, nQnew}),
+                             qx[EqnData::H].slice({0, dims.oD}, {nQnew, dims.oD + dims.nD}));
+    transpose_copy(qx[EqnData::H].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}),
+                   xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}));
+  } else {
+    xq[EqnData::H].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}) = util::overlap(qparams, actions, handlers.qr());
+    xq[EqnData::H].slice({dims.oD, 0}, {dims.oD + dims.nD, nQnew}) = util::overlap(dparams, actions, handlers.qr());
+  }
   qq[EqnData::rhs] = util::overlap(params, rhs, handlers.qr());
   transpose_copy(xq[EqnData::S].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}),
                  qx[EqnData::S].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}));
@@ -54,9 +69,6 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
                  qx[EqnData::S].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}));
   transpose_copy(xq[EqnData::S].slice({dims.oD, 0}, {dims.oD + dims.nD, nQnew}),
                  qx[EqnData::S].slice({0, dims.oD}, {nQnew, dims.oD + dims.nD}));
-  // FIXME only works for Hermitian Hamiltonian
-  transpose_copy(qx[EqnData::H].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}),
-                 xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}));
   if (logger.data_dump) {
     logger.msg("xspace::update_qspace_data() nQnew = " + std::to_string(nQnew), Logger::Info);
     logger.msg("Sqq = " + as_string(qq[EqnData::S]), Logger::Info);
@@ -151,8 +163,9 @@ public:
   //! Update parameters in Q space and corresponding equation data
   void update_qspace(const CVecRef<R>& params, const CVecRef<R>& actions) override {
     m_logger->msg("QSpace::update_qspace", Logger::Trace);
-    auto new_data = xspace::update_qspace_data(params, actions, cparamsp(), cparamsq(), cactionsq(), cparamsd(),
-                                               cactionsd(), cwrap(m_rhs), m_dim, *m_handlers, *m_logger);
+    auto new_data =
+        xspace::update_qspace_data(params, actions, cparamsp(), cparamsq(), cactionsq(), cparamsd(), cactionsd(),
+                                   cwrap(m_rhs), m_dim, *m_handlers, *m_logger, m_hermitian, m_action_dot_action);
     qspace.update(params, actions, new_data.qq, new_data.qx, new_data.xq, m_dim, data);
     update_dimensions();
   }
@@ -262,6 +275,7 @@ public:
   //! Set Hermiticity of the subspace. P space can only be used with Hermitian problems
   void set_hermiticity(bool hermitian) { m_hermitian = hermitian; }
   bool get_hermiticity() { return m_hermitian; }
+  void set_action_action() { m_action_dot_action = true; }
 
   PSpace<R, P> pspace;
   QSpace<R, Q, P> qspace;
@@ -292,7 +306,8 @@ protected:
   Dimensions m_dim;
   std::vector<Q> m_rhs;                   //!< Right hand side vectors
   std::vector<value_type_abs> m_rhs_norm; //!< norm of RHS vectors
-  bool m_hermitian = true;                //!< whether the matrix is Hermitian
+  bool m_hermitian = false;               //!< whether the matrix is Hermitian
+  bool m_action_dot_action = false;       //!< whether the H matrix is action.action instead of action.parameter
 };
 
 } // namespace molpro::linalg::itsolv::subspace

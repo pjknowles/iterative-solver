@@ -80,14 +80,15 @@ TEST_F(simplified, BFGS) {
 }
 
 TEST_F(simplified, DIIS) {
-  auto solver = molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector>("DIIS");
-  solver->set_convergence_threshold(1e-10);
+  auto solver = molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector>("DIIS", "max_size_qspace=4");
+
+  solver->set_convergence_threshold(1e-12);
   auto problem = simplified::MyProblem(10);
   Rvector c(problem.n), g(problem.n);
   EXPECT_TRUE(solver->solve(c, g, problem));
   solver->solution(c, g);
   EXPECT_THAT(c, ::testing::Pointwise(::testing::DoubleNear(1e-10), Rvector(problem.n, 1)));
-  EXPECT_THAT(g, ::testing::Pointwise(::testing::DoubleNear(1e-10), Rvector(problem.n, 0)));
+  EXPECT_THAT(g, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()), Rvector(problem.n, 0)));
 }
 
 TEST_F(simplified, LinearEigensystem) {

@@ -22,6 +22,6 @@ template void solve_LinearEquations<value_type>(std::vector<value_type>& solutio
                                                 const std::vector<value_type>& rhs, size_t dimension, size_t nroot,
                                                 double augmented_hessian, double svdThreshold, int verbosity);
 
-template void solve_DIIS<value_type>(std::vector<value_type>& solution, const std::vector<value_type>& matrix,
-                                     size_t dimension, double svdThreshold, int verbosity);
+//template void solve_DIIS<value_type>(std::vector<value_type>& solution, const std::vector<value_type>& matrix,
+//                                     size_t dimension, double svdThreshold, int verbosity);
 } // namespace molpro::linalg::itsolv

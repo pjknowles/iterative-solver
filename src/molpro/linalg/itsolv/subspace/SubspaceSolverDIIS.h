@@ -1,5 +1,6 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERDIIS_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_SUBSPACESOLVERDIIS_H
+#include <algorithm>
 #include <molpro/linalg/itsolv/subspace/ISubspaceSolver.h>
 #include <molpro/linalg/itsolv/subspace/IXSpace.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
@@ -11,6 +12,8 @@ namespace molpro::linalg::itsolv::subspace {
  */
 template <class RT, class QT, class PT>
 class SubspaceSolverDIIS : public ISubspaceSolver<RT, QT, PT> {
+  const bool& m_converged;
+
 public:
   using value_type = typename ISubspaceSolver<RT, QT, PT>::value_type;
   using value_type_abs = typename ISubspaceSolver<RT, QT, PT>::value_type_abs;
@@ -18,7 +21,8 @@ public:
   using Q = typename ISubspaceSolver<RT, QT, PT>::Q;
   using P = typename ISubspaceSolver<RT, QT, PT>::P;
 
-  explicit SubspaceSolverDIIS(std::shared_ptr<Logger> logger) : m_logger(std::move(logger)) {}
+  explicit SubspaceSolverDIIS(std::shared_ptr<Logger> logger, const bool& converged)
+      : m_converged(converged), m_logger(std::move(logger)) {}
 
   void solve(IXSpace<R, Q, P>& xspace, const size_t nroots_max) override {
     m_logger->msg("SubspaceSolverDIIS::solve", Logger::Trace);
@@ -30,18 +34,32 @@ public:
       m_logger->msg("H = " + as_string(kH, 15), Logger::Info);
     }
     auto kDim = kH.rows();
-//    int kVerbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
-    auto dH = kH;
-    auto dDim = kDim - 1;
-    dH.resize({dDim, dDim});
-    for (size_t i = 0; i < dDim; i++)
-      for (size_t j = 0; j < dDim; j++)
-        dH(i, j) = kH(i, j) - kH(i + 1, j) - kH(i, j + 1) + kH(i + 1, j + 1);
-    m_logger->msg("dH = " + as_string(kH, 15), Logger::Info);
     m_solutions.resize({1, kDim});
-    m_solutions.slice().fill(0);
-    m_solutions(0, 0) = 1;
-    m_errors.assign(1, kH(0, 0));
+    if (m_converged) {
+      m_solutions.fill(0);
+      m_solutions(0, 0) = 1;
+      return;
+    }
+    //    int kVerbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
+    //    auto dH = kH;
+    //    auto dDim = kDim - 1;
+    //    dH.resize({dDim, dDim});
+    //    for (size_t i = 0; i < dDim; i++)
+    //      for (size_t j = 0; j < dDim; j++)
+    //        dH(i, j) = kH(i, j) - kH(i + 1, j) - kH(i, j + 1) + kH(i + 1, j + 1);
+    //    m_logger->msg("dH = " + as_string(kH, 15), Logger::Info);
+    std::vector<value_type> solution(kDim);
+    std::vector<value_type> matrix;
+    matrix.reserve(kDim * kDim);
+    //    std::copy(std::begin(kH),std::end(kH),matrix.begin());
+    for (size_t i = 0; i < kDim; ++i)
+      for (size_t j = 0; j < kDim; ++j)
+        matrix.push_back(kH(j, i));
+    solve_DIIS(solution, matrix, kDim, 1e-10, 1);
+    //    std::copy(solution.begin(),solution.end(),m_solutions.begin());
+    for (size_t i = 0; i < kDim; ++i)
+      m_solutions(0, i) = solution[i];
+    m_errors.assign(1, kH(0, 0)); // TODO fix
     if (m_logger->data_dump) {
       m_logger->msg("solution = " + as_string(m_solutions), Logger::Info);
     }

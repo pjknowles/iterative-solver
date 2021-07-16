@@ -3,6 +3,7 @@
 
 #include "molpro/linalg/array/DistrArray.h"
 #include "molpro/linalg/array/Span.h"
+#include <future>
 
 namespace molpro::linalg::array {
 /*!
@@ -90,8 +91,20 @@ protected:
   int curr_chunk = 0;
   size_t chunk_size = 1024;
   void allocate_chunks();
+  std::vector<std::future<void>> chunk_futures;
 
+public:
+  std::vector<DistrArray::value_type>& get_chunk();
+  bool in_chunks(int i);
+  void load_buffers(int i);
+  void toggle_chunk();
 };
+
+//class BufferManager {
+//
+//  BufferManager(size_t buffer_size = 1024);
+//
+//}
 
 double dot(const DistrArrayDisk &x, const DistrArrayDisk &y);
 double dot(const DistrArrayDisk &x, const DistrArray &y);

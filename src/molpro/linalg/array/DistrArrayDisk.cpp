@@ -118,7 +118,7 @@ DistrArray::value_type DistrArrayDisk::dot(const DistrArray::SparseArray& y) con
 
 BufferManager::BufferManager(const DistrArrayDisk *distr_array_disk, std::pair<size_t, size_t> range,
                              const size_t chunk_size)
-  : distr_array_disk(distr_array_disk), range(range), chunk_size(chunk_size){
+  : chunk_size(chunk_size), distr_array_disk(distr_array_disk), range(range){
     this->allocate_chunks();
   }  
 
@@ -154,7 +154,7 @@ void BufferManager::load_buffers(int i){
 bool BufferManager::in_chunks(int i){
   auto range = this->range;
   this->curr_chunk = (this->curr_chunk + 1) % 2;
-  this->next_chunk_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+  this->next_chunk_future.wait_for(std::chrono::seconds(0));// == std::future_status::ready;
   return i*this->chunk_size + range.first < range.second;
 }
 

@@ -54,7 +54,6 @@ public:
   [[nodiscard]] const Distribution &distribution() const override;
   [[nodiscard]] value_type dot(const DistrArray &y) const override;
   [[nodiscard]] value_type dot(const SparseArray &y) const override;
-  [[nodiscard]] value_type dot(const DistrArray &y);
 
 protected:
   //! Reads the whole local buffer from disk into memory. By default the buffer is written to disk on destruction,
@@ -86,25 +85,31 @@ public:
   [[nodiscard]] std::unique_ptr<LocalBufferChunked> local_buffer_chunked();
   [[nodiscard]] std::unique_ptr<const LocalBufferChunked> local_buffer_chunked() const;
 
-protected:
-  std::vector<std::vector<DistrArray::value_type>> chunks;
-  int curr_chunk = 0;
-  size_t chunk_size = 1024;
-  void allocate_chunks();
-  std::vector<std::future<void>> chunk_futures;
+public:
+
+};
+
+class BufferManager {
 
 public:
+
+  BufferManager(const DistrArrayDisk *distr_array_disk, std::pair<size_t, size_t> range, size_t chunk_size = 1024);
   std::vector<DistrArray::value_type>& get_chunk();
   bool in_chunks(int i);
   void load_buffers(int i);
-  void toggle_chunk();
-};
+  const size_t chunk_size = 1024;
+  size_t get_buffer_end(int i);
 
-//class BufferManager {
-//
-//  BufferManager(size_t buffer_size = 1024);
-//
-//}
+protected:
+
+  const DistrArrayDisk *distr_array_disk;
+  std::vector<std::vector<DistrArray::value_type>> chunks;
+  int curr_chunk = 1;
+  void allocate_chunks();
+  std::future<void> next_chunk_future;
+  std::pair<size_t, size_t> range;
+
+};
 
 double dot(const DistrArrayDisk &x, const DistrArrayDisk &y);
 double dot(const DistrArrayDisk &x, const DistrArray &y);

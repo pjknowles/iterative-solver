@@ -15,9 +15,9 @@ int main(int argc, char* argv[]) {
   molpro::linalg::array::DistrArrayFile dafv{v.size(),molpro::mpi::comm_global(),"/tmp"};
 //  daf.put(0,v.size(),v.data());
   dafv.copy(dasv);
-  std::cout <<"f.f "<< dafv.dot(dafv)<<std::endl;
+//  std::cout <<"f.f "<< dafv.dot(dafv)<<std::endl;
   std::cout <<"f.s "<< dafv.dot(dasv)<<std::endl;
-  std::cout <<"s.f "<< dasv.dot(dafv)<<std::endl;
+//  std::cout <<"s.f "<< dasv.dot(dafv)<<std::endl;
   molpro::mpi::finalize();
   return 0;
 }

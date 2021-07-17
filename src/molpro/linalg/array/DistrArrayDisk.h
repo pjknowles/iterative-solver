@@ -86,29 +86,24 @@ public:
   [[nodiscard]] std::unique_ptr<const LocalBufferChunked> local_buffer_chunked() const;
 
 public:
-
 };
 
 class BufferManager {
 
 public:
-
-  BufferManager(const DistrArrayDisk *distr_array_disk, std::pair<size_t, size_t> range, size_t chunk_size = 1024);
-  std::vector<DistrArray::value_type>& get_chunk();
-  bool in_chunks(int i);
-  void load_buffers(int i);
+  enum buffertype { Single = 1, Double = 2 };
+  BufferManager(const DistrArrayDisk &distr_array_disk, size_t chunk_size = 1024,
+                enum buffertype buffers = buffertype::Double);
+  using value_type = DistrArray::value_type;
   const size_t chunk_size = 1024;
-  size_t get_buffer_end(int i);
+  [[nodiscard]] Span<value_type> next(bool initial = false);
 
 protected:
-
-  const DistrArrayDisk *distr_array_disk;
+  const DistrArrayDisk &distr_array_disk;
   std::vector<std::vector<DistrArray::value_type>> chunks;
-  int curr_chunk = 1;
-  void allocate_chunks();
+  size_t curr_chunk = 0;
   std::future<void> next_chunk_future;
   std::pair<size_t, size_t> range;
-
 };
 
 double dot(const DistrArrayDisk &x, const DistrArrayDisk &y);

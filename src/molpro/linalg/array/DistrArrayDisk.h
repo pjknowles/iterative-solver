@@ -102,8 +102,8 @@ protected:
   const DistrArrayDisk &distr_array_disk;
   std::vector<std::vector<DistrArray::value_type>> chunks;
   size_t curr_chunk = 0;
-  std::future<void> next_chunk_future;
-  std::pair<size_t, size_t> range;
+  std::vector<std::future<void>> next_chunk_futures;
+  const std::pair<size_t, size_t> range;
 };
 
 double dot(const DistrArrayDisk &x, const DistrArrayDisk &y);

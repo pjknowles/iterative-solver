@@ -1,6 +1,7 @@
 #include "DistrArrayDisk.h"
 #include "util.h"
 #include "util/Distribution.h"
+#include <future>
 #include <iostream>
 
 namespace molpro::linalg::array {
@@ -113,36 +114,36 @@ BufferManager::BufferManager(const DistrArrayDisk& distr_array_disk, size_t chun
                              BufferManager::buffertype buffers)
     : chunk_size(std::move(chunk_size)), distr_array_disk(distr_array_disk),
       range(distr_array_disk.distribution().range(molpro::mpi::rank_global())) {
-  for (size_t buffer_count = 0; buffer_count < buffers; ++buffer_count)
+  for (size_t buffer_count = 0; buffer_count < buffers; ++buffer_count) {
     this->chunks.emplace_back(this->chunk_size);
-  this->next_chunk_future = std::async(std::launch::async, [] {});
+    this->next_chunk_futures.emplace_back(std::async(std::launch::async, [] {}));
+  }
 }
 
 Span<BufferManager::value_type> BufferManager::next(bool initial) {
   if (initial)
     curr_chunk = 0;
-  size_t offset = range.first + curr_chunk * this->chunk_size;
-  std::vector<value_type>& buffer = chunks[curr_chunk % chunks.size()];
-  size_t next_offset = range.first + (curr_chunk + 1) * this->chunk_size;
-  std::vector<value_type>& next_buffer = chunks[(curr_chunk + 1) % chunks.size()];
-  // load up the current buffer (first iteration only)
-  if (chunks.size() == 1 or offset == range.first) {
-    const auto hi = std::min(offset + this->chunk_size, range.second);
-    this->distr_array_disk.get(offset, hi, buffer.data());
-  } else
-    this->next_chunk_future.wait();
-  // load up the next buffer
+
+  const size_t next_offset = range.first + (curr_chunk + 1) * this->chunk_size;
   if (chunks.size() > 1 and next_offset < range.second) {
+    const auto next_buffer_id = (curr_chunk + 1) % chunks.size();
     const auto hi = std::min(next_offset + this->chunk_size, range.second);
-    auto data = next_buffer.data();
-    this->next_chunk_future = std::async(
+    auto data = chunks[next_buffer_id].data();
+    this->next_chunk_futures[next_buffer_id] = std::async(
         std::launch::async, [this, next_offset, hi, data] { this->distr_array_disk.get(next_offset, hi, data); });
   }
-  const auto size = offset >= range.second ? 0 : std::min(size_t(chunk_size), range.second - offset);
-  //  std::cout << "next current_chunk=" << curr_chunk << " chunk_size=" << chunk_size << ", range=" << range.first
-  //            << ":" << range.second << ", offset=" << offset << ", returned buffer size " << size << std::endl;
+
+  const size_t offset = range.first + curr_chunk * this->chunk_size;
+  const auto buffer_id = curr_chunk % chunks.size();
+  std::vector<value_type>& buffer = chunks[buffer_id];
+  if (chunks.size() == 1 or offset == range.first)
+    this->distr_array_disk.get(offset, std::min(offset + this->chunk_size, range.second), buffer.data());
+  else
+    this->next_chunk_futures[buffer_id].wait();
+
   ++curr_chunk;
-  return Span<value_type>(buffer.data(), size);
+  return Span<value_type>(buffer.data(),
+                          offset >= range.second ? 0 : std::min(size_t(chunk_size), range.second - offset));
 }
 
 } // namespace molpro::linalg::array

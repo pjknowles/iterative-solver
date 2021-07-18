@@ -114,24 +114,13 @@ BufferManager::BufferManager(const DistrArrayDisk& distr_array_disk, size_t chun
                              BufferManager::buffertype buffers)
     : chunk_size(std::move(chunk_size)), distr_array_disk(distr_array_disk),
       range(distr_array_disk.distribution().range(molpro::mpi::rank_global())) {
-  for (size_t buffer_count = 0; buffer_count < buffers; ++buffer_count) {
+  for (size_t buffer_count = 0; buffer_count < buffers; ++buffer_count)
     this->chunks.emplace_back(this->chunk_size);
-    this->next_chunk_futures.emplace_back(std::async(std::launch::async, [] {}));
-  }
 }
 
 Span<BufferManager::value_type> BufferManager::next(bool initial) {
   if (initial)
     curr_chunk = 0;
-
-  const size_t next_offset = range.first + (curr_chunk + 1) * this->chunk_size;
-  if (chunks.size() > 1 and next_offset < range.second) {
-    const auto next_buffer_id = (curr_chunk + 1) % chunks.size();
-    const auto hi = std::min(next_offset + this->chunk_size, range.second);
-    auto data = chunks[next_buffer_id].data();
-    this->next_chunk_futures[next_buffer_id] = std::async(
-        std::launch::async, [this, next_offset, hi, data] { this->distr_array_disk.get(next_offset, hi, data); });
-  }
 
   const size_t offset = range.first + curr_chunk * this->chunk_size;
   const auto buffer_id = curr_chunk % chunks.size();
@@ -139,7 +128,15 @@ Span<BufferManager::value_type> BufferManager::next(bool initial) {
   if (chunks.size() == 1 or offset == range.first)
     this->distr_array_disk.get(offset, std::min(offset + this->chunk_size, range.second), buffer.data());
   else
-    this->next_chunk_futures[buffer_id].wait();
+    this->next_chunk_future.wait();
+
+  const size_t next_offset = range.first + (curr_chunk + 1) * this->chunk_size;
+  if (chunks.size() > 1 and next_offset < range.second) {
+    const auto hi = std::min(next_offset + this->chunk_size, range.second);
+    auto data = chunks[((curr_chunk + 1) % chunks.size())].data();
+    this->next_chunk_future = std::async(
+        std::launch::async, [this, next_offset, hi, data] { this->distr_array_disk.get(next_offset, hi, data); });
+  }
 
   ++curr_chunk;
   return Span<value_type>(buffer.data(),

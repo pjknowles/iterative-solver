@@ -9,8 +9,11 @@ int main(int argc, char* argv[]) {
     v[i] = i;
   molpro::mpi::init();
   molpro::linalg::array::Span<double> sv{v.data(), v.size()};
-  //  molpro::linalg::array::util::Distribution<size_t> distribution(v.size());
-  molpro::linalg::array::DistrArraySpan dasv{v.size(), sv};
+  auto [lo,hi]=
+      molpro::linalg::array::util::make_distribution_spread_remainder<molpro::linalg::array::DistrArray::index_type>(
+          v.size(), mpisize_global())
+          .range(mpirank_global());
+  molpro::linalg::array::DistrArraySpan dasv{v.size(), molpro::linalg::array::Span<double>(&sv[lo], hi - lo)};
   std::cout << dasv.dot(dasv)<<std::endl;
   molpro::linalg::array::DistrArrayFile dafv{v.size(),molpro::mpi::comm_global(),"/tmp"};
 //  daf.put(0,v.size(),v.data());

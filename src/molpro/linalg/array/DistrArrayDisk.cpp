@@ -3,6 +3,7 @@
 #include "util/Distribution.h"
 #include <future>
 #include <iostream>
+#include <molpro/Profiler.h>
 
 namespace molpro::linalg::array {
 using util::Task;
@@ -42,13 +43,13 @@ DistrArrayDisk::DistrArrayDisk(DistrArrayDisk&& source) noexcept
 DistrArrayDisk::~DistrArrayDisk() = default;
 
 DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source) : m_source{source} {
-  std::cout << "LocalBufferDisk constructor " << this << std::endl;
+//  std::cout << "LocalBufferDisk constructor " << this << std::endl;
   int rank = mpi_rank(source.communicator());
   index_type hi;
   std::tie(m_start, hi) = source.distribution().range(rank);
   m_size = hi - m_start;
-  std::cout << "LocalBufferDisk " << this << " resizes from  " << m_snapshot_buffer.size() << " to " << m_size
-            << std::endl;
+//  std::cout << "LocalBufferDisk " << this << " resizes from  " << m_snapshot_buffer.size() << " to " << m_size
+//            << std::endl;
   m_snapshot_buffer.resize(m_size);
   m_buffer = &m_snapshot_buffer[0];
   source.get(start(), start() + size(), m_buffer);
@@ -67,7 +68,7 @@ DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source, const S
 }
 
 DistrArrayDisk::LocalBufferDisk::~LocalBufferDisk() {
-  std::cout << "LocalBufferDisk destructor " << this << ", size = " << m_snapshot_buffer.size() << std::endl;
+//  std::cout << "LocalBufferDisk destructor " << this << ", size = " << m_snapshot_buffer.size() << std::endl;
   if (do_dump)
     m_source.put(start(), start() + size(), m_buffer);
 }
@@ -103,6 +104,11 @@ DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) const {
   auto yy = y.local_buffer()->data();
   for (auto buffer = buffer_manager.next(true); not buffer.empty(); yy += buffer.size(), buffer = buffer_manager.next())
     result = std::inner_product(begin(buffer), end(buffer), yy, result);
+#ifdef HAVE_MPI_H
+  molpro::Profiler::single()->start("MPI_Allreduce");
+  MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DOUBLE, MPI_SUM, communicator());
+  molpro::Profiler::single()->stop();
+#endif
   return result;
 }
 

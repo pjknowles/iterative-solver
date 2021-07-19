@@ -47,7 +47,7 @@ public:
     }
   };
   void TearDown() override{};
-  const size_t size = 1200;
+  const size_t size = 12;
   int mpi_size, mpi_rank;
   int left, right;
   std::vector<int> chunks, displs;

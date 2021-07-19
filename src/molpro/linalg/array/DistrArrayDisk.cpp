@@ -99,7 +99,7 @@ std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer(cons
 }
 
 DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) const {
-  BufferManager buffer_manager = BufferManager(*this, this->m_buffer_size, BufferManager::Double);
+  BufferManager buffer_manager = BufferManager(*this, 3, BufferManager::Double);
   value_type result = 0;
   auto yy = y.local_buffer()->data();
   for (auto buffer = buffer_manager.begin(); buffer != buffer_manager.end(); yy += buffer->size(), buffer++)

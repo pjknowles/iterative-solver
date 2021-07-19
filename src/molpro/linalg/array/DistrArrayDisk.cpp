@@ -99,16 +99,11 @@ std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer(cons
 }
 
 DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) const {
-  BufferManager buffer_manager = BufferManager(*this, 10240, BufferManager::Double);
+  BufferManager buffer_manager = BufferManager(*this, this->m_buffer_size, BufferManager::Double);
   value_type result = 0;
-  std::cout << size() <<", "<<y.size()<<std::endl;
   auto yy = y.local_buffer()->data();
-  for (auto buffer = buffer_manager.begin(); buffer != buffer_manager.end(); yy += buffer->size(), ++buffer) {
-   std::cout << "buffer iterator "<<yy-y.local_buffer()->data()<<", "<<buffer->size()<<std::endl;
-   for (size_t i=0; i<buffer->size(); ++i) std::cout << "value "<<(*buffer)[i]<<", "<<yy[i]<<std::endl;
+  for (auto buffer = buffer_manager.begin(); buffer != buffer_manager.end(); yy += buffer->size(), ++buffer)
     result = std::inner_product(begin(*buffer), end(*buffer), yy, result);
-    std::cout <<"result "<<result<<std::endl;
-  }
 
 #ifdef HAVE_MPI_H
   molpro::Profiler::single()->start("MPI_Allreduce");
@@ -134,7 +129,6 @@ Span<BufferManager::value_type> BufferManager::next(bool initial) {
   if (initial)
     curr_chunk = 0;
 
-  std::cout << "next "<<curr_chunk<<std::endl;
   const size_t offset = range.first + curr_chunk * this->chunk_size;
   const auto buffer_id = curr_chunk % chunks.size();
   std::vector<value_type>& buffer = chunks[buffer_id];
@@ -145,7 +139,6 @@ Span<BufferManager::value_type> BufferManager::next(bool initial) {
     this->next_chunk_future.wait();
 
   const size_t next_offset = range.first + (curr_chunk + 1) * this->chunk_size;
-  std::cout << "next_offset "<<next_offset<<std::endl;
   if (chunks.size() > 1 and next_offset < range.second) {
     const auto hi = std::min(next_offset + this->chunk_size, range.second);
     auto data = chunks[((curr_chunk + 1) % chunks.size())].data();
@@ -154,9 +147,8 @@ Span<BufferManager::value_type> BufferManager::next(bool initial) {
   }
 
   ++curr_chunk;
-  size_t size = offset >= range.second ? 0 : std::min(size_t(chunk_size), range.second - offset);
-  std::cout << "size "<<size<<std::endl;
-  return Span<value_type>(buffer.data(), size);
+  return Span<value_type>(buffer.data(),
+                          offset >= range.second ? 0 : std::min(size_t(chunk_size), range.second - offset));
 }
 
 } // namespace molpro::linalg::array

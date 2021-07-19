@@ -4,7 +4,6 @@
 #include "molpro/linalg/array/DistrArray.h"
 #include "molpro/linalg/array/Span.h"
 #include <future>
-#include <iostream>
 
 namespace molpro::linalg::array {
 /*!
@@ -104,9 +103,7 @@ public:
     reference operator*() const { return m_value; }
     pointer operator->() { return &m_value; }
     Iterator &operator++() {
-      std::cout << "++ enter"<<std::endl;
       m_value = m_manager.next();
-      std::cout << "++ exit"<<std::endl;
       return *this;
     }
     Iterator operator++(int) {

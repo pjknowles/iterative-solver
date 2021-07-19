@@ -17,10 +17,8 @@ namespace molpro::linalg::array {
  * LocalBuffer reads the whole local section into memory. This might be prohivitively expensive for large arrays, so
  * care must be taken.
  *
- * LocalBufferChunked reads the local section in chunks using a separate thread for I/O. This is more memory efficient
- * and allows overlap of communication and computation.
- *
- * More efficient linear algebra operations are implemented using ChunkedLocalBuffer.
+ * BufferManager reads the local section in chunks using a separate thread for I/O. This is more memory efficient
+ * and allows overlap of communication and computation. The walk through the local section is via iterators.
  *
  * IO can be done in a separate thread using util::Task.
  *
@@ -40,6 +38,7 @@ public:
 protected:
   bool m_allocated = false;                     //!< Flags that the memory view buffer has been allocated
   std::unique_ptr<Distribution> m_distribution; //!< describes distribution of array among processes
+  size_t m_buffer_size = 1024;                  //!< buffer size for paged access via BufferManager
   using DistrArray::DistrArray;
 
   DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm commun);
@@ -54,6 +53,7 @@ public:
   [[nodiscard]] const Distribution &distribution() const override;
   [[nodiscard]] value_type dot(const DistrArray &y) const override;
   [[nodiscard]] value_type dot(const SparseArray &y) const override;
+  void set_buffer_size(size_t buffer_size) { m_buffer_size = buffer_size;}
 
 protected:
   //! Reads the whole local buffer from disk into memory. By default the buffer is written to disk on destruction,
@@ -71,9 +71,6 @@ protected:
     DistrArrayDisk &m_source;                  //!< keep a handle on source to dump data to disk
   };
 
-  // TODO The mechanism for loading the file in chunks should be shared with serial disk array
-  //! Loads local buffer in small chunks
-  class LocalBufferChunked {};
 
 public:
   [[nodiscard]] std::unique_ptr<LocalBuffer> local_buffer() override;
@@ -82,8 +79,6 @@ public:
   [[nodiscard]] std::unique_ptr<LocalBuffer> local_buffer(const span::Span<value_type> &buffer);
   //! Read-only access to the local section, reading it into the provided buffer
   [[nodiscard]] std::unique_ptr<const LocalBuffer> local_buffer(const span::Span<value_type> &buffer) const;
-  [[nodiscard]] std::unique_ptr<LocalBufferChunked> local_buffer_chunked();
-  [[nodiscard]] std::unique_ptr<const LocalBufferChunked> local_buffer_chunked() const;
 
 public:
 };
@@ -96,7 +91,6 @@ public:
                 enum buffertype buffers = buffertype::Double);
   using value_type = DistrArray::value_type;
   const size_t chunk_size = 1024;
-  [[nodiscard]] Span<value_type> next(bool initial = false);
 
   struct Iterator {
     using iterator_category = std::forward_iterator_tag;
@@ -104,7 +98,6 @@ public:
     using value_type = Span<DistrArray::value_type>;
     using pointer = Span<DistrArray::value_type> *;
     using reference = const Span<DistrArray::value_type> &;
-    //    Iterator(pointer ptr) : m_value(ptr->data(), ptr->size()) {}
     Iterator(BufferManager &manager, bool begin = false, bool end = false)
         : m_manager(manager), m_value(end ? value_type(nullptr, 0) : manager.next(begin)) {}
     reference operator*() const { return m_value; }
@@ -128,10 +121,11 @@ public:
     BufferManager &m_manager;
     value_type m_value;
   };
-  Iterator begin() { return Iterator(*this, true); }
-  Iterator end() { return Iterator(*this, false, true); }
+  [[nodiscard]] Iterator begin() { return Iterator(*this, true); }
+  [[nodiscard]] Iterator end() { return Iterator(*this, false, true); }
 
 protected:
+  [[nodiscard]] Span<value_type> next(bool initial = false);
   const DistrArrayDisk &distr_array_disk;
   std::vector<std::vector<DistrArray::value_type>> chunks;
   size_t curr_chunk = 0;

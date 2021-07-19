@@ -363,6 +363,7 @@ public:
                        wrap(actions.begin(), actions.begin() + nwork));
         nwork = this->add_vector(parameters, actions);
       }
+//      std::cout << "** nwork="<<nwork<<"use_diagonals="<<use_diagonals<<std::endl;
       if (nwork > 0) {
         if (use_diagonals) {
           m_handlers->rq().copy(parameters.at(0), *diagonals);

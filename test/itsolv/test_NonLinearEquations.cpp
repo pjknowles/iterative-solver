@@ -157,35 +157,70 @@ auto rosenbrock(const std::vector<double> &x, double a = 1, double b = 100) {
 //     }
 // }
 
-TEST(NonLinearEquations, trig) {
-
-  for (size_t n = 1; n < 16; n++) {
-    auto solver = molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector>(
-        "DIIS", "convergence_threshold=1e-8,max_size_qspace=6");
-    std::vector<double> x(n, .1), g(n);
-    for (int iter = 0; iter < 10; iter++) {
-      double value = 0;
-      for (size_t i = 0; i < n; i++) {
-        value += std::pow(std::sin((i + 1) * x[i]), 2);
-        g[i] = 2 * (i + 1) * std::sin((i + 1) * x[i]) * std::cos((i + 1) * (x[i]));
-        double couple = 1e-2;
-        for (size_t j = 0; j < n; j++) {
-          value += couple * x[i] * x[j];
-          g[i] += 2 * couple * x[j];
-        }
-      }
-      //            molpro::cout << "iter=" << iter << ", x=" << x << ", value=" << value << std::endl;
-      auto precon = solver->add_vector(x, g);
-      //            molpro::cout << "add_vector returns precon=" << precon << ", x=" << x << ", g=" << g[0] <<
-      //            std::endl;
-      if (precon)
-        for (size_t i = 0; i < n; i++)
-          g[i] /= 2 * (i + 1) * (i + 1);
-      if (solver->end_iteration(x, g) == 0)
-        break;
-      //            molpro::cout << "end_iteration returns x=" << x << ", g=" << g << std::endl;
+double calc(const std::vector<double> &x, std::vector<double> &g) {
+  double value = 0;
+  size_t n = x.size();
+  for (size_t i = 0; i < n; i++) {
+    value += std::pow(std::sin((i + 1) * x[i]), 2);
+    g[i] = 2 * (i + 1) * std::sin((i + 1) * x[i]) * std::cos((i + 1) * (x[i]));
+    double couple = 1e-2;
+    for (size_t j = 0; j < n; j++) {
+      value += couple * x[i] * x[j];
+      g[i] += 2 * couple * x[j];
     }
+  }
+  return value;
+}
+class trigProblem : public molpro::linalg::itsolv::Problem<Rvector> {
+public:
+  using value_t = Rvector::value_type;
+  value_t residual(const Rvector &parameters, Rvector &residual) const override {
+    double value = calc(parameters, residual);
+//    std::cout << "trigProblem::residual\nx="<<parameters<<"\ng="<<residual<<std::endl;
+    return value; }
+  void precondition(const VecRef<Rvector> &residual, const std::vector<value_t> &shift) const override {
+//    std::cout << "trigProblem::precondition "<<residual.size()<<std::endl;
+    for (auto &gr : residual) {
+      auto g = gr.get();
+//      std::cout << "trigProblem::precondition initial g="<<g<<std::endl;
+      for (size_t i = 0; i < g.size(); ++i)
+        g[i] /= 2 * (i + 1) * (i + 1);
+//      std::cout << "trigProblem::precondition final g="<<g<<std::endl;
+    }
+  }
+};
+TEST(NonLinearEquations, trig) {
+  for (size_t n = 1; n < 3; n++) {
+    auto solver = molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector>(
+        "DIIS", "convergence_threshold=1e-8,max_size_qspace=10");
+    std::vector<double> x(n, .1), g(n);
+    if (false) {
+
+      for (int iter = 0; iter < 10; iter++) {
+        calc(x, g);
+        //            molpro::cout << "iter=" << iter << ", x=" << x << ", value=" << value << std::endl;
+        auto precon = solver->add_vector(x, g);
+        //            molpro::cout << "add_vector returns precon=" << precon << ", x=" << x << ", g=" << g[0] <<
+        //            std::endl;
+        if (precon)
+          for (size_t i = 0; i < n; i++)
+            g[i] /= 2 * (i + 1) * (i + 1);
+        solver->report();
+        if (solver->end_iteration(x, g) == 0)
+          break;
+        molpro::cout << "end_iteration returns x=" << x << ", g=" << g << std::endl;
+      }
+    } else {
+      auto problem = trigProblem();
+      solver->set_verbosity(molpro::linalg::itsolv::Verbosity::Iteration);
+      solver->solve(x,g, problem);
+    }
+    molpro::cout << "final x=" << x << ", g=" << g << std::endl;
     molpro::cout << solver->statistics() << std::endl;
+    solver->solution(x, g);
+    molpro::cout << "final x=" << x << ", g=" << g << std::endl;
+    calc(x, g);
+    molpro::cout << "final x=" << x << ", g=" << g << std::endl;
     EXPECT_THAT(x, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()),
                                         std::vector<double>(x.size(), double(0))));
   }

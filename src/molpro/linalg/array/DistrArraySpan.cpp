@@ -105,7 +105,8 @@ DistrArraySpan::LocalBufferSpan::LocalBufferSpan(DistrArraySpan& source) {
   m_buffer = source.m_span.data();
   m_size = source.m_span.size();
   if (m_size != (hi - m_start))
-    source.error("size of mapped buffer different from the local distribution size");
+    source.error("size of mapped buffer different from the local distribution size " + std::to_string(m_size) + " " +
+                 std::to_string(hi) + " " + std::to_string(m_start));
 }
 
 DistrArraySpan::LocalBufferSpan::LocalBufferSpan(const DistrArraySpan& source) {
@@ -116,7 +117,8 @@ DistrArraySpan::LocalBufferSpan::LocalBufferSpan(const DistrArraySpan& source) {
   m_buffer = const_cast<value_type*>(source.m_span.data());
   m_size = source.m_span.size();
   if (m_size != (hi - m_start))
-    source.error("size of mapped buffer different from the local distribution size");
+    source.error("size of mapped buffer different from the local distribution size " + std::to_string(m_size) + " " +
+                 std::to_string(hi) + " " + std::to_string(m_start));
 }
 
 const DistrArray::Distribution& DistrArraySpan::distribution() const {

@@ -47,7 +47,7 @@ public:
     }
   };
   void TearDown() override{};
-  const size_t size = 12;
+  const size_t size = 1200;
   int mpi_size, mpi_rank;
   int left, right;
   std::vector<int> chunks, displs;
@@ -236,4 +236,20 @@ TEST_F(DistrArrayFile_Fixture, scatter_acc) {
   MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, y.data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
   ScopeLock l{mpi_comm};
   EXPECT_THAT(y, Pointwise(DoubleEq(), w));
+}
+
+TEST_F(DistrArrayFile_Fixture, dot_DistrArray) {
+  std::vector<double> v(size);
+  std::iota(v.begin(), v.end(), 0);
+  a.put(left, right, &(*(v.cbegin() + left)));
+  const DistrArraySpan s(size,Span<double>(&(*(v.begin() + left)),right-left));
+  auto ss = s.dot(s);
+  auto as = a.dot(s);
+//  auto aa = a.dot(a);
+  auto sa = s.dot(a);
+  ScopeLock l{mpi_comm};
+  EXPECT_NEAR(ss,size*(size-1)*(2*size-1)/6,1e-13);
+  EXPECT_NEAR(as,size*(size-1)*(2*size-1)/6,1e-13);
+//  EXPECT_NEAR(aa,size*(size-1)*(2*size-1)/6,1e-13);
+  EXPECT_NEAR(sa,size*(size-1)*(2*size-1)/6,1e-13);
 }

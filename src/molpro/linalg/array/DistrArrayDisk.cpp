@@ -1,7 +1,9 @@
 #include "DistrArrayDisk.h"
 #include "util.h"
 #include "util/Distribution.h"
+#include <future>
 #include <iostream>
+#include <molpro/Profiler.h>
 
 namespace molpro::linalg::array {
 using util::Task;
@@ -41,13 +43,13 @@ DistrArrayDisk::DistrArrayDisk(DistrArrayDisk&& source) noexcept
 DistrArrayDisk::~DistrArrayDisk() = default;
 
 DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source) : m_source{source} {
-  std::cout << "LocalBufferDisk constructor " << this << std::endl;
+//  std::cout << "LocalBufferDisk constructor " << this << std::endl;
   int rank = mpi_rank(source.communicator());
   index_type hi;
   std::tie(m_start, hi) = source.distribution().range(rank);
   m_size = hi - m_start;
-  std::cout << "LocalBufferDisk " << this << " resizes from  " << m_snapshot_buffer.size() << " to " << m_size
-            << std::endl;
+//  std::cout << "LocalBufferDisk " << this << " resizes from  " << m_snapshot_buffer.size() << " to " << m_size
+//            << std::endl;
   m_snapshot_buffer.resize(m_size);
   m_buffer = &m_snapshot_buffer[0];
   source.get(start(), start() + size(), m_buffer);
@@ -66,7 +68,7 @@ DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source, const S
 }
 
 DistrArrayDisk::LocalBufferDisk::~LocalBufferDisk() {
-  std::cout << "LocalBufferDisk destructor " << this << ", size = " << m_snapshot_buffer.size() << std::endl;
+//  std::cout << "LocalBufferDisk destructor " << this << ", size = " << m_snapshot_buffer.size() << std::endl;
   if (do_dump)
     m_source.put(start(), start() + size(), m_buffer);
 }
@@ -97,18 +99,17 @@ std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer(cons
 }
 
 DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) const {
-  auto range = this->m_distribution->range(molpro::mpi::rank_global());
-  BufferManager buffer_manager = BufferManager(this, range);
-  DistrArray::value_type result = 0;
-  for (size_t i = 0; buffer_manager.in_chunks(i); i+=1) {
-    size_t chunk_start = range.first + i*buffer_manager.chunk_size;
-    //const auto chunk_end = std::min(chunk_start + buffer_manager.chunk_size, range.second);
-    buffer_manager.load_buffers(i);
-    result = std::inner_product(begin(buffer_manager.get_chunk()),
-                                begin(buffer_manager.get_chunk()) + buffer_manager.get_buffer_end(i),
-                                y.local_buffer()->data() + chunk_start - range.first,
-                                result);
-  }
+  BufferManager buffer_manager = BufferManager(*this, this->m_buffer_size, BufferManager::Double);
+  value_type result = 0;
+  auto yy = y.local_buffer()->data();
+  for (auto buffer = buffer_manager.begin(); buffer != buffer_manager.end(); yy += buffer->size(), ++buffer)
+    result = std::inner_product(begin(*buffer), end(*buffer), yy, result);
+
+#ifdef HAVE_MPI_H
+  molpro::Profiler::single()->start("MPI_Allreduce");
+  MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DOUBLE, MPI_SUM, communicator());
+  molpro::Profiler::single()->stop();
+#endif
   return result;
 }
 
@@ -116,53 +117,38 @@ DistrArray::value_type DistrArrayDisk::dot(const DistrArray::SparseArray& y) con
 
 // BufferManager class functions
 
-BufferManager::BufferManager(const DistrArrayDisk *distr_array_disk, std::pair<size_t, size_t> range,
-                             const size_t chunk_size)
-  : chunk_size(chunk_size), distr_array_disk(distr_array_disk), range(range){
-    this->allocate_chunks();
-  }  
-
-void BufferManager::allocate_chunks(){
-  this->chunks.emplace_back(this->chunk_size);
-  this->chunks.emplace_back(this->chunk_size);
-  this->next_chunk_future = std::async(std::launch::async, []{  });
+BufferManager::BufferManager(const DistrArrayDisk& distr_array_disk, size_t chunk_size,
+                             BufferManager::buffertype buffers)
+    : chunk_size(std::move(chunk_size)), distr_array_disk(distr_array_disk),
+      range(distr_array_disk.distribution().range(molpro::mpi::rank_global())) {
+  for (size_t buffer_count = 0; buffer_count < buffers; ++buffer_count)
+    this->chunks.emplace_back(this->chunk_size);
 }
 
-std::vector<DistrArray::value_type>& BufferManager::get_chunk(){
-  return this->chunks[this->curr_chunk];
-}
+Span<BufferManager::value_type> BufferManager::next(bool initial) {
+  if (initial)
+    curr_chunk = 0;
 
-void BufferManager::load_buffers(int i){
-  auto range = this->range;
-  size_t offset = range.first + i*this->chunk_size;
-  int next_chunk = (this->curr_chunk + 1) % 2;
-  // load up the current buffer (first iteration only)
-  if (offset == range.first){
-    const auto hi = std::min(offset + this->chunk_size, range.second);
-    this->distr_array_disk->get(offset, hi, this->chunks[this->curr_chunk].data());
-  }
-  // load up the next buffer
-  if (offset + this->chunk_size < range.second) {
-    const auto hinext = std::min(offset + 2 * this->chunk_size, range.second);
-    this->next_chunk_future = std::async(std::launch::async, [this, offset, hinext, next_chunk]{
-      this->distr_array_disk->get( offset + this->chunk_size, hinext, this->chunks[next_chunk].data() ); 
-    });
+  const size_t offset = range.first + curr_chunk * this->chunk_size;
+  const auto buffer_id = curr_chunk % chunks.size();
+  std::vector<value_type>& buffer = chunks[buffer_id];
+  if (offset >= range.second) return Span<BufferManager::value_type>(nullptr,0);
+  if (chunks.size() == 1 or offset == range.first)
+    this->distr_array_disk.get(offset, std::min(offset + this->chunk_size, range.second), buffer.data());
+  else
+    this->next_chunk_future.wait();
+
+  const size_t next_offset = range.first + (curr_chunk + 1) * this->chunk_size;
+  if (chunks.size() > 1 and next_offset < range.second) {
+    const auto hi = std::min(next_offset + this->chunk_size, range.second);
+    auto data = chunks[((curr_chunk + 1) % chunks.size())].data();
+    this->next_chunk_future = std::async(
+        std::launch::async, [this, next_offset, hi, data] { this->distr_array_disk.get(next_offset, hi, data); });
   }
 
-}
-
-bool BufferManager::in_chunks(int i){
-  auto range = this->range;
-  this->curr_chunk = (this->curr_chunk + 1) % 2;
-  this->next_chunk_future.wait_for(std::chrono::seconds(0));// == std::future_status::ready;
-  return i*this->chunk_size + range.first < range.second;
-}
-
-size_t BufferManager::get_buffer_end(int i){
-    size_t chunk_start = this->range.first + i*this->chunk_size;
-    const auto chunk_end = std::min(chunk_start + this->chunk_size, this->range.second);
-    return chunk_end - chunk_start;
-
+  ++curr_chunk;
+  return Span<value_type>(buffer.data(),
+                          offset >= range.second ? 0 : std::min(size_t(chunk_size), range.second - offset));
 }
 
 } // namespace molpro::linalg::array

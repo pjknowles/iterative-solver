@@ -98,6 +98,39 @@ public:
   const size_t chunk_size = 1024;
   [[nodiscard]] Span<value_type> next(bool initial = false);
 
+  struct Iterator {
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type = std::ptrdiff_t;
+    using value_type = Span<DistrArray::value_type>;
+    using pointer = Span<DistrArray::value_type> *;
+    using reference = const Span<DistrArray::value_type> &;
+    //    Iterator(pointer ptr) : m_value(ptr->data(), ptr->size()) {}
+    Iterator(BufferManager &manager, bool begin = false, bool end = false)
+        : m_manager(manager), m_value(end ? value_type(nullptr, 0) : manager.next(begin)) {}
+    reference operator*() const { return m_value; }
+    pointer operator->() { return &m_value; }
+    Iterator &operator++() {
+      m_value = m_manager.next();
+      return *this;
+    }
+    Iterator operator++(int) {
+      Iterator tmp = *this;
+      ++(*this);
+      return tmp;
+    }
+    friend bool operator==(const Iterator &a, const Iterator &b) {
+      return (a.m_value.size() == b.m_value.size() and b.m_value.size() == 0) // special for end of file
+             or a.m_value.data() == b.m_value.data();
+    };
+    friend bool operator!=(const Iterator &a, const Iterator &b) { return not(a == b); };
+
+  private:
+    BufferManager &m_manager;
+    value_type m_value;
+  };
+  Iterator begin() { return Iterator(*this, true); }
+  Iterator end() { return Iterator(*this, false, true); }
+
 protected:
   const DistrArrayDisk &distr_array_disk;
   std::vector<std::vector<DistrArray::value_type>> chunks;

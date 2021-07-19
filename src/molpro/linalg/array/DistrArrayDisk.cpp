@@ -102,8 +102,11 @@ DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) const {
   BufferManager buffer_manager = BufferManager(*this, 3, BufferManager::Double);
   value_type result = 0;
   auto yy = y.local_buffer()->data();
-  for (auto buffer = buffer_manager.next(true); not buffer.empty(); yy += buffer.size(), buffer = buffer_manager.next())
-    result = std::inner_product(begin(buffer), end(buffer), yy, result);
+//  for (auto buffer = buffer_manager.next(true); not buffer.empty(); yy += buffer.size(), buffer = buffer_manager.next())
+//    result = std::inner_product(begin(buffer), end(buffer), yy, result);
+  for (auto buffer = buffer_manager.begin(); buffer != buffer_manager.end(); yy += buffer->size(), buffer++)
+    result = std::inner_product(begin(*buffer), end(*buffer), yy, result);
+
 #ifdef HAVE_MPI_H
   molpro::Profiler::single()->start("MPI_Allreduce");
   MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DOUBLE, MPI_SUM, communicator());

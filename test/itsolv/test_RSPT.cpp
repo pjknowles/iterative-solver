@@ -81,6 +81,20 @@ struct RSPT : ::testing::Test {
     x[(std::min_element(diagonals.begin(), diagonals.end()) - diagonals.begin())] = 1; // initial guess
   }
 
+  class testProblem : molpro::linalg::itsolv::Problem<Rvector> {
+    void action(const CVecRef<Rvector> &parameters, const VecRef<Rvector> &action) const override {
+      for (size_t i = 0; i < parameters.size(); ++i) {
+        const Rvector& parameter1 = parameters[i].get();
+        Rvector& action1 = action[i].get();
+        auto x = Eigen::Map<const Eigen::VectorXd>(parameter1.data(), parameter1.size());
+        auto r = Eigen::Map<Eigen::VectorXd>(action1.data(), action1.size());
+        r = m_hmat * x;
+      }
+    }
+    const MatrixXdc m_hmat;
+    const Eigen::VectorXd m_h0;
+  };
+
   void test_eigen(const std::string &title = "", const int n_working_vectors_max = 0) {
     {
       molpro::cout << "\n\n*** " << title << " by perturbation theory" << std::endl;

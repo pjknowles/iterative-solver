@@ -352,7 +352,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
     molpro::cout << "singular values " << singularValues.transpose() << std::endl;
   auto svmh = singularValues.head(rank);
   for (auto k = 0; k < rank; k++)
-    svmh(k) = 1 / std::sqrt(svmh(k));
+    svmh(k) = svmh(k) > 1e-14 ? 1 / std::sqrt(svmh(k)) : 0;
   auto Hbar =
       (svmh.asDiagonal()) * (matrixU.leftCols(rank).adjoint()) * H * matrixV.leftCols(rank) * (svmh.asDiagonal());
   // std::cout << "\n\nHbar: \n" << Hbar << "\n\n";

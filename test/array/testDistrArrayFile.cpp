@@ -245,7 +245,7 @@ TEST_F(DistrArrayFile_Fixture, dot_DistrArray) {
   const DistrArraySpan s(size,Span<double>(&(*(v.begin() + left)),right-left));
   auto ss = s.dot(s);
   auto as = a.dot(s);
-  auto aa = a.dot(a);
+//  auto aa = a.dot(a);
   auto sa = s.dot(a);
   ScopeLock l{mpi_comm};
   EXPECT_NEAR(ss,size*(size-1)*(2*size-1)/6,1e-13);

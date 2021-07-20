@@ -1,9 +1,15 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_NONLINEAREQUATIONSDIIS_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_NONLINEAREQUATIONSDIIS_H
+#include <Eigen/Core>
+#include <Eigen/Eigenvalues>
+#include <algorithm>
+#include <cmath>
+#include <limits>
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
 #include <molpro/linalg/itsolv/propose_rspace.h>
+#include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverDIIS.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
 #include <molpro/profiler/Profiler.h>
@@ -19,6 +25,8 @@ namespace molpro::linalg::itsolv {
  */
 template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 class NonLinearEquationsDIIS : public IterativeSolverTemplate<NonLinearEquations, R, Q, P> {
+  bool m_converged;
+
 public:
   using SolverTemplate = IterativeSolverTemplate<NonLinearEquations, R, Q, P>;
   using SolverTemplate ::report;
@@ -30,12 +38,64 @@ public:
                                   const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
       : SolverTemplate(std::make_shared<subspace::XSpace<R, Q, P>>(handlers, logger_),
                        std::static_pointer_cast<subspace::ISubspaceSolver<R, Q, P>>(
-                           std::make_shared<subspace::SubspaceSolverDIIS<R, Q, P>>(logger_)),
+                           std::make_shared<subspace::SubspaceSolverDIIS<R, Q, P>>(logger_, m_converged)),
                        handlers, std::make_shared<Statistics>(), logger_),
-        logger(logger_) {}
+        logger(logger_) {
+    auto xspace = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
+    xspace->set_hermiticity(true);
+    xspace->set_action_action();
+  }
 
   bool nonlinear() const override { return true; }
 
+private:
+  std::pair<size_t, value_type> least_important_vector(const subspace::Matrix<value_type>& H) {
+    const auto He = Eigen::Map<const Eigen::MatrixXd>(H.data().data(), H.rows(), H.cols());
+    std::pair<size_t, value_type> result{0, std::numeric_limits<value_type>::max()};
+    if (He.cols() < 2)
+      return result;
+    auto evs = Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd>();
+    evs.compute(He);
+    result.first = He.cols() - 1;
+    return result;
+    value_type evmax = 0;
+    for (Eigen::Index i = 0; i < He.cols(); ++i) {
+      evmax = std::max(evmax, evs.eigenvalues()(i));
+      if (evs.eigenvalues()(i) < result.second) {
+        result.second = evs.eigenvalues()(i);
+        result.first = 1;
+        for (Eigen::Index j = 1; j < He.rows(); ++j) {
+          if (std::abs(evs.eigenvectors().col(i)(j)) > std::abs(evs.eigenvectors().col(i)(result.first)))
+            result.first = j;
+        }
+      }
+    }
+    result.second /= evmax;
+    std::cout << "least important vector " << result.first << " : " << result.second << std::endl;
+    return result;
+  }
+
+public:
+  int add_vector(R& parameters, R& residual, value_type value) override {
+    auto prof = this->m_profiler->push("itsolv::add_vector");
+    auto error = std::sqrt(this->m_handlers->rr().dot(residual, residual));
+    m_converged = error < this->m_convergence_threshold;
+    using namespace subspace;
+    auto& xspace = this->m_xspace;
+    const auto& H = xspace->data[EqnData::H];
+    //    std::cout << "H " << as_string(H) << std::endl;
+    for (std::pair<size_t, value_type> deleter = least_important_vector(H);
+         xspace->size() >= size_t(this->m_max_size_qspace) or deleter.second < 1e-10;
+         deleter = least_important_vector(H)) {
+      //      std::cout << "deleter " << deleter.first << " : " << deleter.second << std::endl;
+      xspace->eraseq(deleter.first);
+    }
+    //        std::cout << "H after delete Q "<<as_string(H)<<std::endl;
+
+    int nwork = IterativeSolverTemplate<NonLinearEquations, R, Q, P>::add_vector(parameters, residual);
+    this->m_errors.front() = error;
+    return nwork;
+  }
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
     auto prof = this->m_profiler->push("itsolv::end_iteration");
     this->solution_params(this->m_working_set, parameters);
@@ -55,6 +115,7 @@ public:
 
   size_t end_iteration(std::vector<R>& parameters, std::vector<R>& action) override {
     auto result = end_iteration(wrap(parameters), wrap(action));
+    //    std::cout << ", max q" << this->m_max_size_qspace << std::endl; // get_max_size_qspace();
     return result;
   }
 
@@ -90,12 +151,14 @@ public:
     return opt;
   }
 
-  void report(std::ostream& cout, bool endl=true) const override {
-    SolverTemplate::report(cout, false);
-    auto& err = this->m_errors;
-    std::copy(begin(err), end(err), std::ostream_iterator<value_type_abs>(molpro::cout, ", "));
-    cout << std::defaultfloat;
-    if (endl) cout << std::endl;
+  void report(std::ostream& cout, bool endl = true) const override {
+    SolverTemplate::report(cout, endl);
+    //    auto& err = this->m_errors;
+    //    std::copy(begin(err), end(err), std::ostream_iterator<value_type_abs>(molpro::cout, ", "));
+    //    cout << std::defaultfloat;
+    //    cout << ", max q" << this->m_max_size_qspace; // get_max_size_qspace();
+    //    if (endl)
+    //      cout << std::endl;
   }
   std::shared_ptr<Logger> logger;
 

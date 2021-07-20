@@ -352,7 +352,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
     molpro::cout << "singular values " << singularValues.transpose() << std::endl;
   auto svmh = singularValues.head(rank);
   for (auto k = 0; k < rank; k++)
-    svmh(k) = 1 / std::sqrt(svmh(k));
+    svmh(k) = svmh(k) > 1e-14 ? 1 / std::sqrt(svmh(k)) : 0;
   auto Hbar =
       (svmh.asDiagonal()) * (matrixU.leftCols(rank).adjoint()) * H * matrixV.leftCols(rank) * (svmh.asDiagonal());
   // std::cout << "\n\nHbar: \n" << Hbar << "\n\n";
@@ -570,47 +570,56 @@ void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_
   }
 }
 
-template <typename value_type>
+template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>
 void solve_DIIS(std::vector<value_type>& solution, const std::vector<value_type>& matrix, const size_t dimension,
                 double svdThreshold, int verbosity) {
-  auto nQ = dimension - 1;
-  solution.resize(nQ + 1);
-  if (nQ > 0) {
-    //    Eigen::VectorXd Rhs(nQ), Coeffs(nQ);
-    //    Eigen::MatrixXd B(nQ, nQ);
-    Eigen::Matrix<value_type, Eigen::Dynamic, 1> Rhs(nQ), Coeffs(nQ);
-    Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> B(nQ, nQ);
-
-    Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> subspaceMatrix(matrix.data(), nQ + 1,
-                                                                                               nQ + 1);
-    B.block(0, 0, nQ, nQ) = subspaceMatrix.block(0, 0, nQ, nQ);
-    Rhs = -subspaceMatrix.block(0, nQ, nQ, 1);
-
-    //    molpro::cout << "B:" << std::endl << B << std::endl;
-    //    molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
-
-    // invert the system, determine extrapolation coefficients.
-    Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> svd(B, Eigen::ComputeThinU |
-                                                                                           Eigen::ComputeThinV);
-    svd.setThreshold(svdThreshold);
-    //    molpro::cout << "svdThreshold "<<svdThreshold<<std::endl;
-    //    molpro::cout << "U\n"<<svd.matrixU()<<std::endl;
-    //    molpro::cout << "V\n"<<svd.matrixV()<<std::endl;
-    //    molpro::cout << "singularValues\n"<<svd.singularValues()<<std::endl;
-    Coeffs = svd.solve(Rhs).head(nQ);
-    if (verbosity > 1)
-      molpro::cout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
-    for (size_t k = 0; k < (size_t)Coeffs.rows(); k++) {
-      if (std::isnan(std::abs(Coeffs(k)))) {
-        molpro::cout << "B:" << std::endl << B << std::endl;
-        molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
-        molpro::cout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
-        throw std::overflow_error("NaN detected in DIIS submatrix solution");
-      }
-      solution[k] = Coeffs(k);
-    }
+  auto nAug = dimension + 1;
+  //  auto nQ = dimension - 1;
+  solution.resize(dimension);
+  //  if (nQ > 0) {
+  Eigen::VectorXd Rhs(nAug), Coeffs(nAug);
+  Eigen::MatrixXd BAug(nAug, nAug);
+  //    Eigen::Matrix<value_type, Eigen::Dynamic, 1> Rhs(nQ), Coeffs(nQ);
+  //    Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> B(nQ, nQ);
+  //
+  Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> subspaceMatrix(matrix.data(), dimension,
+                                                                                             dimension);
+  BAug.block(0, 0, dimension, dimension) = subspaceMatrix;
+  for (size_t i = 0; i < dimension; ++i) {
+    BAug(dimension, i) = BAug(i, dimension) = -1;
+    Rhs(i) = 0;
   }
-  solution[nQ] = 1;
+  BAug(dimension, dimension) = 0;
+  Rhs(dimension) = -1;
+  //
+//        molpro::cout << "BAug:" << std::endl << BAug << std::endl;
+//        molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
+
+  // invert the system, determine extrapolation coefficients.
+  Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> svd(BAug, Eigen::ComputeThinU |
+                                                                                            Eigen::ComputeThinV);
+
+//  std::cout << "svd thresholds " << svdThreshold << "," << svd.singularValues().maxCoeff() << std::endl;
+//  std::cout << "singular values " << svd.singularValues().transpose() << std::endl;
+  svd.setThreshold(svdThreshold * svd.singularValues().maxCoeff() * 0);
+  //    molpro::cout << "svdThreshold "<<svdThreshold<<std::endl;
+  //    molpro::cout << "U\n"<<svd.matrixU()<<std::endl;
+  //    molpro::cout << "V\n"<<svd.matrixV()<<std::endl;
+  //    molpro::cout << "singularValues\n"<<svd.singularValues()<<std::endl;
+  Coeffs = svd.solve(Rhs).head(dimension);
+//  Coeffs = BAug.fullPivHouseholderQr().solve(Rhs);
+  //  molpro::cout << "Coeffs "<<Coeffs.transpose()<<std::endl;
+  if (verbosity > 1)
+    molpro::cout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
+  for (size_t k = 0; k < (size_t)Coeffs.rows(); k++) {
+    if (std::isnan(std::abs(Coeffs(k)))) {
+      molpro::cout << "B:" << std::endl << BAug << std::endl;
+      molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
+      molpro::cout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;
+      throw std::overflow_error("NaN detected in DIIS submatrix solution");
+    }
+    solution[k] = Coeffs(k);
+  }
 }
 } // namespace molpro::linalg::itsolv
 

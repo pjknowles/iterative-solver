@@ -85,13 +85,15 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   std::cout << "The cooler gemm_inner\n";
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
+  mat.fill(0);
   if (xx.size() == 0 || yy.size() == 0) return mat;
   for (size_t j = 0; j < mat.cols(); ++j) {
     BufferManager y_buf = BufferManager(yy.at(j).get());
-    for (size_t i = 0; i < mat.rows(); ++i) {
-      auto loc_x = xx.at(i).get().local_buffer()->data();
-      for (auto buffer = y_buf.begin(); buffer != y_buf.end(); loc_x += buffer->size(), ++buffer)
-        mat(i,j) = std::inner_product(begin(*buffer), end(*buffer), yy, mat(i,j));
+    size_t offset;
+    for (auto buffer = y_buf.begin(); buffer != y_buf.end(); offset += buffer->size(), ++buffer) {
+      for (size_t i = 0; i < mat.rows(); ++i) {
+        mat(i, j) = std::inner_product(buffer->cbegin(), buffer->cend(), xx.at(i).get().local_buffer()->data() + offset, mat(i, j));
+      }
     }
   }
 #ifdef HAVE_MPI_H

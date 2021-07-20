@@ -88,12 +88,12 @@ TEST(TestGemm, distr_inner) {
 }
 
 TEST(TestGemm, distrarrayfile_inner) {
-  auto handler = ArrayHandlerDistr<DistrArraySpan,DistrArrayDisk>{};
+  auto handler = ArrayHandlerDistr<DistrArraySpan,DistrArrayFile>{};
   size_t n = 10;
   size_t dim = 10;
   std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim));
   std::vector<DistrArraySpan> cx;
-  std::vector<DistrArrayDisk> cy;
+  std::vector<DistrArrayFile> cy;
   cx.reserve(n);
   cy.reserve(n);
   
@@ -106,16 +106,16 @@ TEST(TestGemm, distrarrayfile_inner) {
     auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
     auto clength = crange.second - crange.first;
     cx.emplace_back(dim, Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength), comm_global());
-    cy.emplace_back(dim, Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength), comm_global());
+    cy.emplace_back(dim, comm_global());
+    cy.back().put(0,dim,vy[i].data()); // FIXME for mpi size > 1
   }
-  std::vector<double> vref(n*n), vgemm(n*n);
-  std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
-  Matrix<double> gemm_dot(vref, mat_dim);
-  Matrix<double> ref_dot(vgemm, mat_dim);
+  std::vector<double> vref, vgemm;
+  Matrix<double> gemm_dot({n,n});
   gemm_dot = handler.gemm_inner(cwrap(cx),cwrap(cy));
   for (size_t i = 0; i < n; i++) {
     for (size_t j = 0; j < n; j++) {
-      ref_dot(i, j) = handler.dot(cx[i], cy[j]);
+      vgemm.push_back(gemm_dot(i,j));
+      vref.push_back(handler.dot(cx[i], cy[j]));
     }
   }
   EXPECT_THAT(vgemm, Pointwise(DoubleEq(), vref));

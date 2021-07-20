@@ -9,6 +9,7 @@
 #include <molpro/linalg/array/type_traits.h>
 #include <molpro/linalg/itsolv/wrap_util.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
+#include <molpro/linalg/array/DistrArrayDisk.h>
 
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::CVecRef;

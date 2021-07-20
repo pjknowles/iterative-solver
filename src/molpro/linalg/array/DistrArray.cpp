@@ -468,4 +468,5 @@ void DistrArray::axpy(value_type a, const SparseArray& y) {
       }
   }
 }
+
 } // namespace molpro::linalg::array

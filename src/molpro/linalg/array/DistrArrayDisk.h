@@ -83,23 +83,50 @@ public:
 public:
 };
 
+/**
+ * @brief BufferManager provides asynchronous double-buffered access to the data in a DistrArrayDisk.
+ * Creating an instance of BufferManager will allocate memory for that buffer, which is released when the
+ * BufferManager goes out of scope. Each DistrArrayDisk should only have one BufferManager at a time.
+ * 
+ */
 class BufferManager {
 
 public:
   enum buffertype { Single = 1, Double = 2 };
+  /**
+   * @brief Construct a new Buffer Manager object and allocate memory for the buffers. Note: the contents of the buffer 
+   * will not be loaded until a call to buffer++.
+   * 
+   * @param distr_array_disk the DistrArrayDisk that this BufferManager will access data from.
+   * @param chunk_size number of array elements in each chunk size. Should be large enough that calculations on that
+   * chunk are I/O bound.
+   * @param buffers how many buffers. Double buffering is always preferable.
+   */
   BufferManager(const DistrArrayDisk &distr_array_disk, size_t chunk_size = 1024,
                 enum buffertype buffers = buffertype::Double);
   using value_type = DistrArray::value_type;
   const size_t chunk_size = 1024;
-
+  /**
+   * @brief Custom iterator for the BufferManager. This iterator is responsible for loading data into the buffers and
+   * providing access to that data.
+   */
   struct Iterator {
+    // iterator properties
     using iterator_category = std::forward_iterator_tag;
     using difference_type = std::ptrdiff_t;
     using value_type = Span<DistrArray::value_type>;
     using pointer = Span<DistrArray::value_type> *;
     using reference = const Span<DistrArray::value_type> &;
+    /**
+     * @brief Construct a new Iterator object
+     * 
+     * @param manager BufferManager object
+     * @param begin set this->m_value to the start of the iteration
+     * @param end set this->m_value to the end of the iteration
+     */
     Iterator(BufferManager &manager, bool begin = false, bool end = false)
         : m_manager(manager), m_value(end ? value_type(nullptr, 0) : manager.next(begin)) {}
+    // iterator operators
     reference operator*() const { return m_value; }
     pointer operator->() { return &m_value; }
     Iterator &operator++() {
@@ -118,19 +145,26 @@ public:
     friend bool operator!=(const Iterator &a, const Iterator &b) { return not(a == b); };
 
   private:
-    BufferManager &m_manager;
-    value_type m_value;
+    BufferManager &m_manager; // BufferManager object containing buffers
+    value_type m_value; // iterator value
   };
   [[nodiscard]] Iterator begin() { return Iterator(*this, true); }
   [[nodiscard]] Iterator end() { return Iterator(*this, false, true); }
 
 protected:
+/**
+ * @brief Update the values in this->chunks, toggle this->curr_chunk, and allocate this->next_chunk_future. This is
+ * called via ++buffer.
+ * @param initial whether this is the first iteration 
+ * @return the iterator value for the next iteration
+ */
   [[nodiscard]] Span<value_type> next(bool initial = false);
-  const DistrArrayDisk &distr_array_disk;
-  std::vector<std::vector<DistrArray::value_type>> chunks;
-  size_t curr_chunk = 0;
-  std::future<void> next_chunk_future;
-  const std::pair<size_t, size_t> range;
+  const DistrArrayDisk &distr_array_disk; // pointer to the DistrArrayDisk data is being accessed from
+  std::vector<std::vector<DistrArray::value_type>> chunks; // contents of the buffer
+  size_t curr_chunk = 0; // current chunk (either 0 or 1) - toggles when the next buffer is loadef
+  std::future<void> next_chunk_future; // future for the next chunk - accessed when this->next() makes the next chunk
+  // the current chunk
+  const std::pair<size_t, size_t> range; // memory offsets for MPI found via distr_array_disk.distribution().range(...)
 };
 
 double dot(const DistrArrayDisk &x, const DistrArrayDisk &y);

@@ -17,6 +17,7 @@
 #include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
 #include <molpro/linalg/array/DistrArraySpan.h>
 #include <molpro/linalg/array/DistrArrayFile.h>
+#include <molpro/linalg/array/DistrArrayDisk.h>
 #ifdef LINEARALGEBRA_ARRAY_MPI3
 #include <molpro/linalg/array/DistrArrayMPI3.h>
 #endif
@@ -37,6 +38,7 @@ using molpro::linalg::array::ArrayHandlerDDiskSparse;
 using molpro::linalg::array::ArrayHandlerIterableSparse;
 using molpro::linalg::array::DistrArraySpan;
 using molpro::linalg::array::DistrArrayFile;
+using molpro::linalg::array::DistrArrayDisk;
 #ifdef LINEARALGEBRA_ARRAY_MPI3
 using molpro::linalg::array::DistrArrayMPI3;
 #endif
@@ -77,6 +79,42 @@ TEST(TestGemm, distr_inner) {
   Matrix<double> gemm_dot(vref, mat_dim);
   Matrix<double> ref_dot(vgemm, mat_dim);
   gemm_dot = handler.gemm_inner(cwrap(cx),cwrap(cy));
+  for (size_t i = 0; i < n; i++) {
+    for (size_t j = 0; j < n; j++) {
+      ref_dot(i, j) = handler.dot(cx[i], cy[j]);
+    }
+  }
+  EXPECT_THAT(vgemm, Pointwise(DoubleEq(), vref));
+}
+
+TEST(TestGemm, distrarrayfile_inner) {
+  auto handler = ArrayHandlerDistr<DistrArraySpan,DistrArrayDisk>{};
+  size_t n = 10;
+  size_t dim = 10;
+  std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim));
+  std::vector<DistrArrayDisk> cy;
+  std::vector<DistrArraySpan> cx;
+  //std::vector<DistrArraySpan> cx, cy;
+  cx.reserve(n);
+  cy.reserve(n);
+  
+  int mpi_rank, mpi_size;
+  MPI_Comm_rank(comm_global(), &mpi_rank);
+  MPI_Comm_size(comm_global(), &mpi_size);
+  for (size_t i = 0; i < n; i++) {
+    std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
+    std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
+    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
+    auto clength = crange.second - crange.first;
+    cx.emplace_back(dim, Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength), comm_global());
+    cy.emplace_back(dim, Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength), comm_global());
+  }
+  std::vector<double> vref(n*n), vgemm(n*n);
+  std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
+  Matrix<double> gemm_dot(vref, mat_dim);
+  Matrix<double> ref_dot(vgemm, mat_dim);
+  auto test = cwrap(cy);
+  gemm_dot = handler.gemm_inner(cwrap(cx),test);
   for (size_t i = 0; i < n; i++) {
     for (size_t j = 0; j < n; j++) {
       ref_dot(i, j) = handler.dot(cx[i], cy[j]);

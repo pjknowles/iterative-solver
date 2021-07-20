@@ -9,7 +9,7 @@
 #include <molpro/linalg/array/type_traits.h>
 #include <molpro/linalg/itsolv/wrap_util.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
-#include <molpro/linalg/array/DistrArrayDisk.h>
+#include <molpro/linalg/array/DistrArrayFile.h>
 
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::CVecRef;
@@ -70,6 +70,28 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
     for (size_t i = 0; i < mat.rows(); ++i) {
       auto loc_x = xx.at(i).get().local_buffer();
       mat(i, j) = std::inner_product(begin(*loc_x), end(*loc_x), begin(*loc_y), (value_type)0);
+    }
+  }
+#ifdef HAVE_MPI_H
+  MPI_Allreduce(MPI_IN_PLACE, const_cast<value_type *>(mat.data().data()), mat.size(), MPI_DOUBLE, MPI_SUM,
+                xx.at(0).get().communicator());
+#endif
+  return mat;
+}
+
+template <class AL>
+Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
+                                                                          const CVecRef<DistrArrayFile> &yy) {
+  std::cout << "The cooler gemm_inner\n";
+  using value_type = typename array::mapped_or_value_type_t<AL>;
+  auto mat = Matrix<value_type>({xx.size(), yy.size()});
+  if (xx.size() == 0 || yy.size() == 0) return mat;
+  for (size_t j = 0; j < mat.cols(); ++j) {
+    BufferManager y_buf = BufferManager(yy.at(j).get());
+    for (size_t i = 0; i < mat.rows(); ++i) {
+      auto loc_x = xx.at(i).get().local_buffer()->data();
+      for (auto buffer = y_buf.begin(); buffer != y_buf.end(); loc_x += buffer->size(), ++buffer)
+        mat(i,j) = std::inner_product(begin(*buffer), end(*buffer), yy, mat(i,j));
     }
   }
 #ifdef HAVE_MPI_H

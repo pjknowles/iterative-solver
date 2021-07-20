@@ -92,9 +92,8 @@ TEST(TestGemm, distrarrayfile_inner) {
   size_t n = 10;
   size_t dim = 10;
   std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim));
-  std::vector<DistrArrayDisk> cy;
   std::vector<DistrArraySpan> cx;
-  //std::vector<DistrArraySpan> cx, cy;
+  std::vector<DistrArrayDisk> cy;
   cx.reserve(n);
   cy.reserve(n);
   
@@ -113,8 +112,7 @@ TEST(TestGemm, distrarrayfile_inner) {
   std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
   Matrix<double> gemm_dot(vref, mat_dim);
   Matrix<double> ref_dot(vgemm, mat_dim);
-  auto test = cwrap(cy);
-  gemm_dot = handler.gemm_inner(cwrap(cx),test);
+  gemm_dot = handler.gemm_inner(cwrap(cx),cwrap(cy));
   for (size_t i = 0; i < n; i++) {
     for (size_t j = 0; j < n; j++) {
       ref_dot(i, j) = handler.dot(cx[i], cy[j]);

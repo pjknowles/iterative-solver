@@ -107,7 +107,7 @@ TEST(TestGemm, distrarrayfile_inner) {
     auto clength = crange.second - crange.first;
     cx.emplace_back(dim, Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength), comm_global());
     cy.emplace_back(dim, comm_global());
-    cy.back().put(0,dim,vy[i].data()); // FIXME for mpi size > 1
+    cy.back().put(crange.first, crange.second ,vy[i].data());
   }
   std::vector<double> vref, vgemm;
   Matrix<double> gemm_dot({n,n});

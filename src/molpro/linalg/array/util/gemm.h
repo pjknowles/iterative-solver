@@ -79,9 +79,15 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   return mat;
 }
 
-template <class AL>
+template <class AL, class std::enable_if<!std::is_same<AL,DistrArrayFile>::value>::type* = nullptr>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
                                                                           const CVecRef<DistrArrayFile> &yy) {
+  if (xx == yy){
+    throw std::invalid_argument("Cannot gemm a VecRef with itself.");
+  }
+  if (std::is_same<AL, DistrArrayFile>::value){
+    throw std::invalid_argument("Cannot gemm a VecRef with itself.");
+  }
   std::cout << "The cooler gemm_inner\n";
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});

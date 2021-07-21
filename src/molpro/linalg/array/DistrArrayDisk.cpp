@@ -98,16 +98,6 @@ std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer(cons
   return l;
 }
 
-// [ ] gemm_inner, gemm_outer, axpy to do
-// (overload the function AND write a template specialisation)
-// tests
-// two distrarrays
-// dot of same distrarray
-// do dot test
-// do gemm inner tes
-// do axpy test
-// gemm outer test
-
 DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) const {
   if (&y == this){
     throw std::invalid_argument("Cannot dot a DistrArrayDisk with itself");

@@ -89,8 +89,8 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   if (xx.size() == 0 || yy.size() == 0) return mat;
   for (size_t j = 0; j < mat.cols(); ++j) {
     BufferManager y_buf = BufferManager(yy.at(j).get());
-    size_t offset;
-    for (auto buffer = y_buf.begin(); buffer != y_buf.end(); offset += buffer->size(), ++buffer) {
+    size_t offset = 0;
+    for (auto buffer = y_buf.begin(); buffer != y_buf.end(); offset += y_buf.chunk_size, ++buffer) {
       for (size_t i = 0; i < mat.rows(); ++i) {
         mat(i, j) = std::inner_product(buffer->cbegin(), buffer->cend(), xx.at(i).get().local_buffer()->data() + offset, mat(i, j));
       }

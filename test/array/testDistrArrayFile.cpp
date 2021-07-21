@@ -253,3 +253,17 @@ TEST_F(DistrArrayFile_Fixture, dot_DistrArray) {
 //  EXPECT_NEAR(aa,size*(size-1)*(2*size-1)/6,1e-13);
   EXPECT_NEAR(sa,size*(size-1)*(2*size-1)/6,1e-13);
 }
+
+TEST_F(DistrArrayFile_Fixture, dot_DistrArrayFile) {
+  std::vector<double> v(size);
+  std::iota(v.begin(), v.end(), 0);
+  a.put(left, right, &(*(v.cbegin() + left)));
+  const DistrArraySpan s(size,Span<double>(&(*(v.begin() + left)),right-left));
+  const DistrArrayFile f(s);
+  EXPECT_THROW(auto ss = f.dot(f), std::invalid_argument);
+  auto as = a.dot(f);
+  auto sa = f.dot(a);
+  ScopeLock l{mpi_comm};
+  EXPECT_NEAR(as,size*(size-1)*(2*size-1)/6,1e-13);
+  EXPECT_NEAR(sa,size*(size-1)*(2*size-1)/6,1e-13);
+}

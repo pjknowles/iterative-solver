@@ -51,6 +51,7 @@ public:
   //! Erase the array from disk.
   virtual void erase() = 0;
   [[nodiscard]] const Distribution &distribution() const override;
+  [[nodiscard]] value_type dot(const DistrArrayDisk& y) const;
   [[nodiscard]] value_type dot(const DistrArray &y) const override;
   [[nodiscard]] value_type dot(const SparseArray &y) const override;
   void set_buffer_size(size_t buffer_size) { m_buffer_size = buffer_size;}

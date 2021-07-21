@@ -98,6 +98,13 @@ std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer(cons
   return l;
 }
 
+DistrArray::value_type DistrArrayDisk::dot(const DistrArrayDisk& y) const{
+  if (&y == this){
+    throw std::invalid_argument("Cannot dot a DistrArrayDisk with itself");
+  }
+  return DistrArray::dot(y); //TODO: implement buffering in both DistrArrays
+}
+
 DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) const {
   if (&y == this){
     throw std::invalid_argument("Cannot dot a DistrArrayDisk with itself");

@@ -105,6 +105,7 @@ DistrArray::value_type DistrArrayDisk::dot(const DistrArrayDisk& y) const{
   return DistrArray::dot(y); //TODO: implement buffering in both DistrArrays
 }
 
+// TODO: replace this with a call to gemm_inner with a single element in the CVecRefs
 DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) const {
   if (&y == this){
     throw std::invalid_argument("Cannot dot a DistrArrayDisk with itself");

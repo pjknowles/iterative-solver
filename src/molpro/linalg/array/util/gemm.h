@@ -30,6 +30,24 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   }
 }
 
+template <class AL>
+void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
+                            const CVecRef<DistrArrayFile> &xx,
+                            const VecRef<AL> &yy) {
+  for (size_t ii = 0; ii < alphas.rows(); ++ii) {
+    BufferManager x_buf = BufferManager(xx.at(ii).get());
+    for (size_t jj = 0; jj < alphas.cols(); ++jj) {
+      auto loc_y = yy[jj].get().local_buffer();
+      for (size_t i = 0; i < loc_y->size(); ++i){
+        size_t offset = 0;
+        for (auto buffer = x_buf.begin(); buffer != x_buf.end(); offset += x_buf.chunk_size, ++buffer) {
+          (*loc_y)[i + offset]  += alphas(ii, jj) * (*buffer)[i];
+        }
+      }
+    }
+  }
+}nk
+
 template <class AL, class AR = AL>
 void gemm_outer_distr_sparse(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR> &xx,
                              const VecRef<AL> &yy) {
@@ -85,10 +103,6 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   if (xx == yy){
     throw std::invalid_argument("Cannot gemm a VecRef with itself.");
   }
-  if (std::is_same<AL, DistrArrayFile>::value){
-    throw std::invalid_argument("Cannot gemm a VecRef with itself.");
-  }
-  std::cout << "The cooler gemm_inner\n";
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
   mat.fill(0);

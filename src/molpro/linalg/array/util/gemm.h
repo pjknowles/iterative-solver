@@ -34,19 +34,20 @@ template <class AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
                             const CVecRef<DistrArrayFile> &xx,
                             const VecRef<AL> &yy) {
-  for (size_t ii = 0; ii < alphas.rows(); ++ii) {
+  for (size_t ii = 0; ii < alphas.rows(); ++ii) { // should be more outermost
     BufferManager x_buf = BufferManager(xx.at(ii).get());
-    for (size_t jj = 0; jj < alphas.cols(); ++jj) {
-      auto loc_y = yy[jj].get().local_buffer();
-      for (size_t i = 0; i < loc_y->size(); ++i){
-        size_t offset = 0;
-        for (auto buffer = x_buf.begin(); buffer != x_buf.end(); offset += x_buf.chunk_size, ++buffer) {
+    size_t offset = 0;
+    for (auto buffer = x_buf.begin(); buffer != x_buf.end(); offset += x_buf.chunk_size, ++buffer) { // should be outermost
+      size_t jj;
+      for (jj = 0; jj < alphas.cols(); ++jj) { 
+        auto loc_y = yy[jj].get().local_buffer();
+        for (size_t i = 0; i < loc_y->size(); ++i){ // should be middle
           (*loc_y)[i + offset]  += alphas(ii, jj) * (*buffer)[i];
         }
       }
     }
   }
-}nk
+}
 
 template <class AL, class AR = AL>
 void gemm_outer_distr_sparse(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR> &xx,
@@ -110,7 +111,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   for (size_t j = 0; j < mat.cols(); ++j) {
     BufferManager y_buf = BufferManager(yy.at(j).get());
     size_t offset = 0;
-    for (auto buffer = y_buf.begin(); buffer != y_buf.end(); offset += y_buf.chunk_size, ++buffer) {
+    for (auto buffer = y_buf.begin(); buffer != y_buf.end(); offset += y_buf.chunk_size, ++buffer) { // this needs to outside such that you don't read the file for every j
       for (size_t i = 0; i < mat.rows(); ++i) {
         mat(i, j) = std::inner_product(buffer->cbegin(), buffer->cend(), xx.at(i).get().local_buffer()->data() + offset, mat(i, j));
       }

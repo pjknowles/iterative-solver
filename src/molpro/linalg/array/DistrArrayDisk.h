@@ -54,6 +54,7 @@ public:
   [[nodiscard]] value_type dot(const DistrArrayDisk& y) const;
   [[nodiscard]] value_type dot(const DistrArray &y) const override;
   [[nodiscard]] value_type dot(const SparseArray &y) const override;
+  //void axpy(DistrArray::value_type alpha, const DistrArray& y);
   void set_buffer_size(size_t buffer_size) { m_buffer_size = buffer_size;}
 
 protected:

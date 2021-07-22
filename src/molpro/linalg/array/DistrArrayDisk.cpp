@@ -25,7 +25,7 @@ int mpi_rank(MPI_Comm comm) {
 DistrArrayDisk::DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm commun)
     : DistrArray(distr->border().second, commun), m_distribution(std::move(distr)) {}
 
-DistrArrayDisk::DistrArrayDisk() {}
+DistrArrayDisk::DistrArrayDisk() = default;
 
 DistrArrayDisk::DistrArrayDisk(const DistrArrayDisk& source)
     : DistrArray(source), m_distribution(std::make_unique<Distribution>(*source.m_distribution)) {
@@ -125,6 +125,14 @@ DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) const {
 }
 
 DistrArray::value_type DistrArrayDisk::dot(const DistrArray::SparseArray& y) const { return DistrArray::dot(y); }
+
+// NOT tested yet
+//void DistrArrayDisk::axpy(DistrArray::value_type alpha, const DistrArray& y) const {
+//  auto yy = y.local_buffer()->data();
+//  BufferManager buffer_manager = BufferManager(*this, this->m_buffer_size, BufferManager::Double);
+//  for (auto buffer = buffer_manager.begin(); buffer != buffer_manager.end(); yy += buffer->size(), ++buffer)
+//    yy += alpha * *buffer;
+//}
 
 // BufferManager class functions
 

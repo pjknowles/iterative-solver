@@ -260,7 +260,7 @@ TEST_F(DistrArrayFile_Fixture, dot_DistrArrayFile) {
   a.put(left, right, &(*(v.cbegin() + left)));
   const DistrArraySpan s(size,Span<double>(&(*(v.begin() + left)),right-left));
   const DistrArrayFile f(s);
-  EXPECT_THROW(auto ss = f.dot(f), std::invalid_argument);
+  EXPECT_THROW(auto ss = f.dot(f); std::cout << ss, std::invalid_argument);
   auto as = a.dot(f);
   auto sa = f.dot(a);
   ScopeLock l{mpi_comm};

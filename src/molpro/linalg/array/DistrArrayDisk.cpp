@@ -4,6 +4,7 @@
 #include <future>
 #include <iostream>
 #include <molpro/Profiler.h>
+#include "util/gemm.h"
 
 namespace molpro::linalg::array {
 using util::Task;
@@ -105,34 +106,13 @@ DistrArray::value_type DistrArrayDisk::dot(const DistrArrayDisk& y) const{
   return DistrArray::dot(y); //TODO: implement buffering in both DistrArrays
 }
 
-// TODO: replace this with a call to gemm_inner with a single element in the CVecRefs
 DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) const {
-  if (&y == this){
-    throw std::invalid_argument("Cannot dot a DistrArrayDisk with itself");
-  }
-  BufferManager buffer_manager = BufferManager(*this, this->m_buffer_size, BufferManager::Double);
-  value_type result = 0;
-  auto yy = y.local_buffer()->data();
-  for (auto buffer = buffer_manager.begin(); buffer != buffer_manager.end(); yy += buffer->size(), ++buffer)
-    result = std::inner_product(begin(*buffer), end(*buffer), yy, result);
-
-#ifdef HAVE_MPI_H
-  molpro::Profiler::single()->start("MPI_Allreduce");
-  MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DOUBLE, MPI_SUM, communicator());
-  molpro::Profiler::single()->stop();
-#endif
-  return result;
+  auto y_cvec = molpro::linalg::itsolv::CVecRef<DistrArray>{{y}};
+  auto this_cvec = molpro::linalg::itsolv::CVecRef<DistrArray>{{*this}};
+  return molpro::linalg::array::util::gemm_inner_distr_distr(y_cvec,this_cvec)(0,0);
 }
 
 DistrArray::value_type DistrArrayDisk::dot(const DistrArray::SparseArray& y) const { return DistrArray::dot(y); }
-
-// NOT tested yet
-//void DistrArrayDisk::axpy(DistrArray::value_type alpha, const DistrArray& y) const {
-//  auto yy = y.local_buffer()->data();
-//  BufferManager buffer_manager = BufferManager(*this, this->m_buffer_size, BufferManager::Double);
-//  for (auto buffer = buffer_manager.begin(); buffer != buffer_manager.end(); yy += buffer->size(), ++buffer)
-//    yy += alpha * *buffer;
-//}
 
 // BufferManager class functions
 

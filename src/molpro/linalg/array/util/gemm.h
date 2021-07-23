@@ -10,6 +10,7 @@
 #include <molpro/linalg/itsolv/wrap_util.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/array/DistrArrayFile.h>
+#include <type_traits>
 
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::CVecRef;
@@ -34,7 +35,9 @@ template <class AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
                             const CVecRef<DistrArrayFile> &xx,
                             const VecRef<AL> &yy) {
-  std::cout << "gemm_outer_distr_distr with a DistrArrayFile\n";
+  if (alphas.rows() > xx.size()){
+    throw std::out_of_range("gemm_outer_distr_distr: dimensions of xx and alpha are different.");
+  }
   for (size_t ii = 0; ii < alphas.rows(); ++ii) {
     BufferManager x_buf = BufferManager(xx.at(ii).get());
     size_t offset = 0;
@@ -82,7 +85,6 @@ void gemm_outer_default(Handler &handler, const Matrix<typename Handler::value_t
 template <class AL, class AR = AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
                                                                           const CVecRef<AR> &yy) {
-  std::cout << "gemm_inner_distr_distr (vanilla)\n";
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
   if (xx.size() == 0 || yy.size() == 0) return mat;
@@ -104,12 +106,6 @@ template <class AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
                                                                           const CVecRef<DistrArrayFile> &yy) {
   std::cout << "gemm_inner_distr_distr with a DistrArrayFile\n";
-  // validate size
-  // validate that they aren't both distrarrays
-  // (validate that they're not both the same distrarray)
-  //if (xx == yy){
-  //  throw std::invalid_argument("Cannot gemm a VecRef with itself.");
-  //}
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
   mat.fill(0);
@@ -171,5 +167,13 @@ Matrix<typename Handler::value_type> gemm_inner_default(Handler &handler, const 
 }
 
 } // namespace molpro::linalg::array::util
+
+template <class AL, class AR>
+bool is_valid_gemm(const CVecRef<AL> &xx, const CVecRef<AR> &yy){
+  return true;
+  // validate dimensions
+  // validate that they aren't both distrarrays
+  // (validate that they're not both the same distrarray)
+}
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_GEMM_H

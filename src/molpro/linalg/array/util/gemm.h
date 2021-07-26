@@ -45,12 +45,14 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
       size_t jj;
       for (jj = 0; jj < alphas.cols(); ++jj) { 
         auto loc_y = yy[jj].get().local_buffer();
-        for (size_t i = 0; i < loc_y->size(); ++i){ 
+        for (size_t i = 0; i < x_buf.chunk_size && i + offset < loc_y->size(); ++i){ 
           (*loc_y)[i + offset]  += alphas(ii, jj) * (*buffer)[i];
+          if (std::isnan((*loc_y)[i + offset]) || std::isinf((*loc_y)[i + offset])){throw std::runtime_error("NaN in gemm outer");}; // TEMP
         }
       }
     }
   }
+
 }
 
 template <class AL, class AR = AL>
@@ -122,6 +124,11 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   MPI_Allreduce(MPI_IN_PLACE, const_cast<value_type *>(mat.data().data()), mat.size(), MPI_DOUBLE, MPI_SUM,
                 xx.at(0).get().communicator());
 #endif
+  for (int i=0; i<xx.size(); i++){
+    for (int j=0; j<yy.size(); j++){
+      if (std::isnan(mat(i,j)) || std::isinf(mat(i,j))){throw std::runtime_error("NaN in gemm inner");}; // TEMP
+    }
+  }
   return mat;
 }
 
@@ -166,13 +173,5 @@ Matrix<typename Handler::value_type> gemm_inner_default(Handler &handler, const 
 }
 
 } // namespace molpro::linalg::array::util
-
-template <class AL, class AR>
-bool is_valid_gemm(const CVecRef<AL> &xx, const CVecRef<AR> &yy){
-  return true;
-  // validate dimensions
-  // validate that they aren't both distrarrays
-  // (validate that they're not both the same distrarray)
-}
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_GEMM_H

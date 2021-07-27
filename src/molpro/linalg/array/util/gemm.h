@@ -124,8 +124,8 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   MPI_Allreduce(MPI_IN_PLACE, const_cast<value_type *>(mat.data().data()), mat.size(), MPI_DOUBLE, MPI_SUM,
                 xx.at(0).get().communicator());
 #endif
-  for (int i=0; i<xx.size(); i++){
-    for (int j=0; j<yy.size(); j++){
+  for (size_t i=0; i<xx.size(); i++){
+    for (size_t j=0; j<yy.size(); j++){
       if (std::isnan(mat(i,j)) || std::isinf(mat(i,j))){throw std::runtime_error("NaN in gemm inner");}; // TEMP
     }
   }

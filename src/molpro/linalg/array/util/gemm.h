@@ -9,7 +9,7 @@
 #include <molpro/linalg/array/type_traits.h>
 #include <molpro/linalg/itsolv/wrap_util.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
-#include <molpro/linalg/array/DistrArrayFile.h>
+#include <molpro/linalg/array/DistrArrayDisk.h>
 #include <type_traits>
 
 using molpro::linalg::itsolv::VecRef;
@@ -33,7 +33,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
 
 template <class AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
-                            const CVecRef<DistrArrayFile> &xx,
+                            const CVecRef<DistrArrayDisk> &xx,
                             const VecRef<AL> &yy) {
   if (alphas.rows() > xx.size()){
     throw std::out_of_range("gemm_outer_distr_distr: dimensions of xx and alpha are different.");
@@ -106,7 +106,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
 
 template <class AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
-                                                                          const CVecRef<DistrArrayFile> &yy) {
+                                                                          const CVecRef<DistrArrayDisk> &yy) {
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
   mat.fill(0);

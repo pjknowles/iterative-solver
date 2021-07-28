@@ -9,7 +9,8 @@
 #include <molpro/linalg/array/type_traits.h>
 #include <molpro/linalg/itsolv/wrap_util.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
-#include <molpro/linalg/array/DistrArrayDisk.h>
+#include <molpro/linalg/array/DistrArrayFile.h>
+#include <molpro/Profiler.h>
 #include <type_traits>
 
 using molpro::linalg::itsolv::VecRef;
@@ -21,6 +22,9 @@ namespace molpro::linalg::array::util {
 template <class AL, class AR = AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR> &xx,
                             const VecRef<AL> &yy) {
+  auto prof = molpro::Profiler::single();
+  prof->push("gemm_outer_distr_distr (unbuffered)");
+  *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
   for (size_t ii = 0; ii < alphas.rows(); ++ii) {
     auto loc_x = xx.at(ii).get().local_buffer();
     for (size_t jj = 0; jj < alphas.cols(); ++jj) {
@@ -33,11 +37,14 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
 
 template <class AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
-                            const CVecRef<DistrArrayDisk> &xx,
+                            const CVecRef<DistrArrayFile> &xx,
                             const VecRef<AL> &yy) {
   if (alphas.rows() > xx.size()){
     throw std::out_of_range("gemm_outer_distr_distr: dimensions of xx and alpha are different.");
   }
+  auto prof = molpro::Profiler::single();
+  prof->push("gemm_outer_distr_distr (buffered)");
+  *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
   for (size_t ii = 0; ii < alphas.rows(); ++ii) {
     BufferManager x_buf = BufferManager(xx.at(ii).get());
     size_t offset = 0;
@@ -46,12 +53,12 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
       for (jj = 0; jj < alphas.cols(); ++jj) { 
         auto loc_y = yy[jj].get().local_buffer();
         for (size_t i = 0; i < x_buf.chunk_size && i + offset < loc_y->size(); ++i){ 
+        //for (size_t i=0; i < loc_y->size(); i++){
           (*loc_y)[i + offset]  += alphas(ii, jj) * (*buffer)[i];
         }
       }
     }
   }
-
 }
 
 template <class AL, class AR = AL>
@@ -86,9 +93,11 @@ void gemm_outer_default(Handler &handler, const Matrix<typename Handler::value_t
 template <class AL, class AR = AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
                                                                           const CVecRef<AR> &yy) {
+  auto prof = molpro::Profiler::single()->push("gemm_inner_distr_distr (unbuffered)");
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
   if (xx.size() == 0 || yy.size() == 0) return mat;
+  prof += mat.cols() * mat.rows() * xx.at(0).get().local_buffer()->size()*2;
   for (size_t j = 0; j < mat.cols(); ++j) {
     auto loc_y = yy.at(j).get().local_buffer();
     for (size_t i = 0; i < mat.rows(); ++i) {
@@ -105,11 +114,13 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
 
 template <class AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
-                                                                          const CVecRef<DistrArrayDisk> &yy) {
+                                                                          const CVecRef<DistrArrayFile> &yy) {
+  auto prof = molpro::Profiler::single()->push("gemm_inner_distr_distr (buffered)");
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
   mat.fill(0);
   if (xx.size() == 0 || yy.size() == 0) return mat;
+  prof += mat.cols() * mat.rows() * xx.at(0).get().local_buffer()->size()*2;
   for (size_t j = 0; j < mat.cols(); ++j) {
     BufferManager y_buf = BufferManager(yy.at(j).get());
     size_t offset = 0;

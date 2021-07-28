@@ -325,8 +325,8 @@ TEST(TestGemm, distr_outer) {
 
 TEST(TestGemm, distrddisk_outer) {
   auto handler = ArrayHandlerDistrDDisk<DistrArraySpan,DistrArrayFile>{};
-  size_t n = 10;
-  size_t dim = 10;
+  size_t n = 1050; //TODO: this has to be larger than the buffer in order to fail for incorrect buffering
+  size_t dim = 1050; // but this makes the test slow. Ideally the buffer for these tests should be very slow
   std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim)),
       vz(n, std::vector<double>(dim));
   std::vector<DistrArraySpan> cx, cy;

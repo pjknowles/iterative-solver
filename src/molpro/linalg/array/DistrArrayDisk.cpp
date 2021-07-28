@@ -3,7 +3,6 @@
 #include "util/Distribution.h"
 #include <future>
 #include <iostream>
-#include <molpro/Profiler.h>
 #include "util/gemm.h"
 
 namespace molpro::linalg::array {
@@ -129,16 +128,15 @@ BufferManager::BufferManager(const DistrArrayDisk& distr_array_disk, size_t chun
 Span<BufferManager::value_type> BufferManager::next(bool initial) {
   if (initial)
     curr_chunk = 0;
-
   const size_t offset = range.first + curr_chunk * this->chunk_size;
   const auto buffer_id = curr_chunk % chunks.size();
   std::vector<value_type>& buffer = chunks[buffer_id];
   if (offset >= range.second) return Span<BufferManager::value_type>(nullptr,0);
   if (chunks.size() == 1 or offset == range.first)
     this->distr_array_disk.get(offset, std::min(offset + this->chunk_size, range.second), buffer.data());
-  else
+  else{
     this->next_chunk_future.wait();
-
+  }
   const size_t next_offset = range.first + (curr_chunk + 1) * this->chunk_size;
   if (chunks.size() > 1 and next_offset < range.second) {
     const auto hi = std::min(next_offset + this->chunk_size, range.second);

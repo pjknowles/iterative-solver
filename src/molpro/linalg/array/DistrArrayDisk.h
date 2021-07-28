@@ -4,6 +4,7 @@
 #include "molpro/linalg/array/DistrArray.h"
 #include "molpro/linalg/array/Span.h"
 #include <future>
+#include <molpro/Profiler.h>
 
 namespace molpro::linalg::array {
 /*!
@@ -38,7 +39,7 @@ public:
 protected:
   bool m_allocated = false;                     //!< Flags that the memory view buffer has been allocated
   std::unique_ptr<Distribution> m_distribution; //!< describes distribution of array among processes
-  size_t m_buffer_size = 1024;                  //!< buffer size for paged access via BufferManager
+  size_t m_buffer_size = 16384;                  //!< buffer size for paged access via BufferManager
   using DistrArray::DistrArray;
 
   DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm commun);
@@ -103,10 +104,10 @@ public:
    * chunk are I/O bound.
    * @param buffers how many buffers. Double buffering is always preferable.
    */
-  BufferManager(const DistrArrayDisk &distr_array_disk, size_t chunk_size = 1024,
+  BufferManager(const DistrArrayDisk &distr_array_disk, size_t chunk_size = 16384,
                 enum buffertype buffers = buffertype::Double);
   using value_type = DistrArray::value_type;
-  const size_t chunk_size = 1024;
+  const size_t chunk_size = 16384;
   /**
    * @brief Custom iterator for the BufferManager. This iterator is responsible for loading data into the buffers and
    * providing access to that data.
@@ -131,6 +132,8 @@ public:
     reference operator*() const { return m_value; }
     pointer operator->() { return &m_value; }
     Iterator &operator++() {
+      auto prof = molpro::Profiler::single();
+      prof->push("BufferManager++");
       m_value = m_manager.next();
       return *this;
     }

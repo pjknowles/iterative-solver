@@ -132,7 +132,8 @@ public:
   IterativeSolverTemplate<Solver, R, Q, P>& operator=(IterativeSolverTemplate<Solver, R, Q, P>&&) noexcept = default;
 
   int add_vector(const VecRef<R>& parameters, const VecRef<R>& actions) override {
-    auto prof = this->m_profiler->push("itsolv::add_vector");
+    this->m_profiler->push("itsolv::add_vector");
+    auto prof = molpro::Profiler::single();
     m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations),
                   Logger::Trace);
     m_logger->msg("IterativeSolverTemplate::add_vector  size of {params, actions, working_set} = " +
@@ -146,9 +147,13 @@ public:
     auto cwparams = cwrap(begin(parameters), begin(parameters) + nW);
     auto cwactions = cwrap(begin(actions), begin(actions) + nW);
     m_stats->r_creations += nW;
+    prof->start("update_qspace");
     m_xspace->update_qspace(cwparams, cwactions);
     m_stats->q_creations += 2 * nW;
+    prof->stop();
+    prof->start("solve_and_generate_working_set");
     auto working_set = solve_and_generate_working_set(parameters, actions);
+    prof->stop();
     read_handler_counts(m_stats, m_handlers);
     return working_set;
   }
@@ -179,14 +184,20 @@ public:
   void clearP() override {}
 
   void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) override {
-    auto prof = this->m_profiler->push("itsolv::solution");
+    //auto prof = this->m_profiler->push("itsolv::solution"); // FIXME two profilers
+    auto prof = molpro::Profiler::single();
     check_consistent_number_of_roots_and_solutions(roots, parameters.size());
+    prof->start("construct_solution (parameters)");
     detail::construct_solution(parameters, roots, m_subspace_solver->solutions(), m_xspace->paramsp(),
                                m_xspace->paramsq(), m_xspace->paramsd(), m_xspace->dimensions().oP,
                                m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
+    prof->stop();
+    prof->start("construct_solution (residual)");
     detail::construct_solution(residual, roots, m_subspace_solver->solutions(), {}, m_xspace->actionsq(),
                                m_xspace->actionsd(), m_xspace->dimensions().oP, m_xspace->dimensions().oQ,
                                m_xspace->dimensions().oD, *m_handlers);
+    prof->stop();
+    prof->start("apply");
     auto pvectors = detail::construct_vectorP(roots, m_subspace_solver->solutions(), m_xspace->dimensions().oP,
                                               m_xspace->dimensions().nP);
     if (m_normalise_solution)
@@ -195,6 +206,7 @@ public:
       m_apply_p(pvectors, m_xspace->cparamsp(), residual);
     construct_residual(roots, cwrap(parameters), residual);
     read_handler_counts(m_stats, m_handlers);
+    prof->stop();
   };
 
   void solution(const std::vector<int>& roots, std::vector<R>& parameters, std::vector<R>& residual) override {
@@ -409,8 +421,12 @@ protected:
    * @return size of the working set
    */
   size_t solve_and_generate_working_set(const VecRef<R>& parameters, const VecRef<R>& action) {
-    auto prof = this->m_profiler->push("itsolv::solve_and_generate_working_set");
+    auto m_prof = this->m_profiler->push("itsolv::solve_and_generate_working_set");
+    auto prof = molpro::Profiler::single();
+    prof->start("itsolv::solve");
     m_subspace_solver->solve(*m_xspace, n_roots());
+    prof->stop();
+    prof->start("itsolv::temp_solutions");
     auto nsol = m_subspace_solver->size();
     std::vector<std::pair<Q, Q>> temp_solutions{};
     const auto batches = detail::parameter_batches(nsol, parameters.size());
@@ -428,6 +444,7 @@ protected:
       }
       m_subspace_solver->set_error(roots, errors);
     }
+    prof->stop();
     set_value_errors();
     m_errors = m_subspace_solver->errors();
     m_working_set = detail::select_working_set(parameters.size(), m_errors, m_convergence_threshold, m_value_errors,

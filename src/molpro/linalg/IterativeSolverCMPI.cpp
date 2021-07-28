@@ -162,6 +162,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nro
                                                            int hermitian, int verbosity, const char* fname,
                                                            int64_t fcomm, const char* algorithm) {
   std::shared_ptr<Profiler> profiler = nullptr;
+  profiler = molpro::Profiler::single("MainProfiler");
   std::string pname(fname);
   MPI_Comm comm = MPI_Comm_f2c(fcomm);
   if (!pname.empty()) {
@@ -250,7 +251,13 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
   std::tie(*range_begin, *range_end) = DistrArrayDefaultRange();
 }
 
-extern "C" void IterativeSolverFinalize() { instances.pop(); }
+extern "C" void IterativeSolverFinalize() {
+  auto prof = molpro::Profiler::single();
+  std::cout << "\n\nPROFILING RESULTS: \n" << *prof << "\n\n";
+  int hot[3] = {255,0,0}; int cool[3] = {0,0,255};
+  prof->dotgraph("/home/robwelch/profres.dot");
+  instances.pop();
+  }
 
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync) {
   if (instances.empty())

@@ -109,7 +109,6 @@ DistrArray::value_type DistrArrayDisk::dot(const DistrArray& y) const {
   auto y_cvec = molpro::linalg::itsolv::CVecRef<DistrArray>{{y}};
   auto this_cvec = molpro::linalg::itsolv::CVecRef<DistrArray>{{*this}};
   auto result = molpro::linalg::array::util::gemm_inner_distr_distr(y_cvec,this_cvec)(0,0);
-  if (std::isnan(result) || std::isinf(result)){throw std::runtime_error("NaN in dot product");}; // TEMP
   return result;
 }
 

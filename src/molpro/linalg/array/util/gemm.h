@@ -11,7 +11,6 @@
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/array/DistrArrayFile.h>
 #include <molpro/Profiler.h>
-#include <type_traits>
 
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::CVecRef;
@@ -53,7 +52,6 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
       for (jj = 0; jj < alphas.cols(); ++jj) { 
         auto loc_y = yy[jj].get().local_buffer();
         for (size_t i = 0; i < x_buf.chunk_size && i + offset < loc_y->size(); ++i){ 
-        //for (size_t i=0; i < loc_y->size(); i++){
           (*loc_y)[i + offset]  += alphas(ii, jj) * (*buffer)[i];
         }
       }
@@ -93,10 +91,10 @@ void gemm_outer_default(Handler &handler, const Matrix<typename Handler::value_t
 template <class AL, class AR = AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
                                                                           const CVecRef<AR> &yy) {
-  auto prof = molpro::Profiler::single()->push("gemm_inner_distr_distr (unbuffered)");
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
   if (xx.size() == 0 || yy.size() == 0) return mat;
+  auto prof = molpro::Profiler::single()->push("gemm_inner_distr_distr (unbuffered)");
   prof += mat.cols() * mat.rows() * xx.at(0).get().local_buffer()->size()*2;
   for (size_t j = 0; j < mat.cols(); ++j) {
     auto loc_y = yy.at(j).get().local_buffer();
@@ -115,18 +113,18 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
 template <class AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
                                                                           const CVecRef<DistrArrayFile> &yy) {
-  auto prof = molpro::Profiler::single()->push("gemm_inner_distr_distr (buffered)");
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
   mat.fill(0);
   if (xx.size() == 0 || yy.size() == 0) return mat;
+  auto prof = molpro::Profiler::single()->push("gemm_inner_distr_distr (buffered)");
   prof += mat.cols() * mat.rows() * xx.at(0).get().local_buffer()->size()*2;
   for (size_t j = 0; j < mat.cols(); ++j) {
     BufferManager y_buf = BufferManager(yy.at(j).get());
     size_t offset = 0;
-    for (auto buffer = y_buf.begin(); buffer != y_buf.end(); offset += y_buf.chunk_size, ++buffer) { // this needs to outside such that you don't read the file for every j
+    for (auto buffer = y_buf.begin(); buffer != y_buf.end(); offset += y_buf.chunk_size, ++buffer) { 
       for (size_t i = 0; i < mat.rows(); ++i) {
-        mat(i, j) = std::inner_product(buffer->cbegin(), buffer->cend(), xx.at(i).get().local_buffer()->data() + offset, mat(i, j));
+        mat(i, j) += std::inner_product(buffer->cbegin(), buffer->cend(), xx.at(i).get().local_buffer()->data() + offset, (value_type)0);
       }
     }
   }

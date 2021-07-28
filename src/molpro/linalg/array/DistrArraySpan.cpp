@@ -4,6 +4,7 @@
 #include <memory>
 #include <molpro/mpi.h>
 #include <string>
+#include <molpro/Profiler.h>
 
 namespace molpro::linalg::array {
 
@@ -144,6 +145,8 @@ DistrArray::value_type DistrArraySpan::at(DistrArray::index_type ind) const {
 void DistrArraySpan::set(DistrArray::index_type ind, DistrArray::value_type val) { put(ind, ind + 1, &val); }
 
 void DistrArraySpan::get(DistrArray::index_type lo, DistrArray::index_type hi, DistrArray::value_type* buf) const {
+  //auto prof = molpro::Profiler::single();
+  //prof->push("DistrArraySpan::get");
   if (lo >= hi)
     return;
   DistrArray::index_type lo_loc, hi_loc;

@@ -325,8 +325,8 @@ TEST(TestGemm, distr_outer) {
 
 TEST(TestGemm, distrddisk_outer) {
   auto handler = ArrayHandlerDistrDDisk<DistrArraySpan,DistrArrayFile>{};
-  size_t n = 1050; //TODO: this has to be larger than the buffer in order to fail for incorrect buffering
-  size_t dim = 1050; // but this makes the test slow. Ideally the buffer for these tests should be very slow
+  size_t n = 250;
+  size_t dim = 250;
   std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim)),
       vz(n, std::vector<double>(dim));
   std::vector<DistrArraySpan> cx, cy;
@@ -347,6 +347,9 @@ TEST(TestGemm, distrddisk_outer) {
     cx.emplace_back(dim, Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength), comm_global());
     cy.emplace_back(dim, Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength), comm_global());
     cz.back().put(crange.first, crange.second, &(*(vz[i].cbegin() + crange.first)));
+  }
+  for(size_t i = 0; i != cz.size(); i++){
+    cz[i].set_buffer_size(64);
   }
   std::vector<double> coeff(n*n);
   std::iota(coeff.begin(), coeff.end(), 1);

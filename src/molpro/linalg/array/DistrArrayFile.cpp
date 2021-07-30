@@ -147,6 +147,7 @@ std::fstream DistrArrayFile::make_file(const fs::path& dir) {
   auto prof = molpro::Profiler::single()->push("DistrArrayFile::make_file()");
   std::fstream tfile;
   std::string file_name = util::temp_file_name(dir.string() + "/", "");
+  char buffer[8192*8]; tfile.rdbuf()->pubsetbuf(buffer, 8192*8);
   tfile.open(file_name.c_str(), std::ios::out | std::ios::binary);
   tfile.close();
   tfile.open(file_name.c_str(), std::ios::out | std::ios::in | std::ios::binary);
@@ -165,8 +166,6 @@ void DistrArrayFile::set(DistrArray::index_type ind, DistrArray::value_type val)
 void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, DistrArray::value_type* buf) const {
   if (lo >= hi)
     return;
-  auto prof = molpro::Profiler::single()->push("DistrArrayFile::get()");
-  prof += hi - lo;
   DistrArray::index_type length = hi - lo;
   DistrArray::index_type lo_loc, hi_loc;
   auto bounds_loc = local_bounds();

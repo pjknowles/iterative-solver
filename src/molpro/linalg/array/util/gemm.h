@@ -11,6 +11,8 @@
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/array/DistrArrayFile.h>
 #include <molpro/Profiler.h>
+#include <future>
+#include <molpro/cblas.h>
 
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::CVecRef;
@@ -114,6 +116,69 @@ template <class AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
                                                                           const CVecRef<DistrArrayFile> &yy) {
   using value_type = typename array::mapped_or_value_type_t<AL>;
+  size_t spacing = 1;
+  auto mat = Matrix<value_type>({xx.size(), yy.size()});
+  mat.fill(0);
+  if (xx.size() == 0 || yy.size() == 0) return mat;
+  auto prof = molpro::Profiler::single()->push("gemm_inner_distr_distr (buffered)");
+  prof += mat.cols() * mat.rows() * xx.at(0).get().local_buffer()->size()*2;
+
+  std::vector<BufferManager> buffers;
+  for (size_t j = 0; j < mat.cols(); ++j){
+    buffers.emplace_back(BufferManager(yy.at(j).get()));
+  }
+
+  for (size_t j = 0; j < mat.cols(); ++j) {
+    size_t offset = 0;
+    for (auto buffer = buffers[j].begin(); buffer != buffers[j].end(); offset += buffers[j].chunk_size, ++buffer) { 
+      for (size_t i = 0; i < mat.rows(); ++i) {
+        size_t dim = std::min(buffers.at(j).chunk_size, xx.at(i).get().local_buffer()->size());
+        mat(i,j) += cblas_ddot(dim, buffer->cbegin(), spacing, xx.at(i).get().local_buffer()->data() + offset, spacing);
+      }
+    }
+  }
+#ifdef HAVE_MPI_H
+  MPI_Allreduce(MPI_IN_PLACE, const_cast<value_type *>(mat.data().data()), mat.size(), MPI_DOUBLE, MPI_SUM,
+                xx.at(0).get().communicator());
+#endif
+  return mat;
+}
+
+/**
+template <class AL>
+Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
+                                                                          const CVecRef<DistrArrayFile> &yy) {
+  using value_type = typename array::mapped_or_value_type_t<AL>;
+  auto mat = Matrix<value_type>({xx.size(), yy.size()});
+  if (xx.size() == 0 || yy.size() == 0) return mat;
+  auto prof = molpro::Profiler::single()->push("gemm_inner_distr_distr (buffered)");
+  prof += mat.cols() * mat.rows() * xx.at(0).get().local_buffer()->size()*2;
+  auto loc_y = yy.at(0).get().local_buffer();
+  auto loc_y_future = std::async(std::launch::async, [yy] { return yy.at(1).get().local_buffer(); });
+  for (size_t j = 0; j < mat.cols(); ++j) {
+    if (j>0){
+      loc_y = loc_y_future.get();
+    }
+    if (j < mat.cols()-1){
+      loc_y_future = std::async(std::launch::async, [yy,j] { return yy.at(j+1).get().local_buffer(); });
+    }
+    for (size_t i = 0; i < mat.rows(); ++i) {
+      auto loc_x = xx.at(i).get().local_buffer();
+      mat(i, j) = std::inner_product(begin(*loc_x), end(*loc_x), begin(*loc_y), (value_type)0);
+    }
+  }
+#ifdef HAVE_MPI_H
+  MPI_Allreduce(MPI_IN_PLACE, const_cast<value_type *>(mat.data().data()), mat.size(), MPI_DOUBLE, MPI_SUM,
+                xx.at(0).get().communicator());
+#endif
+  return mat;
+}
+*/
+/**
+template <class AL>
+Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
+                                                                          const CVecRef<DistrArrayFile> &yy) {
+  using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
   mat.fill(0);
   if (xx.size() == 0 || yy.size() == 0) return mat;
@@ -134,7 +199,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
 #endif
   return mat;
 }
-
+*/
 template <class AL, class AR = AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_sparse(const CVecRef<AL> &xx,
                                                                            const CVecRef<AR> &yy) {

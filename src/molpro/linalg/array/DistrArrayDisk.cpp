@@ -131,8 +131,9 @@ Span<BufferManager::value_type> BufferManager::next(bool initial) {
   const auto buffer_id = curr_chunk % chunks.size();
   std::vector<value_type>& buffer = chunks[buffer_id];
   if (offset >= range.second) return Span<BufferManager::value_type>(nullptr,0);
-  if (chunks.size() == 1 or offset == range.first)
+  if (chunks.size() == 1 or offset == range.first){
     this->distr_array_disk.get(offset, std::min(offset + this->chunk_size, range.second), buffer.data());
+  }
   else{
     this->next_chunk_future.wait();
   }

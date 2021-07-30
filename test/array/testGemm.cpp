@@ -89,8 +89,8 @@ TEST(TestGemm, distr_inner) {
 
 TEST(TestGemm, distrarrayfile_inner) {
   auto handler = ArrayHandlerDistr<DistrArraySpan,DistrArrayFile>{};
-  size_t n = 10;
-  size_t dim = 10;
+  size_t n = 250;
+  size_t dim = 250;
   std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim));
   std::vector<DistrArraySpan> cx;
   std::vector<DistrArrayFile> cy;

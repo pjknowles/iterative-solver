@@ -58,7 +58,6 @@ public:
   }
 
   Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) override {
-    auto prof = molpro::Profiler::single()->push("ArrayHandlerDistrDDisk::gemm_inner");
     this->m_counter->gemm_inner++;
     return gemm_inner_distr_distr(xx, yy);
   }

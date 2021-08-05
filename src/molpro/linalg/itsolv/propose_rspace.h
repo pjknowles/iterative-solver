@@ -441,9 +441,13 @@ auto modified_gram_schmidt(const VecRef<R>& rparams, const subspace::Matrix<valu
       }
     }
   };
+  auto prof = molpro::Profiler::single();
+  prof->start("orthoganalise");
   orthogonalise(pparams, handlers.rp(), dims.oP, nP);
   orthogonalise(qparams, handlers.rq(), dims.oQ, nQ);
   orthogonalise(dparams, handlers.rq(), dims.oD, nD);
+  prof->stop();
+  prof->start("get null_params");
   auto null_params = std::vector<int>{};
   for (size_t i = 0; i < nR; ++i) {
     auto norm = std::sqrt(std::abs(handlers.rr().dot(rparams[i], rparams[i])));
@@ -457,6 +461,7 @@ auto modified_gram_schmidt(const VecRef<R>& rparams, const subspace::Matrix<valu
       null_params.push_back(i);
     }
   }
+  prof->stop();
   return null_params;
 }
 
@@ -476,12 +481,16 @@ auto modified_gram_schmidt(const VecRef<R>& rparams, const subspace::Matrix<valu
 template <typename value_type, typename value_type_abs>
 auto redundant_parameters(const subspace::Matrix<value_type>& overlap, const size_t oR, const size_t nR,
                           const value_type_abs svd_thresh, Logger& logger) {
+  auto prof = molpro::Profiler::single();
+  prof->start("itsolv::svd_system");
   logger.msg("redundant_parameters()", Logger::Trace);
   auto redundant_params = std::vector<int>{};
   auto rspace_indices = std::vector<int>(nR);
   std::iota(std::begin(rspace_indices), std::end(rspace_indices), 0);
   auto svd = svd_system(overlap.rows(), overlap.cols(),
                         array::Span(const_cast<value_type*>(overlap.data().data()), overlap.size()), svd_thresh);
+  prof->stop();
+  prof->start("find redundant parameters");
   for (const auto& singular_system : svd) {
     if (!rspace_indices.empty()) {
       auto rspace_contribution = std::vector<value_type_abs>{};
@@ -498,6 +507,7 @@ auto redundant_parameters(const subspace::Matrix<value_type>& overlap, const siz
       logger.msg(ss.str(), Logger::Info);
     }
   }
+  prof->stop();
   return redundant_params;
 }
 

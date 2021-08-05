@@ -44,7 +44,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     throw std::out_of_range("gemm_outer_distr_distr: dimensions of xx and alpha are different.");
   }
   auto prof = molpro::Profiler::single();
-  prof->push("gemm_outer_distr_distr (buffered)");
+  prof->start("gemm_outer_distr_distr (buffered)");
   *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
   for (size_t ii = 0; ii < alphas.rows(); ++ii) {
     BufferManager x_buf = BufferManager(xx.at(ii).get());
@@ -53,12 +53,14 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
       size_t jj;
       for (jj = 0; jj < alphas.cols(); ++jj) { 
         auto loc_y = yy[jj].get().local_buffer();
-        for (size_t i = 0; i < x_buf.chunk_size && i + offset < loc_y->size(); ++i){ 
-          (*loc_y)[i + offset]  += alphas(ii, jj) * (*buffer)[i];
-        }
+        //cblas_dgemv(CblasRowMajor, CblasNoTrans);
+        //for (size_t i = 0; i < x_buf.chunk_size && i + offset < loc_y->size(); ++i){ 
+        //  (*loc_y)[i + offset]  += alphas(ii, jj) * (*buffer)[i];
+        //}
       }
     }
   }
+  prof->stop();
 }
 
 template <class AL, class AR = AL>
@@ -93,6 +95,7 @@ void gemm_outer_default(Handler &handler, const Matrix<typename Handler::value_t
 template <class AL, class AR = AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
                                                                           const CVecRef<AR> &yy) {
+  //const size_t spacing = 1;
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
   if (xx.size() == 0 || yy.size() == 0) return mat;
@@ -103,6 +106,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
     for (size_t i = 0; i < mat.rows(); ++i) {
       auto loc_x = xx.at(i).get().local_buffer();
       mat(i, j) = std::inner_product(begin(*loc_x), end(*loc_x), begin(*loc_y), (value_type)0);
+      //mat(i,j) += cblas_ddot(end(*loc_x) - begin(*loc_x), begin(*loc_x), spacing, begin(*loc_y), spacing);
     }
   }
 #ifdef HAVE_MPI_H
@@ -112,11 +116,11 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   return mat;
 }
 
-template <class AL>
+template <class AL> // async loading of loc_y into a managed buffer with buffers pre-instantiated
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
                                                                           const CVecRef<DistrArrayFile> &yy) {
   using value_type = typename array::mapped_or_value_type_t<AL>;
-  size_t spacing = 1;
+  const size_t spacing = 1;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
   mat.fill(0);
   if (xx.size() == 0 || yy.size() == 0) return mat;
@@ -132,8 +136,10 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
     size_t offset = 0;
     for (auto buffer = buffers[j].begin(); buffer != buffers[j].end(); offset += buffers[j].chunk_size, ++buffer) { 
       for (size_t i = 0; i < mat.rows(); ++i) {
-        size_t dim = std::min(buffers.at(j).chunk_size, xx.at(i).get().local_buffer()->size());
-        mat(i,j) += cblas_ddot(dim, buffer->cbegin(), spacing, xx.at(i).get().local_buffer()->data() + offset, spacing);
+        size_t buflen = buffer->cend() - buffer->cbegin();
+        mat(i,j) += cblas_ddot(buflen, buffer->cbegin(), spacing, xx.at(i).get().local_buffer()->data() + offset,
+                              spacing);
+        //mat(i, j) += std::inner_product(buffer->cbegin(), buffer->cend(), xx.at(i).get().local_buffer()->data() + offset, (value_type)0);
       }
     }
   }
@@ -165,6 +171,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
     for (size_t i = 0; i < mat.rows(); ++i) {
       auto loc_x = xx.at(i).get().local_buffer();
       mat(i, j) = std::inner_product(begin(*loc_x), end(*loc_x), begin(*loc_y), (value_type)0);
+      //mat(i,j) += cblas_ddot(loc_x->size(), begin(*loc_x), spacing, begin(*loc_y), spacing);
     }
   }
 #ifdef HAVE_MPI_H
@@ -175,7 +182,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
 }
 */
 /**
-template <class AL>
+template <class AL> asyncronous loading of loc_y into a buffer managed by buffermanager
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
                                                                           const CVecRef<DistrArrayFile> &yy) {
   using value_type = typename array::mapped_or_value_type_t<AL>;

@@ -147,7 +147,6 @@ std::fstream DistrArrayFile::make_file(const fs::path& dir) {
   auto prof = molpro::Profiler::single()->push("DistrArrayFile::make_file()");
   std::fstream tfile;
   std::string file_name = util::temp_file_name(dir.string() + "/", "");
-  char buffer[8192*8]; tfile.rdbuf()->pubsetbuf(buffer, 8192*8);
   tfile.open(file_name.c_str(), std::ios::out | std::ios::binary);
   tfile.close();
   tfile.open(file_name.c_str(), std::ios::out | std::ios::in | std::ios::binary);

@@ -47,6 +47,8 @@ void DistrArray::fill(DistrArray::value_type val) {
 }
 
 void DistrArray::axpy(value_type a, const DistrArray& y) {
+  auto prof = molpro::Profiler::single();
+  prof->start("DistrArray::axpy");
   auto name = std::string{"Array::axpy"};
   if (!compatible(y))
     error(name + " incompatible arrays");
@@ -65,6 +67,7 @@ void DistrArray::axpy(value_type a, const DistrArray& y) {
   else
     for (size_t i = 0; i < loc_x->size(); ++i)
       (*loc_x)[i] += a * (*loc_y)[i];
+    prof->stop();
 }
 
 void DistrArray::scal(DistrArray::value_type a) {
@@ -123,21 +126,13 @@ DistrArray::value_type DistrArray::dot(const DistrArray& y) const {
   auto name = std::string{"Array::dot"};
   if (!compatible(y))
     error(name + " array x is incompatible");
-  molpro::Profiler::single()->start("loc_x");
   auto loc_x = local_buffer();
-  molpro::Profiler::single()->stop();
-  molpro::Profiler::single()->start("loc_y");
   auto loc_y = y.local_buffer();
-  molpro::Profiler::single()->stop();
   if (!loc_x->compatible(*loc_y))
     error(name + " incompatible local buffers");
-  molpro::Profiler::single()->start("std::inner_product");
   auto a = std::inner_product(begin(*loc_x), end(*loc_x), begin(*loc_y), (value_type)0);
-  molpro::Profiler::single()->stop();
 #ifdef HAVE_MPI_H
-  molpro::Profiler::single()->start("MPI_Allreduce");
   MPI_Allreduce(MPI_IN_PLACE, &a, 1, MPI_DOUBLE, MPI_SUM, communicator());
-  molpro::Profiler::single()->stop();
 #endif
   return a;
 }

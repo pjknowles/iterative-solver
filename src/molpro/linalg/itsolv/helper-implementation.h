@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <molpro/lapacke.h>
 #include <molpro/linalg/itsolv/helper.h>
+#include <molpro/Profiler.h>
 
 namespace molpro::linalg::itsolv {
 
@@ -304,6 +305,8 @@ template <typename value_type, typename std::enable_if_t<!is_complex<value_type>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, const size_t dimension,
                   bool hermitian, double svdThreshold, int verbosity) {
+  auto prof = molpro::Profiler::single();
+  prof->start("itsolv::eigenproblem");
   Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> HrowMajor(
       matrix.data(), dimension, dimension);
   Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> H(dimension, dimension);
@@ -502,6 +505,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
   //          subspaceEigenvectors;
   //      Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic, 1>>(eigenvalues.data(), dimension) = subspaceEigenvalues;
   //    }
+  prof->stop();
 }
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>

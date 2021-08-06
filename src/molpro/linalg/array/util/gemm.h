@@ -51,16 +51,18 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   std::vector<DistrArray::value_type*> buffer_iterators;
   for (size_t j = 0; j < xx.size(); ++j){
     buffers.emplace_back(BufferManager(xx.at(j).get()));
-    buffer_iterators.emplace_back(buffers[i].begin());
+    buffer_iterators.emplace_back(buffers[j].begin());
   }
 
   const int buf_stride = buffers[1].get_array_ptr() - buffers[0].get_array_ptr();
-  const int yy_stride = yy[1].get().local_buffer().data() - yy[0].get().local_buffer().data();
+  const int yy_stride = yy[1].get().local_buffer()->data() - yy[0].get().local_buffer()->data();
+  //const int buf_rows = buffer_iterators[0] - buffers[0].end(); // cols of yy and xx
+  //const int buf_rows = buffers[0].end() - buffer_iterators[0];
+  auto buf_rows = buffer_iterators[0]->cend();
 
   size_t chunk_size = buffers[0].chunk_size;
   for (size_t curr_chunk = 0; curr_chunk < alphas.cols(); curr_chunk += chunk_size){
 
-    const int buf_rows = chunk size = buffers_iterators[i] - buffers[i].end(); // cols of yy and xx
     const int xx_cols = alphas.rows();
     const int alphas_rows = alphas.rows();
     const int alphas_cols = alphas.cols();
@@ -72,14 +74,16 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     const int ldb = 1;
     const int ldc = yy_stride;
 
+    
+
     // todo:
       // build a very detailed test
       // handle last chunk correctly (currently undefined behaviour)
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, buf_rows, yy_cols, xx_cols, alpha, buffer_iterators[0],
-                lda, alphas.data(), ldb, 1, yy[curr_chunk].get().local_buffer.data(), ldc)
+                lda, alphas.data(), ldb, 1, yy[curr_chunk].get().local_buffer()->data(), ldc);
 
-    for (size_t ii = 0; ii < xx.size(); ++ii) { 
-      ++buffer_iterators[ii];
+    for (size_t j = 0; j < xx.size(); ++j) { 
+      ++buffer_iterators[j];
     }
   }
   prof->stop();
@@ -103,10 +107,9 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
       size_t jj;
       for (jj = 0; jj < alphas.cols(); ++jj) { 
         auto loc_y = yy[jj].get().local_buffer();
-        //cblas_dgemv(CblasRowMajor, CblasNoTrans);
-        //for (size_t i = 0; i < x_buf.chunk_size && i + offset < loc_y->size(); ++i){ 
-        //  (*loc_y)[i + offset]  += alphas(ii, jj) * (*buffer)[i];
-        //}
+        for (size_t i = 0; i < x_buf.chunk_size && i + offset < loc_y->size(); ++i){ 
+          (*loc_y)[i + offset]  += alphas(ii, jj) * (*buffer)[i];
+        }
       }
     }
   }

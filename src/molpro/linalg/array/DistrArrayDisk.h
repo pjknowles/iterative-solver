@@ -108,6 +108,7 @@ public:
                 enum buffertype buffers = buffertype::Double);
   using value_type = DistrArray::value_type;
   const size_t chunk_size = 8192;
+  DistrArray::value_type* get_array_ptr();
   /**
    * @brief Custom iterator for the BufferManager. This iterator is responsible for loading data into the buffers and
    * providing access to that data.

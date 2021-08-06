@@ -46,6 +46,56 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   auto prof = molpro::Profiler::single();
   prof->start("gemm_outer_distr_distr (buffered)");
   *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
+
+  std::vector<BufferManager> buffers;
+  std::vector<DistrArray::value_type*> buffer_iterators;
+  for (size_t j = 0; j < xx.size(); ++j){
+    buffers.emplace_back(BufferManager(xx.at(j).get()));
+    buffer_iterators.emplace_back(buffers[i].begin());
+  }
+
+  const int buf_stride = buffers[1].get_array_ptr() - buffers[0].get_array_ptr();
+  const int yy_stride = yy[1].get().local_buffer().data() - yy[0].get().local_buffer().data();
+
+  size_t chunk_size = buffers[0].chunk_size;
+  for (size_t curr_chunk = 0; curr_chunk < alphas.cols(); curr_chunk += chunk_size){
+
+    const int buf_rows = chunk size = buffers_iterators[i] - buffers[i].end(); // cols of yy and xx
+    const int xx_cols = alphas.rows();
+    const int alphas_rows = alphas.rows();
+    const int alphas_cols = alphas.cols();
+    const int yy_cols = yy.size();
+    const int beta=1;
+    const int alpha=1;
+
+    const int lda = buf_stride;
+    const int ldb = 1;
+    const int ldc = yy_stride;
+
+    // todo:
+      // build a very detailed test
+      // handle last chunk correctly (currently undefined behaviour)
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, buf_rows, yy_cols, xx_cols, alpha, buffer_iterators[0],
+                lda, alphas.data(), ldb, 1, yy[curr_chunk].get().local_buffer.data(), ldc)
+
+    for (size_t ii = 0; ii < xx.size(); ++ii) { 
+      ++buffer_iterators[ii];
+    }
+  }
+  prof->stop();
+}
+
+/**
+template <class AL>
+void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
+                            const CVecRef<DistrArrayFile> &xx,
+                            const VecRef<AL> &yy) {
+  if (alphas.rows() > xx.size()){
+    throw std::out_of_range("gemm_outer_distr_distr: dimensions of xx and alpha are different.");
+  }
+  auto prof = molpro::Profiler::single();
+  prof->start("gemm_outer_distr_distr (buffered)");
+  *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
   for (size_t ii = 0; ii < alphas.rows(); ++ii) {
     BufferManager x_buf = BufferManager(xx.at(ii).get());
     size_t offset = 0;
@@ -62,7 +112,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   }
   prof->stop();
 }
-
+*/
 template <class AL, class AR = AL>
 void gemm_outer_distr_sparse(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR> &xx,
                              const VecRef<AL> &yy) {

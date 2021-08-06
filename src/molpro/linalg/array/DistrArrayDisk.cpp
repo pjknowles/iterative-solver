@@ -150,4 +150,9 @@ Span<BufferManager::value_type> BufferManager::next(bool initial) {
                           offset >= range.second ? 0 : std::min(size_t(chunk_size), range.second - offset));
 }
 
+DistrArray::value_type* BufferManager::get_array_ptr(){
+  DistrArray::value_type* addr = this->chunks[this->curr_chunk].data();
+  return addr;
+}
+
 } // namespace molpro::linalg::array

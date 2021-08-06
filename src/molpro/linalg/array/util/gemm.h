@@ -48,7 +48,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
 
   std::vector<BufferManager> buffers;
-  std::vector<DistrArray::value_type*> buffer_iterators;
+  std::vector<Span<DistrArray::value_type> *> buffer_iterators;
   for (size_t j = 0; j < xx.size(); ++j){
     buffers.emplace_back(BufferManager(xx.at(j).get()));
     buffer_iterators.emplace_back(buffers[j].begin());
@@ -58,7 +58,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   const int yy_stride = yy[1].get().local_buffer()->data() - yy[0].get().local_buffer()->data();
   //const int buf_rows = buffer_iterators[0] - buffers[0].end(); // cols of yy and xx
   //const int buf_rows = buffers[0].end() - buffer_iterators[0];
-  auto buf_rows = buffer_iterators[0]->cend();
+  auto buf_rows = buffer_iterators[0]->size();
 
   size_t chunk_size = buffers[0].chunk_size;
   for (size_t curr_chunk = 0; curr_chunk < alphas.cols(); curr_chunk += chunk_size){

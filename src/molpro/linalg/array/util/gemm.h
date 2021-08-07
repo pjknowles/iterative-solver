@@ -43,12 +43,16 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   if (alphas.rows() > xx.size()){
     throw std::out_of_range("gemm_outer_distr_distr: dimensions of xx and alpha are different.");
   }
+  std::cout << "the cool gemm_outer_outer\n";
   auto prof = molpro::Profiler::single();
   prof->start("gemm_outer_distr_distr (buffered)");
   *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
 
   std::vector<BufferManager> buffers;
-  std::vector<Span<DistrArray::value_type> *> buffer_iterators;
+  std::vector<BufferManager::Iterator> buffer_iterators;
+  buffers.reserve(xx.size());
+  buffer_iterators.reserve(xx.size());
+  // TODO: reserve size of these vectors
   for (size_t j = 0; j < xx.size(); ++j){
     buffers.emplace_back(BufferManager(xx.at(j).get()));
     buffer_iterators.emplace_back(buffers[j].begin());
@@ -56,12 +60,31 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
 
   const int buf_stride = buffers[1].get_array_ptr() - buffers[0].get_array_ptr();
   const int yy_stride = yy[1].get().local_buffer()->data() - yy[0].get().local_buffer()->data();
-  //const int buf_rows = buffer_iterators[0] - buffers[0].end(); // cols of yy and xx
-  //const int buf_rows = buffers[0].end() - buffer_iterators[0];
-  auto buf_rows = buffer_iterators[0]->size();
+
+  int previous_buf_stride;
+  int previous_yy_stride;
+
+  // check contiguity
+  for (size_t j = 0; j<xx.size()-1; ++j){
+    int curr_buf_stride = buffers[j+1].get_array_ptr() - buffers[j].get_array_ptr();
+    int curr_yy_stride = yy[j+1].get().local_buffer()->data() - yy[j].get().local_buffer()->data();
+    //std::cout << curr_buf_stride << ", " << curr_yy_stride << "\n";
+    if (j<0){
+      if (curr_yy_stride != previous_yy_stride){
+        throw std::runtime_error("yy_stride is not contiguous\n");
+      }
+      if (curr_buf_stride != previous_buf_stride){
+        throw std::runtime_error("buf_stride is not contiguous\n");
+      }
+    }
+    previous_buf_stride = buf_stride;
+    previous_yy_stride = yy_stride;
+  } 
 
   size_t chunk_size = buffers[0].chunk_size;
   for (size_t curr_chunk = 0; curr_chunk < alphas.cols(); curr_chunk += chunk_size){
+
+    auto buf_rows = buffer_iterators[0]->size();
 
     const int xx_cols = alphas.rows();
     const int alphas_rows = alphas.rows();
@@ -74,17 +97,16 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     const int ldb = 1;
     const int ldc = yy_stride;
 
-    
-
     // todo:
       // build a very detailed test
       // handle last chunk correctly (currently undefined behaviour)
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, buf_rows, yy_cols, xx_cols, alpha, buffer_iterators[0],
-                lda, alphas.data(), ldb, 1, yy[curr_chunk].get().local_buffer()->data(), ldc);
+    //cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, buf_rows, yy_cols, xx_cols, alpha, buffer_iterators[0],
+    //            lda, alphas.data(), ldb, 1, yy[curr_chunk].get().local_buffer()->data(), ldc);
 
-    for (size_t j = 0; j < xx.size(); ++j) { 
+    for (size_t j = 1; j < xx.size(); ++j) { 
       ++buffer_iterators[j];
     }
+
   }
   prof->stop();
 }

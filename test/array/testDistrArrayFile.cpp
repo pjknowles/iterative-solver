@@ -267,3 +267,36 @@ TEST_F(DistrArrayFile_Fixture, dot_DistrArrayFile) {
   EXPECT_NEAR(as,size*(size-1)*(2*size-1)/6,1e-13);
   EXPECT_NEAR(sa,size*(size-1)*(2*size-1)/6,1e-13);
 }
+
+TEST_F(DistrArrayFile_Fixture, buffer_memory_contiguity) {
+
+  size_t n = 250;
+  size_t dim = 250;
+  std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim)),
+      vz(n, std::vector<double>(dim));
+  std::vector<DistrArraySpan> cx, cy;
+  std::vector<DistrArrayFile> cz;
+  cx.reserve(n);
+  cy.reserve(n);
+  cz.reserve(n);
+  int mpi_rank, mpi_size;
+  MPI_Comm_rank(comm_global(), &mpi_rank);
+  MPI_Comm_size(comm_global(), &mpi_size);
+  for (size_t i = 0; i < n; i++) {
+    std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
+    std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
+    std::iota(vz[i].begin(), vz[i].end(), i + 0.5);
+    cz.emplace_back(dim);
+    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
+    auto clength = crange.second - crange.first;
+    cx.emplace_back(dim, Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength), comm_global());
+    cy.emplace_back(dim, Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength), comm_global());
+    cz.back().put(crange.first, crange.second, &(*(vz[i].cbegin() + crange.first)));
+  }
+  for(size_t i = 0; i != cz.size(); i++){
+    cz[i].set_buffer_size(64);
+  }
+
+  
+
+}

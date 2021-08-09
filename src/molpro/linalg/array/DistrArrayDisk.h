@@ -104,7 +104,7 @@ public:
    * chunk are I/O bound.
    * @param buffers how many buffers. Double buffering is always preferable.
    */
-  BufferManager(const DistrArrayDisk &distr_array_disk, size_t chunk_size = 8192,
+  BufferManager(const DistrArrayDisk &distr_array_disk, DistrArray::value_type* chunk_loc, size_t chunk_size = 8192,
                 enum buffertype buffers = buffertype::Double);
   using value_type = DistrArray::value_type;
   const size_t chunk_size = 8192;
@@ -163,7 +163,8 @@ protected:
  */
   [[nodiscard]] Span<value_type> next(bool initial = false);
   const DistrArrayDisk &distr_array_disk; // pointer to the DistrArrayDisk data is being accessed from
-  std::vector<std::vector<DistrArray::value_type>> chunks; // contents of the buffer
+  //std::vector<std::vector<DistrArray::value_type>> chunks; // contents of the buffer  // TODO: remove this
+  std::vector<DistrArray::value_type*> chunks; // pointers to chunks
   size_t curr_chunk = 0; // current chunk (either 0 or 1) - toggles when the next buffer is loadef
   std::future<void> next_chunk_future; // future for the next chunk - accessed when this->next() makes the next chunk
   // the current chunk

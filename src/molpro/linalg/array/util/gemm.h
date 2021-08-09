@@ -122,7 +122,8 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   prof->start("gemm_outer_distr_distr (buffered)");
   *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
   for (size_t ii = 0; ii < alphas.rows(); ++ii) {
-    BufferManager x_buf = BufferManager(xx.at(ii).get());
+    DistrArray::value_type buffer[16384];
+    BufferManager x_buf = BufferManager(xx.at(ii).get(), buffer, 16384);
     size_t offset = 0;
     for (auto buffer = x_buf.begin(); buffer != x_buf.end(); offset += x_buf.chunk_size, ++buffer) {
       size_t jj;
@@ -201,9 +202,10 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   auto prof = molpro::Profiler::single()->push("gemm_inner_distr_distr (buffered)");
   prof += mat.cols() * mat.rows() * xx.at(0).get().local_buffer()->size()*2;
 
+  DistrArray::value_type* buffer = new DistrArray::value_type[8192*2*mat.cols()];
   std::vector<BufferManager> buffers;
   for (size_t j = 0; j < mat.cols(); ++j){
-    buffers.emplace_back(BufferManager(yy.at(j).get()));
+    buffers.emplace_back(BufferManager(yy.at(j).get(), buffer+(8192*j), 8192));
   }
 
   for (size_t j = 0; j < mat.cols(); ++j) {
@@ -221,6 +223,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   MPI_Allreduce(MPI_IN_PLACE, const_cast<value_type *>(mat.data().data()), mat.size(), MPI_DOUBLE, MPI_SUM,
                 xx.at(0).get().communicator());
 #endif
+  delete[] buffer;
   return mat;
 }
 

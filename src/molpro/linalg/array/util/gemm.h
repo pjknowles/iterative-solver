@@ -35,7 +35,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     }
   }
 }
-
+/**
 template <class AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
                             const CVecRef<DistrArrayFile> &xx,
@@ -99,9 +99,8 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
 
     // todo:
       // build a very detailed test
-      // handle last chunk correctly (currently undefined behaviour)
-    //cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, buf_rows, yy_cols, xx_cols, alpha, buffer_iterators[0],
-    //            lda, alphas.data(), ldb, 1, yy[curr_chunk].get().local_buffer()->data(), ldc);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, buf_rows, yy_cols, xx_cols, alpha, (*buffer_iterators[0]).data(),
+                lda, alphas.data().data(), ldb, 1, yy[curr_chunk].get().local_buffer()->data(), ldc);
 
     for (size_t j = 1; j < xx.size(); ++j) { 
       ++buffer_iterators[j];
@@ -110,8 +109,8 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   }
   prof->stop();
 }
+*/
 
-/**
 template <class AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
                             const CVecRef<DistrArrayFile> &xx,
@@ -137,7 +136,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   }
   prof->stop();
 }
-*/
+
 template <class AL, class AR = AL>
 void gemm_outer_distr_sparse(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR> &xx,
                              const VecRef<AL> &yy) {

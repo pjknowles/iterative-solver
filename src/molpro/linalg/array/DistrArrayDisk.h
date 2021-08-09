@@ -108,13 +108,13 @@ public:
                 enum buffertype buffers = buffertype::Double);
   using value_type = DistrArray::value_type;
   const size_t chunk_size = 8192;
-  DistrArray::value_type* get_array_ptr();
+  DistrArray::value_type* get_array_ptr(); // TODO: remove this after changing buffermanager
   /**
    * @brief Custom iterator for the BufferManager. This iterator is responsible for loading data into the buffers and
    * providing access to that data.
    */
   struct Iterator {
-    // iterator properties
+    // iterator properties 
     using iterator_category = std::forward_iterator_tag;
     using difference_type = std::ptrdiff_t;
     using value_type = Span<DistrArray::value_type>;

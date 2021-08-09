@@ -151,7 +151,9 @@ Span<BufferManager::value_type> BufferManager::next(bool initial) {
 }
 
 DistrArray::value_type* BufferManager::get_array_ptr(){
-  DistrArray::value_type* addr = this->chunks[this->curr_chunk].data();
+  std::cout << "curr_chunk = " << curr_chunk;
+  std::cout << " of " << this->chunks.size() << "\n";
+  DistrArray::value_type* addr = this->chunks[curr_chunk].data();
   return addr;
 }
 

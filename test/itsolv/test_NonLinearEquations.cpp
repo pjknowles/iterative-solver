@@ -192,8 +192,8 @@ public:
 TEST(NonLinearEquations, trig) {
   for (size_t n = 1; n < 3; n++) {
     auto solver = molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector>(
-        "DIIS", "convergence_threshold=1e-8,max_size_qspace=10");
-    std::vector<double> x(n, .1), g(n);
+        "DIIS", "convergence_threshold=1e-8,max_size_qspace=5");
+    std::vector<double> x(n, .05), g(n);
     if (false) {
 
       for (int iter = 0; iter < 10; iter++) {

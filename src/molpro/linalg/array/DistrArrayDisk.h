@@ -106,9 +106,11 @@ public:
    */
   BufferManager(const DistrArrayDisk &distr_array_disk, DistrArray::value_type* chunk_loc, size_t chunk_size = 8192,
                 enum buffertype buffers = buffertype::Double);
+  BufferManager(const DistrArrayDisk& distr_array_disk, size_t chunk_size = 8192,
+                enum buffertype buffers = buffertype::Double);
   using value_type = DistrArray::value_type;
   const size_t chunk_size = 8192;
-  DistrArray::value_type* get_array_ptr(); // TODO: remove this after changing buffermanager
+  //DistrArray::value_type* get_buffer_contents();
   /**
    * @brief Custom iterator for the BufferManager. This iterator is responsible for loading data into the buffers and
    * providing access to that data.
@@ -169,6 +171,7 @@ protected:
   std::future<void> next_chunk_future; // future for the next chunk - accessed when this->next() makes the next chunk
   // the current chunk
   const std::pair<size_t, size_t> range; // memory offsets for MPI found via distr_array_disk.distribution().range(...)
+  std::vector<DistrArray::value_type> own_buffer;
 };
 
 double dot(const DistrArrayDisk &x, const DistrArrayDisk &y);

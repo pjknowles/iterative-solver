@@ -124,6 +124,15 @@ BufferManager::BufferManager(const DistrArrayDisk& distr_array_disk, DistrArray:
     this->chunks.emplace_back(chunk_loc + (chunk_size*buffer_count)/buffers );
 }
 
+BufferManager::BufferManager(const DistrArrayDisk& distr_array_disk, size_t chunk_size,
+                            BufferManager::buffertype buffers)
+  : chunk_size(std::move(chunk_size)), distr_array_disk(distr_array_disk),
+      range(distr_array_disk.distribution().range(molpro::mpi::rank_global())) {
+  own_buffer.reserve(chunk_size*buffers);
+  for (size_t buffer_count = 0; buffer_count < buffers; ++buffer_count)
+    this->chunks.emplace_back(own_buffer.data() + (chunk_size*buffer_count)/buffers );
+}
+
 Span<BufferManager::value_type> BufferManager::next(bool initial) {
   if (initial)
     curr_chunk = 0;
@@ -150,10 +159,6 @@ Span<BufferManager::value_type> BufferManager::next(bool initial) {
 }
 
 //DistrArray::value_type* BufferManager::get_array_ptr(){
-//  std::cout << "curr_chunk = " << curr_chunk;
-//  std::cout << " of " << this->chunks.size() << "\n";
-//  DistrArray::value_type* addr = this->chunks[curr_chunk].data();
-//  return addr;
 //}
 
 } // namespace molpro::linalg::array

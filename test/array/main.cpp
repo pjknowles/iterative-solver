@@ -8,6 +8,7 @@
 #include <mpi.h>
 
 #include "parallel_util.h"
+#include <molpro/mpi.h>
 
 MPI_Comm molpro::linalg::test::mpi_comm;
 
@@ -15,19 +16,22 @@ int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   MPI_Init(&argc, &argv);
   molpro::linalg::test::mpi_comm = MPI_COMM_WORLD;
+  int result{0};
+  if (molpro::mpi::size_global() > 1) {
 #ifdef TEST_WITH_GA
-  GA_Initialize();
-  int mem = 10000000;
-  MA_init(C_DBL, mem, mem);
-  if (!GA_Create_mutexes(1))
-    GA_Error((char *)"Failed to create mutexes", 1);
-  molpro::linalg::test::mpi_comm = GA_MPI_Comm();
+    GA_Initialize();
+    int mem = 10000000;
+    MA_init(C_DBL, mem, mem);
+    if (!GA_Create_mutexes(1))
+      GA_Error((char *)"Failed to create mutexes", 1);
+    molpro::linalg::test::mpi_comm = GA_MPI_Comm();
 #endif
-  int result = RUN_ALL_TESTS();
+    result = RUN_ALL_TESTS();
 #ifdef TEST_WITH_GA
-  GA_Destroy_mutexes();
-  GA_Terminate();
+    GA_Destroy_mutexes();
+    GA_Terminate();
 #endif
+  }
   MPI_Finalize();
   return result;
 }

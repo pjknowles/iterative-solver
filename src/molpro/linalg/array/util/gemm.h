@@ -35,52 +35,87 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     }
   }
 }
-/**
+
 template <class AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
                             const CVecRef<DistrArrayFile> &xx,
                             const VecRef<AL> &yy) {
+
   if (alphas.rows() > xx.size()){
     throw std::out_of_range("gemm_outer_distr_distr: dimensions of xx and alpha are different.");
   }
+
+  if (alphas.rows() == 0 || alphas.cols() == 0){
+    return;
+  }
+
+  if (alphas.rows() == 1 || alphas.cols() == 1){
+    auto loc_x = xx.at(0).get().local_buffer();
+    auto loc_y = yy[0].get().local_buffer();
+    for (size_t i = 0; i < loc_y->size(); ++i)
+      (*loc_y)[i] += alphas(0, 0) * (*loc_x)[i];
+    return;
+  }
+
   std::cout << "the cool gemm_outer_outer\n";
   auto prof = molpro::Profiler::single();
   prof->start("gemm_outer_distr_distr (buffered)");
   *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
 
-  std::vector<BufferManager> buffers;
-  std::vector<BufferManager::Iterator> buffer_iterators;
-  buffers.reserve(xx.size());
-  buffer_iterators.reserve(xx.size());
-  // TODO: reserve size of these vectors
-  for (size_t j = 0; j < xx.size(); ++j){
-    buffers.emplace_back(BufferManager(xx.at(j).get()));
-    buffer_iterators.emplace_back(buffers[j].begin());
-  }
 
-  const int buf_stride = buffers[1].get_array_ptr() - buffers[0].get_array_ptr();
-  const int yy_stride = yy[1].get().local_buffer()->data() - yy[0].get().local_buffer()->data();
-
-  int previous_buf_stride;
-  int previous_yy_stride;
 
   // check contiguity
-  for (size_t j = 0; j<xx.size()-1; ++j){
-    int curr_buf_stride = buffers[j+1].get_array_ptr() - buffers[j].get_array_ptr();
-    int curr_yy_stride = yy[j+1].get().local_buffer()->data() - yy[j].get().local_buffer()->data();
-    //std::cout << curr_buf_stride << ", " << curr_yy_stride << "\n";
-    if (j<0){
+
+  std::cout << "Checking memory contiguity\n";
+  std::cout << "xx.size() = " << xx.size() << "\n";
+  std::cout << "yy.size() = " << yy.size() << "\n";
+  std::cout << "alphas.rows() = " << alphas.rows() << "\n";
+  std::cout << "alphas.cols() = " << alphas.cols() << "\n";
+  std::cout << "alphas (total length) = " << alphas.data().size() << "\n";
+
+  //int previous_buf_stride;
+  int previous_yy_stride;
+
+  for (size_t j = 0; j<alphas.rows()-1; ++j){
+    //int curr_buf_stride = buffers[j+1] - buffers[j];
+    std::cout << "data at " << j << " = " << yy[j].get().local_buffer()->data() << ", ";
+    std::cout << j+1 << " = " << yy[j+1].get().local_buffer()->data() << ", stride = ";
+    auto curr_yy_stride = yy[j+1].get().local_buffer()->data() - yy[j].get().local_buffer()->data();
+    std::cout << curr_yy_stride << "\n";
+    std::cout << curr_yy_stride << ", ";
+    if (j>0){
       if (curr_yy_stride != previous_yy_stride){
         throw std::runtime_error("yy_stride is not contiguous\n");
       }
-      if (curr_buf_stride != previous_buf_stride){
-        throw std::runtime_error("buf_stride is not contiguous\n");
-      }
     }
-    previous_buf_stride = buf_stride;
-    previous_yy_stride = yy_stride;
-  } 
+    //  if (curr_buf_stride != previous_buf_stride){
+    //    throw std::runtime_error("buf_stride is not contiguous\n");
+    //  }
+    //}
+    //previous_buf_stride = buf_stride;
+    previous_yy_stride = curr_yy_stride;
+  }
+  std::cout << "\n";
 
+
+
+
+  DistrArray::value_type* buffers_memory = new DistrArray::value_type[8192*xx.size()];
+  std::vector<BufferManager> buffers;
+  std::vector<BufferManager::Iterator> buffer_iterators;
+  buffers.reserve(alphas.rows());
+  buffer_iterators.reserve(alphas.rows());
+  for (size_t j = 0; j < alphas.rows(); ++j){
+    buffers.emplace_back(BufferManager(xx.at(j).get(), buffers_memory+(8192*j), 8192));
+    buffer_iterators.emplace_back(buffers[j].begin());
+  }
+
+  std::cout << "Vectors done\n";
+
+  const int buf_stride = 8192;
+  
+  const int yy_stride = yy[1].get().local_buffer()->data() - yy[0].get().local_buffer()->data();
+  std::cout << "taking yy stride to be " << yy_stride << "\n";
   size_t chunk_size = buffers[0].chunk_size;
   for (size_t curr_chunk = 0; curr_chunk < alphas.cols(); curr_chunk += chunk_size){
 
@@ -99,8 +134,8 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
 
     // todo:
       // build a very detailed test
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, buf_rows, yy_cols, xx_cols, alpha, (*buffer_iterators[0]).data(),
-                lda, alphas.data().data(), ldb, 1, yy[curr_chunk].get().local_buffer()->data(), ldc);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, buf_rows, alphas_cols, alphas_rows, alpha, (*buffer_iterators[0]).data(),
+                lda, alphas.data().data(), 1, beta, yy[curr_chunk].get().local_buffer()->data(), ldc);
 
     for (size_t j = 1; j < xx.size(); ++j) { 
       ++buffer_iterators[j];
@@ -109,8 +144,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   }
   prof->stop();
 }
-*/
-
+/**
 template <class AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
                             const CVecRef<DistrArrayFile> &xx,
@@ -137,7 +171,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   }
   prof->stop();
 }
-
+*/
 template <class AL, class AR = AL>
 void gemm_outer_distr_sparse(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR> &xx,
                              const VecRef<AL> &yy) {

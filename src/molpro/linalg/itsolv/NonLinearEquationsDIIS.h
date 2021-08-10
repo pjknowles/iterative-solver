@@ -56,10 +56,10 @@ private:
       return result;
     auto evs = Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd>();
     evs.compute(He);
-//    std::cout << "Eigenvalues: "<<evs.eigenvalues().transpose()<<std::endl;
-//    std::cout << "Eigenvectors:\n"<<evs.eigenvectors()<<std::endl;
-//    result.first = He.cols() - 1;
-//    return result;
+    //    std::cout << "Eigenvalues: "<<evs.eigenvalues().transpose()<<std::endl;
+    //    std::cout << "Eigenvectors:\n"<<evs.eigenvectors()<<std::endl;
+    //    result.first = He.cols() - 1;
+    //    return result;
     value_type evmax = 0;
     for (Eigen::Index i = 0; i < He.cols(); ++i) {
       evmax = std::max(evmax, evs.eigenvalues()(i));
@@ -73,8 +73,9 @@ private:
       }
     }
     result.second /= evmax;
-    if (result.second > 1e-12) {result={He.cols()-1,std::numeric_limits<value_type>::max()};}
-//    std::cout << "least important vector " << result.first << " : " << result.second << std::endl;
+    if (result.second > m_svd_thresh)
+      result = {He.cols() - 1, std::numeric_limits<value_type>::max()};
+    //    std::cout << "least important vector " << result.first << " : " << result.second << std::endl;
     return result;
   }
 
@@ -86,14 +87,14 @@ public:
     using namespace subspace;
     auto& xspace = this->m_xspace;
     const auto& H = xspace->data[EqnData::H];
-//        std::cout << "H " << as_string(H) << std::endl;
+    //        std::cout << "H " << as_string(H) << std::endl;
     for (std::pair<size_t, value_type> deleter = least_important_vector(H);
-         xspace->size() >= size_t(this->m_max_size_qspace) or deleter.second < 1e-10;
+         xspace->size() >= size_t(this->m_max_size_qspace) or deleter.second < m_svd_thresh;
          deleter = least_important_vector(H)) {
-//            std::cout << "deleter " << deleter.first << " : " << deleter.second << std::endl;
+      //            std::cout << "deleter " << deleter.first << " : " << deleter.second << std::endl;
       xspace->eraseq(deleter.first);
     }
-//            std::cout << "H after delete Q "<<as_string(H)<<std::endl;
+    //            std::cout << "H after delete Q "<<as_string(H)<<std::endl;
 
     int nwork = IterativeSolverTemplate<NonLinearEquations, R, Q, P>::add_vector(parameters, residual);
     this->m_errors.front() = error;

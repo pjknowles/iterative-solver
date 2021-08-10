@@ -44,7 +44,7 @@ struct LinearEigensystemF : ::testing::Test {
     hmat.fill(1);
     for (size_t i = 0; i < n; i++)
       hmat(i, i) = i * param;
-    if (not non_hermiticity != 0)
+    if (non_hermiticity != 0)
       for (size_t i = 0; i < n; i++)
         for (size_t j = 0; j < i; j++)
           hmat(i, j) *= 1 - non_hermiticity;
@@ -110,7 +110,8 @@ struct LinearEigensystemF : ::testing::Test {
     for (size_t i = 0, ij = 0; i < n; ++i)
       for (size_t j = 0; j < n; ++j, ++ij)
         hmat_row[ij] = hmat(i, j);
-    molpro::linalg::itsolv::eigenproblem(eigenvector, expected_eigenvalues, hmat_row, metric, n, hermitian, 1.0e-14, 0);
+    molpro::linalg::itsolv::eigenproblem(eigenvector, expected_eigenvalues, hmat_row, metric, n, hermitian, 1.0e-14, 0,
+                                         false);
     for (size_t i = 0; i < n; i++)
       for (size_t j = 0; j < n; j++)
         expected_eigensolutions[expected_eigenvalues[i]].push_back(
@@ -361,12 +362,13 @@ TEST_F(LinearEigensystemF, n_eigen) {
 }
 
 TEST_F(LinearEigensystemF, nonhermitian_eigen) {
-  size_t n = 30;
+  size_t n = 6;
   //  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
   //  for (auto param : std::vector<double>{.01, .1, 1}) {
-  for (auto param : std::vector<double>{1,.1,.01}) {
-    for (auto non_hermiticity : std::vector<double>{0, 0.1,  2222.9}) {
+  for (auto param : std::vector<double>{1, .1}) {
+    for (auto non_hermiticity : std::vector<double>{0, 0.1, 0.2}) {
       load_matrix(n, "", param, non_hermiticity);
+      //      std::cout << "hmat\n"<<hmat<<std::endl;
       test_eigen(std::to_string(n) + "/" + std::to_string(param) + " non-hermiticy=" + std::to_string(non_hermiticity));
     }
   }

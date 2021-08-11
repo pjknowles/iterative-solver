@@ -119,8 +119,8 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     //const int alphas_rows = alphas.rows();
     const int alphas_cols = alphas.cols();
     //const int yy_cols = yy.size();
-    const int beta=1;
-    const int alpha=1;
+    const double beta=1;
+    const double alpha=1;
 
     const int ldb = buf_stride;
     const int lda = alphas.cols();
@@ -158,8 +158,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
       }
       std::cout << "\n";
     }
-    // todo:
-      // build a very detailed test
+
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, buf_rows, xx_cols, alphas_cols, alpha, alphas.data().data(),
                 lda, (*buffer_iterators[0]).data(), ldb, beta, yy[curr_chunk].get().local_buffer()->data(), ldc);
 

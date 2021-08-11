@@ -531,3 +531,60 @@ TEST(TestGemm, ddisksparse_outer) {
     EXPECT_THAT(ty, Pointwise(DoubleEq(), tx));
   }
 }
+
+TEST(TestGemm, buffered_DistrArrayFile){
+  auto handler = ArrayHandlerDistrDDisk<DistrArraySpan,DistrArrayFile>{};
+  size_t n = 10;
+  size_t dim = 10;
+  int mpi_rank, mpi_size;
+  MPI_Comm_rank(comm_global(), &mpi_rank);
+  MPI_Comm_size(comm_global(), &mpi_size);
+
+  auto [cx, cy, cz] = molpro::linalg::test::get_contiguous(n, dim);
+
+  //auto cx_wrapped = molpro::linalg::itsolv::cwrap(cx);
+  //auto cy_wrapped = molpro::linalg::itsolv::cwrap(cy);
+  //auto cz_wrapped = molpro::linalg::itsolv::cwrap(cz);
+
+  std::cout << "CX (memory): \n";
+  for (size_t i=0; i<n; i++){
+    for (size_t j=0; j<dim; j++){
+      std::cout << cx[i][j] << " ";
+    }
+    std::cout << "\n";
+  }
+  std::cout << "\n\n";
+
+  std::cout << "CY (DAD): \n";
+  for (size_t i=0; i<n; i++){
+    for (size_t j=0; j<dim; j++){
+      std::cout << cx[i][j] << " ";
+    }
+    std::cout << "\n";
+  }
+  std::cout << "\n";
+
+  std::vector<double> coeff(n*n);
+  std::iota(coeff.begin(), coeff.end(), 1);
+  std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
+  Matrix<double> alpha(coeff, mat_dim);
+  handler.gemm_outer(alpha, cwrap(cz),wrap(cx));
+  for (size_t i = 0; i < n; i++) {
+    for (size_t j = 0; j < n; j++) {
+      handler.axpy(alpha(i, j), cz[i], cy[j]);
+    }
+  }
+
+  std::vector<Span<double>> vy;
+  std::vector<Span<double>> vx;
+  for (size_t i = 0; i < n; i++){
+    std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
+    std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
+  }
+
+  for (size_t i = 0; i < n; i++) {
+    EXPECT_THAT(vy[i], Pointwise(DoubleEq(), vx[i]));
+  }
+
+
+}

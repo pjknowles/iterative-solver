@@ -268,35 +268,28 @@ TEST_F(DistrArrayFile_Fixture, dot_DistrArrayFile) {
   EXPECT_NEAR(sa,size*(size-1)*(2*size-1)/6,1e-13);
 }
 
-TEST_F(DistrArrayFile_Fixture, buffer_memory_contiguity) {
+TEST_F(DistrArrayFile_Fixture, contiguous_allocation){
 
-  size_t n = 250;
-  size_t dim = 250;
-  std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim)),
-      vz(n, std::vector<double>(dim));
-  std::vector<DistrArraySpan> cx, cy;
-  std::vector<DistrArrayFile> cz;
-  cx.reserve(n);
-  cy.reserve(n);
-  cz.reserve(n);
-  int mpi_rank, mpi_size;
-  MPI_Comm_rank(comm_global(), &mpi_rank);
-  MPI_Comm_size(comm_global(), &mpi_size);
-  for (size_t i = 0; i < n; i++) {
-    std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
-    std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
-    std::iota(vz[i].begin(), vz[i].end(), i + 0.5);
-    cz.emplace_back(dim);
-    auto crange = make_distribution_spread_remainder<size_t>(dim, mpi_size).range(mpi_rank);
-    auto clength = crange.second - crange.first;
-    cx.emplace_back(dim, Span<DistrArraySpan::value_type>(&vx[i][crange.first], clength), comm_global());
-    cy.emplace_back(dim, Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength), comm_global());
-    cz.back().put(crange.first, crange.second, &(*(vz[i].cbegin() + crange.first)));
-  }
-  for(size_t i = 0; i != cz.size(); i++){
-    cz[i].set_buffer_size(64);
-  }
+  size_t n = 10;
+  size_t dim = 10;
 
-  
+  auto [cx, cy, cz] = molpro::linalg::test::get_contiguous(n, dim);
+
+  auto cx_wrapped = molpro::linalg::itsolv::cwrap(cx);
+
+  // check contiguity
+  int previous_stride=0;
+  for (size_t j = 0; j<n-1; ++j){
+    auto unique_ptr_j = cx_wrapped.at(j).get().local_buffer()->data();
+    auto unique_ptr_jp1 = cx_wrapped.at(j+1).get().local_buffer()->data();
+    int stride = unique_ptr_jp1 - unique_ptr_j;
+    if (j>0){
+      if (stride != previous_stride){
+        throw std::runtime_error("yy doesn't have a consistent stride\n");
+      }
+    }
+    previous_stride = stride;
+
+  }
 
 }

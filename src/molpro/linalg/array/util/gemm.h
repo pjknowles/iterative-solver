@@ -57,7 +57,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     return;
   }
 
-  std::cout << "the cool gemm_outer_outer\n";
+  std::cout << "gemm_outer_distr_distr (buffered)\n";
   auto prof = molpro::Profiler::single();
   prof->start("gemm_outer_distr_distr (buffered)");
   *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
@@ -73,27 +73,20 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   std::cout << "alphas.cols() = " << alphas.cols() << "\n";
   std::cout << "alphas (total length) = " << alphas.data().size() << "\n";
 
-  //int previous_buf_stride;
-  int previous_yy_stride;
+  int previous_stride = 0;
 
   for (size_t j = 0; j<alphas.rows()-1; ++j){
-    //int curr_buf_stride = buffers[j+1] - buffers[j];
-    std::cout << "data at " << j << " = " << yy[j].get().local_buffer()->data() << ", ";
-    std::cout << j+1 << " = " << yy[j+1].get().local_buffer()->data() << ", stride = ";
-    auto curr_yy_stride = yy[j+1].get().local_buffer()->data() - yy[j].get().local_buffer()->data();
-    std::cout << curr_yy_stride << "\n";
-    std::cout << curr_yy_stride << ", ";
+    auto unique_ptr_j = yy.at(j).get().local_buffer().release()->data();
+    auto unique_ptr_jp1 = yy.at(j+1).get().local_buffer().release()->data();
+    int stride = unique_ptr_jp1 - unique_ptr_j;
     if (j>0){
-      if (curr_yy_stride != previous_yy_stride){
-        throw std::runtime_error("yy_stride is not contiguous\n");
+      std::cout << "stride = " << stride << "\n";
+      if (stride != previous_stride){
+        throw std::runtime_error("yy doesn't have a consistent stride\n");
       }
     }
-    //  if (curr_buf_stride != previous_buf_stride){
-    //    throw std::runtime_error("buf_stride is not contiguous\n");
-    //  }
-    //}
-    //previous_buf_stride = buf_stride;
-    previous_yy_stride = curr_yy_stride;
+    previous_stride = stride;
+
   }
   std::cout << "\n";
 
@@ -120,22 +113,55 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   for (size_t curr_chunk = 0; curr_chunk < alphas.cols(); curr_chunk += chunk_size){
 
     auto buf_rows = buffer_iterators[0]->size();
+    std::cout << "buf_rows = " << buf_rows << "\n";
 
     const int xx_cols = alphas.rows();
-    const int alphas_rows = alphas.rows();
+    //const int alphas_rows = alphas.rows();
     const int alphas_cols = alphas.cols();
-    const int yy_cols = yy.size();
+    //const int yy_cols = yy.size();
     const int beta=1;
     const int alpha=1;
 
-    const int lda = buf_stride;
-    const int ldb = 1;
+    const int ldb = buf_stride;
+    const int lda = alphas.cols();
     const int ldc = yy_stride;
 
+    std::cout << " Complete dump of everything to be passed to cblas_dgemm: \n";
+    std::cout << "  M: " << buf_rows << "\n";
+    std::cout << "  N: " << xx_cols << "\n";
+    std::cout << "  K: " << alphas_cols << "\n";
+    std::cout << "  alpha: " << alpha << "\n";
+    std::cout << "  A : " << alphas.data().data() << "\n";
+    for (size_t i=0; i<buf_rows; i++){
+      for (int j=0; j<alphas_cols; j++){
+        std::cout << alphas(i,j) << "=";
+        std::cout << *(alphas.data().data()+(lda*i + j)) << " ";
+      }
+      std::cout << "\n";
+    }
+    std::cout << "\n";
+    std::cout << "  LDA: " << lda << "\n";
+    std::cout << "  B: " << (*buffer_iterators[0]).data() << "\n";
+    for (int i=0; i<alphas_cols; i++){
+      for (int j=0; j<xx_cols; j++){
+        std::cout << *((*buffer_iterators[0]).data()+(ldb*i + j)) << " ";
+      }
+      std::cout << "\n";
+    }
+    std::cout << "  LDB: " << ldb << "\n";
+    std::cout << "  beta: " << beta << "\n";
+    std::cout << "  C: " << yy[curr_chunk].get().local_buffer()->data() << "\n";
+    std::cout << "  LDC: " << ldc << "\n";
+    for (size_t i=0; i<buf_rows; i++){
+      for (int j=0; j<xx_cols; j++){
+        std::cout << *(yy[curr_chunk].get().local_buffer()->data()+(ldc*i + j)) << " ";
+      }
+      std::cout << "\n";
+    }
     // todo:
       // build a very detailed test
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, buf_rows, alphas_cols, alphas_rows, alpha, (*buffer_iterators[0]).data(),
-                lda, alphas.data().data(), 1, beta, yy[curr_chunk].get().local_buffer()->data(), ldc);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, buf_rows, xx_cols, alphas_cols, alpha, alphas.data().data(),
+                lda, (*buffer_iterators[0]).data(), ldb, beta, yy[curr_chunk].get().local_buffer()->data(), ldc);
 
     for (size_t j = 1; j < xx.size(); ++j) { 
       ++buffer_iterators[j];

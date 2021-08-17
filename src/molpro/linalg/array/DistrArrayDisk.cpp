@@ -117,11 +117,11 @@ DistrArray::value_type DistrArrayDisk::dot(const DistrArray::SparseArray& y) con
 // BufferManager class functions
 
 BufferManager::BufferManager(const DistrArrayDisk& distr_array_disk, DistrArray::value_type* chunk_loc,
-                              size_t chunk_size, BufferManager::buffertype buffers)
-    : chunk_size(std::move(chunk_size)), distr_array_disk(distr_array_disk),
+                              size_t buf_size, BufferManager::buffertype buffers)
+    : chunk_size(std::move(buf_size/buffers)), distr_array_disk(distr_array_disk),
       range(distr_array_disk.distribution().range(molpro::mpi::rank_global())) {
   for (size_t buffer_count = 0; buffer_count < buffers; ++buffer_count)
-    this->chunks.emplace_back(chunk_loc + (chunk_size*buffer_count)/buffers );
+    this->chunks.emplace_back(chunk_loc + (chunk_size*buffer_count) );
 }
 
 BufferManager::BufferManager(const DistrArrayDisk& distr_array_disk, size_t chunk_size,

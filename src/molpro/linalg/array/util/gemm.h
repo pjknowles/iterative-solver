@@ -91,49 +91,66 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   std::cout << "\n";
 
 
+  const int buf_size = 10; // should be 8192
 
+  std::cout << "xx (DAD): \n";
+  for (size_t i=0; i<alphas.rows(); i++){
+    auto x_buf = xx.at(i).get().local_buffer();
+    for (size_t j=0; j<alphas.cols(); j++){
+      std::cout << (*x_buf)[j] << " ";
+    }
+    std::cout << "\n";
+  }
+  std::cout << "\n";
 
-  DistrArray::value_type* buffers_memory = new DistrArray::value_type[8192*xx.size()];
+  // the LDB is 10 which is true but in this case each buffer is holding five values (two buffers for a total of 10)
+  // so when we read 10 values out of the buffer we're really reading 5 values we want and 5 from the next buffer...
+  // either set buf_size and chunk_size to be divided by 2 or change how the memory is allocated in distrarraydisk
+  // as for why the columns don't match up... i have no idea
+
+  // Eventual TODO: use a vector for this
+
+  //std::vector<DistrArray::value_type> buffers_vec(buf_size*alphas.rows());
+  //DistrArray::value_type* buffers_memory = buffers_vec.data();
+  DistrArray::value_type* buffers_memory = new DistrArray::value_type[buf_size*alphas.rows()];
   std::vector<BufferManager> buffers;
   std::vector<BufferManager::Iterator> buffer_iterators;
   buffers.reserve(alphas.rows());
   buffer_iterators.reserve(alphas.rows());
   for (size_t j = 0; j < alphas.rows(); ++j){
-    buffers.emplace_back(BufferManager(xx.at(j).get(), buffers_memory+(8192*j), 8192));
+    buffers.emplace_back(BufferManager(xx.at(j).get(), buffers_memory+(buf_size*j), buf_size, BufferManager::buffertype::Double));
     buffer_iterators.emplace_back(buffers[j].begin());
   }
 
-  std::cout << "Vectors done\n";
+  const int M = buffers[0].chunk_size; //rows of xx, rows of yy
+  const int N = alphas.cols(); // cols of alphas, cols of yy
+  const int K = alphas.rows(); // cols of xx, rows of alphas
 
-  const int buf_stride = 8192;
+  std::cout << "Vectors done\n";
   
   const int yy_stride = yy[1].get().local_buffer()->data() - yy[0].get().local_buffer()->data();
   std::cout << "taking yy stride to be " << yy_stride << "\n";
-  size_t chunk_size = buffers[0].chunk_size;
-  for (size_t curr_chunk = 0; curr_chunk < alphas.cols(); curr_chunk += chunk_size){
 
-    auto buf_rows = buffer_iterators[0]->size();
-    std::cout << "buf_rows = " << buf_rows << "\n";
+  for (size_t curr_chunk = 0; curr_chunk < alphas.cols(); curr_chunk += M){
 
-    const int xx_cols = alphas.rows();
-    //const int alphas_rows = alphas.rows();
-    const int alphas_cols = alphas.cols();
-    //const int yy_cols = yy.size();
+    //auto buf_rows = buffer_iterators[0]->size();
+    //std::cout << "buf_rows = " << buf_rows << "\n";
+
     const double beta=1;
     const double alpha=1;
 
-    const int ldb = buf_stride;
+    const int ldb = buf_size;
     const int lda = alphas.cols();
     const int ldc = yy_stride;
 
     std::cout << " Complete dump of everything to be passed to cblas_dgemm: \n";
-    std::cout << "  M: " << buf_rows << "\n";
-    std::cout << "  N: " << xx_cols << "\n";
-    std::cout << "  K: " << alphas_cols << "\n";
+    std::cout << "  M: " << M << "\n";
+    std::cout << "  N: " << N << "\n";
+    std::cout << "  K: " << K << "\n";
     std::cout << "  alpha: " << alpha << "\n";
-    std::cout << "  A : " << alphas.data().data() << "\n";
-    for (size_t i=0; i<buf_rows; i++){
-      for (int j=0; j<alphas_cols; j++){
+    std::cout << "  B : " << alphas.data().data() << "\n";
+    for (int i=0; i<K; i++){
+      for (int j=0; j<N; j++){
         std::cout << alphas(i,j) << "=";
         std::cout << *(alphas.data().data()+(lda*i + j)) << " ";
       }
@@ -141,10 +158,10 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     }
     std::cout << "\n";
     std::cout << "  LDA: " << lda << "\n";
-    std::cout << "  B: " << (*buffer_iterators[0]).data() << "\n";
-    for (int i=0; i<alphas_cols; i++){
-      for (int j=0; j<xx_cols; j++){
-        std::cout << *((*buffer_iterators[0]).data()+(ldb*i + j)) << " ";
+    std::cout << "  A: " << (*buffer_iterators[0]).data() << "\n";
+    for (int i=0; i<M; i++){
+      for (int j=0; j<K; j++){
+        std::cout << *((*buffer_iterators[0]).data()+((ldb*i) + j)) << " ";
       }
       std::cout << "\n";
     }
@@ -152,14 +169,14 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     std::cout << "  beta: " << beta << "\n";
     std::cout << "  C: " << yy[curr_chunk].get().local_buffer()->data() << "\n";
     std::cout << "  LDC: " << ldc << "\n";
-    for (size_t i=0; i<buf_rows; i++){
-      for (int j=0; j<xx_cols; j++){
+    for (int i=0; i<M; i++){
+      for (int j=0; j<N; j++){
         std::cout << *(yy[curr_chunk].get().local_buffer()->data()+(ldc*i + j)) << " ";
       }
       std::cout << "\n";
     }
 
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, buf_rows, xx_cols, alphas_cols, alpha, alphas.data().data(),
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, alphas.data().data(),
                 lda, (*buffer_iterators[0]).data(), ldb, beta, yy[curr_chunk].get().local_buffer()->data(), ldc);
 
     for (size_t j = 1; j < xx.size(); ++j) { 
@@ -264,7 +281,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   DistrArray::value_type* buffer = new DistrArray::value_type[8192*2*mat.cols()];
   std::vector<BufferManager> buffers;
   for (size_t j = 0; j < mat.cols(); ++j){
-    buffers.emplace_back(BufferManager(yy.at(j).get(), buffer+(8192*j), 8192));
+    buffers.emplace_back(BufferManager(yy.at(j).get(), buffer+(8192*j), 8192, BufferManager::buffertype::Double));
   }
 
   for (size_t j = 0; j < mat.cols(); ++j) {

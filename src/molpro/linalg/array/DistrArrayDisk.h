@@ -104,8 +104,9 @@ public:
    * chunk are I/O bound.
    * @param buffers how many buffers. Double buffering is always preferable.
    */
-  BufferManager(const DistrArrayDisk &distr_array_disk, DistrArray::value_type* chunk_loc, size_t chunk_size = 8192,
-                enum buffertype buffers = buffertype::Double);
+  // TODO: chunk_size is not the right variable name, this should be the total size of the memory for the buffer
+  BufferManager(const DistrArrayDisk &distr_array_disk, DistrArray::value_type* chunk_loc, size_t buf_size,
+                enum buffertype buffers);
   BufferManager(const DistrArrayDisk& distr_array_disk, size_t chunk_size = 8192,
                 enum buffertype buffers = buffertype::Double);
   using value_type = DistrArray::value_type;

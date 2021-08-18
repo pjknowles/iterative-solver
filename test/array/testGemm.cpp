@@ -534,8 +534,8 @@ TEST(TestGemm, ddisksparse_outer) {
 
 TEST(TestGemm, buffered_DistrArrayFile){
   auto handler = ArrayHandlerDistrDDisk<DistrArraySpan,DistrArrayFile>{};
-  size_t n = 20;
-  size_t dim = 20; // height
+  size_t n = 3;
+  size_t dim = 17; // height
   int mpi_rank, mpi_size;
   MPI_Comm_rank(comm_global(), &mpi_rank);
   MPI_Comm_size(comm_global(), &mpi_size);
@@ -555,10 +555,10 @@ TEST(TestGemm, buffered_DistrArrayFile){
   }
   std::cout << "\n\n";
 
-  std::cout << "CY (DAD): \n";
+  std::cout << "CZ (DAD): \n";
   for (size_t i=0; i<n; i++){
     for (size_t j=0; j<dim; j++){
-      std::cout << cx[i][j] << " ";
+      std::cout << cz[i].local_buffer()->data()[j] << " ";
     }
     std::cout << "\n";
   }

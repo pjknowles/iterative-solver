@@ -48,150 +48,67 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   if (alphas.rows() == 0 || alphas.cols() == 0){
     return;
   }
-
-  if (alphas.rows() == 1 || alphas.cols() == 1){
-    auto loc_x = xx.at(0).get().local_buffer();
-    auto loc_y = yy[0].get().local_buffer();
-    for (size_t i = 0; i < loc_y->size(); ++i)
-      (*loc_y)[i] += alphas(0, 0) * (*loc_x)[i];
-    return;
-  }
+//
+//  if (alphas.rows() == 1 || alphas.cols() == 1){
+//    auto loc_x = xx.at(0).get().local_buffer();
+//    auto loc_y = yy[0].get().local_buffer();
+//    for (size_t i = 0; i < loc_y->size(); ++i)
+//      (*loc_y)[i] += alphas(0, 0) * (*loc_x)[i];
+//    return;
+//  }
 
   std::cout << "gemm_outer_distr_distr (buffered)\n";
   auto prof = molpro::Profiler::single();
   prof->start("gemm_outer_distr_distr (buffered)");
   *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
 
-
-
-  // check contiguity
-
-  std::cout << "Checking memory contiguity\n";
-  std::cout << "xx.size() = " << xx.size() << "\n";
-  std::cout << "yy.size() = " << yy.size() << "\n";
-  std::cout << "alphas.rows() = " << alphas.rows() << "\n";
-  std::cout << "alphas.cols() = " << alphas.cols() << "\n";
-  std::cout << "alphas (total length) = " << alphas.data().size() << "\n";
-
+  bool yy_constant_stride = true;
   int previous_stride = 0;
-
-  for (size_t j = 0; j<alphas.rows()-1; ++j){
-    auto unique_ptr_j = yy.at(j).get().local_buffer().release()->data();
-    auto unique_ptr_jp1 = yy.at(j+1).get().local_buffer().release()->data();
-    int stride = unique_ptr_jp1 - unique_ptr_j;
-    if (j>0){
-      std::cout << "stride = " << stride << "\n";
-      if (stride != previous_stride){
-        throw std::runtime_error("yy doesn't have a consistent stride\n");
-      }
-    }
-    previous_stride = stride;
-
+  int yy_stride = yy.front().get().local_buffer()->size();
+  for (size_t j = 0; j < alphas.rows() - 1; ++j) {
+    auto unique_ptr_j = yy.at(j).get().local_buffer()->data();
+    auto unique_ptr_jp1 = yy.at(j + 1).get().local_buffer()->data();
+    yy_stride = unique_ptr_jp1 - unique_ptr_j;
+    if (j > 0)
+      yy_constant_stride = yy_constant_stride && (yy_stride == previous_stride);
+    previous_stride = yy_stride;
   }
-  std::cout << "\n";
+  if (not yy_constant_stride)
+    throw std::runtime_error("yy doesn't have a consistent stride, and general case not yet coded\n"); // TODO code up the non-constant stride case using dgemv
 
-
-  const int buf_size = 10; // should be 8192
-
-  std::cout << "xx (DAD): \n";
-  for (size_t i=0; i<alphas.rows(); i++){
-    auto x_buf = xx.at(i).get().local_buffer();
-    for (size_t j=0; j<alphas.cols(); j++){
-      std::cout << (*x_buf)[j] << " ";
-    }
-    std::cout << "\n";
-  }
-  std::cout << "\n";
-
+  const int buf_size = 10; // The amount of memory allocated for buffering of xx. IN the case of double buffering, this means that the actual buffers will be half this value. TODO: should be 8192 or similar large.
   // Eventual TODO: use a vector for this
-
   //std::vector<DistrArray::value_type> buffers_vec(buf_size*alphas.rows());
   //DistrArray::value_type* buffers_memory = buffers_vec.data();
   DistrArray::value_type* buffers_memory = new DistrArray::value_type[buf_size*alphas.rows()];
   std::vector<BufferManager> buffers;
   std::vector<BufferManager::Iterator> buffer_iterators;
-  buffers.reserve(alphas.rows());
-  buffer_iterators.reserve(alphas.rows());
+  buffers.reserve(xx.size());
+  buffer_iterators.reserve(xx.size());
   for (size_t j = 0; j < alphas.rows(); ++j){
-    auto x_buf = xx.at(j).get().local_buffer();
-    std::cout << "local buffer: ";
-    for (int i=0; i<buf_size/2; i++) { std::cout << (*x_buf)[i] << " ";} std::cout << "\n";
     buffers.emplace_back(BufferManager(xx.at(j).get(), buffers_memory+(buf_size*j), buf_size, BufferManager::buffertype::Double));
     buffer_iterators.emplace_back(buffers[j].begin());
   }
-
-  std::cout << "buffer memory: \n\n";
-  for (int i=0; i<buf_size*alphas.rows(); i++){
-    std::cout << buffers_memory[i] << " ";
-    if ((i+1)%buffers[0].chunk_size == 0){std::cout << "\n";}
-  }
-  std::cout << "\n\n";
-
-  std::cin.ignore();
-
-  const int M = buffers[0].chunk_size; //rows of xx, rows of yy
   const int N = alphas.cols(); // cols of alphas, cols of yy
   const int K = alphas.rows(); // cols of xx, rows of alphas
-
-  std::cout << "Vectors done\n";
-  
-  const int yy_stride = yy[1].get().local_buffer()->data() - yy[0].get().local_buffer()->data();
-  std::cout << "taking yy stride to be " << yy_stride << "\n";
-
-  for (size_t curr_chunk = 0; curr_chunk < alphas.cols(); curr_chunk += M){
-
-    //auto buf_rows = buffer_iterators[0]->size();
-    //std::cout << "buf_rows = " << buf_rows << "\n";
-
-    const double beta=1;
-    const double alpha=1;
-
-    const int ldb = buf_size;
-    const int lda = alphas.cols();
-    const int ldc = yy_stride;
-
-    std::cout << " Complete dump of everything to be passed to cblas_dgemm: \n";
-    std::cout << "  M: " << M << "\n";
-    std::cout << "  N: " << N << "\n";
-    std::cout << "  K: " << K << "\n";
-    std::cout << "  alpha: " << alpha << "\n";
-    std::cout << "  B : " << alphas.data().data() << "\n";
-    for (int i=0; i<K; i++){
-      for (int j=0; j<N; j++){
-        std::cout << alphas(i,j) << "=";
-        std::cout << *(alphas.data().data()+(lda*i + j)) << " ";
-      }
-      std::cout << "\n";
+  size_t M;// = buffer_iterators.front()->size();
+  const auto yy_data = yy[0].get().local_buffer()->data();
+  const auto yy_size = yy[0].get().local_buffer()->size();
+  for (size_t container_offset = 0; container_offset < yy_size; container_offset += M) {
+    M = buffer_iterators.front()->size();
+    std::cout << "container loop start container_offset="<<container_offset<<", M="<<M<<", iterator size="<<buffer_iterators.front()->size()<<std::endl;
+    for (size_t i=0; i<yy.size();++i) {
+      std::cout << "presenting yy["<<i<<"]";for (size_t j=0; j<M; ++j) std::cout <<" "<<yy_data[container_offset+i*yy_stride+j ];std::cout<<std::endl;
     }
-    std::cout << "\n";
-    std::cout << "  LDA: " << lda << "\n";
-    std::cout << "  A: " << (*buffer_iterators[0]).data() << "\n";
-    for (int i=0; i<K; i++){
-      for (int j=0; j<M; j++){
-        //assert((*buffer_iterators[0]).data()+((ldb*i) + j) == (*buffer_iterators[i]).data()+( j));
-        std::cout << *((*buffer_iterators[i]).data() + j) << " = ";
-        std::cout << *((*buffer_iterators[0]).data()+((ldb*i) + j)) << " ";
-      }
-      std::cout << "\n";
+    for (size_t i=0; i<xx.size();++i) {
+    std::cout << "presenting xx["<<i<<"]";for (size_t j=0; j<M; ++j) std::cout <<" "<<buffer_iterators[0]->data()[i*buf_size+j ];std::cout<<std::endl;
+//      buffer_iterators[0]->data()[i*buf_size ]+=14;
     }
-    std::cout << "  LDB: " << ldb << "\n";
-    std::cout << "  beta: " << beta << "\n";
-    std::cout << "  C: " << yy[curr_chunk].get().local_buffer()->data() << "\n";
-    std::cout << "  LDC: " << ldc << "\n";
-    for (int i=0; i<N; i++){
-      for (int j=0; j<M; j++){ // why is this yy[curr_chunk]? - also needs i
-        std::cout << *(yy[0].get().local_buffer()->data()+(ldc*i + j + curr_chunk)) << " ";
-      }
-      std::cout << "\n";
-    }
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, M, N, K, 1, buffer_iterators[0]->data(), buf_size,
+                alphas.data().data(), N, 1, yy_data + container_offset, yy_stride);
 
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, alphas.data().data(),
-                lda, (*buffer_iterators[0]).data(), ldb, beta, yy[0].get().local_buffer()->data()+curr_chunk, ldc);
-
-    for (size_t j = 1; j < xx.size(); ++j) { 
-      ++buffer_iterators[j];
-    }
-
+    for (auto &iter : buffer_iterators)
+      ++iter;
   }
   prof->stop();
 }
@@ -212,9 +129,9 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     size_t offset = 0;
     for (auto buffer = x_buf.begin(); buffer != x_buf.end(); offset += x_buf.chunk_size, ++buffer) {
       size_t jj;
-      for (jj = 0; jj < alphas.cols(); ++jj) { 
+      for (jj = 0; jj < alphas.cols(); ++jj) {
         auto loc_y = yy[jj].get().local_buffer();
-        for (size_t i = 0; i < x_buf.chunk_size && i + offset < loc_y->size(); ++i){ 
+        for (size_t i = 0; i < x_buf.chunk_size && i + offset < loc_y->size(); ++i){
           (*loc_y)[i + offset]  += alphas(ii, jj) * (*buffer)[i];
         }
       }
@@ -295,7 +212,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
 
   for (size_t j = 0; j < mat.cols(); ++j) {
     size_t offset = 0;
-    for (auto buffer = buffers[j].begin(); buffer != buffers[j].end(); offset += buffers[j].chunk_size, ++buffer) { 
+    for (auto buffer = buffers[j].begin(); buffer != buffers[j].end(); offset += buffers[j].chunk_size, ++buffer) {
       for (size_t i = 0; i < mat.rows(); ++i) {
         size_t buflen = buffer->cend() - buffer->cbegin();
         mat(i,j) += cblas_ddot(buflen, buffer->cbegin(), spacing, xx.at(i).get().local_buffer()->data() + offset,
@@ -356,7 +273,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   for (size_t j = 0; j < mat.cols(); ++j) {
     BufferManager y_buf = BufferManager(yy.at(j).get());
     size_t offset = 0;
-    for (auto buffer = y_buf.begin(); buffer != y_buf.end(); offset += y_buf.chunk_size, ++buffer) { 
+    for (auto buffer = y_buf.begin(); buffer != y_buf.end(); offset += y_buf.chunk_size, ++buffer) {
       for (size_t i = 0; i < mat.rows(); ++i) {
         mat(i, j) += std::inner_product(buffer->cbegin(), buffer->cend(), xx.at(i).get().local_buffer()->data() + offset, (value_type)0);
       }

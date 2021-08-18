@@ -155,10 +155,12 @@ Span<BufferManager::value_type> BufferManager::next(bool initial) {
   }
 
   ++curr_chunk;
-  std::cout << "loaded buffer: ";
-  for (int i=0; i<chunk_size; i++) { std::cout << buffer[i] << " "; }
-  std::cout << "\n";
-  return Span<value_type>(buffer, offset >= range.second ? 0 : std::min(size_t(chunk_size), range.second - offset));
+  const auto size = offset >= range.second ? 0 : std::min(size_t(chunk_size), range.second - offset);
+  std::cout << "BufferManager::next() returns";
+  for (size_t i = 0; i < size; ++i)
+    std::cout << " " << buffer[i];
+  std::cout << std::endl;
+  return Span<value_type>(buffer, size);
 }
 
 } // namespace molpro::linalg::array

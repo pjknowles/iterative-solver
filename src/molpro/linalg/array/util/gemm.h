@@ -113,9 +113,21 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   buffers.reserve(alphas.rows());
   buffer_iterators.reserve(alphas.rows());
   for (size_t j = 0; j < alphas.rows(); ++j){
+    auto x_buf = xx.at(j).get().local_buffer();
+    std::cout << "local buffer: ";
+    for (int i=0; i<buf_size/2; i++) { std::cout << (*x_buf)[i] << " ";} std::cout << "\n";
     buffers.emplace_back(BufferManager(xx.at(j).get(), buffers_memory+(buf_size*j), buf_size, BufferManager::buffertype::Double));
     buffer_iterators.emplace_back(buffers[j].begin());
   }
+
+  std::cout << "buffer memory: \n\n";
+  for (int i=0; i<buf_size*alphas.rows(); i++){
+    std::cout << buffers_memory[i] << " ";
+    if ((i+1)%buffers[0].chunk_size == 0){std::cout << "\n";}
+  }
+  std::cout << "\n\n";
+
+  std::cin.ignore();
 
   const int M = buffers[0].chunk_size; //rows of xx, rows of yy
   const int N = alphas.cols(); // cols of alphas, cols of yy
@@ -156,7 +168,8 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     std::cout << "  A: " << (*buffer_iterators[0]).data() << "\n";
     for (int i=0; i<K; i++){
       for (int j=0; j<M; j++){
-        assert((*buffer_iterators[0]).data()+((ldb*i) + j) == (*buffer_iterators[i]).data()+( j));
+        //assert((*buffer_iterators[0]).data()+((ldb*i) + j) == (*buffer_iterators[i]).data()+( j));
+        std::cout << *((*buffer_iterators[i]).data() + j) << " = ";
         std::cout << *((*buffer_iterators[0]).data()+((ldb*i) + j)) << " ";
       }
       std::cout << "\n";

@@ -269,7 +269,7 @@ TEST_F(DistrArrayFile_Fixture, dot_DistrArrayFile) {
 }
 
 TEST_F(DistrArrayFile_Fixture, contiguous_allocation){
-
+  
   size_t n = 10;
   size_t dim = 10;
 
@@ -291,5 +291,5 @@ TEST_F(DistrArrayFile_Fixture, contiguous_allocation){
     previous_stride = stride;
 
   }
-
+  
 }

@@ -534,7 +534,7 @@ TEST(TestGemm, ddisksparse_outer) {
 
 TEST(TestGemm, buffered_DistrArrayFile){
   auto handler = ArrayHandlerDistrDDisk<DistrArraySpan,DistrArrayFile>{};
-  size_t n = 10;
+  size_t n = 20;
   size_t dim = 20; // height
   int mpi_rank, mpi_size;
   MPI_Comm_rank(comm_global(), &mpi_rank);
@@ -565,9 +565,9 @@ TEST(TestGemm, buffered_DistrArrayFile){
   std::cout << "\n";
  
 
-  std::vector<double> coeff(n*dim);
+  std::vector<double> coeff(n*n);
   std::iota(coeff.begin(), coeff.end(), 1);
-  std::pair<size_t,size_t> mat_dim = std::make_pair(n,dim);
+  std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
   Matrix<double> alpha(coeff, mat_dim);
 
   std::cout << "alpha.rows(): " << alpha.rows() << "\n";

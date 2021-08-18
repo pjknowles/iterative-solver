@@ -254,7 +254,6 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
 extern "C" void IterativeSolverFinalize() {
   auto prof = molpro::Profiler::single();
   std::cout << "\n\nPROFILING RESULTS: \n" << *prof << "\n\n";
-  int hot[3] = {255,0,0}; int cool[3] = {0,0,255};
   prof->dotgraph("/home/robwelch/profres.dot");
   instances.pop();
   }

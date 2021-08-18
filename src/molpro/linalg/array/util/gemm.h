@@ -41,7 +41,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
                             const CVecRef<DistrArrayFile> &xx,
                             const VecRef<AL> &yy) {
 
-  if (alphas.rows() > xx.size()){
+  if (alphas.rows() != xx.size() || alphas.cols() != yy.size()){ // this should assert specifically that alphas.rows is xx.size AND alphas.cols is yy.size
     throw std::out_of_range("gemm_outer_distr_distr: dimensions of xx and alpha are different.");
   }
 
@@ -103,11 +103,6 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   }
   std::cout << "\n";
 
-  // the LDB is 10 which is true but in this case each buffer is holding five values (two buffers for a total of 10)
-  // so when we read 10 values out of the buffer we're really reading 5 values we want and 5 from the next buffer...
-  // either set buf_size and chunk_size to be divided by 2 or change how the memory is allocated in distrarraydisk
-  // as for why the columns don't match up... i have no idea
-
   // Eventual TODO: use a vector for this
 
   //std::vector<DistrArray::value_type> buffers_vec(buf_size*alphas.rows());
@@ -159,8 +154,8 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     std::cout << "\n";
     std::cout << "  LDA: " << lda << "\n";
     std::cout << "  A: " << (*buffer_iterators[0]).data() << "\n";
-    for (int i=0; i<M; i++){
-      for (int j=0; j<K; j++){
+    for (int i=0; i<K; i++){
+      for (int j=0; j<M; j++){
         std::cout << *((*buffer_iterators[0]).data()+((ldb*i) + j)) << " ";
       }
       std::cout << "\n";
@@ -169,15 +164,15 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     std::cout << "  beta: " << beta << "\n";
     std::cout << "  C: " << yy[curr_chunk].get().local_buffer()->data() << "\n";
     std::cout << "  LDC: " << ldc << "\n";
-    for (int i=0; i<M; i++){
-      for (int j=0; j<N; j++){
-        std::cout << *(yy[curr_chunk].get().local_buffer()->data()+(ldc*i + j)) << " ";
+    for (int i=0; i<N; i++){
+      for (int j=0; j<M; j++){ // why is this yy[curr_chunk]? - also needs i
+        std::cout << *(yy[0].get().local_buffer()->data()+(ldc*i + j + curr_chunk)) << " ";
       }
       std::cout << "\n";
     }
 
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, alphas.data().data(),
-                lda, (*buffer_iterators[0]).data(), ldb, beta, yy[curr_chunk].get().local_buffer()->data(), ldc);
+                lda, (*buffer_iterators[0]).data(), ldb, beta, yy[0].get().local_buffer()->data()+curr_chunk, ldc);
 
     for (size_t j = 1; j < xx.size(); ++j) { 
       ++buffer_iterators[j];

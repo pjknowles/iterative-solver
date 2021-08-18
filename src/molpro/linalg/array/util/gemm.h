@@ -156,6 +156,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     std::cout << "  A: " << (*buffer_iterators[0]).data() << "\n";
     for (int i=0; i<K; i++){
       for (int j=0; j<M; j++){
+        assert((*buffer_iterators[0]).data()+((ldb*i) + j) == (*buffer_iterators[i]).data()+( j));
         std::cout << *((*buffer_iterators[0]).data()+((ldb*i) + j)) << " ";
       }
       std::cout << "\n";

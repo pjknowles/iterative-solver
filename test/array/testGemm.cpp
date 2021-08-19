@@ -534,63 +534,50 @@ TEST(TestGemm, ddisksparse_outer) {
 
 TEST(TestGemm, buffered_DistrArrayFile){
   auto handler = ArrayHandlerDistrDDisk<DistrArraySpan,DistrArrayFile>{};
-  size_t n = 3;
-  size_t dim = 17; // height
+  size_t n = 9;
+  size_t dim = 71; // height
   int mpi_rank, mpi_size;
   MPI_Comm_rank(comm_global(), &mpi_rank);
   MPI_Comm_size(comm_global(), &mpi_size);
 
   auto [cx, cy, cz] = molpro::linalg::test::get_contiguous(n, dim);
 
-  //auto cx_wrapped = molpro::linalg::itsolv::cwrap(cx);
-  //auto cy_wrapped = molpro::linalg::itsolv::cwrap(cy);
-  //auto cz_wrapped = molpro::linalg::itsolv::cwrap(cz);
-
-  std::cout << "CX (memory): \n";
-  for (size_t i=0; i<n; i++){
-    for (size_t j=0; j<dim; j++){
-      std::cout << cx[i][j] << " ";
-    }
-    std::cout << "\n";
-  }
-  std::cout << "\n\n";
-
-  std::cout << "CZ (DAD): \n";
-  for (size_t i=0; i<n; i++){
-    for (size_t j=0; j<dim; j++){
-      std::cout << cz[i].local_buffer()->data()[j] << " ";
-    }
-    std::cout << "\n";
-  }
-  std::cout << "\n";
- 
-
   std::vector<double> coeff(n*n);
   std::iota(coeff.begin(), coeff.end(), 1);
   std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
   Matrix<double> alpha(coeff, mat_dim);
+//  std::cout << "alpha"<<as_string(alpha)<<std::endl;
 
-  std::cout << "alpha.rows(): " << alpha.rows() << "\n";
-  std::cout << "alpha.cols(): " << alpha.cols() << "\n";
 
-  handler.gemm_outer(alpha, cwrap(cz),wrap(cx));
-  for (size_t i = 0; i < n; i++) {
-    for (size_t j = 0; j < n; j++) {
-      handler.axpy(alpha(i, j), cz[i], cy[j]);
+  //auto cx_wrapped = molpro::linalg::itsolv::cwrap(cx);
+  //auto cy_wrapped = molpro::linalg::itsolv::cwrap(cy);
+  //auto cz_wrapped = molpro::linalg::itsolv::cwrap(cz);
+
+  Matrix<double> expected_result({n, dim});
+  for (size_t i=0; i<n; i++)
+    for (size_t j=0; j<dim; j++)
+      expected_result(i,j) = cx[i][j];
+  for (size_t i=0; i<n; i++){
+    for (size_t j=0; j<dim; j++){
+      for (size_t k=0; k<n; ++k)
+      expected_result(k,j) += cz[i].local_buffer()->data()[j] *alpha(i,k);
     }
   }
 
-  
-  std::vector<std::vector<double>> vx(n, std::vector<double>(dim)), vy(n, std::vector<double>(dim));
-  for (size_t i = 0; i < n; i++){
-    std::iota(vy[i].begin(), vy[i].end(), i + 0.5);
-    std::iota(vx[i].begin(), vx[i].end(), i + 0.5);
-  }
+//  std::cout << "expected_result"<<as_string(expected_result)<<std::endl;
 
-  for (size_t i = 0; i < n; i++) {
-    EXPECT_THAT(vy[i], Pointwise(DoubleEq(), vx[i]));
-  }
-  
+  handler.gemm_outer(alpha, cwrap(cz),wrap(cx));
+//  for (size_t i = 0; i < n; i++) {
+//    for (size_t j = 0; j < n; j++) {
+//      handler.axpy(alpha(i, j), cz[i], cy[j]);
+//    }
+//  }
 
 
+  Matrix<double> actual_result({n, dim});
+  for (size_t i=0; i<n; i++)
+    for (size_t j=0; j<dim; j++)
+      actual_result(i,j) = cx[i][j];
+//  std::cout << "actual result\n"<<as_string(actual_result)<<std::endl;
+  EXPECT_THAT(actual_result.data(), Pointwise(DoubleEq(), expected_result.data()));
 }

@@ -126,9 +126,9 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     }
 
     else{
-      for (size_t i=0; 0<xx.size(); ++i){
-        cblas_dgemv(CblasColMajor, CblasTrans, M, N, 1, alphas.data().data(), N,
-                      buffer_iterators[i]->data(), 1, 1, yy[i].get().local_buffer()->data(), 1);
+      for (size_t i=0; 0<yy.size(); ++i){
+        cblas_dgemv(CblasColMajor, CblasTrans, M, K, 1, buffer_iterators[0]->data(), buf_size,
+                      alphas.data().data()+(alphas.cols()*i), 1, 1, yy[i].get().local_buffer()->data(), 1);
       }
     }
     // non-uniform stride: 

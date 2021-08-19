@@ -40,25 +40,14 @@ template <class AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
                             const CVecRef<DistrArrayFile> &xx, const VecRef<AL> &yy) {
 
-  if (alphas.rows() != xx.size() ||
-      alphas.cols() !=
-          yy.size()) { // this should assert specifically that alphas.rows is xx.size AND alphas.cols is yy.size
+  if (alphas.rows() != xx.size())
     throw std::out_of_range("gemm_outer_distr_distr: dimensions of xx and alpha are different.");
-  }
+  if (alphas.cols() != yy.size())
+    throw std::out_of_range("gemm_outer_distr_distr: dimensions of yy and alpha are different.");
 
   if (alphas.rows() == 0 || alphas.cols() == 0) {
     return;
   }
-  //
-  //  if (alphas.rows() == 1 || alphas.cols() == 1){
-  //    auto loc_x = xx.at(0).get().local_buffer();
-  //    auto loc_y = yy[0].get().local_buffer();
-  //    for (size_t i = 0; i < loc_y->size(); ++i)
-  //      (*loc_y)[i] += alphas(0, 0) * (*loc_x)[i];
-  //    return;
-  //  }
-
-  //  std::cout << "gemm_outer_distr_distr (buffered)\n";
   auto prof = molpro::Profiler::single();
   prof->start("gemm_outer_distr_distr (buffered)");
   *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
@@ -74,64 +63,38 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
       yy_constant_stride = yy_constant_stride && (yy_stride == previous_stride);
     previous_stride = yy_stride;
   }
-  //if (not yy_constant_stride)
-  //  throw std::runtime_error(
-  //      "yy doesn't have a consistent stride, and general case not yet coded\n"); // TODO code up the non-constant
-                                                                                  // stride case using dgemv
+  // if (not yy_constant_stride)
+  //   throw std::runtime_error(
+  //       "yy doesn't have a consistent stride, and general case not yet coded\n"); // TODO code up the non-constant
+  //  stride case using dgemv
 
-  const int buf_size =
-      10; // The amount of memory allocated for buffering of xx. IN the case of double buffering, this means that the
-          // actual buffers will be half this value. TODO: should be 8192 or similar large.
-  // Eventual TODO: use a vector for this
-  // std::vector<DistrArray::value_type> buffers_vec(buf_size*alphas.rows());
-  // DistrArray::value_type* buffers_memory = buffers_vec.data();
-  DistrArray::value_type *buffers_memory = new DistrArray::value_type[buf_size * alphas.rows()];
+  const int buf_size = 8192; // The amount of memory allocated for buffering of xx. IN the case of double buffering,
+                             // this means that the actual buffers will be half this value.
+  std::vector<DistrArray::value_type> buffers_memory(buf_size * alphas.rows());
   std::vector<BufferManager> buffers;
   std::vector<BufferManager::Iterator> buffer_iterators;
   buffers.reserve(xx.size());
   buffer_iterators.reserve(xx.size());
   for (size_t j = 0; j < alphas.rows(); ++j) {
-    buffers.emplace_back(
-        BufferManager(xx.at(j).get(), buffers_memory + (buf_size * j), buf_size, BufferManager::buffertype::Double));
+    buffers.emplace_back(BufferManager(xx.at(j).get(), buffers_memory.data() + (buf_size * j), buf_size,
+                                       BufferManager::buffertype::Double));
     buffer_iterators.emplace_back(buffers[j].begin());
   }
   const int N = alphas.cols(); // cols of alphas, cols of yy
   const int K = alphas.rows(); // cols of xx, rows of alphas
   size_t M;                    // = buffer_iterators.front()->size();
-  const auto yy_data = yy[0].get().local_buffer()->data();
   const auto yy_size = yy[0].get().local_buffer()->size();
   for (size_t container_offset = 0; container_offset < yy_size; container_offset += M) {
     M = buffer_iterators.front()->size();
-    if (false) {
-
-      std::cout << "container loop start container_offset=" << container_offset << ", M=" << M
-                << ", iterator size=" << buffer_iterators.front()->size() << std::endl;
-      for (size_t i = 0; i < yy.size(); ++i) {
-        std::cout << "presenting yy[" << i << "]";
-        for (size_t j = 0; j < M; ++j)
-          std::cout << " " << yy_data[container_offset + i * yy_stride + j];
-        std::cout << std::endl;
-      }
-      for (size_t i = 0; i < xx.size(); ++i) {
-        std::cout << "presenting xx[" << i << "]";
-        for (size_t j = 0; j < M; ++j)
-          std::cout << " " << buffer_iterators[0]->data()[i * buf_size + j];
-        std::cout << std::endl;
-        //      buffer_iterators[0]->data()[i*buf_size ]+=14;
-      }
-    }
-    if (yy_constant_stride){
+    if (yy_constant_stride) {
       cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, M, N, K, 1, buffer_iterators[0]->data(), buf_size,
-                  alphas.data().data(), N, 1, yy_data + container_offset, yy_stride);
-    }
-
-    else{
-      for (size_t i=0; 0<yy.size(); ++i){
-        cblas_dgemv(CblasColMajor, CblasTrans, M, K, 1, buffer_iterators[0]->data(), buf_size,
-                      alphas.data().data()+(alphas.cols()*i), 1, 1, yy[i].get().local_buffer()->data(), 1);
+                  alphas.data().data(), N, 1, yy[0].get().local_buffer()->data() + container_offset, yy_stride);
+    } else { // non-uniform stride:
+      for (size_t i = 0; i < yy.size(); ++i) {
+        cblas_dgemv(CblasColMajor, CblasNoTrans, M, K, 1, buffer_iterators[0]->data(), buf_size,
+                    alphas.data().data() + i, N, 1, yy[i].get().local_buffer()->data() + container_offset, 1);
       }
     }
-    // non-uniform stride: 
 
     for (auto &iter : buffer_iterators)
       ++iter;

@@ -60,12 +60,12 @@ void printMatrix(const std::vector<value_type>&, size_t rows, size_t cols, std::
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int> = 0>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, size_t dimension,
-                  bool hermitian, double svdThreshold, int verbosity);
+                  bool hermitian, double svdThreshold, int verbosity, bool condone_complex);
 
 template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t> = nullptr>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, size_t dimension,
-                  bool hermitian, double svdThreshold, int verbosity);
+                  bool hermitian, double svdThreshold, int verbosity, bool condone_complex);
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int> = 0>
 void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_type>& eigenvalues,
@@ -99,12 +99,12 @@ extern template std::list<SVD<double>> svd_system(size_t nrows, size_t ncols, co
 extern template void eigenproblem<double>(std::vector<double>& eigenvectors, std::vector<double>& eigenvalues,
                                           const std::vector<double>& matrix, const std::vector<double>& metric,
                                           const size_t dimension, bool hermitian, double svdThreshold,
-                                          int verbosity);
+                                          int verbosity, bool condone_complex);
 
 extern template void eigenproblem<double>(std::vector<double>& eigenvectors, std::vector<double>& eigenvalues,
                                           const std::vector<double>& matrix, const std::vector<double>& metric,
                                           const size_t dimension, bool hermitian, double svdThreshold,
-                                          int verbosity);
+                                          int verbosity, bool condone_complex);
 
 extern template void solve_LinearEquations<double>(std::vector<double>& solution, std::vector<double>& eigenvalues,
                                                    const std::vector<double>& matrix, const std::vector<double>& metric,
@@ -135,14 +135,14 @@ extern template void eigenproblem<std::complex<double>>(std::vector<std::complex
                                                         const std::vector<std::complex<double>>& matrix,
                                                         const std::vector<std::complex<double>>& metric,
                                                         const size_t dimension, bool hermitian, double svdThreshold,
-                                                        int verbosity);
+                                                        int verbosity, bool condone_complex);
 
 extern template void eigenproblem<std::complex<double>>(std::vector<std::complex<double>>& eigenvectors,
                                                         std::vector<std::complex<double>>& eigenvalues,
                                                         const std::vector<std::complex<double>>& matrix,
                                                         const std::vector<std::complex<double>>& metric,
                                                         const size_t dimension, bool hermitian, double svdThreshold,
-                                                        int verbosity);
+                                                        int verbosity, bool condone_complex);
 
 extern template void solve_LinearEquations<std::complex<double>>(
     std::vector<std::complex<double>>& solution, std::vector<std::complex<double>>& eigenvalues,

@@ -38,16 +38,16 @@ struct LinearEigensystemF : ::testing::Test {
   size_t verbosity = 0;
   MatrixXdc hmat;
 
-  void load_matrix(int dimension, const std::string &type = "", double param = 1, bool hermitian = true) {
+  void load_matrix(int dimension, const std::string &type = "", double param = 1, double non_hermiticity = 0) {
     n = dimension;
     hmat.resize(n, n);
     hmat.fill(1);
     for (size_t i = 0; i < n; i++)
       hmat(i, i) = i * param;
-    if (not hermitian)
+    if (non_hermiticity != 0)
       for (size_t i = 0; i < n; i++)
         for (size_t j = 0; j < i; j++)
-          hmat(i, j) *= .95;
+          hmat(i, j) *= 1 - non_hermiticity;
   }
 
   void load_matrix(const std::string &file, double degeneracy_split = 0) {
@@ -110,7 +110,8 @@ struct LinearEigensystemF : ::testing::Test {
     for (size_t i = 0, ij = 0; i < n; ++i)
       for (size_t j = 0; j < n; ++j, ++ij)
         hmat_row[ij] = hmat(i, j);
-    molpro::linalg::itsolv::eigenproblem(eigenvector, expected_eigenvalues, hmat_row, metric, n, hermitian, 1.0e-14, 0);
+    molpro::linalg::itsolv::eigenproblem(eigenvector, expected_eigenvalues, hmat_row, metric, n, hermitian, 1.0e-14, 0,
+                                         false);
     for (size_t i = 0; i < n; i++)
       for (size_t j = 0; j < n; j++)
         expected_eigensolutions[expected_eigenvalues[i]].push_back(
@@ -361,12 +362,15 @@ TEST_F(LinearEigensystemF, n_eigen) {
 }
 
 TEST_F(LinearEigensystemF, nonhermitian_eigen) {
-  size_t n = 30;
+  size_t n = 6;
   //  for (auto param : std::vector<double>{.01, .1, 1, 10, 100}) {
   //  for (auto param : std::vector<double>{.01, .1, 1}) {
-  for (auto param : std::vector<double>{1}) {
-    load_matrix(n, "", param, false);
-    test_eigen(std::to_string(n) + "/" + std::to_string(param) + ", non-hermitian");
+  for (auto param : std::vector<double>{1, .1}) {
+    for (auto non_hermiticity : std::vector<double>{0, 0.1, 0.2}) {
+      load_matrix(n, "", param, non_hermiticity);
+      //      std::cout << "hmat\n"<<hmat<<std::endl;
+      test_eigen(std::to_string(n) + "/" + std::to_string(param) + " non-hermiticy=" + std::to_string(non_hermiticity));
+    }
   }
 }
 

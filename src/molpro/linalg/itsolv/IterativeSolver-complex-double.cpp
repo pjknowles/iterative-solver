@@ -14,7 +14,8 @@ template std::list<SVD<value_type>> svd_system<value_type>(size_t nrows, size_t 
 
 template void eigenproblem<value_type>(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                                        const std::vector<value_type>& matrix, const std::vector<value_type>& metric,
-                                       size_t dimension, bool hermitian, double svdThreshold, int verbosity);
+                                       size_t dimension, bool hermitian, double svdThreshold, int verbosity,
+                                       bool condone_complex);
 
 template void solve_LinearEquations<value_type>(std::vector<value_type>& solution, std::vector<value_type>& eigenvalues,
                                                 const std::vector<value_type>& matrix,

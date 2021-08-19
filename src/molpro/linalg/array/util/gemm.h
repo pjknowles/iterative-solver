@@ -63,10 +63,6 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
       yy_constant_stride = yy_constant_stride && (yy_stride == previous_stride);
     previous_stride = yy_stride;
   }
-  // if (not yy_constant_stride)
-  //   throw std::runtime_error(
-  //       "yy doesn't have a consistent stride, and general case not yet coded\n"); // TODO code up the non-constant
-  //  stride case using dgemv
 
   const int buf_size = 8192; // The amount of memory allocated for buffering of xx. IN the case of double buffering,
                              // this means that the actual buffers will be half this value.

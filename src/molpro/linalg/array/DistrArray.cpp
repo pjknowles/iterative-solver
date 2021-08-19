@@ -67,7 +67,7 @@ void DistrArray::axpy(value_type a, const DistrArray& y) {
   else
     for (size_t i = 0; i < loc_x->size(); ++i)
       (*loc_x)[i] += a * (*loc_y)[i];
-    prof->stop();
+  prof->stop();
 }
 
 void DistrArray::scal(DistrArray::value_type a) {

@@ -63,7 +63,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
       yy_constant_stride = yy_constant_stride && (yy_stride == previous_stride);
     previous_stride = yy_stride;
   }
-  yy_stride = std::max(yy_stride, 1);
+  yy_constant_stride = yy_constant_stride && (yy_stride > 0);
 
   const int buf_size = 8192; // The amount of memory allocated for buffering of xx. IN the case of double buffering,
                              // this means that the actual buffers will be half this value.

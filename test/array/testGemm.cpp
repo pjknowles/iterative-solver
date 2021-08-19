@@ -581,8 +581,9 @@ TEST(TestGemm, buffered_DistrArrayFile) {
         //        std::cout << std::endl;
       }
 
-      if (cx_selection.size() != cx.size())
+      if (cx_selection.size() != cx.size()) {
         EXPECT_THROW(handler.gemm_outer(alpha, cwrap(cz), wrap(cx_selection)), std::out_of_range);
+      }
       handler.gemm_outer(alpha_selection, cwrap(cz), wrap(cx_selection));
       Matrix<double> actual_result({cx_selection.size(), dim});
       for (size_t i = 0; i < cx_selection.size(); i++)

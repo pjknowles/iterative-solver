@@ -141,6 +141,7 @@ public:
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
     auto prof = this->m_profiler->push("itsolv::end_iteration");
+    this->m_working_set={0};
     if (not m_linesearch) { // action is expected to hold the preconditioned residual
       m_last_iteration_linesearching = false;
       this->solution_params(this->m_working_set, parameters);

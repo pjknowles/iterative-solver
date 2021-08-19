@@ -583,18 +583,14 @@ TEST(TestGemm, buffered_DistrArrayFile) {
 
       if (cx_selection.size() != cx.size())
         EXPECT_THROW(handler.gemm_outer(alpha, cwrap(cz), wrap(cx_selection)), std::out_of_range);
-      if (cx_selection.size() != cx.size() and n > 3) // Temporary till non-uniform stride code is written
-        EXPECT_THROW(handler.gemm_outer(alpha_selection, cwrap(cz), wrap(cx_selection)), std::runtime_error);
-      else {
-        handler.gemm_outer(alpha_selection, cwrap(cz), wrap(cx_selection));
-        Matrix<double> actual_result({cx_selection.size(), dim});
-        for (size_t i = 0; i < cx_selection.size(); i++)
-          for (size_t j = 0; j < dim; j++)
-            actual_result(i, j) = cx_selection[i][j];
-        //        std::cout << "expected_result" << as_string(expected_result) << std::endl;
-        //        std::cout << "actual result" << as_string(actual_result) << std::endl;
-        EXPECT_THAT(actual_result.data(), Pointwise(DoubleEq(), expected_result.data()));
-      }
+      handler.gemm_outer(alpha_selection, cwrap(cz), wrap(cx_selection));
+      Matrix<double> actual_result({cx_selection.size(), dim});
+      for (size_t i = 0; i < cx_selection.size(); i++)
+        for (size_t j = 0; j < dim; j++)
+          actual_result(i, j) = cx_selection[i][j];
+      //        std::cout << "expected_result" << as_string(expected_result) << std::endl;
+      //        std::cout << "actual result" << as_string(actual_result) << std::endl;
+      EXPECT_THAT(actual_result.data(), Pointwise(DoubleEq(), expected_result.data()));
     }
   }
 }

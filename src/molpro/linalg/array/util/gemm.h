@@ -66,7 +66,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   bool yy_constant_stride = true;
   int previous_stride = 0;
   int yy_stride = yy.front().get().local_buffer()->size();
-  for (size_t j = 0; j < alphas.rows() - 1; ++j) {
+  for (size_t j = 0; j < std::max((size_t)1, yy.size()) - 1; ++j) {
     auto unique_ptr_j = yy.at(j).get().local_buffer()->data();
     auto unique_ptr_jp1 = yy.at(j + 1).get().local_buffer()->data();
     yy_stride = unique_ptr_jp1 - unique_ptr_j;

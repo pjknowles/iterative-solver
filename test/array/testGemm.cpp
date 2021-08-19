@@ -96,7 +96,7 @@ TEST(TestGemm, distrarrayfile_inner) {
   std::vector<DistrArrayFile> cy;
   cx.reserve(n);
   cy.reserve(n);
-  
+
   int mpi_rank, mpi_size;
   MPI_Comm_rank(comm_global(), &mpi_rank);
   MPI_Comm_size(comm_global(), &mpi_size);
@@ -532,52 +532,69 @@ TEST(TestGemm, ddisksparse_outer) {
   }
 }
 
-TEST(TestGemm, buffered_DistrArrayFile){
-  auto handler = ArrayHandlerDistrDDisk<DistrArraySpan,DistrArrayFile>{};
-  size_t n = 9;
-  size_t dim = 71; // height
-  int mpi_rank, mpi_size;
-  MPI_Comm_rank(comm_global(), &mpi_rank);
-  MPI_Comm_size(comm_global(), &mpi_size);
+TEST(TestGemm, buffered_DistrArrayFile) {
+  auto handler = ArrayHandlerDistrDDisk<DistrArraySpan, DistrArrayFile>{};
+  for (size_t n = 0; n < 9; ++n) {
+    size_t dim = 71; // height
+    int mpi_rank, mpi_size;
+    MPI_Comm_rank(comm_global(), &mpi_rank);
+    MPI_Comm_size(comm_global(), &mpi_size);
 
-  auto [cx, cy, cz] = molpro::linalg::test::get_contiguous(n, dim);
+    auto [cx, cy, cz] = molpro::linalg::test::get_contiguous(n, dim);
 
-  std::vector<double> coeff(n*n);
-  std::iota(coeff.begin(), coeff.end(), 1);
-  std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
-  Matrix<double> alpha(coeff, mat_dim);
-//  std::cout << "alpha"<<as_string(alpha)<<std::endl;
+    std::vector<double> coeff(n * n);
+    std::iota(coeff.begin(), coeff.end(), 1);
+    std::pair<size_t, size_t> mat_dim = std::make_pair(n, n);
+    Matrix<double> alpha(coeff, mat_dim);
 
+    for (size_t stride_multiplier = 0; stride_multiplier < 2; ++stride_multiplier) {
+      decltype(cx) cx_selection;
+      for (size_t i = 0; i < n; i += stride_multiplier * i + 1)
+        cx_selection.emplace_back(cx[i]);
+      decltype(alpha) alpha_selection({n, cx_selection.size()});
+      size_t offset = 0;
+      for (size_t i = 0; i < n; i += stride_multiplier * i + 1) {
+        for (size_t j = 0; j < n; ++j)
+          alpha_selection(j, offset) = alpha(j, i);
+        ++offset;
+      }
+      //      std::cout << "alpha" << as_string(alpha) << std::endl;
+      //      std::cout << "alpha_selection" << as_string(alpha_selection) << std::endl;
 
-  //auto cx_wrapped = molpro::linalg::itsolv::cwrap(cx);
-  //auto cy_wrapped = molpro::linalg::itsolv::cwrap(cy);
-  //auto cz_wrapped = molpro::linalg::itsolv::cwrap(cz);
+      Matrix<double> expected_result({cx_selection.size(), dim});
+      for (size_t i = 0; i < cx_selection.size(); i++) {
+        //        std::cout << "cx_selection";
+        for (size_t j = 0; j < dim; j++) {
+          expected_result(i, j) = cx_selection[i][j];
+          //          std::cout << " " << cx_selection[i][j];
+        }
+        //        std::cout << std::endl;
+      }
+      //      std::cout << "expected_result before z contributions" << as_string(expected_result) << std::endl;
+      for (size_t i = 0; i < n; i++) {
+        //        std::cout << "cz";
+        for (size_t j = 0; j < dim; j++) {
+          //          std::cout << " " << cz[i][j];
+          for (size_t k = 0; k < cx_selection.size(); ++k)
+            expected_result(k, j) += cz[i].local_buffer()->data()[j] * alpha(i, k);
+        }
+        //        std::cout << std::endl;
+      }
 
-  Matrix<double> expected_result({n, dim});
-  for (size_t i=0; i<n; i++)
-    for (size_t j=0; j<dim; j++)
-      expected_result(i,j) = cx[i][j];
-  for (size_t i=0; i<n; i++){
-    for (size_t j=0; j<dim; j++){
-      for (size_t k=0; k<n; ++k)
-      expected_result(k,j) += cz[i].local_buffer()->data()[j] *alpha(i,k);
+      if (cx_selection.size() != cx.size())
+        EXPECT_THROW(handler.gemm_outer(alpha, cwrap(cz), wrap(cx_selection)), std::out_of_range);
+      if (cx_selection.size() != cx.size() and n > 3) // Temporary till non-uniform stride code is written
+        EXPECT_THROW(handler.gemm_outer(alpha_selection, cwrap(cz), wrap(cx_selection)), std::runtime_error);
+      else {
+        handler.gemm_outer(alpha_selection, cwrap(cz), wrap(cx_selection));
+        Matrix<double> actual_result({cx_selection.size(), dim});
+        for (size_t i = 0; i < cx_selection.size(); i++)
+          for (size_t j = 0; j < dim; j++)
+            actual_result(i, j) = cx_selection[i][j];
+        //        std::cout << "expected_result" << as_string(expected_result) << std::endl;
+        //        std::cout << "actual result" << as_string(actual_result) << std::endl;
+        EXPECT_THAT(actual_result.data(), Pointwise(DoubleEq(), expected_result.data()));
+      }
     }
   }
-
-//  std::cout << "expected_result"<<as_string(expected_result)<<std::endl;
-
-  handler.gemm_outer(alpha, cwrap(cz),wrap(cx));
-//  for (size_t i = 0; i < n; i++) {
-//    for (size_t j = 0; j < n; j++) {
-//      handler.axpy(alpha(i, j), cz[i], cy[j]);
-//    }
-//  }
-
-
-  Matrix<double> actual_result({n, dim});
-  for (size_t i=0; i<n; i++)
-    for (size_t j=0; j<dim; j++)
-      actual_result(i,j) = cx[i][j];
-//  std::cout << "actual result\n"<<as_string(actual_result)<<std::endl;
-  EXPECT_THAT(actual_result.data(), Pointwise(DoubleEq(), expected_result.data()));
 }

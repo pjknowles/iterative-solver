@@ -74,9 +74,9 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
       yy_constant_stride = yy_constant_stride && (yy_stride == previous_stride);
     previous_stride = yy_stride;
   }
-  if (not yy_constant_stride)
-    throw std::runtime_error(
-        "yy doesn't have a consistent stride, and general case not yet coded\n"); // TODO code up the non-constant
+  //if (not yy_constant_stride)
+  //  throw std::runtime_error(
+  //      "yy doesn't have a consistent stride, and general case not yet coded\n"); // TODO code up the non-constant
                                                                                   // stride case using dgemv
 
   const int buf_size =
@@ -120,8 +120,18 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
         //      buffer_iterators[0]->data()[i*buf_size ]+=14;
       }
     }
-    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, M, N, K, 1, buffer_iterators[0]->data(), buf_size,
-                alphas.data().data(), N, 1, yy_data + container_offset, yy_stride);
+    if (yy_constant_stride){
+      cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, M, N, K, 1, buffer_iterators[0]->data(), buf_size,
+                  alphas.data().data(), N, 1, yy_data + container_offset, yy_stride);
+    }
+
+    else{
+      for (size_t i=0; 0<xx.size(); ++i){
+        cblas_dgemv(CblasColMajor, CblasTrans, M, N, 1, alphas.data().data(), N,
+                      buffer_iterators[i]->data(), 1, 1, yy[i].get().local_buffer()->data(), 1);
+      }
+    }
+    // non-uniform stride: 
 
     for (auto &iter : buffer_iterators)
       ++iter;

@@ -37,9 +37,8 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
 }
 
 template <class AL>
-void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
-                            const CVecRef<DistrArrayFile> &xx, const VecRef<AL> &yy) {
-
+void gemm_outer_distr_distr_constant_stride(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
+                            const CVecRef<DistrArrayFile> &xx, const VecRef<AL> &yy, int yy_stride) {
   if (alphas.rows() != xx.size() ||
       alphas.cols() !=
           yy.size()) { // this should assert specifically that alphas.rows is xx.size AND alphas.cols is yy.size
@@ -62,22 +61,6 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   auto prof = molpro::Profiler::single();
   prof->start("gemm_outer_distr_distr (buffered)");
   *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
-
-  bool yy_constant_stride = true;
-  int previous_stride = 0;
-  int yy_stride = yy.front().get().local_buffer()->size();
-  for (size_t j = 0; j < alphas.rows() - 1; ++j) {
-    auto unique_ptr_j = yy.at(j).get().local_buffer()->data();
-    auto unique_ptr_jp1 = yy.at(j + 1).get().local_buffer()->data();
-    yy_stride = unique_ptr_jp1 - unique_ptr_j;
-    if (j > 0)
-      yy_constant_stride = yy_constant_stride && (yy_stride == previous_stride);
-    previous_stride = yy_stride;
-  }
-  if (not yy_constant_stride)
-    throw std::runtime_error(
-        "yy doesn't have a consistent stride, and general case not yet coded\n"); // TODO code up the non-constant
-                                                                                  // stride case using dgemv
 
   const int buf_size =
       10; // The amount of memory allocated for buffering of xx. IN the case of double buffering, this means that the
@@ -128,9 +111,9 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   }
   prof->stop();
 }
-/**
+
 template <class AL>
-void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
+void gemm_outer_distr_distr_general(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
                             const CVecRef<DistrArrayFile> &xx,
                             const VecRef<AL> &yy) {
   if (alphas.rows() > xx.size()){
@@ -141,13 +124,14 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   *prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;
   for (size_t ii = 0; ii < alphas.rows(); ++ii) {
     DistrArray::value_type buffer[16384];
-    BufferManager x_buf = BufferManager(xx.at(ii).get(), buffer, 16384);
+    BufferManager x_buf = BufferManager(xx.at(ii).get(), buffer, 16384, molpro::linalg::array::BufferManager::Double);
     size_t offset = 0;
     for (auto buffer = x_buf.begin(); buffer != x_buf.end(); offset += x_buf.chunk_size, ++buffer) {
       size_t jj;
       for (jj = 0; jj < alphas.cols(); ++jj) {
         auto loc_y = yy[jj].get().local_buffer();
         for (size_t i = 0; i < x_buf.chunk_size && i + offset < loc_y->size(); ++i){
+          // TODO code up the non-constant stride case using dgemv
           (*loc_y)[i + offset]  += alphas(ii, jj) * (*buffer)[i];
         }
       }
@@ -155,7 +139,32 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   }
   prof->stop();
 }
-*/
+
+template <class AL>
+void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
+                            const CVecRef<DistrArrayFile> &xx, const VecRef<AL> &yy) {
+
+  bool yy_constant_stride = true;
+  int previous_stride = 0;
+  int yy_stride = yy.front().get().local_buffer()->size();
+  for (size_t j = 0; j < alphas.rows() - 1; ++j) {
+    auto unique_ptr_j = yy.at(j).get().local_buffer()->data();
+    auto unique_ptr_jp1 = yy.at(j + 1).get().local_buffer()->data();
+    yy_stride = unique_ptr_jp1 - unique_ptr_j;
+    if (j > 0)
+      yy_constant_stride = yy_constant_stride && (yy_stride == previous_stride);
+    previous_stride = yy_stride;
+  }
+
+  if (yy_constant_stride){
+    gemm_outer_distr_distr_constant_stride(alphas, xx, yy, yy_stride);
+  }
+  else{
+    gemm_outer_distr_distr_general(alphas, xx, yy);
+  }
+
+}
+
 template <class AL, class AR = AL>
 void gemm_outer_distr_sparse(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR> &xx,
                              const VecRef<AL> &yy) {

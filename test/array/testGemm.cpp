@@ -534,8 +534,8 @@ TEST(TestGemm, ddisksparse_outer) {
 
 TEST(TestGemm, buffered_DistrArrayFile){
   auto handler = ArrayHandlerDistrDDisk<DistrArraySpan,DistrArrayFile>{};
-  size_t n = 9;
-  size_t dim = 71; // height
+  size_t n = 10; // number of DistrArrays
+  size_t dim = 71; // length of each DistrArray
   int mpi_rank, mpi_size;
   MPI_Comm_rank(comm_global(), &mpi_rank);
   MPI_Comm_size(comm_global(), &mpi_size);
@@ -546,12 +546,6 @@ TEST(TestGemm, buffered_DistrArrayFile){
   std::iota(coeff.begin(), coeff.end(), 1);
   std::pair<size_t,size_t> mat_dim = std::make_pair(n,n);
   Matrix<double> alpha(coeff, mat_dim);
-//  std::cout << "alpha"<<as_string(alpha)<<std::endl;
-
-
-  //auto cx_wrapped = molpro::linalg::itsolv::cwrap(cx);
-  //auto cy_wrapped = molpro::linalg::itsolv::cwrap(cy);
-  //auto cz_wrapped = molpro::linalg::itsolv::cwrap(cz);
 
   Matrix<double> expected_result({n, dim});
   for (size_t i=0; i<n; i++)
@@ -567,12 +561,6 @@ TEST(TestGemm, buffered_DistrArrayFile){
 //  std::cout << "expected_result"<<as_string(expected_result)<<std::endl;
 
   handler.gemm_outer(alpha, cwrap(cz),wrap(cx));
-//  for (size_t i = 0; i < n; i++) {
-//    for (size_t j = 0; j < n; j++) {
-//      handler.axpy(alpha(i, j), cz[i], cy[j]);
-//    }
-//  }
-
 
   Matrix<double> actual_result({n, dim});
   for (size_t i=0; i<n; i++)

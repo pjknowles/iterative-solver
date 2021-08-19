@@ -296,15 +296,15 @@ void printMatrix(const std::vector<value_type>& m, size_t rows, size_t cols, std
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
-                  const std::vector<value_type>& matrix, const std::vector<value_type>& metric, const size_t dimension,
-                  bool hermitian, double svdThreshold, int verbosity) {
+                  const std::vector<value_type>& matrix, const std::vector<value_type>& metric, size_t dimension,
+                  bool hermitian, double svdThreshold, int verbosity, bool condone_complex) {
   assert(false); // Complex not implemented here
 }
 
 template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t>>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
-                  const std::vector<value_type>& matrix, const std::vector<value_type>& metric, const size_t dimension,
-                  bool hermitian, double svdThreshold, int verbosity) {
+                  const std::vector<value_type>& matrix, const std::vector<value_type>& metric, size_t dimension,
+                  bool hermitian, double svdThreshold, int verbosity, bool condone_complex) {
   auto prof = molpro::Profiler::single();
   prof->start("itsolv::eigenproblem");
   Eigen::Map<const Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> HrowMajor(
@@ -482,11 +482,24 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
         //                       (subspaceEigenvectors.col(l).adjoint() * subspaceOverlap *
         //                       subspaceEigenvectors.col(k))( 0, 0)<<std::endl;
       }
-  } // if (!hermitian)
-    //       molpro::cout << "eigenvalues"<<std::endl<<subspaceEigenvalues<<std::endl;
-    //       molpro::cout << "eigenvectors"<<std::endl<<subspaceEigenvectors<<std::endl;
-  // TODO complex should be implemented with a specialised function
-  // TODO real should be implemented with always-executed runtime assertion that eigensolution turns out to be real
+  }
+  //   if (!hermitian) {
+  //     molpro::cout << "eigenvalues"<<std::endl<<subspaceEigenvalues<<std::endl;
+  //     molpro::cout << "eigenvectors" << std::endl << subspaceEigenvectors << std::endl;
+  //   }
+  if (condone_complex) {
+    for (Eigen::Index root = 0; root < Hbar.cols(); ++root) {
+      if (subspaceEigenvalues(root).imag() != 0) {
+        //         molpro::cout << "complex eigenvalues: " << subspaceEigenvalues(root) << ", " <<
+        //         subspaceEigenvalues(root + 1)
+        //                      << std::endl;
+        subspaceEigenvalues(root) = subspaceEigenvalues(root + 1) = subspaceEigenvalues(root).real();
+        subspaceEigenvectors.col(root) = subspaceEigenvectors.col(root).real();
+        subspaceEigenvectors.col(root + 1) = subspaceEigenvectors.col(root + 1).imag();
+        ++root;
+      }
+    }
+  }
   if ((subspaceEigenvectors - subspaceEigenvectors.real()).norm() > 1e-10 or
       (subspaceEigenvalues - subspaceEigenvalues.real()).norm() > 1e-10) {
     throw std::runtime_error("unexpected complex solution found");
@@ -596,22 +609,22 @@ void solve_DIIS(std::vector<value_type>& solution, const std::vector<value_type>
   BAug(dimension, dimension) = 0;
   Rhs(dimension) = -1;
   //
-//        molpro::cout << "BAug:" << std::endl << BAug << std::endl;
-//        molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
+  //        molpro::cout << "BAug:" << std::endl << BAug << std::endl;
+  //        molpro::cout << "Rhs:" << std::endl << Rhs << std::endl;
 
   // invert the system, determine extrapolation coefficients.
   Eigen::JacobiSVD<Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic>> svd(BAug, Eigen::ComputeThinU |
                                                                                             Eigen::ComputeThinV);
 
-//  std::cout << "svd thresholds " << svdThreshold << "," << svd.singularValues().maxCoeff() << std::endl;
-//  std::cout << "singular values " << svd.singularValues().transpose() << std::endl;
+  //  std::cout << "svd thresholds " << svdThreshold << "," << svd.singularValues().maxCoeff() << std::endl;
+  //  std::cout << "singular values " << svd.singularValues().transpose() << std::endl;
   svd.setThreshold(svdThreshold * svd.singularValues().maxCoeff() * 0);
   //    molpro::cout << "svdThreshold "<<svdThreshold<<std::endl;
   //    molpro::cout << "U\n"<<svd.matrixU()<<std::endl;
   //    molpro::cout << "V\n"<<svd.matrixV()<<std::endl;
   //    molpro::cout << "singularValues\n"<<svd.singularValues()<<std::endl;
   Coeffs = svd.solve(Rhs).head(dimension);
-//  Coeffs = BAug.fullPivHouseholderQr().solve(Rhs);
+  //  Coeffs = BAug.fullPivHouseholderQr().solve(Rhs);
   //  molpro::cout << "Coeffs "<<Coeffs.transpose()<<std::endl;
   if (verbosity > 1)
     molpro::cout << "Combination of iteration vectors: " << Coeffs.transpose() << std::endl;

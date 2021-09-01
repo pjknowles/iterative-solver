@@ -59,11 +59,13 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     auto unique_ptr_j = yy.at(j).get().local_buffer()->data();
     auto unique_ptr_jp1 = yy.at(j + 1).get().local_buffer()->data();
     yy_stride = unique_ptr_jp1 - unique_ptr_j;
+//    std::cout << "j="<<j<<" yy_stride="<<yy_stride<<std::endl;
     if (j > 0)
       yy_constant_stride = yy_constant_stride && (yy_stride == previous_stride);
     previous_stride = yy_stride;
   }
   yy_constant_stride = yy_constant_stride && (yy_stride > 0);
+//  std::cout << "yy_constant_stride="<<yy_constant_stride<<std::endl;
 
   const int buf_size = 8192; // The amount of memory allocated for buffering of xx. IN the case of double buffering,
                              // this means that the actual buffers will be half this value.
@@ -83,7 +85,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   const auto yy_size = yy[0].get().local_buffer()->size();
   for (size_t container_offset = 0; container_offset < yy_size; container_offset += M) {
     M = buffer_iterators.front()->size();
-    if (yy_constant_stride) {
+    if (yy_constant_stride and not yy.empty()) {
       cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, M, N, K, 1, buffer_iterators[0]->data(), buf_size,
                   alphas.data().data(), N, 1, yy[0].get().local_buffer()->data() + container_offset, yy_stride);
     } else { // non-uniform stride:

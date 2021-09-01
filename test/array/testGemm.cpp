@@ -552,45 +552,67 @@ TEST(TestGemm, buffered_DistrArrayFile) {
       for (size_t i = 0; i < n; i += stride_multiplier * i + 1)
         cx_selection.emplace_back(cx[i]);
       decltype(alpha) alpha_selection({n, cx_selection.size()});
-      size_t offset = 0;
-      for (size_t i = 0; i < n; i += stride_multiplier * i + 1) {
-        for (size_t j = 0; j < n; ++j)
-          alpha_selection(j, offset) = alpha(j, i);
-        ++offset;
+      {
+        size_t offset = 0;
+        for (size_t i = 0; i < n; i += stride_multiplier * i + 1) {
+          for (size_t j = 0; j < n; ++j)
+            alpha_selection(j, offset) = alpha(j, i);
+          ++offset;
+        }
+        assert(offset == cx_selection.size());
       }
-      //      std::cout << "alpha" << as_string(alpha) << std::endl;
-      //      std::cout << "alpha_selection" << as_string(alpha_selection) << std::endl;
 
       Matrix<double> expected_result({cx_selection.size(), dim});
-      for (size_t i = 0; i < cx_selection.size(); i++) {
-        //        std::cout << "cx_selection";
-        for (size_t j = 0; j < dim; j++) {
-          expected_result(i, j) = cx_selection[i][j];
-          //          std::cout << " " << cx_selection[i][j];
-        }
-        //        std::cout << std::endl;
-      }
-      //      std::cout << "expected_result before z contributions" << as_string(expected_result) << std::endl;
-      for (size_t i = 0; i < n; i++) {
-        //        std::cout << "cz";
-        for (size_t j = 0; j < dim; j++) {
-          //          std::cout << " " << cz[i][j];
-          for (size_t k = 0; k < cx_selection.size(); ++k)
-            expected_result(k, j) += cz[i].local_buffer()->data()[j] * alpha(i, k);
-        }
-        //        std::cout << std::endl;
-      }
+      const auto distribution =
+          cx_selection.empty() ? molpro::linalg::array::util::make_distribution_spread_remainder<size_t>(dim, mpi_size)
+                               : cx_selection.front().distribution();
+      const auto range = distribution.range(mpi_rank);
 
-      if (cx_selection.size() != cx.size()) {
-        EXPECT_THROW(handler.gemm_outer(alpha, cwrap(cz), wrap(cx_selection)), std::out_of_range);
+        for (size_t i = 0; i < cx_selection.size(); i++) {
+          for (size_t j = range.first; j < range.second; j++) {
+            expected_result(i, j) = cx_selection[i][j - range.first];
+          }
+        }
+        for (size_t i = 0; i < n; i++) {
+          std::vector<double> czbuf(range.second - range.first);
+          cz[i].get(range.first, range.second, czbuf.data());
+          for (size_t j = range.first; j < range.second; j++) {
+            for (size_t k = 0; k < cx_selection.size(); ++k) {
+              expected_result(k, j) += czbuf[j - range.first] * alpha_selection(i, k);
+            }
+          }
+        }
+#ifdef HAVE_MPI_H
+        for (size_t i = 0; i < cx_selection.size(); i++) {
+          for (int rank = 0; rank < mpi_size; ++rank) {
+            MPI_Bcast(&(expected_result(i, distribution.range(rank).first)),
+                      distribution.range(rank).second - distribution.range(rank).first, MPI_DOUBLE, rank,
+                      molpro::mpi::comm_global());
+          }
+        }
+#endif
+
+        if (cx_selection.size() != cx.size())
+          EXPECT_THROW(handler.gemm_outer(alpha, cwrap(cz), wrap(cx_selection)), std::out_of_range);
+
+        handler.gemm_outer(alpha_selection, cwrap(cz), wrap(cx_selection));
+
+        Matrix<double> actual_result({cx_selection.size(), dim});
+        for (size_t i = 0; i < cx_selection.size(); i++) {
+          for (size_t j = range.first; j < range.second; j++)
+            actual_result(i, j) = cx_selection[i][j - range.first];
+#ifdef HAVE_MPI_H
+          for (int rank = 0; rank < mpi_size; ++rank)
+            MPI_Bcast(&(actual_result(i, distribution.range(rank).first)),
+                      distribution.range(rank).second - distribution.range(rank).first, MPI_DOUBLE, rank,
+                      molpro::mpi::comm_global());
+#endif
+        }
+        if (false) {
+        molpro::linalg::array::util::LockMPI3 lock(molpro::mpi::comm_global());
+        std::cout << "expected_result" << as_string(expected_result) << std::endl;
+        std::cout << "actual result" << as_string(actual_result) << std::endl;
       }
-      handler.gemm_outer(alpha_selection, cwrap(cz), wrap(cx_selection));
-      Matrix<double> actual_result({cx_selection.size(), dim});
-      for (size_t i = 0; i < cx_selection.size(); i++)
-        for (size_t j = 0; j < dim; j++)
-          actual_result(i, j) = cx_selection[i][j];
-      //        std::cout << "expected_result" << as_string(expected_result) << std::endl;
-      //        std::cout << "actual result" << as_string(actual_result) << std::endl;
       EXPECT_THAT(actual_result.data(), Pointwise(DoubleEq(), expected_result.data()));
     }
   }

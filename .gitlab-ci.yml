@@ -103,6 +103,8 @@ build011:
     - BUILDTYPE=Release
     - BUILD=build/FORTRAN=0/MPI=1/PPIDD=1 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DFORTRAN=0 -DMPI=1 -DPPIDD=1 $OLDPWD && time cmake --build . -j2 && (time ctest || ctest -V)
 clang110:
+  stage: test
+  image: ${CI_REGISTRY_IMAGE}:latest
   tags:
     - linux-farm
 #  only:

@@ -63,11 +63,14 @@ public:
   };
 
   void axpy(value_type alpha, const AR &x, AL &y) override {
+    auto prof = molpro::Profiler::single();
+    prof->start("ArrayHandlerIterable::axpy");
     if (x.size() < y.size())
       error("ArrayHandlerIterable::axpy() incompatible x and y arrays, x.size() < y.size()");
     using std::begin;
     using std::end;
     std::transform(begin(y), end(y), begin(x), begin(y), [alpha](auto &ely, auto &elx) { return ely + alpha * elx; });
+    prof->stop();
   };
 
   value_type dot(const AL &x, const AR &y) override {

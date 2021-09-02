@@ -441,9 +441,13 @@ auto modified_gram_schmidt(const VecRef<R>& rparams, const subspace::Matrix<valu
       }
     }
   };
+  auto prof = molpro::Profiler::single();
+  prof->start("orthoganalise");
   orthogonalise(pparams, handlers.rp(), dims.oP, nP);
   orthogonalise(qparams, handlers.rq(), dims.oQ, nQ);
   orthogonalise(dparams, handlers.rq(), dims.oD, nD);
+  prof->stop();
+  prof->start("get null_params");
   auto null_params = std::vector<int>{};
   for (size_t i = 0; i < nR; ++i) {
     auto norm = std::sqrt(std::abs(handlers.rr().dot(rparams[i], rparams[i])));
@@ -457,6 +461,7 @@ auto modified_gram_schmidt(const VecRef<R>& rparams, const subspace::Matrix<valu
       null_params.push_back(i);
     }
   }
+  prof->stop();
   return null_params;
 }
 
@@ -476,12 +481,16 @@ auto modified_gram_schmidt(const VecRef<R>& rparams, const subspace::Matrix<valu
 template <typename value_type, typename value_type_abs>
 auto redundant_parameters(const subspace::Matrix<value_type>& overlap, const size_t oR, const size_t nR,
                           const value_type_abs svd_thresh, Logger& logger) {
+  auto prof = molpro::Profiler::single();
+  prof->start("itsolv::svd_system");
   logger.msg("redundant_parameters()", Logger::Trace);
   auto redundant_params = std::vector<int>{};
   auto rspace_indices = std::vector<int>(nR);
   std::iota(std::begin(rspace_indices), std::end(rspace_indices), 0);
   auto svd = svd_system(overlap.rows(), overlap.cols(),
                         array::Span(const_cast<value_type*>(overlap.data().data()), overlap.size()), svd_thresh);
+  prof->stop();
+  prof->start("find redundant parameters");
   for (const auto& singular_system : svd) {
     if (!rspace_indices.empty()) {
       auto rspace_contribution = std::vector<value_type_abs>{};
@@ -498,6 +507,7 @@ auto redundant_parameters(const subspace::Matrix<value_type>& overlap, const siz
       logger.msg(ss.str(), Logger::Info);
     }
   }
+  prof->stop();
   return redundant_params;
 }
 
@@ -545,7 +555,8 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
                     subspace::IXSpace<R, Q, P>& xspace, subspace::ISubspaceSolver<R, Q, P>& subspace_solver,
                     ArrayHandlers<R, Q, P>& handlers, Logger& logger, value_type_abs svd_thresh,
                     value_type_abs res_norm_thresh, int max_size_qspace, molpro::profiler::Profiler& profiler) {
-  auto prof = profiler.push("itsolv::propose_rspace");
+  //auto prof = profiler.push("itsolv::propose_rspace"); // FIXME two separate profilers
+  auto prof = molpro::Profiler::single();
   logger.msg("itsolv::detail::propose_rspace", Logger::Trace);
   logger.msg("dimensions {nP, nQ, nD, nW} = " + std::to_string(xspace.dimensions().nP) + ", " +
                  std::to_string(xspace.dimensions().nQ) + ", " + std::to_string(xspace.dimensions().nD) + ", " +
@@ -581,19 +592,25 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
   normalise(wresidual, handlers.rr(), logger);
   profiler.stop();
   profiler.start("append_overlap_with_r");
+  prof->start("append_overlap_with_r");
   const auto full_overlap =
       append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
                             xspace.cparamsq(), xspace.cparamsd(), handlers, logger);
   profiler.stop();
+  prof->stop();
+  prof->start("redundant_indices");
   auto redundant_indices =
       redundant_parameters(full_overlap, xspace.dimensions().nX, wresidual.size(), svd_thresh, logger);
+  prof->stop();
   logger.msg("redundant indices = ", std::begin(redundant_indices), std::end(redundant_indices), Logger::Debug);
   util::delete_parameters(redundant_indices, wresidual);
   profiler.start("modified_gram_schmidt");
+  prof->start("modified_gram_schmidt");
   auto null_param_indices =
       modified_gram_schmidt(wresidual, xspace.data.at(subspace::EqnData::S), xspace.dimensions(), xspace.cparamsp(),
                             xspace.cparamsq(), xspace.cparamsd(), res_norm_thresh, handlers, logger);
   profiler.stop();
+  prof->stop();
   // Now that there is SVD null_param_indices should always be empty
   logger.msg("null parameters = ", std::begin(null_param_indices), std::end(null_param_indices), Logger::Debug);
   util::delete_parameters(null_param_indices, wresidual);

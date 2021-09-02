@@ -1,8 +1,8 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDDISK_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDDISK_H
+#include <molpro/Profiler.h>
 #include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/array/util/gemm.h>
-#include <molpro/Profiler.h>
 
 using molpro::linalg::array::util::gemm_inner_distr_distr;
 using molpro::linalg::array::util::gemm_outer_distr_distr;

@@ -1,12 +1,12 @@
 #ifndef LINEARALGEBRA_CONTAINER_H
 #define LINEARALGEBRA_CONTAINER_H
 #include <algorithm>
+#include <iostream>
 #include <map>
 #include <molpro/linalg/array/util/select.h>
 #include <numeric>
 #include <stdexcept>
 #include <vector>
-#include <iostream>
 
 template <typename T = double>
 class container {
@@ -17,7 +17,7 @@ public:
 
   container(const std::map<size_t, T> &source) { throw std::logic_error("unimplementable"); }
 
-  container& operator=(const std::map<size_t, T> &source) {
+  container &operator=(const std::map<size_t, T> &source) {
     m_data.assign(m_data.size(), 0);
     for (const auto &s : source)
       m_data[s.first] = s.second;

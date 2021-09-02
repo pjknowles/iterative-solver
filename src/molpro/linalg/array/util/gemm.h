@@ -59,13 +59,13 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     auto unique_ptr_j = yy.at(j).get().local_buffer()->data();
     auto unique_ptr_jp1 = yy.at(j + 1).get().local_buffer()->data();
     yy_stride = unique_ptr_jp1 - unique_ptr_j;
-//    std::cout << "j="<<j<<" yy_stride="<<yy_stride<<std::endl;
+    //    std::cout << "j="<<j<<" yy_stride="<<yy_stride<<std::endl;
     if (j > 0)
       yy_constant_stride = yy_constant_stride && (yy_stride == previous_stride);
     previous_stride = yy_stride;
   }
   yy_constant_stride = yy_constant_stride && (yy_stride > 0);
-//  std::cout << "yy_constant_stride="<<yy_constant_stride<<std::endl;
+  //  std::cout << "yy_constant_stride="<<yy_constant_stride<<std::endl;
 
   const int buf_size = 8192; // The amount of memory allocated for buffering of xx. IN the case of double buffering,
                              // this means that the actual buffers will be half this value.

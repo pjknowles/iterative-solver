@@ -14,7 +14,6 @@ struct is_complex : std::false_type {};
 template <typename T>
 struct is_complex<std::complex<T>> : std::true_type {};
 
-
 //! Stores a singular value and corresponding left and right singular vectors
 template <typename T>
 struct SVD {
@@ -24,12 +23,13 @@ struct SVD {
   std::vector<value_type> v; //!< right singular vector
 };
 
-int eigensolver_lapacke_dsyev( const std::vector<double>& matrix, std::vector<double>& eigenvectors,
+int eigensolver_lapacke_dsyev(const std::vector<double>& matrix, std::vector<double>& eigenvectors,
                               std::vector<double>& eigenvalues, const size_t dimension);
 
 std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension, std::vector<double>& matrix);
 
-std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension, const molpro::linalg::array::span::Span<double>& matrix);
+std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension,
+                                                 const molpro::linalg::array::span::Span<double>& matrix);
 
 template <typename value_type>
 size_t get_rank(std::vector<value_type> eigenvalues, value_type threshold);
@@ -98,13 +98,13 @@ extern template std::list<SVD<double>> svd_system(size_t nrows, size_t ncols, co
 
 extern template void eigenproblem<double>(std::vector<double>& eigenvectors, std::vector<double>& eigenvalues,
                                           const std::vector<double>& matrix, const std::vector<double>& metric,
-                                          const size_t dimension, bool hermitian, double svdThreshold,
-                                          int verbosity, bool condone_complex);
+                                          const size_t dimension, bool hermitian, double svdThreshold, int verbosity,
+                                          bool condone_complex);
 
 extern template void eigenproblem<double>(std::vector<double>& eigenvectors, std::vector<double>& eigenvalues,
                                           const std::vector<double>& matrix, const std::vector<double>& metric,
-                                          const size_t dimension, bool hermitian, double svdThreshold,
-                                          int verbosity, bool condone_complex);
+                                          const size_t dimension, bool hermitian, double svdThreshold, int verbosity,
+                                          bool condone_complex);
 
 extern template void solve_LinearEquations<double>(std::vector<double>& solution, std::vector<double>& eigenvalues,
                                                    const std::vector<double>& matrix, const std::vector<double>& metric,
@@ -127,8 +127,7 @@ extern template void printMatrix<std::complex<double>>(const std::vector<std::co
 
 extern template std::list<SVD<std::complex<double>>> svd_system(size_t nrows, size_t ncols,
                                                                 const array::Span<std::complex<double>>& m,
-                                                                double threshold, bool hermitian,
-                                                                bool reduce_to_rank);
+                                                                double threshold, bool hermitian, bool reduce_to_rank);
 
 extern template void eigenproblem<std::complex<double>>(std::vector<std::complex<double>>& eigenvectors,
                                                         std::vector<std::complex<double>>& eigenvalues,

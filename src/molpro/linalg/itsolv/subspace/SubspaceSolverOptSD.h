@@ -35,7 +35,7 @@ public:
       m_logger->msg("value = " + as_string(kValue, 15), Logger::Info);
     }
     auto kDim = kH.rows();
-//    int kVerbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
+    //    int kVerbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
     m_solutions.resize({1, kDim});
     m_solutions.slice().fill(0);
     m_solutions(0, 0) = 1;

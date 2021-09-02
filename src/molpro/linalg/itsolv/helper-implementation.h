@@ -3,9 +3,9 @@
 #include <Eigen/Dense>
 #include <cmath>
 #include <cstddef>
+#include <molpro/Profiler.h>
 #include <molpro/lapacke.h>
 #include <molpro/linalg/itsolv/helper.h>
-#include <molpro/Profiler.h>
 
 namespace molpro::linalg::itsolv {
 

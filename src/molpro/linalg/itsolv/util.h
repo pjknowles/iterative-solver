@@ -1,9 +1,9 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_UTIL_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_UTIL_H
+#include <molpro/Profiler.h>
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/wrap.h>
-#include <molpro/Profiler.h>
 
 #include <locale>
 #include <map>

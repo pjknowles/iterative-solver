@@ -1,11 +1,11 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDEFAULT_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDEFAULT_H
+#include <molpro/Profiler.h>
 #include <molpro/linalg/array/ArrayHandler.h>
 #include <molpro/linalg/array/util/gemm.h>
-#include <molpro/Profiler.h>
 
-using molpro::linalg::array::util::gemm_outer_default;
 using molpro::linalg::array::util::gemm_inner_default;
+using molpro::linalg::array::util::gemm_outer_default;
 
 namespace molpro::linalg::array {
 
@@ -32,11 +32,11 @@ public:
   void axpy(value_type alpha, const AR &x, AL &y) override { y.axpy(alpha, x); }
 
   value_type dot(const AL &x, const AR &y) override { return x.dot(y); }
-  
+
   void gemm_outer(const Matrix<value_type> alphas, const CVecRef<AR> &xx, const VecRef<AL> &yy) override {
     gemm_outer_default(*this, alphas, xx, yy);
   }
-  
+
   Matrix<value_type> gemm_inner(const CVecRef<AL> &xx, const CVecRef<AR> &yy) override {
     auto prof = molpro::Profiler::single()->push("ArrayHandlerDDiskSparse::gemm_inner_default");
     return gemm_inner_default(*this, xx, yy);

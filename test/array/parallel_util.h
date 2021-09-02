@@ -14,7 +14,9 @@ namespace test {
 
 extern MPI_Comm mpi_comm;
 
-std::tuple<std::vector<molpro::linalg::array::DistrArraySpan>, std::vector<molpro::linalg::array::DistrArraySpan>, std::vector<molpro::linalg::array::DistrArrayFile>> get_contiguous(size_t n, size_t dim);
+std::tuple<std::vector<molpro::linalg::array::DistrArraySpan>, std::vector<molpro::linalg::array::DistrArraySpan>,
+           std::vector<molpro::linalg::array::DistrArrayFile>>
+get_contiguous(size_t n, size_t dim);
 
 } // namespace test
 } // namespace linalg

@@ -55,7 +55,7 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
     transpose_copy(xq[EqnData::H].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}),
                    qx[EqnData::H].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}));
     transpose_copy(xq[EqnData::H].slice({dims.oD, 0}, {dims.oD + dims.nD, nQnew}),
-                             qx[EqnData::H].slice({0, dims.oD}, {nQnew, dims.oD + dims.nD}));
+                   qx[EqnData::H].slice({0, dims.oD}, {nQnew, dims.oD + dims.nD}));
     transpose_copy(qx[EqnData::H].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}),
                    xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}));
   } else {

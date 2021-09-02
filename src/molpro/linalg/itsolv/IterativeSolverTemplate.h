@@ -2,8 +2,8 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_ITERATIVESOLVERTEMPLATE_H
 #include <cmath>
 #include <iostream>
+#include <molpro/Profiler.h>
 #include <molpro/iostream.h>
-#include <molpro/profiler/Profiler.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/subspace/ISubspaceSolver.h>
@@ -12,8 +12,8 @@
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/util.h>
 #include <molpro/linalg/itsolv/wrap.h>
+#include <molpro/profiler/Profiler.h>
 #include <stack>
-#include <molpro/Profiler.h>
 
 namespace molpro::linalg::itsolv {
 namespace detail {
@@ -188,7 +188,7 @@ public:
   void clearP() override {}
 
   void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) override {
-    //auto prof = this->m_profiler->push("itsolv::solution"); // FIXME two profilers
+    // auto prof = this->m_profiler->push("itsolv::solution"); // FIXME two profilers
     auto prof = molpro::Profiler::single();
     check_consistent_number_of_roots_and_solutions(roots, parameters.size());
     prof->start("construct_solution (parameters)");
@@ -310,8 +310,10 @@ public:
     return m_xspace->data.count(subspace::EqnData::value) > 0 ? m_xspace->data[subspace::EqnData::value](0, 0)
                                                               : nan("molpro::linalg::itsolv::IterativeSolver::value");
   }
-//  void set_profiler(molpro::profiler::Profiler& profiler) override { m_profiler.reset(&profiler); }
-  void set_profiler(molpro::profiler::Profiler& profiler) override { m_profiler = std::shared_ptr<molpro::profiler::Profiler>(m_profiler_default, &profiler); }
+  //  void set_profiler(molpro::profiler::Profiler& profiler) override { m_profiler.reset(&profiler); }
+  void set_profiler(molpro::profiler::Profiler& profiler) override {
+    m_profiler = std::shared_ptr<molpro::profiler::Profiler>(m_profiler_default, &profiler);
+  }
   const std::shared_ptr<molpro::profiler::Profiler>& profiler() const override { return m_profiler; }
 
   bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
@@ -379,7 +381,7 @@ public:
                        wrap(actions.begin(), actions.begin() + nwork));
         nwork = this->add_vector(parameters, actions);
       }
-//      std::cout << "** nwork="<<nwork<<"use_diagonals="<<use_diagonals<<std::endl;
+      //      std::cout << "** nwork="<<nwork<<"use_diagonals="<<use_diagonals<<std::endl;
       if (nwork > 0) {
         if (use_diagonals) {
           m_handlers->rq().copy(parameters.at(0), *diagonals);
@@ -475,7 +477,8 @@ protected:
   void check_consistent_number_of_roots_and_solutions(const std::vector<TTT>& roots, const size_t nparams) {
     if (roots.size() > nparams)
       throw std::runtime_error("asking for more roots than parameters");
-    if (!roots.empty() && size_t(*std::max_element(roots.begin(), roots.end())) >= m_subspace_solver->solutions().size())
+    if (!roots.empty() &&
+        size_t(*std::max_element(roots.begin(), roots.end())) >= m_subspace_solver->solutions().size())
       throw std::runtime_error("asking for more roots than there are solutions");
   }
 
@@ -497,7 +500,8 @@ protected:
   int m_max_iter = 100;                         //!< maximum number of iterations in solve()
   size_t m_max_p = 0;                           //!< maximum size of P space
   double m_p_threshold = std::numeric_limits<double>::max(); //!< threshold for selecting P space
-  std::shared_ptr<molpro::profiler::Profiler> m_profiler_default = std::make_shared<molpro::profiler::Profiler>("IterativeSolver");
+  std::shared_ptr<molpro::profiler::Profiler> m_profiler_default =
+      std::make_shared<molpro::profiler::Profiler>("IterativeSolver");
   std::shared_ptr<molpro::profiler::Profiler> m_profiler = m_profiler_default;
 };
 

@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_LINEAREIGENSYSTEMDAVIDSON_H
 #include <iterator>
 #include <map>
+#include <molpro/Profiler.h>
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/DSpaceResetter.h>
 #include <molpro/linalg/itsolv/IterativeSolverTemplate.h>
@@ -9,7 +10,6 @@
 #include <molpro/linalg/itsolv/propose_rspace.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverLinEig.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
-#include <molpro/Profiler.h>
 
 namespace molpro::linalg::itsolv {
 
@@ -61,7 +61,7 @@ public:
    * @return number of significant parameters to calculate the action for
    */
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
-    auto m_prof = this->m_profiler->push("itsolv::end_iteration"); //FIXME two profilers with different scopes
+    auto m_prof = this->m_profiler->push("itsolv::end_iteration"); // FIXME two profilers with different scopes
     auto prof = molpro::Profiler::single();
     if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace->dimensions())) {
       m_resetting_in_progress = true;
@@ -111,7 +111,7 @@ public:
       m_last_values = current_values;
   }
 
-  void report(std::ostream& cout, bool endl=true) const override {
+  void report(std::ostream& cout, bool endl = true) const override {
     SolverTemplate::report(cout);
     cout << "errors " << std::scientific;
     auto& err = this->m_errors;
@@ -121,7 +121,9 @@ public:
     auto ev = eigenvalues();
     cout << std::fixed << std::setprecision(14);
     std::copy(begin(ev), end(ev), std::ostream_iterator<scalar_type>(molpro::cout, ", "));
-    cout << std::defaultfloat; if (endl) cout << std::endl;
+    cout << std::defaultfloat;
+    if (endl)
+      cout << std::endl;
   }
 
   //! Set the period in iterations for resetting the D space

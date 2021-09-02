@@ -4,17 +4,19 @@
 #include <fstream>
 #include <iostream>
 #include <set>
- #if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || (defined(__cplusplus) && __cplusplus >= 201703L)) && defined(__has_include)
- #if __has_include(<filesystem>) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500) && (!defined(__GNUC__) || __GNUC__ >= 9)
- #define GHC_USE_STD_FS
- #include <filesystem>
- namespace fs = std::filesystem;
- #endif
- #endif
- #ifndef GHC_USE_STD_FS
- #include "ghc/filesystem.h"
- namespace fs = ghc::filesystem;
- #endif
+#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || (defined(__cplusplus) && __cplusplus >= 201703L)) &&            \
+    defined(__has_include)
+#if __has_include(                                                                                                     \
+    <filesystem>) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500) && (!defined(__GNUC__) || __GNUC__ >= 9)
+#define GHC_USE_STD_FS
+#include <filesystem>
+namespace fs = std::filesystem;
+#endif
+#endif
+#ifndef GHC_USE_STD_FS
+#include "ghc/filesystem.h"
+namespace fs = ghc::filesystem;
+#endif
 
 #include "molpro/linalg/array/DistrArrayDisk.h"
 #include <molpro/mpi.h>
@@ -28,7 +30,7 @@ struct FileAttributes {
   std::fstream object;
   std::set<std::pair<size_t, size_t>> registry; //! keeps records of start and end lines of an array (object)
 };
-}
+} // namespace util
 /*!
  * @brief Distributed array storing the buffer on disk using temporary local files.
  *
@@ -45,7 +47,8 @@ private:
   static std::fstream make_file(const fs::path &dir = fs::current_path());
   std::pair<index_type, index_type> m_frecs; //! start and end indices of an array (object)
   bool m_lrec = false;
-  [[nodiscard]] std::tuple<index_type, index_type, index_type> local_bounds() const; //! returns local array boundaries and size
+  [[nodiscard]] std::tuple<index_type, index_type, index_type>
+  local_bounds() const;  //! returns local array boundaries and size
   void update_records(); //! Add a new pair of local array boundaries records; update frecs
 public:
   static std::unique_ptr<util::FileAttributes> file;
@@ -55,14 +58,15 @@ public:
   DistrArrayFile(const DistrArrayFile &source);
   DistrArrayFile(DistrArrayFile &&source) noexcept;
   explicit DistrArrayFile(size_t dimension, MPI_Comm comm = comm_global(), const std::string &directory = ".");
-  explicit DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm = comm_global(), const std::string &directory = ".");
+  explicit DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm = comm_global(),
+                          const std::string &directory = ".");
   explicit DistrArrayFile(const DistrArray &source);
 
   DistrArrayFile &operator=(const DistrArrayFile &source) = delete;
   DistrArrayFile &operator=(DistrArrayFile &&source) noexcept;
-  
+
   static DistrArrayFile CreateTempCopy(const DistrArray &source, const std::string &directory = ".");
-  
+
   friend void swap(DistrArrayFile &x, DistrArrayFile &y) noexcept;
 
   //! Flushes the buffer if file access is open

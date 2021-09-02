@@ -18,8 +18,8 @@ build-image:
     - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $CI_REGISTRY_IMAGE:latest
   stage: image
   only:
-#    refs:
-#      - $CI_DEFAULT_BRANCH
+    refs:
+      - $CI_DEFAULT_BRANCH
     changes:
       - Dockerfile
       - .gitlab-ci.yml

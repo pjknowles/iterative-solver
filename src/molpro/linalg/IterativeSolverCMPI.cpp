@@ -251,12 +251,7 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
   std::tie(*range_begin, *range_end) = DistrArrayDefaultRange();
 }
 
-extern "C" void IterativeSolverFinalize() {
-  auto prof = molpro::Profiler::single();
-  std::cout << "\n\nPROFILING RESULTS: \n" << *prof << "\n\n";
-  prof->dotgraph("/home/robwelch/profres.dot");
-  instances.pop();
-  }
+extern "C" void IterativeSolverFinalize() { instances.pop(); }
 
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync) {
   if (instances.empty())

@@ -162,6 +162,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nro
                                                            int hermitian, int verbosity, const char* fname,
                                                            int64_t fcomm, const char* algorithm) {
   std::shared_ptr<Profiler> profiler = nullptr;
+  profiler = molpro::Profiler::single("MainProfiler");
   std::string pname(fname);
   MPI_Comm comm = MPI_Comm_f2c(fcomm);
   if (!pname.empty()) {

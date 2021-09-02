@@ -162,11 +162,11 @@ DistrArray::value_type DistrArrayFile::at(DistrArray::index_type ind) const {
 
 void DistrArrayFile::set(DistrArray::index_type ind, DistrArray::value_type val) { put(ind, ind + 1, &val); }
 
+std::mutex s_mutex;
 void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, DistrArray::value_type* buf) const {
+//  std::cout << "DistrArrayFile::get("<<lo<<", "<<hi<<", "<<buf<<")"<<std::endl;
   if (lo >= hi)
     return;
-  auto prof = molpro::Profiler::single()->push("DistrArrayFile::get()");
-  prof += hi - lo;
   DistrArray::index_type length = hi - lo;
   DistrArray::index_type lo_loc, hi_loc;
   auto bounds_loc = local_bounds();
@@ -175,6 +175,7 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
     error("Only local array indices can be accessed via DistrArrayFile.get() function");
   }
   DistrArray::index_type offset = m_frecs.first + lo - lo_loc;
+  auto lock =std::lock_guard<std::mutex>(s_mutex);
   file->object.seekg(0, std::ios::end);
   size_t current = file->object.tellg();
   if (current < (offset + length) * sizeof(DistrArray::value_type)) {

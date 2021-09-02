@@ -9,6 +9,7 @@
 #include <molpro/linalg/itsolv/propose_rspace.h>
 #include <molpro/linalg/itsolv/subspace/SubspaceSolverLinEig.h>
 #include <molpro/linalg/itsolv/subspace/XSpace.h>
+#include <molpro/Profiler.h>
 
 namespace molpro::linalg::itsolv {
 
@@ -60,7 +61,8 @@ public:
    * @return number of significant parameters to calculate the action for
    */
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
-    auto prof = this->m_profiler->push("itsolv::end_iteration");
+    auto m_prof = this->m_profiler->push("itsolv::end_iteration"); //FIXME two profilers with different scopes
+    auto prof = molpro::Profiler::single();
     if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace->dimensions())) {
       m_resetting_in_progress = true;
       this->m_working_set = m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->solutions(),
@@ -68,9 +70,11 @@ public:
                                                   *this->m_handlers, *this->m_logger);
     } else {
       m_resetting_in_progress = false;
+      prof->start("end_iteration (propose_rspace)");
       this->m_working_set = detail::propose_rspace(*this, parameters, action, *this->m_xspace, *this->m_subspace_solver,
                                                    *this->m_handlers, *this->m_logger, propose_rspace_svd_thresh,
                                                    propose_rspace_norm_thresh, m_max_size_qspace, *this->m_profiler);
+      prof->stop();
     }
     this->m_stats->iterations++;
     read_handler_counts(this->m_stats, this->m_handlers);

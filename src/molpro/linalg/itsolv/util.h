@@ -3,6 +3,7 @@
 #include <molpro/linalg/itsolv/ArrayHandlers.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/wrap.h>
+#include <molpro/Profiler.h>
 
 #include <locale>
 #include <map>
@@ -71,6 +72,8 @@ void construct_solutions(const VecRef<R>& params, const std::vector<int>& roots,
                          const CVecRef<Q>& qparams, const CVecRef<Q>& dparams, size_t oP, size_t oQ, size_t oD,
                          array::ArrayHandler<R, R>& handler_rr, array::ArrayHandler<R, P>& handler_rp,
                          array::ArrayHandler<R, Q>& handler_rq) {
+  auto prof = molpro::Profiler::single();
+  prof->start("itsolv::util::construct_solutions");
   assert(params.size() >= roots.size());
   for (size_t i = 0; i < roots.size(); ++i)
     handler_rr.fill(0, params.at(i));
@@ -83,6 +86,7 @@ void construct_solutions(const VecRef<R>& params, const std::vector<int>& roots,
     for (size_t j = 0; j < dparams.size(); ++j)
       handler_rq.axpy(solutions(root, oD + j), dparams.at(j), params.at(i));
   }
+  prof->stop();
 }
 
 /*!

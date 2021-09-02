@@ -44,43 +44,42 @@ protected:
 
   DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm commun);
   DistrArrayDisk();
-  DistrArrayDisk(const DistrArrayDisk &source);
-  DistrArrayDisk(DistrArrayDisk &&source) noexcept;
+  DistrArrayDisk(const DistrArrayDisk& source);
+  DistrArrayDisk(DistrArrayDisk&& source) noexcept;
   ~DistrArrayDisk() override;
 
 public:
   //! Erase the array from disk.
   virtual void erase() = 0;
-  [[nodiscard]] const Distribution &distribution() const override;
+  [[nodiscard]] const Distribution& distribution() const override;
   [[nodiscard]] value_type dot(const DistrArrayDisk& y) const;
-  [[nodiscard]] value_type dot(const DistrArray &y) const override;
-  [[nodiscard]] value_type dot(const SparseArray &y) const override;
-  void set_buffer_size(size_t buffer_size) { m_buffer_size = buffer_size;}
+  [[nodiscard]] value_type dot(const DistrArray& y) const override;
+  [[nodiscard]] value_type dot(const SparseArray& y) const override;
+  void set_buffer_size(size_t buffer_size) { m_buffer_size = buffer_size; }
 
 protected:
   //! Reads the whole local buffer from disk into memory. By default the buffer is written to disk on destruction,
   //! unless do_dump is false.
   class LocalBufferDisk : public DistrArray::LocalBuffer {
   public:
-    explicit LocalBufferDisk(DistrArrayDisk &source);
-    explicit LocalBufferDisk(DistrArrayDisk &source, const span::Span<value_type> &buffer);
+    explicit LocalBufferDisk(DistrArrayDisk& source);
+    explicit LocalBufferDisk(DistrArrayDisk& source, const span::Span<value_type>& buffer);
     ~LocalBufferDisk() override;
     //! If true, than buffer is dumped to file on destruction.
     bool do_dump = true;
 
   protected:
     std::vector<value_type> m_snapshot_buffer; //!< when external buffer is not provided
-    DistrArrayDisk &m_source;                  //!< keep a handle on source to dump data to disk
+    DistrArrayDisk& m_source;                  //!< keep a handle on source to dump data to disk
   };
-
 
 public:
   [[nodiscard]] std::unique_ptr<LocalBuffer> local_buffer() override;
   [[nodiscard]] std::unique_ptr<const LocalBuffer> local_buffer() const override;
   //! Access local section, reading it into the provided buffer
-  [[nodiscard]] std::unique_ptr<LocalBuffer> local_buffer(const span::Span<value_type> &buffer);
+  [[nodiscard]] std::unique_ptr<LocalBuffer> local_buffer(const span::Span<value_type>& buffer);
   //! Read-only access to the local section, reading it into the provided buffer
-  [[nodiscard]] std::unique_ptr<const LocalBuffer> local_buffer(const span::Span<value_type> &buffer) const;
+  [[nodiscard]] std::unique_ptr<const LocalBuffer> local_buffer(const span::Span<value_type>& buffer) const;
 
 public:
 };
@@ -89,53 +88,53 @@ public:
  * @brief BufferManager provides asynchronous double-buffered access to the data in a DistrArrayDisk.
  * Creating an instance of BufferManager will allocate memory for that buffer, which is released when the
  * BufferManager goes out of scope. Each DistrArrayDisk should only have one BufferManager at a time.
- * 
+ *
  */
 class BufferManager {
 
 public:
   enum buffertype { Single = 1, Double = 2 };
   /**
-   * @brief Construct a new Buffer Manager object and allocate memory for the buffers. Note: the contents of the buffer 
+   * @brief Construct a new Buffer Manager object and allocate memory for the buffers. Note: the contents of the buffer
    * will not be loaded until a call to buffer++.
-   * 
+   *
    * @param distr_array_disk the DistrArrayDisk that this BufferManager will access data from.
    * @param chunk_size number of array elements in each chunk size. Should be large enough that calculations on that
    * chunk are I/O bound.
    * @param buffers how many buffers. Double buffering is always preferable.
    */
   // TODO: chunk_size is not the right variable name, this should be the total size of the memory for the buffer
-  BufferManager(const DistrArrayDisk &distr_array_disk, DistrArray::value_type* chunk_loc, size_t buf_size,
+  BufferManager(const DistrArrayDisk& distr_array_disk, DistrArray::value_type* chunk_loc, size_t buf_size,
                 enum buffertype buffers);
   BufferManager(const DistrArrayDisk& distr_array_disk, size_t chunk_size = 8192,
                 enum buffertype buffers = buffertype::Double);
   using value_type = DistrArray::value_type;
   const size_t chunk_size = 8192;
-  //DistrArray::value_type* get_buffer_contents();
+  // DistrArray::value_type* get_buffer_contents();
   /**
    * @brief Custom iterator for the BufferManager. This iterator is responsible for loading data into the buffers and
    * providing access to that data.
    */
   struct Iterator {
-    // iterator properties 
+    // iterator properties
     using iterator_category = std::forward_iterator_tag;
     using difference_type = std::ptrdiff_t;
     using value_type = Span<DistrArray::value_type>;
-    using pointer = Span<DistrArray::value_type> *;
-    using reference = const Span<DistrArray::value_type> &;
+    using pointer = Span<DistrArray::value_type>*;
+    using reference = const Span<DistrArray::value_type>&;
     /**
      * @brief Construct a new Iterator object
-     * 
+     *
      * @param manager BufferManager object
      * @param begin set this->m_value to the start of the iteration
      * @param end set this->m_value to the end of the iteration
      */
-    Iterator(BufferManager &manager, bool begin = false, bool end = false)
+    Iterator(BufferManager& manager, bool begin = false, bool end = false)
         : m_manager(manager), m_value(end ? value_type(nullptr, 0) : manager.next(begin)) {}
     // iterator operators
     reference operator*() const { return m_value; }
     pointer operator->() { return &m_value; }
-    Iterator &operator++() {
+    Iterator& operator++() {
       m_value = m_manager.next();
       return *this;
     }
@@ -144,40 +143,40 @@ public:
       ++(*this);
       return tmp;
     }
-    friend bool operator==(const Iterator &a, const Iterator &b) {
+    friend bool operator==(const Iterator& a, const Iterator& b) {
       return (a.m_value.size() == b.m_value.size() and b.m_value.size() == 0) // special for end of file
              or a.m_value.data() == b.m_value.data();
     };
-    friend bool operator!=(const Iterator &a, const Iterator &b) { return not(a == b); };
+    friend bool operator!=(const Iterator& a, const Iterator& b) { return not(a == b); };
 
   private:
-    BufferManager &m_manager; // BufferManager object containing buffers
-    value_type m_value; // iterator value
+    BufferManager& m_manager; // BufferManager object containing buffers
+    value_type m_value;       // iterator value
   };
   [[nodiscard]] Iterator begin() { return Iterator(*this, true); }
   [[nodiscard]] Iterator end() { return Iterator(*this, false, true); }
 
 protected:
-/**
- * @brief Update the values in this->chunks, toggle this->curr_chunk, and allocate this->next_chunk_future. This is
- * called via ++buffer.
- * @param initial whether this is the first iteration 
- * @return the iterator value for the next iteration
- */
+  /**
+   * @brief Update the values in this->chunks, toggle this->curr_chunk, and allocate this->next_chunk_future. This is
+   * called via ++buffer.
+   * @param initial whether this is the first iteration
+   * @return the iterator value for the next iteration
+   */
   [[nodiscard]] Span<value_type> next(bool initial = false);
-  const DistrArrayDisk &distr_array_disk; // pointer to the DistrArrayDisk data is being accessed from
-  //std::vector<std::vector<DistrArray::value_type>> chunks; // contents of the buffer  // TODO: remove this
+  const DistrArrayDisk& distr_array_disk; // pointer to the DistrArrayDisk data is being accessed from
+  // std::vector<std::vector<DistrArray::value_type>> chunks; // contents of the buffer  // TODO: remove this
   std::vector<DistrArray::value_type*> chunks; // pointers to chunks
-  size_t curr_chunk = 0; // current chunk (either 0 or 1) - toggles when the next buffer is loadef
+  size_t curr_chunk = 0;                       // current chunk (either 0 or 1) - toggles when the next buffer is loadef
   std::future<void> next_chunk_future; // future for the next chunk - accessed when this->next() makes the next chunk
   // the current chunk
   const std::pair<size_t, size_t> range; // memory offsets for MPI found via distr_array_disk.distribution().range(...)
   std::vector<DistrArray::value_type> own_buffer;
 };
 
-double dot(const DistrArrayDisk &x, const DistrArrayDisk &y);
-double dot(const DistrArrayDisk &x, const DistrArray &y);
-double dot(const DistrArray &x, const DistrArrayDisk &y);
+double dot(const DistrArrayDisk& x, const DistrArrayDisk& y);
+double dot(const DistrArrayDisk& x, const DistrArray& y);
+double dot(const DistrArray& x, const DistrArrayDisk& y);
 
 } // namespace molpro::linalg::array
 

@@ -1,9 +1,32 @@
-image: ${CI_REGISTRY}/molpro/${CI_PROJECT_NAME}
+stages:
+  - image
+  - test
+  - deploy
 cache:
   key: ${CI_PROJECT_NAME}
   paths:
     - public
+
+build-image:
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [ "" ]
+  timeout: 3h
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $CI_REGISTRY_IMAGE:latest
+  stage: image
+  only:
+    refs:
+      - $CI_DEFAULT_BRANCH
+    changes:
+      - Dockerfile
+      - .gitlab-ci.yml
+
 build100:
+  stage: test
+  image: ${CI_REGISTRY_IMAGE}:latest
   tags:
     - linux-farm
   rules:
@@ -13,6 +36,8 @@ build100:
     - BUILDTYPE=Release
     - BUILD=build/FORTRAN=1/MPI=0/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCMAKE_CXX_FLAGS="-Werror -Wall" -DFORTRAN=1 -DMPI=0 -DPPIDD=0 $OLDPWD && time cmake --build . -- -j2  && (time ctest || ctest -V)
 build111:
+  stage: test
+  image: ${CI_REGISTRY_IMAGE}:latest
   tags:
     - linux-farm
 #  only:
@@ -25,6 +50,8 @@ build111:
     - BUILDTYPE=Release
     - BUILD=build/FORTRAN=1/MPI=1/PPIDD=1 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCMAKE_CXX_FLAGS="-Wall" -DFORTRAN=1 -DMPI=1 -DPPIDD=1 $OLDPWD && time cmake --build . -- -j2 && (time ctest || ctest -V)
 build1110:
+  stage: test
+  image: ${CI_REGISTRY_IMAGE}:latest
   tags:
     - linux-farm
   #  only:
@@ -37,6 +64,8 @@ build1110:
     - BUILDTYPE=Release
     - BUILD=build/FORTRAN=1/MPI=1/PPIDD=1/HDF5=0 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCMAKE_CXX_FLAGS="-Wall" -DFORTRAN=1 -DMPI=1 -DPPIDD=1 -DLINEARALGEBRA_ARRAY_HDF5=OFF $OLDPWD && time cmake --build . -- -j2 && (time ctest || ctest -V)
 build000:
+  stage: test
+  image: ${CI_REGISTRY_IMAGE}:latest
   tags:
     - linux-farm
 #  only:
@@ -48,6 +77,8 @@ build000:
     - BUILDTYPE=Release
     - BUILD=build/FORTRAN=0/MPI=0/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE}  -DCMAKE_CXX_FLAGS="-Werror -Wall" -DFORTRAN=0 -DMPI=0 -DPPIDD=0 $OLDPWD && time cmake --build . -- -j2 && (time ctest || ctest -V)
 build010:
+  stage: test
+  image: ${CI_REGISTRY_IMAGE}:latest
   tags:
     - linux-farm
   only:
@@ -60,6 +91,8 @@ build010:
     - BUILDTYPE=Release
     - BUILD=build/FORTRAN=0/MPI=1/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && time cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCMAKE_CXX_FLAGS="-Werror -Wall" -DFORTRAN=0 -DMPI=1 -DPPIDD=0 $OLDPWD && time cmake --build . -- -j2 && (time ctest || ctest -V)
 build011:
+  stage: test
+  image: ${CI_REGISTRY_IMAGE}:latest
   tags:
     - linux-farm
   only:
@@ -83,6 +116,7 @@ clang110:
     - BUILD=build-clang/FORTRAN=1/MPI=1/PPIDD=0 ; mkdir -p $BUILD && cd $BUILD && pwd && CXX=clang++ cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DFORTRAN=0 -DMPI=1 -DPPIDD=1 $OLDPWD && time cmake --build . -j2 && (time ctest || ctest -V)
 pages:
   stage: deploy
+  image: ${CI_REGISTRY_IMAGE}:latest
   only:
     - tags
   script:

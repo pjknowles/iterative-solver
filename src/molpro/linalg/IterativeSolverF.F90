@@ -245,7 +245,7 @@ CONTAINS
     !> \brief Optimization
     !> through the L-BFGS or related methods.
     !> Example of simplest use: @include OptimizeExampleF.F90
-    SUBROUTINE Iterative_Solver_Optimize_Initialize(nq, thresh, verbosity, minimize, pname, mpicomm, algorithm, range)
+    SUBROUTINE Iterative_Solver_Optimize_Initialize(nq, thresh, verbosity, minimize, pname, mpicomm, algorithm, range, thresh_value)
         INTEGER, INTENT(in) :: nq !< dimension of parameter space
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
         INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
@@ -255,13 +255,17 @@ CONTAINS
         INTEGER, INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
         CHARACTER(*), INTENT(in), OPTIONAL :: algorithm !< keyword specifying optimization algorithm
         INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
+        DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh_value !< convergence threshold for function value
         INTERFACE
-            SUBROUTINE Iterative_Solver_Optimize_InitializeC(nq, range_begin, range_end, thresh, verbosity, &
+!            extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin, size_t* range_end, double thresh,
+!                double thresh_value, int verbosity, int minimize, const char* fname,
+!                    int64_t fcomm, const char* algorithm);
+            SUBROUTINE Iterative_Solver_Optimize_InitializeC(nq, range_begin, range_end, thresh, thresh_value, verbosity, &
                     minimize, pname, mpicomm, algorithm) BIND(C, name = 'IterativeSolverOptimizeInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
                 INTEGER(C_size_t), INTENT(inout) :: range_begin, range_end
-                REAL(c_double), INTENT(in), VALUE :: thresh
+                REAL(c_double), INTENT(in), VALUE :: thresh, thresh_value
                 INTEGER(C_int), INTENT(in), VALUE :: verbosity
                 INTEGER(C_int), INTENT(in), VALUE :: minimize
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: algorithm
@@ -271,7 +275,7 @@ CONTAINS
         END INTERFACE
         INTEGER(c_size_t) :: m_range_begin, m_range_end
         INTEGER(c_int) :: verbosityC, minimizeC
-        REAL(c_double) :: threshC
+        REAL(c_double) :: threshC, thresh_valueC
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: mpicommC
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
@@ -292,6 +296,11 @@ CONTAINS
             threshC = thresh
         ELSE
             threshC = 1d-10
+        END IF
+        IF (PRESENT(thresh_value)) THEN
+            thresh_valueC = thresh_value
+        ELSE
+            thresh_valueC = 1d50
         END IF
         IF (PRESENT(verbosity)) THEN
             verbosityC = INT(verbosity, kind = c_int)
@@ -314,7 +323,7 @@ CONTAINS
         ELSE
             mpicommC = mpicomm_compute()
         ENDIF
-        CALL Iterative_Solver_Optimize_InitializeC(m_nq, m_range_begin, m_range_end, threshC, verbosityC, &
+        CALL Iterative_Solver_Optimize_InitializeC(m_nq, m_range_begin, m_range_end, threshC, thresh_valueC, verbosityC, &
                 minimizeC, pnameC, mpicommC, algorithmC)
         IF (PRESENT(range)) THEN
             range(1) = int(m_range_begin)

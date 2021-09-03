@@ -19,7 +19,7 @@ build-image:
   stage: image
   only:
     refs:
-      - $CI_DEFAULT_BRANCH
+      - master
     changes:
       - Dockerfile
       - .gitlab-ci.yml
@@ -27,8 +27,8 @@ build-image:
 build100:
   stage: test
   image: ${CI_REGISTRY_IMAGE}:latest
-  tags:
-    - linux-farm
+  #  tags:
+  #    - linux-farm
   rules:
     - when: never # TODO complete Fortran Serial implementation
   timeout: 60m
@@ -38,10 +38,10 @@ build100:
 build111:
   stage: test
   image: ${CI_REGISTRY_IMAGE}:latest
-  tags:
-    - linux-farm
-#  only:
-#    - schedules
+  #  tags:
+  #    - linux-farm
+  only:
+    - merge_requests
   except:
     - tags
   timeout: 60m
@@ -52,10 +52,10 @@ build111:
 build1110:
   stage: test
   image: ${CI_REGISTRY_IMAGE}:latest
-  tags:
-    - linux-farm
-  #  only:
-  #    - schedules
+  #  tags:
+  #    - linux-farm
+  only:
+    - merge_requests
   except:
     - tags
   timeout: 60m
@@ -66,10 +66,10 @@ build1110:
 build000:
   stage: test
   image: ${CI_REGISTRY_IMAGE}:latest
-  tags:
-    - linux-farm
-#  only:
-#    - merge_requests
+  #  tags:
+  #    - linux-farm
+  only:
+    - merge_requests
   except:
     - tags
   timeout: 60m
@@ -79,10 +79,10 @@ build000:
 build010:
   stage: test
   image: ${CI_REGISTRY_IMAGE}:latest
-  tags:
-    - linux-farm
+  #  tags:
+  #    - linux-farm
   only:
-    - schedules
+    - merge_requests
   except:
     - tags
   timeout: 60m
@@ -93,10 +93,10 @@ build010:
 build011:
   stage: test
   image: ${CI_REGISTRY_IMAGE}:latest
-  tags:
-    - linux-farm
+  #  tags:
+  #    - linux-farm
   only:
-    - schedules
+    - merge_requests
   timeout: 60m
   script:
     - export MPIPROCS=2
@@ -105,10 +105,10 @@ build011:
 clang110:
   stage: test
   image: ${CI_REGISTRY_IMAGE}:latest
-  tags:
-    - linux-farm
-#  only:
-#    - merge_requests
+  #  tags:
+  #    - linux-farm
+  only:
+    - merge_requests
   except:
     - tags
   timeout: 60m

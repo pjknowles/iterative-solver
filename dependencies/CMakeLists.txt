@@ -4,7 +4,7 @@
 include(FetchContent)
 FetchContent_Declare(
         dependency_manager
-        GIT_REPOSITORY https://gitlab.com/dependencymanager/dependency-manager.git
+        GIT_REPOSITORY https://gitlab.com/Molpro/dependency-manager.git
         GIT_TAG 0.2.0
 )
 FetchContent_MakeAvailable(dependency_manager)
@@ -14,7 +14,7 @@ DependencyManager_Declare(ppidd https://gitlab.com/molpro/ppidd.git)
 
 DependencyManager_Declare(Profiler https://gitlab.com/molpro/profiler.git)
 
-DependencyManager_Declare(utilities https://gitlab+deploy-token-181030:whWoM4qkenzjGjWsFTxj@gitlab.com/molpro/utilities.git)
+DependencyManager_Declare(utilities https://gitlab.com/molpro/utilities.git)
 
 if (NOT PPIDD AND (MPI AND LINEARALGEBRA_ARRAY_GA))
     set(GA_RUNTIME "MPI_RMA" CACHE STRING "overwriting default for GA runtime protocol")

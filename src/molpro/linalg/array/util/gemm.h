@@ -67,6 +67,7 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   yy_constant_stride = yy_constant_stride && (yy_stride > 0);
 //  std::cout << "yy_constant_stride="<<yy_constant_stride<<std::endl;
 
+  BufferManager::buffertype number_of_buffers = BufferManager::buffertype::Double;
   const int buf_size = 8192; // The amount of memory allocated for buffering of xx. IN the case of double buffering,
                              // this means that the actual buffers will be half this value.
   std::vector<DistrArray::value_type> buffers_memory(buf_size * alphas.rows());
@@ -75,8 +76,8 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   buffers.reserve(xx.size());
   buffer_iterators.reserve(xx.size());
   for (size_t j = 0; j < alphas.rows(); ++j) {
-    buffers.emplace_back(BufferManager(xx.at(j).get(), buffers_memory.data() + (buf_size * j), buf_size,
-                                       BufferManager::buffertype::Double));
+    buffers.emplace_back(BufferManager(xx.at(j).get(), Span<DistrArray::value_type >(buffers_memory.data() + (buf_size * j), buf_size),
+                                       number_of_buffers));
     buffer_iterators.emplace_back(buffers[j].begin());
   }
   const int N = alphas.cols(); // cols of alphas, cols of yy
@@ -194,10 +195,11 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   auto prof = molpro::Profiler::single()->push("gemm_inner_distr_distr (buffered)");
   prof += mat.cols() * mat.rows() * xx.at(0).get().local_buffer()->size() * 2;
 
-  DistrArray::value_type *buffer = new DistrArray::value_type[8192 * 2 * mat.cols()];
+  const BufferManager::buffertype number_of_buffers{BufferManager::Double};
+  DistrArray::value_type *buffer = new DistrArray::value_type[8192 * number_of_buffers * mat.cols()];
   std::vector<BufferManager> buffers;
   for (size_t j = 0; j < mat.cols(); ++j) {
-    buffers.emplace_back(BufferManager(yy.at(j).get(), buffer + (8192 * j), 8192, BufferManager::buffertype::Double));
+    buffers.emplace_back(BufferManager(yy.at(j).get(), Span<DistrArray::value_type >(buffer + (8192 * j), 8192), number_of_buffers));
   }
 
   for (size_t j = 0; j < mat.cols(); ++j) {

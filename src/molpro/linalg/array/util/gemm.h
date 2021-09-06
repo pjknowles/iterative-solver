@@ -82,9 +82,9 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   }
   const int N = alphas.cols(); // cols of alphas, cols of yy
   const int K = alphas.rows(); // cols of xx, rows of alphas
-  size_t M;                    // = buffer_iterators.front()->size();
-  const auto yy_size = yy[0].get().local_buffer()->size();
-  for (size_t container_offset = 0; container_offset < yy_size; container_offset += M) {
+  int M;                    // = buffer_iterators.front()->size();
+  const auto yy_size = int(yy[0].get().local_buffer()->size());
+  for (int container_offset = 0; container_offset < yy_size; container_offset += M) {
     M = buffer_iterators.front()->size();
     if (yy_constant_stride and not yy.empty()) {
       cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, M, N, K, 1, buffer_iterators[0]->data(), buf_size,
@@ -187,7 +187,6 @@ template <class AL> // async loading of loc_y into a managed buffer with buffers
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL> &xx,
                                                                           const CVecRef<DistrArrayFile> &yy) {
   using value_type = typename array::mapped_or_value_type_t<AL>;
-  const size_t spacing = 1;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
   mat.fill(0);
   if (xx.size() == 0 || yy.size() == 0)
@@ -206,9 +205,9 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
     size_t offset = 0;
     for (auto buffer = buffers[j].begin(); buffer != buffers[j].end(); offset += buffers[j].chunk_size, ++buffer) {
       for (size_t i = 0; i < mat.rows(); ++i) {
-        size_t buflen = buffer->cend() - buffer->cbegin();
+        auto buflen = int(buffer->cend() - buffer->cbegin());
         mat(i, j) +=
-            cblas_ddot(buflen, buffer->cbegin(), spacing, xx.at(i).get().local_buffer()->data() + offset, spacing);
+            cblas_ddot((CBLAS_INDEX)buflen, buffer->cbegin(), 1, xx.at(i).get().local_buffer()->data() + offset, 1);
         // mat(i, j) += std::inner_product(buffer->cbegin(), buffer->cend(), xx.at(i).get().local_buffer()->data() +
         // offset, (value_type)0);
       }

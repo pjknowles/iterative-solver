@@ -1,5 +1,6 @@
 #include <unistd.h>
 
+#include <cstring>
 #include <molpro/linalg/array/DistrArrayFile.h>
 #include <molpro/linalg/array/util/Distribution.h>
 #include <molpro/linalg/array/util/temp_file.h>
@@ -7,6 +8,8 @@
 
 #include <memory>
 #include <molpro/Profiler.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 
 namespace molpro::linalg::array {
 namespace {
@@ -33,8 +36,6 @@ int mpi_rank(MPI_Comm comm) {
 }
 } // namespace
 
-std::unique_ptr<util::FileAttributes> DistrArrayFile::file = nullptr;
-
 std::tuple<DistrArrayFile::index_type, DistrArrayFile::index_type, DistrArrayFile::index_type>
 DistrArrayFile::local_bounds() const {
   index_type lo_loc, hi_loc, size_loc;
@@ -43,53 +44,31 @@ DistrArrayFile::local_bounds() const {
   return {lo_loc, hi_loc, size_loc};
 }
 
-void DistrArrayFile::update_records() {
-  if (std::get<2>(local_bounds()) == 0)
-    return;
-  if (file->registry.empty()) {
-    m_frecs = {0, std::get<2>(local_bounds()) - 1};
-    file->registry.emplace(m_frecs);
-  } else {
-    std::set<std::pair<size_t, size_t>>::reverse_iterator rec;
-    for (rec = file->registry.rbegin(); rec != file->registry.rend(); ++rec) {
-      if ((*rec).first != 0 && (*rec).first - (*std::next(rec)).second > 1) {
-        rec = std::next(rec);
-        break;
-      };
-      if ((*rec).first == 0) {
-        rec = file->registry.rbegin();
-        break;
-      }
-    }
-    size_t first_rec = (*rec).second + 1;
-    m_frecs = {first_rec, first_rec + std::get<2>(local_bounds()) - 1};
-    file->registry.emplace(m_frecs);
-  }
-  m_lrec = true;
-}
-
-DistrArrayFile::DistrArrayFile(DistrArrayFile&& source) noexcept
-    : DistrArrayDisk(std::move(source)), m_frecs(std::move(source.m_frecs)) {
-  if (source.m_lrec) {
-    source.m_lrec = false;
-    m_lrec = true;
-  }
-}
-
 DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::string& directory)
     : DistrArrayFile(std::make_unique<Distribution>(
                          util::make_distribution_spread_remainder<index_type>(dimension, mpi_size(comm))),
                      comm, directory) {}
 
 DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm, const std::string& directory)
-: DistrArrayDisk(std::move(distribution), comm) {
-  auto prof = molpro::Profiler::single()->push("DistrArrayFile()");
+    : DistrArrayDisk(std::move(distribution), comm), m_directory(fs::absolute(fs::path(directory)).native()),
+      m_filename(util::temp_file_name((fs::path(m_directory) / "DistrArrayFile-").native(), ".dat")),
+      m_stream(std::make_unique<std::fstream>(m_filename,
+                                              std::ios::out | std::ios::binary | std::ios::trunc | std::ios::in)) {
+  {
+    struct rlimit rlim;
+    getrlimit(RLIMIT_NOFILE, &rlim);
+    if (rlim.rlim_cur < rlim.rlim_max) {
+      rlim.rlim_cur = rlim.rlim_max;
+      setrlimit(RLIMIT_NOFILE, &rlim);
+    }
+  }
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");
-  if (!file) {
-    file = std::make_unique<util::FileAttributes>(make_file(fs::absolute(fs::path(directory))));
-  }
-  update_records();
+  if (not m_stream->is_open())
+    DistrArray::error("Failure to open " + m_filename + ": " + std::strerror(errno));
+#if !defined(_WIN32) && !defined(WIN32)
+  fs::remove(m_filename);
+#endif
 }
 
 DistrArrayFile::DistrArrayFile(const DistrArrayFile& source)
@@ -120,17 +99,15 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
   swap(x.m_communicator, y.m_communicator);
   swap(x.m_allocated, y.m_allocated);
   swap(x.m_distribution, y.m_distribution);
-  swap(x.m_frecs, y.m_frecs);
-  swap(x.m_lrec, y.m_lrec);
+  swap(x.m_directory, y.m_directory);
+  swap(x.m_filename, y.m_filename);
+  swap(x.m_stream, y.m_stream);
 }
 
 DistrArrayFile::~DistrArrayFile() {
-  if (file) {
-    if (m_lrec) {
-      file->registry.erase(m_frecs);
-      if (file->registry.empty())
-        file.reset();
-    }
+  if (m_stream.release() != nullptr) {
+    if (fs::exists(m_filename))
+      fs::remove(m_filename);
   }
 }
 
@@ -143,17 +120,6 @@ bool DistrArrayFile::compatible(const DistrArrayFile& source) const {
   return res;
 }
 
-std::fstream DistrArrayFile::make_file(const fs::path& dir) {
-  auto prof = molpro::Profiler::single()->push("DistrArrayFile::make_file()");
-  std::fstream tfile;
-  std::string file_name = util::temp_file_name(dir.string() + "/", "");
-  tfile.open(file_name.c_str(), std::ios::out | std::ios::binary);
-  tfile.close();
-  tfile.open(file_name.c_str(), std::ios::out | std::ios::in | std::ios::binary);
-  unlink(file_name.c_str());
-  return tfile;
-}
-
 DistrArray::value_type DistrArrayFile::at(DistrArray::index_type ind) const {
   value_type val;
   get(ind, ind + 1, &val);
@@ -162,9 +128,8 @@ DistrArray::value_type DistrArrayFile::at(DistrArray::index_type ind) const {
 
 void DistrArrayFile::set(DistrArray::index_type ind, DistrArray::value_type val) { put(ind, ind + 1, &val); }
 
-std::mutex s_mutex;
 void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, DistrArray::value_type* buf) const {
-//  std::cout << "DistrArrayFile::get("<<lo<<", "<<hi<<", "<<buf<<")"<<std::endl;
+  auto lock = std::lock_guard<std::mutex>(m_mutex);
   if (lo >= hi)
     return;
   DistrArray::index_type length = hi - lo;
@@ -174,15 +139,19 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
   if (lo < lo_loc || hi > hi_loc) {
     error("Only local array indices can be accessed via DistrArrayFile.get() function");
   }
-  DistrArray::index_type offset = m_frecs.first + lo - lo_loc;
-  auto lock =std::lock_guard<std::mutex>(s_mutex);
-  file->object.seekg(0, std::ios::end);
-  size_t current = file->object.tellg();
+  DistrArray::index_type offset = lo - lo_loc;
+  m_stream->seekg(0, std::ios::end);
+  size_t current = m_stream->tellg();
   if (current < (offset + length) * sizeof(DistrArray::value_type)) {
-    return;
+    std::fill(buf + current - offset, buf + length, 0);
   }
-  file->object.seekg(offset * sizeof(DistrArray::value_type));
-  file->object.read((char*)buf, length * sizeof(DistrArray::value_type));
+  m_stream->seekg(offset * sizeof(DistrArray::value_type));
+  const auto readlength = std::min(length * sizeof(DistrArray::value_type), current - offset);
+  if (readlength == 0)
+    return;
+  m_stream->read((char*)buf, readlength);
+  if (m_stream->fail())
+    throw std::runtime_error("Error in reading " + m_filename + ": " + std::strerror(errno));
 }
 
 std::vector<DistrArrayFile::value_type> DistrArrayFile::get(DistrArray::index_type lo,
@@ -195,6 +164,7 @@ std::vector<DistrArrayFile::value_type> DistrArrayFile::get(DistrArray::index_ty
 }
 
 void DistrArrayFile::put(DistrArray::index_type lo, DistrArray::index_type hi, const DistrArray::value_type* data) {
+  auto lock = std::lock_guard<std::mutex>(m_mutex);
   if (lo >= hi)
     return;
   auto prof = molpro::Profiler::single()->push("DistrArrayFile::put()");
@@ -205,10 +175,10 @@ void DistrArrayFile::put(DistrArray::index_type lo, DistrArray::index_type hi, c
   if (lo < lo_loc || hi > hi_loc) {
     error("Only values at local array indices can be written via DistrArrayFile.put() function");
   }
-  DistrArray::index_type offset = m_frecs.first + lo - lo_loc;
+  DistrArray::index_type offset = lo - lo_loc;
   DistrArray::index_type length = hi - lo;
-  file->object.seekp(offset * sizeof(DistrArray::value_type));
-  file->object.write((const char*)data, length * sizeof(DistrArray::value_type));
+  m_stream->seekp(offset * sizeof(DistrArray::value_type));
+  m_stream->write((const char*)data, length * sizeof(DistrArray::value_type));
 }
 
 void DistrArrayFile::acc(DistrArray::index_type lo, DistrArray::index_type hi, const DistrArray::value_type* data) {

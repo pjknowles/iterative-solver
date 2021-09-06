@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
   molpro::linalg::test::mpi_comm = MPI_COMM_WORLD;
   int result{0};
-  if (molpro::mpi::size_global() > 1) {
+  if (molpro::mpi::size_global() > 0) {
 #ifdef TEST_WITH_GA
     GA_Initialize();
     int mem = 10000000;

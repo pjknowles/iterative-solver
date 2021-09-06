@@ -535,7 +535,7 @@ TEST(TestGemm, ddisksparse_outer) {
 TEST(TestGemm, buffered_DistrArrayFile) {
   auto handler = ArrayHandlerDistrDDisk<DistrArraySpan, DistrArrayFile>{};
   for (size_t n = 0; n < 9; ++n) {
-    size_t dim = 4099; // height
+    size_t dim = 10000; // height
     int mpi_rank, mpi_size;
     MPI_Comm_rank(comm_global(), &mpi_rank);
     MPI_Comm_size(comm_global(), &mpi_size);

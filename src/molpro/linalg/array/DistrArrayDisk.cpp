@@ -159,6 +159,7 @@ Span<BufferManager::value_type> BufferManager::next(bool initial) {
   if (chunks.size() > 1 and next_offset < range.second) {
     next_hi = std::min(next_offset + this->chunk_size, range.second);
     next_data = chunks[((curr_chunk + 1) % chunks.size())];
+//    throw std::runtime_error("async");
     this->next_chunk_future = std::async(std::launch::async, [this, next_offset, next_hi, next_data]() {
       this->distr_array_disk.get(next_offset, next_hi, next_data);
     });

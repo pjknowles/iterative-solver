@@ -16,7 +16,7 @@ namespace fs = std::filesystem;
 namespace fs = ghc::filesystem;
 #endif
 
-#include "molpro/linalg/array/DistrArrayDisk.h"
+#include <molpro/linalg/array/DistrArrayDisk.h>
 #include <molpro/mpi.h>
 
 using molpro::mpi::comm_global;

@@ -9,6 +9,10 @@ FetchContent_MakeAvailable(googletest)
 
 include(GoogleTest)
 
+add_executable(test-${PROJECT_NAME}-test test.cpp)
+target_link_libraries(test-${PROJECT_NAME}-test PUBLIC molpro::${PROJECT_NAME} gmock_main)
+gtest_discover_tests(test-${PROJECT_NAME}-test)
+
 
 
 add_subdirectory(array)

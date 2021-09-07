@@ -12,6 +12,7 @@
 #include <molpro/linalg/array/type_traits.h>
 #include <molpro/linalg/itsolv/subspace/Matrix.h>
 #include <molpro/linalg/itsolv/wrap_util.h>
+#include <molpro/linalg/options.h>
 #include <numeric>
 #include <vector>
 
@@ -70,12 +71,12 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
 
   //  const int buf_size = 8192; // The amount of memory allocated for buffering of xx. IN the case of double buffering,
   // this means that the actual buffers will be half this value.
-  auto options = molpro::Options("LINEARALGEBRA");
-  const BufferManager::buffertype number_of_buffers = (options.parameter("GEMM_BUFFERS", 2) > 1)
+  auto options = molpro::linalg::options();
+  const BufferManager::buffertype number_of_buffers = (options->parameter("GEMM_BUFFERS", 2) > 1)
                                                           ? BufferManager::buffertype::Double
                                                           : BufferManager::buffertype::Single;
-  const int buf_size = options.parameter("GEMM_PAGESIZE", 8192);
-//  std::cout << "buf_size=" << buf_size << " number_of_buffers=" << number_of_buffers << std::endl;
+  const int buf_size = options->parameter("GEMM_PAGESIZE", 8192);
+  //  std::cout << "buf_size=" << buf_size << " number_of_buffers=" << number_of_buffers << std::endl;
 
   std::vector<DistrArray::value_type> buffers_memory(buf_size * alphas.rows());
   std::vector<BufferManager> buffers;

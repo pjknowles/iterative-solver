@@ -5,6 +5,7 @@
 #endif
 #include <future>
 #include <iostream>
+#include <molpro/Options.h>
 #include <molpro/Profiler.h>
 #include <molpro/cblas.h>
 #include <molpro/linalg/array/DistrArrayFile.h>
@@ -59,30 +60,37 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
     auto unique_ptr_j = yy.at(j).get().local_buffer()->data();
     auto unique_ptr_jp1 = yy.at(j + 1).get().local_buffer()->data();
     yy_stride = unique_ptr_jp1 - unique_ptr_j;
-//    std::cout << "j="<<j<<" yy_stride="<<yy_stride<<std::endl;
+    //    std::cout << "j="<<j<<" yy_stride="<<yy_stride<<std::endl;
     if (j > 0)
       yy_constant_stride = yy_constant_stride && (yy_stride == previous_stride);
     previous_stride = yy_stride;
   }
   yy_constant_stride = yy_constant_stride && (yy_stride > 0);
-//  std::cout << "yy_constant_stride="<<yy_constant_stride<<std::endl;
+  //  std::cout << "yy_constant_stride="<<yy_constant_stride<<std::endl;
 
-  BufferManager::buffertype number_of_buffers = BufferManager::buffertype::Double;
-  const int buf_size = 8192; // The amount of memory allocated for buffering of xx. IN the case of double buffering,
-                             // this means that the actual buffers will be half this value.
+  //  const int buf_size = 8192; // The amount of memory allocated for buffering of xx. IN the case of double buffering,
+  // this means that the actual buffers will be half this value.
+  auto options = molpro::Options("LINEARALGEBRA");
+  const BufferManager::buffertype number_of_buffers = (options.parameter("GEMM_BUFFERS", 2) > 1)
+                                                          ? BufferManager::buffertype::Double
+                                                          : BufferManager::buffertype::Single;
+  const int buf_size = options.parameter("GEMM_PAGESIZE", 8192);
+//  std::cout << "buf_size=" << buf_size << " number_of_buffers=" << number_of_buffers << std::endl;
+
   std::vector<DistrArray::value_type> buffers_memory(buf_size * alphas.rows());
   std::vector<BufferManager> buffers;
   std::vector<BufferManager::Iterator> buffer_iterators;
   buffers.reserve(xx.size());
   buffer_iterators.reserve(xx.size());
   for (size_t j = 0; j < alphas.rows(); ++j) {
-    buffers.emplace_back(BufferManager(xx.at(j).get(), Span<DistrArray::value_type >(buffers_memory.data() + (buf_size * j), buf_size),
+    buffers.emplace_back(BufferManager(xx.at(j).get(),
+                                       Span<DistrArray::value_type>(buffers_memory.data() + (buf_size * j), buf_size),
                                        number_of_buffers));
     buffer_iterators.emplace_back(buffers[j].begin());
   }
   const int N = alphas.cols(); // cols of alphas, cols of yy
   const int K = alphas.rows(); // cols of xx, rows of alphas
-  int M;                    // = buffer_iterators.front()->size();
+  int M;                       // = buffer_iterators.front()->size();
   const auto yy_size = int(yy[0].get().local_buffer()->size());
   for (int container_offset = 0; container_offset < yy_size; container_offset += M) {
     M = buffer_iterators.front()->size();
@@ -198,16 +206,18 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   DistrArray::value_type *buffer = new DistrArray::value_type[8192 * number_of_buffers * mat.cols()];
   std::vector<BufferManager> buffers;
   for (size_t j = 0; j < mat.cols(); ++j) {
-    buffers.emplace_back(BufferManager(yy.at(j).get(), Span<DistrArray::value_type >(buffer + (8192 * j), 8192), number_of_buffers));
+    buffers.emplace_back(
+        BufferManager(yy.at(j).get(), Span<DistrArray::value_type>(buffer + (8192 * j), 8192), number_of_buffers));
   }
 
+  constexpr int spacing = 1;
   for (size_t j = 0; j < mat.cols(); ++j) {
     size_t offset = 0;
     for (auto buffer = buffers[j].begin(); buffer != buffers[j].end(); offset += buffers[j].chunk_size, ++buffer) {
       for (size_t i = 0; i < mat.rows(); ++i) {
         auto buflen = int(buffer->cend() - buffer->cbegin());
         mat(i, j) +=
-            cblas_ddot((CBLAS_INDEX)buflen, buffer->cbegin(), 1, xx.at(i).get().local_buffer()->data() + offset, 1);
+            cblas_ddot(buflen, buffer->cbegin(), spacing, xx.at(i).get().local_buffer()->data() + offset, spacing);
         // mat(i, j) += std::inner_product(buffer->cbegin(), buffer->cend(), xx.at(i).get().local_buffer()->data() +
         // offset, (value_type)0);
       }

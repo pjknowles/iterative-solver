@@ -33,14 +33,12 @@ if (LINEARALGEBRA_ARRAY_HDF5)
     target_compile_definitions(${PROJECT_NAME} PUBLIC ${HDF5_DEFINITIONS})
 endif ()
 
-    LibraryManager_Append(${PROJECT_NAME}
-            SOURCES DistrArray.cpp DistrArrayDisk.cpp DistrArrayFile.cpp DistrArraySpan.cpp util.cpp
-            PUBLIC_HEADER DistrArray.h DistrArrayDisk.h DistrArrayFile.h DistrArraySpan.h util.h
-            )
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        target_compile_options(${PROJECT_NAME} PUBLIC "-pthread") # needed for DistrArrayDisk
-        target_link_options(${PROJECT_NAME} PUBLIC "-pthread") # needed for DistrArrayDisk
-    endif ()
+LibraryManager_Append(${PROJECT_NAME}
+        SOURCES DistrArray.cpp DistrArrayDisk.cpp DistrArrayFile.cpp DistrArraySpan.cpp util.cpp
+        PUBLIC_HEADER DistrArray.h DistrArrayDisk.h DistrArrayFile.h DistrArraySpan.h util.h
+        )
+find_package(Threads REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads)
 
 if (MPI)
     if (LINEARALGEBRA_ARRAY_HDF5)

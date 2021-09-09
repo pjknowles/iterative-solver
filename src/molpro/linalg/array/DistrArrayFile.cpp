@@ -8,8 +8,13 @@
 
 #include <memory>
 #include <molpro/Profiler.h>
-#include <sys/resource.h>
+#ifdef _WIN32
+#include <stdio.h>
+#else
+#include <sys/types.h>
 #include <sys/time.h>
+#include <sys/resource.h>
+#endif
 
 namespace molpro::linalg::array {
 namespace {
@@ -55,12 +60,16 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
       m_stream(std::make_unique<std::fstream>(m_filename,
                                               std::ios::out | std::ios::binary | std::ios::trunc | std::ios::in)) {
   {
+#ifdef _WIN32
+    _setmaxstdio(8192);
+#else
     struct rlimit rlim;
     getrlimit(RLIMIT_NOFILE, &rlim);
     if (rlim.rlim_cur < rlim.rlim_max) {
       rlim.rlim_cur = rlim.rlim_max;
       setrlimit(RLIMIT_NOFILE, &rlim);
     }
+#endif
   }
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");

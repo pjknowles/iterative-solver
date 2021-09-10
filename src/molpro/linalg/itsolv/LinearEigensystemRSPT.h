@@ -159,7 +159,7 @@ protected:
     return result;
   }
   void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {
-    auto prof = this->m_profiler->push("itsolv::construct_residual");
+    auto prof = this->profiler()->push("itsolv::construct_residual");
     auto xspace = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
     const auto& q = xspace->paramsq();
     const auto& n = q.size();

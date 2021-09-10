@@ -46,14 +46,14 @@ public:
   bool nonlinear() const override { return false; }
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
-    auto prof = this->m_profiler->push("itsolv::end_iteration");
+    auto prof = this->profiler()->push("itsolv::end_iteration");
     if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace->dimensions())) {
       this->m_working_set = m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->solutions(),
                                                   m_norm_thresh, m_svd_thresh, *this->m_handlers, *this->m_logger);
     } else {
       this->m_working_set = detail::propose_rspace(*this, parameters, action, *this->m_xspace, *this->m_subspace_solver,
                                                    *this->m_handlers, *this->m_logger, m_svd_thresh, m_norm_thresh,
-                                                   m_max_size_qspace, *this->m_profiler);
+                                                   m_max_size_qspace, *this->profiler());
     }
     this->m_stats->iterations++;
     return this->working_set().size();
@@ -70,7 +70,7 @@ public:
   }
 
   void add_equations(const CVecRef<R>& rhs) override {
-    auto prof = this->m_profiler->push("itsolv::add_equations");
+    auto prof = this->profiler()->push("itsolv::add_equations");
     auto xspace = std::static_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
     xspace->add_rhs_equations(rhs);
     this->set_n_roots(xspace->dimensions().nRHS);

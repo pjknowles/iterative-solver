@@ -630,11 +630,8 @@ TEST(TestGemm, buffered_DistrArrayFile) {
         }
       }
 #ifdef HAVE_MPI_H
-//      std::cout
-//               << "Before gsum, Expected alpha:" << as_string(alpha_selection_expected)<<std::endl;
       MPI_Allreduce(MPI_IN_PLACE, const_cast<double*>(alpha_selection_expected.data().data()),
                     alpha_selection_expected.size(), MPI_DOUBLE, MPI_SUM, molpro::mpi::comm_global());
-//      for (auto& a : alpha_selection_expected.data()) const_cast<double&>(a)/=molpro::mpi::size_global();
 #endif
 //      std::cout<< "Calculated alpha:" << as_string(alpha_selection_calculated)
 //                             << "\nExpected alpha:" << as_string(alpha_selection_expected)<<std::endl;

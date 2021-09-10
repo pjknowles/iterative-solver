@@ -217,8 +217,15 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
     for (auto buffer = buffers[j].begin(); buffer != buffers[j].end(); offset += buffers[j].chunk_size, ++buffer) {
       for (size_t i = 0; i < mat.rows(); ++i) {
         auto buflen = int(buffer->cend() - buffer->cbegin());
+//        std::cout << "buffers["<<j<<"]:";
+//        for (int o=0; o<buflen;++o)std::cout <<" "<<(*buffer)[o];
+//        std::cout << std::endl;
+//        std::cout << "x["<<i<<"]:";
+//        for (int o=0; o<buflen;++o)std::cout <<" "<<xx.at(i).get().local_buffer()->data()[offset+o];
+//        std::cout << std::endl;
         mat(i, j) +=
             cblas_ddot(buflen, buffer->cbegin(), spacing, xx.at(i).get().local_buffer()->data() + offset, spacing);
+//        std::cout << "mat("<<i<<","<<j<<")="<<mat(i,j)<<std::endl;
         // mat(i, j) += std::inner_product(buffer->cbegin(), buffer->cend(), xx.at(i).get().local_buffer()->data() +
         // offset, (value_type)0);
       }

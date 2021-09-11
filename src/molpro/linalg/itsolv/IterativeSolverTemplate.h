@@ -314,12 +314,7 @@ public:
   void set_profiler(molpro::profiler::Profiler& profiler) override {
     m_profiler = std::shared_ptr<molpro::profiler::Profiler>(&profiler);
   }
-  const std::shared_ptr<molpro::profiler::Profiler>& profiler() const override {
-    if (m_profiler.get() == nullptr) {
-      m_profiler = molpro::Profiler::single();
-    }
-    return m_profiler;
-  }
+  const std::shared_ptr<molpro::profiler::Profiler>& profiler() const override { return m_profiler; }
 
   bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
              bool generate_initial_guess = false) override {
@@ -413,8 +408,18 @@ protected:
                           std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Statistics> stats,
                           std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_xspace(std::move(xspace)), m_subspace_solver(std::move(solver)),
-        m_stats(std::move(stats)), m_logger(std::move(logger)) {
+        m_stats(std::move(stats)), m_logger(std::move(logger)), m_profiler(molpro::Profiler::single()),
+        m_profiler_saved_depth(m_profiler->get_max_depth()) {
     set_n_roots(1);
+    m_profiler->set_max_depth(options()->parameter("PROFILER_DEPTH", 0));
+  }
+
+  virtual ~IterativeSolverTemplate() {
+    auto dotgraph_file = options()->parameter("PROFILER_DOTGRAPH", "");
+    if (profiler()->get_max_depth() > 0 and std::find_if(dotgraph_file.begin(), dotgraph_file.end(), [](unsigned char ch) { return !std::isspace(ch); }) !=
+        dotgraph_file.end())
+      profiler()->dotgraph(dotgraph_file, options()->parameter("PROFILER_THRESHOLD", .01));
+    molpro::Profiler::single()->set_max_depth(m_profiler_saved_depth);
   }
 
   //! Implementation class should overload this to set errors in the current values (e.g. change in eigenvalues)
@@ -507,6 +512,7 @@ protected:
   double m_p_threshold = std::numeric_limits<double>::max(); //!< threshold for selecting P space
 private:
   mutable std::shared_ptr<molpro::profiler::Profiler> m_profiler;
+  int m_profiler_saved_depth; //!< max_depth of molpro::Profiler::single() before this object changed it
 };
 
 } // namespace molpro::linalg::itsolv

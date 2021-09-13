@@ -4,6 +4,8 @@
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
+#include "fs.h"
+
 namespace molpro::linalg::array::util {
 #ifdef HAVE_MPI_H
 /*!
@@ -12,14 +14,14 @@ namespace molpro::linalg::array::util {
  * @param suffix suffix to add to the file name e.g. ".hdf5"
  * @param comm collective over this MPI communicator
  */
-std::string temp_file_name(const std::string &base_name, const std::string &suffix, MPI_Comm comm);
+fs::path temp_file_name(const fs::path &base_name, const std::string &suffix, MPI_Comm comm);
 #endif
 /*!
  * @brief Returns random file name for a temporary file
  * @param base_name base name for the file, after which a random character string will follow
  * @param suffix suffix to add to the file name e.g. ".hdf5"
  */
-std::string temp_file_name(const std::string &base_name, const std::string &suffix);
+fs::path temp_file_name(const fs::path &base_name, const std::string &suffix);
 
 } // namespace molpro::linalg::array::util
 

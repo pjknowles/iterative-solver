@@ -114,6 +114,7 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
 }
 
 DistrArrayFile::~DistrArrayFile() {
+  m_stream->close();
   if (m_stream.release() != nullptr) {
     if (fs::exists(m_filename))
       fs::remove(m_filename);

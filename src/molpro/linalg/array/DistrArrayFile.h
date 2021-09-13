@@ -1,22 +1,7 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYFILE_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYFILE_H
 
-#include <fstream>
-#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || (defined(__cplusplus) && __cplusplus >= 201703L)) &&            \
-    defined(__has_include)
-
-#if __has_include(<filesystem>) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500)          \
-&& ((!defined(__GNUC__) || defined(__llvm__) || defined(__INTEL_COMPILER) || __GNUC__ >= 9))
-#define GHC_USE_STD_FS
-#include <filesystem>
-namespace fs = std::filesystem;
-#endif
-#endif
-#ifndef GHC_USE_STD_FS
-#include "ghc/filesystem.h"
-namespace fs = ghc::filesystem;
-#endif
-
+#include "util/fs.h"
 #include <molpro/linalg/array/DistrArrayDisk.h>
 #include <molpro/mpi.h>
 
@@ -36,8 +21,8 @@ namespace molpro::linalg::array {
 class DistrArrayFile : public DistrArrayDisk {
 
 private:
-  std::string m_directory;
-  std::string m_filename;
+  fs::path m_directory;
+  fs::path m_filename;
   mutable std::unique_ptr<std::fstream>
       m_stream; // use a pointer just in case the implementation of std::fstream is not movable
   mutable std::mutex m_mutex;

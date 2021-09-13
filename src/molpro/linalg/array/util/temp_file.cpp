@@ -8,19 +8,19 @@
 
 namespace molpro::linalg::array::util {
 #ifdef HAVE_MPI_H
-std::string temp_file_name(const std::string& base_name, const std::string& suffix, MPI_Comm comm) {
+fs::path temp_file_name(const fs::path& base_name, const std::string& suffix, MPI_Comm comm) {
   int rank;
   MPI_Comm_rank(comm, &rank);
-  auto fname = rank != 0 ? "" : temp_file_name(base_name, suffix);
+  auto fname = rank != 0 ? fs::path{""}.native() : temp_file_name(base_name, suffix).native();
   int fnamesize = fname.size();
   MPI_Bcast(&fnamesize, 1, MPI_INT, 0, comm);
   fname.resize(fnamesize);
   MPI_Bcast((void*)fname.data(), fnamesize, MPI_CHAR, 0, comm);
-  return fname;
+  return fs::path{fname};
 }
 #endif
 
-std::string temp_file_name(const std::string& base_name, const std::string& suffix) {
+fs::path temp_file_name(const fs::path& base_name, const std::string& suffix) {
   const std::string chars = "01234566789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const int length = 32;
   std::hash<std::thread::id> hasher;

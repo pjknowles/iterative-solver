@@ -88,6 +88,14 @@ DistrArrayFile::DistrArrayFile(const DistrArrayFile& source)
   DistrArrayFile::copy(source);
 }
 
+DistrArrayFile::DistrArrayFile(DistrArrayFile&& source)
+    : DistrArrayDisk(std::move(source))
+    , m_directory(std::move(source.m_directory))
+      , m_filename(std::move(source.m_filename))
+    , m_stream(std::move(source.m_stream))
+    {
+}
+
 DistrArrayFile::DistrArrayFile(const DistrArray& source)
     : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator()) {
   DistrArrayFile::copy(source);
@@ -117,9 +125,13 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
 }
 
 DistrArrayFile::~DistrArrayFile() {
-  m_stream->close();
-  if (not m_filename.empty() and fs::exists(m_filename))
-    fs::remove(m_filename);
+  if (m_stream.get() != nullptr) {
+    m_stream->close();
+    std::cout << "~DistrArrayFile() "<<this<<" "<<m_filename<<std::endl;
+    if (fs::exists(m_filename))
+      fs::remove(m_filename);
+    m_stream.release();
+  }
 }
 
 bool DistrArrayFile::compatible(const DistrArrayFile& source) const {
@@ -169,6 +181,7 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
 
 std::vector<DistrArrayFile::value_type> DistrArrayFile::get(DistrArray::index_type lo,
                                                             DistrArray::index_type hi) const {
+//  std::cout << "DistrArrayFile::get() " << m_filename<<" "<<lo<<" "<<hi<<std::endl;
   if (lo >= hi)
     return {};
   auto buf = std::vector<DistrArray::value_type>(hi - lo);
@@ -177,6 +190,7 @@ std::vector<DistrArrayFile::value_type> DistrArrayFile::get(DistrArray::index_ty
 }
 
 void DistrArrayFile::put(DistrArray::index_type lo, DistrArray::index_type hi, const DistrArray::value_type* data) {
+//  std::cout << "DistrArrayFile::put() " << m_filename<<" "<<lo<<" "<<hi<<std::endl;
   auto lock = std::lock_guard<std::mutex>(m_mutex);
   if (lo >= hi)
     return;

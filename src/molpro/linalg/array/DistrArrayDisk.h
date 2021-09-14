@@ -44,7 +44,7 @@ protected:
 
   DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm commun);
   DistrArrayDisk();
-  DistrArrayDisk(const DistrArrayDisk& source);
+  DistrArrayDisk(const DistrArray& source);
   DistrArrayDisk(DistrArrayDisk&& source) noexcept;
   ~DistrArrayDisk() override;
 
@@ -56,6 +56,7 @@ public:
   [[nodiscard]] value_type dot(const DistrArray& y) const override;
   [[nodiscard]] value_type dot(const SparseArray& y) const override;
   void set_buffer_size(size_t buffer_size) { m_buffer_size = buffer_size; }
+  void copy(const DistrArray &y) override;
 
 protected:
   //! Reads the whole local buffer from disk into memory. By default the buffer is written to disk on destruction,

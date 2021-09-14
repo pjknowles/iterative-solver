@@ -31,7 +31,7 @@ private:
 public:
   DistrArrayFile() = delete;
   DistrArrayFile(const DistrArrayFile& source);
-  //  DistrArrayFile(DistrArrayFile&& source) = default;
+  DistrArrayFile(DistrArrayFile&& source);
   explicit DistrArrayFile(size_t dimension, MPI_Comm comm = comm_global(), const std::string& directory = ".");
   explicit DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm = comm_global(),
                           const std::string& directory = ".");

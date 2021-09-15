@@ -37,6 +37,16 @@ auto wrap(ForwardIt begin, ForwardIt end) {
   return w;
 }
 
+//! Takes a begin and end iterators and returns a vector of const-casted references to each element
+template <class ForwardIt>
+auto const_cast_wrap(ForwardIt begin, ForwardIt end) {
+  using T = decay_t<decay_t<decltype(*begin)>>;
+  auto w = VecRef<T>{};
+  for (auto it = begin; it != end; ++it)
+    w.push_back(std::ref(const_cast<decay_t<T>&>(it->get())));
+  return w;
+}
+
 //! Takes a begin and end iterators and returns a vector of references to each element
 template <class ForwardIt>
 auto cwrap(ForwardIt begin, ForwardIt end) {
@@ -80,6 +90,23 @@ auto wrap(IterableContainer& parameters) {
   auto w = VecRef<decay_t<T>>{};
   for (auto it = begin(parameters); it != end(parameters); ++it)
     w.emplace_back(std::ref(*it));
+  return w;
+}
+/*!
+ * @brief Wraps const-casted references for each parameter in an iterable container that implements begin()/end()
+ * @tparam IterableContainer should have begin()/end() either as free or member functions
+ * @tparam R element type
+ * @param parameters parameters to wrap
+ * @return vector of references to each element in parameters
+ */
+template <class IterableContainer>
+auto const_cast_wrap(IterableContainer& parameters) {
+  using T = typename IterableContainer::value_type;
+  using std::begin;
+  using std::end;
+  auto w = VecRef<decay_t<T>>{};
+  for (auto it = begin(parameters); it != end(parameters); ++it)
+    w.emplace_back(std::ref(const_cast<decay_t<T>&>(it->get())));
   return w;
 }
 

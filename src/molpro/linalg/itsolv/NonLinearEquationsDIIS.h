@@ -81,7 +81,7 @@ private:
 
 public:
   int add_vector(R& parameters, R& residual, value_type value) override {
-    auto prof = this->m_profiler->push("itsolv::add_vector");
+    auto prof = this->profiler()->push("itsolv::add_vector");
     auto error = std::sqrt(this->m_handlers->rr().dot(residual, residual));
     m_converged = error < this->m_convergence_threshold;
     using namespace subspace;
@@ -101,7 +101,7 @@ public:
     return nwork;
   }
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
-    auto prof = this->m_profiler->push("itsolv::end_iteration");
+    auto prof = this->profiler()->push("itsolv::end_iteration");
     this->solution_params(this->m_working_set, parameters);
     if (this->m_errors.front() < this->m_convergence_threshold) {
       this->m_working_set.clear();

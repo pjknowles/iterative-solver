@@ -136,7 +136,7 @@ public:
   IterativeSolverTemplate<Solver, R, Q, P>& operator=(IterativeSolverTemplate<Solver, R, Q, P>&&) noexcept = default;
 
   int add_vector(const VecRef<R>& parameters, const VecRef<R>& actions) override {
-    this->m_profiler->push("itsolv::add_vector");
+    profiler()->push("itsolv::add_vector");
     auto prof = molpro::Profiler::single();
     m_logger->msg("IterativeSolverTemplate::add_vector  iteration = " + std::to_string(m_stats->iterations),
                   Logger::Trace);
@@ -174,7 +174,7 @@ public:
   // FIXME Currently only works if called on an empty subspace. Either enforce it or generalise.
   size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix, const VecRef<R>& parameters,
                const VecRef<R>& actions, fapply_on_p_type apply_p) override {
-    auto prof = this->m_profiler->push("itsolv::add_p");
+    auto prof = profiler()->push("itsolv::add_p");
     if (not pparams.empty() and pparams.size() < n_roots())
       throw std::runtime_error("P space must be empty or at least as large as number of roots sought");
     if (apply_p)
@@ -188,7 +188,7 @@ public:
   void clearP() override {}
 
   void solution(const std::vector<int>& roots, const VecRef<R>& parameters, const VecRef<R>& residual) override {
-    // auto prof = this->m_profiler->push("itsolv::solution"); // FIXME two profilers
+    // auto prof = profiler()->push("itsolv::solution"); // FIXME two profilers
     auto prof = molpro::Profiler::single();
     check_consistent_number_of_roots_and_solutions(roots, parameters.size());
     prof->start("construct_solution (parameters)");
@@ -312,7 +312,7 @@ public:
   }
   //  void set_profiler(molpro::profiler::Profiler& profiler) override { m_profiler.reset(&profiler); }
   void set_profiler(molpro::profiler::Profiler& profiler) override {
-    m_profiler = std::shared_ptr<molpro::profiler::Profiler>(m_profiler_default, &profiler);
+    m_profiler = std::shared_ptr<molpro::profiler::Profiler>(&profiler);
   }
   const std::shared_ptr<molpro::profiler::Profiler>& profiler() const override { return m_profiler; }
 
@@ -408,8 +408,18 @@ protected:
                           std::shared_ptr<ArrayHandlers<R, Q, P>> handlers, std::shared_ptr<Statistics> stats,
                           std::shared_ptr<Logger> logger)
       : m_handlers(std::move(handlers)), m_xspace(std::move(xspace)), m_subspace_solver(std::move(solver)),
-        m_stats(std::move(stats)), m_logger(std::move(logger)) {
+        m_stats(std::move(stats)), m_logger(std::move(logger)), m_profiler(molpro::Profiler::single()),
+        m_profiler_saved_depth(m_profiler->get_max_depth()) {
     set_n_roots(1);
+    m_profiler->set_max_depth(options()->parameter("PROFILER_DEPTH", 0));
+  }
+
+  virtual ~IterativeSolverTemplate() {
+    auto dotgraph_file = options()->parameter("PROFILER_DOTGRAPH", "");
+    if (profiler()->get_max_depth() > 0 and std::find_if(dotgraph_file.begin(), dotgraph_file.end(), [](unsigned char ch) { return !std::isspace(ch); }) !=
+        dotgraph_file.end())
+      profiler()->dotgraph(dotgraph_file, options()->parameter("PROFILER_THRESHOLD", .01));
+    molpro::Profiler::single()->set_max_depth(m_profiler_saved_depth);
   }
 
   //! Implementation class should overload this to set errors in the current values (e.g. change in eigenvalues)
@@ -427,8 +437,8 @@ protected:
    * @return size of the working set
    */
   size_t solve_and_generate_working_set(const VecRef<R>& parameters, const VecRef<R>& action) {
-    auto m_prof = this->m_profiler->push("itsolv::solve_and_generate_working_set");
-    auto prof = molpro::Profiler::single();
+    auto prof = profiler();
+    auto p = prof->push("itsolv::solve_and_generate_working_set");
     prof->start("itsolv::solve");
     m_subspace_solver->solve(*m_xspace, n_roots());
     prof->stop();
@@ -500,9 +510,9 @@ protected:
   int m_max_iter = 100;                         //!< maximum number of iterations in solve()
   size_t m_max_p = 0;                           //!< maximum size of P space
   double m_p_threshold = std::numeric_limits<double>::max(); //!< threshold for selecting P space
-  std::shared_ptr<molpro::profiler::Profiler> m_profiler_default =
-      std::make_shared<molpro::profiler::Profiler>("IterativeSolver");
-  std::shared_ptr<molpro::profiler::Profiler> m_profiler = m_profiler_default;
+private:
+  mutable std::shared_ptr<molpro::profiler::Profiler> m_profiler;
+  int m_profiler_saved_depth; //!< max_depth of molpro::Profiler::single() before this object changed it
 };
 
 } // namespace molpro::linalg::itsolv

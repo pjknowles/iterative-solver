@@ -1,8 +1,8 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYDISK_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYDISK_H
 
-#include "molpro/linalg/array/DistrArray.h"
-#include "molpro/linalg/array/Span.h"
+#include <molpro/linalg/array/DistrArray.h>
+#include <molpro/linalg/array/Span.h>
 #include <future>
 #include <molpro/Profiler.h>
 
@@ -44,7 +44,7 @@ protected:
 
   DistrArrayDisk(std::unique_ptr<Distribution> distr, MPI_Comm commun);
   DistrArrayDisk();
-  DistrArrayDisk(const DistrArrayDisk& source);
+  DistrArrayDisk(const DistrArray& source);
   DistrArrayDisk(DistrArrayDisk&& source) noexcept;
   ~DistrArrayDisk() override;
 
@@ -56,6 +56,7 @@ public:
   [[nodiscard]] value_type dot(const DistrArray& y) const override;
   [[nodiscard]] value_type dot(const SparseArray& y) const override;
   void set_buffer_size(size_t buffer_size) { m_buffer_size = buffer_size; }
+  void copy(const DistrArray &y) override;
 
 protected:
   //! Reads the whole local buffer from disk into memory. By default the buffer is written to disk on destruction,
@@ -85,32 +86,34 @@ public:
 };
 
 /**
- * @brief BufferManager provides asynchronous double-buffered access to the data in a DistrArrayDisk.
- * Creating an instance of BufferManager will allocate memory for that buffer, which is released when the
- * BufferManager goes out of scope. Each DistrArrayDisk should only have one BufferManager at a time.
- *
+ * @brief BufferManager provides single-buffered or asynchronous double-buffered read access to the data in a
+ * DistrArrayDisk. At construction, an amount of memory is provided or allocated as a buffer, and the buffer is divided
+ * into one or more chunks that are independent windows on the data. Sequential access to the data is provided through
+ * iterators.
  */
 class BufferManager {
 
 public:
   enum buffertype { Single = 1, Double = 2 };
+  /*!
+   * @brief Construct a new Buffer Manager object with a provided buffer
+   * @param distr_array_disk the DistrArrayDisk that this BufferManager will access data from.
+   * @param buffer Provided buffer
+   * @param number_of_buffers how many buffers.
+   */
+  BufferManager(const DistrArrayDisk& distr_array_disk, Span<DistrArrayDisk::value_type> buffer,
+                enum buffertype number_of_buffers = buffertype::Double);
   /**
-   * @brief Construct a new Buffer Manager object and allocate memory for the buffers. Note: the contents of the buffer
-   * will not be loaded until a call to buffer++.
+   * @brief Construct a new Buffer Manager object and allocate memory for the chunks.
    *
    * @param distr_array_disk the DistrArrayDisk that this BufferManager will access data from.
-   * @param chunk_size number of array elements in each chunk size. Should be large enough that calculations on that
-   * chunk are I/O bound.
-   * @param buffers how many buffers. Double buffering is always preferable.
+   * @param chunk_size number of array elements in each chunk.
+   * @param number_of_buffers how many buffers.
    */
-  // TODO: chunk_size is not the right variable name, this should be the total size of the memory for the buffer
-  BufferManager(const DistrArrayDisk& distr_array_disk, DistrArray::value_type* chunk_loc, size_t buf_size,
-                enum buffertype buffers);
   BufferManager(const DistrArrayDisk& distr_array_disk, size_t chunk_size = 8192,
-                enum buffertype buffers = buffertype::Double);
+                enum buffertype number_of_buffers = buffertype::Double);
   using value_type = DistrArray::value_type;
   const size_t chunk_size = 8192;
-  // DistrArray::value_type* get_buffer_contents();
   /**
    * @brief Custom iterator for the BufferManager. This iterator is responsible for loading data into the buffers and
    * providing access to that data.
@@ -164,12 +167,10 @@ protected:
    * @return the iterator value for the next iteration
    */
   [[nodiscard]] Span<value_type> next(bool initial = false);
-  const DistrArrayDisk& distr_array_disk; // pointer to the DistrArrayDisk data is being accessed from
-  // std::vector<std::vector<DistrArray::value_type>> chunks; // contents of the buffer  // TODO: remove this
+  const DistrArrayDisk& distr_array_disk;      // reference to the DistrArrayDisk data is being accessed from
   std::vector<DistrArray::value_type*> chunks; // pointers to chunks
-  size_t curr_chunk = 0;                       // current chunk (either 0 or 1) - toggles when the next buffer is loadef
-  std::future<void> next_chunk_future; // future for the next chunk - accessed when this->next() makes the next chunk
-  // the current chunk
+  size_t curr_chunk = 0;                       // current chunk
+  std::vector<std::future<void>> next_chunk_futures;
   const std::pair<size_t, size_t> range; // memory offsets for MPI found via distr_array_disk.distribution().range(...)
   std::vector<DistrArray::value_type> own_buffer;
 };

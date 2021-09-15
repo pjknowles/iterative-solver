@@ -17,7 +17,7 @@ struct OptimizeF : ::testing::Test {
   using MatrixXdc = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
 
   size_t n = 0;
-  size_t verbosity = 0;
+  size_t verbosity = 2;
   MatrixXdc hmat;
 
   void load_matrix(int dimension, const std::string& type = "", double param = 1, bool hermitian = true) {

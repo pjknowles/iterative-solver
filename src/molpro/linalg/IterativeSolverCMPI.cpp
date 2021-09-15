@@ -42,7 +42,7 @@ using molpro::linalg::itsolv::cwrap;
 
 //using Rvector = molpro::linalg::array::DistrArrayMPI3;
 using Rvector = molpro::linalg::array::DistrArraySpan;
-#ifdef LINEARALGEBRA_ARRAY_HDF5
+#ifdef LINEARALGEBRA_Q_HDF5
 using Qvector = molpro::linalg::array::DistrArrayHDF5;
 #else
 using Qvector = molpro::linalg::array::DistrArrayFile;

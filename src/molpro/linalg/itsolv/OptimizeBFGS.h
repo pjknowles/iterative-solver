@@ -38,7 +38,7 @@ public:
   bool nonlinear() const override { return true; }
 
   int add_vector(R& parameters, R& residual, value_type value) override {
-    auto prof = this->m_profiler->push("itsolv::add_vector");
+    auto prof = this->profiler()->push("itsolv::add_vector");
     using namespace subspace;
     auto& xspace = this->m_xspace;
     auto& xdata = xspace->data;
@@ -88,7 +88,7 @@ public:
         molpro::cout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
       }
       if (
-          //          std::abs(gcurrent) < this->m_convergence_threshold or
+//          std::abs(gcurrent) < this->m_convergence_threshold or
           (Wolfe_1 && Wolfe_2))
         goto accept;
       //      molpro::cout << "evaluating line search" << std::endl;
@@ -140,8 +140,8 @@ public:
   }
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
-    auto prof = this->m_profiler->push("itsolv::end_iteration");
-    this->m_working_set = {0};
+    auto prof = this->profiler()->push("itsolv::end_iteration");
+    this->m_working_set={0};
     if (not m_linesearch) { // action is expected to hold the preconditioned residual
       m_last_iteration_linesearching = false;
       this->solution_params(this->m_working_set, parameters);
@@ -154,7 +154,7 @@ public:
       const auto& xspace = this->m_xspace;
       auto& xdata = xspace->data;
       const auto& H = xdata[subspace::EqnData::H];
-      //      const auto& S = xdata[subspace::EqnData::S];
+//      const auto& S = xdata[subspace::EqnData::S];
       const auto& q = xspace->paramsq();
       const auto& u = xspace->actionsq();
 
@@ -231,11 +231,10 @@ public:
     return opt;
   }
 
-  void report(std::ostream& cout, bool endl = true) const override {
+  void report(std::ostream& cout, bool endl=true) const override {
     SolverTemplate::report(cout, false);
-    cout << ", value " << this->value() << (m_linesearch ? ", line-searching" : ", quasi-Newton step");
-    if (endl)
-      cout << std::endl;
+    cout << ", value " << this->value() <<  (m_linesearch ? ", line-searching" : ", quasi-Newton step");
+    if (endl) cout << std::endl;
   }
   std::shared_ptr<Logger> logger;
 

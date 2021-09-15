@@ -46,8 +46,9 @@ public:
     return cast<LinearEigensystemRSPTOptions>(options, "LinearEigensystemRSPTOptions");
   }
   static LinearEigensystemDavidsonOptions& LinearEigensystem(Options& options) {
-//    const auto& opt = const_cast<const Options&>(options);
-    return const_cast<LinearEigensystemDavidsonOptions&>(cast<LinearEigensystemDavidsonOptions>(options, "LinearEigensystemOptions"));
+    //    const auto& opt = const_cast<const Options&>(options);
+    return const_cast<LinearEigensystemDavidsonOptions&>(
+        cast<LinearEigensystemDavidsonOptions>(options, "LinearEigensystemOptions"));
   }
 
   static std::shared_ptr<LinearEquationsDavidsonOptions> LinearEquations(const std::shared_ptr<Options>& options) {
@@ -57,8 +58,9 @@ public:
     return cast<LinearEquationsDavidsonOptions>(options, "LinearEquationsOptions");
   }
   static LinearEquationsDavidsonOptions& LinearEquations(Options& options) {
-//    const auto& opt = const_cast<const Options&>(options);
-    return const_cast<LinearEquationsDavidsonOptions&>(cast<LinearEquationsDavidsonOptions>(options, "LinearEquationsOptions"));
+    //    const auto& opt = const_cast<const Options&>(options);
+    return const_cast<LinearEquationsDavidsonOptions&>(
+        cast<LinearEquationsDavidsonOptions>(options, "LinearEquationsOptions"));
   }
 
   static std::shared_ptr<NonLinearEquationsDIISOptions>
@@ -69,10 +71,10 @@ public:
     return cast<NonLinearEquationsDIISOptions>(options, "NonLinearEquationsDIISOptions");
   }
   static NonLinearEquationsDIISOptions& NonLinearEquationsDIIS(Options& options) {
-//    const auto& opt = const_cast<const Options&>(options);
-    return const_cast<NonLinearEquationsDIISOptions&>(cast<NonLinearEquationsDIISOptions>(options, "NonLinearEquationsDIISOptions"));
+    //    const auto& opt = const_cast<const Options&>(options);
+    return const_cast<NonLinearEquationsDIISOptions&>(
+        cast<NonLinearEquationsDIISOptions>(options, "NonLinearEquationsDIISOptions"));
   }
-
 
   static std::shared_ptr<OptimizeBFGSOptions> OptimizeBFGS(const std::shared_ptr<Options>& options) {
     return cast<OptimizeBFGSOptions>(options, "OptimizeBFGSOptions");
@@ -81,7 +83,7 @@ public:
     return cast<OptimizeBFGSOptions>(options, "OptimizeBFGSOptions");
   }
   static OptimizeBFGSOptions& OptimizeBFGS(Options& options) {
-//    const auto& opt = const_cast<const Options&>(options);
+    //    const auto& opt = const_cast<const Options&>(options);
     return const_cast<OptimizeBFGSOptions&>(cast<OptimizeBFGSOptions>(options, "OptimizeBFGSOptions"));
   }
 
@@ -92,7 +94,7 @@ public:
     return cast<OptimizeSDOptions>(options, "OptimizeSDOptions");
   }
   static OptimizeSDOptions& OptimizeSD(Options& options) {
-//    const auto& opt = const_cast<const Options&>(options);
+    //    const auto& opt = const_cast<const Options&>(options);
     return const_cast<OptimizeSDOptions&>(cast<OptimizeSDOptions>(options, "OptimizeSDOptions"));
   }
 };

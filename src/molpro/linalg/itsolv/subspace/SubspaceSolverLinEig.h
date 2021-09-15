@@ -41,7 +41,8 @@ protected:
     auto dim = h.rows();
     auto evec = std::vector<value_type>{};
     int verbosity = m_logger->max_trace_level == Logger::Info ? 3 : 0;
-    itsolv::eigenproblem(evec, m_eigenvalues, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, verbosity, true);
+    itsolv::eigenproblem(evec, m_eigenvalues, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, verbosity,
+                         true);
     size_t n_solutions = 0;
     if (dim)
       n_solutions = evec.size() / dim;

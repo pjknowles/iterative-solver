@@ -73,10 +73,11 @@ public:
     return opt;
   }
 
-  void report(std::ostream& cout, bool endl=true) const override {
+  void report(std::ostream& cout, bool endl = true) const override {
     SolverTemplate::report(cout, false);
     cout << ", value " << this->value();
-    if (endl) cout << std::endl;
+    if (endl)
+      cout << std::endl;
   }
   std::shared_ptr<Logger> logger;
 

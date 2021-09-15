@@ -28,8 +28,9 @@ namespace molpro::linalg::itsolv {
  *   std::shared_ptr<Options> options_itsolv =  solver->get_options();
  *   std::cout << "convergence threshold= " << options_itsolv->coonvergence_threshold.get();
  *   // To access options specific to LinearEigensystemDavidson we need to down-cast
- *   std::shared_ptr<LinearEigensystemDavidsonOptions> options_lin_eig = CastOptions::LinearEigensystemDavidson(solver->get_options());
- *   std::cout << "svd threshold= " << options_p->svd_threshold.get() << std::endl;
+ *   std::shared_ptr<LinearEigensystemDavidsonOptions> options_lin_eig =
+ * CastOptions::LinearEigensystemDavidson(solver->get_options()); std::cout << "svd threshold= " <<
+ * options_p->svd_threshold.get() << std::endl;
  * @endcode
  */
 struct LinearEigensystemDavidsonOptions : public LinearEigensystemOptions {

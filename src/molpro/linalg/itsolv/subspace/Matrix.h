@@ -1,13 +1,13 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_MATRIX_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_MATRIX_H
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <iomanip>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
 #include <vector>
-#include <cassert>
 
 namespace molpro::linalg::itsolv::subspace {
 
@@ -43,7 +43,8 @@ public:
     if (m_buffer.size() != size())
       throw std::runtime_error("data buffer is of the wrong size");
   }
-  explicit Matrix(const std::vector<T>& data, coord_type dims) : m_rows(dims.first), m_cols(dims.second), m_buffer(data) {
+  explicit Matrix(const std::vector<T>& data, coord_type dims)
+      : m_rows(dims.first), m_cols(dims.second), m_buffer(data) {
     if (m_buffer.size() != size())
       throw std::runtime_error("data buffer is of the wrong size");
   }

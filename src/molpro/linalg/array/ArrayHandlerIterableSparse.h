@@ -28,7 +28,7 @@ public:
   AL copy(const AR &source) override {
     //    static_assert(true, "General copy from sparse to dense is ill-defined");
     AL result;
-    copy (result, source);
+    copy(result, source);
     return result;
   };
 

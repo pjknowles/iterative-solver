@@ -1,10 +1,10 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYDISK_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAYDISK_H
 
-#include <molpro/linalg/array/DistrArray.h>
-#include <molpro/linalg/array/Span.h>
 #include <future>
 #include <molpro/Profiler.h>
+#include <molpro/linalg/array/DistrArray.h>
+#include <molpro/linalg/array/Span.h>
 
 namespace molpro::linalg::array {
 /*!
@@ -56,7 +56,7 @@ public:
   [[nodiscard]] value_type dot(const DistrArray& y) const override;
   [[nodiscard]] value_type dot(const SparseArray& y) const override;
   void set_buffer_size(size_t buffer_size) { m_buffer_size = buffer_size; }
-  void copy(const DistrArray &y) override;
+  void copy(const DistrArray& y) override;
 
 protected:
   //! Reads the whole local buffer from disk into memory. By default the buffer is written to disk on destruction,

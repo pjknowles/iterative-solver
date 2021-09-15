@@ -15,13 +15,13 @@ public:
 
   void solve(IXSpace<R, Q, P>& xspace, const size_t nroots_max) override {
     SubspaceSolverLinEig<RT, QT, PT>::solve_eigenvalue(xspace, nroots_max);
-//    std::cout << "variational subspace solution " << as_string(this->m_solutions) << std::endl;
-//    molpro::cout << this->m_eigenvalues.front()<<std::endl;
-//    std::cout << "rows " << this->m_solutions.rows() << std::endl;
-//    std::cout << "cols " << this->m_solutions.cols() << std::endl;
+    //    std::cout << "variational subspace solution " << as_string(this->m_solutions) << std::endl;
+    //    molpro::cout << this->m_eigenvalues.front()<<std::endl;
+    //    std::cout << "rows " << this->m_solutions.rows() << std::endl;
+    //    std::cout << "cols " << this->m_solutions.cols() << std::endl;
     this->m_solutions.slice().fill(0);
     this->m_solutions(0, 0) = 1;
-//    std::cout << "perturbational subspace solution " << as_string(this->m_solutions) << std::endl;
+    //    std::cout << "perturbational subspace solution " << as_string(this->m_solutions) << std::endl;
   }
 };
 } // namespace molpro::linalg::itsolv::subspace

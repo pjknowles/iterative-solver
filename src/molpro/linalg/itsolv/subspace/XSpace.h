@@ -55,7 +55,7 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
     transpose_copy(xq[EqnData::H].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}),
                    qx[EqnData::H].slice({0, dims.oQ}, {nQnew, dims.oQ + dims.nQ}));
     transpose_copy(xq[EqnData::H].slice({dims.oD, 0}, {dims.oD + dims.nD, nQnew}),
-                             qx[EqnData::H].slice({0, dims.oD}, {nQnew, dims.oD + dims.nD}));
+                   qx[EqnData::H].slice({0, dims.oD}, {nQnew, dims.oD + dims.nD}));
     transpose_copy(qx[EqnData::H].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}),
                    xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}));
   } else {
@@ -206,7 +206,7 @@ public:
 
   //! For a system of linear equations Ax=b, adds rhs vectors b.
   void add_rhs_equations(const CVecRef<R>& rhs) {
-    m_rhs.reserve(m_rhs.size()+rhs.size());
+    m_rhs.reserve(m_rhs.size() + rhs.size());
     for (const auto& r : rhs)
       m_rhs.emplace_back(this->m_handlers->qr().copy(r));
     for (const auto& r : rhs) {

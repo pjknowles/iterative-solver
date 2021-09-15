@@ -416,8 +416,9 @@ protected:
 
   virtual ~IterativeSolverTemplate() {
     auto dotgraph_file = options()->parameter("PROFILER_DOTGRAPH", "");
-    if (profiler()->get_max_depth() > 0 and std::find_if(dotgraph_file.begin(), dotgraph_file.end(), [](unsigned char ch) { return !std::isspace(ch); }) !=
-        dotgraph_file.end())
+    if (profiler()->get_max_depth() > 0 and
+        std::find_if(dotgraph_file.begin(), dotgraph_file.end(), [](unsigned char ch) { return !std::isspace(ch); }) !=
+            dotgraph_file.end())
       profiler()->dotgraph(dotgraph_file, options()->parameter("PROFILER_THRESHOLD", .01));
     molpro::Profiler::single()->set_max_depth(m_profiler_saved_depth);
   }

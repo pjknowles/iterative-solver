@@ -206,7 +206,7 @@ public:
 
   //! For a system of linear equations Ax=b, adds rhs vectors b.
   void add_rhs_equations(const CVecRef<R>& rhs) {
-    m_rhs.reserve(m_rhs.size()+rhs.size());
+    m_rhs.reserve(m_rhs.size() + rhs.size());
     for (const auto& r : rhs)
       m_rhs.emplace_back(this->m_handlers->qr().copy(r));
     for (const auto& r : rhs) {

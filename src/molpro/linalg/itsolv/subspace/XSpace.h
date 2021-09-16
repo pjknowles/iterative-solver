@@ -59,10 +59,10 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
     transpose_copy(qx[EqnData::H].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}),
                    xq[EqnData::H].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}));
   } else {
-    xq[EqnData::H].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}) = util::overlap(qparams, actions, handlers.qr());
-    xq[EqnData::H].slice({dims.oD, 0}, {dims.oD + dims.nD, nQnew}) = util::overlap(dparams, actions, handlers.qr());
+    xq[EqnData::H].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}) = util::overlap(qparams, actions, handlers.rq());
+    xq[EqnData::H].slice({dims.oD, 0}, {dims.oD + dims.nD, nQnew}) = util::overlap(dparams, actions, handlers.rq());
   }
-  qq[EqnData::rhs] = util::overlap(params, rhs, handlers.qr());
+  qq[EqnData::rhs] = util::overlap(params, rhs, handlers.rq());
   transpose_copy(xq[EqnData::S].slice({dims.oP, 0}, {dims.oP + dims.nP, nQnew}),
                  qx[EqnData::S].slice({0, dims.oP}, {nQnew, dims.oP + dims.nP}));
   transpose_copy(xq[EqnData::S].slice({dims.oQ, 0}, {dims.oQ + dims.nQ, nQnew}),

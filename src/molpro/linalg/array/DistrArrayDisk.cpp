@@ -48,7 +48,7 @@ void DistrArrayDisk::copy(const DistrArray& y) {
     error(name + " incompatible arrays");
   auto loc_y = y.local_buffer();
   auto range = m_distribution->range(mpi_rank(m_communicator));
-  put(range.first, range.second,loc_y->data());
+  put(range.first, range.second, loc_y->data());
 }
 
 DistrArrayDisk::LocalBufferDisk::LocalBufferDisk(DistrArrayDisk& source) : m_source{source} {
@@ -89,19 +89,24 @@ const DistrArray::Distribution& DistrArrayDisk::distribution() const {
 }
 
 std::unique_ptr<DistrArray::LocalBuffer> DistrArrayDisk::local_buffer() {
+  // TODO implement this, and the three following, when all code that calls this is removed
+  //  throw std::logic_error("local_buffer created (this should never happen)");
   return std::make_unique<LocalBufferDisk>(*this);
 }
 
 std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer() const {
+  //  throw std::logic_error("local_buffer created (this should never happen)");
   auto l = std::make_unique<LocalBufferDisk>(*const_cast<DistrArrayDisk*>(this));
   l->do_dump = false;
   return l;
 }
 
 std::unique_ptr<DistrArray::LocalBuffer> DistrArrayDisk::local_buffer(const Span<value_type>& buffer) {
+  //  throw std::logic_error("local_buffer created (this should never happen)");
   return std::make_unique<LocalBufferDisk>(*this, buffer);
 }
 std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer(const Span<value_type>& buffer) const {
+  //  throw std::logic_error("local_buffer created (this should never happen)");
   auto l = std::make_unique<LocalBufferDisk>(*const_cast<DistrArrayDisk*>(this), buffer);
   l->do_dump = false;
   return l;

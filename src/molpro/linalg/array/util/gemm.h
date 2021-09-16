@@ -140,6 +140,9 @@ void gemm_distr_distr(array::mapped_or_value_type_t<AL>* alphadata, const CVecRe
 template <class AL, class AR = AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL>& xx,
                                                                           const CVecRef<AR>& yy) {
+  if (std::is_same<AL, DistrArrayFile>::value){
+    throw std::runtime_error("gemm_inner_distr_distr (unbuffered) called with DistrArrayFile (should never happen!)");
+  }                                                            
   // const size_t spacing = 1;
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
@@ -166,6 +169,9 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
 template <class AL, class AR = AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR>& xx,
                             const VecRef<AL>& yy) {
+  if (std::is_same<AL, DistrArrayFile>::value){
+    throw std::runtime_error("gemm_outer_distr_distr (unbuffered) called with DistrArrayFile (should never happen!)");
+  }
   auto prof = molpro::Profiler::single()->push("gemm_outer_distr_distr (unbuffered)");
   if (not yy.empty())
     prof += alphas.rows() * alphas.cols() * yy[0].get().local_buffer()->size() * 2;

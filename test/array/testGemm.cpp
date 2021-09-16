@@ -142,10 +142,15 @@ TEST(TestGemm, ddiskdistr_inner) {
     cx.back().put(crange.first, crange.second, &(*(vx[i].cbegin() + crange.first)));
     cy.emplace_back(dim, Span<DistrArraySpan::value_type>(&vy[i][crange.first], clength), comm_global());
   }
+
   std::vector<double> vref(n * n), vgemm(n * n);
   std::pair<size_t, size_t> mat_dim = std::make_pair(n, n);
   Matrix<double> gemm_dot(vref, mat_dim);
   Matrix<double> ref_dot(vgemm, mat_dim);
+  EXPECT_THROW(gemm_dot = handler.gemm_inner(cwrap(cx), cwrap(cy)), std::runtime_error);
+  // TODO eventually gemm_inner will be implemented both ways round for DistrArrayDisk, deleting above and enabling
+  // following
+  /*
   gemm_dot = handler.gemm_inner(cwrap(cx), cwrap(cy));
   for (size_t i = 0; i < n; i++) {
     for (size_t j = 0; j < n; j++) {
@@ -153,6 +158,7 @@ TEST(TestGemm, ddiskdistr_inner) {
     }
   }
   EXPECT_THAT(vgemm, Pointwise(DoubleEq(), vref));
+  */
 }
 
 TEST(TestGemm, distrddisk_inner) {
@@ -396,6 +402,8 @@ TEST(TestGemm, ddiskdistr_outer) {
   std::iota(coeff.begin(), coeff.end(), 1);
   std::pair<size_t, size_t> mat_dim = std::make_pair(n, n);
   Matrix<double> alpha(coeff, mat_dim);
+  EXPECT_THROW(handler.gemm_outer(alpha, cwrap(cz), wrap(cx)), std::runtime_error);
+  /* this might be temporary
   handler.gemm_outer(alpha, cwrap(cz), wrap(cx));
   for (size_t i = 0; i < n; i++) {
     for (size_t j = 0; j < n; j++) {
@@ -409,6 +417,7 @@ TEST(TestGemm, ddiskdistr_outer) {
     cy[i].get(crange.first, crange.second, &(*(ty.begin() + crange.first)));
     EXPECT_THAT(ty, Pointwise(DoubleEq(), tx));
   }
+  */
 }
 
 TEST(TestGemm, ddisk_outer) {
@@ -624,8 +633,9 @@ TEST(TestGemm, buffered_DistrArrayFile) {
           std::vector<double> czbuf(range.second - range.first);
           cz[k].get(range.first, range.second, czbuf.data());
           for (size_t j = range.first; j < range.second; j++) {
-//                        std::cout << i<<" "<<j<<" "<<k<<" "<<czbuf[j-range.first]<<" "<<cx_selection[i][j-range.first]<<std::endl;
-            alpha_selection_expected(i, k) += czbuf[j - range.first] * cx_selection[i][j-range.first];
+            //                        std::cout << i<<" "<<j<<" "<<k<<" "<<czbuf[j-range.first]<<"
+            //                        "<<cx_selection[i][j-range.first]<<std::endl;
+            alpha_selection_expected(i, k) += czbuf[j - range.first] * cx_selection[i][j - range.first];
           }
         }
       }
@@ -633,8 +643,8 @@ TEST(TestGemm, buffered_DistrArrayFile) {
       MPI_Allreduce(MPI_IN_PLACE, const_cast<double*>(alpha_selection_expected.data().data()),
                     alpha_selection_expected.size(), MPI_DOUBLE, MPI_SUM, molpro::mpi::comm_global());
 #endif
-//      std::cout<< "Calculated alpha:" << as_string(alpha_selection_calculated)
-//                             << "\nExpected alpha:" << as_string(alpha_selection_expected)<<std::endl;
+      //      std::cout<< "Calculated alpha:" << as_string(alpha_selection_calculated)
+      //                             << "\nExpected alpha:" << as_string(alpha_selection_expected)<<std::endl;
 
       if (alpha_selection_expected.size() > 0) {
         EXPECT_THAT(

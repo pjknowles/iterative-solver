@@ -256,12 +256,14 @@ public:
    * \brief Add P-space vectors to the expansion set for linear methods.
    * \note the apply_p function is stored and used by the solver internally.
    * \param Pparams the vectors to add. Each Pvector specifies a sparse vector in the
-   * underlying space \param pp_action_matrix Matrix projected onto the existing+new, new
+   * underlying space. The size of the P space must be at least the number of roots to be sought.
+   * \param pp_action_matrix Matrix projected onto the existing+new, new
    * P space. It should be provided as a 1-dimensional array, with the existing+new index
-   * running fastest. \param parameters Used as scratch working space \param action  On
-   * exit, the  residual of the interpolated solution. The contribution from the new, and
-   * any existing, P parameters is missing, and should be added in subsequently. \param
-   * apply_p A function that evaluates the action of the matrix on vectors in the P space
+   * running fastest.
+   * \param parameters Used as scratch working space
+   * \param action  On exit, the  residual of the interpolated solution. The contribution from the new, and
+   * any existing, P parameters is missing, and should be added in subsequently.
+   * \param apply_p A function that evaluates the action of the matrix on vectors in the P space
    * \return The number of vectors contained in parameters, action, parametersP
    */
   virtual size_t add_p(const CVecRef<P>& pparams, const array::Span<value_type>& pp_action_matrix,

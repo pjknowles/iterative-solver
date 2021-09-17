@@ -163,7 +163,7 @@ auto remove_null_projected_solutions(const subspace::Matrix<value_type>& solutio
   logger.msg("nS on entry = " + std::to_string(solutions_proj.rows()), Logger::Debug);
   value_type* m = const_cast<std::vector<value_type>&>(overlap_proj.data()).data();
   auto svd_vecs = svd_system(overlap_proj.rows(), overlap_proj.cols(), array::Span(m, overlap_proj.size()),
-                             std::numeric_limits<value_type_abs>::max());
+                             std::numeric_limits<value_type_abs>::max(), true);
   svd_vecs.remove_if([&svd_thresh](const auto& el) { return el.value < svd_thresh; });
   svd_vecs.sort([](const auto& lt, const auto& rt) { return lt.value < rt.value; });
   const auto nD = svd_vecs.size();
@@ -360,7 +360,7 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
   dspace::remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
   auto overlap_full_subspace = dspace::construct_full_subspace_overlap(solutions_proj, dims, q_delete, overlap, 0);
   auto svd_vecs = svd_system(overlap_full_subspace.rows(), overlap_full_subspace.cols(),
-                             array::Span(&overlap_full_subspace(0, 0), overlap_full_subspace.size()), svd_thresh);
+                             array::Span(&overlap_full_subspace(0, 0), overlap_full_subspace.size()), svd_thresh, true);
   assert(svd_vecs.empty() && "P+Q+D subspace should be stable by construction");
   const auto nD = solutions_proj.rows();
   const auto nQd = q_delete.size();
@@ -488,7 +488,7 @@ auto redundant_parameters(const subspace::Matrix<value_type>& overlap, const siz
   auto rspace_indices = std::vector<int>(nR);
   std::iota(std::begin(rspace_indices), std::end(rspace_indices), 0);
   auto svd = svd_system(overlap.rows(), overlap.cols(),
-                        array::Span(const_cast<value_type*>(overlap.data().data()), overlap.size()), svd_thresh);
+                        array::Span(const_cast<value_type*>(overlap.data().data()), overlap.size()), svd_thresh, true);
   prof->stop();
   prof->start("find redundant parameters");
   for (const auto& singular_system : svd) {

@@ -172,7 +172,7 @@ std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension, std::vector<d
   auto eigensystem = std::list<SVD<double>>{};
 
   // populate eigensystem
-  for (size_t i = dimension - 1; i >= 0;
+  for (int i = dimension - 1; i >= 0;
        i--) { // note: flipping this axis gives parity with results of eigen::jacobiSVD
     auto temp_eigenproblem = SVD<double>{};
     temp_eigenproblem.value = eigvals[i];

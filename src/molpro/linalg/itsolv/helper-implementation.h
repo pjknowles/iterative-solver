@@ -177,7 +177,7 @@ std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension, std::vector<d
     auto temp_eigenproblem = SVD<double>{};
     temp_eigenproblem.value = eigvals[i];
     for (size_t j = 0; j < dimension; j++) {
-      temp_eigenproblem.v.emplace_back(eigvecs[i + (dimension * j)]);
+      temp_eigenproblem.v.emplace_back(eigvecs[j + (dimension * i)]);
     }
     eigensystem.emplace_back(temp_eigenproblem);
   }
@@ -261,6 +261,11 @@ std::list<SVD<value_type>> svd_system(size_t nrows, size_t ncols, const array::S
   if (hermitian) {
     assert(nrows == ncols);
     svds = eigensolver_lapacke_dsyev(nrows, m);
+    for (auto s = svds.begin(); s != svds.end();)
+      if (s->value > threshold)
+        s = svds.erase(s);
+      else
+        ++s;
   } else {
     //#if defined HAVE_LAPACKE
     //    if (nrows > 16)

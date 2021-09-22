@@ -166,9 +166,7 @@ public:
     return add_vector(wrap(parameters), wrap(actions));
   }
   int add_vector(R& parameters, R& actions, value_type value = 0) override {
-    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
-    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
-    return add_vector(wparams, wactions);
+    return add_vector(wrap_arg(parameters), wrap_arg(actions));
   }
 
   // FIXME Currently only works if called on an empty subspace. Either enforce it or generalise.
@@ -217,10 +215,7 @@ public:
     return solution(roots, wrap(parameters), wrap(residual));
   }
   void solution(R& parameters, R& residual) override {
-    std::vector<int> roots(1, 0);
-    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
-    auto wresidual = std::vector<std::reference_wrapper<R>>{std::ref(residual)};
-    return solution(roots, wparams, wresidual);
+    return solution(std::vector<int>(1,0), wrap_arg(parameters), wrap_arg(residual));
   }
 
   void solution_params(const std::vector<int>& roots, std::vector<R>& parameters) override {
@@ -235,9 +230,7 @@ public:
   };
 
   void solution_params(R& parameters) override {
-    std::vector<int> roots(1, 0);
-    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
-    return solution_params(roots, wparams);
+    return solution_params(std::vector<int>(1,0), wrap_arg(parameters));
   }
 
   // TODO Implement this

@@ -58,7 +58,7 @@ DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::strin
 DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm, const std::string& directory)
     : DistrArrayDisk(std::move(distribution), comm), m_directory(fs::absolute(fs::path(directory))),
       m_filename(util::temp_file_name((fs::path(m_directory) / "DistrArrayFile-"), ".dat")),
-      m_stream(std::make_unique<std::fstream>(m_filename,
+      m_stream(std::make_unique<std::fstream>(m_filename.native(),
                                               std::ios::out | std::ios::binary | std::ios::trunc | std::ios::in)) {
   {
 #ifdef _WIN32

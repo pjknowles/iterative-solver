@@ -31,7 +31,7 @@ public:
   using typename SolverTemplate::scalar_type;
   using IterativeSolverTemplate<LinearEigensystem, R, Q, P>::report;
 
-  explicit LinearEigensystemDavidson(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers,
+  explicit LinearEigensystemDavidson(const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers=std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>(),
                                      const std::shared_ptr<Logger>& logger_ = std::make_shared<Logger>())
       : SolverTemplate(std::make_shared<subspace::XSpace<R, Q, P>>(handlers, logger_),
                        std::static_pointer_cast<subspace::ISubspaceSolver<R, Q, P>>(

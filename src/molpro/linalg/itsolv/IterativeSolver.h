@@ -226,15 +226,9 @@ public:
    */
   virtual bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
                      bool generate_initial_guess = false) = 0;
-  virtual bool solve(R& parameters, R& actions, const Problem<R>& problem, bool generate_initial_guess = false) {
-    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
-    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
-    return solve(wparams, wactions, problem, generate_initial_guess);
-  }
+  virtual bool solve(R& parameters, R& actions, const Problem<R>& problem, bool generate_initial_guess = false) = 0;
   virtual bool solve(std::vector<R>& parameters, std::vector<R>& actions, const Problem<R>& problem,
-                     bool generate_initial_guess = false) {
-    return solve(wrap(parameters), wrap(actions), problem, generate_initial_guess);
-  }
+                     bool generate_initial_guess = false) = 0;
 
   /*!
    * \brief Take, typically, a current solution and residual, and add it to the solution

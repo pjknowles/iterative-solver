@@ -395,6 +395,17 @@ public:
     return nwork == 0 and *std::max_element(m_errors.begin(), m_errors.end()) <= m_convergence_threshold;
   }
 
+  bool solve(R& parameters, R& actions, const Problem<R>& problem, bool generate_initial_guess = false) override {
+    auto wparams = std::vector<std::reference_wrapper<R>>{std::ref(parameters)};
+    auto wactions = std::vector<std::reference_wrapper<R>>{std::ref(actions)};
+    return solve(wparams, wactions, problem, generate_initial_guess);
+  }
+  bool solve(std::vector<R>& parameters, std::vector<R>& actions, const Problem<R>& problem,
+                     bool generate_initial_guess = false) override {
+    return solve(wrap(parameters), wrap(actions), problem, generate_initial_guess);
+  }
+
+
 protected:
   IterativeSolverTemplate(std::shared_ptr<subspace::IXSpace<R, Q, P>> xspace,
                           std::shared_ptr<subspace::ISubspaceSolver<R, Q, P>> solver,

@@ -3,7 +3,6 @@
 #include <fstream>
 #include <iomanip>
 #include <molpro/linalg/itsolv/LinearEigensystemDavidson.h>
-#include <molpro/linalg/itsolv/SolverFactory.h>
 #include <vector>
 
 // Find lowest eigensolutions of a matrix obtained from an external file
@@ -33,7 +32,8 @@ public:
     return true;
   }
 
-  void precondition(const VecRef<container_t> &action, const std::vector<double> &shift, const container_t &diagonals) const override {
+  void precondition(const VecRef<container_t> &action, const std::vector<double> &shift,
+                    const container_t &diagonals) const override {
     for (size_t k = 0; k < action.size(); k++) {
       auto &a = action[k].get();
       for (size_t i = 0; i < n; i++)
@@ -66,39 +66,39 @@ int main(int argc, char *argv[]) {
       ExampleProblem problem(fullfile);
       molpro::cout << "\n*** " << fullfile << " (dimension " << problem.size() << "), " << nroot << " roots"
                    << std::endl;
-      auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector>("Davidson");
-      solver->set_n_roots(nroot);
-      solver->set_convergence_threshold(1.0e-12);
+      molpro::linalg::itsolv::LinearEigensystemDavidson<Rvector> itsolver;
+      itsolver.set_n_roots(nroot);
+      itsolver.set_convergence_threshold(1.0e-12);
       std::vector<Rvector> g;
       std::vector<Rvector> x;
       //      auto low_diagonals =
-      for (size_t root = 0; root < solver->n_roots(); root++) {
+      for (size_t root = 0; root < itsolver.n_roots(); root++) {
         x.emplace_back(problem.size());
         g.emplace_back(problem.size());
       }
-      solver->solve(x, g, problem, true);
+      itsolver.solve(x, g, problem, true);
       {
         std::cout << "Error={ ";
-        for (const auto &e : solver->errors())
+        for (const auto &e : itsolver.errors())
           std::cout << e << " ";
-        std::cout << "} after " << solver->statistics().iterations << " iterations" << std::endl;
-        std::cout << "Statistics: " << solver->statistics() << std::endl;
-        for (size_t root = 0; root < solver->n_roots(); root++) {
-          std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << solver->eigenvalues()[root] << std::endl;
+        std::cout << "} after " << itsolver.statistics().iterations << " iterations" << std::endl;
+        std::cout << "Statistics: " << itsolver.statistics() << std::endl;
+        for (size_t root = 0; root < itsolver.n_roots(); root++) {
+          std::cout << "Eigenvalue " << std::fixed << std::setprecision(9) << itsolver.eigenvalues()[root] << std::endl;
         }
       }
       {
-        auto working_set = solver->working_set();
-        working_set.resize(solver->n_roots());
+        auto working_set = itsolver.working_set();
+        working_set.resize(itsolver.n_roots());
         std::iota(working_set.begin(), working_set.end(), 0);
-        solver->solution(working_set, x, g);
+        itsolver.solution(working_set, x, g);
         std::cout << "Residual norms:";
-        for (size_t root = 0; root < solver->n_roots(); root++)
+        for (size_t root = 0; root < itsolver.n_roots(); root++)
           std::cout << " " << std::sqrt(g[root].dot(g[root]));
         std::cout << std::endl;
         std::cout << "Eigenvector orthonormality:\n";
-        for (size_t root = 0; root < solver->n_roots(); root++) {
-          for (size_t soot = 0; soot < solver->n_roots(); soot++)
+        for (size_t root = 0; root < itsolver.n_roots(); root++) {
+          for (size_t soot = 0; soot < itsolver.n_roots(); soot++)
             std::cout << " " << x[root].dot(x[soot]);
           std::cout << std::endl;
         }
@@ -106,6 +106,3 @@ int main(int argc, char *argv[]) {
     }
   }
 }
-
-#include <molpro/linalg/itsolv/SolverFactory-implementation.h>
-template class molpro::linalg::itsolv::SolverFactory<Rvector>;

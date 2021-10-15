@@ -173,19 +173,21 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nro
                              profiler, nQ, comm});
   auto& instance = instances.top();
   instance.solver->set_n_roots(nroot);
-  LinearEigensystemDavidson<Rvector, Qvector, Pvector>* solverDavidson =
+  LinearEigensystemDavidson<Rvector, Qvector, Pvector>* solver =
       dynamic_cast<LinearEigensystemDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get());
-  if (solverDavidson) {
-    solverDavidson->set_hermiticity(hermitian);
-    solverDavidson->set_convergence_threshold(thresh);
-    solverDavidson->set_convergence_threshold_value(thresh_value);
+  if (solver) {
+    solver->set_hermiticity(hermitian);
+    solver->set_convergence_threshold(thresh);
+    solver->set_convergence_threshold_value(thresh_value);
     //    solver_cast->propose_rspace_norm_thresh = 1.0e-14;
     //    solver_cast->set_max_size_qspace(10);
     //    solver_cast->set_reset_D(50);
-    //solverDavidson->logger->max_trace_level = molpro::linalg::itsolv::Logger::Info;
-    solverDavidson->logger->max_trace_level = molpro::linalg::itsolv::Logger::None;
-    solverDavidson->logger->max_warn_level = molpro::linalg::itsolv::Logger::Error;
-    solverDavidson->logger->data_dump = false;
+    solver->logger->max_trace_level =
+        verbosity > 1 ? molpro::linalg::itsolv::Logger::Info
+                      : (verbosity > 0 ? molpro::linalg::itsolv::Logger::Trace : molpro::linalg::itsolv::Logger::None);
+    solver->logger->max_warn_level =
+        verbosity > 1 ? molpro::linalg::itsolv::Logger::Warn : molpro::linalg::itsolv::Logger::Error;
+    solver->logger->data_dump = (verbosity > 0);
   }
   std::tie(*range_begin, *range_end) = DistrArrayDefaultRange();
 }
@@ -206,11 +208,17 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
                profiler, n, comm});
   auto& instance = instances.top();
   auto rr = CreateDistrArray(nroot, rhs);
-  auto solverLinearEquations = dynamic_cast<LinearEquationsDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get());
-  solverLinearEquations->set_n_roots(nroot);
-  solverLinearEquations->add_equations(rr);
-  solverLinearEquations->set_convergence_threshold(thresh);
-  solverLinearEquations->set_convergence_threshold_value(thresh_value);
+  auto solver = dynamic_cast<LinearEquationsDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  solver->set_n_roots(nroot);
+  solver->add_equations(rr);
+  solver->set_convergence_threshold(thresh);
+  solver->set_convergence_threshold_value(thresh_value);
+  solver->logger->max_trace_level =
+      verbosity > 1 ? molpro::linalg::itsolv::Logger::Info
+                    : (verbosity > 0 ? molpro::linalg::itsolv::Logger::Trace : molpro::linalg::itsolv::Logger::None);
+  solver->logger->max_warn_level =
+      verbosity > 1 ? molpro::linalg::itsolv::Logger::Warn : molpro::linalg::itsolv::Logger::Error;
+  solver->logger->data_dump = (verbosity > 0);
   // instance.solver->m_verbosity = verbosity;
   std::tie(*range_begin, *range_end) = DistrArrayDefaultRange();
 }
@@ -265,9 +273,9 @@ extern "C" size_t IterativeSolverAddValue(double value, double* parameters, doub
     instance.prof->start("AddValue:Call");
   size_t working_set_size =
       dynamic_cast<molpro::linalg::itsolv::Optimize<Rvector, Qvector, Pvector>*>(instance.solver.get())
-              ->add_vector(ccc[0], ggg[0], value)
-          ? 1
-          : 0;
+          ->add_vector(ccc[0], ggg[0], value)
+      ? 1
+      : 0;
   if (instance.prof != nullptr) {
     instance.prof->stop();
     instance.prof->start("AddValue:Sync");
@@ -445,7 +453,7 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
   auto cc = CreateDistrArray(instance.solver->n_roots(), solution);
   auto gg = CreateDistrArray(instance.solver->n_roots(), residual);
   auto result = instance.solver->suggest_p(cwrap(cc), molpro::linalg::itsolv::cwrap(gg), maximumNumber,
-                                            threshold);
+                                           threshold);
   for (size_t i = 0; i < result.size(); i++) {
     indices[i] = result[i];
   }

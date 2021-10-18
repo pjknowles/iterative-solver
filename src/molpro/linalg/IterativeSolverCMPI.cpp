@@ -209,6 +209,7 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
   auto& instance = instances.top();
   auto rr = CreateDistrArray(nroot, rhs);
   auto solver = dynamic_cast<LinearEquationsDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  solver->set_hermiticity(hermitian);
   solver->set_n_roots(nroot);
   solver->add_equations(rr);
   solver->set_convergence_threshold(thresh);

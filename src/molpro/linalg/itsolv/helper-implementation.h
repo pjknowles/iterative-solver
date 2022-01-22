@@ -106,6 +106,10 @@ std::list<SVD<value_type>> svd_lapacke_dgesvd(size_t nrows, size_t ncols, const 
 
 #endif
 
+#ifdef MOLPRO
+extern "C" int dsyev_c(char, char, int, double*, int, double*);
+#endif
+
 /**
  * A wrapper function for lapacke_dsyev (linear eigensystem solver) from the lapack C interface (lapacke.h).
  * @param[in] matrix the input matrix (will not be altered!). Must be square. Must be dimension*dimension elements long.
@@ -142,8 +146,13 @@ int eigensolver_lapacke_dsyev(const std::vector<double>& matrix, std::vector<dou
   lapack_int order = dimension;
 
   // call to lapack
+#ifdef MOLPRO
+  status = dsyev_c(compute_eigenvalues_eigenvectors, store_lower_triangle, order, eigenvectors.data(),
+                   leading_dimension, eigenvalues.data());
+#else
   status = LAPACKE_dsyev(LAPACK_COL_MAJOR, compute_eigenvalues_eigenvectors, store_lower_triangle, order,
                          eigenvectors.data(), leading_dimension, eigenvalues.data());
+#endif
 
   return status;
 }

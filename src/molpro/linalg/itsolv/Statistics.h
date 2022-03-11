@@ -62,8 +62,7 @@ inline std::ostream& operator<<(std::ostream& o, const Statistics& statistics) {
   o << statistics.rq_ops << " ";
   o << statistics.qq_ops << " ";
   o << statistics.rp_ops << " ";
-  o << statistics.qp_ops << " ";
-  o << "\b\b";
+  o << statistics.qp_ops;
 
   return o;
 }

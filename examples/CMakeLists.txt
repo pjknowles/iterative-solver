@@ -3,6 +3,7 @@ if (FORTRAN
         )
     set(ITERATIVESOLVER_FORTRAN_EXAMPLES
 #            LinearEigensystemExampleF-Pspace-adaptive.F90
+            LinearEigensystemExampleF-Pspace.F90
             LinearEquationsExampleF.F90
             )
 endif ()

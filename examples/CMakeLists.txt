@@ -4,6 +4,7 @@ if (FORTRAN
     set(ITERATIVESOLVER_FORTRAN_EXAMPLES
 #            LinearEigensystemExampleF-Pspace-adaptive.F90
             LinearEquationsExampleF.F90
+            OptimizeExampleF.F90
             )
 endif ()
 set(EXAMPLES

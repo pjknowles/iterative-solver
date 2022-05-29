@@ -5,7 +5,8 @@ MODULE Iterative_Solver
     PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize_Ranges
     PUBLIC :: Iterative_Solver_DIIS_Initialize, Iterative_Solver_Linear_Equations_Initialize
     PUBLIC :: Iterative_Solver_Optimize_Initialize
-    PUBLIC :: Iterative_Solver_Add_Value, Iterative_Solver_End_Iteration
+    PRIVATE :: Iterative_Solver_Add_Value
+    PUBLIC :: Iterative_Solver_End_Iteration
     PUBLIC :: Iterative_Solver_Add_Vector
     PUBLIC :: Iterative_Solver_Solution
     PUBLIC :: Iterative_Solver_Add_P, Iterative_Solver_Suggest_P
@@ -37,7 +38,29 @@ MODULE Iterative_Solver
         MODULE PROCEDURE Iterative_Solver_End_Iteration1, Iterative_Solver_End_Iteration2
     END INTERFACE Iterative_Solver_End_Iteration
 
+    type, abstract, public :: Iterative_Solver_Problem
+    contains
+        procedure, pass :: diagonals =>Iterative_Solver_diagonals
+        procedure, pass :: precondition =>Iterative_Solver_precondition
+        !        procedure(Iterative_Solver_residual), deferred, pass :: residual
+        !        procedure(Iterative_Solver_action), deferred, pass :: action
+    end type Iterative_Solver_Problem
+
 CONTAINS
+
+    logical function Iterative_Solver_diagonals(this, d)
+        class(Iterative_Solver_Problem), intent(in) :: this
+        double precision, intent(inout), dimension(:) :: d
+        Iterative_Solver_diagonals = .false.
+    end function Iterative_Solver_diagonals
+
+    subroutine Iterative_Solver_precondition(this, action, shift, diagonals)
+        class(Iterative_Solver_Problem), intent(in) :: this
+        double precision, intent(inout), dimension(:) :: action
+        double precision, intent(in) :: shift
+        double precision, intent(in), dimension(:) :: diagonals
+    end subroutine Iterative_Solver_precondition
+
 
     FUNCTION mpicomm_compute()
         INTEGER(KIND = mpicomm_kind) :: mpicomm_compute
@@ -415,6 +438,7 @@ CONTAINS
         CALL IterativeSolverFinalize
     END SUBROUTINE Iterative_Solver_Finalize
 
+    !> \private ! obsolescent
     !> \brief Take a current solution, value and residual, add it to the expansion set, and return working-set residual.
     !> \param value On input, the current objective function value.
     !> \param parameters On input, the current solution or expansion vector. On exit, undefined.
@@ -423,8 +447,9 @@ CONTAINS
     !> \param synchronize Whether to synchronize any distributed storage of parameters and action before return.
     !>        Unnecessary if the client preconditioner is diagonal, but otherwise should be done.
     !>        The default is the safe .TRUE. but can be .FALSE. if appropriate.
-    !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
-    !> the subsequent call to Iterative_Solver_End_Iteration()
+    !> \return whether it is expected that the client should precondition the returned residual, before
+    !> the subsequent call to Iterative_Solver_End_Iteration(). .FALSE. is returned when the solver
+    !> has decided to line-search rather than take a quasi-Newton step.
     FUNCTION Iterative_Solver_Add_Value(value, parameters, action, synchronize)
         USE iso_c_binding
         LOGICAL :: Iterative_Solver_Add_Value
@@ -461,15 +486,19 @@ CONTAINS
     !> \param synchronize Whether to synchronize any distributed storage of parameters and action before return. Unnecessary if the
     !> client preconditioner is diagonal, but otherwise should be done. The default is the safe .TRUE. but can be .FALSE. if
     !> appropriate.
-    !> \return whether it is expected that the client should make an update, based on the returned parameters and residual, before
-    !> the subsequent call to Iterative_Solver_End_Iteration()
+    !> \param value The value of the objective function for parameters. Used only in non-linear optimization.
+    !> \return the size of the working set for the next iteration. The client is expected to apply any preconditioner to this
+    !> number of vectors in \ref action before
+    !> the subsequent call to Iterative_Solver_End_Iteration().
+    !> In non-linear optimisation, the special value -1 can also be returned, indicating that preconditioning should not be carried out on action.
 
-    FUNCTION Iterative_Solver_Add_Vector(parameters, action, synchronize)
+    FUNCTION Iterative_Solver_Add_Vector(parameters, action, synchronize, value)
         USE iso_c_binding
         INTEGER :: Iterative_Solver_Add_Vector
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: action
+        DOUBLE PRECISION, DIMENSION(..), INTENT(inout) :: parameters
+        DOUBLE PRECISION, DIMENSION(..), INTENT(inout) :: action
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
+        DOUBLE PRECISION, OPTIONAL :: value
         INTERFACE
             FUNCTION Add_Vector_C(buffer_size, parameters, action, lsync) &
                     BIND(C, name = 'IterativeSolverAddVector')
@@ -481,23 +510,42 @@ CONTAINS
                 INTEGER(c_int), INTENT(in), VALUE :: lsync
             END FUNCTION Add_Vector_C
         END INTERFACE
+        INTERFACE
+            FUNCTION Iterative_Solver_Add_Value_C(value, parameters, action, lsync) &
+              BIND(C, name = 'IterativeSolverAddValue')
+                USE iso_c_binding
+                INTEGER(c_size_t) Iterative_Solver_Add_Value_C
+                REAL(c_double), VALUE, INTENT(in) :: value
+                REAL(c_double), DIMENSION(*), INTENT(inout) :: parameters
+                REAL(c_double), DIMENSION(*), INTENT(inout) :: action
+                INTEGER(c_int), INTENT(in), VALUE :: lsync
+            END FUNCTION Iterative_Solver_Add_Value_C
+        END INTERFACE
         DOUBLE PRECISION, DIMENSION(0) :: pdummy
         INTEGER(c_int) :: lsyncC
         lsyncC = 1
         IF (PRESENT(synchronize)) THEN
             IF (.NOT. synchronize) lsyncC = 0
         END IF
-        Iterative_Solver_Add_Vector = int(&
-            Add_Vector_C(int(ubound(parameters, 2) - lbound(parameters, 2) + 1, c_size_t), &
+        if (PRESENT(value)) THEN
+            Iterative_Solver_Add_Vector = Iterative_Solver_Add_Value_C(value, parameters, action, lsyncC)
+        ELSE
+            Iterative_Solver_Add_Vector = int(&
+              Add_Vector_C(int(ubound(parameters, 2) - lbound(parameters, 2) + 1, c_size_t), &
                 parameters, action, lsyncC))
+        END IF
     END FUNCTION Iterative_Solver_Add_Vector
     !
+    !> Calculate the current solution
     SUBROUTINE Iterative_Solver_Solution(roots, parameters, action, synchronize)
         USE iso_c_binding
         INTEGER, INTENT(in), DIMENSION(:) :: roots  !< Array containing root indices
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: action
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters !< On exit, the solutions corresponding to \ref roots. The second dimension must be at least as large as size(roots).
+        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: action !< On exit, the residuals corresponding to \ref roots. The second dimension must be at least as large as size(roots).
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
+        !< \param synchronize Whether to synchronize any distributed storage of parameters and action before return.
+        !<        Unnecessary if the client preconditioner is diagonal, but otherwise should be done.
+        !<        The default is the safe .TRUE. but can be .FALSE. if appropriate.
         INTERFACE
             SUBROUTINE Solution_C(nroot, roots, parameters, action, lsync) &
                     BIND(C, name = 'IterativeSolverSolution')
@@ -717,6 +765,7 @@ CONTAINS
         !ALLOCATE (Iterative_Solver_Working_Set_Eigenvalues(int(working_set_size, c_size_t)))
         CALL IterativeSolverWorkingSetEigenvalues(Iterative_Solver_Working_Set_Eigenvalues)
     END FUNCTION Iterative_Solver_Working_Set_Eigenvalues
+    !> @private
     !> @brief Convert from Fortran string to C string
     SUBROUTINE c_string_from_f(fstring, cstring)
         CHARACTER(kind = c_char), DIMENSION(*) :: cstring !< A C char[] big enough to hold the result. No checks are made for overflow.

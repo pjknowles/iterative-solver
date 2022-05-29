@@ -27,7 +27,7 @@ function test_OptimizeF(matrix, n) BIND(C)
     write (6,*) 'c ',c
     write (6,*) 'value ',value
     write (6,*) 'g ',g
-    if(Iterative_Solver_Add_Value(value, c, g)) then
+    if(Iterative_Solver_Add_Vector(c, g, value=value).gt.0) then
       do j = 1, n
         g(j) = g(j) / matrix(j, j)
       end do

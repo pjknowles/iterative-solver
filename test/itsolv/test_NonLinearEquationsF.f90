@@ -24,7 +24,7 @@ function test_OptimizeF(matrix, n) BIND(C)
   do i = 1, 1000
     g = matmul(matrix, c - 1)
     value = 0.5d0 * dot_product(g, c - 1)
-    if(Iterative_Solver_Add_Value(value, c, g)) then
+    if(Iterative_Solver_Add_Vector(c, g, value = value).GT.0) then
       do j = 1, n
         g(j) = g(j) / matrix(j, j)
       end do

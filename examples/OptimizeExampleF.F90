@@ -42,7 +42,7 @@ PROGRAM QuasiNewton_Example
     write (6, *) 'function value ', e
     write (6, *) 'c ', c
     write (6, *) 'g ', g
-    IF (Iterative_Solver_Add_Value(e, c, g)) THEN
+    IF (Iterative_Solver_Add_Vector(c, g, value = e).gt.0) THEN
       if (forced) then
         g = g / [(m(j, j), j = 1, n)]
       else

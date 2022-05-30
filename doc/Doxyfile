@@ -1,5 +1,6 @@
 PROJECT_NAME           = @PROJECT_NAME@
 INPUT                  = @DEPENDENCYMANAGERDOCS_SOURCES@
+EXCLUDE                = @CMAKE_CURRENT_SOURCE_DIR@/../src/molpro/linalg/array/ghc
 EXTRACT_ALL            = YES
 MACRO_EXPANSION        = YES
 TAGFILES               = "@DEPENDENCYMANAGERDOCS_profiler_TAG_FILE@=@DEPENDENCYMANAGERDOCS_profiler_DOC_URL@"

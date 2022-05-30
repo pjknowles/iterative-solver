@@ -532,8 +532,8 @@ CONTAINS
     FUNCTION Iterative_Solver_Add_Vector(parameters, action, synchronize, value)
         USE iso_c_binding
         INTEGER :: Iterative_Solver_Add_Vector
-        DOUBLE PRECISION, DIMENSION(..), INTENT(inout) :: parameters
-        DOUBLE PRECISION, DIMENSION(..), INTENT(inout) :: action
+        DOUBLE PRECISION, DIMENSION(..), INTENT(inout), target :: parameters
+        DOUBLE PRECISION, DIMENSION(..), INTENT(inout), target :: action
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
         DOUBLE PRECISION, OPTIONAL :: value
         INTERFACE
@@ -559,17 +559,20 @@ CONTAINS
             END FUNCTION Iterative_Solver_Add_Value_C
         END INTERFACE
         DOUBLE PRECISION, DIMENSION(0) :: pdummy
+        double precision, dimension(:), pointer :: pp, pa
         INTEGER(c_int) :: lsyncC
         lsyncC = 1
         IF (PRESENT(synchronize)) THEN
             IF (.NOT. synchronize) lsyncC = 0
         END IF
+        call c_f_pointer(c_loc(parameters),pp,[1])
+        call c_f_pointer(c_loc(action),pa,[1])
         if (PRESENT(value)) THEN
-            Iterative_Solver_Add_Vector = Iterative_Solver_Add_Value_C(value, parameters, action, lsyncC)
+            Iterative_Solver_Add_Vector = Iterative_Solver_Add_Value_C(value, pp, pa, lsyncC)
         ELSE
             Iterative_Solver_Add_Vector = int(&
               Add_Vector_C(int(ubound(parameters, 2) - lbound(parameters, 2) + 1, c_size_t), &
-                parameters, action, lsyncC))
+                pp, pa, lsyncC))
         END IF
     END FUNCTION Iterative_Solver_Add_Vector
     !
@@ -577,8 +580,8 @@ CONTAINS
     SUBROUTINE Iterative_Solver_Solution(roots, parameters, action, synchronize)
         USE iso_c_binding
         INTEGER, INTENT(in), DIMENSION(:) :: roots  !< Array containing root indices
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: parameters !< On exit, the solutions corresponding to \ref roots. The second dimension must be at least as large as size(roots).
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: action !< On exit, the residuals corresponding to \ref roots. The second dimension must be at least as large as size(roots).
+        DOUBLE PRECISION, DIMENSION(..), INTENT(inout), TARGET :: parameters !< On exit, the solutions corresponding to \ref roots. The second dimension must be at least as large as size(roots).
+        DOUBLE PRECISION, DIMENSION(..), INTENT(inout), TARGET :: action !< On exit, the residuals corresponding to \ref roots. The second dimension must be at least as large as size(roots).
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
         !< \param synchronize Whether to synchronize any distributed storage of parameters and action before return.
         !<        Unnecessary if the client preconditioner is diagonal, but otherwise should be done.
@@ -597,6 +600,7 @@ CONTAINS
         INTEGER(c_int), DIMENSION(SIZE(roots)) :: rootsC
         INTEGER(c_int) :: nroot
         INTEGER(c_int) :: lsyncC
+        double precision, dimension(:), pointer :: pp, pa
         lsyncC = 1
         IF (PRESENT(synchronize)) THEN
             IF (.NOT. synchronize) lsyncC = 0
@@ -605,7 +609,9 @@ CONTAINS
         DO i = 1, size(roots)
             rootsC(i) = INT(roots(i)-1, kind = c_int)
         ENDDO
-        call Solution_C(nroot, rootsC, parameters, action, lsyncC)
+        call c_f_pointer(c_loc(parameters),pp,[1])
+        call c_f_pointer(c_loc(action),pa,[1])
+        call Solution_C(nroot, rootsC, pp, pa, lsyncC)
     END SUBROUTINE
     !
     !>@brief For most methods, does nothing; for Optimize it is required.
@@ -618,8 +624,8 @@ CONTAINS
     FUNCTION Iterative_Solver_End_Iteration(solution, residual, synchronize)
         USE iso_c_binding
         INTEGER :: Iterative_Solver_End_Iteration1
-        DOUBLE PRECISION, DIMENSION(..), INTENT(inout) :: solution
-        DOUBLE PRECISION, DIMENSION(..), INTENT(inout) :: residual
+        DOUBLE PRECISION, DIMENSION(..), INTENT(inout), TARGET :: solution
+        DOUBLE PRECISION, DIMENSION(..), INTENT(inout), TARGET :: residual
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
     INTERFACE
             FUNCTION Iterative_Solver_End_Iteration_C(buffer_size, solution, residual, lsync) &
@@ -634,6 +640,9 @@ CONTAINS
         END INTERFACE
         INTEGER(c_int) :: lsyncC
         INTEGER(c_size_t) :: buffer_sizeC
+        double precision, dimension(:), pointer :: pp, pa
+        call c_f_pointer(c_loc(solution),pp,[1])
+        call c_f_pointer(c_loc(residual),pa,[1])
         buffer_sizeC = 1
         if (rank(solution).gt.1) buffer_sizeC = (ubound(solution,2)-lbound(solution,2)+1)
         lsyncC = 1
@@ -642,7 +651,7 @@ CONTAINS
         END IF
         Iterative_Solver_End_Iteration = int(Iterative_Solver_End_Iteration_C( &
             buffer_sizeC, &
-            solution, residual, lsyncC))
+            pp, pa, lsyncC))
     END FUNCTION Iterative_Solver_End_Iteration
 
 

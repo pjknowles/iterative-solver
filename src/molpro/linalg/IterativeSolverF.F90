@@ -34,10 +34,6 @@ MODULE Iterative_Solver
         END FUNCTION mpicomm_global
     END INTERFACE
 
-    INTERFACE Iterative_Solver_End_Iteration
-        MODULE PROCEDURE Iterative_Solver_End_Iteration1, Iterative_Solver_End_Iteration2
-    END INTERFACE Iterative_Solver_End_Iteration
-
     type, abstract, public :: Iterative_Solver_Problem
     contains
         procedure, pass :: diagonals =>Iterative_Solver_diagonals
@@ -578,13 +574,12 @@ CONTAINS
     !> \param synchronize Whether to synchronize any distributed storage of parameters before return.
     !>        The default is the safe .TRUE. but can be .FALSE. if appropriate.
     !> \return The size of the working set
-    FUNCTION Iterative_Solver_End_Iteration1(solution, residual, synchronize, buffer_size)
+    FUNCTION Iterative_Solver_End_Iteration(solution, residual, synchronize)
         USE iso_c_binding
         INTEGER :: Iterative_Solver_End_Iteration1
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: solution
-        DOUBLE PRECISION, DIMENSION(*), INTENT(inout) :: residual
+        DOUBLE PRECISION, DIMENSION(..), INTENT(inout) :: solution
+        DOUBLE PRECISION, DIMENSION(..), INTENT(inout) :: residual
         LOGICAL, INTENT(in), OPTIONAL :: synchronize
-        INTEGER, INTENT(in), OPTIONAL :: buffer_size
     INTERFACE
             FUNCTION Iterative_Solver_End_Iteration_C(buffer_size, solution, residual, lsync) &
                 BIND(C, name = 'IterativeSolverEndIteration')
@@ -599,27 +594,15 @@ CONTAINS
         INTEGER(c_int) :: lsyncC
         INTEGER(c_size_t) :: buffer_sizeC
         buffer_sizeC = 1
-        IF (PRESENT(buffer_size)) buffer_sizeC = buffer_size
+        if (rank(solution).gt.1) buffer_sizeC = (ubound(solution,2)-lbound(solution,2)+1)
         lsyncC = 1
         IF (PRESENT(synchronize)) THEN
             IF (.NOT. synchronize) lsyncC = 0
         END IF
-        Iterative_Solver_End_Iteration1 = int(Iterative_Solver_End_Iteration_C( &
+        Iterative_Solver_End_Iteration = int(Iterative_Solver_End_Iteration_C( &
             buffer_sizeC, &
             solution, residual, lsyncC))
-    END FUNCTION Iterative_Solver_End_Iteration1
-
-    FUNCTION Iterative_Solver_End_Iteration2(solution, residual, synchronize)
-        USE iso_c_binding
-        INTEGER :: Iterative_Solver_End_Iteration2
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: solution
-        DOUBLE PRECISION, DIMENSION(:,:), INTENT(inout) :: residual
-        LOGICAL, INTENT(in), OPTIONAL :: synchronize
-        Iterative_Solver_End_Iteration2 = Iterative_Solver_End_Iteration1( &
-            solution, residual, synchronize, &
-        buffer_size = ubound(solution, 2) - lbound(solution, 2) + 1 &
-        )
-    END FUNCTION Iterative_Solver_End_Iteration2
+    END FUNCTION Iterative_Solver_End_Iteration
 
 
     !> \brief add P-space vectors to the expansion set, and return new solution.

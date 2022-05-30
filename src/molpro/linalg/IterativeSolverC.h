@@ -6,20 +6,21 @@
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t* range_begin,
                                                            size_t* range_end, double thresh, double thresh_value,
                                                            int hermitian, int verbosity, const char* fname,
-                                                           int64_t fcomm, const char* algorithm);
+                                                           int64_t fcomm, const char* algorithm, const char* options);
 
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t* range_begin, size_t* range_end,
                                                          const double* rhs, double aughes, double thresh,
                                                          double thresh_value, int hermitian, int verbosity,
-                                                         const char* fname, int64_t fcomm, const char* algorithm);
+                                                         const char* fname, int64_t fcomm, const char* algorithm,
+                                                         const char* options);
 
 extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t* range_begin, size_t* range_end,
                                                             double thresh, int verbosity, const char* fname,
-                                                            int64_t fcomm, const char* algorithm);
+                                                            int64_t fcomm, const char* algorithm, const char* options);
 
 extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin, size_t* range_end, double thresh,
                                                   double thresh_value, int verbosity, int minimize, const char* fname,
-                                                  int64_t fcomm, const char* algorithm);
+                                                  int64_t fcomm, const char* algorithm, const char* options);
 
 extern "C" void IterativeSolverFinalize();
 

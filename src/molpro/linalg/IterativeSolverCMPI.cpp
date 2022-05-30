@@ -160,7 +160,7 @@ void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& 
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t* range_begin,
                                                            size_t* range_end, double thresh, double thresh_value,
                                                            int hermitian, int verbosity, const char* fname,
-                                                           int64_t fcomm, const char* algorithm) {
+                                                           int64_t fcomm, const char* algorithm, const char* options) {
   std::shared_ptr<Profiler> profiler = nullptr;
   profiler = molpro::Profiler::single("MainProfiler");
   std::string pname(fname);
@@ -195,7 +195,8 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nro
 extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t* range_begin, size_t* range_end,
                                                          const double* rhs, double aughes, double thresh,
                                                          double thresh_value, int hermitian, int verbosity,
-                                                         const char* fname, int64_t fcomm, const char* algorithm) {
+                                                         const char* fname, int64_t fcomm, const char* algorithm,
+                                                         const char* options) {
   std::shared_ptr<Profiler> profiler = nullptr;
   std::string pname(fname);
   MPI_Comm comm = MPI_Comm_f2c(fcomm);
@@ -203,7 +204,7 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
     profiler = Profiler::single(pname);
   }
   instances.emplace(
-      Instance{molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector, Pvector>(algorithm, "")
+      Instance{molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector, Pvector>(algorithm, options)
                ,
                profiler, n, comm});
   auto& instance = instances.top();
@@ -226,7 +227,7 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
 
 extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t* range_begin, size_t* range_end,
                                                             double thresh, int verbosity, const char* fname,
-                                                            int64_t fcomm, const char* algorithm) {
+                                                            int64_t fcomm, const char* algorithm, const char* options) {
   std::shared_ptr<Profiler> profiler = nullptr;
   std::string pname(fname);
   MPI_Comm comm = MPI_Comm_f2c(fcomm);
@@ -234,7 +235,7 @@ extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t* ra
     profiler = Profiler::single(pname);
   }
   instances.emplace(Instance{
-      molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector, Pvector>(algorithm, ""), profiler, n, comm});
+      molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector, Pvector>(algorithm, options), profiler, n, comm});
   auto& instance = instances.top();
   instance.solver->set_convergence_threshold(thresh);
   // instance.solver->m_verbosity = verbosity;
@@ -243,7 +244,7 @@ extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t* ra
 
 extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin, size_t* range_end, double thresh,
                                                   double thresh_value, int verbosity, int minimize, const char* fname,
-                                                  int64_t fcomm, const char* algorithm) {
+                                                  int64_t fcomm, const char* algorithm, const char* options) {
   std::shared_ptr<Profiler> profiler = nullptr;
   std::string pname(fname);
   MPI_Comm comm = MPI_Comm_f2c(fcomm);
@@ -251,7 +252,7 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
     profiler = Profiler::single(pname);
   }
   instances.emplace(
-      Instance{molpro::linalg::itsolv::create_Optimize<Rvector, Qvector, Pvector>(algorithm, ""), profiler, n, comm});
+      Instance{molpro::linalg::itsolv::create_Optimize<Rvector, Qvector, Pvector>(algorithm, options), profiler, n, comm});
   auto& instance = instances.top();
   instance.solver->set_n_roots(1);
   instance.solver->set_convergence_threshold(thresh);

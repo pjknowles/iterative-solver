@@ -74,7 +74,7 @@ CONTAINS
     !> Example of simplest use: @include LinearEigensystemExampleF.F90
     !> Example including use of P space: @include LinearEigensystemExampleF-Pspace-mpi.F90
     SUBROUTINE Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, thresh_value, hermitian, &
-        verbosity, pname, mpicomm, algorithm, range)
+        verbosity, pname, mpicomm, algorithm, range, options)
         INTEGER, INTENT(in) :: nq !< dimension of matrix
         INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< Convergence threshold
@@ -86,9 +86,10 @@ CONTAINS
         INTEGER(KIND=mpicomm_kind), INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
         CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm, eg Davidson
         INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
+        CHARACTER(*), INTENT(in), OPTIONAL :: options !< key1=value1, key2=value1,... to specify arbitrary options
         INTERFACE
             SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC(nq, nroot, range_begin, range_end, thresh, thresh_value, &
-                    hermitian, verbosity, pname, mpicomm, algorithm &
+                    hermitian, verbosity, pname, mpicomm, algorithm, options &
                 ) BIND(C, name = 'IterativeSolverLinearEigensystemInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
@@ -100,6 +101,7 @@ CONTAINS
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
                 INTEGER(C_int64_t), INTENT(in), VALUE :: mpicomm
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: algorithm
+                CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: options
             END SUBROUTINE Iterative_Solver_Linear_Eigensystem_InitializeC
         END INTERFACE
         INTEGER(c_size_t) :: m_range_begin, m_range_end
@@ -110,6 +112,7 @@ CONTAINS
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: mpicommC
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
+        CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: optionsC
         verbosityC = 0
         threshC = 1d-10
         thresh_valueC = 1d50
@@ -152,9 +155,16 @@ CONTAINS
         ELSE
             mpicommC = mpicomm_compute()
         ENDIF
+        IF (PRESENT(options)) THEN
+            ALLOCATE(optionsC(LEN(options) + 1))
+            CALL c_string_from_f(options, optionsC)
+        ELSE
+            ALLOCATE(optionsC(1))
+            optionsC(1) = c_null_char
+        ENDIF
         CALL Iterative_Solver_Linear_Eigensystem_InitializeC(m_nq, m_nroot, m_range_begin, m_range_end, &
                 threshC, thresh_valueC, &
-                hermitianC, verbosityC, pnameC, mpicommC, algorithmC)
+                hermitianC, verbosityC, pnameC, mpicommC, algorithmC, optionsC)
         IF (PRESENT(range)) THEN
             range(1) = int(m_range_begin)
             range(2) = int(m_range_end)
@@ -165,7 +175,7 @@ CONTAINS
     !> Example of simplest use: @include LinearEquationsExampleF.F90
     !! Example including use of P space: include LinearEquationsExampleF-Pspace.F90
     SUBROUTINE Iterative_Solver_Linear_Equations_Initialize(nq, nroot, rhs, augmented_hessian, thresh, thresh_value, &
-        hermitian, verbosity, pname, mpicomm, algorithm, range)
+        hermitian, verbosity, pname, mpicomm, algorithm, range, options)
         INTEGER, INTENT(in) :: nq !< dimension of matrix
         INTEGER, INTENT(in) :: nroot !< number of eigensolutions desired
         DOUBLE PRECISION, INTENT(in), DIMENSION(nq, nroot) :: rhs !< the constant right-hand-side of each equation system
@@ -181,9 +191,10 @@ CONTAINS
         INTEGER, INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
         CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
         INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
+        CHARACTER(*), INTENT(in), OPTIONAL :: options !< key1=value1, key2=value1,... to specify arbitrary options
         INTERFACE
             SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC(nq, nroot, range_begin, range_end, rhs, &
-                    augmented_hessian, thresh, thresh_value, hermitian, verbosity, pname, mpicomm, algorithm) &
+                    augmented_hessian, thresh, thresh_value, hermitian, verbosity, pname, mpicomm, algorithm, options) &
                     BIND(C, name = 'IterativeSolverLinearEquationsInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
@@ -198,6 +209,7 @@ CONTAINS
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
                 INTEGER(C_int64_t), INTENT(in), VALUE :: mpicomm
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: algorithm
+                CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: options
             END SUBROUTINE Iterative_Solver_Linear_Equations_InitializeC
         END INTERFACE
         INTEGER(c_size_t) :: m_range_begin, m_range_end
@@ -207,6 +219,7 @@ CONTAINS
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: mpicommC
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
+        CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: optionsC
         threshC = 1d-10
         thresh_valueC = 1d50
         augmented_hessianC = 0d0
@@ -252,9 +265,16 @@ CONTAINS
         ELSE
             mpicommC = mpicomm_compute()
         ENDIF
+        IF (PRESENT(options)) THEN
+            ALLOCATE(optionsC(LEN(options) + 1))
+            CALL c_string_from_f(options, optionsC)
+        ELSE
+            ALLOCATE(optionsC(1))
+            optionsC(1) = c_null_char
+        ENDIF
         CALL Iterative_Solver_Linear_Equations_InitializeC(m_nq, m_nroot, m_range_begin, m_range_end, &
                 rhs, augmented_hessianC, threshC, thresh_valueC, hermitianC, verbosityC, pnameC, mpicommC, &
-            algorithmC)
+            algorithmC, optionsC)
         IF (PRESENT(range)) THEN
             range(1) = int(m_range_begin)
             range(2) = int(m_range_end)
@@ -264,7 +284,8 @@ CONTAINS
     !> \brief Optimization
     !> through the L-BFGS or related methods.
     !> Example of simplest use: @include OptimizeExampleF.F90
-    SUBROUTINE Iterative_Solver_Optimize_Initialize(nq, thresh, verbosity, minimize, pname, mpicomm, algorithm, range, thresh_value)
+    SUBROUTINE Iterative_Solver_Optimize_Initialize(nq, thresh, verbosity, minimize, pname, mpicomm, algorithm, range, &
+      thresh_value, options)
         INTEGER, INTENT(in) :: nq !< dimension of parameter space
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
         INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
@@ -275,12 +296,13 @@ CONTAINS
         CHARACTER(*), INTENT(in), OPTIONAL :: algorithm !< keyword specifying optimization algorithm
         INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh_value !< convergence threshold for function value
+        CHARACTER(*), INTENT(in), OPTIONAL :: options !< key1=value1, key2=value1,... to specify arbitrary options
         INTERFACE
 !            extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin, size_t* range_end, double thresh,
 !                double thresh_value, int verbosity, int minimize, const char* fname,
 !                    int64_t fcomm, const char* algorithm);
             SUBROUTINE Iterative_Solver_Optimize_InitializeC(nq, range_begin, range_end, thresh, thresh_value, verbosity, &
-                    minimize, pname, mpicomm, algorithm) BIND(C, name = 'IterativeSolverOptimizeInitialize')
+                    minimize, pname, mpicomm, algorithm, options) BIND(C, name = 'IterativeSolverOptimizeInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
                 INTEGER(C_size_t), INTENT(inout) :: range_begin, range_end
@@ -290,6 +312,7 @@ CONTAINS
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: algorithm
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
                 INTEGER(C_int64_t), INTENT(in), VALUE :: mpicomm
+                CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: options
             END SUBROUTINE Iterative_Solver_Optimize_InitializeC
         END INTERFACE
         INTEGER(c_size_t) :: m_range_begin, m_range_end
@@ -298,6 +321,7 @@ CONTAINS
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: mpicommC
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
+        CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: optionsC
         IF (PRESENT(range)) THEN
             m_range_begin = INT(range(1), kind = c_size_t)
             m_range_end = INT(range(2), kind = c_size_t)
@@ -342,8 +366,15 @@ CONTAINS
         ELSE
             mpicommC = mpicomm_compute()
         ENDIF
+        IF (PRESENT(options)) THEN
+            ALLOCATE(optionsC(LEN(options) + 1))
+            CALL c_string_from_f(options, optionsC)
+        ELSE
+            ALLOCATE(optionsC(1))
+            optionsC(1) = c_null_char
+        ENDIF
         CALL Iterative_Solver_Optimize_InitializeC(m_nq, m_range_begin, m_range_end, threshC, thresh_valueC, verbosityC, &
-                minimizeC, pnameC, mpicommC, algorithmC)
+                minimizeC, pnameC, mpicommC, algorithmC, optionsC)
         IF (PRESENT(range)) THEN
             range(1) = int(m_range_begin)
             range(2) = int(m_range_end)
@@ -353,7 +384,7 @@ CONTAINS
     !> \brief Accelerated convergence of non-linear equations
     !> through the DIIS or related methods.
     !> Example of simplest use: @include DIISExampleF.F90
-    SUBROUTINE Iterative_Solver_DIIS_Initialize(nq, thresh, verbosity, pname, mpicomm, algorithm, range)
+    SUBROUTINE Iterative_Solver_DIIS_Initialize(nq, thresh, verbosity, pname, mpicomm, algorithm, range, options)
         INTEGER, INTENT(in) :: nq !< dimension of parameter space
         DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
         INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
@@ -362,9 +393,10 @@ CONTAINS
         INTEGER, INTENT(in), OPTIONAL :: mpicomm !< Profiler communicator
         CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm, eg DIIS
         INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
+        CHARACTER(*), INTENT(in), OPTIONAL :: options !< key1=value1, key2=value1,... to specify arbitrary options
         INTERFACE
             SUBROUTINE Iterative_Solver_DIIS_InitializeC(nq, range_begin, range_end, thresh, verbosity, &
-                    pname, mpicomm, algorithm) BIND(C, name = 'IterativeSolverNonLinearEquationsInitialize')
+                    pname, mpicomm, algorithm, options) BIND(C, name = 'IterativeSolverNonLinearEquationsInitialize')
                 USE iso_c_binding
                 INTEGER(C_size_t), INTENT(in), VALUE :: nq
                 INTEGER(C_size_t), INTENT(inout) :: range_begin, range_end
@@ -373,6 +405,7 @@ CONTAINS
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: pname
                 INTEGER(C_int64_t), INTENT(in), VALUE :: mpicomm
                 CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: algorithm
+                CHARACTER(kind = c_char), DIMENSION(*), INTENT(in) :: options
             END SUBROUTINE Iterative_Solver_DIIS_InitializeC
         END INTERFACE
         INTEGER(c_size_t) :: m_range_begin, m_range_end
@@ -381,6 +414,7 @@ CONTAINS
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: pnameC
         INTEGER(c_int64_t) :: mpicommC
         CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: algorithmC
+        CHARACTER(kind = c_char), DIMENSION(:), ALLOCATABLE :: optionsC
         IF (PRESENT(range)) THEN
             m_range_begin = INT(range(1), kind = c_size_t)
             m_range_end = INT(range(2), kind = c_size_t)
@@ -416,8 +450,15 @@ CONTAINS
         ELSE
             mpicommC = mpicomm_compute()
         ENDIF
+        IF (PRESENT(options)) THEN
+            ALLOCATE(optionsC(LEN(options) + 1))
+            CALL c_string_from_f(options, optionsC)
+        ELSE
+            ALLOCATE(optionsC(1))
+            optionsC(1) = c_null_char
+        ENDIF
         CALL Iterative_Solver_DIIS_InitializeC(m_nq, m_range_begin, m_range_end, threshC, verbosityC, &
-                pnameC, mpicommC, algorithm)
+                pnameC, mpicommC, algorithm, optionsC)
         IF (PRESENT(range)) THEN
             range(1) = int(m_range_begin)
             range(2) = int(m_range_end)

@@ -324,6 +324,7 @@ public:
   //! Reports the value convergence threshold
   virtual double convergence_threshold_value() const = 0;
   virtual void set_verbosity(Verbosity v) = 0;
+  virtual void set_verbosity(int v) = 0;
   virtual Verbosity get_verbosity() const = 0;
   virtual void set_max_iter(int n) = 0;
   virtual int get_max_iter() const = 0;

@@ -290,6 +290,15 @@ public:
   void set_convergence_threshold_value(double thresh) override { m_convergence_threshold_value = thresh; }
   double convergence_threshold_value() const override { return m_convergence_threshold_value; }
   void set_verbosity(Verbosity v) override { m_verbosity = v; }
+  void set_verbosity(int v) override {
+    m_verbosity = Verbosity::None;
+    if (v > 0)
+      m_verbosity = Verbosity::Summary;
+    if (v > 1)
+      m_verbosity = Verbosity::Iteration;
+    if (v > 2)
+      m_verbosity = Verbosity::Detailed;
+  }
   Verbosity get_verbosity() const override { return m_verbosity; }
   void set_max_iter(int n) override { m_max_iter = n; }
   int get_max_iter() const override { return m_max_iter; }

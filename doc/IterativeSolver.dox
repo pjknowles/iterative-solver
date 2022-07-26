@@ -3,7 +3,7 @@ namespace linalg{
 /*!
 @page TopicIterativeSolver Iterative solvers
 
-There are four types of systems that LinearAlgebra can solve:
+There are four types of systems that iterative-solver can solve:
    - Linear eigensystem
    - Linear equations
    - Non-linear equations

@@ -520,7 +520,7 @@ protected:
   std::vector<double> m_value_errors;                                    //!< value errors from the most recent solution
   std::vector<int> m_working_set;                                        //!< indices of roots in the working set
   size_t m_nroots{0};                     //!< number of roots the solver is searching for
-  double m_convergence_threshold{1.0e-9}; //!< residual norms less than this mark a converged solution
+  double m_convergence_threshold{1.0e-8}; //!< residual norms less than this mark a converged solution
   double m_convergence_threshold_value{
       std::numeric_limits<double>::max()};      //!< value changes less than this mark a converged solution
   std::shared_ptr<Statistics> m_stats;          //!< accumulates statistics of operations performed by the solver

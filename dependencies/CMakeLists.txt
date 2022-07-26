@@ -4,20 +4,22 @@
 include(FetchContent)
 FetchContent_Declare(
         dependency_manager
-        GIT_REPOSITORY https://gitlab.com/Molpro/dependency-manager.git
+        GIT_REPOSITORY https://github.com/molpro/dependency-manager.git
         GIT_TAG 0.2.0
 )
 FetchContent_MakeAvailable(dependency_manager)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" PARENT_SCOPE)
 
-DependencyManager_Declare(ppidd https://gitlab.com/molpro/ppidd.git)
+DependencyManager_Declare(ppidd https://github.com/molpro/ppidd.git)
 
-DependencyManager_Declare(Profiler https://gitlab.com/molpro/profiler.git)
+DependencyManager_Declare(Profiler https://github.com/molpro/profiler.git)
 
-DependencyManager_Declare(utilities https://gitlab.com/molpro/utilities.git)
+DependencyManager_Declare(utilities https://github.com/molpro/utilities.git)
 
 if (NOT PPIDD AND (MPI AND LINEARALGEBRA_ARRAY_GA))
     set(GA_RUNTIME "MPI_RMA" CACHE STRING "overwriting default for GA runtime protocol")
+    set(ENABLE_CXX OFF)
+    set(ENABLE_FORTRAN OFF)
     if (NOT TARGET ga::ga)
         find_program(ga-config ga-config)
         if (ga-config)
@@ -41,7 +43,7 @@ if (NOT PPIDD AND (MPI AND LINEARALGEBRA_ARRAY_GA))
             include(FetchContent)
             FetchContent_Declare(
                     ga
-                    GIT_REPOSITORY https://github.com/GlobalArrays/ga.git
+                    GIT_REPOSITORY https://github.com/molpro/ga.git
                     GIT_TAG 2518e23433385bfa3726d507b8cd0d7ed038021b
             )
             FetchContent_MakeAvailable(ga)

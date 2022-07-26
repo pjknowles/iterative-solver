@@ -35,7 +35,7 @@ if (NOT TARGET Eigen3::Eigen)
         add_library(Eigen3::Eigen ALIAS eigen)
     endif ()
 else ()
-    message(STATUS "LinearAlgebra: Eigen3::Eigen target already defined")
+    message(STATUS "iterative-solver: Eigen3::Eigen target already defined")
 endif ()
 
 foreach (t test_LinearEigensystem test_LinearEquations test_Optimize test_NonLinearEquations test_svd_system)

@@ -3,7 +3,7 @@ std::shared_ptr<molpro::Options> s_options;
 
 const std::shared_ptr<const molpro::Options> molpro::linalg::options() {
   if (s_options.get() == nullptr) {
-    s_options.reset(new molpro::Options("LINEARALGEBRA", ""));
+    s_options.reset(new molpro::Options("ITERATIVE-SOLVER", ""));
   }
   return s_options;
 }

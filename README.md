@@ -1,14 +1,17 @@
-Welcome to LinearAlgebra
-========================
+iterative-solver
+================
 
-[![pipeline status](https://gitlab.com/molpro/linearalgebra/badges/master/pipeline.svg)](https://gitlab.com/molpro/linearalgebra/-/commits/master)
-[![license](https://img.shields.io/badge/license-MIT-green.svg)](https://gitlab.com/molpro/linearalgebra/-/blob/master/LICENSE)
-[![license](https://img.shields.io/badge/documentation-blue.svg)](https://molpro.gitlab.io/linearalgebra/)
+[![example workflow](https://github.com/molpro/iterative-solver/actions/workflows/build-and-test/badge.svg)]
+
+[//]: # (&#40;https://github.com/molpro/iterative-solver/commits/master&#41;)
+[![license](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/molpro/iterative-solver/blob/master/LICENSE)
+
+[//]: # ([![license]&#40;https://img.shields.io/badge/documentation-blue.svg&#41;]&#40;https://molpro.gitlab.io/linearalgebra/&#41;)
 
 
 ## Overview
 
-LinearAlgebra is a part of Molpro's ecosystem. It implements iterative solvers for linear and non-linear problems and
+Implements iterative solvers for linear and non-linear problems and
 distributed arrays for HPC. The solvers are specialised to work with specific data types, but are also templated on the
 container allowing for easy integration into existing software.
 
@@ -31,11 +34,11 @@ CMake is used to build the library and it can integrate easily with other CMake 
 ```cmake
 include(FetchContent)
 FetchContent_Declare(
-        linearalgebra
-        GIT_REPOSITORY https://gitlab.com/molpro/linearalgebra.git
+        iterative-solver
+        GIT_REPOSITORY https://github.com/molpro/iterative-solver.git
         GIT_TAG ${COMMIT_HASH_OR_TAG_VALUE})
-FetchContent_MakeAvailable(linearalgebra)
-target_link_libraries(${YOUR_LIBRARY_NAME} PUBLIC molpro::LinearAlgebra)
+FetchContent_MakeAvailable(iterative-solver)
+target_link_libraries(${YOUR_LIBRARY_NAME} PUBLIC molpro::iterative-solver)
 ```
 
 ## Usage
@@ -77,7 +80,7 @@ More advanced users can copy and modify the code in `solve()` to tailor it for t
 
 In many programs there are special containers for storing the vectors and operating on them. This might be for efficiency reasons,
 e.g. exploiting symmetry of the problem, or for collecting metadata, e.g. memory usage and operation count. In either case,
-IterativeSolver is templated on container types to ease adaptation.
+The code is templated on container types to ease adaptation.
 
 To avoid the code-bloat of header only libraries all of the numerically intensive work is specialised for `double` and `std::complex<double>` types.
 This makes recompilation of IterativeSolver with different container types very fast.
@@ -102,22 +105,19 @@ restrictions on containers:
 * must have conforming element type (currently `double` and `std::complex<double>`, but this can be easily extended)
 
 ArrayHandler is an abstract class used by IterativeSolver to perform copy and linear algebra operations (`dot`, `axpy`). 
-LinearAlgebra provides implementations for Iterable containers (e.g. `std::vector`), distributed containers (e.g. `molpro::linalg::array::DistrArray`),
+iterative-solver provides implementations for Iterable containers (e.g. `std::vector`), distributed containers (e.g. `molpro::linalg::array::DistrArray`),
 and mapped containers (e.g. `std::map`). However, some users might need/want to provide their own implementations. 
 
 ## Citing
 
 Any publications resulting from this work should cite relevant papers in CITE.txt
 
-## Contributing
-
-This library is under active development and potential collaborators are welcome to contact
-Prof. Peter Knowles at Cardiff University.
-
 ## List of Contributors
 
-Prof. Peter Knowles
+Peter Knowles
 
 Marat Sibaev
 
 Iakov Polyak
+
+Rob Welch

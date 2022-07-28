@@ -4,6 +4,8 @@
 #include "util/fs.h"
 #include <molpro/linalg/array/DistrArrayDisk.h>
 #include <molpro/mpi.h>
+#include <fstream>
+#include <memory>
 
 using molpro::mpi::comm_global;
 

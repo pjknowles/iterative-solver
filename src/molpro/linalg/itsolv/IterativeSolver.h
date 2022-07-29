@@ -165,7 +165,7 @@ public:
  *
  * As well as through the interface, some behaviour (profiling, and tuning of BLAS operations)
  * is influenced by the contents of
- * a global molpro::Options object, which defaults to molpro::Options("LINEARALGEBRA", "").
+ * a global molpro::Options object, which defaults to molpro::Options("ITERATIVE-SOLVER", "").
  *
  * @tparam R container for "working-set" vectors. These are typically implemented in
  * memory, and are created by the client program. R vectors are never created inside

@@ -16,7 +16,7 @@ TEST(Profiler, default) {
     EXPECT_EQ(single->get_max_depth(), 0);
   }
   EXPECT_EQ(single->get_max_depth(), initial_depth);
-  molpro::linalg::set_options(molpro::Options("LINEARALGEBRA", std::string{"PROFILER_DEPTH=3, PROFILER_DOTGRAPH="} +
+  molpro::linalg::set_options(molpro::Options("ITERATIVE-SOLVER", std::string{"PROFILER_DEPTH=3, PROFILER_DOTGRAPH="} +
                                                                    dotgraph_file + ", PROFILER_THRESHOLD=0"));
   std::filesystem::remove(dotgraph_file);
 

@@ -30,10 +30,25 @@ template <class T>
 auto allocate(size_t n) {
   return std::make_unique<T>(n);
 }
+template <class T>
+auto allocatev(size_t n, size_t nvec) {
+  std::vector<T> result;
+  result.reserve(nvec);
+  for (size_t i; i < nvec; ++i)
+    result.emplace_back(n);
+  return result;
+}
 #ifdef LINEARALGEBRA_ARRAY_MPI3
 template <>
 auto allocate<array::DistrArrayMPI3>(size_t n) {
   auto result = std::make_unique<array::DistrArrayMPI3>(n, molpro::mpi::comm_global());
+  return result;
+}
+template <>
+auto allocatev<array::DistrArrayMPI3>(size_t n, size_t nvec) {
+  std::vector<array::DistrArrayMPI3> result;
+  for (size_t i; i < nvec; ++i)
+    result.emplace_back(n, molpro::mpi::comm_global());
   return result;
 }
 #endif
@@ -41,6 +56,13 @@ auto allocate<array::DistrArrayMPI3>(size_t n) {
 template <>
 auto allocate<array::DistrArrayGA>(size_t n) {
   auto result = std::make_unique<array::DistrArrayGA>(n, GA_MPI_Comm());
+  return result;
+}
+template <>
+auto allocatev<array::DistrArrayGA>(size_t n, size_t nvec) {
+  std::vector<array::DistrArrayGA> result;
+  for (size_t i; i < nvec; ++i)
+    result.emplace_back(n, GA_MPI_Comm());
   return result;
 }
 #endif
@@ -55,6 +77,19 @@ auto allocate<array::DistrArrayHDF5>(size_t n) {
   auto result = std::make_unique<array::DistrArrayHDF5>(handle, n);
   return result;
 }
+template <>
+auto allocatev<array::DistrArrayHDF5>(size_t n, size_t nvec) {
+  std::vector<array::DistrArrayHDF5> result;
+  for (size_t i = 0; i < nvec; ++i) {
+    auto handle = std::make_shared<array::util::PHDF5Handle>(
+        array::util::temp_phdf5_handle("benchmark", molpro::mpi::comm_global()));
+    handle->open_file(array::util::HDF5Handle::Access::read_write);
+    handle->open_group("/");
+    handle->close_file();
+    result.emplace_back(handle, n);
+  }
+  return result;
+}
 #endif
 
 template <class L = std::vector<double>, class R = L>
@@ -63,6 +98,8 @@ class ArrayBenchmark {
   double m_target_seconds;
   std::unique_ptr<L> m_bufferL;
   std::unique_ptr<R> m_bufferR;
+  std::vector<L> m_buffervL;
+  std::vector<R> m_buffervR;
   molpro::Profiler m_profiler;
   std::unique_ptr<array::ArrayHandler<L, R>> m_handler;
   bool m_profile_individual;
@@ -71,16 +108,25 @@ class ArrayBenchmark {
 public:
   size_t m_repeat;
   explicit ArrayBenchmark(std::string title, std::unique_ptr<array::ArrayHandler<L, R>> handler, size_t n = 10000000,
-                          bool profile_individual = false, double target_seconds = 1)
+                          size_t n_L = 1, size_t n_R = 1, bool profile_individual = false, double target_seconds = 1)
       : m_size(n), m_target_seconds(target_seconds), m_bufferL(allocate<L>(n)), m_bufferR(allocate<R>(n)),
-        m_profiler(title), m_handler(std::move(handler)), m_profile_individual(profile_individual),
-        m_mpi_size(molpro::mpi::size_global()), m_repeat(std::max(1, int(1e9 * m_target_seconds / m_size))) {}
+        m_buffervL(allocatev<L>(n, n_L)), m_buffervR(allocatev<R>(n, n_R)), m_profiler(title),
+        m_handler(std::move(handler)), m_profile_individual(profile_individual), m_mpi_size(molpro::mpi::size_global()),
+        m_repeat(std::max(1, int(1e9 * m_target_seconds / m_size))) {}
 
   void dot() {
     auto prof = m_profiler.push("dot");
     for (size_t i = 0; i < m_repeat; i++)
       m_handler->dot(*m_bufferL, *m_bufferR);
     prof += m_size * m_repeat / m_mpi_size;
+  }
+
+  void gemm_inner() {
+    auto prof = m_profiler.push("gemm_inner");
+    const size_t rep = std::max(size_t(1), m_repeat / m_buffervR.size() / m_buffervL.size());
+    for (size_t i = 0; i < rep; i++)
+    m_handler->gemm_inner(itsolv::cwrap(m_buffervL), itsolv::cwrap(m_buffervR));
+    prof += rep * m_size * m_buffervL.size() * m_buffervR.size() / m_mpi_size;
   }
 
   void axpy() {
@@ -137,6 +183,7 @@ public:
     copyout();
     dot();
     axpy();
+    gemm_inner();
   }
   molpro::Profiler& profiler() { return m_profiler; }
 
@@ -149,27 +196,27 @@ std::ostream& operator<<(std::ostream& os, ArrayBenchmark<L, R>& obj) {
 }
 
 template <class L = std::vector<double>, class R = L>
-ArrayBenchmark<L, R> ArrayBenchmarkIterable(std::string title, size_t n = 10000000, bool profile_individual = false,
-                                            double target_seconds = 1) {
-  return ArrayBenchmark<L, R>(title, std::make_unique<array::ArrayHandlerIterable<L, R>>(), n, profile_individual,
-                              target_seconds);
+ArrayBenchmark<L, R> ArrayBenchmarkIterable(std::string title, size_t n = 10000000, size_t n_L = 1, size_t n_R = 1,
+                                            bool profile_individual = false, double target_seconds = 1) {
+  return ArrayBenchmark<L, R>(title, std::make_unique<array::ArrayHandlerIterable<L, R>>(), n, n_L, n_R,
+                              profile_individual, target_seconds);
 }
 
 #ifdef LINEARALGEBRA_ARRAY_MPI3
 template <class L = array::DistrArrayMPI3, class R = L>
-ArrayBenchmark<L, R> ArrayBenchmarkDistributed(std::string title, size_t n = 10000000, bool profile_individual = false,
-                                               double target_seconds = 1) {
-  return ArrayBenchmark<L, R>(title, std::make_unique<array::ArrayHandlerDistr<L, R>>(), n, profile_individual,
-                              target_seconds);
+ArrayBenchmark<L, R> ArrayBenchmarkDistributed(std::string title, size_t n = 10000000, size_t n_L = 1, size_t n_R = 1,
+                                               bool profile_individual = false, double target_seconds = 1) {
+  return ArrayBenchmark<L, R>(title, std::make_unique<array::ArrayHandlerDistr<L, R>>(), n, n_L, n_R,
+                              profile_individual, target_seconds);
 }
 #endif
 
 #ifdef LINEARALGEBRA_ARRAY_HDF5
 template <class L = array::DistrArrayHDF5, class R = L>
-ArrayBenchmark<L, R> ArrayBenchmarkDDisk(std::string title, size_t n = 10000000, bool profile_individual = false,
-                                         double target_seconds = 1) {
-  return ArrayBenchmark<L, R>(title, std::make_unique<array::ArrayHandlerDDisk<L, R>>(), n, profile_individual,
-                              target_seconds);
+ArrayBenchmark<L, R> ArrayBenchmarkDDisk(std::string title, size_t n = 10000000, size_t n_L = 1, size_t n_R = 1,
+                                         bool profile_individual = false, double target_seconds = 1) {
+  return ArrayBenchmark<L, R>(title, std::make_unique<array::ArrayHandlerDDisk<L, R>>(), n, n_L, n_R,
+                              profile_individual, target_seconds);
 }
 #endif
 

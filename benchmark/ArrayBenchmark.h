@@ -1,12 +1,10 @@
 #ifndef LINEARALGEBRA_BENCHMARK_ARRAYBENCHMARK_H_
 #define LINEARALGEBRA_BENCHMARK_ARRAYBENCHMARK_H_
+#include <molpro/mpi.h>
 #ifdef HAVE_MPI_H
 #include <molpro/linalg/array/DistrArrayMPI3.h>
-#include <mpi.h>
 #endif
 #ifdef LINEARALGEBRA_ARRAY_GA
-#undef MPI_COMM_WORLD
-#define MPI_COMM_WORLD GA_MPI_Comm()
 #include <ga-mpi.h>
 #include <ga.h>
 #include <macdecls.h>
@@ -35,7 +33,7 @@ auto allocate(size_t n) {
 #ifdef LINEARALGEBRA_ARRAY_MPI3
 template <>
 auto allocate<array::DistrArrayMPI3>(size_t n) {
-  auto result = std::make_unique<array::DistrArrayMPI3>(n, MPI_COMM_WORLD);
+  auto result = std::make_unique<array::DistrArrayMPI3>(n, molpro::mpi::comm_global());
   return result;
 }
 #endif
@@ -49,7 +47,7 @@ auto allocate<array::DistrArrayGA>(size_t n) {
 #ifdef LINEARALGEBRA_ARRAY_HDF5
 template <>
 auto allocate<array::DistrArrayHDF5>(size_t n) {
-  auto handle = std::make_shared<array::util::PHDF5Handle>(array::util::temp_phdf5_handle("benchmark", MPI_COMM_WORLD));
+  auto handle = std::make_shared<array::util::PHDF5Handle>(array::util::temp_phdf5_handle("benchmark", molpro::mpi::comm_global()));
   handle->open_file(array::util::HDF5Handle::Access::read_write);
   handle->open_group("/");
   handle->close_file();
@@ -74,11 +72,8 @@ public:
   explicit ArrayBenchmark(std::string title, std::unique_ptr<array::ArrayHandler<L, R>> handler, size_t n = 10000000,
                           bool profile_individual = false, double target_seconds = 1)
       : m_size(n), m_target_seconds(target_seconds), m_bufferL(allocate<L>(n)), m_bufferR(allocate<R>(n)),
-        m_profiler(title), m_handler(std::move(handler)), m_profile_individual(profile_individual), m_mpi_size(1),
+        m_profiler(title), m_handler(std::move(handler)), m_profile_individual(profile_individual), m_mpi_size(molpro::mpi::size_global()),
         m_repeat(std::max(1, int(1e9 * m_target_seconds / m_size))) {
-#ifdef HAVE_MPI_H
-    MPI_Comm_size(MPI_COMM_WORLD, &m_mpi_size);
-#endif
   }
 
   void dot() {

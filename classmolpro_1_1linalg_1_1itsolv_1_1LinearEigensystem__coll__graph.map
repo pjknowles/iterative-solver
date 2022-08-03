@@ -1,0 +1,4 @@
+<map id="molpro::linalg::itsolv::LinearEigensystem&lt; R, Q, P &gt;" name="molpro::linalg::itsolv::LinearEigensystem&lt; R, Q, P &gt;">
+<area shape="rect" id="node1" title="Interface for a specific iterative solver, it can add special member functions or variables." alt="" coords="5,109,188,165"/>
+<area shape="rect" id="node2" href="$classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolver.html" title="Base class defining the interface common to all iterative solvers." alt="" coords="19,5,175,61"/>
+</map>

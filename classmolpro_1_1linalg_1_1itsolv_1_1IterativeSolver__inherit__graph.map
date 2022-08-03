@@ -1,0 +1,15 @@
+<map id="molpro::linalg::itsolv::IterativeSolver&lt; R, Q, P &gt;" name="molpro::linalg::itsolv::IterativeSolver&lt; R, Q, P &gt;">
+<area shape="rect" id="node1" title="Base class defining the interface common to all iterative solvers." alt="" coords="5,208,161,264"/>
+<area shape="rect" id="node2" href="$classmolpro_1_1linalg_1_1itsolv_1_1LinearEigensystem.html" title="Interface for a specific iterative solver, it can add special member functions or variables." alt="" coords="209,81,392,137"/>
+<area shape="rect" id="node6" href="$classmolpro_1_1linalg_1_1itsolv_1_1LinearEquations.html" title=" " alt="" coords="219,168,382,224"/>
+<area shape="rect" id="node9" href="$classmolpro_1_1linalg_1_1itsolv_1_1NonLinearEquations.html" title="Solves non&#45;linear system of equations using methods such as DIIS." alt="" coords="215,248,386,304"/>
+<area shape="rect" id="node10" href="$classmolpro_1_1linalg_1_1itsolv_1_1Optimize.html" title="Optimises to a stationary point using methods such as L&#45;BFGS." alt="" coords="219,329,382,370"/>
+<area shape="rect" id="node3" href="$classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolverTemplate.html" title=" " alt="" coords="440,56,651,141"/>
+<area shape="rect" id="node4" href="$classmolpro_1_1linalg_1_1itsolv_1_1LinearEigensystemDavidson.html" title="One specific implementation of LinearEigensystem using Davidson&#39;s algorithm with modifications to man..." alt="" coords="699,5,913,61"/>
+<area shape="rect" id="node5" href="$classmolpro_1_1linalg_1_1itsolv_1_1LinearEigensystemRSPT.html" title="One specific implementation of LinearEigensystem using Davidson&#39;s algorithm with modifications to man..." alt="" coords="713,85,899,141"/>
+<area shape="rect" id="node7" href="$classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolverTemplate.html" title=" " alt="" coords="440,165,651,251"/>
+<area shape="rect" id="node8" href="$classmolpro_1_1linalg_1_1itsolv_1_1LinearEquationsDavidson.html" title="Solves a system of linear equation, A x = b." alt="" coords="709,180,903,236"/>
+<area shape="rect" id="node11" href="$classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolverTemplate.html" title=" " alt="" coords="442,307,649,392"/>
+<area shape="rect" id="node12" href="$classmolpro_1_1linalg_1_1itsolv_1_1OptimizeBFGS.html" title="A class that optimises a function using a Quasi&#45;Newton or other method." alt="" coords="707,289,905,330"/>
+<area shape="rect" id="node13" href="$classmolpro_1_1linalg_1_1itsolv_1_1OptimizeSD.html" title="A class that optimises a function using a simple steepest&#45;descent method." alt="" coords="716,354,896,395"/>
+</map>

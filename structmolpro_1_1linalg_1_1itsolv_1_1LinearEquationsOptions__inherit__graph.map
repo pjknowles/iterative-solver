@@ -1,0 +1,5 @@
+<map id="molpro::linalg::itsolv::LinearEquationsOptions" name="molpro::linalg::itsolv::LinearEquationsOptions">
+<area shape="rect" id="node1" title=" " alt="" coords="36,95,220,136"/>
+<area shape="rect" id="node3" href="$structmolpro_1_1linalg_1_1itsolv_1_1LinearEquationsDavidsonOptions.html" title="Allows setting and getting of options for LinearEquationsDavidson instance via IterativeSolver base c..." alt="" coords="5,184,251,225"/>
+<area shape="rect" id="node2" href="$structmolpro_1_1linalg_1_1itsolv_1_1Options.html" title="Access point for different options in iterative solvers." alt="" coords="50,5,206,47"/>
+</map>

@@ -1,0 +1,8 @@
+<map id="molpro::linalg::itsolv::subspace::XSpace&lt; R, Q, P &gt;" name="molpro::linalg::itsolv::subspace::XSpace&lt; R, Q, P &gt;">
+<area shape="rect" id="node1" title=" " alt="" coords="305,144,480,200"/>
+<area shape="rect" id="node2" href="$classmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1IXSpace.html" title=" " alt="" coords="17,5,195,61"/>
+<area shape="rect" id="node3" href="$structmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1Dimensions.html" title="Stores partitioning of XSpace into P, Q and R blocks with sizes and offsets for each one." alt="" coords="18,86,194,127"/>
+<area shape="rect" id="node4" href="$classmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1DSpace.html" title=" " alt="" coords="12,151,200,193"/>
+<area shape="rect" id="node5" href="$classmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1PSpace.html" title=" " alt="" coords="5,217,207,258"/>
+<area shape="rect" id="node6" href="$structmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1QSpace.html" title=" " alt="" coords="18,283,194,339"/>
+</map>

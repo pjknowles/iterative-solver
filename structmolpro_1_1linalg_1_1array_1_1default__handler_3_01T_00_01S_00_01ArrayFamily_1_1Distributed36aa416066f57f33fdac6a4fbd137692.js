@@ -1,0 +1,4 @@
+var structmolpro_1_1linalg_1_1array_1_1default__handler_3_01T_00_01S_00_01ArrayFamily_1_1Distributed36aa416066f57f33fdac6a4fbd137692 =
+[
+    [ "value", "structmolpro_1_1linalg_1_1array_1_1default__handler_3_01T_00_01S_00_01ArrayFamily_1_1Distributed36aa416066f57f33fdac6a4fbd137692.html#add88cf6c11c49b82df633f3672ce078b", null ]
+];

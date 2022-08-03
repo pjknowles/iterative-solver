@@ -1,0 +1,4 @@
+<map id="molpro::linalg::array::DistrArrayGA" name="molpro::linalg::array::DistrArrayGA">
+<area shape="rect" id="node1" title="Distributed array which uses Global Arrays for managing the array buffer and RMA calls." alt="" coords="5,95,160,136"/>
+<area shape="rect" id="node2" href="$classmolpro_1_1linalg_1_1array_1_1DistrArray.html" title="Array distributed across many processes supporting remote&#45;memory&#45;access, access to process local buff..." alt="" coords="5,5,160,47"/>
+</map>

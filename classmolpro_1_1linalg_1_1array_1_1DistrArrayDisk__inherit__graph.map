@@ -1,0 +1,6 @@
+<map id="molpro::linalg::array::DistrArrayDisk" name="molpro::linalg::array::DistrArrayDisk">
+<area shape="rect" id="node1" title="Distributed array located primarily on disk." alt="" coords="95,95,249,136"/>
+<area shape="rect" id="node3" href="$classmolpro_1_1linalg_1_1array_1_1DistrArrayFile.html" title="Distributed array storing the buffer on disk using temporary local files." alt="" coords="5,184,160,225"/>
+<area shape="rect" id="node4" href="$classmolpro_1_1linalg_1_1array_1_1DistrArrayHDF5.html" title="Distributed array storing the buffer on disk using hdf5." alt="" coords="184,184,339,225"/>
+<area shape="rect" id="node2" href="$classmolpro_1_1linalg_1_1array_1_1DistrArray.html" title="Array distributed across many processes supporting remote&#45;memory&#45;access, access to process local buff..." alt="" coords="95,5,249,47"/>
+</map>

@@ -1,0 +1,4 @@
+<map id="molpro::linalg::itsolv::subspace::SubspaceSolverOptSD&lt; RT, QT, PT &gt;" name="molpro::linalg::itsolv::subspace::SubspaceSolverOptSD&lt; RT, QT, PT &gt;">
+<area shape="rect" id="node1" title="Solves subspace problem for minimisation using the Steepest Descent algorithm." alt="" coords="5,109,231,165"/>
+<area shape="rect" id="node2" href="$structmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1ISubspaceSolver.html" title="Manages solution of the subspace problem and storage of those solutions." alt="" coords="15,5,221,61"/>
+</map>

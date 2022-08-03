@@ -1,0 +1,5 @@
+<map id="molpro::linalg::array::DistrArraySpan" name="molpro::linalg::array::DistrArraySpan">
+<area shape="rect" id="node1" title=" " alt="" coords="107,109,261,151"/>
+<area shape="rect" id="node2" href="$classmolpro_1_1linalg_1_1array_1_1DistrArray.html" title="Array distributed across many processes supporting remote&#45;memory&#45;access, access to process local buff..." alt="" coords="5,5,160,47"/>
+<area shape="rect" id="node3" href="$classmolpro_1_1linalg_1_1array_1_1span_1_1Span.html" title=" " alt="" coords="184,5,387,47"/>
+</map>

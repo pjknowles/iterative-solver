@@ -1,0 +1,13 @@
+<map id="molpro::linalg::itsolv::Options" name="molpro::linalg::itsolv::Options">
+<area shape="rect" id="node1" title="Access point for different options in iterative solvers." alt="" coords="5,169,161,211"/>
+<area shape="rect" id="node2" href="$structmolpro_1_1linalg_1_1itsolv_1_1LinearEigensystemOptions.html" title=" " alt="" coords="213,71,417,112"/>
+<area shape="rect" id="node5" href="$structmolpro_1_1linalg_1_1itsolv_1_1LinearEquationsOptions.html" title=" " alt="" coords="223,136,407,177"/>
+<area shape="rect" id="node7" href="$structmolpro_1_1linalg_1_1itsolv_1_1NonLinearEquationsOptions.html" title=" " alt="" coords="209,201,420,243"/>
+<area shape="rect" id="node9" href="$structmolpro_1_1linalg_1_1itsolv_1_1OptimizeOptions.html" title=" " alt="" coords="237,267,393,308"/>
+<area shape="rect" id="node3" href="$structmolpro_1_1linalg_1_1itsolv_1_1LinearEigensystemDavidsonOptions.html" title="Allows setting and getting of options for LinearEigensystemDavidson instance via IterativeSolver base..." alt="" coords="468,5,733,47"/>
+<area shape="rect" id="node4" href="$structmolpro_1_1linalg_1_1itsolv_1_1LinearEigensystemRSPTOptions.html" title="Allows setting and getting of options for LinearEigensystemRSPT instance via IterativeSolver base cla..." alt="" coords="482,71,719,112"/>
+<area shape="rect" id="node6" href="$structmolpro_1_1linalg_1_1itsolv_1_1LinearEquationsDavidsonOptions.html" title="Allows setting and getting of options for LinearEquationsDavidson instance via IterativeSolver base c..." alt="" coords="478,136,723,177"/>
+<area shape="rect" id="node8" href="$structmolpro_1_1linalg_1_1itsolv_1_1NonLinearEquationsDIISOptions.html" title="Allows setting and getting of options for NonLinearEquationsDIIS instance via IterativeSolver base cl..." alt="" coords="483,201,719,243"/>
+<area shape="rect" id="node10" href="$structmolpro_1_1linalg_1_1itsolv_1_1OptimizeBFGSOptions.html" title="Allows setting and getting of options for OptimizeBFGS instance via IterativeSolver base class." alt="" coords="513,267,688,308"/>
+<area shape="rect" id="node11" href="$structmolpro_1_1linalg_1_1itsolv_1_1OptimizeSDOptions.html" title="Allows setting and getting of options for OptimizeBFGS instance via IterativeSolver base class." alt="" coords="522,332,679,373"/>
+</map>

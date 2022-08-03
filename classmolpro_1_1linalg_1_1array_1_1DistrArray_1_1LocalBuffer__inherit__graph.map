@@ -1,0 +1,8 @@
+<map id="molpro::linalg::array::DistrArray::LocalBuffer" name="molpro::linalg::array::DistrArray::LocalBuffer">
+<area shape="rect" id="node1" title="Provides access to the local portion of the array." alt="" coords="256,104,432,145"/>
+<area shape="rect" id="node3" href="$classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk_1_1LocalBufferDisk.html" title=" " alt="" coords="483,5,718,47"/>
+<area shape="rect" id="node4" href="$structmolpro_1_1linalg_1_1array_1_1DistrArrayGA_1_1LocalBufferGA.html" title=" " alt="" coords="493,71,708,112"/>
+<area shape="rect" id="node5" href="$structmolpro_1_1linalg_1_1array_1_1DistrArrayMPI3_1_1LocalBufferMPI3.html" title=" " alt="" coords="480,136,721,177"/>
+<area shape="rect" id="node6" href="$structmolpro_1_1linalg_1_1array_1_1DistrArraySpan_1_1LocalBufferSpan.html" title=" " alt="" coords="480,201,721,243"/>
+<area shape="rect" id="node2" href="$classmolpro_1_1linalg_1_1array_1_1span_1_1Span.html" title=" " alt="" coords="5,104,208,145"/>
+</map>

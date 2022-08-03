@@ -1,0 +1,5 @@
+<map id="molpro::linalg::itsolv::OptimizeSDOptions" name="molpro::linalg::itsolv::OptimizeSDOptions">
+<area shape="rect" id="node1" title="Allows setting and getting of options for OptimizeBFGS instance via IterativeSolver base class." alt="" coords="5,184,163,225"/>
+<area shape="rect" id="node2" href="$structmolpro_1_1linalg_1_1itsolv_1_1OptimizeOptions.html" title=" " alt="" coords="6,95,162,136"/>
+<area shape="rect" id="node3" href="$structmolpro_1_1linalg_1_1itsolv_1_1Options.html" title="Access point for different options in iterative solvers." alt="" coords="6,5,162,47"/>
+</map>

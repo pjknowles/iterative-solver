@@ -1,0 +1,4 @@
+<map id="molpro::linalg::itsolv::Optimize&lt; R, Q, P &gt;" name="molpro::linalg::itsolv::Optimize&lt; R, Q, P &gt;">
+<area shape="rect" id="node1" title="Optimises to a stationary point using methods such as L&#45;BFGS." alt="" coords="5,109,168,151"/>
+<area shape="rect" id="node2" href="$classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolver.html" title="Base class defining the interface common to all iterative solvers." alt="" coords="9,5,165,61"/>
+</map>

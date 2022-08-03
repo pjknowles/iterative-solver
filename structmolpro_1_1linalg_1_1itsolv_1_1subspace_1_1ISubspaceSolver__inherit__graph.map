@@ -1,0 +1,7 @@
+<map id="molpro::linalg::itsolv::subspace::ISubspaceSolver&lt; RT, QT, PT &gt;" name="molpro::linalg::itsolv::subspace::ISubspaceSolver&lt; RT, QT, PT &gt;">
+<area shape="rect" id="node1" title="Manages solution of the subspace problem and storage of those solutions." alt="" coords="5,85,212,141"/>
+<area shape="rect" id="node2" href="$classmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1SubspaceSolverLinEig.html" title="Solves subspace problem for linear eigenvalues and system of linear equations." alt="" coords="262,5,483,61"/>
+<area shape="rect" id="node4" href="$classmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1SubspaceSolverOptBFGS.html" title="Solves subspace problem for minimisation using the Steepest Descent algorithm." alt="" coords="260,85,485,141"/>
+<area shape="rect" id="node5" href="$classmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1SubspaceSolverOptSD.html" title="Solves subspace problem for minimisation using the Steepest Descent algorithm." alt="" coords="260,165,485,221"/>
+<area shape="rect" id="node3" href="$classmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1SubspaceSolverRSPT.html" title=" " alt="" coords="533,5,768,61"/>
+</map>

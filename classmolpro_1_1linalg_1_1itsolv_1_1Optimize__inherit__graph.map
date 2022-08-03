@@ -1,0 +1,7 @@
+<map id="molpro::linalg::itsolv::Optimize&lt; R, Q, P &gt;" name="molpro::linalg::itsolv::Optimize&lt; R, Q, P &gt;">
+<area shape="rect" id="node1" title="Optimises to a stationary point using methods such as L&#45;BFGS." alt="" coords="209,39,372,80"/>
+<area shape="rect" id="node3" href="$classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolverTemplate.html" title=" " alt="" coords="420,17,627,102"/>
+<area shape="rect" id="node2" href="$classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolver.html" title="Base class defining the interface common to all iterative solvers." alt="" coords="5,31,161,87"/>
+<area shape="rect" id="node4" href="$classmolpro_1_1linalg_1_1itsolv_1_1OptimizeBFGS.html" title="A class that optimises a function using a Quasi&#45;Newton or other method." alt="" coords="675,5,872,47"/>
+<area shape="rect" id="node5" href="$classmolpro_1_1linalg_1_1itsolv_1_1OptimizeSD.html" title="A class that optimises a function using a simple steepest&#45;descent method." alt="" coords="683,71,863,112"/>
+</map>

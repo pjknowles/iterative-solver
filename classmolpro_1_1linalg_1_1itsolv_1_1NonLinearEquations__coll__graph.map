@@ -1,0 +1,4 @@
+<map id="molpro::linalg::itsolv::NonLinearEquations&lt; R, Q, P &gt;" name="molpro::linalg::itsolv::NonLinearEquations&lt; R, Q, P &gt;">
+<area shape="rect" id="node1" title="Solves non&#45;linear system of equations using methods such as DIIS." alt="" coords="5,109,176,165"/>
+<area shape="rect" id="node2" href="$classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolver.html" title="Base class defining the interface common to all iterative solvers." alt="" coords="13,5,169,61"/>
+</map>

@@ -57,7 +57,7 @@ if (MPI)
 
     if (LINEARALGEBRA_ARRAY_GA)
         message(STATUS "Building ${PROJECT_NAME} with GA distributed array")
-        target_compile_definitions(${PROJECT_NAME} PUBLIC LINEARALGEBRA_ARRAY_GA)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC LINEARALGEBRA_ARRAY_GA HAVE_GA_H)
         LibraryManager_Append(${PROJECT_NAME} SOURCES DistrArrayGA.cpp PUBLIC_HEADER DistrArrayGA.h)
         target_link_libraries(${PROJECT_NAME} PUBLIC ga::ga)
     endif ()

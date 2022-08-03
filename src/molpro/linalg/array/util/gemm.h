@@ -45,6 +45,15 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   return alphas;
 }
 
+template <class AL, typename = std::enable_if_t<!std::is_same_v<std::decay_t<AL>,DistrArrayFile>>>
+Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<DistrArrayFile>& xx,
+                                                                          const CVecRef<AL>& yy) {
+  auto result_transpose = gemm_inner_distr_distr(yy, xx);
+  Matrix<typename array::mapped_or_value_type_t<AL>> result({result_transpose.cols(), result_transpose.rows()});
+  molpro::linalg::itsolv::subspace::transpose_copy(result, result_transpose);
+  return result;
+}
+
 template <class AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas,
                             const CVecRef<DistrArrayFile>& xx, const VecRef<AL>& yy) {

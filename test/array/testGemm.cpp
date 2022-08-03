@@ -147,10 +147,7 @@ TEST(TestGemm, ddiskdistr_inner) {
   std::pair<size_t, size_t> mat_dim = std::make_pair(n, n);
   Matrix<double> gemm_dot(vref, mat_dim);
   Matrix<double> ref_dot(vgemm, mat_dim);
-  EXPECT_THROW(gemm_dot = handler.gemm_inner(cwrap(cx), cwrap(cy)), std::runtime_error);
-  // TODO eventually gemm_inner will be implemented both ways round for DistrArrayDisk, deleting above and enabling
-  // following
-  /*
+//  EXPECT_THROW(gemm_dot = handler.gemm_inner(cwrap(cx), cwrap(cy)), std::runtime_error);
   gemm_dot = handler.gemm_inner(cwrap(cx), cwrap(cy));
   for (size_t i = 0; i < n; i++) {
     for (size_t j = 0; j < n; j++) {
@@ -158,7 +155,6 @@ TEST(TestGemm, ddiskdistr_inner) {
     }
   }
   EXPECT_THAT(vgemm, Pointwise(DoubleEq(), vref));
-  */
 }
 
 TEST(TestGemm, distrddisk_inner) {

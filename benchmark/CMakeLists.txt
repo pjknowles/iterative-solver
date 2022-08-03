@@ -1,6 +1,6 @@
 foreach (t benchmark)
     add_executable(${t}.exe ${t}.cpp)
-    target_link_libraries(${t}.exe PUBLIC ${PROJECT_NAME} Profiler)
+    target_link_libraries(${t}.exe PUBLIC ${PROJECT_NAME} molpro::profiler)
     if (MPI)
         #        target_link_libraries(${t}.exe PUBLIC MPI::MPI_CXX)
         # in principle this should be configured at runtime but it seems cmake/ctest support is not yet there to do it simply

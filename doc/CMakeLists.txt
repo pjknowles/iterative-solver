@@ -12,5 +12,5 @@ endforeach ()
 DependencyManagerDocs_Add(${PROJECT_NAME}
         FILES ../README.md LibraryDesign.md IterativeSolver.dox Arrays.dox ArrayHandlers.dox VecRef.dox
         DOC_URL "https://molpro.github.io/iterative-solver/${CMAKE_PROJECT}"
-        DEPENDS Profiler utilities # projects whose documentation has to be built before current project.
+        DEPENDS profiler utilities # projects whose documentation has to be built before current project.
         )

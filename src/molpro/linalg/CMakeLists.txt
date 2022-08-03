@@ -30,9 +30,9 @@ if (TARGET ppidd::ppidd)
 endif ()
 
 include(DependencyManager)
-DependencyManager_Populate(Profiler)
+DependencyManager_Populate(profiler)
 DependencyManager_Populate(utilities)
-target_link_libraries(${PROJECT_NAME} PUBLIC molpro::Profiler molpro::utilities)
+target_link_libraries(${PROJECT_NAME} PUBLIC molpro::profiler molpro::utilities)
 
 LibraryManager_LAPACK(${PROJECT_NAME} PUBLIC Intel10_64lp_seq Intel10_64lp)
 if (MKL_TYPE STREQUAL "lp64")

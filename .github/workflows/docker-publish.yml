@@ -1,7 +1,7 @@
 name: Docker build and publish
 
 on:
-  push:
+  [push,fork]:
     paths:
       - docker/Dockerfile
       - .github/workflows/docker-publish.yml

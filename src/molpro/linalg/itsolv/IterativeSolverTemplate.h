@@ -429,13 +429,13 @@ protected:
 
   virtual ~IterativeSolverTemplate() {
     if (molpro::mpi::rank_global() == 0) {
-      auto file = options()->parameter("PROFILER_OUTPUT", "");
+      auto file = options()->parameter("PROFILER_OUTPUT", "ITERATIVE-SOLVER");
       if (profiler()->get_max_depth() > 0 and
           std::find_if(file.begin(), file.end(), [](unsigned char ch) { return !std::isspace(ch); }) != file.end())
         std::ofstream(file) << *profiler() << std::endl;
     }
     if (molpro::mpi::rank_global() == 0) {
-      auto file = options()->parameter("PROFILER_DOTGRAPH", "");
+      auto file = options()->parameter("PROFILER_DOTGRAPH", "ITERATIVE-SOLVER");
       if (profiler()->get_max_depth() > 0 and
           std::find_if(file.begin(), file.end(), [](unsigned char ch) { return !std::isspace(ch); }) != file.end())
         profiler()->dotgraph(file, options()->parameter("PROFILER_THRESHOLD", .01));

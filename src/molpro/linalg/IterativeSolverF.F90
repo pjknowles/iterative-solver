@@ -17,7 +17,8 @@ MODULE Iterative_Solver
   PUBLIC :: Iterative_Solver_Value
   PUBLIC :: Iterative_Solver_Verbosity
   INTEGER, PUBLIC, PARAMETER :: mpicomm_kind = KIND(c_int64_t)
-  PUBLIC :: mpicomm_global, set_mpicomm_compute, mpicomm_self, mpicomm_compute
+  PUBLIC :: mpicomm_global, mpicomm_self, mpicomm_compute, mpi_init, mpi_finalize, mpi_rank_global, mpi_size_global
+  PUBLIC :: set_mpicomm_compute
   PRIVATE
   INTEGER(kind = mpicomm_kind), SAVE :: s_mpicomm_compute = -9999999
   INTEGER(c_size_t) :: m_nq, m_nroot
@@ -27,11 +28,11 @@ MODULE Iterative_Solver
     SUBROUTINE Iterative_Solver_Print_Statistics() BIND (C, name = 'IterativeSolverPrintStatistics')
     END SUBROUTINE Iterative_Solver_Print_Statistics
 
-    FUNCTION mpicomm_self() BIND(C)
+    FUNCTION mpicomm_self() BIND(C, name='IterativeSolver_mpicomm_self')
       INTEGER, PARAMETER :: mpicomm_kind = KIND(c_int64_t)
       INTEGER(KIND = mpicomm_kind) :: mpicomm_self
     END FUNCTION mpicomm_self
-    FUNCTION mpicomm_global() BIND(C)
+    FUNCTION mpicomm_global() BIND(C, name='IterativeSolver_mpicomm_global')
       INTEGER, PARAMETER :: mpicomm_kind = KIND(c_int64_t)
       INTEGER(KIND = mpicomm_kind) :: mpicomm_global
     END FUNCTION mpicomm_global
@@ -41,6 +42,18 @@ MODULE Iterative_Solver
       USE iso_c_binding, only : c_int
       INTEGER(c_int) :: Iterative_Solver_Verbosity
     END FUNCTION Iterative_Solver_Verbosity
+    subroutine mpi_init() BIND (C, name = 'IterativeSolver_mpi_init')
+    end subroutine mpi_init
+    subroutine mpi_finalize() BIND (C, name = 'IterativeSolver_mpi_finalize')
+    end subroutine mpi_finalize
+    function mpi_size_global() BIND (C, name = 'IterativeSolver_mpi_size_global')
+      use iso_c_binding, only : c_int64_t
+      integer(c_int64_t) mpi_size_global
+    end function mpi_size_global
+    function mpi_rank_global() BIND (C, name = 'IterativeSolver_mpi_rank_global')
+      use iso_c_binding, only : c_int64_t
+      integer(c_int64_t) mpi_rank_global
+    end function mpi_rank_global
   END INTERFACE
 
 CONTAINS

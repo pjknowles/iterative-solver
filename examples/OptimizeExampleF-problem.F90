@@ -66,12 +66,6 @@ PROGRAM QuasiNewton_Example
   USE Iterative_Solver
   USE QuasiNewton_Examples
   IMPLICIT NONE
-  interface
-    subroutine mpi_init() BIND (C, name = 'mpi_init')
-    end subroutine mpi_init
-    subroutine mpi_finalize() BIND (C, name = 'mpi_finalize')
-    end subroutine mpi_finalize
-  end interface
   INTEGER, PARAMETER :: n = 5, verbosity = 2
   DOUBLE PRECISION, DIMENSION (n) :: c, g
   ! try one of the following

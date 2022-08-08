@@ -18,29 +18,27 @@ int main(int argc, char* argv[]) {
 
     if (rank == 0)
       std::cout << "Vector length = " << length << ", numbers of vectors = " << nslow << " / " << nfast;
-    {
-      auto bm = molpro::linalg::ArrayBenchmarkIterable<std::vector<double>>("std::vector<double>", length, nfast, nslow,
-                                                                            false, 0.1);
-      bm.axpy(); // flush memory
-      if (rank == 0)
-        std::cout << ", repeat count = " << bm.m_repeat << std::endl;
-    }
-    if (mpi_size <= 1) {
-      auto bm = molpro::linalg::ArrayBenchmarkIterable<std::vector<double>>("std::vector<double>", length, nfast, nslow,
-                                                                            false, 0.1);
-      bm.all();
-      std::cout << bm;
-    }
+//    {
+//      auto bm = molpro::linalg::ArrayBenchmarkIterable<std::vector<double>>("std::vector<double>", length, nfast, nslow,
+//                                                                            false, 0.1);
+//      bm.axpy(); // flush memory
+//    }
+//    if (mpi_size <= 1) {
+//      auto bm = molpro::linalg::ArrayBenchmarkIterable<std::vector<double>>("std::vector<double>", length, nfast, nslow,
+//                                                                            false, 0.1);
+//      bm.all();
+//      std::cout << bm;
+//    }
 #ifdef LINEARALGEBRA_ARRAY_MPI3
     {
       auto bm = molpro::linalg::ArrayBenchmarkDistributed<molpro::linalg::array::DistrArrayMPI3>(
           "DistrArrayMPI3", length, nfast, nslow, false, 0.1);
+      if (rank == 0)
+        std::cout << ", repeat count = " << bm.m_repeat << std::endl;
       bm.all();
       std::cout << bm;
     }
-    using fast_container = molpro::linalg::array::DistrArrayMPI3;
 #else
-    using fast_container = std::vector<double>;
 #endif
 #ifdef LINEARALGEBRA_ARRAY_GA
     {
@@ -52,18 +50,18 @@ int main(int argc, char* argv[]) {
 #endif
 #ifdef LINEARALGEBRA_ARRAY_HDF5
     {
-      auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayHDF5, fast_container>(
+      auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayHDF5>(
           "DistrArrayHDF5 / memory", length, nfast, nslow, false, 0.01);
       bm.all();
       std::cout << bm;
     }
 #endif
-//    {
-//      auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayFile, fast_container>(
-//          "DistrArrayFile / memory", length, nfast, nslow, false, 0.1);
-//      bm.all();
-//      std::cout << bm;
-//    }
+    {
+      auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayFile>(
+          "DistrArrayFile / memory", length, nfast, nslow, false, 0.1);
+      bm.all();
+      std::cout << bm;
+    }
   }
   molpro::mpi::finalize();
 }

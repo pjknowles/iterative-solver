@@ -6,16 +6,6 @@
 PROGRAM QuasiNewton_Example
   USE Iterative_Solver
   IMPLICIT NONE
-  interface
-    subroutine mpi_init() BIND (C, name = 'mpi_init')
-    end subroutine mpi_init
-    subroutine mpi_finalize() BIND (C, name = 'mpi_finalize')
-    end subroutine mpi_finalize
-    !    function mpi_comm_global() BIND (C, name = 'mpi_comm_global')
-    !      use iso_c_binding, only: c_int64_t
-    !      integer(c_int64_t) mpi_comm_global
-    !    end function mpi_comm_global
-  end interface
   INTEGER, PARAMETER :: n = 2
   DOUBLE PRECISION, DIMENSION (n, n) :: m
   DOUBLE PRECISION, DIMENSION (n) :: c, g

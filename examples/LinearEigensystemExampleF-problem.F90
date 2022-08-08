@@ -38,12 +38,6 @@ program Eigenproblem_Example
   use Iterative_Solver
   use Example_Problem
   implicit none
-  interface
-    subroutine mpi_init() bind (C, name = 'mpi_init')
-    end subroutine mpi_init
-    subroutine mpi_finalize() bind (C, name = 'mpi_finalize')
-    end subroutine mpi_finalize
-  end interface
   double precision, dimension (5000, 10) :: c, g
   integer :: i
 

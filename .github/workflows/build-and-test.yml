@@ -5,6 +5,7 @@ on:
     branches: [ "main" , "master"]
   pull_request:
     branches: [ "main" , "master"]
+  workflow_dispatch:
 
 env:
   CMAKE_BUILD_TYPE: Release
@@ -16,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: read
+      packages: write
     container:
       # relies on repository name being all lower case
       image: ghcr.io/${{ github.repository }}
@@ -38,7 +39,7 @@ jobs:
 
     - name: Configure CMake
       if: steps.check_configuration.outputs.files_exists == 'true'
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.CMAKE_BUILD_TYPE}} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DFORTRAN=OFF -DGA_RUNTIME=MPI_RMA
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.CMAKE_BUILD_TYPE}} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
     - name: Build
       if: steps.check_configuration.outputs.files_exists == 'true'
@@ -46,5 +47,7 @@ jobs:
 
     - name: Test
       if: steps.check_configuration.outputs.files_exists == 'true'
-      run: cd ${{github.workspace}}/build && ctest -C ${{env.CMAKE_BUILD_TYPE}} || ctest -C ${{env.CMAKE_BUILD_TYPE}} --rerun-failed --output-on-failure
-      
+      run: cd ${{github.workspace}}/build && ctest -C ${{env.CMAKE_BUILD_TYPE}}
+
+    - name: Build doxygen
+      run: cmake --build ${{github.workspace}}/build --target DependencyManagerDocs

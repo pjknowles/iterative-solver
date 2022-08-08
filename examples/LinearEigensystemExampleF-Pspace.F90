@@ -1,17 +1,10 @@
 module matrix_problem
+  use Iterative_Solver, only : mpi_init, mpi_finalize
   use iso_c_binding, only : c_int
   INTEGER, PARAMETER :: n = 200, nroot = 3, nP = 30
   DOUBLE PRECISION, DIMENSION (n, n) :: m
   INTEGER, DIMENSION(nP) :: indices
   INTEGER, DIMENSION(0:nP) :: offsets
-  interface
-    subroutine mpi_init(argc, argv) bind (C, name='MPI_Init')
-      use iso_c_binding
-      integer(kind=c_int), intent(in) :: argc, argv
-    end subroutine mpi_init
-    subroutine mpi_finalize() bind(C,name='MPI_Finalize')
-    end subroutine mpi_finalize
-  end interface
 contains
   subroutine apply_p(p, g, nvec, ranges) bind(c)
     use iso_c_binding
@@ -46,7 +39,7 @@ PROGRAM Linear_Eigensystem_Example
   INTEGER :: i, j, root
   LOGICAL :: update
   PRINT *, 'Fortran binding of IterativeSolver'
-  CALL MPI_INIT(0_c_int,0_c_int)
+  CALL MPI_INIT
   m = 1
   DO i = 1, n
     m(i, i) = 3 * i

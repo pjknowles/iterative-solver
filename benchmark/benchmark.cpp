@@ -58,12 +58,12 @@ int main(int argc, char* argv[]) {
       std::cout << bm;
     }
 #endif
-    {
-      auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayFile, fast_container>(
-          "DistrArrayFile / memory", length, nfast, nslow, false, 0.1);
-      bm.all();
-      std::cout << bm;
-    }
+//    {
+//      auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayFile, fast_container>(
+//          "DistrArrayFile / memory", length, nfast, nslow, false, 0.1);
+//      bm.all();
+//      std::cout << bm;
+//    }
   }
   molpro::mpi::finalize();
 }

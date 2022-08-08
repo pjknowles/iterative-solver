@@ -498,3 +498,32 @@ int IterativeSolverVerbosity() {
 }
 int IterativeSolverMaxIter() { return instances.top().solver->get_max_iter(); }
 void IterativeSolverSetMaxIter(int max_iter) { instances.top().solver->set_max_iter(max_iter); }
+/*!
+ * @brief C binding of mpi::comm_global(), suitable for calling from Fortran
+ */
+extern "C" int64_t IterativeSolver_mpicomm_global() { return (int64_t)MPI_Comm_c2f(molpro::mpi::comm_global()); }
+
+/*!
+ * @brief C binding of mpi::comm_self(), suitable for calling from Fortran
+ */
+extern "C" int64_t IterativeSolver_mpicomm_self() { return (int64_t)MPI_Comm_c2f(molpro::mpi::comm_self()); }
+
+/*!
+ * @brief C binding of mpi::size_global(), suitable for calling from Fortran
+ */
+extern "C" int64_t IterativeSolver_mpisize_global() { return molpro::mpi::size_global(); }
+
+/*!
+ * @brief C binding of mpi::rank_global(), suitable for calling from Fortran
+ */
+extern "C" int64_t IterativeSolver_mpirank_global() { return molpro::mpi::rank_global(); }
+
+/*!
+ * @brief C binding of mpi::init(), suitable for calling from Fortran
+ */
+extern "C" int IterativeSolver_mpi_init() { return molpro::mpi::init(); }
+
+/*!
+ * @brief C binding of mpi::finalize(), suitable for calling from Fortran
+ */
+extern "C" int IterativeSolver_mpi_finalize() { return molpro::mpi::finalize(); }

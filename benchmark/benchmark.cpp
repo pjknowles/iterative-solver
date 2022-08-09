@@ -52,6 +52,13 @@ int main(int argc, char* argv[]) {
       std::cout << bm;
     }
 #endif
+
+    if (true) {
+      auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayFile>(
+          "DistrArrayFile / memory", length, nfast, nslow, false, 0.1);
+      bm.all();
+      std::cout << bm;
+    }
 #ifdef LINEARALGEBRA_ARRAY_HDF5
     {
       auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayHDF5>(
@@ -60,12 +67,6 @@ int main(int argc, char* argv[]) {
       std::cout << bm;
     }
 #endif
-    if (true) {
-      auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayFile>(
-          "DistrArrayFile / memory", length, nfast, nslow, false, 0.1);
-      bm.all();
-      std::cout << bm;
-    }
   }
   molpro::mpi::finalize();
 }

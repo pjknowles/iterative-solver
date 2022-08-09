@@ -104,26 +104,34 @@ auto allocatev<array::DistrArrayHDF5>(size_t n, size_t nvec) {
  */
 template <class Slow = Fast>
 class ArrayBenchmark {
+public:
+  std::string m_title;
+
+private:
   size_t m_size;
   double m_target_seconds;
   std::unique_ptr<Slow> m_bufferSlow;
   std::unique_ptr<Fast> m_bufferFast;
   std::vector<Slow> m_buffervSlow;
   std::vector<Fast> m_buffervFast;
-  molpro::Profiler m_profiler;
+  molpro::Profiler& m_profiler;
   std::unique_ptr<array::ArrayHandler<Fast, Slow>> m_handler;
   bool m_profile_individual;
   int m_mpi_size;
 
 public:
   size_t m_repeat;
-  explicit ArrayBenchmark(std::string title, std::unique_ptr<array::ArrayHandler<Fast, Slow>> handler,
+  explicit ArrayBenchmark(const std::string& title, std::unique_ptr<array::ArrayHandler<Fast, Slow>> handler,
                           size_t n = 10000000, size_t n_Slow = 1, size_t n_Fast = 1, bool profile_individual = false,
                           double target_seconds = 1)
-      : m_size(n), m_target_seconds(target_seconds), m_bufferSlow(allocate<Slow>(n)), m_bufferFast(allocate<Fast>(n)),
-        m_buffervSlow(allocatev<Slow>(n, n_Slow)), m_buffervFast(allocatev<Fast>(n, n_Fast)), m_profiler(title),
+      : m_title(title), m_size(n), m_target_seconds(target_seconds), m_bufferSlow(allocate<Slow>(n)),
+        m_bufferFast(allocate<Fast>(n)), m_buffervSlow(allocatev<Slow>(n, n_Slow)),
+        m_buffervFast(allocatev<Fast>(n, n_Fast)), m_profiler(*molpro::Profiler::single()),
         m_handler(std::move(handler)), m_profile_individual(profile_individual), m_mpi_size(molpro::mpi::size_global()),
-        m_repeat(std::max(1, int(1e9 * m_target_seconds / m_size))) {}
+        m_repeat(std::max(1, int(1e9 * m_target_seconds / m_size))) {
+    m_profiler.reset(title);
+    m_profiler.set_max_depth(10);
+  }
 
   void dot() {
     auto prof = m_profiler.push("dot");
@@ -158,15 +166,15 @@ public:
   }
 
   void copyin() {
-    //    auto prof = m_profiler.push("copy in");
-    //    auto buffer = allocate<Slow>(m_bufferSlow->size());
-    //    for (size_t i = 0; i < m_repeat / m_mpi_size; i++)
-    //      *buffer = m_handler->copy(*m_bufferFast);
-    //    prof += m_size * m_repeat / m_mpi_size;
+//        auto prof = m_profiler.push("copy Fast -> Slow");
+//        auto buffer = allocate<Slow>(m_bufferSlow->size());
+//        for (size_t i = 0; i < m_repeat / m_mpi_size; i++)
+//          *buffer = m_handler->copy(*m_bufferFast);
+//        prof += m_size * m_repeat / m_mpi_size;
   }
 
   void copyout() {
-    auto prof = m_profiler.push("copy out");
+    auto prof = m_profiler.push("copy Slow -> Fast");
     auto buffer = allocate<Fast>(m_bufferFast->size());
     for (size_t i = 0; i < m_repeat / m_mpi_size; i++)
       *buffer = m_handler->copy(*m_bufferSlow);

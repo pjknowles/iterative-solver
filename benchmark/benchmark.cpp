@@ -19,17 +19,20 @@ int main(int argc, char* argv[]) {
     if (rank == 0)
       std::cout << "Vector length = " << length << ", numbers of vectors = " << nslow << " / " << nfast;
 //    {
-//      auto bm = molpro::linalg::ArrayBenchmarkIterable<std::vector<double>>("std::vector<double>", length, nfast, nslow,
+//      auto bm = molpro::linalg::ArrayBenchmarkIterable<std::vector<double>>("std::vector<double>", length, nfast,
+//      nslow,
 //                                                                            false, 0.1);
 //      bm.axpy(); // flush memory
 //    }
 //    if (mpi_size <= 1) {
-//      auto bm = molpro::linalg::ArrayBenchmarkIterable<std::vector<double>>("std::vector<double>", length, nfast, nslow,
+//      auto bm = molpro::linalg::ArrayBenchmarkIterable<std::vector<double>>("std::vector<double>", length, nfast,
+//      nslow,
 //                                                                            false, 0.1);
 //      bm.all();
 //      std::cout << bm;
 //    }
 #ifdef LINEARALGEBRA_ARRAY_MPI3
+    if (true)
     {
       auto bm = molpro::linalg::ArrayBenchmarkDistributed<molpro::linalg::array::DistrArrayMPI3>(
           "DistrArrayMPI3", length, nfast, nslow, false, 0.1);
@@ -37,6 +40,7 @@ int main(int argc, char* argv[]) {
         std::cout << ", repeat count = " << bm.m_repeat << std::endl;
       bm.all();
       std::cout << bm;
+      bm.profiler().dotgraph(bm.m_title + "." + std::to_string(length) + ".gv");
     }
 #else
 #endif
@@ -56,7 +60,7 @@ int main(int argc, char* argv[]) {
       std::cout << bm;
     }
 #endif
-    {
+    if (true) {
       auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayFile>(
           "DistrArrayFile / memory", length, nfast, nslow, false, 0.1);
       bm.all();

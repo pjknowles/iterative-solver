@@ -122,7 +122,7 @@ void DistrArray::times(const DistrArray& y, const DistrArray& z) {
 }
 
 DistrArray::value_type DistrArray::dot(const DistrArray& y) const {
-  auto prof = molpro::Profiler::single()->push("DistArray::dot()");
+  auto prof = molpro::Profiler::single()->push("DistrArray::dot()");
   auto name = std::string{"Array::dot"};
   if (!compatible(y))
     error(name + " array x is incompatible");

@@ -159,7 +159,7 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
   auto bounds_loc = local_bounds();
   std::tie(lo_loc, hi_loc) = {std::get<0>(bounds_loc), std::get<1>(bounds_loc)};
   if (lo < lo_loc || hi > hi_loc) {
-    error("Only local array indices can be accessed via DistrArrayFile.get() function");
+    error("Only local array indices can be accessed via DistrArrayFile.get() function\nlo:lo_loc="+std::to_string(lo)+":"+std::to_string(lo_loc)+"\nhi:hi_loc="+std::to_string(hi)+":"+std::to_string(hi_loc));
   }
   DistrArray::index_type offset = lo - lo_loc;
   m_stream->seekg(0, std::ios::end);

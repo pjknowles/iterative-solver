@@ -219,7 +219,7 @@ DistrArrayGA::Distribution DistrArrayGA::make_distribution() const {
   int lo, hi;
   for (int rank = 0; rank < get_communicator_size(communicator()); ++rank) {
     NGA_Distribution(m_ga_handle, rank, &lo, &hi);
-    chunk_borders.push_back(hi);
+    chunk_borders.push_back(hi + 1);
   }
   return {chunk_borders};
 }

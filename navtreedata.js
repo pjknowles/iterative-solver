@@ -71,8 +71,8 @@ var NAVTREEINDEX =
 "classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolver.html#adc1b240bebd35761b7a6a17ce594182d",
 "classmolpro_1_1linalg_1_1itsolv_1_1detail_1_1DSpaceResetter.html#a9d1181f8c9d6d03cb504b1f72af063a2",
 "classmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1XSpace.html#aec57d0c249a6abe2c2df69228dd3827d",
-"namespacemolpro_1_1linalg_1_1itsolv_1_1subspace_1_1util.html#ae0203f07c97035ae33814141e142b21c",
-"structmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1ISubspaceSolver.html#a2f17b16191359344bdbd73d20c6d66f9"
+"namespacemolpro_1_1linalg_1_1itsolv_1_1subspace_1_1util.html#a8877b5fee0120609b9fa7b8ff85bce86",
+"structmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1ISubspaceSolver.html#a1a5b52ec31a14cc17015f51855c1121e"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

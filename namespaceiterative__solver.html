@@ -93,6 +93,7 @@ $(document).ready(function(){initNavTree('namespaceiterative__solver.html',''); 
 
 <div class="header">
   <div class="summary">
+<a href="#nested-classes">Data Types</a> &#124;
 <a href="#func-members">Functions/Subroutines</a> &#124;
 <a href="#var-members">Variables</a>  </div>
   <div class="headertitle">
@@ -103,6 +104,13 @@ $(document).ready(function(){initNavTree('namespaceiterative__solver.html',''); 
 <p>IterativeSolver Fortran binding.  
 <a href="namespaceiterative__solver.html#details">More...</a></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
+Data Types</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">interface &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceiterative__solver_1_1mpi__init.html">mpi_init</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">interface &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceiterative__solver_1_1mpi__rank__global.html">mpi_rank_global</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a2890fe920d167483bcac382af12afe5d"><td class="memItemLeft" align="right" valign="top">integer(kind=<a class="el" href="namespaceiterative__solver.html#a8e7b0afa0169579bd571c1aac764d4e8">mpicomm_kind</a>) function, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceiterative__solver.html#a2890fe920d167483bcac382af12afe5d">mpicomm_compute</a> ()</td></tr>
@@ -587,8 +595,8 @@ Variables</h2></td></tr>
 <div class="line"><span class="keyword">PROGRAM</span> linear_eigensystem_example</div>
 <div class="line">  <span class="keywordtype">USE </span><a class="code" href="namespaceiterative__solver.html">iterative_solver</a></div>
 <div class="line">  <span class="keyword">interface</span></div>
-<div class="line">    <span class="keyword">subroutine </span>mpi_init() bind (C, name = &#39;mpi_init&#39;)</div>
-<div class="line">    <span class="keyword">end subroutine </span>mpi_init</div>
+<div class="line">    <span class="keyword">subroutine </span><a class="code" href="interfaceiterative__solver_1_1mpi__init.html">mpi_init</a>() bind (C, name = &#39;mpi_init&#39;)</div>
+<div class="line">    <span class="keyword">end subroutine </span><a class="code" href="interfaceiterative__solver_1_1mpi__init.html">mpi_init</a></div>
 <div class="line">    <span class="keyword">subroutine </span>mpi_finalize() bind (C, name = &#39;mpi_finalize&#39;)</div>
 <div class="line">    <span class="keyword">end subroutine </span>mpi_finalize</div>
 <div class="line">    <span class="comment">!    function mpi_comm_global() BIND (C, name = &#39;mpi_comm_global&#39;)</span></div>
@@ -626,6 +634,7 @@ Variables</h2></td></tr>
 <div class="line">  <span class="keyword">CALL </span>iterative_solver_finalize</div>
 <div class="line">  <span class="keyword">CALL </span>mpi_finalize</div>
 <div class="line"><span class="keyword">END PROGRAM </span>linear_eigensystem_example</div>
+<div class="ttc" id="ainterfaceiterative__solver_1_1mpi__init_html"><div class="ttname"><a href="interfaceiterative__solver_1_1mpi__init.html">iterative_solver::mpi_init</a></div><div class="ttdef"><b>Definition:</b> IterativeSolverF.F90:45</div></div>
 </div><!-- fragment --><p> Example including use of P space: </p><div class="fragment"><div class="line"> </div>
 <div class="line"> </div>
 <div class="line"><span class="keyword">MODULE</span> pspace</div>
@@ -689,7 +698,7 @@ Variables</h2></td></tr>
 <div class="line">  <span class="keywordtype">INTEGER</span> :: roots(nroot)</div>
 <div class="line">  <span class="keywordtype">TYPE</span>(Profiler) :: prof</div>
 <div class="line">  rank = 0</div>
-<div class="line">  <span class="keyword">call </span>mpi_init(ierr)</div>
+<div class="line">  <span class="keyword">call </span><a class="code" href="interfaceiterative__solver_1_1mpi__init.html">mpi_init</a>(ierr)</div>
 <div class="line">  <span class="keyword">call </span>mpi_comm_rank(mpi_comm_world, rank, ierr)</div>
 <div class="line">  <span class="keyword">call </span>mpi_comm_size(mpi_comm_world, comm_size, ierr)</div>
 <div class="line">  <span class="keywordflow">if</span> (rank == 0) <span class="keywordflow">then</span></div>
@@ -891,16 +900,6 @@ Variables</h2></td></tr>
 <div class="line"><span class="keyword">PROGRAM</span> linear_equations_example</div>
 <div class="line">  <span class="keywordtype">USE </span><a class="code" href="namespaceiterative__solver.html">iterative_solver</a></div>
 <div class="line">  <span class="keywordtype">IMPLICIT NONE</span></div>
-<div class="line">  <span class="keyword">interface</span></div>
-<div class="line">    <span class="keyword">subroutine </span>mpi_init() bind (C, name = &#39;mpi_init&#39;)</div>
-<div class="line">    <span class="keyword">end subroutine </span>mpi_init</div>
-<div class="line">    <span class="keyword">subroutine </span>mpi_finalize() bind (C, name = &#39;mpi_finalize&#39;)</div>
-<div class="line">    <span class="keyword">end subroutine </span>mpi_finalize</div>
-<div class="line">    <span class="comment">!    function mpi_comm_global() BIND (C, name = &#39;mpi_comm_global&#39;)</span></div>
-<div class="line">    <span class="comment">!      use iso_c_binding, only: c_int64_t</span></div>
-<div class="line">    <span class="comment">!      integer(c_int64_t) mpi_comm_global</span></div>
-<div class="line">    <span class="comment">!    end function mpi_comm_global</span></div>
-<div class="line">  <span class="keyword">end interface</span></div>
 <div class="line">  <span class="keywordtype">INTEGER</span>, <span class="keywordtype">PARAMETER</span> :: n = 30, nroot = 2</div>
 <div class="line">  <span class="keywordtype">DOUBLE PRECISION</span>, <span class="keywordtype">PARAMETER</span> :: alpha = 300</div>
 <div class="line">  <span class="keywordtype">DOUBLE PRECISION</span>, <span class="keywordtype">DIMENSION(5)</span>, <span class="keywordtype">PARAMETER</span> :: augmented_hessian_factors = [0.0_8, .001_8, .01_8, .1_8, 1.0_8]</div>
@@ -911,7 +910,7 @@ Variables</h2></td></tr>
 <div class="line">  <span class="keywordtype">INTEGER</span> :: i, j, root, iaug, nwork</div>
 <div class="line">  <span class="keywordtype">LOGICAL</span> :: converged</div>
 <div class="line">  print *, <span class="stringliteral">&#39;Fortran binding of IterativeSolver&#39;</span></div>
-<div class="line">  <span class="keyword">call </span>mpi_init</div>
+<div class="line">  <span class="keyword">call </span><a class="code" href="interfaceiterative__solver_1_1mpi__init.html">mpi_init</a></div>
 <div class="line">  <span class="keywordflow">DO</span> i = 1, n; m(i, i) = alpha * i + 2 * i - 2; <span class="keywordflow">DO</span> j = 1, n; <span class="keywordflow">IF</span> (i.NE.j) m(i, j) = i + j - 2;</div>
 <div class="line">  <span class="keyword">END </span>do;</div>
 <div class="line"><span class="keywordflow">  END DO</span></div>
@@ -1044,16 +1043,6 @@ Variables</h2></td></tr>
 <div class="line"><span class="keyword">PROGRAM</span> quasinewton_example</div>
 <div class="line">  <span class="keywordtype">USE </span><a class="code" href="namespaceiterative__solver.html">iterative_solver</a></div>
 <div class="line">  <span class="keywordtype">IMPLICIT NONE</span></div>
-<div class="line">  <span class="keyword">interface</span></div>
-<div class="line">    <span class="keyword">subroutine </span>mpi_init() bind (C, name = &#39;mpi_init&#39;)</div>
-<div class="line">    <span class="keyword">end subroutine </span>mpi_init</div>
-<div class="line">    <span class="keyword">subroutine </span>mpi_finalize() bind (C, name = &#39;mpi_finalize&#39;)</div>
-<div class="line">    <span class="keyword">end subroutine </span>mpi_finalize</div>
-<div class="line">    <span class="comment">!    function mpi_comm_global() BIND (C, name = &#39;mpi_comm_global&#39;)</span></div>
-<div class="line">    <span class="comment">!      use iso_c_binding, only: c_int64_t</span></div>
-<div class="line">    <span class="comment">!      integer(c_int64_t) mpi_comm_global</span></div>
-<div class="line">    <span class="comment">!    end function mpi_comm_global</span></div>
-<div class="line">  <span class="keyword">end interface</span></div>
 <div class="line">  <span class="keywordtype">INTEGER</span>, <span class="keywordtype">PARAMETER</span> :: n = 2</div>
 <div class="line">  <span class="keywordtype">DOUBLE PRECISION</span>, <span class="keywordtype">DIMENSION (n, n)</span> :: m</div>
 <div class="line">  <span class="keywordtype">DOUBLE PRECISION</span>, <span class="keywordtype">DIMENSION (n)</span> :: c, g</div>
@@ -1061,7 +1050,7 @@ Variables</h2></td></tr>
 <div class="line">  <span class="keywordtype">INTEGER</span> :: i, j</div>
 <div class="line">  <span class="keywordtype">LOGICAL</span> :: converged</div>
 <div class="line">  <span class="keywordtype">LOGICAL</span>, <span class="keywordtype">PARAMETER</span> :: forced = .false.</div>
-<div class="line">  <span class="keyword">call </span>mpi_init</div>
+<div class="line">  <span class="keyword">call </span><a class="code" href="interfaceiterative__solver_1_1mpi__init.html">mpi_init</a></div>
 <div class="line">  print *, <span class="stringliteral">&#39;Fortran binding of IterativeSolver::IOptimize&#39;</span></div>
 <div class="line">  m = 1; <span class="keywordflow">DO</span> i = 1, n; m(i, i) = 3 * i;</div>
 <div class="line"><span class="keywordflow">  END DO</span></div>

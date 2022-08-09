@@ -10395,6 +10395,14 @@
       <arglist></arglist>
     </member>
   </compound>
+  <compound kind="interface">
+    <name>iterative_solver::mpi_init</name>
+    <filename>interfaceiterative__solver_1_1mpi__init.html</filename>
+  </compound>
+  <compound kind="interface">
+    <name>iterative_solver::mpi_rank_global</name>
+    <filename>interfaceiterative__solver_1_1mpi__rank__global.html</filename>
+  </compound>
   <compound kind="struct">
     <name>try_iterative_solver_problem::my_problem</name>
     <filename>structtry__iterative__solver__problem_1_1my__problem.html</filename>
@@ -14394,6 +14402,8 @@
   <compound kind="namespace">
     <name>iterative_solver</name>
     <filename>namespaceiterative__solver.html</filename>
+    <class kind="interface">iterative_solver::mpi_init</class>
+    <class kind="interface">iterative_solver::mpi_rank_global</class>
     <member kind="function">
       <type>integer(kind=mpicomm_kind) function, public</type>
       <name>mpicomm_compute</name>

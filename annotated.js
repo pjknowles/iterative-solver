@@ -1,5 +1,9 @@
 var annotated =
 [
+    [ "iterative_solver", "namespaceiterative__solver.html", [
+      [ "mpi_init", "interfaceiterative__solver_1_1mpi__init.html", null ],
+      [ "mpi_rank_global", "interfaceiterative__solver_1_1mpi__rank__global.html", null ]
+    ] ],
     [ "iterative_solver_problem", "namespaceiterative__solver__problem.html", [
       [ "problem", "structiterative__solver__problem_1_1problem.html", "structiterative__solver__problem_1_1problem" ]
     ] ],

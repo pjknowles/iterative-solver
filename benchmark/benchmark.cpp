@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
   size_t nfast = 100, nslow = 10;
   if (rank == 0)
     std::cout << mpi_size << " MPI ranks" << std::endl;
-  for (const auto& length : std::vector<size_t>{500, 1000, 10000, 100000, 1000000, 10000000, 100000000}) {
+  for (const auto& length : std::vector<size_t>{500, 1000, 10000, 100000, 1000000}) {
 
     if (rank == 0)
       std::cout << "Vector length = " << length << ", numbers of vectors = " << nslow << " / " << nfast;

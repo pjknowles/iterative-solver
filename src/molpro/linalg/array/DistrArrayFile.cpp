@@ -54,7 +54,9 @@ DistrArrayFile::local_bounds() const {
 DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::string& directory)
     : DistrArrayFile(std::make_unique<Distribution>(
                          util::make_distribution_spread_remainder<index_type>(dimension, mpi_size(comm))),
-                     comm, directory) {}
+                     comm, directory) {
+  auto prof = molpro::Profiler::single()->push("DistrArrayFile(dimension)");
+}
 
 std::mutex s_open_error_mutex;
 DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm, const std::string& directory)
@@ -63,7 +65,7 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
       m_stream(std::make_unique<std::fstream>(m_filename.c_str(),
                                               std::ios::out | std::ios::binary | std::ios::trunc | std::ios::in)) {
   {
-    auto prof = molpro::Profiler::single()->push("DistrArrayFile()");
+    auto prof = molpro::Profiler::single()->push("DistrArrayFile(distribution)");
     prof++;
 #ifdef _WIN32
     _setmaxstdio(8192);
@@ -90,12 +92,15 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
 
 DistrArrayFile::DistrArrayFile(const DistrArrayFile& source)
     : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator()) {
+  auto prof = molpro::Profiler::single()->push("DistrArrayFile(const DistrArrayFile&)");
   DistrArrayFile::copy(source);
 }
 
 DistrArrayFile::DistrArrayFile(DistrArrayFile&& source)
     : DistrArrayDisk(std::move(source)), m_directory(std::move(source.m_directory)),
-      m_filename(std::move(source.m_filename)), m_stream(std::move(source.m_stream)) {}
+      m_filename(std::move(source.m_filename)), m_stream(std::move(source.m_stream)) {
+  auto prof = molpro::Profiler::single()->push("DistrArrayFile(DistrArrayFile&&)");
+}
 
 DistrArrayFile::DistrArrayFile(const DistrArray& source)
     : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator()) {
@@ -126,15 +131,17 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
 }
 
 DistrArrayFile::~DistrArrayFile() {
+#if defined(_WIN32) || defined(WIN32)
   auto prof = molpro::Profiler::single()->push("~DistrArrayFile()");
   prof++;
   if (m_stream.get() != nullptr) {
     m_stream->close();
-//    std::cout << "closing " << m_filename << std::endl;
-    if (fs::exists(m_filename))
-      fs::remove(m_filename);
+    //    std::cout << "closing " << m_filename << std::endl;
     m_stream.release();
   }
+  if (fs::exists(m_filename));
+    fs::remove(m_filename);
+#endif
 }
 
 bool DistrArrayFile::compatible(const DistrArrayFile& source) const {
@@ -176,9 +183,10 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
   }
   m_stream->seekg(offset * wordlength);
   const auto readlength = current - offset > 0 ? std::min(length, current - offset) * wordlength : 0;
-//  if (readlength==0)
-//  std::cout << "current=" << current << ", offset=" << offset << ", length=" << length << ", readlength=" << readlength
-//            << std::endl;
+  //  if (readlength==0)
+  //  std::cout << "current=" << current << ", offset=" << offset << ", length=" << length << ", readlength=" <<
+  //  readlength
+  //            << std::endl;
   if (readlength == 0)
     return;
   m_stream->read((char*)buf, readlength);

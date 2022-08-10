@@ -162,7 +162,15 @@ public:
     const size_t rep = std::max(size_t(1), m_repeat / m_buffervFast.size() / m_buffervSlow.size());
     for (size_t i = 0; i < rep; i++)
       m_fast_slow_handler->gemm_inner(itsolv::cwrap(m_buffervFast), itsolv::cwrap(m_buffervSlow));
-    prof += rep * m_size * m_buffervSlow.size() * m_buffervFast.size() / m_mpi_size;
+    //    prof += rep * m_size * m_buffervSlow.size() * m_buffervFast.size() / m_mpi_size;
+  }
+
+  void gemm_inner_transpose() {
+    auto prof = m_profiler.push("gemm_inner (transpose)");
+    const size_t rep = std::max(size_t(1), m_repeat / m_buffervFast.size() / m_buffervSlow.size());
+    for (size_t i = 0; i < rep; i++)
+          m_slow_fast_handler->gemm_inner(itsolv::cwrap(m_buffervSlow), itsolv::cwrap(m_buffervFast));
+    //    prof += rep * m_size * m_buffervSlow.size() * m_buffervFast.size() / m_mpi_size;
   }
 
   void axpy() {
@@ -179,8 +187,9 @@ public:
     alpha.fill(1.0);
     for (size_t i = 0; i < rep; i++)
       m_fast_slow_handler->gemm_outer(alpha, itsolv::cwrap(m_buffervSlow), itsolv::wrap(m_buffervFast));
-    prof += rep * m_size * m_buffervSlow.size() * m_buffervFast.size() / m_mpi_size;
+    //    prof += rep * m_size * m_buffervSlow.size() * m_buffervFast.size() / m_mpi_size;
   }
+
 
   void copy_construct() {
             auto prof = m_profiler.push("copy construct");
@@ -231,6 +240,7 @@ public:
     dot();
     axpy();
     gemm_inner();
+    gemm_inner_transpose();
     gemm_outer();
   }
   molpro::Profiler& profiler() { return m_profiler; }

@@ -16,6 +16,7 @@
 #include <sys/types.h>
 #endif
 #include <iostream>
+#include <mutex>
 
 namespace molpro::linalg::array {
 namespace {
@@ -55,12 +56,15 @@ DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::strin
                          util::make_distribution_spread_remainder<index_type>(dimension, mpi_size(comm))),
                      comm, directory) {}
 
+std::mutex s_open_error_mutex;
 DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm, const std::string& directory)
     : DistrArrayDisk(std::move(distribution), comm), m_directory(fs::absolute(fs::path(directory))),
       m_filename(util::temp_file_name((fs::path(m_directory) / "DistrArrayFile-"), ".dat")),
       m_stream(std::make_unique<std::fstream>(m_filename.c_str(),
                                               std::ios::out | std::ios::binary | std::ios::trunc | std::ios::in)) {
   {
+    auto prof = molpro::Profiler::single()->push("DistrArrayFile()");
+    prof++;
 #ifdef _WIN32
     _setmaxstdio(8192);
 #else
@@ -75,7 +79,8 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");
   if (not m_stream->is_open()) {
-    std::cerr << "File " << m_filename << ": ";
+    std::lock_guard<std::mutex> lock(s_open_error_mutex);
+    std::cerr << "Failure to open file " << m_filename << ": " << std::strerror(errno) << std::endl;
     DistrArray::error(std::string{"Failure to open file, "} + std::strerror(errno));
   }
 #if !defined(_WIN32) && !defined(WIN32)
@@ -89,12 +94,8 @@ DistrArrayFile::DistrArrayFile(const DistrArrayFile& source)
 }
 
 DistrArrayFile::DistrArrayFile(DistrArrayFile&& source)
-    : DistrArrayDisk(std::move(source))
-    , m_directory(std::move(source.m_directory))
-      , m_filename(std::move(source.m_filename))
-    , m_stream(std::move(source.m_stream))
-    {
-}
+    : DistrArrayDisk(std::move(source)), m_directory(std::move(source.m_directory)),
+      m_filename(std::move(source.m_filename)), m_stream(std::move(source.m_stream)) {}
 
 DistrArrayFile::DistrArrayFile(const DistrArray& source)
     : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator()) {
@@ -125,8 +126,11 @@ void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
 }
 
 DistrArrayFile::~DistrArrayFile() {
+  auto prof = molpro::Profiler::single()->push("~DistrArrayFile()");
+  prof++;
   if (m_stream.get() != nullptr) {
     m_stream->close();
+//    std::cout << "closing " << m_filename << std::endl;
     if (fs::exists(m_filename))
       fs::remove(m_filename);
     m_stream.release();
@@ -159,28 +163,35 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
   auto bounds_loc = local_bounds();
   std::tie(lo_loc, hi_loc) = {std::get<0>(bounds_loc), std::get<1>(bounds_loc)};
   if (lo < lo_loc || hi > hi_loc) {
-    error("Only local array indices can be accessed via DistrArrayFile.get() function\nlo:lo_loc="+std::to_string(lo)+":"+std::to_string(lo_loc)+"\nhi:hi_loc="+std::to_string(hi)+":"+std::to_string(hi_loc));
+    error(
+        "Only local array indices can be accessed via DistrArrayFile.get() function\nlo:lo_loc=" + std::to_string(lo) +
+        ":" + std::to_string(lo_loc) + "\nhi:hi_loc=" + std::to_string(hi) + ":" + std::to_string(hi_loc));
   }
   DistrArray::index_type offset = lo - lo_loc;
   m_stream->seekg(0, std::ios::end);
-  size_t current = m_stream->tellg();
-  if (current < (offset + length) * sizeof(DistrArray::value_type)) {
+  const auto wordlength = sizeof(DistrArray::value_type);
+  size_t current = m_stream->tellg() / wordlength;
+  if (current < (offset + length)) {
     std::fill(buf + current - offset, buf + length, 0);
   }
-  m_stream->seekg(offset * sizeof(DistrArray::value_type));
-  const auto readlength = std::min(length * sizeof(DistrArray::value_type), current - offset);
+  m_stream->seekg(offset * wordlength);
+  const auto readlength = current - offset > 0 ? std::min(length, current - offset) * wordlength : 0;
+//  if (readlength==0)
+//  std::cout << "current=" << current << ", offset=" << offset << ", length=" << length << ", readlength=" << readlength
+//            << std::endl;
   if (readlength == 0)
     return;
   m_stream->read((char*)buf, readlength);
   if (m_stream->fail()) {
-    std::cerr << "File " << m_filename << ": ";
+    std::lock_guard<std::mutex> lock(s_open_error_mutex);
+    std::cerr << "Error in reading file " << m_filename << ": " << std::strerror(errno) << std::endl;
     throw std::runtime_error(std::string{"Error in reading ,"} + std::strerror(errno));
   }
 }
 
 std::vector<DistrArrayFile::value_type> DistrArrayFile::get(DistrArray::index_type lo,
                                                             DistrArray::index_type hi) const {
-//  std::cout << "DistrArrayFile::get() " << m_filename<<" "<<lo<<" "<<hi<<std::endl;
+  //  std::cout << "DistrArrayFile::get() " << m_filename<<" "<<lo<<" "<<hi<<std::endl;
   if (lo >= hi)
     return {};
   auto buf = std::vector<DistrArray::value_type>(hi - lo);
@@ -189,7 +200,7 @@ std::vector<DistrArrayFile::value_type> DistrArrayFile::get(DistrArray::index_ty
 }
 
 void DistrArrayFile::put(DistrArray::index_type lo, DistrArray::index_type hi, const DistrArray::value_type* data) {
-//  std::cout << "DistrArrayFile::put() " << m_filename<<" "<<lo<<" "<<hi<<std::endl;
+  //  std::cout << "DistrArrayFile::put() " << m_filename<<" "<<lo<<" "<<hi<<std::endl;
   auto lock = std::lock_guard<std::mutex>(m_mutex);
   if (lo >= hi)
     return;
@@ -212,6 +223,7 @@ void DistrArrayFile::acc(DistrArray::index_type lo, DistrArray::index_type hi, c
     return;
   auto prof = molpro::Profiler::single()->push("DistrArrayFile::acc()");
   auto disk_copy = get(lo, hi);
+  prof += hi - lo;
   std::transform(disk_copy.begin(), disk_copy.end(), data, disk_copy.begin(), [](auto& l, auto& r) { return l + r; });
   put(lo, hi, &disk_copy[0]);
 }
@@ -247,6 +259,7 @@ void DistrArrayFile::scatter(const std::vector<index_type>& indices, const std::
   for (auto i : indices) {
     set(i, data[i - *minmax.first]); // TODO: check it shouldn't be data[*minmax.first++]??
   }
+  prof += indices.size();
 }
 
 void DistrArrayFile::scatter_acc(std::vector<index_type>& indices, const std::vector<value_type>& data) {

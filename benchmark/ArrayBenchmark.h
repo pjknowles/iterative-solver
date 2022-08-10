@@ -3,6 +3,8 @@
 #include <molpro/mpi.h>
 #ifdef HAVE_MPI_H
 #include <molpro/linalg/array/DistrArrayMPI3.h>
+#include <molpro/linalg/array/DistrArraySpan.h>
+#include <molpro/linalg/array/util/Distribution.h>
 #endif
 #ifdef LINEARALGEBRA_ARRAY_GA
 #include <ga-mpi.h>
@@ -28,9 +30,10 @@
 #include <vector>
 namespace molpro {
 namespace linalg {
-using Fast = molpro::linalg::array::DistrArrayMPI3;
-// using Fast = molpro::linalg::array::DistrArraySpan;
+//using Fast = molpro::linalg::array::DistrArrayMPI3;
+ using Fast = molpro::linalg::array::DistrArraySpan;
 // using Fast = std::vector<double>;
+
 
 template <class T>
 auto allocate(size_t n) {
@@ -46,6 +49,20 @@ auto allocatev(size_t n, size_t nvec) {
   result.reserve(nvec);
   for (size_t i = 0; i < nvec; ++i) {
     result.emplace_back(n);
+    result.back().fill(1.0);
+  }
+  return result;
+}
+auto allocateFast(std::vector<typename Fast::value_type>& buffer,size_t n) {
+  auto result = std::make_unique<Fast>(n, array::Span<typename Fast::value_type>(buffer.data(),n), molpro::mpi::comm_global());
+  result->fill(1.0);
+  return result;
+}
+auto allocatevFast(std::vector<typename Fast::value_type>& buffer, size_t n, size_t nvec) {
+std::vector<Fast> result;
+result.reserve(nvec);
+  for (size_t i = 0; i < nvec; ++i) {
+    result.emplace_back(n, molpro::linalg::array::Span<typename Fast::value_type>(&buffer.at(i*n),n), molpro::mpi::comm_global());
     result.back().fill(1.0);
   }
   return result;
@@ -127,6 +144,7 @@ public:
 private:
   size_t m_size;
   double m_target_seconds;
+  std::vector<typename Fast::value_type> m_fast_buffer;
   std::unique_ptr<Slow> m_bufferSlow;
   std::unique_ptr<Fast> m_bufferFast;
   std::vector<Slow> m_buffervSlow;
@@ -143,9 +161,9 @@ public:
                           std::unique_ptr<array::ArrayHandler<Slow, Fast>> slow_fast_handler, size_t n = 10000000,
                           size_t n_Slow = 1, size_t n_Fast = 1, bool profile_individual = false,
                           double target_seconds = 1)
-      : m_title(title), m_size(n), m_target_seconds(target_seconds), m_bufferSlow(allocate<Slow>(n)),
-        m_bufferFast(allocate<Fast>(n)), m_buffervSlow(allocatev<Slow>(n, n_Slow)),
-        m_buffervFast(allocatev<Fast>(n, n_Fast)), m_profiler(*molpro::Profiler::single()),
+      : m_title(title), m_size(n), m_target_seconds(target_seconds), m_fast_buffer(n*n_Fast), m_bufferSlow(allocate<Slow>(n)),
+        m_bufferFast(allocateFast(m_fast_buffer, n)),  m_buffervSlow(allocatev<Slow>(n, n_Slow)),
+        m_buffervFast(allocatevFast(m_fast_buffer, n, n_Fast)), m_profiler(*molpro::Profiler::single()),
         m_fast_slow_handler(std::move(fast_slow_handler)), m_slow_fast_handler(std::move(slow_fast_handler)),
         m_profile_individual(profile_individual), m_mpi_size(molpro::mpi::size_global()),
         m_repeat(std::max(1, int(1e9 * m_target_seconds / m_size))) {
@@ -241,7 +259,7 @@ public:
     copy_construct();
     copyout();
     dot();
-    axpy();
+    // axpy(); // TODO make axpy work with DistrArraySpan
     gemm_inner();
     gemm_inner_transpose();
     gemm_outer();

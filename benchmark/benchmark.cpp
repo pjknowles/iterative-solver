@@ -42,8 +42,6 @@ int main(int argc, char* argv[]) {
     {
       auto bm = molpro::linalg::ArrayBenchmarkDistributed<molpro::linalg::array::DistrArrayMPI3>(
           "DistrArrayMPI3", length, nfast, nslow, false, 0.1);
-      if (rank == 0)
-        std::cout << ", repeat count = " << bm.m_repeat << std::endl;
       bm.all();
       std::cout << bm;
       bm.profiler().dotgraph(bm.m_title + "." + std::to_string(length) + ".gv");
@@ -66,13 +64,16 @@ int main(int argc, char* argv[]) {
           "DistrArrayFile", length, nfast, nslow, false, 0.1);
       bm.all();
       std::cout << bm;
+      bm.profiler().dotgraph(bm.m_title + "." + std::to_string(length) + ".gv");
     }
 #ifdef LINEARALGEBRA_ARRAY_HDF5
+    if (true)
     {
       auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayHDF5>(
           "DistrArrayHDF5", length, nfast, nslow, false, 0.01);
       bm.all();
       std::cout << bm;
+      bm.profiler().dotgraph(bm.m_title + "." + std::to_string(length) + ".gv");
     }
 #endif
   }

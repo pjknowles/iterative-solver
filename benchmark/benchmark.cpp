@@ -18,6 +18,13 @@ int main(int argc, char* argv[]) {
 
     if (rank == 0)
       std::cout << "Vector length = " << length << ", numbers of vectors = " << nslow << " / " << nfast;
+    {
+      auto bm = molpro::linalg::ArrayBenchmarkDistributed<molpro::linalg::array::DistrArrayMPI3>(
+          "DistrArrayMPI3", length, nfast, nslow, false, 0.1);
+      if (rank == 0)
+        std::cout << ", repeat count = " << bm.m_repeat << std::endl;
+    }
+
 //    {
 //      auto bm = molpro::linalg::ArrayBenchmarkIterable<std::vector<double>>("std::vector<double>", length, nfast,
 //      nslow,
@@ -32,7 +39,6 @@ int main(int argc, char* argv[]) {
 //      std::cout << bm;
 //    }
 #ifdef LINEARALGEBRA_ARRAY_MPI3
-    if (true)
     {
       auto bm = molpro::linalg::ArrayBenchmarkDistributed<molpro::linalg::array::DistrArrayMPI3>(
           "DistrArrayMPI3", length, nfast, nslow, false, 0.1);
@@ -45,27 +51,30 @@ int main(int argc, char* argv[]) {
 #else
 #endif
 #ifdef LINEARALGEBRA_ARRAY_GA
-    {
-      auto bm = molpro::linalg::ArrayBenchmarkDistributed<molpro::linalg::array::DistrArrayGA>(
-          "DistrArrayGA", length, nfast, nslow, false, 0.1);
+    // TODO: It's presently not possible to do this because DistrArrayGA needs to know the communicator?
+    // TODO: consider writing a resource class to allow storage of information needed for construction of any DistrArray
+//    {
+//      auto bm = molpro::linalg::ArrayBenchmarkDistributed<molpro::linalg::array::DistrArrayGA>(
+//          "DistrArrayGA", length, nfast, nslow, false, 0.1);
+//      bm.all();
+//      std::cout << bm;
+//    }
+#endif
+
+    if (true) {
+      auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayFile>(
+          "DistrArrayFile", length, nfast, nslow, false, 0.1);
       bm.all();
       std::cout << bm;
     }
-#endif
 #ifdef LINEARALGEBRA_ARRAY_HDF5
     {
       auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayHDF5>(
-          "DistrArrayHDF5 / memory", length, nfast, nslow, false, 0.01);
+          "DistrArrayHDF5", length, nfast, nslow, false, 0.01);
       bm.all();
       std::cout << bm;
     }
 #endif
-    if (true) {
-      auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayFile>(
-          "DistrArrayFile / memory", length, nfast, nslow, false, 0.1);
-      bm.all();
-      std::cout << bm;
-    }
   }
   molpro::mpi::finalize();
 }

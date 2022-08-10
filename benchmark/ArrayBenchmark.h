@@ -34,27 +34,36 @@ using Fast = molpro::linalg::array::DistrArrayMPI3;
 
 template <class T>
 auto allocate(size_t n) {
-  return std::make_unique<T>(n);
+  auto prof = molpro::Profiler::single()->push("allocate()");
+  auto ptr = std::make_unique<T>(n);
+  ptr->fill(1.0);
+  return ptr;
 }
 template <class T>
 auto allocatev(size_t n, size_t nvec) {
+  auto prof = molpro::Profiler::single()->push("allocatev()");
   std::vector<T> result;
   result.reserve(nvec);
-  for (size_t i = 0; i < nvec; ++i)
+  for (size_t i = 0; i < nvec; ++i) {
     result.emplace_back(n);
+    result.back().fill(1.0);
+  }
   return result;
 }
 #ifdef LINEARALGEBRA_ARRAY_MPI3
 template <>
 auto allocate<array::DistrArrayMPI3>(size_t n) {
   auto result = std::make_unique<array::DistrArrayMPI3>(n, molpro::mpi::comm_global());
+  result->fill(1.0);
   return result;
 }
 template <>
 auto allocatev<array::DistrArrayMPI3>(size_t n, size_t nvec) {
   std::vector<array::DistrArrayMPI3> result;
-  for (size_t i = 0; i < nvec; ++i)
+  for (size_t i = 0; i < nvec; ++i) {
     result.emplace_back(n, molpro::mpi::comm_global());
+    result.back().fill(1.0);
+  }
   return result;
 }
 #endif
@@ -62,13 +71,16 @@ auto allocatev<array::DistrArrayMPI3>(size_t n, size_t nvec) {
 template <>
 auto allocate<array::DistrArrayGA>(size_t n) {
   auto result = std::make_unique<array::DistrArrayGA>(n, GA_MPI_Comm());
+  result->fill(1.0);
   return result;
 }
 template <>
 auto allocatev<array::DistrArrayGA>(size_t n, size_t nvec) {
   std::vector<array::DistrArrayGA> result;
-  for (size_t i = 0; i < nvec; ++i)
+  for (size_t i = 0; i < nvec; ++i) {
     result.emplace_back(n, GA_MPI_Comm());
+    result.back().fill(1.0);
+  }
   return result;
 }
 #endif
@@ -81,6 +93,7 @@ auto allocate<array::DistrArrayHDF5>(size_t n) {
   handle->open_group("/");
   handle->close_file();
   auto result = std::make_unique<array::DistrArrayHDF5>(handle, n);
+  result->fill(1.0);
   return result;
 }
 template <>
@@ -93,6 +106,7 @@ auto allocatev<array::DistrArrayHDF5>(size_t n, size_t nvec) {
     handle->open_group("/");
     handle->close_file();
     result.emplace_back(handle, n);
+    result.back().fill(1.0);
   }
   return result;
 }
@@ -115,19 +129,22 @@ private:
   std::vector<Slow> m_buffervSlow;
   std::vector<Fast> m_buffervFast;
   molpro::Profiler& m_profiler;
-  std::unique_ptr<array::ArrayHandler<Fast, Slow>> m_handler;
+  std::unique_ptr<array::ArrayHandler<Fast, Slow>> m_fast_slow_handler;
+  std::unique_ptr<array::ArrayHandler<Slow, Fast>> m_slow_fast_handler;
   bool m_profile_individual;
   int m_mpi_size;
 
 public:
   size_t m_repeat;
-  explicit ArrayBenchmark(const std::string& title, std::unique_ptr<array::ArrayHandler<Fast, Slow>> handler,
-                          size_t n = 10000000, size_t n_Slow = 1, size_t n_Fast = 1, bool profile_individual = false,
+  explicit ArrayBenchmark(const std::string& title, std::unique_ptr<array::ArrayHandler<Fast, Slow>> fast_slow_handler,
+                          std::unique_ptr<array::ArrayHandler<Slow, Fast>> slow_fast_handler, size_t n = 10000000,
+                          size_t n_Slow = 1, size_t n_Fast = 1, bool profile_individual = false,
                           double target_seconds = 1)
       : m_title(title), m_size(n), m_target_seconds(target_seconds), m_bufferSlow(allocate<Slow>(n)),
         m_bufferFast(allocate<Fast>(n)), m_buffervSlow(allocatev<Slow>(n, n_Slow)),
         m_buffervFast(allocatev<Fast>(n, n_Fast)), m_profiler(*molpro::Profiler::single()),
-        m_handler(std::move(handler)), m_profile_individual(profile_individual), m_mpi_size(molpro::mpi::size_global()),
+        m_fast_slow_handler(std::move(fast_slow_handler)), m_slow_fast_handler(std::move(slow_fast_handler)),
+        m_profile_individual(profile_individual), m_mpi_size(molpro::mpi::size_global()),
         m_repeat(std::max(1, int(1e9 * m_target_seconds / m_size))) {
     m_profiler.reset(title);
     m_profiler.set_max_depth(10);
@@ -136,7 +153,7 @@ public:
   void dot() {
     auto prof = m_profiler.push("dot");
     for (size_t i = 0; i < m_repeat; i++)
-      m_handler->dot(*m_bufferFast, *m_bufferSlow);
+      m_fast_slow_handler->dot(*m_bufferFast, *m_bufferSlow);
     prof += m_size * m_repeat / m_mpi_size;
   }
 
@@ -144,14 +161,14 @@ public:
     auto prof = m_profiler.push("gemm_inner");
     const size_t rep = std::max(size_t(1), m_repeat / m_buffervFast.size() / m_buffervSlow.size());
     for (size_t i = 0; i < rep; i++)
-      m_handler->gemm_inner(itsolv::cwrap(m_buffervFast), itsolv::cwrap(m_buffervSlow));
+      m_fast_slow_handler->gemm_inner(itsolv::cwrap(m_buffervFast), itsolv::cwrap(m_buffervSlow));
     prof += rep * m_size * m_buffervSlow.size() * m_buffervFast.size() / m_mpi_size;
   }
 
   void axpy() {
     auto prof = m_profiler.push("axpy");
     for (size_t i = 0; i < m_repeat; i++)
-      m_handler->axpy(1.0, *m_bufferSlow, *m_bufferFast);
+      m_fast_slow_handler->axpy(1.0, *m_bufferSlow, *m_bufferFast);
     prof += m_size * m_repeat / m_mpi_size;
   }
 
@@ -161,23 +178,24 @@ public:
     Matrix<double> alpha({m_buffervSlow.size(), m_buffervFast.size()});
     alpha.fill(1.0);
     for (size_t i = 0; i < rep; i++)
-      m_handler->gemm_outer(alpha, itsolv::cwrap(m_buffervSlow), itsolv::wrap(m_buffervFast));
+      m_fast_slow_handler->gemm_outer(alpha, itsolv::cwrap(m_buffervSlow), itsolv::wrap(m_buffervFast));
     prof += rep * m_size * m_buffervSlow.size() * m_buffervFast.size() / m_mpi_size;
   }
 
-  void copyin() {
-//        auto prof = m_profiler.push("copy Fast -> Slow");
-//        auto buffer = allocate<Slow>(m_bufferSlow->size());
-//        for (size_t i = 0; i < m_repeat / m_mpi_size; i++)
-//          *buffer = m_handler->copy(*m_bufferFast);
-//        prof += m_size * m_repeat / m_mpi_size;
+  void copy_construct() {
+            auto prof = m_profiler.push("copy construct");
+            //TODO is there an atomic copy constructor?
+//            auto buffer = allocate<Slow>(m_bufferSlow->size());
+            for (size_t i = 0; i < std::min(m_repeat,decltype(m_repeat)(1000)); i++)
+//              decltype(*m_bufferSlow) copy(*m_bufferFast);
+              *m_bufferSlow = m_slow_fast_handler->copy(*m_bufferFast);
+            prof += m_size * m_repeat / m_mpi_size;
   }
 
   void copyout() {
     auto prof = m_profiler.push("copy Slow -> Fast");
-    auto buffer = allocate<Fast>(m_bufferFast->size());
-    for (size_t i = 0; i < m_repeat / m_mpi_size; i++)
-      *buffer = m_handler->copy(*m_bufferSlow);
+    for (size_t i = 0; i < std::min(m_repeat,decltype(m_repeat)(1000)); i++)
+      *m_bufferFast = m_fast_slow_handler->copy(*m_bufferSlow);
     prof += m_size * m_repeat / m_mpi_size;
   }
 
@@ -185,7 +203,7 @@ public:
     using scalar_type = typename Slow::value_type;
     auto prof = m_profiler.push("fill");
     for (size_t i = 0; i < m_repeat; i++)
-      m_handler->fill(static_cast<scalar_type>(1), *m_bufferFast);
+      m_fast_slow_handler->fill(static_cast<scalar_type>(1), *m_bufferFast);
     prof += m_size * m_repeat / m_mpi_size;
   }
 
@@ -194,13 +212,13 @@ public:
     if (m_profile_individual)
       for (size_t i = 0; i < m_repeat; i++) {
         auto prof = m_profiler.push("scal");
-        m_handler->scal(1, *m_bufferFast);
+        m_fast_slow_handler->scal(1, *m_bufferFast);
         prof += m_size / m_mpi_size;
       }
     else {
       auto prof = m_profiler.push("scal");
       for (size_t i = 0; i < m_repeat; i++)
-        m_handler->scal(1, *m_bufferFast);
+        m_fast_slow_handler->scal(1, *m_bufferFast);
       prof += m_size * m_repeat / m_mpi_size;
     }
   }
@@ -208,7 +226,7 @@ public:
   void all() {
     fill();
     scal();
-    copyin();
+    copy_construct();
     copyout();
     dot();
     axpy();
@@ -229,7 +247,8 @@ template <class Slow = Fast>
 ArrayBenchmark<Slow> ArrayBenchmarkIterable(std::string title, size_t n = 10000000, size_t n_Slow = 1,
                                             size_t n_Fast = 1, bool profile_individual = false,
                                             double target_seconds = 1) {
-  return ArrayBenchmark<Slow>(title, std::make_unique<array::ArrayHandlerIterable<Fast, Slow>>(), n, n_Slow, n_Fast,
+  return ArrayBenchmark<Slow>(title, std::make_unique<array::ArrayHandlerIterable<Fast, Slow>>(),
+                              std::make_unique<array::ArrayHandlerIterable<Slow, Fast>>(), n, n_Slow, n_Fast,
                               profile_individual, target_seconds);
 }
 
@@ -238,7 +257,8 @@ template <class Slow = array::DistrArrayMPI3>
 ArrayBenchmark<Slow> ArrayBenchmarkDistributed(std::string title, size_t n = 10000000, size_t n_Slow = 1,
                                                size_t n_Fast = 1, bool profile_individual = false,
                                                double target_seconds = 1) {
-  return ArrayBenchmark<Slow>(title, std::make_unique<array::ArrayHandlerDistr<Fast, Slow>>(), n, n_Slow, n_Fast,
+  return ArrayBenchmark<Slow>(title, std::make_unique<array::ArrayHandlerDistr<Fast, Slow>>(),
+                              std::make_unique<array::ArrayHandlerDistr<Slow, Fast>>(), n, n_Slow, n_Fast,
                               profile_individual, target_seconds);
 }
 #endif
@@ -246,7 +266,8 @@ ArrayBenchmark<Slow> ArrayBenchmarkDistributed(std::string title, size_t n = 100
 template <class Slow = array::DistrArrayFile>
 ArrayBenchmark<Slow> ArrayBenchmarkDDisk(std::string title, size_t n = 10000000, size_t n_Slow = 1, size_t n_Fast = 1,
                                          bool profile_individual = false, double target_seconds = 1) {
-  return ArrayBenchmark<Slow>(title, std::make_unique<array::ArrayHandlerDistrDDisk<Fast, Slow>>(), n, n_Slow, n_Fast,
+  return ArrayBenchmark<Slow>(title, std::make_unique<array::ArrayHandlerDistrDDisk<Fast, Slow>>(),
+                              std::make_unique<array::ArrayHandlerDDiskDistr<Slow, Fast>>(), n, n_Slow, n_Fast,
                               profile_individual, target_seconds);
 }
 

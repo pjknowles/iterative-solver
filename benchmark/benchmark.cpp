@@ -39,10 +39,11 @@ int main(int argc, char* argv[]) {
 //      std::cout << bm;
 //    }
 #ifdef LINEARALGEBRA_ARRAY_MPI3
-    if (false)
     {
       auto bm = molpro::linalg::ArrayBenchmarkDistributed<molpro::linalg::array::DistrArrayMPI3>(
           "DistrArrayMPI3", length, nfast, nslow, false, 0.1);
+      if (rank == 0)
+        std::cout << ", repeat count = " << bm.m_repeat << std::endl;
       bm.all();
       std::cout << bm;
       bm.profiler().dotgraph(bm.m_title + "." + std::to_string(length) + ".gv");

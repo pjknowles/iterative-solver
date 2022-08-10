@@ -60,6 +60,7 @@ auto allocate<array::DistrArrayMPI3>(size_t n) {
 template <>
 auto allocatev<array::DistrArrayMPI3>(size_t n, size_t nvec) {
   std::vector<array::DistrArrayMPI3> result;
+  result.reserve(nvec);
   for (size_t i = 0; i < nvec; ++i) {
     result.emplace_back(n, molpro::mpi::comm_global());
     result.back().fill(1.0);
@@ -77,6 +78,7 @@ auto allocate<array::DistrArrayGA>(size_t n) {
 template <>
 auto allocatev<array::DistrArrayGA>(size_t n, size_t nvec) {
   std::vector<array::DistrArrayGA> result;
+  result.reserve(nvec);
   for (size_t i = 0; i < nvec; ++i) {
     result.emplace_back(n, GA_MPI_Comm());
     result.back().fill(1.0);
@@ -99,6 +101,7 @@ auto allocate<array::DistrArrayHDF5>(size_t n) {
 template <>
 auto allocatev<array::DistrArrayHDF5>(size_t n, size_t nvec) {
   std::vector<array::DistrArrayHDF5> result;
+  result.reserve(nvec);
   for (size_t i = 0; i < nvec; ++i) {
     auto handle = std::make_shared<array::util::PHDF5Handle>(
         array::util::temp_phdf5_handle("benchmark", molpro::mpi::comm_global()));

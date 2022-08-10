@@ -45,7 +45,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
   return alphas;
 }
 
-template <class AL, typename = std::enable_if_t<!std::is_same_v<std::decay_t<AL>,DistrArrayFile>>>
+template <class AL, typename = std::enable_if_t<!std::is_same_v<std::decay_t<AL>, DistrArrayFile>>>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<DistrArrayFile>& xx,
                                                                           const CVecRef<AL>& yy) {
   auto result_transpose = gemm_inner_distr_distr(yy, xx);
@@ -76,6 +76,7 @@ template <class AL>
 void gemm_distr_distr(array::mapped_or_value_type_t<AL>* alphadata, const CVecRef<DistrArrayFile>& xx,
                       const VecRef<AL>& yy, gemm_type gemm_type) {
 
+  auto prof = molpro::Profiler::single()->push("gemm_distr_distr");
   if (xx.size() == 0 || yy.size() == 0) {
     return;
   }
@@ -87,7 +88,7 @@ void gemm_distr_distr(array::mapped_or_value_type_t<AL>* alphadata, const CVecRe
     auto unique_ptr_j = yy.at(j).get().local_buffer()->data();
     auto unique_ptr_jp1 = yy.at(j + 1).get().local_buffer()->data();
     yy_stride = unique_ptr_jp1 - unique_ptr_j;
-    //    std::cout << "j="<<j<<" y_stride="<<y_stride<<std::endl;
+//        std::cout << "j="<<j<<" yy_stride="<<yy_stride<<std::endl;
     if (j > 0)
       yy_constant_stride = yy_constant_stride && (yy_stride == previous_stride);
     previous_stride = yy_stride;
@@ -101,6 +102,7 @@ void gemm_distr_distr(array::mapped_or_value_type_t<AL>* alphadata, const CVecRe
   const int buf_size = options->parameter("GEMM_PAGESIZE", 8192) * number_of_buffers;
   //  std::cout << "buf_size=" << buf_size << " number_of_buffers=" << number_of_buffers << std::endl;
 
+  molpro::Profiler::single()->start("gemm: buffer setup");
   std::vector<DistrArray::value_type> buffers_memory(buf_size * xx.size());
   std::vector<BufferManager> buffers;
   std::vector<BufferManager::Iterator> buffer_iterators;
@@ -112,16 +114,23 @@ void gemm_distr_distr(array::mapped_or_value_type_t<AL>* alphadata, const CVecRe
                                        number_of_buffers));
     buffer_iterators.emplace_back(buffers[j].begin());
   }
+  molpro::Profiler::single()->stop("gemm: buffer setup");
   int current_buf_size; // = buffer_iterators.front()->size();
   const auto y_size = int(yy[0].get().local_buffer()->size());
   for (int container_offset = 0; container_offset < y_size; container_offset += current_buf_size) {
     current_buf_size = buffer_iterators.front()->size();
     if (gemm_type == gemm_type::outer) {
       if (yy_constant_stride and not yy.empty()) {
+        auto prof =
+            molpro::Profiler::single()->push("gemm_outer: cblas_dgemm dimensions " + std::to_string(xx.size()) + ", " +
+                                             std::to_string(yy.size()) + ", " + std::to_string(current_buf_size));
         cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, current_buf_size, yy.size(), xx.size(), 1,
                     buffer_iterators[0]->data(), buf_size, alphadata, yy.size(), 1,
                     yy[0].get().local_buffer()->data() + container_offset, yy_stride);
       } else { // non-uniform stride:
+        auto prof =
+            molpro::Profiler::single()->push("gemm_outer: cblas_dgemv dimensions " + std::to_string(xx.size()) + ", " +
+                                             std::to_string(yy.size()) + ", " + std::to_string(current_buf_size));
         for (size_t i = 0; i < yy.size(); ++i) {
           cblas_dgemv(CblasColMajor, CblasNoTrans, current_buf_size, xx.size(), 1, buffer_iterators[0]->data(),
                       buf_size, alphadata + i, yy.size(), 1, yy[i].get().local_buffer()->data() + container_offset, 1);
@@ -129,10 +138,16 @@ void gemm_distr_distr(array::mapped_or_value_type_t<AL>* alphadata, const CVecRe
       }
     } else if (gemm_type == gemm_type::inner) {
       if (yy_constant_stride and not yy.empty()) {
+        auto prof =
+            molpro::Profiler::single()->push("gemm_inner: cblas_dgemm dimensions " + std::to_string(xx.size()) + ", " +
+                                             std::to_string(yy.size()) + ", " + std::to_string(current_buf_size));
         cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, xx.size(), yy.size(), current_buf_size, 1,
                     buffer_iterators[0]->data(), buf_size, yy[0].get().local_buffer()->data() + container_offset,
                     yy_stride, 1, alphadata, xx.size());
       } else { // non-uniform stride:
+        auto prof =
+            molpro::Profiler::single()->push("gemm_inner: cblas_dgemv dimensions " + std::to_string(xx.size()) + ", " +
+                                             std::to_string(yy.size()) + ", " + std::to_string(current_buf_size));
         for (size_t k = 0; k < yy.size(); ++k) {
           cblas_dgemv(CblasColMajor, CblasTrans, current_buf_size, xx.size(), 1, buffer_iterators[0]->data(), buf_size,
                       yy[k].get().local_buffer()->data() + container_offset, 1, 1, alphadata + k * xx.size(), 1);
@@ -149,9 +164,9 @@ void gemm_distr_distr(array::mapped_or_value_type_t<AL>* alphadata, const CVecRe
 template <class AL, class AR = AL>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL>& xx,
                                                                           const CVecRef<AR>& yy) {
-  if (std::is_same<AL, DistrArrayFile>::value){
+  if (std::is_same<AL, DistrArrayFile>::value) {
     throw std::runtime_error("gemm_inner_distr_distr (unbuffered) called with DistrArrayFile (should never happen!)");
-  }                                                            
+  }
   // const size_t spacing = 1;
   using value_type = typename array::mapped_or_value_type_t<AL>;
   auto mat = Matrix<value_type>({xx.size(), yy.size()});
@@ -178,7 +193,7 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
 template <class AL, class AR = AL>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR>& xx,
                             const VecRef<AL>& yy) {
-  if (std::is_same<AL, DistrArrayFile>::value){
+  if (std::is_same<AL, DistrArrayFile>::value) {
     throw std::runtime_error("gemm_outer_distr_distr (unbuffered) called with DistrArrayFile (should never happen!)");
   }
   auto prof = molpro::Profiler::single()->push("gemm_outer_distr_distr (unbuffered)");

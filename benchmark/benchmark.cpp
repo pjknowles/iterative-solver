@@ -13,8 +13,9 @@ int main(int argc, char* argv[]) {
   auto rank = molpro::mpi::rank_global();
   auto mpi_size = molpro::mpi::size_global();
   size_t nfast = 100, nslow = 10;
-  molpro::linalg::set_options(molpro::Options("ITERATIVE-SOLVER", "GEMM_PAGESIZE=8192"));
+  molpro::linalg::set_options(molpro::Options("ITERATIVE-SOLVER", "GEMM_PAGESIZE=8192, GEMM_BUFFERS=2" ));
   std::cout << "GEMM_PAGESIZE=" << molpro::linalg::options()->parameter("GEMM_PAGESIZE", 0) << std::endl;
+  std::cout << "GEMM_BUFFERS=" << molpro::linalg::options()->parameter("GEMM_BUFFERS", 0) << std::endl;
   if (rank == 0)
     std::cout << mpi_size << " MPI ranks" << std::endl;
   for (const auto& length : std::vector<size_t>{500, 1000, 10000, 100000, 1000000}) {

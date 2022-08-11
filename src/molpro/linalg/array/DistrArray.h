@@ -1,11 +1,13 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAY_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DISTRARRAY_H
+#include "Resource.h"
 #include <cmath>
 #include <cstdlib>
 #include <list>
 #include <map>
 #include <memory>
 #include <molpro/mpi.h>
+#include <string_view>
 #include <vector>
 
 #include <molpro/linalg/array/Span.h>
@@ -96,10 +98,13 @@ public:
   using Distribution = util::Distribution<index_type>;
 
 protected:
-  index_type m_dimension = 0; //!< number of elements in the array
-  MPI_Comm m_communicator;    //!< Outer communicator
+  index_type m_dimension = 0;                           //!< number of elements in the array
+  MPI_Comm m_communicator = molpro::mpi::comm_global(); //!< Outer communicator
+  fs::path m_directory = ".";                        //!< storage location for any temporary files
   //! Initializes array without allocating any memory
   DistrArray(size_t dimension, MPI_Comm commun);
+  DistrArray(size_t dimension, Resource resource = Resource());
+  DistrArray(Distribution distribution, Resource resource = Resource());
   DistrArray() = default;
 
 public:

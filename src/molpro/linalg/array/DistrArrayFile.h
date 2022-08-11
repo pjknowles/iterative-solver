@@ -23,7 +23,6 @@ namespace molpro::linalg::array {
 class DistrArrayFile : public DistrArrayDisk {
 
 private:
-  fs::path m_directory;
   fs::path m_filename;
   mutable std::unique_ptr<std::fstream>
       m_stream; // use a pointer just in case the implementation of std::fstream is not movable

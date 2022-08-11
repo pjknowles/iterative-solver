@@ -10,6 +10,7 @@
 namespace molpro::linalg::array {
 
 DistrArray::DistrArray(size_t dimension, MPI_Comm commun) : m_dimension(dimension), m_communicator(commun) {}
+DistrArray::DistrArray(size_t dimension, Resource resource) : m_dimension(dimension), m_communicator(resource.m_mpi_communicator) {}
 
 void DistrArray::sync() const { MPI_Barrier(m_communicator); }
 

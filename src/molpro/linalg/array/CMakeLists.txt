@@ -35,7 +35,7 @@ endif ()
 
 LibraryManager_Append(${PROJECT_NAME}
         SOURCES DistrArray.cpp DistrArrayDisk.cpp DistrArrayFile.cpp DistrArraySpan.cpp util.cpp
-        PUBLIC_HEADER DistrArray.h DistrArrayDisk.h DistrArrayFile.h DistrArraySpan.h util.h
+        PUBLIC_HEADER DistrArray.h DistrArrayDisk.h DistrArrayFile.h DistrArraySpan.h util.h Resource.h
         )
 find_package(Threads REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads)

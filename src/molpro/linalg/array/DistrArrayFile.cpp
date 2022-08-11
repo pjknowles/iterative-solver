@@ -162,7 +162,7 @@ DistrArray::value_type DistrArrayFile::at(DistrArray::index_type ind) const {
 void DistrArrayFile::set(DistrArray::index_type ind, DistrArray::value_type val) { put(ind, ind + 1, &val); }
 
 void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, DistrArray::value_type* buf) const {
-  auto lock = std::lock_guard<std::mutex>(m_mutex);
+//  auto lock = std::lock_guard<std::mutex>(m_mutex); // TODO understand why it's at least sometimes a bit faster with this lock
   if (lo >= hi)
     return;
   DistrArray::index_type length = hi - lo;
@@ -177,7 +177,7 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
   DistrArray::index_type offset = lo - lo_loc;
   m_stream->seekg(0, std::ios::end);
   const auto wordlength = sizeof(DistrArray::value_type);
-  size_t current = m_stream->tellg() / wordlength;
+  const size_t current = m_stream->tellg() / wordlength;
   if (current < (offset + length)) {
     std::fill(buf + current - offset, buf + length, 0);
   }

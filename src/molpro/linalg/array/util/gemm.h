@@ -88,7 +88,7 @@ void gemm_distr_distr(array::mapped_or_value_type_t<AL>* alphadata, const CVecRe
     auto unique_ptr_j = yy.at(j).get().local_buffer()->data();
     auto unique_ptr_jp1 = yy.at(j + 1).get().local_buffer()->data();
     yy_stride = unique_ptr_jp1 - unique_ptr_j;
-//        std::cout << "j="<<j<<" yy_stride="<<yy_stride<<std::endl;
+    //        std::cout << "j="<<j<<" yy_stride="<<yy_stride<<std::endl;
     if (j > 0)
       yy_constant_stride = yy_constant_stride && (yy_stride == previous_stride);
     previous_stride = yy_stride;
@@ -99,20 +99,29 @@ void gemm_distr_distr(array::mapped_or_value_type_t<AL>* alphadata, const CVecRe
   const BufferManager::buffertype number_of_buffers = (options->parameter("GEMM_BUFFERS", 2) > 1)
                                                           ? BufferManager::buffertype::Double
                                                           : BufferManager::buffertype::Single;
-  const int buf_size = options->parameter("GEMM_PAGESIZE", 8192) * number_of_buffers;
-  //  std::cout << "buf_size=" << buf_size << " number_of_buffers=" << number_of_buffers << std::endl;
+  const int buf_size = std::min(int(yy.front().get().local_buffer()->size()),
+                                options->parameter("GEMM_PAGESIZE", 8192)) * number_of_buffers;
+//    std::cout << "buf_size=" << buf_size << " number_of_buffers=" << number_of_buffers << std::endl;
 
   molpro::Profiler::single()->start("gemm: buffer setup");
+  molpro::Profiler::single()->start("gemm: declare buffers_memory " + std::to_string((buf_size * xx.size())));
   std::vector<DistrArray::value_type> buffers_memory(buf_size * xx.size());
+  molpro::Profiler::single()->stop("gemm: declare buffers_memory " + std::to_string((buf_size * xx.size())));
   std::vector<BufferManager> buffers;
   std::vector<BufferManager::Iterator> buffer_iterators;
   buffers.reserve(xx.size());
   buffer_iterators.reserve(xx.size());
   for (size_t j = 0; j < xx.size(); ++j) {
-    buffers.emplace_back(BufferManager(xx.at(j).get(),
-                                       Span<DistrArray::value_type>(buffers_memory.data() + (buf_size * j), buf_size),
-                                       number_of_buffers));
-    buffer_iterators.emplace_back(buffers[j].begin());
+    {
+      auto prof = molpro::Profiler::single()->push("gemm_distr_distr emplace BufferManager");
+      buffers.emplace_back(xx.at(j).get(),
+                           Span<DistrArray::value_type>(buffers_memory.data() + (buf_size * j), buf_size),
+                           number_of_buffers);
+    }
+    {
+      auto prof = molpro::Profiler::single()->push("gemm_distr_distr emplace BufferManager::Iterator");
+      buffer_iterators.emplace_back(buffers[j].begin());
+    }
   }
   molpro::Profiler::single()->stop("gemm: buffer setup");
   int current_buf_size; // = buffer_iterators.front()->size();

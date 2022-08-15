@@ -8,24 +8,25 @@
 
 #include <molpro/linalg/array/DistrArrayFile.h>
 #include <molpro/linalg/array/DistrArraySpan.h>
-#include <molpro/linalg/array/util.h>
-#include <molpro/linalg/array/util/Distribution.h>
 #include <molpro/linalg/array/default_handler.h>
+#include <molpro/linalg/array/util.h>
+#include <molpro/linalg/array/util/BufferManager.h>
+#include <molpro/linalg/array/util/Distribution.h>
 
 #ifdef LINEARALGEBRA_ARRAY_MPI3
 #include <molpro/linalg/array/DistrArrayMPI3.h>
 using molpro::linalg::array::DistrArrayMPI3;
 #endif
 
+using molpro::linalg::array::ArrayHandlerDDiskDistr;
+using molpro::linalg::array::default_handler;
 using molpro::linalg::array::DistrArrayFile;
 using molpro::linalg::array::DistrArraySpan;
+using molpro::linalg::array::Span;
 using molpro::linalg::array::util::LockMPI3;
+using molpro::linalg::array::util::make_distribution_spread_remainder;
 using molpro::linalg::array::util::ScopeLock;
 using molpro::linalg::test::mpi_comm;
-using molpro::linalg::array::default_handler;
-using molpro::linalg::array::ArrayHandlerDDiskDistr;
-using molpro::linalg::array::Span;
-using molpro::linalg::array::util::make_distribution_spread_remainder;
 
 using ::testing::ContainerEq;
 using ::testing::DoubleEq;
@@ -118,8 +119,9 @@ TEST_F(DistrArrayFile_Fixture, handler_copies) {
   }
   for (size_t i = 0; i < n; i++) {
     file_vecs[i].get(left, right, &(*(vy[i].begin() + left)));
-    //vy[i] = file_vecs[i].vec();
-    MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, vy[i].data(), chunks.data(), displs.data(), MPI_DOUBLE, mpi_comm);
+    // vy[i] = file_vecs[i].vec();
+    MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, vy[i].data(), chunks.data(), displs.data(), MPI_DOUBLE,
+                   mpi_comm);
     EXPECT_THAT(vx[i], Pointwise(DoubleEq(), vy[i]));
   }
 }
@@ -242,34 +244,34 @@ TEST_F(DistrArrayFile_Fixture, dot_DistrArray) {
   std::vector<double> v(size);
   std::iota(v.begin(), v.end(), 0);
   a.put(left, right, &(*(v.cbegin() + left)));
-  const DistrArraySpan s(size,Span<double>(&(*(v.begin() + left)),right-left));
+  const DistrArraySpan s(size, Span<double>(&(*(v.begin() + left)), right - left));
   auto ss = s.dot(s);
   auto as = a.dot(s);
-//  auto aa = a.dot(a);
+  //  auto aa = a.dot(a);
   auto sa = s.dot(a);
   ScopeLock l{mpi_comm};
-  EXPECT_NEAR(ss,size*(size-1)*(2*size-1)/6,1e-13);
-  EXPECT_NEAR(as,size*(size-1)*(2*size-1)/6,1e-13);
-//  EXPECT_NEAR(aa,size*(size-1)*(2*size-1)/6,1e-13);
-  EXPECT_NEAR(sa,size*(size-1)*(2*size-1)/6,1e-13);
+  EXPECT_NEAR(ss, size * (size - 1) * (2 * size - 1) / 6, 1e-13);
+  EXPECT_NEAR(as, size * (size - 1) * (2 * size - 1) / 6, 1e-13);
+  //  EXPECT_NEAR(aa,size*(size-1)*(2*size-1)/6,1e-13);
+  EXPECT_NEAR(sa, size * (size - 1) * (2 * size - 1) / 6, 1e-13);
 }
 
 TEST_F(DistrArrayFile_Fixture, dot_DistrArrayFile) {
   std::vector<double> v(size);
   std::iota(v.begin(), v.end(), 0);
   a.put(left, right, &(*(v.cbegin() + left)));
-  const DistrArraySpan s(size,Span<double>(&(*(v.begin() + left)),right-left));
+  const DistrArraySpan s(size, Span<double>(&(*(v.begin() + left)), right - left));
   const DistrArrayFile f(s);
   EXPECT_THROW(auto ss = f.dot(f); std::cout << ss, std::invalid_argument);
   auto as = a.dot(f);
   auto sa = f.dot(a);
   ScopeLock l{mpi_comm};
-  EXPECT_NEAR(as,size*(size-1)*(2*size-1)/6,1e-13);
-  EXPECT_NEAR(sa,size*(size-1)*(2*size-1)/6,1e-13);
+  EXPECT_NEAR(as, size * (size - 1) * (2 * size - 1) / 6, 1e-13);
+  EXPECT_NEAR(sa, size * (size - 1) * (2 * size - 1) / 6, 1e-13);
 }
 
-TEST_F(DistrArrayFile_Fixture, contiguous_allocation){
-  
+TEST_F(DistrArrayFile_Fixture, contiguous_allocation) {
+
   size_t n = 10;
   size_t dim = 10;
 
@@ -278,18 +280,59 @@ TEST_F(DistrArrayFile_Fixture, contiguous_allocation){
   auto cx_wrapped = molpro::linalg::itsolv::cwrap(cx);
 
   // check contiguity
-  int previous_stride=0;
-  for (size_t j = 0; j<n-1; ++j){
+  int previous_stride = 0;
+  for (size_t j = 0; j < n - 1; ++j) {
     auto unique_ptr_j = cx_wrapped.at(j).get().local_buffer()->data();
-    auto unique_ptr_jp1 = cx_wrapped.at(j+1).get().local_buffer()->data();
+    auto unique_ptr_jp1 = cx_wrapped.at(j + 1).get().local_buffer()->data();
     int stride = unique_ptr_jp1 - unique_ptr_j;
-    if (j>0){
-      if (stride != previous_stride){
+    if (j > 0) {
+      if (stride != previous_stride) {
         throw std::runtime_error("yy doesn't have a consistent stride\n");
       }
     }
     previous_stride = stride;
-
   }
-  
+}
+
+TEST_F(DistrArrayFile_Fixture, BufferManager) {
+  DistrArrayFile f(106);
+  DistrArrayFile f2(f.size());
+  auto range = f.distribution().range(molpro::mpi::rank_global());
+//  std::cout << "rank="<<molpro::mpi::rank_global()<<", range="<<range.first<<":"<<range.second<<std::endl;
+  auto size = range.second-range.first;
+  std::vector<double> values(size);
+  std::iota(values.begin(), values.end(), double(range.first));
+  f.put(range.first, range.second, values.data());
+  std::vector<double> received_values(size);
+  f.get(range.first, range.second, received_values.data());
+  EXPECT_THAT(received_values, Pointwise(DoubleEq(), values));
+  std::vector<double> values2(size);
+  std::iota(values2.begin(), values2.end(), double(range.first+100000));
+  f2.put(range.first, range.second, values2.data());
+  std::vector<double> received_values2(size);
+
+  std::vector<std::reference_wrapper<const DistrArrayFile>> ff;
+  ff.emplace_back(std::cref(f));
+  ff.emplace_back(std::cref(f2));
+  for (const auto& number_of_buffers : std::vector<size_t>{1, 2}) {
+    for (const auto& buffer_size : std::vector<size_t>{1, size-1, size, size+1, size*2}) {
+      molpro::linalg::array::util::BufferManager manager(ff, buffer_size, number_of_buffers);
+      std::fill(received_values.begin(), received_values.end(), -999);
+      std::fill(received_values2.begin(), received_values2.end(), -999);
+      for (const auto& buf : manager) {
+        for (size_t i = 0; i < manager.buffer_size(); ++i)
+          received_values[manager.buffer_offset() + i] = buf[i];
+        for (size_t i = 0; i < manager.buffer_size(); ++i)
+          received_values2[manager.buffer_offset() + i] = buf[i + manager.buffer_stride()];
+        EXPECT_LE(manager.buffer_size(), manager.buffer_stride())
+            << "buffer_size " << manager.buffer_size() << ", buffer_stride " << manager.buffer_stride()
+            << ", buffer_offset " << manager.buffer_offset() << std::endl;
+        EXPECT_LE(manager.buffer_size() + manager.buffer_offset(), f.size())
+            << "buffer_size " << manager.buffer_size() << ", buffer_stride " << manager.buffer_stride()
+            << ", buffer_offset " << manager.buffer_offset() << std::endl;
+      }
+      EXPECT_THAT(received_values, Pointwise(DoubleEq(), values));
+      EXPECT_THAT(received_values2, Pointwise(DoubleEq(), values2));
+    }
+  }
 }

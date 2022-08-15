@@ -3,6 +3,7 @@
 #ifdef HAVE_MPI_H
 #include <mpi.h>
 #endif
+#include "BufferManager.h"
 #include <future>
 #include <iostream>
 #include <molpro/Options.h>
@@ -96,53 +97,36 @@ void gemm_distr_distr(array::mapped_or_value_type_t<AL>* alphadata, const CVecRe
   yy_constant_stride = yy_constant_stride && (yy_stride > 0);
 
   auto options = molpro::linalg::options();
-  const BufferManager::buffertype number_of_buffers = (options->parameter("GEMM_BUFFERS", 2) > 1)
-                                                          ? BufferManager::buffertype::Double
-                                                          : BufferManager::buffertype::Single;
-  const int buf_size = std::min(int(yy.front().get().local_buffer()->size()),
-                                options->parameter("GEMM_PAGESIZE", 8192)) * number_of_buffers;
-//    std::cout << "buf_size=" << buf_size << " number_of_buffers=" << number_of_buffers << std::endl;
+  auto number_of_buffers = options->parameter("GEMM_BUFFERS", 2);
+  const int buf_size =
+      std::min(int(yy.front().get().local_buffer()->size()), options->parameter("GEMM_PAGESIZE", 8192)) *
+      number_of_buffers;
+//      std::cout << "buf_size=" << buf_size << " number_of_buffers=" << number_of_buffers << std::endl;
 
   molpro::Profiler::single()->start("gemm: buffer setup");
-  molpro::Profiler::single()->start("gemm: declare buffers_memory " + std::to_string((buf_size * xx.size())));
-  std::vector<DistrArray::value_type> buffers_memory(buf_size * xx.size());
-  molpro::Profiler::single()->stop("gemm: declare buffers_memory " + std::to_string((buf_size * xx.size())));
-  std::vector<BufferManager> buffers;
-  std::vector<BufferManager::Iterator> buffer_iterators;
-  buffers.reserve(xx.size());
-  buffer_iterators.reserve(xx.size());
-  for (size_t j = 0; j < xx.size(); ++j) {
-    {
-      auto prof = molpro::Profiler::single()->push("gemm_distr_distr emplace BufferManager");
-      buffers.emplace_back(xx.at(j).get(),
-                           Span<DistrArray::value_type>(buffers_memory.data() + (buf_size * j), buf_size),
-                           number_of_buffers);
-    }
-    {
-      auto prof = molpro::Profiler::single()->push("gemm_distr_distr emplace BufferManager::Iterator");
-      buffer_iterators.emplace_back(buffers[j].begin());
-    }
-  }
+  BufferManager buffer(xx, buf_size, number_of_buffers);
   molpro::Profiler::single()->stop("gemm: buffer setup");
-  int current_buf_size; // = buffer_iterators.front()->size();
-  const auto y_size = int(yy[0].get().local_buffer()->size());
-  for (int container_offset = 0; container_offset < y_size; container_offset += current_buf_size) {
-    current_buf_size = buffer_iterators.front()->size();
+  for (auto buffer_iterator = buffer.begin(); buffer_iterator != buffer.end(); ++buffer_iterator) {
+    auto container_offset = buffer.buffer_offset();
+    int current_buf_size = buffer.buffer_size();
+//    std::cout << "container_offset="<<container_offset<<", current_buf_size="<<current_buf_size<<std::endl;
     if (gemm_type == gemm_type::outer) {
       if (yy_constant_stride and not yy.empty()) {
         auto prof =
             molpro::Profiler::single()->push("gemm_outer: cblas_dgemm dimensions " + std::to_string(xx.size()) + ", " +
                                              std::to_string(yy.size()) + ", " + std::to_string(current_buf_size));
+//        std::cout << "outer dgemm container_offset="<<container_offset<<std::endl;
         cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, current_buf_size, yy.size(), xx.size(), 1,
-                    buffer_iterators[0]->data(), buf_size, alphadata, yy.size(), 1,
+                    buffer_iterator->data(), buffer.buffer_stride(), alphadata, yy.size(), 1,
                     yy[0].get().local_buffer()->data() + container_offset, yy_stride);
       } else { // non-uniform stride:
         auto prof =
             molpro::Profiler::single()->push("gemm_outer: cblas_dgemv dimensions " + std::to_string(xx.size()) + ", " +
                                              std::to_string(yy.size()) + ", " + std::to_string(current_buf_size));
+//        std::cout << "outer dgemv"<<std::endl;
         for (size_t i = 0; i < yy.size(); ++i) {
-          cblas_dgemv(CblasColMajor, CblasNoTrans, current_buf_size, xx.size(), 1, buffer_iterators[0]->data(),
-                      buf_size, alphadata + i, yy.size(), 1, yy[i].get().local_buffer()->data() + container_offset, 1);
+          cblas_dgemv(CblasColMajor, CblasNoTrans, current_buf_size, xx.size(), 1, buffer_iterator->data(), buffer.buffer_stride(),
+                      alphadata + i, yy.size(), 1, yy[i].get().local_buffer()->data() + container_offset, 1);
         }
       }
     } else if (gemm_type == gemm_type::inner) {
@@ -150,21 +134,21 @@ void gemm_distr_distr(array::mapped_or_value_type_t<AL>* alphadata, const CVecRe
         auto prof =
             molpro::Profiler::single()->push("gemm_inner: cblas_dgemm dimensions " + std::to_string(xx.size()) + ", " +
                                              std::to_string(yy.size()) + ", " + std::to_string(current_buf_size));
+//        std::cout << "inner dgemm"<<std::endl;
         cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, xx.size(), yy.size(), current_buf_size, 1,
-                    buffer_iterators[0]->data(), buf_size, yy[0].get().local_buffer()->data() + container_offset,
-                    yy_stride, 1, alphadata, xx.size());
+                    buffer_iterator->data(), buffer.buffer_stride(), yy[0].get().local_buffer()->data() + container_offset, yy_stride,
+                    1, alphadata, xx.size());
       } else { // non-uniform stride:
         auto prof =
             molpro::Profiler::single()->push("gemm_inner: cblas_dgemv dimensions " + std::to_string(xx.size()) + ", " +
                                              std::to_string(yy.size()) + ", " + std::to_string(current_buf_size));
+//        std::cout << "inner dgemv"<<std::endl;
         for (size_t k = 0; k < yy.size(); ++k) {
-          cblas_dgemv(CblasColMajor, CblasTrans, current_buf_size, xx.size(), 1, buffer_iterators[0]->data(), buf_size,
+          cblas_dgemv(CblasColMajor, CblasTrans, current_buf_size, xx.size(), 1, buffer_iterator->data(), buffer.buffer_stride(),
                       yy[k].get().local_buffer()->data() + container_offset, 1, 1, alphadata + k * xx.size(), 1);
         }
       }
     }
-    for (auto& iter : buffer_iterators)
-      ++iter;
   }
 }
 

@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
 #endif
   auto rank = molpro::mpi::rank_global();
   auto mpi_size = molpro::mpi::size_global();
-  size_t nfast = 100, nslow = 10;
+  const size_t nSlow = 100, nFast = 10;
   molpro::linalg::set_options(molpro::Options("ITERATIVE-SOLVER", "GEMM_PAGESIZE=8192, GEMM_BUFFERS=2" ));
   std::cout << "GEMM_PAGESIZE=" << molpro::linalg::options()->parameter("GEMM_PAGESIZE", 0) << std::endl;
   std::cout << "GEMM_BUFFERS=" << molpro::linalg::options()->parameter("GEMM_BUFFERS", 0) << std::endl;
@@ -21,12 +21,12 @@ int main(int argc, char* argv[]) {
   for (const auto& length : std::vector<size_t>{500, 1000, 10000, 100000, 1000000}) {
 
     if (rank == 0)
-      std::cout << "Vector length = " << length << ", numbers of vectors = " << nslow << " / " << nfast << std::endl;
+      std::cout << "Vector length = " << length << ", numbers of vectors = " << nFast << " / " << nSlow << std::endl;
 
 #ifdef LINEARALGEBRA_ARRAY_MPI3
     {
       auto bm = molpro::linalg::ArrayBenchmarkDistributed<molpro::linalg::array::DistrArrayMPI3>(
-          "DistrArrayMPI3", length, nfast, nslow, false, 0.1);
+          "DistrArrayMPI3", length, nSlow, nFast, false, 0.1);
       bm.all();
       std::cout << bm;
       bm.profiler().dotgraph(bm.m_title + "." + std::to_string(length) + ".gv");
@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
     // TODO: consider writing a resource class to allow storage of information needed for construction of any DistrArray
 //    {
 //      auto bm = molpro::linalg::ArrayBenchmarkDistributed<molpro::linalg::array::DistrArrayGA>(
-//          "DistrArrayGA", length, nfast, nslow, false, 0.1);
+//          "DistrArrayGA", length, nSlow, nFast, false, 0.1);
 //      bm.all();
 //      std::cout << bm;
 //    }
@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
 
     if (true) {
       auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayFile>("DistrArrayFile", length,
-                                                                                           nfast, nslow, false, 0.1);
+                                                                                           nSlow, nFast, false, 0.1);
       bm.all();
       std::cout << bm;
       bm.profiler().dotgraph(bm.m_title + "." + std::to_string(length) + ".gv");
@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
 #ifdef LINEARALGEBRA_ARRAY_HDF5
     if (true) {
       auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayHDF5>("DistrArrayHDF5", length,
-                                                                                           nfast, nslow, false, 0.01);
+                                                                                           nSlow, nFast, false, 0.01);
       bm.all();
       std::cout << bm;
       bm.profiler().dotgraph(bm.m_title + "." + std::to_string(length) + ".gv");

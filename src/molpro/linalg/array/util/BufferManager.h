@@ -1,11 +1,10 @@
 #ifndef ITERATIVE_SOLVER_BUFFERMANAGER_H
 #define ITERATIVE_SOLVER_BUFFERMANAGER_H
 
-#include "molpro/linalg/array/DistrArrayFile.h" // TODO make this work with generic DistrArray
 #include <future>
 #include <molpro/linalg/array/DistrArray.h>
-#include <vector>
 #include <molpro/linalg/array/util/Distribution.h>
+#include <vector>
 
 namespace molpro::linalg::array::util {
 
@@ -14,15 +13,15 @@ namespace molpro::linalg::array::util {
  * of DistrArray objects. At construction, an amount of memory is allocated as a buffer, and the buffer is divided into
  * one or more chunks that are independent windows on the data. Sequential access to the data is provided through
  * iterators.
+ *
+ * @tparam T a class that inherits from DistrArray
  */
+template <class T>
 class BufferManager {
-  template <class A>
-  using VecRef = std::vector<std::reference_wrapper<A>>;
-
-  template <class A>
-  using CVecRef = std::vector<std::reference_wrapper<const A>>;
-  auto cwrap(const std::vector<DistrArrayFile>& arrays) {
-    CVecRef<DistrArrayFile> w;
+  using VecRef = std::vector<std::reference_wrapper<T>>;
+  using CVecRef = std::vector<std::reference_wrapper<const T>>;
+  auto cwrap(const std::vector<T>& arrays) {
+    CVecRef w;
     for (auto it = arrays.begin(); it != arrays.end(); ++it)
       w.emplace_back(std::cref(*it));
     return w;
@@ -32,23 +31,23 @@ public:
   /**
    * @brief Construct a new Buffer Manager object and allocate memory for the chunks.
    *
-   * @param arrays the DistrArrayFile objects that this BufferManager will access data from. They must have the same
+   * @param arrays the DistrArray objects that this BufferManager will access data from. They must have the same
    * distribution.
    * @param buffer_size number of array elements in each chunk.
    * @param number_of_buffers how many buffers.
    */
-  BufferManager(const CVecRef<DistrArrayFile>& arrays, size_t buffer_size = 8192, int number_of_buffers = 2)
+  BufferManager(const CVecRef& arrays, size_t buffer_size = 8192, int number_of_buffers = 2)
       : m_arrays(arrays), m_buffer_size(buffer_size), m_number_of_buffers(number_of_buffers),
-        m_range(arrays.empty() ? std::pair<DistrArray::index_type, DistrArray::index_type>{0, 0}
+        m_range(arrays.empty() ? std::pair<typename T::index_type, typename T::index_type>{0, 0}
                                : arrays.front().get().distribution().range(molpro::mpi::rank_global())),
         m_buffer(arrays.size() * number_of_buffers * buffer_size) {
     assert(number_of_buffers > 0 && number_of_buffers < 3);
   }
 
-  //  BufferManager(const std::vector<DistrArray>& arrays, size_t buffer_size = 8192, int number_of_buffers = 2)
-  //      : BufferManager(cwrap(arrays), buffer_size, number_of_buffers) {}
-  //  BufferManager(const DistrArray& array, size_t buffer_size = 8192, int number_of_buffers = 2)
-  //      : BufferManager(CVecRef<DistrArray>{std::cref(array)}, buffer_size, number_of_buffers) {}
+  BufferManager(const std::vector<T>& arrays, size_t buffer_size = 8192, int number_of_buffers = 2)
+      : BufferManager(cwrap(arrays), buffer_size, number_of_buffers) {}
+  BufferManager(const T& array, size_t buffer_size = 8192, int number_of_buffers = 2)
+      : BufferManager(CVecRef{std::cref(array)}, buffer_size, number_of_buffers) {}
 
   /*!
    * The current buffer size
@@ -67,8 +66,8 @@ public:
   size_t buffer_offset() const { return m_current_segment * m_buffer_size; }
 
 protected:
-  using value_type = DistrArray::value_type;
-  const CVecRef<DistrArrayFile>& m_arrays; // reference to the DistrArray objects data is being accessed from
+  using value_type = typename T::value_type;
+  const CVecRef& m_arrays; // reference to the DistrArray objects data is being accessed from
   const size_t m_buffer_size = 8192;
   const int m_number_of_buffers = 2;
   size_t m_current_buffer_size;
@@ -82,9 +81,9 @@ public:
     // iterator properties
     using iterator_category = std::forward_iterator_tag;
     using difference_type = std::ptrdiff_t;
-    using value_type = Span<DistrArray::value_type>;
-    using pointer = Span<DistrArray::value_type>*;
-    using reference = const Span<DistrArray::value_type>&;
+    using value_type = Span<typename T::value_type>;
+    using pointer = Span<typename T::value_type>*;
+    using reference = const Span<typename T::value_type>&;
 
     /**
      * @brief Construct a new Iterator object
@@ -130,12 +129,11 @@ public:
 
 protected:
   /**
-   * @brief Move to the next segment of the arrays
+   * @brief Move to the next segment of the arrays and complete loading of the buffer
    * @param initial whether this is the first iteration
-   * @return the iterator value for the next iteration
+   * @return the buffer contents for the new segment
    */
   [[nodiscard]] Span<value_type> next(bool initial = false) {
-    auto prof = molpro::Profiler::single()->push(std::string{"BufferManager::next("} + (initial ? "T" : "F") + ")");
     if (initial)
       m_current_segment = 0;
     else
@@ -177,7 +175,7 @@ protected:
   size_t m_current_segment = 0; // current chunk
   const std::pair<size_t, size_t>
       m_range; // memory offsets for MPI found via distr_array_disk.distribution().range(...)
-  std::vector<DistrArray::value_type> m_buffer;
+  std::vector<typename T::value_type> m_buffer;
   std::future<void> m_read_future;
 };
 

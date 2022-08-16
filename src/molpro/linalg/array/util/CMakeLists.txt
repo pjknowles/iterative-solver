@@ -1,5 +1,5 @@
 LibraryManager_Append(${PROJECT_NAME}
-        SOURCES temp_file.cpp BufferManager.cpp
+        SOURCES temp_file.cpp
         PUBLIC_HEADER Distribution.h select.h select_max_dot.h temp_file.h TempHandle.h gemm.h BufferManager.h)
 
 if (LINEARALGEBRA_ARRAY_HDF5)

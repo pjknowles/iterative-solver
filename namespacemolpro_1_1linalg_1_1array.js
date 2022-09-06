@@ -44,7 +44,6 @@ var namespacemolpro_1_1linalg_1_1array =
     [ "ArrayHandlerDistrSparse< AL, AR, true >", "classmolpro_1_1linalg_1_1array_1_1ArrayHandlerDistrSparse_3_01AL_00_01AR_00_01true_01_4.html", "classmolpro_1_1linalg_1_1array_1_1ArrayHandlerDistrSparse_3_01AL_00_01AR_00_01true_01_4" ],
     [ "DistrArray", "classmolpro_1_1linalg_1_1array_1_1DistrArray.html", "classmolpro_1_1linalg_1_1array_1_1DistrArray" ],
     [ "DistrArrayDisk", "classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk.html", "classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk" ],
-    [ "BufferManager", "classmolpro_1_1linalg_1_1array_1_1BufferManager.html", "classmolpro_1_1linalg_1_1array_1_1BufferManager" ],
     [ "DistrArrayFile", "classmolpro_1_1linalg_1_1array_1_1DistrArrayFile.html", "classmolpro_1_1linalg_1_1array_1_1DistrArrayFile" ],
     [ "DistrArraySpan", "classmolpro_1_1linalg_1_1array_1_1DistrArraySpan.html", "classmolpro_1_1linalg_1_1array_1_1DistrArraySpan" ],
     [ "DistrArrayMPI3", "classmolpro_1_1linalg_1_1array_1_1DistrArrayMPI3.html", "classmolpro_1_1linalg_1_1array_1_1DistrArrayMPI3" ],
@@ -65,7 +64,6 @@ var namespacemolpro_1_1linalg_1_1array =
     [ "begin", "namespacemolpro_1_1linalg_1_1array_1_1span.html#a1685994156d0ee2713c481e85594a8d8", null ],
     [ "check_abs", "namespacemolpro_1_1linalg_1_1array.html#a6acd07fa233242b91864374861696f46", null ],
     [ "create_default_handler", "namespacemolpro_1_1linalg_1_1array.html#a5890c9a2aa072e5acc1690cb1f1ee95f", null ],
-    [ "DistrArrayGet", "namespacemolpro_1_1linalg_1_1array.html#a1af02b5cf343c352af87bd847d845a42", null ],
     [ "dot", "namespacemolpro_1_1linalg_1_1array.html#a9127fd56dbfe49e8698f14dcca382295", null ],
     [ "dot", "namespacemolpro_1_1linalg_1_1array.html#a08a3a46f7c8030c9161938fc76bf7441", null ],
     [ "dot", "namespacemolpro_1_1linalg_1_1array.html#a573843fe35b436c5b9671160d6886a18", null ],
@@ -80,5 +78,6 @@ var namespacemolpro_1_1linalg_1_1array =
     [ "is_disk_v", "namespacemolpro_1_1linalg_1_1array.html#a299c3ce7c7b32979a20409256f6d667b", null ],
     [ "is_distributed_v", "namespacemolpro_1_1linalg_1_1array.html#ad3bfb249746efc65f70c9af4fc1667a1", null ],
     [ "is_iterable_v", "namespacemolpro_1_1linalg_1_1array.html#a37f32650280ead1187209883828505be", null ],
-    [ "is_sparse_v", "namespacemolpro_1_1linalg_1_1array.html#a032b081004cd9ee22ff6d6061eaa7684", null ]
+    [ "is_sparse_v", "namespacemolpro_1_1linalg_1_1array.html#a032b081004cd9ee22ff6d6061eaa7684", null ],
+    [ "s_open_error_mutex", "namespacemolpro_1_1linalg_1_1array.html#af25a43293d1736bcb38d4f07b8056745", null ]
 ];

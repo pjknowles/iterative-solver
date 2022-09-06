@@ -1,5 +1,7 @@
 var NAVTREEINDEX3 =
 {
+"classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolver.html#acfce319e750a3e3a925c489b91dbf7e2":[10,2,0,1,10,17],
+"classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolver.html#ad1311f667ca86f437490945fff637b0f":[10,2,0,1,10,55],
 "classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolver.html#adc1b240bebd35761b7a6a17ce594182d":[10,2,0,1,10,23],
 "classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolver.html#adde8118f66c77abc9df316bc63cf0355":[10,2,0,1,10,22],
 "classmolpro_1_1linalg_1_1itsolv_1_1IterativeSolver.html#ae0725b38684c71dc582fa03220b5b685":[10,2,0,1,10,47],
@@ -247,7 +249,5 @@ var NAVTREEINDEX3 =
 "classmolpro_1_1linalg_1_1itsolv_1_1SolverFactory.html#a9df8895d7401f31ea43f324538bddcd3":[10,2,0,1,33,0],
 "classmolpro_1_1linalg_1_1itsolv_1_1SolverFactory.html#ac4621edf4faf1df489e2fdca814fc409":[10,2,0,1,33,4],
 "classmolpro_1_1linalg_1_1itsolv_1_1SolverFactory.html#afb1bbc275b41e911465a29381f5a37bb":[10,2,0,1,33,6],
-"classmolpro_1_1linalg_1_1itsolv_1_1detail_1_1DSpaceResetter.html":[10,2,0,1,0,0],
-"classmolpro_1_1linalg_1_1itsolv_1_1detail_1_1DSpaceResetter.html#a27b03a2d4922c913b5c7725b2fe8b8e3":[10,2,0,1,0,0,4],
-"classmolpro_1_1linalg_1_1itsolv_1_1detail_1_1DSpaceResetter.html#a4dcb1c408145f9dc7d6494afefa7eeed":[10,2,0,1,0,0,8]
+"classmolpro_1_1linalg_1_1itsolv_1_1detail_1_1DSpaceResetter.html":[10,2,0,1,0,0]
 };

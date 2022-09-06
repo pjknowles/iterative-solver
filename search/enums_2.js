@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['eqndata_1757',['EqnData',['../namespacemolpro_1_1linalg_1_1itsolv_1_1subspace.html#a30629fcb646a0a617c8b85a098a8b195',1,'molpro::linalg::itsolv::subspace']]]
+  ['gemm_5ftype_1756',['gemm_type',['../namespacemolpro_1_1linalg_1_1array_1_1util.html#ac1856c20beb303170f5bbbbf9e08771f',1,'molpro::linalg::array::util']]]
 ];

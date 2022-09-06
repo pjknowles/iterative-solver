@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['rmatype_1760',['RMAType',['../classmolpro_1_1linalg_1_1array_1_1DistrArrayMPI3.html#a43e14b96f07b56ed6865773c6c5fdcdb',1,'molpro::linalg::array::DistrArrayMPI3']]]
+  ['verbosity_1759',['Verbosity',['../namespacemolpro_1_1linalg_1_1itsolv.html#ac8246e59286ac3630c4c80231d6ed172',1,'molpro::linalg::itsolv']]]
 ];

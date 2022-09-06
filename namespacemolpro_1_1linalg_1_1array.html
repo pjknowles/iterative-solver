@@ -212,9 +212,6 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk.html">DistrArrayDisk</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Distributed array located primarily on disk.  <a href="classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmolpro_1_1linalg_1_1array_1_1BufferManager.html">BufferManager</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classmolpro_1_1linalg_1_1array_1_1BufferManager.html" title="BufferManager provides single-buffered or asynchronous double-buffered read access to the data in a D...">BufferManager</a> provides single-buffered or asynchronous double-buffered read access to the data in a <a class="el" href="classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk.html" title="Distributed array located primarily on disk.">DistrArrayDisk</a>. At construction, an amount of memory is provided or allocated as a buffer, and the buffer is divided into one or more chunks that are independent windows on the data. Sequential access to the data is provided through iterators.  <a href="classmolpro_1_1linalg_1_1array_1_1BufferManager.html#details">More...</a><br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmolpro_1_1linalg_1_1array_1_1DistrArrayFile.html">DistrArrayFile</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Distributed array storing the buffer on disk using temporary local files.  <a href="classmolpro_1_1linalg_1_1array_1_1DistrArrayFile.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -290,9 +287,6 @@ Functions</h2></td></tr>
 <tr class="separator:a08a3a46f7c8030c9161938fc76bf7441"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9127fd56dbfe49e8698f14dcca382295"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemolpro_1_1linalg_1_1array.html#a9127fd56dbfe49e8698f14dcca382295">dot</a> (const <a class="el" href="classmolpro_1_1linalg_1_1array_1_1DistrArray.html">DistrArray</a> &amp;x, const <a class="el" href="classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk.html">DistrArrayDisk</a> &amp;y)</td></tr>
 <tr class="separator:a9127fd56dbfe49e8698f14dcca382295"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1af02b5cf343c352af87bd847d845a42"><td class="memTemplParams" colspan="2">template&lt;class T &gt; </td></tr>
-<tr class="memitem:a1af02b5cf343c352af87bd847d845a42"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacemolpro_1_1linalg_1_1array.html#a1af02b5cf343c352af87bd847d845a42">DistrArrayGet</a> (const T &amp;obj, size_t lo, size_t hi, typename T::value_type *data)</td></tr>
-<tr class="separator:a1af02b5cf343c352af87bd847d845a42"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5b332a516f38cb8ea680c5ee7656a883"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemolpro_1_1linalg_1_1array.html#a5b332a516f38cb8ea680c5ee7656a883">swap</a> (<a class="el" href="classmolpro_1_1linalg_1_1array_1_1DistrArrayFile.html">DistrArrayFile</a> &amp;x, <a class="el" href="classmolpro_1_1linalg_1_1array_1_1DistrArrayFile.html">DistrArrayFile</a> &amp;y) noexcept</td></tr>
 <tr class="separator:a5b332a516f38cb8ea680c5ee7656a883"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af8b924ed3087a41fa5d4b9627d31b7c0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemolpro_1_1linalg_1_1array.html#af8b924ed3087a41fa5d4b9627d31b7c0">swap</a> (<a class="el" href="classmolpro_1_1linalg_1_1array_1_1DistrArraySpan.html">DistrArraySpan</a> &amp;a1, <a class="el" href="classmolpro_1_1linalg_1_1array_1_1DistrArraySpan.html">DistrArraySpan</a> &amp;a2) noexcept</td></tr>
@@ -322,6 +316,8 @@ Variables</h2></td></tr>
 <tr class="memitem:a12b3a57e72d2ca5fd50a2925191f0ff9"><td class="memTemplParams" colspan="2">template&lt;class T &gt; </td></tr>
 <tr class="memitem:a12b3a57e72d2ca5fd50a2925191f0ff9"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacemolpro_1_1linalg_1_1array.html#a12b3a57e72d2ca5fd50a2925191f0ff9">array_family_v</a> = <a class="el" href="structmolpro_1_1linalg_1_1array_1_1array__family.html">array_family</a>&lt;T&gt;{}.value()</td></tr>
 <tr class="separator:a12b3a57e72d2ca5fd50a2925191f0ff9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af25a43293d1736bcb38d4f07b8056745"><td class="memItemLeft" align="right" valign="top">std::mutex&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemolpro_1_1linalg_1_1array.html#af25a43293d1736bcb38d4f07b8056745">s_open_error_mutex</a></td></tr>
+<tr class="separator:af25a43293d1736bcb38d4f07b8056745"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Typedef Documentation</h2>
 <a id="a80c986e4a5d6be516962254af8ddb585"></a>
@@ -452,56 +448,6 @@ template&lt;class T , class S &gt; </div>
 </div><div class="memdoc">
 
 <p>Creates an appropriate handler for the given array types. </p>
-
-</div>
-</div>
-<a id="a1af02b5cf343c352af87bd847d845a42"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1af02b5cf343c352af87bd847d845a42">&#9670;&nbsp;</a></span>DistrArrayGet()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;class T &gt; </div>
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">void molpro::linalg::array::DistrArrayGet </td>
-          <td>(</td>
-          <td class="paramtype">const T &amp;&#160;</td>
-          <td class="paramname"><em>obj</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">size_t&#160;</td>
-          <td class="paramname"><em>lo</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">size_t&#160;</td>
-          <td class="paramname"><em>hi</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">typename T::value_type *&#160;</td>
-          <td class="paramname"><em>data</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
 
 </div>
 </div>
@@ -874,6 +820,20 @@ template&lt;class T &gt; </div>
 <span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
   </tr>
 </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af25a43293d1736bcb38d4f07b8056745"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af25a43293d1736bcb38d4f07b8056745">&#9670;&nbsp;</a></span>s_open_error_mutex</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::mutex molpro::linalg::array::s_open_error_mutex</td>
+        </tr>
+      </table>
 </div><div class="memdoc">
 
 </div>

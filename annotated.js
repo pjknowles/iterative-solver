@@ -30,6 +30,7 @@ var annotated =
             [ "Task", "classmolpro_1_1linalg_1_1array_1_1util_1_1Task.html", "classmolpro_1_1linalg_1_1array_1_1util_1_1Task" ],
             [ "PHDF5Handle", "classmolpro_1_1linalg_1_1array_1_1util_1_1PHDF5Handle.html", "classmolpro_1_1linalg_1_1array_1_1util_1_1PHDF5Handle" ],
             [ "TempHandle", "structmolpro_1_1linalg_1_1array_1_1util_1_1TempHandle.html", null ],
+            [ "BufferManager", "classmolpro_1_1linalg_1_1array_1_1util_1_1BufferManager.html", "classmolpro_1_1linalg_1_1array_1_1util_1_1BufferManager" ],
             [ "DistrFlags", "classmolpro_1_1linalg_1_1array_1_1util_1_1DistrFlags.html", "classmolpro_1_1linalg_1_1array_1_1util_1_1DistrFlags" ]
           ] ],
           [ "ArrayHandler", "classmolpro_1_1linalg_1_1array_1_1ArrayHandler.html", "classmolpro_1_1linalg_1_1array_1_1ArrayHandler" ],
@@ -73,7 +74,6 @@ var annotated =
           [ "ArrayHandlerDistrSparse< AL, AR, true >", "classmolpro_1_1linalg_1_1array_1_1ArrayHandlerDistrSparse_3_01AL_00_01AR_00_01true_01_4.html", "classmolpro_1_1linalg_1_1array_1_1ArrayHandlerDistrSparse_3_01AL_00_01AR_00_01true_01_4" ],
           [ "DistrArray", "classmolpro_1_1linalg_1_1array_1_1DistrArray.html", "classmolpro_1_1linalg_1_1array_1_1DistrArray" ],
           [ "DistrArrayDisk", "classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk.html", "classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk" ],
-          [ "BufferManager", "classmolpro_1_1linalg_1_1array_1_1BufferManager.html", "classmolpro_1_1linalg_1_1array_1_1BufferManager" ],
           [ "DistrArrayFile", "classmolpro_1_1linalg_1_1array_1_1DistrArrayFile.html", "classmolpro_1_1linalg_1_1array_1_1DistrArrayFile" ],
           [ "DistrArraySpan", "classmolpro_1_1linalg_1_1array_1_1DistrArraySpan.html", "classmolpro_1_1linalg_1_1array_1_1DistrArraySpan" ],
           [ "DistrArrayMPI3", "classmolpro_1_1linalg_1_1array_1_1DistrArrayMPI3.html", "classmolpro_1_1linalg_1_1array_1_1DistrArrayMPI3" ],

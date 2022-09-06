@@ -13,6 +13,7 @@ var namespacemolpro_1_1linalg_1_1array_1_1util =
     [ "Task", "classmolpro_1_1linalg_1_1array_1_1util_1_1Task.html", "classmolpro_1_1linalg_1_1array_1_1util_1_1Task" ],
     [ "PHDF5Handle", "classmolpro_1_1linalg_1_1array_1_1util_1_1PHDF5Handle.html", "classmolpro_1_1linalg_1_1array_1_1util_1_1PHDF5Handle" ],
     [ "TempHandle", "structmolpro_1_1linalg_1_1array_1_1util_1_1TempHandle.html", null ],
+    [ "BufferManager", "classmolpro_1_1linalg_1_1array_1_1util_1_1BufferManager.html", "classmolpro_1_1linalg_1_1array_1_1util_1_1BufferManager" ],
     [ "DistrFlags", "classmolpro_1_1linalg_1_1array_1_1util_1_1DistrFlags.html", "classmolpro_1_1linalg_1_1array_1_1util_1_1DistrFlags" ],
     [ "gemm_type", "namespacemolpro_1_1linalg_1_1array_1_1util.html#ac1856c20beb303170f5bbbbf9e08771f", [
       [ "inner", "namespacemolpro_1_1linalg_1_1array_1_1util.html#ac1856c20beb303170f5bbbbf9e08771fa6839a240de254a0396bae992eed95b00", null ],

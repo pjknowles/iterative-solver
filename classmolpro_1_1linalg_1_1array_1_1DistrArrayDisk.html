@@ -133,7 +133,7 @@ Collaboration diagram for molpro::linalg::array::DistrArrayDisk:</div>
 <p>This class stores the full array on disk and implements RMA and more efficient linear algebra operations.</p>
 <p>RMA operations read/write directly to disk. Care must be taken that they do not overlap with local buffer modifications.</p>
 <p>LocalBuffer reads the whole local section into memory. This might be prohivitively expensive for large arrays, so care must be taken.</p>
-<p><a class="el" href="classmolpro_1_1linalg_1_1array_1_1BufferManager.html" title="BufferManager provides single-buffered or asynchronous double-buffered read access to the data in a D...">BufferManager</a> reads the local section in chunks using a separate thread for I/O. This is more memory efficient and allows overlap of communication and computation. The walk through the local section is via iterators.</p>
+<p>BufferManager reads the local section in chunks using a separate thread for I/O. This is more memory efficient and allows overlap of communication and computation. The walk through the local section is via iterators.</p>
 <p>IO can be done in a separate thread using <a class="el" href="classmolpro_1_1linalg_1_1array_1_1util_1_1Task.html">util::Task</a>.</p>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;molpro/linalg/array/util.h&gt;</span></div>
 <div class="line"><span class="keyword">auto</span> da = <a class="code" href="classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk.html#a0ce0b6062c43af2ce8fe01528a6cc423">DistrArrayDisk</a>{...};</div>
@@ -343,7 +343,7 @@ Protected Attributes</h2></td></tr>
 <tr class="memdesc:ae5b9c588896f146e816e2e67327fbeef"><td class="mdescLeft">&#160;</td><td class="mdescRight">describes distribution of array among processes  <a href="classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk.html#ae5b9c588896f146e816e2e67327fbeef">More...</a><br /></td></tr>
 <tr class="separator:ae5b9c588896f146e816e2e67327fbeef"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab7fafda24eade50953f30efa800e30b2"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk.html#ab7fafda24eade50953f30efa800e30b2">m_buffer_size</a> = 8192</td></tr>
-<tr class="memdesc:ab7fafda24eade50953f30efa800e30b2"><td class="mdescLeft">&#160;</td><td class="mdescRight">buffer size for paged access via <a class="el" href="classmolpro_1_1linalg_1_1array_1_1BufferManager.html" title="BufferManager provides single-buffered or asynchronous double-buffered read access to the data in a D...">BufferManager</a>  <a href="classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk.html#ab7fafda24eade50953f30efa800e30b2">More...</a><br /></td></tr>
+<tr class="memdesc:ab7fafda24eade50953f30efa800e30b2"><td class="mdescLeft">&#160;</td><td class="mdescRight">buffer size for paged access via BufferManager  <a href="classmolpro_1_1linalg_1_1array_1_1DistrArrayDisk.html#ab7fafda24eade50953f30efa800e30b2">More...</a><br /></td></tr>
 <tr class="separator:ab7fafda24eade50953f30efa800e30b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pro_attribs_classmolpro_1_1linalg_1_1array_1_1DistrArray"><td colspan="2" onclick="javascript:toggleInherit('pro_attribs_classmolpro_1_1linalg_1_1array_1_1DistrArray')"><img src="closed.png" alt="-"/>&#160;Protected Attributes inherited from <a class="el" href="classmolpro_1_1linalg_1_1array_1_1DistrArray.html">molpro::linalg::array::DistrArray</a></td></tr>
 <tr class="memitem:a7bb623217ec8c544e3f47b4657469638 inherit pro_attribs_classmolpro_1_1linalg_1_1array_1_1DistrArray"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classmolpro_1_1linalg_1_1array_1_1DistrArray.html#ada7d77229bb5b1ed17256c5407ff5702">index_type</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmolpro_1_1linalg_1_1array_1_1DistrArray.html#a7bb623217ec8c544e3f47b4657469638">m_dimension</a> = 0</td></tr>
@@ -885,7 +885,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>buffer size for paged access via <a class="el" href="classmolpro_1_1linalg_1_1array_1_1BufferManager.html" title="BufferManager provides single-buffered or asynchronous double-buffered read access to the data in a D...">BufferManager</a> </p>
+<p>buffer size for paged access via BufferManager </p>
 
 </div>
 </div>

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['buffertype_1756',['buffertype',['../classmolpro_1_1linalg_1_1array_1_1BufferManager.html#acf768581141901bc8ce31d89c509f6b4',1,'molpro::linalg::array::BufferManager']]]
+  ['eqndata_1755',['EqnData',['../namespacemolpro_1_1linalg_1_1itsolv_1_1subspace.html#a30629fcb646a0a617c8b85a098a8b195',1,'molpro::linalg::itsolv::subspace']]]
 ];

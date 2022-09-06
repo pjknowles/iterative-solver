@@ -1,5 +1,7 @@
 var NAVTREEINDEX7 =
 {
+"structmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1ISubspaceSolver.html":[10,2,0,1,1,8],
+"structmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1ISubspaceSolver.html#a0812c894a6f1ec1bd05879047d9b6190":[10,2,0,1,1,8,11],
 "structmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1ISubspaceSolver.html#a1a5b52ec31a14cc17015f51855c1121e":[10,2,0,1,1,8,9],
 "structmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1ISubspaceSolver.html#a2a06a811f18cef5088037cafa4eceedc":[10,2,0,1,1,8,3],
 "structmolpro_1_1linalg_1_1itsolv_1_1subspace_1_1ISubspaceSolver.html#a2f17b16191359344bdbd73d20c6d66f9":[10,2,0,1,1,8,4],

@@ -414,6 +414,61 @@ public:
     return solve(wrap(parameters), wrap(actions), problem, generate_initial_guess);
   }
 
+  bool test_problem(const Problem<R>& problem, R& v0, R& v1, int verbosity, double threshold) const override {
+    bool success = true;
+    if (this->nonlinear()) {
+      if (!problem.test_parameters(0, v0))
+        return true;
+      auto value0 = problem.residual(v0, v1);
+      if (verbosity > 1) {
+        std::cout << "value0 " << value0 << std::endl;
+//        std::cout << "parameters0 " << v0[0] << "," << v0[1] << ",..." << std::endl;
+//        std::cout << "residual0 " << v1[0] << "," << v1[1] << ",..." << std::endl;
+      }
+      Q parameters0{v0};
+      Q residual0{v1};
+      for (int instance = 1; problem.test_parameters(instance, v0); ++instance) {
+        auto value1 = problem.residual(v0, v1);
+        if (verbosity > 1) {
+          std::cout << "testing instance" << instance << std::endl;
+          std::cout << "value1 " << value1 << std::endl;
+//          std::cout << "parameters1 " << v0[0] << "," << v0[1] << ",..." << std::endl;
+//          std::cout << "residual1 " << v1[0] << "," << v1[1] << ",..." << std::endl;
+        }
+        Q parameters1{v0};
+        Q residual1{v1};
+        m_handlers->rq().copy(v0, residual1);
+        m_handlers->rr().scal(0.5,v0);
+        m_handlers->rq().axpy(0.5, residual0, v0);
+        m_handlers->rq().copy(v1, parameters1);
+        m_handlers->rq().axpy(-1, parameters0, v1);
+        auto dv_analytic = m_handlers->rr().dot(v0, v1);
+//        if (verbosity > 1) {
+//          std::cout << "mean residual " << v0[0] << "," << v0[1] << ",..." << std::endl;
+//          std::cout << "step " << v1[0] << "," << v1[1] << ",..." << std::endl;
+//        }
+        success = success && std::abs(dv_analytic - (value1 - value0)) < threshold;
+        if (verbosity > 0 or (verbosity > -1 and not success))
+          std::cout << "{actual, extrapolated} value change: {" << value1 - value0 << ", " << dv_analytic << "}"
+                    << std::endl;
+      }
+    } else {
+      for (int instance = 0; problem.test_parameters(instance, v0); ++instance) {
+        problem.action({v0},{v1});
+        Q residual{v1};
+        auto norm2_residual = std::sqrt(m_handlers->rr().dot(v1,v1));
+        constexpr double scale_factor{10.0};
+        m_handlers->rr().scal(scale_factor,v0);
+        problem.action({v0},{v1});
+        m_handlers->rq().axpy(-scale_factor, residual, v1);
+        auto norm2 = std::sqrt(m_handlers->rr().dot(v1,v1));
+        success = success && std::abs(norm2/norm2_residual) < threshold;
+        if (verbosity > 0 or (verbosity > -1 and not success))
+          std::cout << "Length of residual: "<<norm2_residual<<", scaling defect: "<<norm2<<std::endl;
+      }
+    }
+    return success;
+  }
 
 protected:
   IterativeSolverTemplate(std::shared_ptr<subspace::IXSpace<R, Q, P>> xspace,

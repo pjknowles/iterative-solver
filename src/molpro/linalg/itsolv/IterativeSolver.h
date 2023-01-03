@@ -158,6 +158,15 @@ public:
     if (not pparams.empty())
       throw std::logic_error("P-space unavailable: unimplemented p_action() in Problem class");
   }
+
+  /*!
+   * @brief Provide values of R vectors for testing the problem class.
+   * For use in a non-linear solver, the first vector (instance=0) should be a reference point, and the remainder (instance>0) should be close to it, such that meaningful numerical differentation can be done to test the residual function.
+   * @param instance
+   * @param parameters
+   * @return true if a vector has been provided
+   */
+  virtual bool test_parameters(unsigned int instance, R& parameters) const { return false; }
 };
 
 /*!
@@ -356,6 +365,15 @@ public:
    */
   virtual void set_profiler(molpro::profiler::Profiler& profiler) = 0;
   virtual const std::shared_ptr<molpro::profiler::Profiler>& profiler() const = 0;
+  /*!
+   * @brief Test a supplied problem class
+   * @param problem
+   * @param v0
+   * @param v1
+   * @param v2
+   * @return false if errors were found, otherwise true
+   */
+  virtual bool test_problem(const Problem<R>& problem, R& v0, R& v1, int verbosity=0, double threshold=1e-5) const = 0;
 };
 
 /*!

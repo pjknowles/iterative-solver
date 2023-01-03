@@ -176,8 +176,9 @@ public:
   using value_t = Rvector::value_type;
   value_t residual(const Rvector &parameters, Rvector &residual) const override {
     double value = calc(parameters, residual);
-//    std::cout << "trigProblem::residual\nx="<<parameters<<"\ng="<<residual<<std::endl;
-    return value; }
+//    std::cout << "trigProblem::residual\nx=" << parameters << "\nvalue=" << value << "\ng=" << residual << std::endl;
+    return value;
+  }
   void precondition(const VecRef<Rvector> &residual, const std::vector<value_t> &shift) const override {
 //    std::cout << "trigProblem::precondition "<<residual.size()<<std::endl;
     for (auto &gr : residual) {
@@ -188,7 +189,29 @@ public:
 //      std::cout << "trigProblem::precondition final g="<<g<<std::endl;
     }
   }
+  bool test_parameters(unsigned int instance, Rvector &parameters) const override {
+    //      std::cout << "test_parameters "<<instance<<" "<<parameters.size()<<std::endl;
+    parameters.assign(parameters.size(), 1.0);
+    if (instance == 0)
+      return true;
+    if (instance <= parameters.size()) {
+      parameters[instance - 1] += 0.0001;
+      //        std::cout << "set parameters "<<parameters[0]<<","<<parameters[1]<<",..."<<std::endl;
+      return true;
+    }
+    return false;
+  }
 };
+
+TEST(NonLinearEquations, Problem) {
+  for (size_t n = 1; n < 3; n++) {
+    auto problem = trigProblem();
+    auto nonlinear_solver = molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector>("DIIS");
+    Rvector v0(n), v1(n);
+    EXPECT_TRUE(nonlinear_solver->test_problem(problem, v0, v1, 0, 1e-9));
+  }
+}
+
 TEST(NonLinearEquations, trig) {
   for (size_t n = 1; n < 3; n++) {
     auto solver = molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector>(

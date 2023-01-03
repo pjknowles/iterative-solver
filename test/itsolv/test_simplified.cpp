@@ -64,8 +64,30 @@ struct simplified : ::testing::Test {
         }
       }
     }
+
+    bool test_parameters(unsigned int instance, Rvector &parameters) const override {
+//      std::cout << "test_parameters "<<instance<<" "<<parameters.size()<<std::endl;
+      parameters.assign(parameters.size(), 1.0);
+      if (instance == 0)
+        return true;
+      if (instance <= parameters.size()) {
+        parameters[instance - 1] += 0.0001;
+//        std::cout << "set parameters "<<parameters[0]<<","<<parameters[1]<<",..."<<std::endl;
+        return true;
+      }
+      return false;
+    }
   };
 };
+
+TEST_F(simplified, Problem) {
+  auto problem = simplified::MyProblem(10);
+  auto nonlinear_solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>("BFGS");
+  auto linear_solver = molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector>();
+  Rvector v0(problem.n), v1(problem.n);
+  EXPECT_TRUE(nonlinear_solver->test_problem(problem,v0,v1,0,1e-9));
+  EXPECT_TRUE(linear_solver->test_problem(problem,v0,v1,0,1e-9));
+}
 
 TEST_F(simplified, BFGS) {
   auto solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>("BFGS");

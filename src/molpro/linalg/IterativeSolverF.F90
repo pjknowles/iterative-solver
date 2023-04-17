@@ -559,7 +559,6 @@ CONTAINS
         INTEGER(c_int), INTENT(in), VALUE :: lsync
       END FUNCTION Iterative_Solver_Add_Value_C
     END INTERFACE
-    DOUBLE PRECISION, DIMENSION(0) :: pdummy
     double precision, dimension(:), pointer :: pp, pa
     INTEGER(c_int) :: lsyncC
     lsyncC = 1

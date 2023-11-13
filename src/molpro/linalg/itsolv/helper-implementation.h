@@ -432,6 +432,13 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
       //    molpro::cout << "new sorted eigenvalue "<<k<<", "<<ll<<", "<<eigval(ll)<<std::endl;
       //    molpro::cout << eigvec.col(ll)<<std::endl;
       subspaceEigenvectors.col(k) = eigvec.col(ll);
+      double maxcomp =0;
+      for (Eigen::Index l = 0; l < Hbar.cols(); l++) {
+          if (std::abs(subspaceEigenvectors.col(k)[l].real()) > std::abs(subspaceEigenvectors.col(k)[maxcomp].real()))
+              maxcomp = l;
+      }
+      if (subspaceEigenvectors.col(k)[maxcomp].real() < 0)
+          subspaceEigenvectors.col(k) = - subspaceEigenvectors.col(k);
     }
   }
 

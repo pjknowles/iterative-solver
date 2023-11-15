@@ -61,7 +61,7 @@ DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::strin
 std::mutex s_open_error_mutex;
 DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm, const std::string& directory)
     : DistrArrayDisk(std::move(distribution), comm), m_directory(fs::absolute(fs::path(directory))),
-      m_filename(util::temp_file_name((fs::path(m_directory) / "DistrArrayFile-"), ".dat")),
+      m_filename(util::temp_file_name((fs::path(m_directory) / ("DistrArrayFile-"+std::to_string(molpro::mpi::rank_global()))), ".dat")),
       m_stream(std::make_unique<std::fstream>(m_filename.c_str(),
                                               std::ios::out | std::ios::binary | std::ios::trunc | std::ios::in)) {
   {

@@ -66,4 +66,7 @@ extern "C" void IterativeSolverSetMaxIter(int max_iter);
 extern "C" int64_t mpicomm_self();
 
 extern "C" int64_t mpicomm_global();
+
+extern "C" int64_t IterativeSolver_mpicomm_global();
+extern "C" int64_t IterativeSolver_mpicomm_self();
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITERATIVESOLVER_ITERATIVESOLVERC_H_

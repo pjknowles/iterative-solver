@@ -16,7 +16,7 @@ subprocess.run(
         'cmake',
         '-DCMAKE_BUILD_TYPE=Release',
         '-DDEPENDENCYMANAGER_FETCHCONTENT=OFF', '-DLINEARALGEBRA_ARRAY_HDF5=OFF', '-DFORTRAN=OFF',
-        '-DBUILD_SHARED_LIBS=ON',
+        '-DBUILD_SHARED_LIBS=ON', '-DLIBRARY_ONLY=ON',
         # '-DCMAKE_MACOSX_RPATH=OFF',
         # '--trace',
         '-S', str(root_dir_), '-B', str(cmake_build_dir_),

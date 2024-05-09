@@ -1,26 +1,23 @@
 import numpy as np
-class Problem:
-    def __init__(self):
-        pass
 
+
+class Problem:
     def residual(self, parameters, residual):
-        return None
+        raise NotImplementedError
 
     def action(self, parameters, action):
-        return None
+        raise NotImplementedError
 
     def diagonals(self, diagonals):
         return False
 
     def precondition(self, residual, shift=None, diagonals=None):
-        # print('precondition',residual.shape,residual,shift,diagonals)
         small = 1e-14
         if len(residual.shape) > 1:
             for i in range(residual.shape[1]):
                 self.precondition(residual[i, :], shift[i] if shift is not None else None, diagonals)
             return
         if diagonals is not None:
-            # nbuffer = residual.shape[1] if len(residual.shape) > 1 else 1
             if shift is not None:
                 shift_ = shift if type(shift) is float else shift[0]
                 for j in range(residual.size):
@@ -28,6 +25,8 @@ class Problem:
             else:
                 for j in range(residual.size):
                     residual[j] = residual[j] / (diagonals[j] + small)
+        else:
+            raise NotImplementedError
 
     def pp_action_matrix(self, pparams):
         return np.array([], dtype=np.double)
@@ -40,9 +39,9 @@ class Problem:
         return False
 
     def report(self, iteration, verbosity, errors, value=None, eigenvalues=None):
-        if (iteration <=0 and verbosity >=1) or verbosity>=2:
+        if (iteration <= 0 and verbosity >= 1) or verbosity >= 2:
             if iteration > 0 and verbosity >= 2:
-                print('Iteration', iteration,'log10(|residual|)=', np.log10(errors))
+                print('Iteration', iteration, 'log10(|residual|)=', np.log10(errors))
             elif iteration == 0:
                 print('Converged', 'log10(|residual|)=', np.log10(errors))
             else:

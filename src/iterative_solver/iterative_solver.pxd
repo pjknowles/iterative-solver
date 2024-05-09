@@ -1,7 +1,3 @@
-# cimport numpy as np
-# cdef extern from "molpro/linalg/itsolv/IterativeSolver.h" namespace "molpro::linalg::itsolv":
-#     pass
-
 cdef extern from "molpro/linalg/IterativeSolverC.h":
     void IterativeSolverOptimizeInitialize(size_t n, size_t * range_begin, size_t * range_end, double thresh,
                                            double thresh_value, int verbosity, int minimize, const char * fname,

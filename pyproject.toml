@@ -4,13 +4,12 @@
 
 [project]
 name = "iterative-solver"
-# version = "0.9.5"
 dynamic = ["version"]
 authors = [
-    { name="Peter Knowles", email="knowlespj@cardiff.ac.uk" },
-    { name="Marat Sibaev"},
-    { name="Iakov Polyak"},
-    { name="Robert Welch"},
+    { name = "Peter Knowles", email = "knowlespj@cardiff.ac.uk" },
+    { name = "Marat Sibaev" },
+    { name = "Iakov Polyak" },
+    { name = "Robert Welch" },
 ]
 description = "Implements iterative solvers for linear and non-linear problems and distributed arrays for HPC. "
 readme = "README.md"
@@ -18,7 +17,8 @@ requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux"
 ]
 
 [project.urls]
@@ -26,21 +26,12 @@ Homepage = "https://github.com/molpro/iterative-solver"
 Issues = "https://github.com/molpro/iterative-solver/issues"
 
 [build-system]
-requires = ["setuptools>=64","setuptools_scm>=8","Cython>=3","numpy>=1.26"]
-build-backend="setuptools.build_meta"
+requires = ["setuptools>=64", "setuptools_scm>=8", "wheel", "Cython>=3", "numpy>=1.26"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
-version_file="python/molpro/iterative_solver/_version.py"
+version_file = "src/iterative_solver/_version.py"
 
 [tool.setuptools]
-#package-dir={"iterative_solver": "python/molpro/iterative_solver"}
-packages=["iterative_solver"]
-
-[tool.setuptools.package-dir]
-iterative_solver="python/molpro/iterative_solver"
-
-#[tools.setuptools.packages.find]
-#where=["python/molpro"]
-
-#[tool.hatch.build.targets.wheel]
-#packages = ["python/molpro/iterative-solver"]
+package-dir = { "iterative_solver" = "src/iterative_solver" }
+packages = ["iterative_solver"]

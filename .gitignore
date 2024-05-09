@@ -85,3 +85,4 @@ build
 cmake-build*
 *_lockfile
 dependencies/*/
+dist/

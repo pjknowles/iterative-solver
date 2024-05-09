@@ -86,3 +86,4 @@ cmake-build*
 *_lockfile
 dependencies/*/
 dist/
+*.egg-info/

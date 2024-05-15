@@ -16,6 +16,7 @@ cmake_build_dir_.mkdir(parents=True, exist_ok=True)
 subprocess.run(
     [
         'cmake',
+        '-DCMAKE_CXX_FLAGS=-fPIC',
         '-DCMAKE_BUILD_TYPE=Release',
         '-DDEPENDENCYMANAGER_FETCHCONTENT=OFF', '-DLINEARALGEBRA_ARRAY_HDF5=OFF', '-DLINEARALGEBRA_ARRAY_GA=OFF',
         '-DFORTRAN=OFF',

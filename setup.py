@@ -1,3 +1,5 @@
+# import os
+
 from setuptools import setup, Extension
 from Cython.Build import cythonize
 import numpy
@@ -15,15 +17,20 @@ subprocess.run(
     [
         'cmake',
         '-DCMAKE_BUILD_TYPE=Release',
-        '-DDEPENDENCYMANAGER_FETCHCONTENT=OFF', '-DLINEARALGEBRA_ARRAY_HDF5=OFF', '-DFORTRAN=OFF',
-        '-DBUILD_SHARED_LIBS=ON', '-DLIBRARY_ONLY=ON',
+        '-DDEPENDENCYMANAGER_FETCHCONTENT=OFF', '-DLINEARALGEBRA_ARRAY_HDF5=OFF', '-DLINEARALGEBRA_ARRAY_GA=OFF',
+        '-DFORTRAN=OFF',
+        '-DBUILD_SHARED_LIBS=OFF', '-DLIBRARY_ONLY=ON',
         # '-DCMAKE_MACOSX_RPATH=OFF',
         # '--trace',
         '-S', str(root_dir_), '-B', str(cmake_build_dir_),
     ],
+    # env=dict(os.environ)|{
+    #     'CXX':'/Users/peterk/.local/mpich/bin/mpicxx',
+    #     'CC':'/Users/peterk/.local/mpich/bin/mpicc',
+    #      },
     shell=False)
 subprocess.run(['cmake', '--build', str(cmake_build_dir_), '-v', '--config', 'Release'], shell=False)
-for suffix in ['so', 'dylib']:
+for suffix in ['so', 'dylib', 'a']:
     for path in pathlib.Path(cmake_build_dir_).glob('**/*.' + suffix):
         shutil.copy2(str(path), str(cmake_build_dir_.parent))
 
@@ -35,8 +42,14 @@ ext = Extension('iterative_solver',
                               str(python_source_dir_),
                               ],
                 extra_compile_args=["-std=c++17"],
+                extra_objects=[
+                    "build/libiterative-solver.a",
+                    "build/libutilities.a",
+                    "build/libprofiler.a",
+                    # "/Users/peterk/.local/mpich/lib/libmpi.a",
+                ],
                 define_macros=[('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')],
-                libraries=["iterative-solver", "utilities"],
+                libraries=["iterative-solver", "utilities", "blas", "mpi"],
                 library_dirs=[str(cmake_build_dir_.parent)]
                 )
 

@@ -1,2 +1,2 @@
-include src/iterative_solver/iterative_solver.pyx
-include src/iterative_solver/iterative_solver.pxd
+include src/iterative_solver_extension/iterative_solver_extension.pyx
+include src/iterative_solver_extension/iterative_solver_extension.pxd

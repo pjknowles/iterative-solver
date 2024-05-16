@@ -5,7 +5,7 @@ import subprocess
 import pathlib
 
 root_dir_ = pathlib.Path(__file__).parent.resolve()
-python_source_dir_ = root_dir_ / 'src' / 'iterative_solver'
+python_source_dir_ = root_dir_ / 'src' / 'iterative_solver_extension'
 build_dir_ = root_dir_ / 'build'
 cmake_build_dir_ = build_dir_ / 'cmake-build'
 cmake_build_dir_.mkdir(parents=True, exist_ok=True)
@@ -24,8 +24,8 @@ subprocess.run(
     shell=False)
 subprocess.run(['cmake', '--build', str(cmake_build_dir_), '-v', '--config', 'Release'], shell=False)
 
-ext = Extension('iterative_solver',
-                sources=["src/iterative_solver/iterative_solver.pyx"],
+ext = Extension('iterative_solver_extension',
+                sources=["src/iterative_solver_extension/iterative_solver_extension.pyx"],
                 language="c++",
                 include_dirs=[numpy.get_include(), str(root_dir_ / 'src'), str(root_dir_ / 'dependencies/profiler/src'),
                               str(root_dir_ / 'dependencies/utilities/src'),
@@ -42,7 +42,7 @@ ext = Extension('iterative_solver',
                 )
 
 setup(
-    name="iterative_solver",
+    name="iterative_solver_extension",
     ext_modules=cythonize(
         [ext],
         language_level=3,

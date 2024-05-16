@@ -34,5 +34,5 @@ build-backend = "setuptools.build_meta"
 version_file = "src/iterative_solver/_version.py"
 
 [tool.setuptools]
-package-dir = { "iterative_solver" = "src/iterative_solver" }
-packages = ["iterative_solver"]
+package-dir = { "iterative_solver" = "src/iterative_solver", "iterative_solver_extension" = "src/iterative_solver_extension" }
+packages = ["iterative_solver", "iterative_solver_extension"]

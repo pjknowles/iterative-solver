@@ -1,11 +1,10 @@
 import unittest
 import iterative_solver
-from problem import Problem
 import numpy as np
 
 
 class MyTestCase(unittest.TestCase):
-    class TestProblem(Problem):
+    class TestProblem(iterative_solver.Problem):
         def residual(self, parameters, residual):
             # f = sum_i (i+1)*(x[i]-1)^2
             f = 0.0

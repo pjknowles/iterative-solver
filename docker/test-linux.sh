@@ -11,5 +11,5 @@ for platform in $platforms; do
   mkdir -p build-$platform
   docker run --rm -v $PWD:$PWD -v $PWD/build-$platform:$PWD/build -w $PWD \
     --platform linux/$platform iterative-solver-$platform \
-    python -m build
+    pip install dist/*${platform}*whl
 done

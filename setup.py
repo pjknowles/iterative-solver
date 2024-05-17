@@ -5,8 +5,9 @@ import subprocess
 import pathlib
 
 import sys
-print('setup.py',sys.argv)
-if sys.argv[1] == 'bdist_wheel':
+if len(sys.argv) > 1 and (sys.argv[1] == 'sdist' or sys.argv[1] == 'egg_info'):
+    setup()
+else:
 
     root_dir_ = pathlib.Path(__file__).parent.resolve()
     python_source_dir_ = root_dir_ / 'src' / 'iterative_solver_extension'
@@ -52,5 +53,3 @@ if sys.argv[1] == 'bdist_wheel':
             language_level=3,
         ),
     )
-else:
-    setup()

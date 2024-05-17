@@ -5,7 +5,7 @@ import subprocess
 import pathlib
 
 import sys
-if len(sys.argv) > 1 and (sys.argv[1] == 'sdist' or sys.argv[1] == 'egg_info'):
+if False and len(sys.argv) > 1 and (sys.argv[1] == 'sdist' or sys.argv[1] == 'egg_info'):
     setup()
 else:
 

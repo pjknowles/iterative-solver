@@ -29,9 +29,9 @@ contains
     double precision :: e
     double precision, intent(in), dimension(:, :) :: parameters
     double precision, intent(inout), dimension(:, :) :: residuals
-    do i = lbound(residuals, 1), ubound(residuals, 1); residuals(i, 1) = sum(parameters(:, 1)) + (3 * i - 1) * parameters(i, 1);
+    do i = lbound(residuals, 1), ubound(residuals, 1); residuals(i, 1) = sum(parameters(:, 1)) + (3 * i - 1) * parameters(i, 1)-1;
     enddo
-    e = 0.5 * dot_product(parameters(:, 1), residuals(:, 1)) - sum(parameters(:, 1))
+    e = 0.5 * dot_product(parameters(:, 1), residuals(:, 1)) - 0.5 * sum(parameters(:, 1))
     residuals = residuals - 1
   end function forced_residual
 
@@ -69,8 +69,8 @@ PROGRAM QuasiNewton_Example
   INTEGER, PARAMETER :: n = 5, verbosity = 2
   DOUBLE PRECISION, DIMENSION (n) :: c, g
   ! try one of the following
-    type(quadratic_t) :: problem
-!  type(forced_t) :: problem
+  !  type(quadratic_t) :: problem
+  type(forced_t) :: problem
 
   call mpi_init
   PRINT *, 'Fortran binding of IterativeSolver::IOptimize'

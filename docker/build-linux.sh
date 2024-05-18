@@ -8,8 +8,10 @@ for platform in $platforms; do
     cd $root/docker
     docker build . -t iterative-solver-$platform --platform linux/$platform
   )
+  cd $root
   mkdir -p build-$platform
   docker run --rm -v $PWD:$PWD -v $PWD/build-$platform:$PWD/build -w $PWD \
     --platform linux/$platform iterative-solver-$platform \
-    python -m build
+    bash --login -c 'conda activate iterative-solver ; python setup.py build_ext --inplace'
+#    python -m build
 done

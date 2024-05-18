@@ -9,7 +9,7 @@ for platform in $platforms; do
     docker build . -t iterative-solver-$platform --platform linux/$platform
   )
   mkdir -p build-$platform
-  docker run --rm -v $PWD:$PWD -v $PWD/build-$platform:$PWD/build -w $PWD \
+  docker run --rm -v $root:$root -v $root/build-$platform:$root/build -w $root \
     --platform linux/$platform iterative-solver-$platform \
     python -m build
 done

@@ -27,7 +27,9 @@ Homepage = "https://github.com/molpro/iterative-solver"
 Issues = "https://github.com/molpro/iterative-solver/issues"
 
 [build-system]
-requires = ["setuptools>=64", "setuptools_scm>=8", "wheel", "Cython>=3", "numpy>=1.26", "cmake", "openmpi",]
+requires = ["setuptools>=64", "setuptools_scm>=8",
+    "wheel", "Cython>=3", "numpy>=1.26", "cmake", "openmpi",
+]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]

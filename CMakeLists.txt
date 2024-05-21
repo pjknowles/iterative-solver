@@ -9,7 +9,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(LibraryManager)
 
-LibraryManager_Project(FORTRAN_OPTION MPI_OPTION)
+LibraryManager_Project(FORTRAN_OPTION MPI_OPTION DEFAULT_VERSION "$Format:%(describe:tags)$")
 
 ##############################
 ### Options

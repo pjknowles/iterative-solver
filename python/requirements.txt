@@ -1,0 +1,10 @@
+c-compiler
+cxx-compiler
+openblas
+mpich
+cython>=3
+numpy
+eigen
+cmake
+make
+liblapacke

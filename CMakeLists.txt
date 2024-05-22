@@ -5,11 +5,11 @@ include(FetchContent)
 FetchContent_Declare(
         LibraryManager
         GIT_REPOSITORY https://github.com/molpro/library-manager.git
-        GIT_TAG 0.11.3
+        GIT_TAG 0.12.6
 )
 FetchContent_MakeAvailable(LibraryManager)
 
-LibraryManager_Project(FORTRAN_OPTION MPI_OPTION)
+LibraryManager_Project(FORTRAN_OPTION MPI_OPTION DEFAULT_VERSION "$Format:%(describe:tags)$")
 
 ##############################
 ### Options
@@ -22,6 +22,7 @@ option(LINEARALGEBRA_ARRAY_MPI3 "Build with MPI3 implementation of distributed a
 option(LINEARALGEBRA_ARRAY_GA "Build with GA implementation of distributed array" ${MPI})
 option(LINEARALGEBRA_ARRAY_HDF5 "Build with HDF5 implementation of distributed array" ${MPI})
 option(MPIFORTRAN "Build MPI fortran examples, using fortran MPI library" OFF)
+option(LIBRARY_ONLY "Build only the library" OFF)
 if (PPIDD AND NOT PPIDD-GA)
     set(LINEARALGEBRA_ARRAY_GA OFF)
 endif ()
@@ -37,6 +38,7 @@ add_subdirectory(dependencies)
 
 add_subdirectory(src)
 
+if (NOT LIBRARY_ONLY)
 if (${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
     add_subdirectory(benchmark)
     enable_testing()
@@ -45,3 +47,4 @@ if (${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
 endif ()
 
 add_subdirectory(doc)
+endif()

@@ -1,5 +1,6 @@
 #include "test.h"
 #include <molpro/linalg/itsolv/helper.h>
+#include <molpro/linalg/itsolv/helper-implementation.h>
 #include <stdio.h>
 #include <molpro/lapacke.h>
 #include <vector>

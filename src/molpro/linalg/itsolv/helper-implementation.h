@@ -119,7 +119,7 @@ extern "C" int dsyev_c(char, char, int, double*, int, double*);
  * \returns status. If 0, successful exit. If -i, the ith argument had an illegal value. If i, the algorithm failed to
  * converge.
  */
-int eigensolver_lapacke_dsyev(const std::vector<double>& matrix, std::vector<double>& eigenvectors,
+inline int eigensolver_lapacke_dsyev(const std::vector<double>& matrix, std::vector<double>& eigenvectors,
                               std::vector<double>& eigenvalues, const size_t dimension) {
 
   // validate input
@@ -164,7 +164,7 @@ int eigensolver_lapacke_dsyev(const std::vector<double>& matrix, std::vector<dou
  * \returns a std::list of instances of SVD, a struct containing one eigenvalue and one eigenvector. For a real,
  * symmetric matrix, these are equivalent to singular values, and S/D (which are both the same).
  */
-std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension, std::vector<double>& matrix) {
+inline std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension, std::vector<double>& matrix) {
   std::vector<double> eigvecs(dimension * dimension);
   std::vector<double> eigvals(dimension);
 
@@ -202,7 +202,7 @@ std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension, std::vector<d
  * \returns a std::list of instances of SVD, a struct containing one eigenvalue and one eigenvector. For a real,
  * symmetric matrix, these are equivalent to singular values, and S/D (which are both the same).
  */
-std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension,
+inline std::list<SVD<double>> eigensolver_lapacke_dsyev(size_t dimension,
                                                  const molpro::linalg::array::span::Span<double>& matrix) {
   // TODO: this should be the other way around, eigensolver_lapacke_dsyev should take a span by default and this should
   // wrap it with a vector

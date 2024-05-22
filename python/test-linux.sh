@@ -5,10 +5,10 @@ root=$(realpath $(dirname $0)/..)
 for platform in $platforms; do
   echo platform=$platform
   (
-    cd $root/docker
+    cd $root/python
     docker build . -t iterative-solver-$platform --platform linux/$platform
   )
-  docker run --rm -v $PWD:$PWD -v $PWD/build-$platform:$PWD/build -w $PWD \
+  docker run --rm -v $root:$root -w $root \
     --platform linux/$platform iterative-solver-$platform \
-    bash -c "python -m venv /tmp/venv; . /tmp/venv/bin/activate; pip install dist/*${platform}*whl; python -c 'import iterative_solver; print(iterative_solver.__version__)'"
+    bash --login -c " pip install -v -e python; python -c 'import iterative_solver; print(iterative_solver.__version__)';  python python/test_optimize.py   "
 done

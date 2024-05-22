@@ -1,2 +1,0 @@
-include src/iterative_solver_extension/iterative_solver_extension.pyx
-include src/iterative_solver_extension/iterative_solver_extension.pxd

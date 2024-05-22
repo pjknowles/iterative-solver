@@ -5,3 +5,7 @@ openmpi
 cython>=3
 numpy
 eigen
+cmake
+make
+openblas
+liblapacke

@@ -1,7 +1,0 @@
-c-compiler
-cxx-compiler
-openblas
-openmpi
-cython>=3
-numpy
-eigen

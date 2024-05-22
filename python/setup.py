@@ -31,26 +31,38 @@ subprocess.run(
 version_ = '0.0.0'
 with open(cmake_build_dir_ / 'project_version.sh', 'r') as f:
     for line in f.readlines():
-        if line.strip().startswith('PROJECT_VERSION_FULL'):
+        if line.strip().startswith('PROJECT_VERSION='):
             version_ = re.sub('.*=', '', line).strip()
 with open('iterative_solver/_version.py', 'w') as f:
     f.write('__version__ = "{}"\n'.format(version_))
 subprocess.run(['cmake', '--build', str(cmake_build_dir_), '-t', 'install', '-v', '--config', 'Release'], shell=False)
 
-ext = Extension('iterative_solver_extension',
-                sources=["iterative_solver_extension/iterative_solver_extension.pyx"],
+import platform
+
+if platform.system() == "Darwin":
+    extra_args = ['-std=c++17', "-mmacosx-version-min=13"]
+elif platform.system() == "Windows":
+    extra_args = ['/std:c++17']
+else:
+    extra_args = ['-std=c++17']
+
+ext = Extension('iterative_solver.iterative_solver_extension',
+                sources=["iterative_solver/iterative_solver_extension.pyx"],
                 language="c++",
-                include_dirs=[numpy.get_include(),
-                              str(pathlib.Path(os.environ['CONDA_PREFIX']) / 'include'),
-                              str(python_source_dir_),
-                              ],
-                extra_compile_args=["-std=c++17"],
+                include_dirs=[
+                    numpy.get_include(),
+                    str(pathlib.Path(os.environ['CONDA_PREFIX']) / 'include'),
+                    str(python_source_dir_),
+                ],
+                extra_compile_args=extra_args,
                 define_macros=[('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')],
                 libraries=["blas", "mpi", "iterative-solver", "utilities", "profiler"],
                 )
 
 setup(
-    name="iterative_solver_extension",
+    name="iterative_solver",
+    version=version_,
+    license="MIT",
     ext_modules=cythonize(
         [ext],
         language_level=3,

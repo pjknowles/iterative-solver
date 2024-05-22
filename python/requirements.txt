@@ -1,11 +1,10 @@
 c-compiler
 cxx-compiler
 openblas
-openmpi
+mpich
 cython>=3
 numpy
 eigen
 cmake
 make
-openblas
 liblapacke

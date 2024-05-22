@@ -1,14 +1,14 @@
 #! /bin/sh
 set -e
-platforms='aarch64 x86_64'
+platforms="$@"
+if [ -z "$platforms" ]; then
+  platforms='aarch64 x86_64'
+fi
 root=$(realpath $(dirname $0)/..)
 for platform in $platforms; do
   echo platform=$platform
-  (
-    cd $root/python
-    docker build . -t iterative-solver-$platform --platform linux/$platform
-  )
+  docker build $root/python -t iterative-solver-$platform --platform linux/$platform
   docker run --rm -v $root:$root -w $root \
     --platform linux/$platform iterative-solver-$platform \
-    bash --login -c " pip install -v -e python; python -c 'import iterative_solver; print(iterative_solver.__version__)';  python python/test_optimize.py   "
+    bash --login -c " pip install -e python; python -c 'import iterative_solver; print(iterative_solver.__version__)';  python python/test_optimize.py   "
 done

@@ -32,4 +32,5 @@ echo VERSION=$VERSION
 echo '__version__ = "'$VERSION'"' >$python_dir/iterative_solver/_version.py
 cmake --build $cmake_build_dir -t install -v --config Release
 
-python -m pip install $python_dir
+export PATH="$CONDA_PREFIX/bin:$PATH"
+python -m pip install -vv $python_dir

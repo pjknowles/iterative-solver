@@ -8,3 +8,4 @@ eigen
 cmake
 make
 liblapacke
+pip

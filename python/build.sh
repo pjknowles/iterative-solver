@@ -32,4 +32,4 @@ echo VERSION=$VERSION
 echo '__version__ = "'$VERSION'"' >$python_dir/iterative_solver/_version.py
 cmake --build $cmake_build_dir -t install -v --config Release
 
-python -m pip install -e $python_dir
+python -m pip install $python_dir

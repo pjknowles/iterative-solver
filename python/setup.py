@@ -26,6 +26,7 @@ setup(
     name="iterative_solver",
     version=(os.environ['VERSION']),
     license="MIT",
+    packages=["iterative_solver"],
     ext_modules=cythonize(
         [ext],
         language_level=3,

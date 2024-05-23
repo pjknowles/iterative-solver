@@ -1,49 +1,34 @@
-# This script will compile and install molpro-project in the
-# currently active conda environment.
-#
-#
-# 1) Load correct conda enviroment with necessary dependencies
-#    found in conda-recipe/meta.yaml:requirements
-#
-#   > conda activate $your_env_name
-#
-# 2) Run this script
-# 3) Add current directory to the PYTHONPATH
+#!/bin/sh
+set -euo pipefail
 
-conda install -y --file requirements.txt
+if [ -z "$CONDA_PREFIX" -o $(basename $CONDA_PREFIX) = "base" ]; then
+  echo $0: must run this script in a non-base Conda environment
+  echo CONDA_PREFIX=$CONDA_PREFIX $(basename $CONDA_PREFIX)
+  exit 1
+fi
 
+python_dir=$(realpath $(dirname $0))
+root_dir=$(realpath $python_dir/..)
+conda install -c conda-forge -y --file $python_dir/requirements.txt
+cmake_build_dir=$python_dir/cmake-build-$(uname)-$(uname -m)
+mkdir -p $cmake_build_dir
 
-export PREFIX=${PREFIX:-${CONDA_PREFIX}}
-#BUILD=cmake-build
-#echo PREFIX=${PREFIX}
-#echo CONDA_PREFIX=${CONDA_PREFIX}
-#
-#if [ -x "$(command -v $CONDA_PREFIX/bin/cc)" ]
-#then
-#    CC=$CONDA_PREFIX/bin/cc
-#fi
-#
-#if [ -x "$(command -v $CONDA_PREFIX/bin/cpp)" ]
-#then
-#    CXX=$CONDA_PREFIX/bin/c++
-#fi
-#
-#mkdir -p $BUILD
-#cd $BUILD
-#if [ -f "install_manifest.txt" ]
-#then
-#    xargs rm < "install_manifest.txt"
-#fi
-#if [ -f "CMakeCache.txt" ]
-#then
-#    rm CMakeCache.txt
-#fi
-#cmake ../.. -DCMAKE_INSTALL_PREFIX=$PREFIX -DBUILD_TESTS=OFF -DBUILD_PROGRAM=OFF || { echo 'cmake build failed' ; exit 1; }
-#cmake --build . -t install || { echo 'make install failed' ; exit 1; }
-#cd ../
+cmake \
+  -DCMAKE_INSTALL_PREFIX="$CONDA_PREFIX" \
+  -DCMAKE_CXX_FLAGS=-fPIC \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DDEPENDENCYMANAGER_FETCHCONTENT=OFF \
+  -DLINEARALGEBRA_ARRAY_HDF5=OFF -DLINEARALGEBRA_ARRAY_GA=OFF \
+  -DFORTRAN=OFF \
+  -DBUILD_SHARED_LIBS=ON, -DLIBRARY_ONLY=ON \
+  -S $root_dir -B $cmake_build_dir
 
-grep CMAKE_PROJECT_VERSION: $BUILD/CMakeCache.txt | sed -e 's/.*=/__version__ = "/' -e 's/$/"/' > pysjef/_version.py
+export VERSION=$(grep PROJECT_VERSION= $cmake_build_dir/project_version.sh | sed -e 's/.*=//')
+if [ -z "$VERSION" ]; then
+  export VERSION='0.0.0'
+fi
+echo VERSION=$VERSION
+echo '__version__ = "'$VERSION'"' >$python_dir/iterative_solver/_version.py
+cmake --build $cmake_build_dir -t install -v --config Release
 
-#PREFIX=$PREFIX python setup.py build_ext --inplace
-#PREFIX=$PREFIX python -m pip install --no-deps --force-reinstall --verbose . 
-PREFIX=$PREFIX python -m pip install -e . 
+python -m pip install -e $python_dir

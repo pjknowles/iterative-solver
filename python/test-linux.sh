@@ -10,5 +10,5 @@ for platform in $platforms; do
   docker build $root/python -t iterative-solver-$platform --platform linux/$platform
   docker run --rm -v $root:$root -w $root \
     --platform linux/$platform iterative-solver-$platform \
-    bash --login -c " pip install -e python; python -c 'import iterative_solver; print(iterative_solver.__version__)';  python python/test_optimize.py   "
+    bash --login -c " bash python/build.sh; python -c 'import iterative_solver; print(iterative_solver.__version__)';  python python/test_optimize.py   "
 done

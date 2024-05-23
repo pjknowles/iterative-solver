@@ -1,5 +1,6 @@
 #!/bin/sh
 set -euo pipefail
+SCRIPTPATH=$( cd -- $(dirname "$0") >/dev/null 2>&1 ; pwd -P)
 
 if [ -z "$CONDA_PREFIX" -o $(basename $CONDA_PREFIX) = "base" ]; then
   echo $0: must run this script in a non-base Conda environment
@@ -7,8 +8,8 @@ if [ -z "$CONDA_PREFIX" -o $(basename $CONDA_PREFIX) = "base" ]; then
   exit 1
 fi
 
-python_dir=$(realpath $(dirname $0))
-root_dir=$(realpath $python_dir/..)
+python_dir=$SCRIPTPATH
+root_dir=$SCRIPTPATH/..
 conda install -c conda-forge -y --file $python_dir/requirements.txt
 cmake_build_dir=$python_dir/cmake-build-$(uname)-$(uname -m)
 mkdir -p $cmake_build_dir

@@ -4,7 +4,8 @@ platforms="$@"
 if [ -z "$platforms" ]; then
   platforms='aarch64 x86_64'
 fi
-root=$(realpath $(dirname $0)/..)
+root=$( cd -- $(dirname "$0")/.. >/dev/null 2>&1 ; pwd -P)
+echo root=$root
 for platform in $platforms; do
   echo platform=$platform
   docker build $root/python -t iterative-solver-$platform --platform linux/$platform

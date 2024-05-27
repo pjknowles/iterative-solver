@@ -15,13 +15,13 @@ cmake_build_dir=$python_dir/cmake-build-$(uname)-$(uname -m)
 mkdir -p $cmake_build_dir
 
 cmake \
-  -DCMAKE_INSTALL_PREFIX="$CONDA_PREFIX" \
+  -DCMAKE_INSTALL_PREFIX="$cmake_build_dir/install" \
   -DCMAKE_CXX_FLAGS=-fPIC \
   -DCMAKE_BUILD_TYPE=Release \
   -DDEPENDENCYMANAGER_FETCHCONTENT=OFF \
   -DLINEARALGEBRA_ARRAY_HDF5=OFF -DLINEARALGEBRA_ARRAY_GA=OFF \
   -DFORTRAN=OFF \
-  -DBUILD_SHARED_LIBS=ON, -DLIBRARY_ONLY=ON \
+  -DBUILD_SHARED_LIBS=OFF -DLIBRARY_ONLY=ON \
   -S $root_dir -B $cmake_build_dir
 
 export VERSION=$(grep PROJECT_VERSION= $cmake_build_dir/project_version.sh | sed -e 's/.*=//')
@@ -33,4 +33,4 @@ echo '__version__ = "'$VERSION'"' >$python_dir/iterative_solver/_version.py
 cmake --build $cmake_build_dir -t install -v --config Release
 
 export PATH="$CONDA_PREFIX/bin:$PATH"
-python -m pip install -vv $python_dir
+ITERATIVE_SOLVER_PREFIX=$cmake_build_dir/install python -m pip install -vv $python_dir

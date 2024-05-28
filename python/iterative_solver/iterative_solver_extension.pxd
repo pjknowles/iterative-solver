@@ -1,25 +1,7 @@
 cdef extern from "molpro/linalg/IterativeSolverC.h":
-    void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t* range_begin,
-                                                    size_t* range_end, double thresh, double thresh_value,
-                                                    int hermitian, int verbosity, const char* fname,
-                                                    int fcomm, const char* algorithm, const char* options)
-
-    void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot, size_t* range_begin, size_t* range_end,
-                                                  const double* rhs, double aughes, double thresh,
-                                                  double thresh_value, int hermitian, int verbosity,
-                                                  const char* fname, int fcomm, const char* algorithm,
-                                                  const char* options)
-
-    void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t* range_begin, size_t* range_end,
-                                                     double thresh, int verbosity, const char* fname,
-                                                     int fcomm, const
-                                                     char* algorithm, const
-                                                     char* options
-                                                     )
-    void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin, size_t* range_end, double thresh,
-                                           double thresh_value, int verbosity, int minimize, const char* fname,
-                                           int fcomm, const char* algorithm, const char* options)
-
+    void IterativeSolverOptimizeInitialize(size_t n, size_t * range_begin, size_t * range_end, double thresh,
+                                           double thresh_value, int verbosity, int minimize, const char * fname,
+                                           int fcomm, const char * algorithm, const char * options)
     void IterativeSolverFinalize()
 
     size_t IterativeSolverAddVector(size_t buffer_size, double* parameters, double* action, int sync)

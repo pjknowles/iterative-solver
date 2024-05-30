@@ -2,6 +2,9 @@ import numpy as np
 
 
 class Problem:
+    '''
+    Semi-abstract base class for specifying the problem to be solved by iterative_solver.
+    '''
     def residual(self, parameters, residual):
         raise NotImplementedError
 

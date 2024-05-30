@@ -34,18 +34,19 @@ class IterativeSolver:
         return self.value
 
     def add_value(self, value, parameters, action, sync=True):
-        cdef double[::1] parameters_ = parameters.reshape([self.n*self.nroot])
-        cdef double[::1] action_ = action.reshape([self.n*self.nroot])
+        nbuffer = parameters.shape[0] if len(parameters.shape) > 1 else 1
+        cdef double[::1] parameters_ = parameters.reshape([self.n*nbuffer])
+        cdef double[::1] action_ = action.reshape([self.n*nbuffer])
         result = IterativeSolverAddValue(value, &parameters_[0], &action_[0], 1 if sync else 0)
         self.value = value
         return result
 
-    def add_vector(self, buffer_size, parameters, action, sync=True):
-        # print('add_vector',buffer_size, parameters)
-        cdef double[::1] parameters_ = parameters.reshape([self.n*buffer_size])
-        cdef double[::1] action_ = action.reshape([self.n*buffer_size])
-        cdef size_t buffer_size_ = buffer_size
-        result = IterativeSolverAddVector(buffer_size_, &parameters_[0], &action_[0], 1 if sync else 0)
+    def add_vector(self, parameters, action, sync=True):
+        nbuffer = parameters.shape[0] if len(parameters.shape) > 1 else 1
+        cdef double[::1] parameters_ = parameters.reshape([self.n*nbuffer])
+        cdef double[::1] action_ = action.reshape([self.n*nbuffer])
+        cdef size_t nbuffer_ = nbuffer
+        result = IterativeSolverAddVector(nbuffer_, &parameters_[0], &action_[0], 1 if sync else 0)
         return result
 
     def end_iteration(self, solution, residual, sync=True):
@@ -64,6 +65,21 @@ class IterativeSolver:
         pass
 
     def solve(self, parameters, actions, problem, generate_initial_guess=False, max_iter=None):
+        '''
+        Driver for iterating towards problem solution.
+        :param parameters:
+        :type parameters:
+        :param actions:
+        :type actions:
+        :param problem:
+        :type problem:
+        :param generate_initial_guess:
+        :type generate_initial_guess:
+        :param max_iter:
+        :type max_iter:
+        :return:
+        :rtype:
+        '''
         # print ('solve:',parameters.shape, actions.shape, self.nroot, self.n)
         if len(parameters.shape) <2 or len(actions.shape) < 2:
             parameters_reshape = parameters.reshape([self.nroot, self.n])
@@ -99,14 +115,14 @@ class IterativeSolver:
                 nwork = self.add_value(value, parameters, actions)
             else:
                 problem.action(parameters,  actions)
-                nwork = self.add_vector(nbuffer, parameters, actions)
+                nwork = self.add_vector(parameters[:nwork,:], actions[:nwork,:])
             if nwork > 0:
                 IterativeSolverWorkingSetEigenvalues(&ev_[0])
                 if use_diagonals:
                     IterativeSolverDiagonals(&parameters_[0])
-                    problem.precondition(actions[:nwork,:], ev[:nwork], parameters.reshape([parameters.size]))
+                    problem.precondition(actions[:nwork,:], shift=ev[:nwork], diagonals=parameters.reshape([parameters.size])[:self.n])
                 else:
-                    problem.precondition(actions[:nwork,:], ev[:nwork])
+                    problem.precondition(actions[:nwork,:], shift=ev[:nwork])
             # print('before end_iteration')
             # print('parameters',parameters, parameters.shape)
             # print('actions',actions, actions.shape)

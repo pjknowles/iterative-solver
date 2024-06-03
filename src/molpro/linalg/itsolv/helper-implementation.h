@@ -600,6 +600,14 @@ void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_
     Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> subspaceMatrix = subspaceMatrixR;
     Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> RHS = RHS_R;
     Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic> Solution;
+//    std::cout << "solve_LinearEquations RHS_R\n"<<RHS_R<<std::endl;
+//    for (size_t i=0; i<RHS_R.cols()*RHS_R.rows(); ++i)
+//      std::cout << " "<<RHS_R.data()[i];
+//    std::cout << std::endl;
+//    std::cout << "solve_LinearEquations RHS\n"<<RHS<<std::endl;
+//    for (size_t i=0; i<RHS.cols()*RHS.rows(); ++i)
+//      std::cout << " "<<RHS.data()[i];
+//    std::cout << std::endl;
     Solution = subspaceMatrix.householderQr().solve(RHS);
     //    std::cout << "subspace linear equations solution\n"<<Solution<<std::endl;
     for (size_t root = 0; root < nroot; root++)

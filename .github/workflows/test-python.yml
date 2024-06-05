@@ -1,0 +1,26 @@
+name: Test python bindings
+
+#on:
+#  push:
+#    branches: [ "main" , "master"]
+#  pull_request:
+#    branches: [ "main" , "master"]
+#  workflow_dispatch:
+
+jobs:
+  python-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: python/environment.yml
+      - run: conda info
+      - run: conda list
+      - run: conda config --show
+      - run: bash python/build.sh
+      - run: python python/test/test_rayleigh_quotient.py

@@ -29,4 +29,5 @@ jobs:
       - run: conda info
       - run: conda list
       - run: conda config --show
+      - run: python python/test/test_rayleigh_quotient.py
       - run: cd python && python -m unittest

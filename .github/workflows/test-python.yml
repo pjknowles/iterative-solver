@@ -1,11 +1,11 @@
 name: Test python bindings
 
-#on:
-#  push:
+on:
+  push:
 #    branches: [ "main" , "master"]
-#  pull_request:
-#    branches: [ "main" , "master"]
-#  workflow_dispatch:
+  pull_request:
+    branches: [ "main" , "master"]
+  workflow_dispatch:
 
 jobs:
   python-test:

@@ -156,7 +156,7 @@ class TestCase(unittest.TestCase):
             return r
     def test_simple_linear_equations(self):
         print('@@ test simple linear equations')
-        problem = TestCase.simple_problem(5)
+        problem = TestCase.simple_problem(8)
         # print('matrix',problem.matrix)
         nroot = 2
         parameters = np.ndarray([nroot, problem.size])

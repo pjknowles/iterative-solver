@@ -2,9 +2,9 @@ name: Pages
 on:
   push:
     tags:
-      - '*'
+      - 'none*'
     branches:
-    - master
+    - none
 jobs:
   build:
     runs-on: ubuntu-latest

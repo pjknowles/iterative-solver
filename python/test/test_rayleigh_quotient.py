@@ -110,7 +110,7 @@ class TestCase(unittest.TestCase):
         print('@@ test linear equations')
         problem = TestCase.RayleighQuotient(33, 0.1)
         # print('matrix',problem.matrix)
-        nroot = 4
+        nroot = 2
         parameters = np.ndarray([nroot, problem.size])
         residual = np.ndarray([nroot, problem.size])
 

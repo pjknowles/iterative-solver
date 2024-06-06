@@ -40,7 +40,7 @@ public:
                        std::static_pointer_cast<subspace::ISubspaceSolver<R, Q, P>>(
                            std::make_shared<subspace::SubspaceSolverDIIS<R, Q, P>>(logger_, m_converged)),
                        handlers, std::make_shared<Statistics>(), logger_),
-        logger(logger_) {
+        logger(logger_), m_converged(false) {
     auto xspace = std::dynamic_pointer_cast<subspace::XSpace<R, Q, P>>(this->m_xspace);
     xspace->set_hermiticity(true);
     xspace->set_action_action();

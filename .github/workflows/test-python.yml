@@ -1,0 +1,21 @@
+name: Test python bindings
+
+on:
+#  push:
+#    branches: [ "main" , "master"]
+  pull_request:
+    branches: [ "main" , "master"]
+  workflow_dispatch:
+
+jobs:
+  python-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+      - run: bash python/build.sh
+      - run: cd python/test && python -m unittest

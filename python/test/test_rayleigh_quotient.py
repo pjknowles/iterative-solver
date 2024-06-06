@@ -1,6 +1,7 @@
 import unittest
 import iterative_solver
 import numpy as np
+import inspect
 
 
 class TestCase(unittest.TestCase):
@@ -19,8 +20,6 @@ class TestCase(unittest.TestCase):
 
         def residual(self, parameters, gradient):
             # f = (sum_i (i+1)*x[i]^2 + rho*sum_ij x[i]*x[j])/(sum_i x[i]**2)
-            # if len(parameters.shape) == 2:
-            #     return self.residual(parameters[0, :], gradient[0, :])
             assert len(parameters.shape) == 1
             self.action(parameters.reshape([1, parameters.size]), gradient.reshape([1, parameters.size]))
             f = np.dot(parameters, gradient) / np.dot(parameters, parameters)
@@ -30,9 +29,7 @@ class TestCase(unittest.TestCase):
 
         def action(self, parameters, residual):
             assert len(parameters.shape) == 2
-            # print('action parameters', parameters)
             np.matmul(parameters, self.matrix, out=residual)
-            # print('action residual', residual)
 
         def diagonals(self, diagonals):
             for i in range(self.size):
@@ -41,9 +38,22 @@ class TestCase(unittest.TestCase):
 
         @property
         def eigenvalues(self):
-            eigenvalues, eigenvectors = np.linalg.eig(self.matrix)
-            return np.sort(eigenvalues)
+            eigenvalues, eigenvectors = np.linalg.eigh(self.matrix)
+            return eigenvalues
+        @property
+        def eigenvectors(self):
+            eigenvalues, eigenvectors = np.linalg.eigh(self.matrix)
+            return eigenvectors
 
+    @property
+    def verbosity(self):
+        frame = inspect.currentframe()
+        while frame:
+            self = frame.f_locals.get('self')
+            if isinstance(self, unittest.TestProgram):
+                return self.verbosity
+            frame = frame.f_back
+        return 0
     def test_problem(self):
         problem = TestCase.RayleighQuotient(4, 0.01)
         parameters = np.ones(problem.size) * 77
@@ -61,21 +71,48 @@ class TestCase(unittest.TestCase):
 
     def test_optimize(self):
         problem = TestCase.RayleighQuotient(4, 0.01)
-        parameters = np.zeros(problem.size);
+        parameters = np.zeros(problem.size)
         parameters[0] = 1
         residual = np.zeros(problem.size)
 
-        solver = iterative_solver.Optimize(problem.size, verbosity=0)
+        solver = iterative_solver.Optimize(problem.size, verbosity=self.verbosity)
         self.assertEqual(type(solver), iterative_solver.Optimize)
         # print('initial parameters', parameters)
         solver.solve(parameters, residual, problem)
         answer = solver.solution([0], parameters, residual)
+        parameters = parameters / np.sqrt(np.dot(parameters, parameters))
         # print('final parameters', parameters)
         # print('final function value', answer)
         # print('final residual', residual)
-        self.assertAlmostEqual(answer,np.min(problem.eigenvalues))
+        # print('eigenvalues', problem.eigenvalues)
+        # print('eigenvectors', problem.eigenvectors)
+        self.assertAlmostEqual(answer, problem.eigenvalues[0])
         for i in range(problem.size):
             self.assertAlmostEqual(residual[i], 0.0)
+            self.assertAlmostEqual(parameters[i], problem.eigenvectors[i,0])
+
+    def test_nonlinear_equations(self):
+        problem = TestCase.RayleighQuotient(4, 0.01)
+        parameters = np.zeros(problem.size)
+        parameters[0] = 1
+        residual = np.zeros(problem.size)
+
+        solver = iterative_solver.NonLinearEquations(problem.size, verbosity=self.verbosity)
+        self.assertEqual(type(solver), iterative_solver.NonLinearEquations)
+        # print('initial parameters', parameters)
+        solver.solve(parameters, residual, problem)
+        solver.solution([0], parameters, residual)
+        parameters = parameters / np.sqrt(np.dot(parameters, parameters))
+        # print('final parameters', parameters)
+        # print('final residual', residual)
+        value = problem.residual(parameters, residual)
+        # print(value, residual, np.dot(parameters, parameters))
+        # print('eigenvalues',problem.eigenvalues)
+        # print('eigenvalues',problem.eigenvectors)
+        self.assertAlmostEqual(value, problem.eigenvalues[0])
+        for i in range(problem.size):
+            self.assertAlmostEqual(residual[i], 0.0)
+            self.assertAlmostEqual(parameters[i], problem.eigenvectors[i,0])
 
     def test_diagonalize(self):
         problem = TestCase.RayleighQuotient(8, 0.1)
@@ -84,19 +121,24 @@ class TestCase(unittest.TestCase):
         parameters = np.ndarray([nroot, problem.size])
         residual = np.ndarray([nroot, problem.size])
 
-        solver = iterative_solver.LinearEigensystem(problem.size, nroot, verbosity=0)
+        solver = iterative_solver.LinearEigensystem(problem.size, nroot, verbosity=self.verbosity)
         self.assertEqual(type(solver), iterative_solver.LinearEigensystem)
         solver.solve(parameters, residual, problem, generate_initial_guess=True)
         solver.solution([i for i in range(nroot)], parameters, residual)
-        print('final eigenvectors', parameters)
+        for root in range(nroot):
+            parameters[root, :] = parameters[root, :] / np.sqrt(np.dot(parameters[root, :], parameters[root, :]))
+            problem.residual(parameters[root, :], residual[root, :])
+        # print('final eigenvectors', parameters, np.dot(parameters[0], parameters[0]))
         # print('final residual', residual)
-        print('final eigenvalues', solver.eigenvalues)
+        # print('final eigenvalues', solver.eigenvalues)
+        # print('true eigenvalues', problem.eigenvalues)
         # print('final errors', solver.errors)
         self.assertEqual(solver.errors.size, nroot)
         for e in solver.errors:
             self.assertAlmostEqual(e, 0.0)
         for root in range(nroot):
-            self.assertAlmostEqual(solver.eigenvalues[root], problem.eigenvalues[root],msg='Unexpected eigenvalue; exact: '+str([e for e in problem.eigenvalues]))
+            self.assertAlmostEqual(solver.eigenvalues[root], problem.eigenvalues[root],
+                                   msg='Unexpected eigenvalue; exact: ' + str([e for e in problem.eigenvalues]))
             for i in range(problem.size):
                 self.assertAlmostEqual(residual[root, i], 0.0)
             # print('residual before residual function', residual[root])
@@ -107,7 +149,6 @@ class TestCase(unittest.TestCase):
                 self.assertAlmostEqual(residual[root, i], 0.0)
 
     def test_linear_equations(self):
-        print('@@ test linear equations')
         problem = TestCase.RayleighQuotient(33, 0.1)
         # print('matrix',problem.matrix)
         nroot = 2
@@ -119,24 +160,26 @@ class TestCase(unittest.TestCase):
         # print('eigenvectors', eigenvectors)
         rhs = np.ndarray([nroot, problem.size])
         for root in range(nroot):
-            rhs[root,:] = eigenvalues[root] * eigenvectors[:,root]
+            rhs[root, :] = problem.eigenvalues[root] * problem.eigenvectors[:, root]
         # print('rhs',rhs)
 
-        solver = iterative_solver.LinearEquations(rhs=rhs, verbosity=2, thresh=1e-9)
+        solver = iterative_solver.LinearEquations(rhs=rhs, verbosity=self.verbosity, thresh=1e-9)
         self.assertEqual(type(solver), iterative_solver.LinearEquations)
         solver.solve(parameters, residual, problem, generate_initial_guess=True)
         solver.solution([i for i in range(nroot)], parameters, residual)
-        # print('eigenvectors', eigenvectors)
+        # print('eigenvectors', problem.eigenvectors)
         # print('linear equations final parameters', parameters)
         # print('linear equations final residual', residual)
-        print('linear equations final errors', solver.errors)
+        # print('linear equations final errors', solver.errors)
         self.assertEqual(solver.errors.size, nroot)
         for e in solver.errors:
             self.assertAlmostEqual(e, 0.0)
         for root in range(nroot):
             for i in range(problem.size):
-                self.assertAlmostEqual(eigenvectors[0,root]*parameters[root, i]/parameters[root,0], eigenvectors[i,root])
+                self.assertAlmostEqual(problem.eigenvectors[0, root] * parameters[root, i] / parameters[root, 0],
+                                       problem.eigenvectors[i, root])
                 self.assertAlmostEqual(residual[root, i], 0.0)
+
     class simple_problem(RayleighQuotient):
         @property
         def matrix(self):
@@ -145,17 +188,17 @@ class TestCase(unittest.TestCase):
             for i in range(self.size):
                 for j in range(self.size):
                     m[i, j] = i + j + 1
-                m[i,i] += 1
+                m[i, i] += 1
             return m
 
         def rhs(self, nroot):
             r = np.ndarray([nroot, self.size])
             for root in range(nroot):
                 for i in range(self.size):
-                    r[root, i] =  (root + 1) * (self.size * (self.size + 1) / 2 + i * self.size + 1)
+                    r[root, i] = (root + 1) * (self.size * (self.size + 1) / 2 + i * self.size + 1)
             return r
+
     def test_simple_linear_equations(self):
-        print('@@ test simple linear equations')
         problem = TestCase.simple_problem(8)
         # print('matrix',problem.matrix)
         nroot = 2
@@ -165,7 +208,7 @@ class TestCase(unittest.TestCase):
         rhs = problem.rhs(nroot)
         # print('rhs',rhs,rhs.reshape([rhs.size]))
 
-        solver = iterative_solver.LinearEquations(rhs=rhs, verbosity=2)
+        solver = iterative_solver.LinearEquations(rhs=rhs, verbosity=self.verbosity)
         self.assertEqual(type(solver), iterative_solver.LinearEquations)
         solver.solve(parameters, residual, problem, generate_initial_guess=True)
         solver.solution([i for i in range(nroot)], parameters, residual)
@@ -177,9 +220,8 @@ class TestCase(unittest.TestCase):
             self.assertAlmostEqual(e, 0.0)
         for root in range(nroot):
             for i in range(problem.size):
-                self.assertAlmostEqual(parameters[root, i], float(root+1))
+                self.assertAlmostEqual(parameters[root, i], float(root + 1))
                 self.assertAlmostEqual(residual[root, i], 0.0)
-
 
 
 if __name__ == '__main__':

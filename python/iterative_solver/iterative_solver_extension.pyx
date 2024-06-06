@@ -5,6 +5,8 @@ cimport numpy as np
 import cython
 from libcpp.vector cimport vector
 
+import iterative_solver
+
 # distutils : language = c++
 m_mpicomm_compute = None
 class IterativeSolver:
@@ -125,7 +127,10 @@ class IterativeSolver:
             # print('parameters',parameters)
             if IterativeSolverNonLinear() > 0:
                 value = problem.residual(parameters.reshape([parameters.shape[-1]]), actions.reshape([parameters.shape[-1]]))
-                nwork = self.add_value(value, parameters, actions)
+                if type(self) == Optimize:
+                    nwork = self.add_value(value, parameters, actions)
+                else:
+                    nwork = self.add_vector(parameters[0,:], actions[0,:])
             else:
                 problem.action(parameters,  actions)
                 nwork = self.add_vector(parameters[:nwork,:], actions[:nwork,:])
@@ -137,24 +142,24 @@ class IterativeSolver:
                     problem.precondition(actions[:nwork,:], shift=ev[:nwork], diagonals=parameters.reshape([parameters.size])[:parameters.shape[-1]])
                 else:
                     problem.precondition(actions[:nwork,:], shift=ev[:nwork])
-            # print('before end_iteration')
-            # print('parameters',parameters, parameters.shape)
-            # print('actions',actions, actions.shape)
-            nwork = self.end_iteration(parameters,actions)
-            # print('after end_iteration', nwork)
-            # print('parameters',parameters, parameters.shape)
-            # print('actions',actions, actions.shape)
-            if nwork <= 0: verbosity += 1
+                # print('before end_iteration')
+                # print('parameters',parameters, parameters.shape)
+                # print('actions',actions, actions.shape)
+                nwork = self.end_iteration(parameters,actions)
+                # print('after end_iteration', nwork)
+                # print('parameters',parameters, parameters.shape)
+                # print('actions',actions, actions.shape)
+            # if nwork <= 0: verbosity += 1
             IterativeSolverErrors(&errors_[0])
             # print('after errors',nwork,errors)
             self.value = IterativeSolverValue()
             if IterativeSolverHasValues() != 0:
-                reported = problem.report(iter, verbosity, errors, value=value)
+                reported = problem.report(iter+1 if nwork > 0 else 0, verbosity, errors, value=value)
             elif IterativeSolverHasEigenvalues() != 0:
                 IterativeSolverEigenvalues(&ev_[0])
-                reported = problem.report(iter, verbosity, errors, eigenvalues=ev[:self.nroot])
+                reported = problem.report(iter+1 if nwork > 0 else 0, verbosity, errors, eigenvalues=ev[:self.nroot])
             else:
-                reported = problem.report(iter, verbosity, errors)
+                reported = problem.report(iter+1 if nwork > 0 else 0, verbosity, errors)
             if not reported and verbosity >=2:
                 print('Iteration', iter,'log10(|residual|)=', np.log10(errors))
                 if IterativeSolverHasValues() != 0:

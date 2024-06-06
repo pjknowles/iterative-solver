@@ -1,7 +1,7 @@
 name: Test python bindings
 
 on:
-  push:
+#  push:
 #    branches: [ "main" , "master"]
   pull_request:
     branches: [ "main" , "master"]

@@ -13,21 +13,9 @@ jobs:
     defaults:
       run:
         shell: bash -el {0}
-    permissions:
-      contents: write
-      packages: write
 
     steps:
       - uses: actions/checkout@v4
       - uses: conda-incubator/setup-miniconda@v3
-#        with:
-#          environment-file: python/environment.yml
-      - run: conda info
-      - run: conda list
-      - run: conda config --show
       - run: bash python/build.sh
-      - run: conda info
-      - run: conda list
-      - run: conda config --show
-      - run: python python/test/test_rayleigh_quotient.py
       - run: cd python/test && python -m unittest

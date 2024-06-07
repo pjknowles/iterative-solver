@@ -4,6 +4,7 @@ add_executable(test-${PROJECT_NAME}-itsolv.exe test_wrap.cpp test_util.cpp testD
         test_RSPT.cpp
         test_simplified.cpp
         test_profiler.cpp
+        test_rayleigh_quotient.cpp
         )
 target_link_libraries(test-${PROJECT_NAME}-itsolv.exe PUBLIC molpro::${PROJECT_NAME} gmock_main)
 gtest_discover_tests(test-${PROJECT_NAME}-itsolv.exe)

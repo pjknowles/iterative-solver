@@ -8,9 +8,6 @@
 #include <molpro/linalg/itsolv/helper.h>
 #include <vector>
 
-// Find lowest eigensolution of a matrix obtained from an external file
-// Storage of vectors in-memory via class Rvector
-
 using molpro::linalg::array::Span;
 using molpro::linalg::itsolv::CastOptions;
 using molpro::linalg::itsolv::CVecRef;
@@ -33,13 +30,10 @@ struct simplified : ::testing::Test {
       // m_diagonals.reset(new Qvector(n));
     }
 
-    void precondition(const VecRef<Rvector> &action,
-                      const std::vector<typename Rvector::value_type> &shift) const override {
-      for (size_t k = 0; k < action.size(); k++) {
-        auto &a = action[k].get();
-        for (size_t i = 0; i < a.size(); i++)
-          a[i] /= (matrix(i, i) + shift[k]);
-      }
+    bool diagonals(container_t &d) const override {
+      for (size_t i = 0; i < d.size(); i++)
+        d[i] = matrix(i,i);
+    return true;
     }
 
     double residual(const Rvector &v, Rvector &a) const override {

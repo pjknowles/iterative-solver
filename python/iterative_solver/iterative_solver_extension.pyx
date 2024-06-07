@@ -45,6 +45,7 @@ class IterativeSolver:
         cdef double[::1] action_ = action.reshape([parameters.shape[-1]*nbuffer])
         result = IterativeSolverAddValue(value, &parameters_[0], &action_[0], 1 if sync else 0)
         self.value = value
+        # print('add_value returns',result)
         return result
 
     def add_vector(self, parameters, action, sync=True):
@@ -135,6 +136,7 @@ class IterativeSolver:
                 problem.action(parameters,  actions)
                 nwork = self.add_vector(parameters[:nwork,:], actions[:nwork,:])
                 # print('actions',actions)
+            # print('nwork after add_v*',nwork)
             if nwork > 0:
                 IterativeSolverWorkingSetEigenvalues(&ev_[0])
                 if use_diagonals:
@@ -142,13 +144,13 @@ class IterativeSolver:
                     problem.precondition(actions[:nwork,:], shift=ev[:nwork], diagonals=parameters.reshape([parameters.size])[:parameters.shape[-1]])
                 else:
                     problem.precondition(actions[:nwork,:], shift=ev[:nwork])
-                # print('before end_iteration')
-                # print('parameters',parameters, parameters.shape)
-                # print('actions',actions, actions.shape)
-                nwork = self.end_iteration(parameters,actions)
-                # print('after end_iteration', nwork)
-                # print('parameters',parameters, parameters.shape)
-                # print('actions',actions, actions.shape)
+            # print('before end_iteration')
+            # print('parameters',parameters, parameters.shape)
+            # print('actions',actions, actions.shape)
+            nwork = self.end_iteration(parameters,actions)
+            # print('after end_iteration', nwork)
+            # print('parameters',parameters, parameters.shape)
+            # print('actions',actions, actions.shape)
             # if nwork <= 0: verbosity += 1
             IterativeSolverErrors(&errors_[0])
             # print('after errors',nwork,errors)

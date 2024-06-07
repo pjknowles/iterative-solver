@@ -25,6 +25,7 @@ class TestCase(unittest.TestCase):
             f = np.dot(parameters, gradient) / np.dot(parameters, parameters)
             for i in range(gradient.size):
                 gradient[i] = 2 * (gradient[i] - f * parameters[i]) / np.dot(parameters, parameters)
+            # print('residual',parameters,gradient,f)
             return f
 
         def action(self, parameters, residual):
@@ -72,7 +73,7 @@ class TestCase(unittest.TestCase):
     def test_optimize(self):
         problem = TestCase.RayleighQuotient(4, 0.01)
         parameters = np.zeros(problem.size)
-        parameters[0] = 1
+        parameters[:] = 10
         residual = np.zeros(problem.size)
 
         solver = iterative_solver.Optimize(problem.size, verbosity=self.verbosity)
@@ -80,7 +81,7 @@ class TestCase(unittest.TestCase):
         # print('initial parameters', parameters)
         solver.solve(parameters, residual, problem)
         answer = solver.solution([0], parameters, residual)
-        parameters = parameters / np.sqrt(np.dot(parameters, parameters))
+        parameters = parameters * problem.eigenvectors[0,0] / parameters[0]
         # print('final parameters', parameters)
         # print('final function value', answer)
         # print('final residual', residual)
@@ -102,7 +103,7 @@ class TestCase(unittest.TestCase):
         # print('initial parameters', parameters)
         solver.solve(parameters, residual, problem)
         solver.solution([0], parameters, residual)
-        parameters = parameters / np.sqrt(np.dot(parameters, parameters))
+        parameters = parameters * problem.eigenvectors[0,0] / parameters[0]
         # print('final parameters', parameters)
         # print('final residual', residual)
         value = problem.residual(parameters, residual)

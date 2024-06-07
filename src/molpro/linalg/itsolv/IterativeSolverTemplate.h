@@ -39,6 +39,7 @@ void construct_solution(const VecRef<R>& params, const std::vector<int>& roots,
                         ArrayHandlers<R, Q, P>& handlers) {
   auto prof = molpro::Profiler::single();
   prof->start("get rd_mat");
+  if (roots.empty()) return;
   assert(params.size() >= roots.size());
   for (size_t i = 0; i < roots.size(); ++i) {
     handlers.rr().fill(0, params.at(i));

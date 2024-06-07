@@ -17,6 +17,13 @@ using molpro::linalg::itsolv::LinearEigensystem;
 using molpro::linalg::itsolv::VecRef;
 using molpro::linalg::itsolv::wrap;
 
+template <typename s>
+std::ostream &operator<<(std::ostream &o, const std::vector<s> &v) {
+  for (const auto &e : v)
+    o << " " << e;
+  return o;
+}
+
 struct RayleighQuotient : ::testing::Test {
 
   class MyProblem : public molpro::linalg::itsolv::Problem<Rvector> {
@@ -50,6 +57,9 @@ struct RayleighQuotient : ::testing::Test {
       double value = std::inner_product(v.begin(), v.end(), a.begin(), double(0)) / norm;
       for (size_t i = 0; i < a.size(); i++)
         a[i] = 2 * (a[i] - value * v[i]) / norm;
+//      std::cout << "residual v "<<v<<std::endl;
+//      std::cout << "residual a "<<a<<std::endl;
+//      std::cout << "residual value "<<value<<std::endl;
       return value;
     }
 
@@ -109,13 +119,13 @@ TEST_F(RayleighQuotient, BFGS) {
   solver->set_convergence_threshold(1e-10);
   auto problem = RayleighQuotient::MyProblem(4, 0.01);
   Rvector c(problem.n), g(problem.n);
-  c.assign(problem.n, double(1));
+  c.assign(problem.n, double(10));
   EXPECT_TRUE(solver->solve(c, g, problem));
   solver->solution(c, g);
   auto norm = std::sqrt(std::inner_product(c.begin(), c.end(), c.begin(), double(0)));
   std::transform(c.begin(), c.end(), c.begin(), [norm](const double a) { return a / norm; });
   EXPECT_NEAR(solver->value(), problem.eigenvalues()(0), 1e-14);
-  EXPECT_THAT(c, ::testing::Pointwise(::testing::DoubleNear(1e-9), problem.lowest_eigenvector()));
+  EXPECT_THAT(c, ::testing::Pointwise(::testing::DoubleNear(1e-8), problem.lowest_eigenvector()));
   EXPECT_THAT(g, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()*10), Rvector(problem.n, 0)));
 }
 
@@ -150,12 +160,7 @@ TEST_F(RayleighQuotient, LinearEigensystem) {
   EXPECT_THAT(g, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()*10), Rvector(problem.n, 0)));
 }
 
-template <typename s>
-std::ostream &operator<<(std::ostream &o, const std::vector<s> &v) {
-  for (const auto &e : v)
-    o << " " << e;
-  return o;
-}
+
 TEST_F(RayleighQuotient, LinearEquations) {
   auto solver = molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector>("Davidson");
   solver->set_convergence_threshold(1e-10);

@@ -10,12 +10,15 @@ on:
 jobs:
   python-test:
     runs-on: ubuntu-latest
+    container:
+      # relies on repository name being all lower case
+      image: ghcr.io/${{ github.repository }}
     defaults:
       run:
         shell: bash -el {0}
 
     steps:
       - uses: actions/checkout@v4
-      - uses: conda-incubator/setup-miniconda@v3
+      - run: echo 'conda activate base' >> ~/.bash_profile
       - run: bash python/build.sh
       - run: cd python/test && python -m unittest

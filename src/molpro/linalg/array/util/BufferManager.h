@@ -148,7 +148,7 @@ protected:
       if (m_number_of_buffers == 1 or lo == m_range.first) {
         for (size_t iarray = 0; iarray < m_arrays.size(); ++iarray) {
           assert(hi > lo);
-          assert(buffer_id * m_buffer_size * m_arrays.size() + iarray * m_buffer_size + hi - lo < m_buffer.size());
+          assert(buffer_id * m_buffer_size * m_arrays.size() + iarray * m_buffer_size + hi - lo <= m_buffer.size());
           m_arrays[iarray].get().get(
               lo, hi, &m_buffer.at(buffer_id * m_buffer_size * m_arrays.size() + iarray * m_buffer_size));
         }

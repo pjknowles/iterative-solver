@@ -22,16 +22,37 @@ TEST(Interpolate, cubic_constructor) {
 
 TEST(Interpolate, minimize) {
   // f = x(x-1/2)^2
-  Interpolate::point p0{0, 0, 0.25};
-  Interpolate::point p1{1, .25, 1.25};
-  Interpolate inter(p0, p1, "cubic");
-  EXPECT_NEAR(inter.minimize(0, 1, 5).x, 0.5, 1e-13);
-  EXPECT_NEAR(inter.minimize(0, 1).f, 0, 1e-13);
-  EXPECT_NEAR(inter.minimize(0, 1).f1, 0, 1e-13);
-  EXPECT_GT(inter.minimize(0.3, 0.6).f2, 0);
-  EXPECT_NEAR(inter.minimize(0, -1).x, -1, 1e-13);
-  EXPECT_NEAR(inter.minimize(0.51, 1).x, .51, 1e-13);
-  EXPECT_NEAR(inter.minimize(0.1, 2).x, .5, 1e-13);
-  EXPECT_NEAR(inter.minimize(-1200, 2).x, .5, 1e-13);
-  EXPECT_NEAR(inter.minimize(.4, 200).x, .5, 1e-13);
+  for (const auto& interpolant : Interpolate::interpolants()) {
+    if (interpolant != "morse") {
+      Interpolate::point p0{0, 0, 0.25};
+      Interpolate::point p1{1, .25, 1.25};
+      Interpolate inter(p0, p1, interpolant, 0);
+      EXPECT_NEAR(inter.minimize(0, 1, 5, 1000, false).x, 0.5, 1e-13);
+      EXPECT_NEAR(inter.minimize(0, 1, 100, 100000, false).f, 0, 1e-13);
+      EXPECT_NEAR(inter.minimize(0, 1, 100, 100000, false).f1, 0, 1e-13);
+      EXPECT_GT(inter.minimize(0.3, 0.6, 100, 100000, false).f2, 0);
+      EXPECT_NEAR(inter.minimize(0, -1, 100, 100000, false).x, -1, 1e-13);
+      EXPECT_NEAR(inter.minimize(0.51, 1, 100, 100000, false).x, .51, 1e-13);
+      EXPECT_NEAR(inter.minimize(0.1, 2, 100, 100000, false).x, .5, 1e-13);
+      EXPECT_NEAR(inter.minimize(-1200, 2, 100, 100000, false).x, .5, 1e-13);
+      EXPECT_NEAR(inter.minimize(.4, 200, 100, 100000, false).x, .5, 1e-13);
+    }
+  }
+}
+
+TEST(Interpolate, quadratic) {
+  // f = (x-1/2)^2 + lambda x^3
+  for (const auto& interpolant : Interpolate::interpolants()) {
+    double lambda(1e-3);
+//    std::cout << interpolant << std::endl;
+    Interpolate::point p0{0, 0.25, -1};
+//    Interpolate::point p0{-1, 2.25-lambda, -3+3*lambda};
+    Interpolate::point p1{1, 0.25+lambda, 1+3*lambda};
+    Interpolate inter(p0, p1, interpolant, 0);
+//    std::cout << "found interpolant"<<inter<<std::endl;
+    auto x0_expected = (-2.0+std::sqrt(4.0+12*lambda))/(6*lambda);
+    auto minimum = inter.minimize(0, 1);
+//    std::cout << "found minimum "<<minimum.x<<" value="<<minimum.f<< " slope="<<minimum.f1<<" second="<<minimum.f2<<std::endl;
+    EXPECT_NEAR(minimum.x, x0_expected, 1e-8) << interpolant;
+  }
 }

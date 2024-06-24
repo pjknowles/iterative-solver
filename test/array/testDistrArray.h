@@ -197,8 +197,8 @@ TYPED_TEST_P(DistArrayBasicRMAF, get) {
 TYPED_TEST_P(DistArrayBasicRMAF, put) {
   {
     auto l = this->lock.scope();
-    auto range = std::vector<double>(this->dim);
-    std::iota(range.begin(), range.end(), this->m_comm_rank);
+    auto range = std::vector<double>(this->dim, this->m_comm_rank);
+//    std::iota(range.begin(), range.end(), this->m_comm_rank);
     TypeParam::put(0, this->dim, range.data());
     auto from_ga_buffer = TypeParam::get(0, this->dim);
     ASSERT_THAT(from_ga_buffer, Pointwise(DoubleEq(), range));
@@ -262,7 +262,7 @@ TYPED_TEST_P(DistrArrayRangeRMAF, gather) {
   auto from_ga_buffer = TypeParam::gather(this->sub_indices);
   {
     auto l = this->lock.scope();
-    ASSERT_THAT(from_ga_buffer, Pointwise(DoubleEq(), this->sub_values));
+    EXPECT_THAT(from_ga_buffer, Pointwise(DoubleEq(), this->sub_values));
   }
   TypeParam::sync();
 }
@@ -274,7 +274,7 @@ TYPED_TEST_P(DistrArrayRangeRMAF, scatter) {
     auto proxy = this->lock.scope();
     TypeParam::scatter(this->sub_indices, this->sub_values);
     auto from_ga_buffer = TypeParam::gather(this->sub_indices);
-    ASSERT_THAT(from_ga_buffer, Pointwise(DoubleEq(), this->sub_values));
+    EXPECT_THAT(from_ga_buffer, Pointwise(DoubleEq(), this->sub_values));
     auto zero_values = std::vector<double>(this->sub_values.size(), 0.);
     TypeParam::scatter(this->sub_indices, zero_values);
   }

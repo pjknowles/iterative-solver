@@ -162,7 +162,7 @@ struct RSPT : ::testing::Test {
     //            std::cout << "e0=" << e0 << std::endl;
     //            std::cout << "e1=" << e1 << std::endl;
     double e2;
-    for (auto iter = 1; iter < 10; iter++) {
+    for (auto iter = 1; iter < 20; iter++) {
       e2 = 2 * xv0.dot(ham1 * xv - e1 * xv) + xv.dot(ham0 * xv - e0 * xv);
       rv = ham1 * xv0 - e1 * xv0 + ham0 * xv - e0 * xv;
       //                std::cout << "x " << x << std::endl;

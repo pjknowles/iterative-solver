@@ -56,6 +56,7 @@ public:
                                                    m_max_size_qspace, *this->profiler());
     }
     this->m_stats->iterations++;
+    this->m_end_iteration_needed = false;
     return this->working_set().size();
   }
 

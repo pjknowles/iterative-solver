@@ -63,13 +63,18 @@ class IterativeSolver:
         cdef size_t nbuffer_ = nbuffer
         result = IterativeSolverEndIteration(nbuffer_, &parameters_[0], &residual_[0], 1 if sync else 0)
         return int(result)
+
+    @property
+    def end_iteration_needed(self):
+        result = IterativeSolverEndIterationNeeded()
+        return result !=0
+
     @property
     def errors(self):
         e = np.ndarray(self.nroot)
         cdef double[::1] e_ = e
         IterativeSolverErrors(&e_[0])
         return e
-        pass
 
     def solve(self, parameters, actions, problem, generate_initial_guess=False, max_iter=None):
         '''
@@ -137,17 +142,18 @@ class IterativeSolver:
                 nwork = self.add_vector(parameters[:nwork,:], actions[:nwork,:])
                 # print('actions',actions)
             # print('nwork after add_v*',nwork)
-            if nwork > 0:
-                IterativeSolverWorkingSetEigenvalues(&ev_[0])
-                if use_diagonals:
-                    IterativeSolverDiagonals(&parameters_[0])
-                    problem.precondition(actions[:nwork,:], shift=ev[:nwork], diagonals=parameters.reshape([parameters.size])[:parameters.shape[-1]])
-                else:
-                    problem.precondition(actions[:nwork,:], shift=ev[:nwork])
-            # print('before end_iteration')
-            # print('parameters',parameters, parameters.shape)
-            # print('actions',actions, actions.shape)
-            nwork = self.end_iteration(parameters,actions)
+            while self.end_iteration_needed:
+                if nwork > 0:
+                    IterativeSolverWorkingSetEigenvalues(&ev_[0])
+                    if use_diagonals:
+                        IterativeSolverDiagonals(&parameters_[0])
+                        problem.precondition(actions[:nwork,:], shift=ev[:nwork], diagonals=parameters.reshape([parameters.size])[:parameters.shape[-1]])
+                    else:
+                        problem.precondition(actions[:nwork,:], shift=ev[:nwork])
+                # print('before end_iteration')
+                # print('parameters',parameters, parameters.shape)
+                # print('actions',actions, actions.shape)
+                nwork = self.end_iteration(parameters,actions)
             # print('after end_iteration', nwork)
             # print('parameters',parameters, parameters.shape)
             # print('actions',actions, actions.shape)

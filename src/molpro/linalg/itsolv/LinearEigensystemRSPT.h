@@ -75,6 +75,7 @@ public:
       this->m_handlers->rr().fill(0, parameters);
     this->m_handlers->rr().axpy(-1, actions, parameters);
 
+    this->m_end_iteration_needed = false;
     return this->m_errors.front() < this->m_convergence_threshold ? 0 : 1;
   }
 

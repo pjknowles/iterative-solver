@@ -161,7 +161,9 @@ public:
 
   /*!
    * @brief Provide values of R vectors for testing the problem class.
-   * For use in a non-linear solver, the first vector (instance=0) should be a reference point, and the remainder (instance>0) should be close to it, such that meaningful numerical differentation can be done to test the residual function.
+   * For use in a non-linear solver, the first vector (instance=0) should be a reference point, and the remainder
+   * (instance>0) should be close to it, such that meaningful numerical differentation can be done to test the residual
+   * function.
    * @param instance
    * @param parameters
    * @return true if a vector has been provided
@@ -285,6 +287,11 @@ public:
   virtual size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& residual) = 0;
 
   /*!
+   * @brief signal whether end_iteration should be called
+   */
+  virtual bool end_iteration_needed() = 0;
+
+  /*!
    * \brief Get the solver's suggestion of which degrees of freedom would be best
    * to add to the P-space.
    * \param solution Current solution
@@ -373,7 +380,8 @@ public:
    * @param v2
    * @return false if errors were found, otherwise true
    */
-  virtual bool test_problem(const Problem<R>& problem, R& v0, R& v1, int verbosity=0, double threshold=1e-5) const = 0;
+  virtual bool test_problem(const Problem<R>& problem, R& v0, R& v1, int verbosity = 0,
+                            double threshold = 1e-5) const = 0;
 };
 
 /*!

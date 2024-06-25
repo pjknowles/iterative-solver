@@ -30,6 +30,8 @@ cdef extern from "molpro/linalg/IterativeSolverC.h":
 
     size_t IterativeSolverEndIteration(size_t buffer_size, double* solution, double* residual, int sync)
 
+    int IterativeSolverEndIterationNeeded();
+
     size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_t* offsets, const size_t* indices,
     const double* coefficients, const double* pp, double* parameters, double* action,
     int sync, void (*func)(const double*, double*, const size_t, const size_t*))

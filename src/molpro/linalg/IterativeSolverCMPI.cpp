@@ -380,6 +380,11 @@ extern "C" size_t IterativeSolverEndIteration(size_t buffer_size, double* soluti
   return result;
 }
 
+extern "C" int IterativeSolverEndIterationNeeded(){
+  auto& instance = instances.top();
+  return instance.solver->end_iteration_needed() ? 1:0;
+}
+
 extern "C" size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
                                       int sync, void (*func)(const double*, double*, const size_t, const size_t*)) {

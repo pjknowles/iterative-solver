@@ -7,6 +7,7 @@ MODULE Iterative_Solver
   PUBLIC :: Iterative_Solver_Optimize_Initialize
   PRIVATE :: Iterative_Solver_Add_Value
   PUBLIC :: Iterative_Solver_End_Iteration
+  PUBLIC :: Iterative_Solver_End_Iteration_Needed
   PUBLIC :: Iterative_Solver_Add_Vector
   PUBLIC :: Iterative_Solver_Solution
   PUBLIC :: Iterative_Solver_Add_P, Iterative_Solver_Suggest_P
@@ -654,6 +655,17 @@ CONTAINS
       pp, pa, lsyncC))
   END FUNCTION Iterative_Solver_End_Iteration
 
+  FUNCTION Iterative_Solver_End_Iteration_Needed()
+    LOGICAL :: Iterative_Solver_End_Iteration_Needed
+    INTERFACE
+      FUNCTION Iterative_Solver_End_Iteration_Needed_C() &
+          BIND(C, name = 'IterativeSolverEndIterationNeeded')
+        USE iso_c_binding
+        INTEGER(c_size_t) Iterative_Solver_End_Iteration_Needed_C
+      END FUNCTION Iterative_Solver_End_Iteration_Needed_C
+    END INTERFACE
+    Iterative_Solver_End_Iteration_Needed = Iterative_Solver_End_Iteration_Needed_C() .NE. 0
+  END FUNCTION Iterative_Solver_End_Iteration_Needed
 
   !> \brief add P-space vectors to the expansion set, and return new solution.
   !> \param nP the number of P-space vectors to add
@@ -879,15 +891,17 @@ CONTAINS
         call problem%action(parameters_, actions_)
         nwork = Iterative_Solver_Add_Vector(parameters_, actions_)
       end if
-      if (nwork.gt.0) then
-        if (use_diagonals) then
-          call IterativeSolverDiagonals(parameters_(:, 1))
-          call problem%precondition(actions_(:, :nwork), Iterative_Solver_Working_Set_Eigenvalues(nwork), parameters_(:, 1))
-        else
-          call problem%precondition(actions_(:, :nwork), Iterative_Solver_Working_Set_Eigenvalues(nwork))
+      do while (Iterative_Solver_End_Iteration_Needed())
+        if (nwork.gt.0) then
+          if (use_diagonals) then
+            call IterativeSolverDiagonals(parameters_(:, 1))
+            call problem%precondition(actions_(:, :nwork), Iterative_Solver_Working_Set_Eigenvalues(nwork), parameters_(:, 1))
+          else
+            call problem%precondition(actions_(:, :nwork), Iterative_Solver_Working_Set_Eigenvalues(nwork))
+          end if
         end if
-      end if
-      nwork = Iterative_Solver_End_Iteration(parameters_, actions_)
+        nwork = Iterative_Solver_End_Iteration(parameters_, actions_)
+      end do
       if (nwork.le.0) verbosity = verbosity + 1
       if (IterativeSolverHasValues().ne.0) then
         reported = problem%report(iter, verbosity, Iterative_Solver_Errors(), value = Iterative_Solver_Value())

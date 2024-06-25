@@ -39,7 +39,8 @@ void construct_solution(const VecRef<R>& params, const std::vector<int>& roots,
                         ArrayHandlers<R, Q, P>& handlers) {
   auto prof = molpro::Profiler::single();
   prof->start("get rd_mat");
-  if (roots.empty()) return;
+  if (roots.empty())
+    return;
   assert(params.size() >= roots.size());
   for (size_t i = 0; i < roots.size(); ++i) {
     handlers.rr().fill(0, params.at(i));
@@ -160,6 +161,7 @@ public:
     auto working_set = solve_and_generate_working_set(parameters, actions);
     prof->stop();
     read_handler_counts(m_stats, m_handlers);
+    this->m_end_iteration_needed = true;
     return working_set;
   }
 
@@ -216,7 +218,7 @@ public:
     return solution(roots, wrap(parameters), wrap(residual));
   }
   void solution(R& parameters, R& residual) override {
-    return solution(std::vector<int>(1,0), wrap_arg(parameters), wrap_arg(residual));
+    return solution(std::vector<int>(1, 0), wrap_arg(parameters), wrap_arg(residual));
   }
 
   void solution_params(const std::vector<int>& roots, std::vector<R>& parameters) override {
@@ -230,9 +232,7 @@ public:
                                m_xspace->dimensions().oQ, m_xspace->dimensions().oD, *m_handlers);
   };
 
-  void solution_params(R& parameters) override {
-    return solution_params(std::vector<int>(1,0), wrap_arg(parameters));
-  }
+  void solution_params(R& parameters) override { return solution_params(std::vector<int>(1, 0), wrap_arg(parameters)); }
 
   // TODO Implement this
   std::vector<size_t> suggest_p(const CVecRef<R>& solution, const CVecRef<R>& residual, size_t max_number,
@@ -385,15 +385,17 @@ public:
         nwork = this->add_vector(parameters, actions);
       }
       //      std::cout << "** nwork="<<nwork<<"use_diagonals="<<use_diagonals<<std::endl;
-      if (nwork > 0) {
-        if (use_diagonals) {
-          m_handlers->rq().copy(parameters.at(0), *diagonals);
-          problem.precondition(wrap(actions.begin(), actions.begin() + nwork), this->working_set_eigenvalues(),
-                               parameters.at(0));
-        } else
-          problem.precondition(wrap(actions.begin(), actions.begin() + nwork), this->working_set_eigenvalues());
+      while (this->end_iteration_needed()) {
+        if (nwork > 0) {
+          if (use_diagonals) {
+            m_handlers->rq().copy(parameters.at(0), *diagonals);
+            problem.precondition(wrap(actions.begin(), actions.begin() + nwork), this->working_set_eigenvalues(),
+                                 parameters.at(0));
+          } else
+            problem.precondition(wrap(actions.begin(), actions.begin() + nwork), this->working_set_eigenvalues());
+        }
+        nwork = this->end_iteration(parameters, actions);
       }
-      nwork = this->end_iteration(parameters, actions);
       if (this->m_verbosity >= Verbosity::Iteration)
         report();
     }
@@ -411,7 +413,7 @@ public:
     return solve(wparams, wactions, problem, generate_initial_guess);
   }
   bool solve(std::vector<R>& parameters, std::vector<R>& actions, const Problem<R>& problem,
-                     bool generate_initial_guess = false) override {
+             bool generate_initial_guess = false) override {
     return solve(wrap(parameters), wrap(actions), problem, generate_initial_guess);
   }
 
@@ -423,8 +425,8 @@ public:
       auto value0 = problem.residual(v0, v1);
       if (verbosity > 1) {
         std::cout << "value0 " << value0 << std::endl;
-//        std::cout << "parameters0 " << v0[0] << "," << v0[1] << ",..." << std::endl;
-//        std::cout << "residual0 " << v1[0] << "," << v1[1] << ",..." << std::endl;
+        //        std::cout << "parameters0 " << v0[0] << "," << v0[1] << ",..." << std::endl;
+        //        std::cout << "residual0 " << v1[0] << "," << v1[1] << ",..." << std::endl;
       }
       Q parameters0{v0};
       Q residual0{v1};
@@ -433,21 +435,21 @@ public:
         if (verbosity > 1) {
           std::cout << "testing instance" << instance << std::endl;
           std::cout << "value1 " << value1 << std::endl;
-//          std::cout << "parameters1 " << v0[0] << "," << v0[1] << ",..." << std::endl;
-//          std::cout << "residual1 " << v1[0] << "," << v1[1] << ",..." << std::endl;
+          //          std::cout << "parameters1 " << v0[0] << "," << v0[1] << ",..." << std::endl;
+          //          std::cout << "residual1 " << v1[0] << "," << v1[1] << ",..." << std::endl;
         }
         Q parameters1{v0};
         Q residual1{v1};
         m_handlers->rq().copy(v0, residual1);
-        m_handlers->rr().scal(0.5,v0);
+        m_handlers->rr().scal(0.5, v0);
         m_handlers->rq().axpy(0.5, residual0, v0);
         m_handlers->rq().copy(v1, parameters1);
         m_handlers->rq().axpy(-1, parameters0, v1);
         auto dv_analytic = m_handlers->rr().dot(v0, v1);
-//        if (verbosity > 1) {
-//          std::cout << "mean residual " << v0[0] << "," << v0[1] << ",..." << std::endl;
-//          std::cout << "step " << v1[0] << "," << v1[1] << ",..." << std::endl;
-//        }
+        //        if (verbosity > 1) {
+        //          std::cout << "mean residual " << v0[0] << "," << v0[1] << ",..." << std::endl;
+        //          std::cout << "step " << v1[0] << "," << v1[1] << ",..." << std::endl;
+        //        }
         success = success && std::abs(dv_analytic - (value1 - value0)) < threshold;
         if (verbosity > 0 or (verbosity > -1 and not success))
           std::cout << "{actual, extrapolated} value change: {" << value1 - value0 << ", " << dv_analytic << "}"
@@ -455,17 +457,17 @@ public:
       }
     } else {
       for (int instance = 0; problem.test_parameters(instance, v0); ++instance) {
-        problem.action({v0},{v1});
+        problem.action({v0}, {v1});
         Q residual{v1};
-        auto norm2_residual = std::sqrt(m_handlers->rr().dot(v1,v1));
+        auto norm2_residual = std::sqrt(m_handlers->rr().dot(v1, v1));
         constexpr double scale_factor{10.0};
-        m_handlers->rr().scal(scale_factor,v0);
-        problem.action({v0},{v1});
+        m_handlers->rr().scal(scale_factor, v0);
+        problem.action({v0}, {v1});
         m_handlers->rq().axpy(-scale_factor, residual, v1);
-        auto norm2 = std::sqrt(m_handlers->rr().dot(v1,v1));
-        success = success && std::abs(norm2/norm2_residual) < threshold;
+        auto norm2 = std::sqrt(m_handlers->rr().dot(v1, v1));
+        success = success && std::abs(norm2 / norm2_residual) < threshold;
         if (verbosity > 0 or (verbosity > -1 and not success))
-          std::cout << "Length of residual: "<<norm2_residual<<", scaling defect: "<<norm2<<std::endl;
+          std::cout << "Length of residual: " << norm2_residual << ", scaling defect: " << norm2 << std::endl;
       }
     }
     return success;
@@ -569,6 +571,9 @@ protected:
       throw std::runtime_error("asking for more roots than there are solutions");
   }
 
+  bool end_iteration_needed() override { return m_end_iteration_needed; }
+
+
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers
   std::shared_ptr<subspace::IXSpace<R, Q, P>> m_xspace;                  //!< manages the subspace and associated data
   std::shared_ptr<subspace::ISubspaceSolver<R, Q, P>> m_subspace_solver; //!< solves the subspace problem
@@ -590,6 +595,8 @@ protected:
 private:
   mutable std::shared_ptr<molpro::profiler::Profiler> m_profiler;
   int m_profiler_saved_depth; //!< max_depth of molpro::Profiler::single() before this object changed it
+protected:
+  bool m_end_iteration_needed = true; //!< whether end_iteration should be called after any preconditioner
 };
 
 } // namespace molpro::linalg::itsolv

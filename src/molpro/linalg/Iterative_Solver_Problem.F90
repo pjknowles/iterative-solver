@@ -14,6 +14,13 @@ module Iterative_Solver_Problem
     procedure, pass :: report
   end type Problem
 
+  type, public, extends(Problem) :: Matrix_Problem
+    double precision, pointer, dimension(:,:) :: matrix
+    contains
+    procedure, pass :: diagonals => matrix_diagonals
+    procedure, pass :: action => matrix_action
+  end type Matrix_Problem
+
 contains
 
   !> @brief Optionally provide the diagonal elements of the underlying kernel. If
@@ -29,6 +36,13 @@ contains
     double precision, intent(inout), dimension(:) :: d
     diagonals = .false.
   end function diagonals
+
+  logical function matrix_diagonals(this, d)
+    class(Matrix_Problem), intent(in) :: this
+    double precision, intent(inout), dimension(:) :: d
+    d = [(this%matrix(i,i), i=lbound(this%matrix,1),ubound(this%matrix,1))]
+    matrix_diagonals = .true.
+  end function matrix_diagonals
 
   !> @brief Apply preconditioning to a residual vector in order to predict a step towards
   !> the solution
@@ -84,6 +98,13 @@ contains
     double precision, intent(in), dimension(:, :) :: parameters
     double precision, intent(inout), dimension(:, :) :: actions
   end subroutine action
+
+  subroutine matrix_action(this, parameters, actions)
+    class(Matrix_Problem), intent(in) :: this
+    double precision, intent(in), dimension(:, :) :: parameters
+    double precision, intent(inout), dimension(:, :) :: actions
+    actions = matmul(this%matrix, parameters)
+  end subroutine matrix_action
 
   !> @brief Report progress at the end of each iteration, or at the end of the calculation
   !> @return .true. if the information was used, and therefore the caller should be silent

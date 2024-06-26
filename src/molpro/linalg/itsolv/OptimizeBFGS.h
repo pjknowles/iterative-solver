@@ -119,24 +119,41 @@ public:
   accept:
     m_linesearch = false;
     this->m_logger->msg("Quasi-Newton step taken", Logger::Info);
-    m_alpha.resize(xspace->size() - 1);
-    const auto& q = xspace->paramsq();
-    const auto& u = xspace->actionsq();
     //    this->m_errors.front() = std::sqrt(this->m_handlers->rr().dot(residual,residual));
-    for (size_t a = 0; a < m_alpha.size(); a++) {
+    for (size_t a = 0; a < m_BFGS_update_alpha.size(); a++) {
       if (std::abs(H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1)) <
           std::max(5e-14 * std::abs(H(a, a)), 1e-15)) {
         xspace->eraseq(a + 1);
         this->m_logger->msg("Erase redundant Q", Logger::Info);
         goto accept;
       }
-      m_alpha[a] = (this->m_handlers->rq().dot(residual, q[a]) - this->m_handlers->rq().dot(residual, q[a + 1])) /
-                   (H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1));
-      //      std::cout << "alpha[" << a << "] = " << m_alpha[a] << std::endl;
-      this->m_handlers->rq().axpy(-m_alpha[a], u[a], residual);
-      this->m_handlers->rq().axpy(m_alpha[a], u[a + 1], residual);
     }
+    BFGS_update_1(residual, xspace, H);
     return nwork;
+  }
+
+  void BFGS_update_1(R& residual, std::shared_ptr<const subspace::IXSpace<R, Q, P>> xspace, const Matrix<double>& H) {
+    m_BFGS_update_alpha.resize(xspace->size() - 1);
+    const auto& q = xspace->paramsq();
+    const auto& u = xspace->actionsq();
+    for (size_t a = 0; a < m_BFGS_update_alpha.size(); a++) {
+      m_BFGS_update_alpha[a] =
+          (this->m_handlers->rq().dot(residual, q[a]) - this->m_handlers->rq().dot(residual, q[a + 1])) /
+          (H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1));
+      this->m_handlers->rq().axpy(-m_BFGS_update_alpha[a], u[a], residual);
+      this->m_handlers->rq().axpy(m_BFGS_update_alpha[a], u[a + 1], residual);
+    }
+  }
+
+  void BFGS_update_2(R& z, std::shared_ptr<const subspace::IXSpace<R, Q, P>> xspace, const Matrix<double>& H) {
+    const auto& q = xspace->paramsq();
+    const auto& u = xspace->actionsq();
+    for (int a = m_BFGS_update_alpha.size() - 1; a >= 0; a--) {
+      auto beta = (this->m_handlers->rq().dot(z, u[a]) - this->m_handlers->rq().dot(z, u[a + 1])) /
+                  (H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1));
+      this->m_handlers->rq().axpy(+m_BFGS_update_alpha[a] - beta, q[a], z);
+      this->m_handlers->rq().axpy(-m_BFGS_update_alpha[a] + beta, q[a + 1], z);
+    }
   }
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {
@@ -155,18 +172,7 @@ public:
       const auto& xspace = this->m_xspace;
       auto& xdata = xspace->data;
       const auto& H = xdata[subspace::EqnData::H];
-      //      const auto& S = xdata[subspace::EqnData::S];
-      const auto& q = xspace->paramsq();
-      const auto& u = xspace->actionsq();
-
-      for (int a = m_alpha.size() - 1; a >= 0; a--) {
-        auto beta = (this->m_handlers->rq().dot(z, u[a]) - this->m_handlers->rq().dot(z, u[a + 1])) /
-                    (H(a, a) - H(a, a + 1) - H(a + 1, a) + H(a + 1, a + 1));
-        //        std::cout << "alpha[" << a << "] = " << m_alpha[a] << std::endl;
-        //        std::cout << "beta[" << a << "] = " << beta << std::endl;
-        this->m_handlers->rq().axpy(+m_alpha[a] - beta, q[a], z);
-        this->m_handlers->rq().axpy(-m_alpha[a] + beta, q[a + 1], z);
-      }
+      BFGS_update_2(z, xspace, H);
       this->m_handlers->rr().axpy(-1, z, parameters.front());
     } else {
       this->m_stats->line_search_steps++;
@@ -241,7 +247,7 @@ public:
   std::shared_ptr<Logger> logger;
 
 protected:
-  std::vector<double> m_alpha;
+  std::vector<double> m_BFGS_update_alpha;
   bool m_linesearch;
   bool m_last_iteration_linesearching = false;
 

@@ -22,7 +22,7 @@ public:
   SubspaceData data; //!< Equation data in the subspace
 
   //! Number of vectors forming the subspace
-  size_t size() { return dimensions().nX; }
+  size_t size() const { return dimensions().nX; }
 
   //! Removes parameter i from the full subspace
   virtual void erase(size_t i) = 0;

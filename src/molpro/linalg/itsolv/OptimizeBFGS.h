@@ -87,14 +87,15 @@ public:
         molpro::cout << "m_convergence_threshold=" << this->m_convergence_threshold << std::endl;
         molpro::cout << "Wolfe conditions: " << Wolfe_1 << Wolfe_2 << std::endl;
       }
+      std::cout << "fprev "<<fprev<<", gprev "<<gprev<<", fcurrent "<<fcurrent<<", gcurrent "<<gcurrent<<std::endl;
+      m_interpolation.reset(new Interpolate({-1, fprev, gprev}, {0, fcurrent, gcurrent}, m_interpolant));
+      auto [x, f, g, h] = m_interpolation->minimize(-1 - this->m_linesearch_grow_factor, this->m_linesearch_grow_factor);
+      molpro::cout << "interpolation minimum " << x << " f=" << f << " g=" << g << " h=" << h << std::endl;
       if (
           //          std::abs(gcurrent) < this->m_convergence_threshold or
           (Wolfe_1 && Wolfe_2))
         goto accept;
       //      molpro::cout << "evaluating line search" << std::endl;
-      Interpolate inter({-1, fprev, gprev}, {0, fcurrent, gcurrent});
-      auto [x, f, g, h] = inter.minimize(-1 - this->m_linesearch_grow_factor, this->m_linesearch_grow_factor);
-      //      molpro::cout << "interpolation" << x << " f=" << f << " g=" << g << " h=" << h << std::endl;
       if (std::abs(x) > m_linesearch_tolerance) {
         //        molpro::cout << "taking line search" << std::endl;
         this->m_logger->msg("Line search step taken", Logger::Info);
@@ -128,11 +129,13 @@ public:
         goto accept;
       }
     }
-    BFGS_update_1(residual, xspace, H);
+    BFGS_update_1(residual);
     return nwork;
   }
 
-  void BFGS_update_1(R& residual, std::shared_ptr<const subspace::IXSpace<R, Q, P>> xspace, const Matrix<double>& H) {
+  void BFGS_update_1(R& residual) {
+    const auto& xspace = this->m_xspace;
+    const auto& H = xspace->data.at(subspace::EqnData::H);
     m_BFGS_update_alpha.resize(xspace->size() - 1);
     const auto& q = xspace->paramsq();
     const auto& u = xspace->actionsq();
@@ -145,7 +148,9 @@ public:
     }
   }
 
-  void BFGS_update_2(R& z, std::shared_ptr<const subspace::IXSpace<R, Q, P>> xspace, const Matrix<double>& H) {
+  void BFGS_update_2(R& z) {
+    const auto& xspace = this->m_xspace;
+    const auto& H = xspace->data.at(subspace::EqnData::H);
     const auto& q = xspace->paramsq();
     const auto& u = xspace->actionsq();
     for (int a = m_BFGS_update_alpha.size() - 1; a >= 0; a--) {
@@ -170,9 +175,19 @@ public:
       this->m_working_set.assign(1, 0);
       auto& z = action.front();
       const auto& xspace = this->m_xspace;
-      auto& xdata = xspace->data;
-      const auto& H = xdata[subspace::EqnData::H];
-      BFGS_update_2(z, xspace, H);
+      BFGS_update_2(z);
+      const auto& S = xspace->data.at(subspace::EqnData::S);
+      const auto& q = xspace->paramsq();
+      const auto& u = xspace->actionsq();
+      if (S.rows() >= 2) {
+        std::cout << "S\n" << S << std::endl;
+        double d = S(0, 0) - S(0, 1) - S(1, 0) + S(1, 1);
+        std::cout << "d=" << d << std::endl;
+        if (d > 1e3 * std::numeric_limits<decltype(S(0, 0))>::epsilon() * S(0, 0)) {
+          m_step_in_line = (this->m_handlers->rq().dot(z, q[1]) - this->m_handlers->rq().dot(z, q[0])) / d;
+          std::cout << "step in line y=" << m_step_in_line << std::endl;
+        }
+      }
       this->m_handlers->rr().axpy(-1, z, parameters.front());
     } else {
       this->m_stats->line_search_steps++;
@@ -223,6 +238,8 @@ public:
         m_linesearch_tolerance = opt.linesearch_tolerance.value();
       if (opt.linesearch_grow_factor)
         m_linesearch_grow_factor = opt.linesearch_grow_factor.value();
+      if (opt.interpolant)
+        m_interpolant = opt.interpolant.value();
     }
   }
 
@@ -235,6 +252,7 @@ public:
     opt->Wolfe_2 = m_Wolfe_2;
     opt->linesearch_tolerance = m_linesearch_tolerance;
     opt->linesearch_grow_factor = m_linesearch_grow_factor;
+    opt->interpolant = m_interpolant;
     return opt;
   }
 
@@ -250,6 +268,7 @@ protected:
   std::vector<double> m_BFGS_update_alpha;
   bool m_linesearch;
   bool m_last_iteration_linesearching = false;
+  double m_step_in_line;
 
 protected:
   // for non-linear problems, actions already contains the residual
@@ -263,6 +282,8 @@ protected:
                                       //!< point, don't bother taking it, but proceed to Quasi-Newton instead
   double m_linesearch_grow_factor =
       2; //!< If the predicted line search step is extrapolation, limit the step to this factor times the current step
+  std::string m_interpolant = "cubic";
+  std::unique_ptr<Interpolate> m_interpolation;
 };
 
 } // namespace molpro::linalg::itsolv

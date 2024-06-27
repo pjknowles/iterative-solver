@@ -310,6 +310,12 @@ std::string as_string(const Mat& m, int precision = 6) {
   return s.str();
 }
 
+template <class T>
+std::ostream& operator<<(std::ostream& o, const Matrix<T>& m) {
+  o << as_string(m);
+  return o;
+}
+
 } // namespace molpro::linalg::itsolv::subspace
 
 #endif // LINEARALGEBRA_SRC_MOLPRO_LINALG_ITSOLV_SUBSPACE_MATRIX_H

@@ -48,8 +48,9 @@ public:
     return 0;
   }
 };
-Interpolate::Interpolate(point p0, point p1, std::string interpolant, int verbosity)
-    : m_p0(std::move(p0)), m_p1(std::move(p1)), m_interpolant(std::move(interpolant)), m_parameters(4) {
+Interpolate::Interpolate(point p0, point p1, std::optional<std::string> interpolant, int verbosity)
+    : m_p0(std::move(p0)), m_p1(std::move(p1)), m_interpolant(interpolant.has_value() ? interpolant.value() : "cubic"),
+      m_parameters(4) {
   //  std::cout << "Interpolate constructor\n";
   //  std::cout << "Point " << p0.x << " " << p0.f << " " << p0.f1 << " " << p0.f2 << std::endl;
   //  std::cout << "Point " << p1.x << " " << p1.f << " " << p1.f1 << " " << p1.f2 << std::endl;
@@ -96,6 +97,7 @@ Interpolate::Interpolate(point p0, point p1, std::string interpolant, int verbos
     throw std::runtime_error("Unknown interpolant: " + m_interpolant);
 }
 
+const std::string& Interpolate::interpolant() const { return m_interpolant; }
 std::vector<std::string> Interpolate::interpolants() { return std::vector<std::string>{"cubic", "morse"}; }
 
 Interpolate::point Interpolate::operator()(double x) const {
@@ -113,34 +115,35 @@ Interpolate::point Interpolate::operator()(double x) const {
 }
 
 Interpolate::point Interpolate::minimize_cubic() const {
-//  std::cout << "minimize_cubic" << *this << std::endl;
+  //  std::cout << "minimize_cubic" << *this << std::endl;
   if (m_interpolant != "cubic")
     throw std::logic_error("minimize_cubic called with non-cubic interpolant");
   const auto c = m_parameters[1];
   const auto b = 2 * m_parameters[2];
   const auto a = 3 * m_parameters[3];
-  auto discriminant = b*b / (4 * a*a) - c /  a;
-//  std::cout << "a " << a << std::endl;
-//  std::cout << "b " << b << std::endl;
-//  std::cout << "c " << c << std::endl;
-//  std::cout << "discriminant " << discriminant << std::endl;
+  auto discriminant = b * b / (4 * a * a) - c / a;
+  //  std::cout << "a " << a << std::endl;
+  //  std::cout << "b " << b << std::endl;
+  //  std::cout << "c " << c << std::endl;
+  //  std::cout << "discriminant " << discriminant << std::endl;
   if (std::isnan(discriminant) || discriminant < 0)
     return {std::nan("unset")};
   auto xbar = 0.5 * (m_p1.x + m_p0.x);
   Interpolate::point pm = (*this)(xbar - (b / (2 * a)) + std::sqrt(discriminant));
   Interpolate::point pp = (*this)(xbar - (b / (2 * a)) - std::sqrt(discriminant));
-//  std::cout << "extrema \n" << pm << "\n" << pp << std::endl;
+  //  std::cout << "extrema \n" << pm << "\n" << pp << std::endl;
   return pm.f < pp.f ? pm : pp;
 }
 
-Interpolate::point Interpolate::minimize(double xa, double xb, size_t bracket_grid, size_t max_bracket_grid, bool analytic) const {
+Interpolate::point Interpolate::minimize(double xa, double xb, size_t bracket_grid, size_t max_bracket_grid,
+                                         bool analytic) const {
   if (xa > xb)
     std::swap(xa, xb);
-//  std::cout << "Interpolate::minimize " << xa << " " << xb << ", starting grid size " << bracket_grid << std::endl;
-//  std::cout << "Interpolant:" << *this << std::endl;
+  //  std::cout << "Interpolate::minimize " << xa << " " << xb << ", starting grid size " << bracket_grid << std::endl;
+  //  std::cout << "Interpolant:" << *this << std::endl;
   if (analytic && m_interpolant == "cubic")
     return minimize_cubic();
-//    std::cout << "minimize_cubic() " << minimize_cubic() << std::endl;
+  //    std::cout << "minimize_cubic() " << minimize_cubic() << std::endl;
   for (size_t ngrid = bracket_grid; ngrid < std::max(bracket_grid, max_bracket_grid) + 1; ngrid *= 2) {
     auto gridstep = (xb - xa) / ngrid;
     auto plow = (*this)(xa);
@@ -175,7 +178,7 @@ Interpolate::point Interpolate::minimize(double xa, double xb, size_t bracket_gr
           std::swap(p0, p1);
         std::swap(p0, pnew);
       }
-//      std::cout << "return " << p0.x << ", " << p0.f << ", " << p0.f1 << ", " << p0.f2 << std::endl;
+      //      std::cout << "return " << p0.x << ", " << p0.f << ", " << p0.f1 << ", " << p0.f2 << std::endl;
       return p0;
     }
   }

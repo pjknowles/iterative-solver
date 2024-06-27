@@ -3,6 +3,7 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include <optional>
 
 /*!
  * @brief 4-parameter interpolation of a 1-dimensional function given two points for which function values and first
@@ -26,7 +27,7 @@ public:
    * @param interpolant The interpolation method. An exception is thrown if it is not one of the implemented values.
    * @param verbosity Values greater than zero show information on constructing and using the interpolant.
    */
-  explicit Interpolate(point p0, point p1, std::string interpolant = "cubic", int verbosity = 0);
+  explicit Interpolate(point p0, point p1, std::optional<std::string> interpolant = "cubic", int verbosity = 0);
   /*!
    * @brief Evaluate the interpolant and its derivative at a given point
    * @param x
@@ -46,6 +47,7 @@ public:
   Interpolate::point minimize(double xa, double xb, size_t bracket_grid = 100, size_t max_bracket_grid = 100000, bool analytic=true) const;
   Interpolate::point minimize_cubic() const;
   static std::vector<std::string> interpolants();
+  const std::string& interpolant() const;
 
   const std::vector<double>& parameters() const { return m_parameters; }
   friend std::ostream& operator<<(std::ostream& os, const Interpolate& interpolant);

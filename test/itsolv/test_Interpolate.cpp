@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <optional>
 
 #include <molpro/linalg/itsolv/Interpolate.h>
 
@@ -18,6 +19,22 @@ TEST(Interpolate, cubic_constructor) {
   EXPECT_EQ(inter(p1.x).f1, p1.f1);
   EXPECT_EQ(inter(p1.x).f2, 4);
   EXPECT_EQ(inter(0.5).f1, 0);
+}
+
+TEST(Interpolate, default_constructor) {
+  // f = x(x-1/2)^2
+  Interpolate::point p0{0, 0, 0.25};
+  Interpolate::point p1{1, .25, 1.25};
+  Interpolate inter(p0, p1);
+  EXPECT_EQ(inter.interpolant(),"cubic");
+  std::optional<std::string> empty;
+  EXPECT_EQ(empty.has_value(),false);
+  Interpolate inter_empty(p0,p1,empty);
+  EXPECT_EQ(inter_empty.interpolant(),"cubic");
+  std::optional<std::string> specified="cubic";
+  EXPECT_EQ(specified.has_value(),true);
+  Interpolate inter_specified(p0,p1,specified);
+  EXPECT_EQ(inter_specified.interpolant(),"cubic");
 }
 
 TEST(Interpolate, minimize) {

@@ -44,13 +44,22 @@ void precondition_default(const VecRef<T>& action, const std::vector<double>& sh
 }
 
 template <class T>
+std::ostream& operator<<(std::ostream& o, const std::vector<T>& v) {
+  for (const auto& e: v) o << " "<<e;
+  return o;
+}
+template <class T>
 void precondition_default(const VecRef<T>& action, const std::vector<double>& shift, const T& diagonals,
                           typename T::iterator* = nullptr // SFINAE
 ) {
   for (size_t k = 0; k < action.size(); k++) {
     auto& a = action[k].get();
+    std::cout << "precondition_default "<<shift[k]<<std::endl;
+    std::cout << "diagonals "<<diagonals<<std::endl;
+    std::cout << "initial action "<<a<<std::endl;
     std::transform(diagonals.begin(), diagonals.end(), a.begin(), a.begin(),
                    [shift, k](const auto& first, const auto& second) { return second / (first - shift[k] + 1e-15); });
+    std::cout << "final action "<<a<<std::endl;
   }
 }
 

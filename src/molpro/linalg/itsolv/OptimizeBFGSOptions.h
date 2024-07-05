@@ -20,6 +20,7 @@ struct OptimizeBFGSOptions : public OptimizeOptions {
   std::optional<double> linesearch_grow_factor; //!< If the predicted line search step is extrapolation, limit the step
                                                 //!< to this factor times the current step
   std::optional<std::string> interpolant; //!< Name of interpolant along search line
+  std::optional<int> cubic_iterations; //!< How many iterations of cubic line interpolation
 };
 
 } // namespace molpro::linalg::itsolv

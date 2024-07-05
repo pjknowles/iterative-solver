@@ -240,6 +240,8 @@ public:
         m_linesearch_grow_factor = opt.linesearch_grow_factor.value();
       if (opt.interpolant)
         m_interpolant = opt.interpolant.value();
+      if (opt.cubic_iterations)
+        m_cubic_iterations = opt.cubic_iterations.value();
     }
   }
 
@@ -284,6 +286,7 @@ protected:
       2; //!< If the predicted line search step is extrapolation, limit the step to this factor times the current step
   std::string m_interpolant = "cubic";
   std::unique_ptr<Interpolate> m_interpolation;
+  int m_cubic_iterations = 0; //!< How many iterations of cubic line function optimisation
 };
 
 } // namespace molpro::linalg::itsolv

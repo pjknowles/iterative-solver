@@ -180,12 +180,12 @@ public:
       const auto& q = xspace->paramsq();
       const auto& u = xspace->actionsq();
       if (S.rows() >= 2) {
-        std::cout << "S\n" << S << std::endl;
+//        std::cout << "S\n" << S << std::endl;
         double d = S(0, 0) - S(0, 1) - S(1, 0) + S(1, 1);
-        std::cout << "d=" << d << std::endl;
+//        std::cout << "d=" << d << std::endl;
         if (d > 1e3 * std::numeric_limits<decltype(S(0, 0))>::epsilon() * S(0, 0)) {
           m_step_in_line = (this->m_handlers->rq().dot(z, q[1]) - this->m_handlers->rq().dot(z, q[0])) / d;
-          std::cout << "step in line y=" << m_step_in_line << std::endl;
+//          std::cout << "step in line y=" << m_step_in_line << std::endl;
         }
       }
       this->m_handlers->rr().axpy(-1, z, parameters.front());

@@ -45,7 +45,8 @@ void precondition_default(const VecRef<T>& action, const std::vector<double>& sh
 
 template <class T>
 std::ostream& operator<<(std::ostream& o, const std::vector<T>& v) {
-  for (const auto& e: v) o << " "<<e;
+  for (const auto& e : v)
+    o << " " << e;
   return o;
 }
 template <class T>
@@ -54,12 +55,12 @@ void precondition_default(const VecRef<T>& action, const std::vector<double>& sh
 ) {
   for (size_t k = 0; k < action.size(); k++) {
     auto& a = action[k].get();
-    std::cout << "precondition_default "<<shift[k]<<std::endl;
-    std::cout << "diagonals "<<diagonals<<std::endl;
-    std::cout << "initial action "<<a<<std::endl;
+    //    std::cout << "precondition_default "<<shift[k]<<std::endl;
+    //    std::cout << "diagonals "<<diagonals<<std::endl;
+    //    std::cout << "initial action "<<a<<std::endl;
     std::transform(diagonals.begin(), diagonals.end(), a.begin(), a.begin(),
                    [shift, k](const auto& first, const auto& second) { return second / (first - shift[k] + 1e-15); });
-    std::cout << "final action "<<a<<std::endl;
+    //    std::cout << "final action "<<a<<std::endl;
   }
 }
 
@@ -335,6 +336,7 @@ public:
   virtual void set_n_roots(size_t nroots) = 0;
   virtual const std::vector<scalar_type>& errors() const = 0;
   virtual const Statistics& statistics() const = 0;
+  virtual int iterations() const = 0;
   //! Writes a report to cout output stream
   virtual void report(std::ostream& cout, bool endl = true) const = 0;
   //! Writes a report to std::cout

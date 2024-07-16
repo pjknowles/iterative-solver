@@ -374,12 +374,13 @@ public:
       nwork = add_p(cwrap(pspace), array::Span<value_type>(action_matrix.data(), action_matrix.size()), parameters,
                     actions, apply_on_p);
     }
-    for (auto iter = 0; iter < this->m_max_iter && nwork > 0; iter++) {
+    for (m_iterations = 0; m_iterations < this->m_max_iter && nwork > 0; m_iterations++) {
+//      molpro::cout << "set m_iterations "<<m_iterations<<std::endl;
       value_type value;
       if (this->nonlinear()) {
         value = problem.residual(*parameters.begin(), *actions.begin());
         nwork = this->add_vector(*parameters.begin(), *actions.begin(), value);
-      } else if (iter > 0 or pspace.empty()) {
+      } else if (m_iterations > 0 or pspace.empty()) {
         problem.action(cwrap(parameters.begin(), parameters.begin() + nwork),
                        wrap(actions.begin(), actions.begin() + nwork));
         nwork = this->add_vector(parameters, actions);
@@ -573,6 +574,8 @@ protected:
 
   bool end_iteration_needed() override { return m_end_iteration_needed; }
 
+  int iterations() const override { return m_iterations;}
+
 
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers
   std::shared_ptr<subspace::IXSpace<R, Q, P>> m_xspace;                  //!< manages the subspace and associated data
@@ -595,6 +598,7 @@ protected:
 private:
   mutable std::shared_ptr<molpro::profiler::Profiler> m_profiler;
   int m_profiler_saved_depth; //!< max_depth of molpro::Profiler::single() before this object changed it
+  int m_iterations = 0; //!< how many iterations were used to solve
 protected:
   bool m_end_iteration_needed = true; //!< whether end_iteration should be called after any preconditioner
 };

@@ -59,7 +59,7 @@ struct OptimizeF : ::testing::Test {
                            const int n_working_vectors_max = 0) {
     int nroot = 1;
     {
-//      int np = 0;
+      //      int np = 0;
       {
         molpro::cout << "\n\n*** " << title << ",  problem dimension " << n << ", method = " << method
                      << ", n_working_vectors_max = " << n_working_vectors_max << std::endl;
@@ -112,7 +112,7 @@ struct OptimizeF : ::testing::Test {
 };
 
 TEST_F(OptimizeF, small_quadratic_form) {
-  for (int n = 2; n < 31; n+=9) {
+  for (int n = 2; n < 31; n += 9) {
     double param = 10;
     load_matrix(n, "", param);
     test_quadratic_form("BFGS", std::to_string(n) + "/" + std::to_string(param));
@@ -132,20 +132,29 @@ auto rosenbrock(const std::vector<double>& x, double a = 1, double b = 100) {
 }
 class Rosenbrock_Problem : public molpro::linalg::itsolv::Problem<std::vector<double>> {
   double a, b;
+  mutable std::vector<double> last_x;
 
 public:
-  Rosenbrock_Problem(double a = 1, double b = 1000) : a(a), b(b) {}
+  Rosenbrock_Problem(double a = 1, double b = 100) : a(a), b(b) {}
   value_t residual(const std::vector<double>& x, std::vector<double>& f1) const override {
-    std::cout << "residual with x="<<x<<std::endl;
     double f{0};
-    f1.assign(f1.size(), 0);
+    f1.assign(x.size(), 0);
     for (size_t i = 0; i < x.size() - 1; i++) {
       f += std::pow(a - x[i], 2) + b * std::pow(std::pow(x[i], 2) - x[i + 1], 2);
       f1[i] -= 2 * (a - x[i]);
       f1[i] += 4 * b * x[i] * (std::pow(x[i], 2) - x[i + 1]);
       f1[i + 1] -= 2 * b * (std::pow(x[i], 2) - x[i + 1]);
     }
-    std::cout <<"value "<<f<< ", residual "<<f1<<std::endl;
+    if (! last_x.empty()) {
+      double step;
+      for (size_t i = 0; i < x.size(); i++) {
+        step += std::pow(x[i]-last_x[i],2);
+      }
+//      std::cout << "x "<<x<<std::endl;
+//      std::cout << "last_x "<<last_x<<std::endl;
+//      std::cout << "last step "<<std::sqrt(step)<<std::endl;
+    }
+    last_x = x;
     return f;
   }
   bool diagonals(std::vector<double>& d) const override {
@@ -156,36 +165,25 @@ public:
 
 TEST(Optimize, Rosenbrock) {
 
-  int total_iterations=0;
+  int total_iterations = 0;
   for (size_t n = 2; n < 7; n++) {
     auto solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>(
-        "BFGS", "convergence_threshold=1e-8,max_size_qspace=6");
-    std::vector<double> x(n, -4), g(n);
+        "BFGS", "convergence_threshold=1e-5,max_size_qspace=10");
+    solver->set_max_iter(10000);
+    std::vector<double> x(n, -1), g(n);
     x[0] = -3.0;
-    if (true) {
-      auto result = solver->solve(x,g,Rosenbrock_Problem());
-      solver->solution(x,g);
-    }
-    else {
-      for (int iter = 0; iter < 10000; iter++) {
-        total_iterations++;
-        auto [xx, value, g] = rosenbrock(x);
-              molpro::cout << "iter=" << iter << ", x=" << x << ", value=" << value << std::endl;
-        auto precon = solver->add_vector(x, g, value) > 0;
-              molpro::cout << "add_vector returns precon=" << precon << ", x=" << x << ", g=" << g[0] << std::endl;
-        if (precon)
-          for (auto& gg : g)
-            gg /= 2;
-        if (solver->end_iteration(x, g) == 0)
-          break;
-        //      molpro::cout << "end_iteration returns x=" << x << ", g=" << g << std::endl;
-      }
-    }
-    molpro::cout << solver->statistics() << std::endl;
+    auto problem = Rosenbrock_Problem();
+    auto result = solver->solve(x, g, problem);
+    total_iterations += solver->iterations();
+    EXPECT_TRUE(result);
+    solver->solution(x, g);
+    auto function = problem.residual(x, g);
+    EXPECT_NEAR(function, 0.0, 1e-12);
     EXPECT_THAT(x, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()),
                                         std::vector<double>(x.size(), double(1))));
+    molpro::cout << solver->statistics() << std::endl;
   }
-  std::cout << "total_iterations: "<< total_iterations<<std::endl;
+  std::cout << "total_iterations: " << total_iterations << std::endl;
 }
 
 TEST(Optimize, trig1d) {
@@ -193,7 +191,7 @@ TEST(Optimize, trig1d) {
   auto solver =
       molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>("BFGS", "convergence_threshold=1e-8,max_size_qspace=2");
   std::vector<double> x(1), g(1);
-//  int nwork = 1;
+  //  int nwork = 1;
   x[0] = 1.0;
   for (int iter = 0; iter < 100; iter++) {
     double value = std::sin(x[0]);

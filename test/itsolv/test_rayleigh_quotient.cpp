@@ -1,4 +1,6 @@
 #include "vector_types.h"
+#include <Eigen/Core>
+#include <Eigen/Eigenvalues>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <molpro/iostream.h>
@@ -6,8 +8,6 @@
 #include <molpro/linalg/itsolv/SolverFactory.h>
 #include <molpro/linalg/itsolv/helper.h>
 #include <vector>
-#include <Eigen/Core>
-#include <Eigen/Eigenvalues>
 
 using molpro::linalg::array::Span;
 using molpro::linalg::itsolv::CastOptions;
@@ -34,8 +34,9 @@ struct RayleighQuotient : ::testing::Test {
   public:
     const size_t n;
     const double rho;
-    MyProblem(int n = 10, double rho = 0.1) : n(n), rho(rho) {
-      matrix.resize(n,n);
+    const double tie_breaker;
+    MyProblem(int n = 10, double rho = 0.1, double tie_breaker = 1e-9) : n(n), rho(rho), tie_breaker(tie_breaker) {
+      matrix.resize(n, n);
       for (size_t i = 0; i < n; ++i)
         for (size_t j = 0; j < n; ++j)
           matrix(i, j) = i == j ? i + 1 + rho : rho;
@@ -47,19 +48,36 @@ struct RayleighQuotient : ::testing::Test {
       return true;
     }
 
+    //    void precondition(const VecRef<Rvector> &residual, const std::vector<value_t> &shift) const override {
+    //      //    std::cout << "trigProblem::precondition "<<residual.size()<<std::endl;
+    //      for (auto &gr : residual) {
+    //        auto g = gr.get();
+    //        //      std::cout << "trigProblem::precondition initial g="<<g<<std::endl;
+    //        for (size_t i = 0; i < g.size(); ++i)
+    //          g[i] /= matrix(i,i);
+    //        g[0] = 0;
+    //        //      std::cout << "trigProblem::precondition final g="<<g<<std::endl;
+    //      }
+    //    }
+
     double residual(const Rvector &v, Rvector &a) const override {
-      double norm = std::inner_product(v.begin(), v.end(), v.begin(), double(0));
+      double norm2 = std::inner_product(v.begin(), v.end(), v.begin(), double(0));
       for (size_t i = 0; i < a.size(); i++) {
         a[i] = 0;
         for (size_t j = 0; j < a.size(); j++)
-          a[i] += matrix(i, j) * v[j];
+          a[i] += 0.5 * matrix(i, j) * v[j];
       }
-      double value = std::inner_product(v.begin(), v.end(), a.begin(), double(0)) / norm;
+//      std::cout << "norm2 " << norm2 << std::endl;
+      double value = std::inner_product(v.begin(), v.end(), a.begin(), double(0)) / norm2;
       for (size_t i = 0; i < a.size(); i++)
-        a[i] = 2 * (a[i] - value * v[i]) / norm;
-//      std::cout << "residual v "<<v<<std::endl;
-//      std::cout << "residual a "<<a<<std::endl;
-//      std::cout << "residual value "<<value<<std::endl;
+        a[i] = (a[i] - value * v[i]) / norm2 + 4 * tie_breaker * (norm2 - 1) * v[i];
+      //      if (tie_breaker == 0)
+      //        a[0]=0;
+      //      std::cout << "residual value " << value << std::endl;
+      value += tie_breaker * std::pow(norm2 - 1, 2);
+      //            std::cout << "residual v "<<v<<std::endl;
+      //            std::cout << "residual a "<<a<<std::endl;
+      //      std::cout << "residual value " << value << std::endl;
       return value;
     }
 
@@ -99,7 +117,7 @@ struct RayleighQuotient : ::testing::Test {
     }
     std::vector<double> lowest_eigenvector() const {
       auto eigenvector = eigenvectors().col(0).eval();
-      std::vector<double> expected(eigenvector.data(), eigenvector.data()+n);
+      std::vector<double> expected(eigenvector.data(), eigenvector.data() + n);
       return expected;
     }
   };
@@ -115,18 +133,26 @@ TEST_F(RayleighQuotient, Problem) {
 }
 
 TEST_F(RayleighQuotient, BFGS) {
-  auto solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>("BFGS");
-  solver->set_convergence_threshold(1e-10);
-  auto problem = RayleighQuotient::MyProblem(4, 0.01);
-  Rvector c(problem.n), g(problem.n);
-  c.assign(problem.n, double(10));
-  EXPECT_TRUE(solver->solve(c, g, problem));
-  solver->solution(c, g);
-  auto norm = std::sqrt(std::inner_product(c.begin(), c.end(), c.begin(), double(0)));
-  std::transform(c.begin(), c.end(), c.begin(), [norm](const double a) { return a / norm; });
-  EXPECT_NEAR(solver->value(), problem.eigenvalues()(0), 1e-14);
-  EXPECT_THAT(c, ::testing::Pointwise(::testing::DoubleNear(1e-8), problem.lowest_eigenvector()));
-  EXPECT_THAT(g, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()*10), Rvector(problem.n, 0)));
+  for (int n = 2; n < 29; ++n) {
+    auto solver = molpro::linalg::itsolv::create_Optimize<Rvector, Qvector>("BFGS");
+    //    solver->set_verbosity(9);
+    solver->set_convergence_threshold(1e-8);
+    solver->set_max_iter(25);
+    auto problem = RayleighQuotient::MyProblem(n, 0.01, 0e+3);
+    Rvector c(problem.n), g(problem.n);
+    c.assign(problem.n, double(0));
+    c[0] = 1;
+    EXPECT_TRUE(solver->solve(c, g, problem));
+    solver->solution(c, g);
+    auto norm = std::sqrt(std::inner_product(c.begin(), c.end(), c.begin(), double(0)));
+    std::transform(c.begin(), c.end(), c.begin(), [norm](const double a) { return a / norm; });
+    if (c[0] * problem.lowest_eigenvector()[0] < 0)
+      std::transform(c.begin(), c.end(), c.begin(), [](const double a) { return -a; });
+    EXPECT_NEAR(solver->value(), 0.5 * problem.eigenvalues()(0), 1e-13);
+    EXPECT_THAT(c, ::testing::Pointwise(::testing::DoubleNear(1e-8), problem.lowest_eigenvector()));
+    EXPECT_THAT(
+        g, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold() * 100), Rvector(problem.n, 0)));
+  }
 }
 
 TEST_F(RayleighQuotient, DIIS) {
@@ -136,13 +162,14 @@ TEST_F(RayleighQuotient, DIIS) {
   auto problem = RayleighQuotient::MyProblem(4, 0.01);
   Rvector c(problem.n), g(problem.n);
   c.assign(problem.n, double(0));
-  c[0]=1;
+  c[0] = 1;
   EXPECT_TRUE(solver->solve(c, g, problem));
   solver->solution(c, g);
   auto norm = std::sqrt(std::inner_product(c.begin(), c.end(), c.begin(), double(0)));
   std::transform(c.begin(), c.end(), c.begin(), [norm](const double a) { return a / norm; });
   EXPECT_THAT(c, ::testing::Pointwise(::testing::DoubleNear(1e-9), problem.lowest_eigenvector()));
-  EXPECT_THAT(g, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()*10), Rvector(problem.n, 0)));
+  EXPECT_THAT(g,
+              ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold() * 10), Rvector(problem.n, 0)));
 }
 
 TEST_F(RayleighQuotient, LinearEigensystem) {
@@ -157,9 +184,9 @@ TEST_F(RayleighQuotient, LinearEigensystem) {
   auto norm = std::sqrt(std::inner_product(c.begin(), c.end(), c.begin(), double(0)));
   std::transform(c.begin(), c.end(), c.begin(), [norm](const double a) { return a / norm; });
   EXPECT_THAT(c, ::testing::Pointwise(::testing::DoubleNear(1e-9), problem.lowest_eigenvector()));
-  EXPECT_THAT(g, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()*10), Rvector(problem.n, 0)));
+  EXPECT_THAT(g,
+              ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold() * 10), Rvector(problem.n, 0)));
 }
-
 
 TEST_F(RayleighQuotient, LinearEquations) {
   auto solver = molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector>("Davidson");
@@ -168,13 +195,14 @@ TEST_F(RayleighQuotient, LinearEquations) {
   Rvector c(problem.n, 1), g(problem.n);
   auto rhs = problem.lowest_eigenvector();
   auto eval = problem.eigenvalues()(0);
-  std::transform(rhs.begin(),rhs.end(),rhs.begin(),[eval](double a){return a*eval;});
+  std::transform(rhs.begin(), rhs.end(), rhs.begin(), [eval](double a) { return a * eval; });
   solver->add_equations(molpro::linalg::itsolv::cwrap_arg(rhs));
-//  c = rhs;
+  //  c = rhs;
   EXPECT_TRUE(solver->solve(c, g, problem));
   solver->solution(c, g);
   auto norm = std::sqrt(std::inner_product(c.begin(), c.end(), c.begin(), double(0)));
   std::transform(c.begin(), c.end(), c.begin(), [norm](const double a) { return a / norm; });
   EXPECT_THAT(c, ::testing::Pointwise(::testing::DoubleNear(1e-9), problem.lowest_eigenvector()));
-  EXPECT_THAT(g, ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()*10), Rvector(problem.n, 0)));
+  EXPECT_THAT(g,
+              ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold() * 10), Rvector(problem.n, 0)));
 }

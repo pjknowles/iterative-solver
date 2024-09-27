@@ -144,6 +144,43 @@ create_LinearEquations(const std::string& method = "Davidson", const std::string
 }
 
 template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
+std::tuple<bool, std::unique_ptr<LinearEquations<R, Q, P>>>
+Solve_LinearEquations(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
+                      int verbosity = 0, bool generate_initial_guess = true, const std::string& method = "Davidson",
+                      const std::string& options = "",
+                      const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                          std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  auto solver = create_LinearEquations<R, Q, P>(method, options, handlers);
+  solver->set_verbosity(verbosity);
+  auto success = solver->solve(parameters, actions, problem, generate_initial_guess);
+//  if (success)
+//    solver->solution(parameters, actions);
+  return std::make_tuple<bool, std::unique_ptr<LinearEquations<R, Q, P>>>(std::move(success), std::move(solver));
+}
+
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
+std::tuple<bool, std::unique_ptr<LinearEquations<R, Q, P>>>
+Solve_LinearEquations(std::vector<R>& parameters, std::vector<R>& actions, const Problem<R>& problem, int verbosity = 0,
+                      bool generate_initial_guess = true, const std::string& method = "Davidson",
+                      const std::string& options = "",
+                      const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                          std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  return Solve_LinearEquations<R, Q, P>(wrap(parameters), wrap(actions), problem, verbosity, generate_initial_guess,
+                                        method, options, handlers);
+}
+
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
+auto Solve_LinearEquations(R& parameters, R& actions, const Problem<R>& problem, int verbosity = 0,
+                           bool generate_initial_guess = true, const std::string& method = "Davidson",
+                           const std::string& options = "",
+                           const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =
+                               std::make_shared<molpro::linalg::itsolv::ArrayHandlers<R, Q, P>>()) {
+  return Solve_LinearEquations<R, Q, P>(std::vector<std::reference_wrapper<R>>{std::ref(parameters)},
+                                        std::vector<std::reference_wrapper<R>>{std::ref(actions)}, problem, verbosity,
+                                        generate_initial_guess, method, options, handlers);
+}
+
+template <class R, class Q = R, class P = std::map<size_t, typename R::value_type>>
 std::unique_ptr<NonLinearEquations<R, Q, P>>
 create_NonLinearEquations(const NonLinearEquationsOptions& options = NonLinearEquationsOptions{},
                           const std::shared_ptr<ArrayHandlers<R, Q, P>>& handlers =

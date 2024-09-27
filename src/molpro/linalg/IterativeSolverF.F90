@@ -1,6 +1,10 @@
 !> @brief IterativeSolver Fortran binding
 MODULE Iterative_Solver
   USE, INTRINSIC :: iso_c_binding
+!  PUBLIC :: Solve_Linear_Eigensystem
+  PUBLIC :: Solve_Linear_Equations
+!  PUBLIC :: Solve_Nonlinear_Equations
+!  PUBLIC :: Optimize
   PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize, Iterative_Solver_Finalize
   PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize_Ranges
   PUBLIC :: Iterative_Solver_DIIS_Initialize, Iterative_Solver_Linear_Equations_Initialize
@@ -58,7 +62,15 @@ MODULE Iterative_Solver
   END INTERFACE
 
 CONTAINS
-
+  subroutine test_select
+    i=1
+    select case(4)
+    case(0)
+      print*, 0
+    case(1)
+      print*, 1
+    end select
+  end subroutine test_select
 
   FUNCTION mpicomm_compute()
     INTEGER(KIND = mpicomm_kind) :: mpicomm_compute
@@ -71,6 +83,59 @@ CONTAINS
     s_mpicomm_compute = comm
   END SUBROUTINE set_mpicomm_compute
 
+  FUNCTION Solve_Linear_Equations(parameters, actions, problem, generate_initial_guess, max_iter, &
+      augmented_hessian, thresh, thresh_value, &
+      hermitian, verbosity, pname, mpicomm, algorithm, range, options)
+    USE Iterative_Solver_Problem, only : problem_class => Problem
+    IMPLICIT NONE
+    LOGICAL :: Solve_Linear_Equations
+    DOUBLE PRECISION, DIMENSION(..), INTENT(inout), target :: parameters
+    DOUBLE PRECISION, DIMENSION(..), INTENT(inout), target :: actions
+    CLASS(problem_class), INTENT(in) :: problem
+    LOGICAL, OPTIONAL :: generate_initial_guess !< whether to generate an initial guess (default) or use what is passed in parameters
+    INTEGER, OPTIONAL :: max_iter !< maximum number of iterations
+    DOUBLE PRECISION, INTENT(in), OPTIONAL :: augmented_hessian
+    !< If zero, solve the inhomogeneous equations unmodified. If 1, solve instead
+    !< the augmented hessian problem. Other values scale the augmented hessian damping.
+    DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
+    DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh_value !< value convergence threshold
+    LOGICAL, INTENT(in), OPTIONAL :: hermitian !< whether the underlying kernel is hermitian
+    INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
+    !< One gives a summary at the end; two gives a single progress-report line each iteration.
+    CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
+    INTEGER, INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
+    CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
+    INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
+    CHARACTER(*), INTENT(in), OPTIONAL :: options !< key1=value1, key2=value1,... to specify arbitrary options
+    DOUBLE PRECISION, DIMENSION(1) :: rhs
+    logical :: flag, guess
+    integer :: i, nq
+    nq = ubound(parameters,1)-lbound(parameters,1)+1
+    m_nroot = 0
+    call Iterative_Solver_Linear_Equations_Initialize(nq, m_nroot, rhs, augmented_hessian, thresh, thresh_value, &
+        hermitian, verbosity, pname, mpicomm, algorithm, range, options)
+    select rank(parameters)
+      rank(1)
+        do while (problem%RHS(parameters,m_nroot+1))
+          m_nroot = m_nroot + 1
+          call Iterative_Solver_Add_Equations(parameters)
+        end do
+      rank(2)
+        do while (problem%RHS(parameters(:, lbound(parameters, 2)),m_nroot+1))
+          m_nroot = m_nroot + 1
+          call Iterative_Solver_Add_Equations(parameters(:, lbound(parameters, 2)))
+        end do
+    end select
+    Solve_Linear_Equations = .false.
+    if (m_nroot.le.0) return
+    guess = .true.
+    if (present(generate_initial_guess)) then
+      guess = generate_initial_guess
+    end if
+    call Iterative_Solver_Solve(parameters, actions, problem, guess, max_iter)
+    call Iterative_Solver_Solution([(i,i=1,min(ubound(parameters,2)-lbound(parameters,2)+1,m_nroot))], parameters, actions, .true.)
+    Solve_Linear_Equations = Iterative_Solver_Converged()
+  END FUNCTION Solve_Linear_Equations
 
   !> \brief Finds the lowest eigensolutions of a matrix. The default algorithm is Davidson's method, i.e. preconditioned Lanczos.
   !> Example of simplest use: @include LinearEigensystemExampleF.F90
@@ -540,7 +605,7 @@ CONTAINS
     DOUBLE PRECISION, OPTIONAL :: value
     INTERFACE
       FUNCTION Add_Vector_C(buffer_size, parameters, action, lsync) &
-        BIND(C, name = 'IterativeSolverAddVector')
+          BIND(C, name = 'IterativeSolverAddVector')
         USE, INTRINSIC :: iso_c_binding
         INTEGER(c_size_t) Add_Vector_C
         INTEGER(c_size_t), INTENT(in), VALUE :: buffer_size
@@ -551,7 +616,7 @@ CONTAINS
     END INTERFACE
     INTERFACE
       FUNCTION Iterative_Solver_Add_Value_C(value, parameters, action, lsync) &
-        BIND(C, name = 'IterativeSolverAddValue')
+          BIND(C, name = 'IterativeSolverAddValue')
         USE iso_c_binding
         INTEGER(c_size_t) Iterative_Solver_Add_Value_C
         REAL(c_double), VALUE, INTENT(in) :: value
@@ -572,10 +637,37 @@ CONTAINS
       Iterative_Solver_Add_Vector = Iterative_Solver_Add_Value_C(value, pp, pa, lsyncC)
     ELSE
       Iterative_Solver_Add_Vector = int(&
-        Add_Vector_C(int(ubound(parameters, 2) - lbound(parameters, 2) + 1, c_size_t), &
-          pp, pa, lsyncC))
+          Add_Vector_C(int(ubound(parameters, 2) - lbound(parameters, 2) + 1, c_size_t), &
+              pp, pa, lsyncC))
     END IF
   END FUNCTION Iterative_Solver_Add_Vector
+  !
+  !> \brief Add a right hand side to augment the set of linear equations to be solved.
+  !> \param rhs On input, the desired RHS
+
+  SUBROUTINE Iterative_Solver_Add_Equations(rhs)
+    USE iso_c_binding
+    INTEGER :: Iterative_Solver_Add_Vector
+    DOUBLE PRECISION, DIMENSION(..), INTENT(in), target :: rhs
+    INTERFACE
+      SUBROUTINE Add_Equation_C(rhs) &
+        BIND(C, name = 'IterativeSolverAddEquation')
+        USE, INTRINSIC :: iso_c_binding
+        REAL(c_double), DIMENSION(*), INTENT(in) :: rhs
+      END SUBROUTINE Add_Equation_C
+    END INTERFACE
+    double precision, dimension(:), pointer :: pr
+    select rank(rhs)
+      rank(1)
+        call c_f_pointer(c_loc(rhs), pr, [1])
+        call Add_Equation_C(pr)
+      rank(2)
+         do i=lbound(rhs,2),ubound(rhs,2)
+           call c_f_pointer(c_loc(rhs(:,i)), pr, [1])
+           call Add_Equation_C(pr)
+         end do
+    end select
+  END SUBROUTINE Iterative_Solver_Add_Equations
   !
   !> Calculate the current solution
   SUBROUTINE Iterative_Solver_Solution(roots, parameters, action, synchronize)
@@ -922,6 +1014,19 @@ CONTAINS
       reported = problem%report(-nwork, verbosity, Iterative_Solver_Errors())
     end if
   END SUBROUTINE Iterative_Solver_Solve
+
+        FUNCTION Iterative_Solver_Converged()
+        INTERFACE
+        FUNCTION IterativeSolverConverged() BIND(C, name = 'IterativeSolverConverged')
+        use iso_c_binding
+        INTEGER(c_int) :: IterativeSolverConverged
+    END FUNCTION IterativeSolverConverged
+    END INTERFACE
+        LOGICAL :: Iterative_Solver_Converged
+        Iterative_Solver_Converged = IterativeSolverConverged() .NE. 0
+
+        END FUNCTION Iterative_Solver_Converged
+
 
   !> @private
   !> @brief Convert from Fortran string to C string

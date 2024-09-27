@@ -5,6 +5,7 @@ if (FORTRAN
 #            LinearEigensystemExampleF-Pspace-adaptive.F90
             LinearEigensystemExampleF-Pspace.F90
             LinearEquationsExampleF.F90
+            LinearEquationsExampleF-matrix.F90
             OptimizeExampleF.F90
             OptimizeExampleF-problem.F90
             LinearEigensystemExampleF-problem.F90

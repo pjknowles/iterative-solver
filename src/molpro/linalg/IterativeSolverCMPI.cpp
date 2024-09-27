@@ -212,6 +212,7 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
   auto& instance = instances.top();
   auto rr = CreateDistrArray(nroot, rhs);
   auto solver = dynamic_cast<LinearEquationsDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  solver->set_augmented_hessian(aughes);
   solver->set_hermiticity(hermitian);
   solver->set_n_roots(nroot);
   solver->add_equations(rr);
@@ -268,6 +269,20 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
 }
 
 extern "C" void IterativeSolverFinalize() { instances.pop(); }
+
+extern "C" void IterativeSolverAddEquation(double* rhs) {
+  if (instances.empty())
+    throw std::runtime_error("IterativeSolver not initialised properly");
+  auto& instance = instances.top();
+  if (instance.prof != nullptr)
+    instance.prof->start("AddEquation");
+  auto ccc = CreateDistrArray(1, rhs);
+  dynamic_cast<molpro::linalg::itsolv::LinearEquationsDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get())
+      ->add_equations(ccc[0]);
+  if (instance.prof != nullptr) {
+    instance.prof->stop();
+  }
+}
 
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync) {
   if (instances.empty())
@@ -476,6 +491,8 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
 
 extern "C" void IterativeSolverPrintStatistics() { molpro::cout << instances.top().solver->statistics() << std::endl; }
 
+extern "C" int IterativeSolverConverged() { return instances.top().solver->working_set().empty() ? 1 : 0; }
+
 int IterativeSolverNonLinear() { return instances.top().solver->nonlinear() ? 1 : 0; }
 int IterativeSolverHasValues() { return instances.top().has_values ? 1 : 0; }
 int IterativeSolverHasEigenvalues() { return instances.top().has_eigenvalues ? 1 : 0; }
@@ -511,17 +528,17 @@ extern "C" int64_t IterativeSolver_mpicomm_global() { return (int64_t)MPI_Comm_c
 /*!
  * @brief C binding of mpi::comm_self(), suitable for calling from Fortran
  */
-extern "C" int64_t IterativeSolver_mpicomm_self() { return (int64_t)MPI_Comm_c2f(molpro::mpi::comm_self()); }
+extern "C" int64_t IterativeSolver_mpi_comm_self() { return (int64_t)MPI_Comm_c2f(molpro::mpi::comm_self()); }
 
 /*!
  * @brief C binding of mpi::size_global(), suitable for calling from Fortran
  */
-extern "C" int64_t IterativeSolver_mpisize_global() { return molpro::mpi::size_global(); }
+extern "C" int64_t IterativeSolver_mpi_size_global() { return molpro::mpi::size_global(); }
 
 /*!
  * @brief C binding of mpi::rank_global(), suitable for calling from Fortran
  */
-extern "C" int64_t IterativeSolver_mpirank_global() { return molpro::mpi::rank_global(); }
+extern "C" int64_t IterativeSolver_mpi_rank_global() { return molpro::mpi::rank_global(); }
 
 /*!
  * @brief C binding of mpi::init(), suitable for calling from Fortran

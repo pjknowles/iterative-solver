@@ -43,6 +43,15 @@ public:
     this->m_normalise_solution = false;
   }
 
+  bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
+             bool generate_initial_guess = false) override {
+    R& vector = actions[0];
+    for (unsigned int instance = 0; problem.RHS(vector, instance); ++instance)
+      add_equations(vector);
+    return IterativeSolverTemplate<LinearEquations, R, Q, P>::solve(parameters, actions, problem,
+                                                                    generate_initial_guess);
+  }
+
   bool nonlinear() const override { return false; }
 
   size_t end_iteration(const VecRef<R>& parameters, const VecRef<R>& action) override {

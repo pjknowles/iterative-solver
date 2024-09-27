@@ -11,6 +11,7 @@ module Iterative_Solver_Problem
     procedure, pass :: precondition
     procedure, pass :: residual
     procedure, pass :: action
+    procedure, pass :: RHS
     procedure, pass :: report
   end type Problem
 
@@ -105,6 +106,13 @@ contains
     double precision, intent(inout), dimension(:, :) :: actions
     actions = matmul(this%matrix, parameters)
   end subroutine matrix_action
+
+  logical function RHS(this, vector, instance)
+    class(Problem), intent(in) :: this
+    double precision, intent(inout), dimension(:) :: vector
+    integer, intent(in) :: instance
+    RHS = .false.
+  end function RHS
 
   !> @brief Report progress at the end of each iteration, or at the end of the calculation
   !> @return .true. if the information was used, and therefore the caller should be silent

@@ -41,5 +41,13 @@ public:
       }
     }
   }
+
+  bool RHS(container_t& r, unsigned int instance) const override {
+    if (instance == 0) {
+      std::fill(r.begin(), r.end(), double(1));
+      return true;
+    } else
+      return false;
+  }
 };
 #endif // LINEARALGEBRA_EXAMPLES_EXAMPLEPROBLEM_H_

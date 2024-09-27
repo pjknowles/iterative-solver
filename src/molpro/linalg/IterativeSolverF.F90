@@ -1,7 +1,7 @@
 !> @brief IterativeSolver Fortran binding
 MODULE Iterative_Solver
   USE, INTRINSIC :: iso_c_binding
-!  PUBLIC :: Solve_Linear_Eigensystem
+  PUBLIC :: Solve_Linear_Eigensystem
   PUBLIC :: Solve_Linear_Equations
 !  PUBLIC :: Solve_Nonlinear_Equations
 !  PUBLIC :: Optimize
@@ -82,6 +82,44 @@ CONTAINS
     INTEGER(KIND = mpicomm_kind), intent(IN) :: comm
     s_mpicomm_compute = comm
   END SUBROUTINE set_mpicomm_compute
+  FUNCTION Solve_Linear_Eigensystem(parameters, actions, problem, nroot, generate_initial_guess, max_iter, &
+      thresh, thresh_value, &
+      hermitian, verbosity, pname, mpicomm, algorithm, range, options)
+    USE Iterative_Solver_Problem, only : problem_class => Problem
+    IMPLICIT NONE
+    LOGICAL :: Solve_Linear_Eigensystem
+    DOUBLE PRECISION, DIMENSION(..), INTENT(inout), target :: parameters
+    DOUBLE PRECISION, DIMENSION(..), INTENT(inout), target :: actions
+    CLASS(problem_class), INTENT(in) :: problem
+    INTEGER, INTENT(in), OPTIONAL :: nroot !< number of eigensolutions desired
+    LOGICAL, OPTIONAL :: generate_initial_guess !< whether to generate an initial guess (default) or use what is passed in parameters
+    INTEGER, OPTIONAL :: max_iter !< maximum number of iterations
+    DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
+    DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh_value !< value convergence threshold
+    LOGICAL, INTENT(in), OPTIONAL :: hermitian !< whether the underlying kernel is hermitian
+    INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
+    !< One gives a summary at the end; two gives a single progress-report line each iteration.
+    CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
+    INTEGER, INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
+    CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
+    INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
+    CHARACTER(*), INTENT(in), OPTIONAL :: options !< key1=value1, key2=value1,... to specify arbitrary options
+    DOUBLE PRECISION, DIMENSION(1) :: rhs
+    logical :: flag, guess
+    integer :: i, nq
+    nq = ubound(parameters, 1) - lbound(parameters, 1) + 1
+    call Iterative_Solver_Linear_Eigensystem_Initialize(nq, nroot, thresh, thresh_value, &
+        hermitian, verbosity, pname, mpicomm, algorithm, range, options)
+    Solve_Linear_Eigensystem = .false.
+    if (m_nroot.le.0) return
+    guess = .true.
+    if (present(generate_initial_guess)) then
+      guess = generate_initial_guess
+    end if
+    call Iterative_Solver_Solve(parameters, actions, problem, guess, max_iter)
+    call Iterative_Solver_Solution([(i, i = 1, min(ubound(parameters, 2) - lbound(parameters, 2) + 1, m_nroot))], parameters, actions, .true.)
+    Solve_Linear_Eigensystem = Iterative_Solver_Converged()
+  END FUNCTION Solve_Linear_Eigensystem
 
   FUNCTION Solve_Linear_Equations(parameters, actions, problem, generate_initial_guess, max_iter, &
       augmented_hessian, thresh, thresh_value, &

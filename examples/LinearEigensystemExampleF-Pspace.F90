@@ -1,10 +1,14 @@
-module matrix_problem
+module mod_matrix_problem
   use Iterative_Solver, only : mpi_init, mpi_finalize
   use iso_c_binding, only : c_int
+  use Iterative_Solver_Problem, only: matrix_problem
   INTEGER, PARAMETER :: n = 200, nroot = 3, nP = 30
-  DOUBLE PRECISION, DIMENSION (n, n) :: m
+  DOUBLE PRECISION, DIMENSION (n, n), target :: m
   INTEGER, DIMENSION(nP) :: indices
   INTEGER, DIMENSION(0:nP) :: offsets
+  type, extends(matrix_problem) :: prob
+
+  end type prob
 contains
   subroutine apply_p(p, g, nvec, ranges) bind(c)
     use iso_c_binding
@@ -22,7 +26,7 @@ contains
       end do
     end do
   end subroutine apply_p
-end module matrix_problem
+end module mod_matrix_problem
 !> @examples LinearEigensystemExampleF-Pspace-mpi.F90
 !> This is an examples of use of the LinearEigensystem framework for iterative
 !> finding of the lowest few eigensolutions of a large matrix.
@@ -30,12 +34,13 @@ end module matrix_problem
 PROGRAM Linear_Eigensystem_Example
   USE Iterative_Solver
   USE iso_c_binding, only : c_funloc
-  USE matrix_problem
+  USE mod_matrix_problem
   DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g
   DOUBLE PRECISION, DIMENSION(nP, nroot) :: p
   DOUBLE PRECISION, DIMENSION (nroot) :: e, error
   DOUBLE PRECISION, DIMENSION(nP) :: coefficients
   DOUBLE PRECISION, DIMENSION(nP, nP) :: pp
+  type(prob) :: problem
   INTEGER :: i, j, root
   LOGICAL :: update
   PRINT *, 'Fortran binding of IterativeSolver'
@@ -78,6 +83,8 @@ PROGRAM Linear_Eigensystem_Example
   !  write (6,*) 'final solution ',c
   !  write (6,*) 'final residual ',g
   CALL Iterative_Solver_Finalize
+
+  problem = prob(m)
   CALL MPI_Finalize
 CONTAINS
 END PROGRAM Linear_Eigensystem_Example

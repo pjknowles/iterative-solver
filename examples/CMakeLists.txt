@@ -2,13 +2,13 @@ if (FORTRAN
         AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL "Intel"  # avoid the challenge of linking C++ and Fortran with Intel
         )
     set(ITERATIVESOLVER_FORTRAN_EXAMPLES
+            LinearEigensystemExampleF.F90
 #            LinearEigensystemExampleF-Pspace-adaptive.F90
             LinearEigensystemExampleF-Pspace.F90
             LinearEquationsExampleF.F90
             LinearEquationsExampleF-matrix.F90
             OptimizeExampleF.F90
             OptimizeExampleF-problem.F90
-            LinearEigensystemExampleF-problem.F90
             )
 endif ()
 set(EXAMPLES
@@ -28,7 +28,6 @@ if (LINEARALGEBRA_ARRAY_MPI3 AND MPI)
             AND MPIFORTRAN
             )
         list(APPEND EXAMPLES
-                LinearEigensystemExampleF-mpi.F90
                 LinearEigensystemExampleF-Pspace-mpi.F90
                 )
     endif ()

@@ -1,4 +1,4 @@
-!> @examples LinearEquationsExampleF.F90
+!> @examples LinearEquationsExampleF-matrix.F90
 !> This is an examples of simplest use of the LinearEquations framework for iterative
 !> solution of linear equations
 module mod_linear_problem

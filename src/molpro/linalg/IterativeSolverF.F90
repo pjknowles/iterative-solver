@@ -159,11 +159,14 @@ CONTAINS
         hermitian, verbosity, pname, mpicomm, algorithm, range, options)
     select rank(parameters)
       rank(1)
+    print *, 'rank 1'
         do while (problem%RHS(parameters,m_nroot+1, range=Iterative_Solver_Range()))
           m_nroot = m_nroot + 1
+          print *, 'm_nroot ',m_nroot
           call Iterative_Solver_Add_Equations(parameters)
         end do
       rank(2)
+    print *, 'rank 1'
         do while (problem%RHS(parameters(:, lbound(parameters, 2)),m_nroot+1, range=Iterative_Solver_Range()))
           m_nroot = m_nroot + 1
           call Iterative_Solver_Add_Equations(parameters(:, lbound(parameters, 2)))

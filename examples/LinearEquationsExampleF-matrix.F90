@@ -2,23 +2,13 @@
 !> This is an examples of simplest use of the LinearEquations framework for iterative
 !> solution of linear equations
 module mod_linear_problem
-  use Iterative_Solver_Problem
+  use Iterative_Solver_Matrix_Problem
   type, extends(matrix_Problem) :: linear_problem
-    double precision, dimension(:, :), pointer :: rhss
-  contains
-    procedure, pass :: RHS
+!    double precision, dimension(:, :), pointer :: rhss
+!  contains
+!    procedure, pass :: RHS
   end type linear_problem
 contains
-  logical function RHS(this, vector, instance, range)
-    class(linear_problem), intent(in) :: this
-    double precision, intent(inout), dimension(:) :: vector
-    integer, dimension(2), intent(in) :: range
-    integer, intent(in) :: instance
-    RHS = .false.
-    if (instance.lt.lbound(this%rhss, 2).or.instance.gt.ubound(this%rhss, 2)) return
-    RHS = .true.
-    vector(range(1)+1:range(2)) = this%rhss(range(1)+1:range(2), instance)
-  end function RHS
 end module mod_linear_problem
 
 PROGRAM Linear_Equations_Example
@@ -39,7 +29,7 @@ PROGRAM Linear_Equations_Example
   PRINT *, 'Fortran binding of IterativeSolver'
   if (mpi_rank_global() .gt. 0) close(6)
   call initialise_matrices
-  problem = linear_problem(m, rhs)
+  call problem%attach(m, rhs)
   DO iaug = 1, SIZE(augmented_hessian_factors)
     augmented_hessian = augmented_hessian_factors(iaug)
     PRINT *, 'solve linear system with augmented hessian factor ', augmented_hessian

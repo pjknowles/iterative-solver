@@ -5,9 +5,10 @@ module Iterative_Solver_Matrix_Problem
 
   type, public, extends(Problem) :: Matrix_Problem
     double precision, pointer, dimension(:, :) :: matrix
-    double precision, dimension(:, :), pointer :: rhss
+    double precision, dimension(:, :), pointer :: m_RHS
   contains
     procedure, pass :: attach
+    procedure, pass :: RHS
     procedure, pass :: diagonals
     procedure, pass :: action
     procedure, pass :: pp_action_matrix
@@ -16,13 +17,24 @@ module Iterative_Solver_Matrix_Problem
 
 contains
 
-  subroutine attach(this, matrix, rhss)
+  subroutine attach(this, matrix, RHS)
     class(Matrix_Problem), intent(inout) :: this
     double precision, dimension(:, :), target, optional :: matrix
-    double precision, dimension(:, :), target, optional :: rhss
+    double precision, dimension(:, :), target, optional :: RHS
     if (present(matrix)) this%matrix => matrix
-    if (present(rhss)) this%rhss => rhss
+    if (present(RHS)) this%m_RHS => RHS
   end subroutine attach
+
+  logical function RHS(this, vector, instance, range)
+    class(Matrix_Problem), intent(in) :: this
+    double precision, intent(inout), dimension(:) :: vector
+    integer, dimension(2), intent(in) :: range
+    integer, intent(in) :: instance
+    RHS = .false.
+    if (instance.lt.lbound(this%m_RHS, 2).or.instance.gt.ubound(this%m_RHS, 2)) return
+    RHS = .true.
+    vector(range(1)+1:range(2)) = this%m_RHS(range(1)+1:range(2), instance)
+  end function RHS
 
   logical function diagonals(this, d)
     class(Matrix_Problem), intent(in) :: this

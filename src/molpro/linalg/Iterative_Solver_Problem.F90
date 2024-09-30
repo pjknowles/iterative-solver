@@ -7,25 +7,16 @@ module Iterative_Solver_Problem
   !type, abstract, public :: Problem
   type, public :: Problem
     type(PSpace) :: p_space
-    integer :: size
   contains
-    procedure, pass :: size_
     procedure, pass :: diagonals
     procedure, pass :: precondition
     procedure, pass :: residual
     procedure, pass :: action
     procedure, pass :: RHS
     procedure, pass :: report
-!    procedure, pass :: apply_p
     procedure, pass :: p_action
   end type Problem
 contains
-
-  !> @brief Provide the dimension of the full problem space
-  integer function size_(this)
-    class(Problem), intent(in) :: this
-    error stop 'Unimplemented size() in Problem class'
-  end function size_
 
   !> @brief Optionally provide the diagonal elements of the underlying kernel. If
   !> implemented and returning true, the provided diagonals will be used by
@@ -50,6 +41,7 @@ contains
   !> should pass a vector of zeroes, which is the default if omitted.
   !> @param diagonals The diagonal elements of the underlying kernel. If passed, they will be used,
   !> otherwise the default preconditioner does nothing.
+  !> @param range The range of the space for which actions should be computed. It's OK to provide also the values outside this range (which will happen in a multiprocessing context), but they will be ignored by the solver.
   subroutine precondition(this, action, shift, diagonals, range)
     class(Problem), intent(in) :: this
     double precision, intent(inout), dimension(:, :) :: action
@@ -76,6 +68,7 @@ contains
   !> Optimize) only.
   !> @param parameters The trial solution for which the residual is to be calculated
   !> @param resid The residual vector
+  !> @param range The range of the space for which actions should be computed. It's OK to provide also the values outside this range (which will happen in a multiprocessing context), but they will be ignored by the solver.
   !> @return In the case where the residual is an exact differential, the corresponding
   !> function value. Used by Optimize but not NonLinearEquations.
   function residual(this, parameters, residuals, range) result(value)
@@ -90,7 +83,8 @@ contains
   !> @brief Calculate the action of the kernel matrix on a set of parameters. Used by
   !> linear solvers, but not by the non-linear solvers (NonLinearEquations, Optimize).
   !> @param parameters The trial solutions for which the action is to be calculated
-  !> @param act The action vectors
+  !> @param actions The action vectors
+  !> @param range The range of the space for which actions should be computed. It's OK to provide also the values outside this range (which will happen in a multiprocessing context), but they will be ignored by the solver.
   subroutine action(this, parameters, actions, range)
     class(Problem), intent(in) :: this
     double precision, intent(in), dimension(:, :) :: parameters
@@ -98,6 +92,11 @@ contains
     integer, dimension(2), intent(in) :: range
   end subroutine action
 
+  !> @brief Provide the inhomgeneous part of one of the sets of linear equations
+  !> @param vector Will contain the requested RHS on exit
+  !> @param instance Which equation set for which the RHS should be provided
+  !> @param range The range of the space for which actions should be computed. It's OK to provide also the values outside this range (which will happen in a multiprocessing context), but they will be ignored by the solver.
+  !> @return Whether the requested instance exists
   logical function RHS(this, vector, instance, range)
     class(Problem), intent(in) :: this
     double precision, intent(inout), dimension(:) :: vector
@@ -136,17 +135,24 @@ contains
     report = .true.
   end function report
 
-  !>
-  !> @brief Calculate the kernel matrix in the P space
-  !> @param pparams Specification of the P space
-  !> @return
-  subroutine pp_action_matrix(this, pparams, matrix)
+  !> @brief Calculate the representation of the kernel matrix in the P space
+  function pp_action_matrix(this) result(matrix)
     class(Problem), intent(in) :: this
-    integer, dimension(:), intent(in) :: pparams
-    double precision, dimension(:, :), intent(inout) :: matrix
-    if (size(pparams).le.0) return
+    double precision, dimension(:, :), allocatable :: matrix
+    allocate(matrix(this%p_space%size, this%p_space%size))
+    if (this%p_space%size.le.0) return
     error stop 'P-space unavailable: unimplemented pp_action_matrix() in Problem class'
-  end subroutine pp_action_matrix
+!    do i = 1, this%p_space%size
+!      do j = 1, this%p_space%size
+!        matrix(i, j) = 0d0
+!        do ic = this%p_space%offsets(i - 1) + 1, this%p_space%offsets(i)
+!          do jc = this%p_space%offsets(j - 1) + 1, this%p_space%offsets(j)
+!            matrix(i, j) = matrix(i, j) + this%matrix(this%p_space%indices(ic), this%p_space%indices(jc)) * this%p_space%coefficients(ic) * this%p_space%coefficients(jc)
+!          end do
+!        end do
+!      end do
+!    end do
+  end function pp_action_matrix
 
   !> @brief Calculate the action of the kernel matrix on a set of vectors in the P space
   !> @param p_coefficients The projection of the vectors onto to the P space
@@ -182,17 +188,6 @@ contains
     double precision, dimension(:), intent(inout) :: parameters
     test_parameters = .false.
   end function test_parameters
-
-!  subroutine apply_p(this,p, g, nvec, ranges) bind(c)
-!    use iso_c_binding
-!    implicit none
-!    class(Problem), intent(in) :: this
-!    integer(c_size_t), intent(in), value :: nvec
-!    real(c_double), dimension(this%size_(), nvec), intent(inout) :: g
-!    real(c_double), dimension(this%p_space%size, nvec), intent(in) :: p
-!    integer(c_size_t), dimension(2, nvec), intent(in) :: ranges
-!    call this%p_action(p, g, int(ranges(:, 1)))
-!  end subroutine apply_p
 
 end module Iterative_Solver_Problem
 

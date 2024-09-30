@@ -1010,9 +1010,6 @@ CONTAINS
     logical :: reported
     integer, dimension(1) :: loc
     current_problem => problem
-    write (6,*) 'assigned current_problem'
-    write (6,*) problem%size
-    write (6,*) current_problem%size
     nq = ubound(parameters, 1) - lbound(parameters, 1) + 1
     verbosity = Iterative_Solver_Verbosity()
     nbuffer = 1
@@ -1218,10 +1215,8 @@ CONTAINS
       implicit none
       integer(c_size_t), intent(in), value :: nvec
       real(c_double), dimension(m_nq, nvec), intent(inout) :: g
-!      real(c_double), dimension(current_problem%p_space%size, nvec), intent(in) :: p
-    real(c_double), dimension(1, nvec), intent(in) :: p
+      real(c_double), dimension(current_problem%p_space%size, nvec), intent(in) :: p
       integer(c_size_t), dimension(2, nvec), intent(in) :: ranges
-    print *, 'apply_p_current_problem space size: ',current_problem%p_space%size
       call current_problem%p_action(p, g, int(ranges(:, 1)))
     end subroutine apply_p_current_problem
 

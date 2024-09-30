@@ -1,6 +1,8 @@
 !> @brief IterativeSolver Fortran binding
 MODULE Iterative_Solver
   USE, INTRINSIC :: iso_c_binding
+  USE Iterative_Solver_Problem, only : problem_class => Problem
+  public :: apply_p_current_problem ! temporary
   PUBLIC :: Solve_Linear_Eigensystem
   PUBLIC :: Solve_Linear_Equations
 !  PUBLIC :: Solve_Nonlinear_Equations
@@ -26,8 +28,11 @@ MODULE Iterative_Solver
   PUBLIC :: set_mpicomm_compute
   PRIVATE
   INTEGER(kind = mpicomm_kind), SAVE :: s_mpicomm_compute = -9999999
-  INTEGER(c_size_t) :: m_nq, m_nroot
+  INTEGER(c_size_t) :: m_nroot
+  INTEGER(c_size_t) :: m_nq
   INTEGER(c_int), parameter :: hermitian_default = 0
+
+  CLASS(problem_class), pointer, public :: current_problem ! temporary public
 
   INTERFACE
     SUBROUTINE Iterative_Solver_Print_Statistics() BIND (C, name = 'IterativeSolverPrintStatistics')
@@ -90,7 +95,7 @@ CONTAINS
     LOGICAL :: Solve_Linear_Eigensystem
     DOUBLE PRECISION, DIMENSION(..), INTENT(inout), target :: parameters
     DOUBLE PRECISION, DIMENSION(..), INTENT(inout), target :: actions
-    CLASS(problem_class), INTENT(in) :: problem
+    CLASS(problem_class), INTENT(in), TARGET :: problem
     INTEGER, INTENT(in), OPTIONAL :: nroot !< number of eigensolutions desired
     LOGICAL, OPTIONAL :: generate_initial_guess !< whether to generate an initial guess (default) or use what is passed in parameters
     INTEGER, OPTIONAL :: max_iter !< maximum number of iterations
@@ -154,12 +159,12 @@ CONTAINS
         hermitian, verbosity, pname, mpicomm, algorithm, range, options)
     select rank(parameters)
       rank(1)
-        do while (problem%RHS(parameters,m_nroot+1))
+        do while (problem%RHS(parameters,m_nroot+1, range=Iterative_Solver_Range()))
           m_nroot = m_nroot + 1
           call Iterative_Solver_Add_Equations(parameters)
         end do
       rank(2)
-        do while (problem%RHS(parameters(:, lbound(parameters, 2)),m_nroot+1))
+        do while (problem%RHS(parameters(:, lbound(parameters, 2)),m_nroot+1, range=Iterative_Solver_Range()))
           m_nroot = m_nroot + 1
           call Iterative_Solver_Add_Equations(parameters(:, lbound(parameters, 2)))
         end do
@@ -580,6 +585,21 @@ CONTAINS
     CALL IterativeSolverFinalize
   END SUBROUTINE Iterative_Solver_Finalize
 
+  FUNCTION Iterative_Solver_Range()
+    INTERFACE
+        SUBROUTINE IterativeSolverRange(range_begin, range_end) BIND(C, name='IterativeSolverRange')
+          USE iso_c_binding
+          INTEGER(c_size_t), INTENT(out) :: range_begin, range_end
+        END SUBROUTINE IterativeSolverRange
+    END INTERFACE
+    INTEGER, DIMENSION(2) :: Iterative_Solver_Range
+    INTEGER(c_size_t) :: range_beginC, range_endC
+    CALL IterativeSolverRange(range_beginC, range_endC)
+    Iterative_Solver_Range(1) = INT(range_beginC)
+    Iterative_Solver_Range(2) = INT(range_endC)
+  END FUNCTION Iterative_Solver_Range
+
+
   !> \private ! obsolescent
   !> \brief Take a current solution, value and residual, add it to the expansion set, and return working-set residual.
   !> \param value On input, the current objective function value.
@@ -947,7 +967,7 @@ CONTAINS
     implicit none
     double precision, dimension(..), intent(inout), target :: parameters
     double precision, dimension(..), intent(inout), target :: actions
-    class(problem_class), intent(in) :: problem
+    class(problem_class), intent(in), target :: problem
     logical, optional :: generate_initial_guess
     integer, optional :: max_iter
     logical :: guess
@@ -986,6 +1006,10 @@ CONTAINS
     integer :: i, verbosity
     logical :: reported
     integer, dimension(1) :: loc
+    current_problem => problem
+    write (6,*) 'assigned current_problem'
+    write (6,*) problem%size
+    write (6,*) current_problem%size
     nq = ubound(parameters, 1) - lbound(parameters, 1) + 1
     verbosity = Iterative_Solver_Verbosity()
     nbuffer = 1
@@ -1015,19 +1039,19 @@ CONTAINS
     nwork = nbuffer
     do iter = 1, IterativeSolverMaxIter()
       if (IterativeSolverNonLinear().gt.0) then
-        value = problem%residual(parameters_, actions_)
+        value = problem%residual(parameters_, actions_, Iterative_Solver_Range())
         nwork = Iterative_Solver_Add_Vector(parameters_, actions_, value = value)
       else
-        call problem%action(parameters_, actions_)
+        call problem%action(parameters_, actions_, Iterative_Solver_Range())
         nwork = Iterative_Solver_Add_Vector(parameters_, actions_)
       end if
       do while (Iterative_Solver_End_Iteration_Needed())
         if (nwork.gt.0) then
           if (use_diagonals) then
             call IterativeSolverDiagonals(parameters_(:, 1))
-            call problem%precondition(actions_(:, :nwork), Iterative_Solver_Working_Set_Eigenvalues(nwork), parameters_(:, 1))
+            call problem%precondition(actions_(:, :nwork), Iterative_Solver_Working_Set_Eigenvalues(nwork), parameters_(:, 1), Iterative_Solver_Range())
           else
-            call problem%precondition(actions_(:, :nwork), Iterative_Solver_Working_Set_Eigenvalues(nwork))
+            call problem%precondition(actions_(:, :nwork), Iterative_Solver_Working_Set_Eigenvalues(nwork), range=Iterative_Solver_Range())
           end if
         end if
         nwork = Iterative_Solver_End_Iteration(parameters_, actions_)
@@ -1186,7 +1210,19 @@ CONTAINS
   !  WRITE (6, *) 'error ', error(1), SQRT(dot_PRODUCT(c(:, 1), c(:, 1)))
   !  CALL Iterative_Solver_Finalize
   !END SUBROUTINE Iterative_Solver_Test
-END MODULE Iterative_Solver
+    subroutine apply_p_current_problem(p, g, nvec, ranges) bind(c)
+      use iso_c_binding
+      implicit none
+      integer(c_size_t), intent(in), value :: nvec
+      real(c_double), dimension(m_nq, nvec), intent(inout) :: g
+!      real(c_double), dimension(current_problem%p_space%size, nvec), intent(in) :: p
+    real(c_double), dimension(1, nvec), intent(in) :: p
+      integer(c_size_t), dimension(2, nvec), intent(in) :: ranges
+    print *, 'apply_p_current_problem space size: ',current_problem%p_space%size
+      call current_problem%p_action(p, g, int(ranges(:, 1)))
+    end subroutine apply_p_current_problem
+
+    END MODULE Iterative_Solver
 
 !> @examples LinearEigensystemExampleF.F90
 !> This is an example of simplest use of the LinearEigensystem framework for iterative

@@ -24,12 +24,13 @@ module QuasiNewton_Examples
 
 contains
 
-  function forced_residual(this, parameters, residuals) result(e)
+  function forced_residual(this, parameters, residuals, range) result(e)
     class(forced_t), intent(in) :: this
     double precision :: e
     double precision, intent(in), dimension(:, :) :: parameters
     double precision, intent(inout), dimension(:, :) :: residuals
-    do i = lbound(residuals, 1), ubound(residuals, 1); residuals(i, 1) = sum(parameters(:, 1)) + (3 * i - 1) * parameters(i, 1)-1;
+    integer, dimension(2), intent(in) :: range
+    do i = range(1)+1, range(2); residuals(i, 1) = sum(parameters(:, 1)) + (3 * i - 1) * parameters(i, 1)-1;
     enddo
     e = 0.5 * dot_product(parameters(:, 1), residuals(:, 1)) - 0.5 * sum(parameters(:, 1))
     residuals = residuals - 1
@@ -42,12 +43,13 @@ contains
     forced_diagonals = .true.
   end function forced_diagonals
 
-  function quadratic_residual(this, parameters, residuals) result(e)
+  function quadratic_residual(this, parameters, residuals, range) result(e)
     class(quadratic_t), intent(in) :: this
     double precision :: e
     double precision, intent(in), dimension(:, :) :: parameters
     double precision, intent(inout), dimension(:, :) :: residuals
-    do i = lbound(residuals, 1), ubound(residuals, 1); residuals(i, 1) = sum(parameters(:, 1)) + (3 * i - 1) * parameters(i, 1);
+    integer, dimension(2), intent(in) :: range
+    do i = range(1)+1, range(2); residuals(i, 1) = sum(parameters(:, 1)) + (3 * i - 1) * parameters(i, 1);
     enddo
     e = dot_product(parameters(:, 1), residuals(:, 1)) / dot_product(parameters(:, 1), parameters(:, 1))
     residuals = (residuals - e * parameters) / dot_product(parameters(:, 1), parameters(:, 1))

@@ -140,6 +140,10 @@ std::pair<size_t, size_t> DistrArrayGetRange(Rvector& rvec) {
   return range;
 }
 
+extern "C" void IterativeSolverRange(size_t* range_begin, size_t* range_end) {
+  std::tie(*range_begin, *range_end) = DistrArrayDefaultRange();
+}
+
 void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
   auto& instance = instances.top();
   std::vector<size_t> ranges;

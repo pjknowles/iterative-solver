@@ -9,16 +9,15 @@ module mod_linear_problem
     procedure, pass :: RHS
   end type linear_problem
 contains
-  logical function RHS(this, vector, instance)
+  logical function RHS(this, vector, instance, range)
     class(linear_problem), intent(in) :: this
     double precision, intent(inout), dimension(:) :: vector
+    integer, dimension(2), intent(in) :: range
     integer, intent(in) :: instance
     RHS = .false.
     if (instance.lt.lbound(this%rhss, 2).or.instance.gt.ubound(this%rhss, 2)) return
     RHS = .true.
-    vector = this%rhss(:, instance)
-    print *,vector
-    print *,(this%matrix(i,i), i=lbound(this%matrix,1), ubound(this%matrix,1))
+    vector(range(1)+1:range(2)) = this%rhss(range(1)+1:range(2), instance)
   end function RHS
 end module mod_linear_problem
 

@@ -12,14 +12,14 @@ module mod_linear_problem
     procedure, pass :: diagonals
   end type linear_problem
 contains
-  subroutine action(this, parameters, actions)
+  subroutine action(this, parameters, actions, range)
     class(linear_problem), intent(in) :: this
     double precision, intent(in), dimension(:, :) :: parameters
     double precision, intent(inout), dimension(:, :) :: actions
+    integer, dimension(2), intent(in) :: range
     integer :: i, j, k
     do k = lbound(parameters, 2), ubound(parameters, 2)
-      actions(:, k) = 0d0
-      do i = 1, this%n
+      do i = range(1) + 1, range(2)
         actions(i, k) = alpha * i * parameters(i, k)
         do j = 1, this%n
           actions(i, k) = actions(i, k) + dble(i + j - 2) * parameters(j, k)
@@ -36,15 +36,16 @@ contains
     end do
     diagonals = .true.
   end function diagonals
-  logical function RHS(this, vector, instance)
+  logical function RHS(this, vector, instance, range)
     class(linear_problem), intent(in) :: this
     double precision, intent(inout), dimension(:) :: vector
     integer, intent(in) :: instance
+    integer, dimension(2), intent(in) :: range
     integer :: i
     RHS = .false.
     if (instance.lt.1 .or. instance.gt.this%nroot) return
     RHS = .true.
-    do i = 1, this%n
+    do i = range(1) + 1, range(2)
       vector(i) = 1 / dble(i + instance - 1)
     end do
   end function RHS

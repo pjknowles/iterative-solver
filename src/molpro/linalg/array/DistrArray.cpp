@@ -131,9 +131,15 @@ DistrArray::value_type DistrArray::dot(const DistrArray& y) const {
   if (!loc_x->compatible(*loc_y))
     error(name + " incompatible local buffers");
   auto a = std::inner_product(begin(*loc_x), end(*loc_x), begin(*loc_y), (value_type)0);
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  std::cout << "DistrArray::dot local x "<<rank; for (const auto& v : *loc_x) std::cout << " "<<v;std::cout << std::endl;
+  std::cout << "DistrArray::dot local y "<<rank; for (const auto& v : *loc_y) std::cout << " "<<v;std::cout << std::endl;
+  std::cout << "DistrArray::dot local contribution "<<a<<std::endl;
 #ifdef HAVE_MPI_H
   MPI_Allreduce(MPI_IN_PLACE, &a, 1, MPI_DOUBLE, MPI_SUM, communicator());
 #endif
+  std::cout << "DistrArray::dot summed "<<a<<std::endl;
   return a;
 }
 

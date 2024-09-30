@@ -77,15 +77,25 @@ contains
     double precision, dimension(:, :), intent(in) :: p_coefficients
     double precision, dimension(:, :), intent(inout) :: actions
     integer, dimension(2), intent(in) :: range
+    print *,lbound(actions,1), ubound(actions,1)
+    print *,lbound(actions,2), ubound(actions,2)
+    write (6,*) 'initial actions ',actions
+    print *, 'p-space indices ',this%p_space%indices
+    print *, 'p-space offsets ',this%p_space%offsets
+    print *, 'p-space coefficients ',this%p_space%coefficients
+    print *, 'p_coefficients ',p_coefficients
     do i = lbound(actions, 2), ubound(actions, 2)
       do k = 1, this%p_space%size
         do kc = this%p_space%offsets(k - 1) + 1, this%p_space%offsets(k)
-          do j = range(1) + 1, range(2)
+!          do j = range(1) + 1, range(2)
+          do j = lbound(actions,1), ubound(actions,1)
+            write (6,*) 'i,k, kc, j ',i,k,kc,j,  this%matrix(j, this%p_space%indices(kc)) * this%p_space%coefficients(kc) * p_coefficients(k, i)
             actions(j, i) = actions(j, i) + this%matrix(j, this%p_space%indices(kc)) * this%p_space%coefficients(kc) * p_coefficients(k, i)
           end do
         end do
       end do
     end do
+    write (6,*) 'actions ',actions
   end subroutine p_action
 
 

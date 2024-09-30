@@ -1057,6 +1057,7 @@ CONTAINS
         nwork = Iterative_Solver_Add_Vector(parameters_, actions_, value = value)
       else if (iter.eq.1 .and. problem%p_space%size.gt.0) then
         current_problem => problem
+!        actions_ = 0d0
         nwork = Iterative_Solver_Add_P(problem%p_space%size, problem%p_space%offsets, problem%p_space%indices, problem%p_space%coefficients, problem%pp_action_matrix(), parameters_, actions_, apply_p_current_problem, .true.)
       else
         call problem%action(parameters_, actions_, Iterative_Solver_Range())

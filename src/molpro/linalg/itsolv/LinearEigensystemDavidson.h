@@ -186,7 +186,10 @@ protected:
   void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params, const VecRef<R>& actions) override {
     auto prof = this->profiler()->push("itsolv::construct_residual");
     assert(params.size() >= roots.size());
+//    std::cout << "construct_residual params="<<params[0].get()[0]<<std::endl;
+//    std::cout << "construct_residual actions="<<actions[0].get()[0]<<std::endl;
     const auto& eigvals = eigenvalues();
+    std::cout << "construct_residual eigvals="<<eigvals[0]<<std::endl;
     for (size_t i = 0; i < roots.size(); ++i)
       this->m_handlers->rr().axpy(-eigvals.at(roots[i]), params.at(i), actions.at(i));
   }

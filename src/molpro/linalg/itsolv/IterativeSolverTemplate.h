@@ -58,7 +58,14 @@ void construct_solution(const VecRef<R>& params, const std::vector<int>& roots,
       rd_mat(j, i) = solutions(roots[i], oD + j);
     }
   }
+  std::cout << "rp_mat\n "<<as_string(rp_mat)<<std::endl;
   prof->stop();
+  if (!pparams.empty()) {
+
+  std::cout << "pparams "<<pparams[0].get()[0]<<std::endl;
+  std::cout << "pparams "<<pparams[0].get()[1]<<std::endl;
+  std::cout << "pparams "<<pparams[0].get()[2]<<std::endl;
+  }
   handlers.rp().gemm_outer(rp_mat, cwrap(pparams), params);
   handlers.rq().gemm_outer(rq_mat, cwrap(qparams), params);
   handlers.rq().gemm_outer(rd_mat, cwrap(dparams), params);
@@ -98,6 +105,7 @@ void update_errors(std::vector<T>& errors, const CVecRef<R>& residual, array::Ar
   for (size_t i = 0; i < errors.size(); ++i) {
     auto a = handler.dot(residual[i], residual[i]);
     errors[i] = std::sqrt(std::abs(a));
+    std::cout << "update_errors() "<<i<<" "<<errors[i]<<std::endl;
   }
 }
 
@@ -158,6 +166,7 @@ public:
     m_stats->q_creations += 2 * nW;
     prof->stop();
     prof->start("solve_and_generate_working_set");
+    std::cout << "add_vector before solve_and..."<<std::endl;
     auto working_set = solve_and_generate_working_set(parameters, actions);
     prof->stop();
     read_handler_counts(m_stats, m_handlers);
@@ -181,6 +190,7 @@ public:
     if (apply_p)
       m_apply_p = std::move(apply_p);
     m_xspace->update_pspace(pparams, pp_action_matrix);
+    std::cout << "add_p before solve_and..."<<std::endl;
     auto working_set = solve_and_generate_working_set(parameters, actions);
     read_handler_counts(m_stats, m_handlers);
     return working_set;
@@ -209,7 +219,12 @@ public:
       detail::normalise(roots.size(), parameters, residual, m_handlers->rr(), *m_logger);
     if (m_apply_p)
       m_apply_p(pvectors, m_xspace->cparamsp(), residual);
+    for (int i=0; i<2; ++i) {
+    std::cout << "residual before construct_residual "<<i<<": "<<residual[0].get()[i]<<residual[i].get()[1]<<residual[i].get()[2]<<std::endl;
+      std::cout << "parameters before construct_residual "<<i<<": "<<parameters[0].get()[i]<<parameters[i].get()[1]<<parameters[i].get()[2]<<std::endl;
+    }
     construct_residual(roots, cwrap(parameters), residual);
+    std::cout << "residual after construct_residual "<<residual[0].get()[0]<<std::endl;
     read_handler_counts(m_stats, m_handlers);
     prof->stop();
   };
@@ -517,6 +532,8 @@ protected:
    * @return size of the working set
    */
   size_t solve_and_generate_working_set(const VecRef<R>& parameters, const VecRef<R>& action) {
+//    auto action_ = static_cast<std::vector<double>>(action[0].get());
+std::cout <<"action"; for (int i=0; i<3; ++i) std::cout << action[0].get()[i];std::cout <<std::endl;
     auto prof = profiler();
     auto p = prof->push("itsolv::solve_and_generate_working_set");
     prof->start("itsolv::solve");
@@ -539,10 +556,12 @@ protected:
         m_stats->q_creations += 2 * roots.size();
       }
       m_subspace_solver->set_error(roots, errors);
+      m_logger->msg("add_vector::errors0 = ", begin(errors), end(errors), Logger::Trace, 6);
     }
     prof->stop();
     set_value_errors();
     m_errors = m_subspace_solver->errors();
+    m_logger->msg("add_vector::errors1 = ", begin(m_errors), end(m_errors), Logger::Trace, 6);
     m_working_set = detail::select_working_set(parameters.size(), m_errors, m_convergence_threshold, m_value_errors,
                                                m_convergence_threshold_value);
     for (size_t i = 0; i < m_working_set.size(); ++i) {

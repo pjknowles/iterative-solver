@@ -207,6 +207,15 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
 template <class AL, class AR = AL>
 void gemm_outer_distr_sparse(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR>& xx,
                              const VecRef<AL>& yy) {
+ int rank, size;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  for (int r=0; r<size; ++r){
+  MPI_Barrier(MPI_COMM_WORLD);
+  if (r==rank) {
+
+    std::cout << "rank "<<rank<<std::endl;
+
   for (size_t ii = 0; ii < alphas.cols(); ++ii) {
     auto loc_y = yy[ii].get().local_buffer();
     for (size_t jj = 0; jj < alphas.rows(); ++jj) {
@@ -217,9 +226,14 @@ void gemm_outer_distr_sparse(const Matrix<typename array::mapped_or_value_type_t
              it != xx.at(jj).get().upper_bound(loc_y->start() + loc_y->size() - 1); ++it) {
           std::tie(i, v) = *it;
           (*loc_y)[i - loc_y->start()] += alphas(jj, ii) * v;
+          std::cout << "gemm_outer_distr_sparse i "<<i<<", jj "<<jj<<", iia "<<ii<< ", alphas "<<alphas(jj,ii)<<", v "<<v<<" loc_y "<<(*loc_y)[i - loc_y->start()]<<std::endl;
         }
+        std::cout << "loc_y " <<ii<<" : "<< (*loc_y)[0] <<" "<<(*loc_y)[1]<<" "<<(*loc_y)[2]<<std::endl;
       }
     }
+  }
+  }
+    MPI_Barrier(MPI_COMM_WORLD);
   }
 }
 

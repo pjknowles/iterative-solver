@@ -3,19 +3,21 @@
 !> finding of the lowest few eigensolutions of a large matrix.
 program Eigenproblem_Example
   use Iterative_Solver, only : Solve_Linear_Eigensystem, Iterative_Solver_Verbosity, Iterative_Solver_Solution, Iterative_Solver_Eigenvalues, Iterative_Solver_Errors, Iterative_Solver_Finalize, Iterative_Solver_Print_Statistics, mpi_init, mpi_rank_global, mpi_finalize
-  use Iterative_Solver_Problem, only : matrix_problem
+  use Iterative_Solver_Matrix_Problem, only : matrix_problem
   use iso_fortran_env, only : output_unit
   implicit none
   double precision, dimension (500, 500), target :: matrix = 1d0
   double precision, dimension (ubound(matrix, 1), 5) :: c, g
   integer :: i, j
   logical :: converged
+  type(matrix_problem) :: problem
   call mpi_init
   IF (mpi_rank_global() .gt. 0) close(output_unit)
   do i = lbound(matrix, 1), ubound(matrix, 1)
     matrix(i, i) = 3 * i
   end do
-  converged = Solve_Linear_Eigensystem(c, g, matrix_problem(matrix) &
+  call problem%attach(matrix)
+  converged = Solve_Linear_Eigensystem(c, g, problem &
       , nroot = ubound(c, 2) &
       , thresh = 1d-7 &
       , verbosity = 2 &

@@ -1,90 +1,41 @@
-module mod_matrix_problem
-  use Iterative_Solver, only : mpi_init, mpi_finalize, current_problem
-  use iso_c_binding, only : c_int
-  use Iterative_Solver_Matrix_Problem, only : matrix_problem
-  use Iterative_Solver_Pspace
-  INTEGER, PARAMETER :: n = 200, nroot = 3, nP = 30
-  DOUBLE PRECISION, DIMENSION (n, n), target :: m
-  type(matrix_problem), target :: problem
-contains
-
-end module mod_matrix_problem
-!> @examples LinearEigensystemExampleF-Pspace-mpi.F90
+!> @examples LinearEigensystemExampleF.F90
 !> This is an examples of use of the LinearEigensystem framework for iterative
 !> finding of the lowest few eigensolutions of a large matrix.
-!> A P-space is explicitly declared.
+!> Comparison is made of explicitly declaring a (bad) P-space, generating one automatically, or not using one
 PROGRAM Linear_Eigensystem_Example
-  USE Iterative_Solver
-  USE iso_c_binding, only : c_funloc
-  USE mod_matrix_problem
-  DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g
-  DOUBLE PRECISION, DIMENSION(nP, nroot) :: p
-  DOUBLE PRECISION, DIMENSION (nroot) :: e, error
-  DOUBLE PRECISION, DIMENSION(nP) :: coefficients
-  DOUBLE PRECISION, DIMENSION(nP, nP) :: pp
-  INTEGER :: i, j, root
-  LOGICAL :: update
-  PRINT *, 'Fortran binding of IterativeSolver'
+  USE Iterative_Solver, only : mpi_init, mpi_finalize, mpi_rank_global, Solve_Linear_Eigensystem, Iterative_Solver_Print_Statistics, Iterative_Solver_Finalize
+  USE Iterative_Solver_Matrix_Problem, only : matrix_problem
+  USE iso_fortran_env, only : output_unit
+  INTEGER, PARAMETER :: n = 300, nroot = 3
+  INTEGER :: nP, max_p
+  DOUBLE PRECISION, DIMENSION (:, :), allocatable, target :: m
+  INTEGER :: i
   CALL MPI_INIT
-  call problem%attach(m)
+  IF (mpi_rank_global() .gt. 0) close(output_unit)
+  ALLOCATE(m(n, n))
   m = 1
   DO i = 1, n
-    m(i, i) = 3 * i
+    m(i, i) = 3 * (n + 1 - i)
   END DO
-  WRITE (6, *) 'P-space=', nP, ', dimension=', n, ', roots=', nroot
-  CALL Iterative_Solver_Linear_Eigensystem_Initialize(n, nroot, thresh = 1d-8, verbosity = 0, hermitian = .true.)
-!  offsets(0) = 0
-!  DO i = 1, nP
-!    offsets(i) = i
-!    indices(i) = i ! the first nP components
-!    coefficients(i) = 1
-!  END DO
-  !  write (6,*) 'offsets ',offsets
-  !  write (6,*) 'indices ',indices
-  !  write (6,*) 'coefficients ',coefficients
-  call problem%p_space%add_simple([(i, i = 1, nP)]) ! the first nP components
-  !  p_space%offsets = offsets
-  !  p_space%indices = indices
-  !  write (6,*) 'offsets ',p_space%offsets
-  !  write (6,*) 'indices ',p_space%indices
-  !  write (6,*) 'coefficients ',p_space%coefficients
-  !  DO i = 1, problem%p_space%size
-  !    DO j = 1, problem%p_space%size
-  !      pp(i, j) = m(problem%p_space%indices(i), problem%p_space%indices(j))
-  !    END DO
-  !  END DO
-  !  write (6,*) 'pp',pp
-  nwork = nroot
-  if (problem%p_space%size .gt.0) then
-    current_problem => problem
-    nwork = Iterative_Solver_Add_P(nP, problem%p_space%offsets, problem%p_space%indices, problem%p_space%coefficients, problem%pp_action_matrix(), c, g, apply_p_current_problem, .true.)
-  else
-    c = 0
-    do i = 1, nroot
-      c(i, i) = 1
+  do nP = 0, 50, 50
+    do max_p = 0, 50, 10
+      if (max_p.gt.0 .and. nP.gt.0) cycle
+      WRITE (6, *) 'Explicit P-space=', nP, ', auto P-space=', max_p, ', dimension=', n, ', roots=', nroot
+      call solve(m, nP, max_p)
     end do
-    g = MATMUL(m, c)
-    nwork = Iterative_Solver_Add_Vector(c, g)
-  end if
-  DO iter = 1, n
-    e = Iterative_Solver_Eigenvalues()
-    write (6, *) 'eigenvalues=', Iterative_Solver_Eigenvalues()
-    DO root = 1, nroot
-      DO j = 1, n
-        c(j, root) = c(j, root) - g(j, root) / (m(j, j) - e(i) + 1e-15)
-      END DO
-    END DO
-    nwork = Iterative_Solver_End_Iteration(c, g)
-    write (6, *) 'error=', Iterative_Solver_Errors()
-    IF (nwork.le.0) EXIT
-    g = MATMUL(m, c)
-    nwork = Iterative_Solver_Add_Vector(c, g)
-  END DO
-  call Iterative_Solver_Print_Statistics
-  !  CALL Iterative_Solver_Solution([(i,i=1,nroot)],c,g)
-  !  write (6,*) 'final solution ',c
-  !  write (6,*) 'final residual ',g
-  CALL Iterative_Solver_Finalize
+  end do
   CALL MPI_Finalize
 CONTAINS
+  subroutine solve(m, nP, max_P)
+    DOUBLE PRECISION, DIMENSION (:, :), INTENT(IN), target :: m
+    integer, intent(in) :: nP, max_P
+    DOUBLE PRECISION, DIMENSION (n, nroot) :: c, g
+    TYPE(Matrix_Problem) :: problem
+    logical :: success
+    CALL problem%attach(m)
+    CALL problem%p_space%add_simple([(i, i = 1, nP)]) ! the first nP components, so not the best
+    success = Solve_Linear_Eigensystem(c, g, problem, nroot, verbosity = 2, thresh = 1d-8, hermitian = .true., max_p = max_p)
+    if (mpi_rank_global().eq.0) CALL Iterative_Solver_Print_Statistics
+    CALL Iterative_Solver_Finalize
+  end subroutine solve
 END PROGRAM Linear_Eigensystem_Example

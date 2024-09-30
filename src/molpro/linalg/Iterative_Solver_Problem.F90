@@ -15,6 +15,7 @@ module Iterative_Solver_Problem
     procedure, pass :: RHS
     procedure, pass :: report
     procedure, pass :: p_action
+    procedure, pass :: pp_action_matrix
   end type Problem
 contains
 

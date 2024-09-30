@@ -87,7 +87,7 @@ CONTAINS
     INTEGER(KIND = mpicomm_kind), intent(IN) :: comm
     s_mpicomm_compute = comm
   END SUBROUTINE set_mpicomm_compute
-  FUNCTION Solve_Linear_Eigensystem(parameters, actions, problem, nroot, generate_initial_guess, max_iter, &
+  FUNCTION Solve_Linear_Eigensystem(parameters, actions, problem, nroot, generate_initial_guess, max_iter, max_p, &
       thresh, thresh_value, &
       hermitian, verbosity, pname, mpicomm, algorithm, range, options)
     USE Iterative_Solver_Problem, only : problem_class => Problem
@@ -95,10 +95,11 @@ CONTAINS
     LOGICAL :: Solve_Linear_Eigensystem
     DOUBLE PRECISION, DIMENSION(..), INTENT(inout), target :: parameters
     DOUBLE PRECISION, DIMENSION(..), INTENT(inout), target :: actions
-    CLASS(problem_class), INTENT(in), TARGET :: problem
+    CLASS(problem_class), INTENT(inout), TARGET :: problem
     INTEGER, INTENT(in), OPTIONAL :: nroot !< number of eigensolutions desired
     LOGICAL, OPTIONAL :: generate_initial_guess !< whether to generate an initial guess (default) or use what is passed in parameters
     INTEGER, OPTIONAL :: max_iter !< maximum number of iterations
+    INTEGER, OPTIONAL :: max_p !< maximum dimension of generated P space
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh !< convergence threshold
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh_value !< value convergence threshold
     LOGICAL, INTENT(in), OPTIONAL :: hermitian !< whether the underlying kernel is hermitian
@@ -121,12 +122,12 @@ CONTAINS
     if (present(generate_initial_guess)) then
       guess = generate_initial_guess
     end if
-    call Iterative_Solver_Solve(parameters, actions, problem, guess, max_iter)
+    call Iterative_Solver_Solve(parameters, actions, problem, guess, max_iter, max_p)
     call Iterative_Solver_Solution([(i, i = 1, min(ubound(parameters, 2) - lbound(parameters, 2) + 1, m_nroot))], parameters, actions, .true.)
     Solve_Linear_Eigensystem = Iterative_Solver_Converged()
   END FUNCTION Solve_Linear_Eigensystem
 
-  FUNCTION Solve_Linear_Equations(parameters, actions, problem, generate_initial_guess, max_iter, &
+  FUNCTION Solve_Linear_Equations(parameters, actions, problem, generate_initial_guess, max_iter, max_p, &
       augmented_hessian, thresh, thresh_value, &
       hermitian, verbosity, pname, mpicomm, algorithm, range, options)
     USE Iterative_Solver_Problem, only : problem_class => Problem
@@ -134,9 +135,10 @@ CONTAINS
     LOGICAL :: Solve_Linear_Equations
     DOUBLE PRECISION, DIMENSION(..), INTENT(inout), target :: parameters
     DOUBLE PRECISION, DIMENSION(..), INTENT(inout), target :: actions
-    CLASS(problem_class), INTENT(in) :: problem
+    CLASS(problem_class), INTENT(inout) :: problem
     LOGICAL, OPTIONAL :: generate_initial_guess !< whether to generate an initial guess (default) or use what is passed in parameters
     INTEGER, OPTIONAL :: max_iter !< maximum number of iterations
+    INTEGER, OPTIONAL :: max_p !< maximum dimension of generated P space
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: augmented_hessian
     !< If zero, solve the inhomogeneous equations unmodified. If 1, solve instead
     !< the augmented hessian problem. Other values scale the augmented hessian damping.
@@ -178,7 +180,7 @@ CONTAINS
     if (present(generate_initial_guess)) then
       guess = generate_initial_guess
     end if
-    call Iterative_Solver_Solve(parameters, actions, problem, guess, max_iter)
+    call Iterative_Solver_Solve(parameters, actions, problem, guess, max_iter, max_p)
     call Iterative_Solver_Solution([(i,i=1,min(ubound(parameters,2)-lbound(parameters,2)+1,m_nroot))], parameters, actions, .true.)
     Solve_Linear_Equations = Iterative_Solver_Converged()
   END FUNCTION Solve_Linear_Equations
@@ -964,15 +966,16 @@ CONTAINS
     CALL IterativeSolverWorkingSetEigenvalues(Iterative_Solver_Working_Set_Eigenvalues)
   END FUNCTION Iterative_Solver_Working_Set_Eigenvalues
 
-  SUBROUTINE Iterative_Solver_Solve(parameters, actions, problem, generate_initial_guess, max_iter)
+  SUBROUTINE Iterative_Solver_Solve(parameters, actions, problem, generate_initial_guess, max_iter, max_p)
     USE Iterative_Solver_Problem, only : problem_class => Problem
     USE iso_c_binding, only : c_loc, c_f_pointer
     implicit none
     double precision, dimension(..), intent(inout), target :: parameters
     double precision, dimension(..), intent(inout), target :: actions
-    class(problem_class), intent(in), target :: problem
+    class(problem_class), intent(inout), target :: problem
     logical, optional :: generate_initial_guess
     integer, optional :: max_iter
+    integer, optional :: max_p
     logical :: guess
     logical :: use_diagonals
     double precision, dimension(:, :), pointer :: parameters_, actions_
@@ -1027,7 +1030,18 @@ CONTAINS
     if (use_diagonals) call IterativeSolverSetDiagonals(actions_(:, 1))
     if (verbosity .ge. 3) write (6, *) &
       'IterativeSolver_Solve nonlinear=', IterativeSolverNonLinear(), ' use_diagonals=', use_diagonals
-    if (guess)  then
+    if (IterativeSolverNonLinear() .eq.0 .and. present(max_p) .and. problem%p_space%size.le.0) then
+    if (max_p.ge.m_nroot) then
+      print *, 'generate P space'
+!      call problem%p_space%add_simple([(i,i=1,min(max_p,m_nq))])
+    do i=1,min(max_p,m_nq)
+        loc = minloc(actions_(:, 1))
+    call problem%p_space%add_simple([loc])
+    actions_(loc,1) = 1d50
+    end do
+    end if
+    end if
+    if (guess .and. problem%p_space%size.le.0)  then
       if (.not. use_diagonals) error stop 'Default initial guess requested, but diagonal elements are not available'
       parameters_ = 0
       do i = lbound(parameters_, 2), ubound(parameters_, 2)
@@ -1041,6 +1055,9 @@ CONTAINS
       if (IterativeSolverNonLinear().gt.0) then
         value = problem%residual(parameters_, actions_, Iterative_Solver_Range())
         nwork = Iterative_Solver_Add_Vector(parameters_, actions_, value = value)
+      else if (iter.eq.1 .and. problem%p_space%size.gt.0) then
+        current_problem => problem
+        nwork = Iterative_Solver_Add_P(problem%p_space%size, problem%p_space%offsets, problem%p_space%indices, problem%p_space%coefficients, problem%pp_action_matrix(), parameters_, actions_, apply_p_current_problem, .true.)
       else
         call problem%action(parameters_, actions_, Iterative_Solver_Range())
         nwork = Iterative_Solver_Add_Vector(parameters_, actions_)

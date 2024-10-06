@@ -3,7 +3,7 @@ cxx-compiler
 openblas
 mpich
 cython>=3
-numpy<2
+numpy
 eigen
 cmake
 make

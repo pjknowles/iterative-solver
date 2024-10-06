@@ -10,7 +10,7 @@ fi
 
 python_dir=$SCRIPTPATH
 root_dir=$SCRIPTPATH/..
-if [ $(uname) = Linux -a $(uname -m) = x86_64 ]; then extra_requirements='mkl mkl-include'; fi
+if [ $(uname) = Linux -a $(uname -m) = x86_64 ]; then extra_requirements='mkl mkl-include'; else extra_requirements='';  fi
 conda install -c conda-forge -y --file $python_dir/requirements.txt $extra_requirements
 cmake_build_dir=$python_dir/cmake-build-$(uname)-$(uname -m)
 mkdir -p $cmake_build_dir
@@ -34,4 +34,4 @@ echo '__version__ = "'$VERSION'"' >$python_dir/iterative_solver/_version.py
 cmake --build $cmake_build_dir -t install -v --config Release
 
 export PATH="$CONDA_PREFIX/bin:$PATH"
-python -m pip install -vv $python_dir
+python -m pip install -e $python_dir

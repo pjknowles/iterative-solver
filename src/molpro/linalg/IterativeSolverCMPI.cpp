@@ -59,14 +59,13 @@ using molpro::linalg::itsolv::VecRef;
 // FIXME Only top solver is active at any one time. This should be documented somewhere.
 
 namespace {
-typedef void (*Apply_on_p_fort)(const double*, double*, const size_t, const size_t*);
 struct Instance {
   Instance(std::unique_ptr<IterativeSolver<Rvector, Qvector, Pvector>> solver, std::shared_ptr<Profiler> prof,
            size_t dimension, MPI_Comm comm)
       : solver(std::move(solver)), prof(std::move(prof)), dimension(dimension), comm(comm){};
   std::unique_ptr<IterativeSolver<Rvector, Qvector, Pvector>> solver;
   std::shared_ptr<Profiler> prof;
-  Apply_on_p_fort apply_on_p_fort;
+  apply_on_p_t apply_on_p_fort;
   size_t dimension;
   MPI_Comm comm;
   std::unique_ptr<Qvector> diagonals;
@@ -140,6 +139,10 @@ std::pair<size_t, size_t> DistrArrayGetRange(Rvector& rvec) {
   return range;
 }
 
+extern "C" void IterativeSolverRange(size_t* range_begin, size_t* range_end) {
+  std::tie(*range_begin, *range_end) = DistrArrayDefaultRange();
+}
+
 void apply_on_p_c(const std::vector<vectorP>& pvectors, const CVecRef<Pvector>& pspace, const VecRef<Rvector>& action) {
   auto& instance = instances.top();
   std::vector<size_t> ranges;
@@ -170,7 +173,7 @@ extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nro
   if (!pname.empty()) {
     profiler = Profiler::single(pname);
   }
-  instances.emplace(Instance{molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector, Pvector>(algorithm, ""),
+  instances.emplace(Instance{molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector, Pvector>(algorithm, options),
                              profiler, nQ, comm});
   auto& instance = instances.top();
   instance.solver->set_n_roots(nroot);
@@ -212,6 +215,7 @@ extern "C" void IterativeSolverLinearEquationsInitialize(size_t n, size_t nroot,
   auto& instance = instances.top();
   auto rr = CreateDistrArray(nroot, rhs);
   auto solver = dynamic_cast<LinearEquationsDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  solver->set_augmented_hessian(aughes);
   solver->set_hermiticity(hermitian);
   solver->set_n_roots(nroot);
   solver->add_equations(rr);
@@ -268,6 +272,20 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
 }
 
 extern "C" void IterativeSolverFinalize() { instances.pop(); }
+
+extern "C" void IterativeSolverAddEquation(double* rhs) {
+  if (instances.empty())
+    throw std::runtime_error("IterativeSolver not initialised properly");
+  auto& instance = instances.top();
+  if (instance.prof != nullptr)
+    instance.prof->start("AddEquation");
+  auto ccc = CreateDistrArray(1, rhs);
+  dynamic_cast<molpro::linalg::itsolv::LinearEquationsDavidson<Rvector, Qvector, Pvector>*>(instance.solver.get())
+      ->add_equations(ccc[0]);
+  if (instance.prof != nullptr) {
+    instance.prof->stop();
+  }
+}
 
 extern "C" size_t IterativeSolverAddValue(double value, double* parameters, double* action, int sync) {
   if (instances.empty())
@@ -387,7 +405,7 @@ extern "C" int IterativeSolverEndIterationNeeded(){
 
 extern "C" size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
-                                      int sync, void (*func)(const double*, double*, const size_t, const size_t*)) {
+                                      int sync, apply_on_p_t func) {
   auto& instance = instances.top();
   instance.apply_on_p_fort = func;
   if (instance.prof != nullptr)
@@ -476,6 +494,8 @@ extern "C" size_t IterativeSolverSuggestP(const double* solution, const double* 
 
 extern "C" void IterativeSolverPrintStatistics() { molpro::cout << instances.top().solver->statistics() << std::endl; }
 
+extern "C" int IterativeSolverConverged() { return instances.top().solver->working_set().empty() ? 1 : 0; }
+
 int IterativeSolverNonLinear() { return instances.top().solver->nonlinear() ? 1 : 0; }
 int IterativeSolverHasValues() { return instances.top().has_values ? 1 : 0; }
 int IterativeSolverHasEigenvalues() { return instances.top().has_eigenvalues ? 1 : 0; }
@@ -511,17 +531,17 @@ extern "C" int64_t IterativeSolver_mpicomm_global() { return (int64_t)MPI_Comm_c
 /*!
  * @brief C binding of mpi::comm_self(), suitable for calling from Fortran
  */
-extern "C" int64_t IterativeSolver_mpicomm_self() { return (int64_t)MPI_Comm_c2f(molpro::mpi::comm_self()); }
+extern "C" int64_t IterativeSolver_mpi_comm_self() { return (int64_t)MPI_Comm_c2f(molpro::mpi::comm_self()); }
 
 /*!
  * @brief C binding of mpi::size_global(), suitable for calling from Fortran
  */
-extern "C" int64_t IterativeSolver_mpisize_global() { return molpro::mpi::size_global(); }
+extern "C" int64_t IterativeSolver_mpi_size_global() { return molpro::mpi::size_global(); }
 
 /*!
  * @brief C binding of mpi::rank_global(), suitable for calling from Fortran
  */
-extern "C" int64_t IterativeSolver_mpirank_global() { return molpro::mpi::rank_global(); }
+extern "C" int64_t IterativeSolver_mpi_rank_global() { return molpro::mpi::rank_global(); }
 
 /*!
  * @brief C binding of mpi::init(), suitable for calling from Fortran

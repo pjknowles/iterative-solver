@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <stddef.h>
 
+
 extern "C" void IterativeSolverLinearEigensystemInitialize(size_t nQ, size_t nroot, size_t* range_begin,
                                                            size_t* range_end, double thresh, double thresh_value,
                                                            int hermitian, int verbosity, const char* fname,
@@ -34,11 +35,17 @@ extern "C" size_t IterativeSolverEndIteration(size_t buffer_size, double* soluti
 
 extern "C" int IterativeSolverEndIterationNeeded();
 
+typedef void (*cheesefunc)(char *name, void *user_data);
+extern "C" void find_cheeses(cheesefunc user_func, void *user_data);
+
+typedef void (*apply_on_p_t)(const double*, double*, const size_t, const size_t*);
 extern "C" size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_t* offsets, const size_t* indices,
                                       const double* coefficients, const double* pp, double* parameters, double* action,
-                                      int sync, void (*func)(const double*, double*, const size_t, const size_t*));
+                                      int sync, apply_on_p_t func);
 
 extern "C" void IterativeSolverErrors(double* errors);
+
+extern "C" int IterativeSolverConverged();
 
 extern "C" void IterativeSolverEigenvalues(double* eigenvalues);
 

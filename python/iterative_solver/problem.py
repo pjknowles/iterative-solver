@@ -1,6 +1,7 @@
+import numpy as np
 import sys
 
-import numpy as np
+from .pspace import PSpace
 
 
 class Problem:
@@ -9,6 +10,7 @@ class Problem:
     '''
 
     def __init__(self):
+        self.p_space = PSpace()
         self.dimension = None
 
     def residual(self, parameters, residual):
@@ -81,13 +83,24 @@ class Problem:
                     residual[j] = residual[j] / (diagonals[j] + small)
         else:
             raise NotImplementedError
-
-    def pp_action_matrix(self, pparams):
+    def pp_action_matrix(self):
+        """
+        Calculate the representation of the kernel matrix in the P space. Implementation required only for linear hermitian problems for which P-space acceleration is wanted.
+        """
+        if self.p_space.size > 0:
+            raise NotImplementedError('P-space unavailable: unimplemented pp_action_matrix() in Problem class')
         return np.array([], dtype=np.double)
 
-    def p_action(self, p_coefficients, pparams, actions):
-        raise NotImplementedError('P-space unavailable: unimplemented p_action() in Problem class')
-        pass
+    def p_action(self, p_coefficients, actions, ranges):
+        """
+        Calculate the action of the kernel matrix on a set of vectors in the P space. Implementation required only for linear hermitian problems for which P-space acceleration is wanted.
+
+        :param p_coefficients The projection of the vectors onto to the P space
+        :param actions On exit, the computed action has been added to the original contents
+        :param range The range of the full space for which actions should be computed.
+        """
+        if self.p_space.size > 0:
+            raise NotImplementedError('P-space unavailable: unimplemented p_action() in Problem class')
 
     def test_parameters(self, instance, parameters):
         return False

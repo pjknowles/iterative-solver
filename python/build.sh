@@ -10,7 +10,8 @@ fi
 
 python_dir=$SCRIPTPATH
 root_dir=$SCRIPTPATH/..
-conda install -c conda-forge -y --file $python_dir/requirements.txt
+if [ $(uname) = Linux -a $(uname -m) = x86_64 ]; then extra_requirements='mkl mkl-include'; fi
+conda install -c conda-forge -y --file $python_dir/requirements.txt $extra_requirements
 cmake_build_dir=$python_dir/cmake-build-$(uname)-$(uname -m)
 mkdir -p $cmake_build_dir
 

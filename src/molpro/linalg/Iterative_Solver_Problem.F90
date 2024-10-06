@@ -1,32 +1,28 @@
 module Iterative_Solver_Problem
-
+  use Iterative_Solver_Pspace, only : PSpace
   private
 
   !> @brief Abstract class defining the problem-specific interface for the simplified solver
   !> interface to IterativeSolver
-  !type, abstract, public :: Problem
-  type, public :: Problem
+  type, abstract, public :: Problem
+!  type, public :: Problem
+    type(PSpace) :: p_space
   contains
     procedure, pass :: diagonals
     procedure, pass :: precondition
     procedure, pass :: residual
     procedure, pass :: action
+    procedure, pass :: RHS
     procedure, pass :: report
+    procedure, pass :: p_action
+    procedure, pass :: pp_action_matrix
   end type Problem
-
-  type, public, extends(Problem) :: Matrix_Problem
-    double precision, pointer, dimension(:,:) :: matrix
-    contains
-    procedure, pass :: diagonals => matrix_diagonals
-    procedure, pass :: action => matrix_action
-  end type Matrix_Problem
-
 contains
 
   !> @brief Optionally provide the diagonal elements of the underlying kernel. If
   !> implemented and returning true, the provided diagonals will be used by
-  !> IterativeSolver for preconditioning (and therefore the precondition() function does
-  !> not need to be implemented), and, in the case of linear problems, for selection of
+  !> the base precondition() function for preconditioning (and therefore the precondition() function does
+  !> not need to be reimplemented), and, in the case of linear problems, for selection of
   !> the P space. Otherwise, preconditioning will be done with precondition(), and any P
   !> space has to be provided manually.
   !> @param d On exit, contains the diagonal elements
@@ -37,15 +33,9 @@ contains
     diagonals = .false.
   end function diagonals
 
-  logical function matrix_diagonals(this, d)
-    class(Matrix_Problem), intent(in) :: this
-    double precision, intent(inout), dimension(:) :: d
-    d = [(this%matrix(i,i), i=lbound(this%matrix,1),ubound(this%matrix,1))]
-    matrix_diagonals = .true.
-  end function matrix_diagonals
-
   !> @brief Apply preconditioning to a residual vector in order to predict a step towards
-  !> the solution
+  !> the solution.
+  !> This is a complete implementation provided that the diagonals() function is reimplemented, but can be overridden if desired.
   !> @param residual On entry, assumed to be the residual. On exit, the negative of the
   !> predicted step.
   !> @param shift When called from LinearEigensystem, contains the corresponding current
@@ -53,20 +43,22 @@ contains
   !> should pass a vector of zeroes, which is the default if omitted.
   !> @param diagonals The diagonal elements of the underlying kernel. If passed, they will be used,
   !> otherwise the default preconditioner does nothing.
-  subroutine precondition(this, action, shift, diagonals)
+  !> @param range The range of the space for which actions should be computed. It's OK to provide also the values outside this range (which will happen in a multiprocessing context), but they will be ignored by the solver.
+  subroutine precondition(this, action, shift, diagonals, range)
     class(Problem), intent(in) :: this
     double precision, intent(inout), dimension(:, :) :: action
     double precision, intent(in), dimension(:), optional :: shift
     double precision, intent(in), dimension(:), optional :: diagonals
+    integer, dimension(2), intent(in) :: range
     double precision, parameter :: small = 1e-14
     if (present(diagonals)) then
       do i = lbound(action, 2), ubound(action, 2)
         if (present(shift)) then
-          do j = lbound(action, 1), ubound(action, 1)
+          do j = range(1) + 1, range(2)
             action(j, i) = action(j, i) / (diagonals(j) + shift(i) + small)
           end do
         else
-          do j = lbound(action, 1), ubound(action, 1)
+          do j = range(1) + 1, range(2)
             action(j, i) = action(j, i) / (diagonals(j) + small)
           end do
         end if
@@ -74,15 +66,16 @@ contains
     end if
   end subroutine precondition
 
-
   !> @brief Calculate the residual vector. Used by non-linear solvers (NonLinearEquations,
   !> Optimize) only.
   !> @param parameters The trial solution for which the residual is to be calculated
   !> @param resid The residual vector
+  !> @param range The range of the space for which actions should be computed. It's OK to provide also the values outside this range (which will happen in a multiprocessing context), but they will be ignored by the solver.
   !> @return In the case where the residual is an exact differential, the corresponding
   !> function value. Used by Optimize but not NonLinearEquations.
-  function residual(this, parameters, residuals) result(value)
+  function residual(this, parameters, residuals, range) result(value)
     class(Problem), intent(in) :: this
+    integer, dimension(2), intent(in) :: range
     double precision :: value
     double precision, intent(in), dimension(:, :) :: parameters
     double precision, intent(inout), dimension(:, :) :: residuals
@@ -92,22 +85,30 @@ contains
   !> @brief Calculate the action of the kernel matrix on a set of parameters. Used by
   !> linear solvers, but not by the non-linear solvers (NonLinearEquations, Optimize).
   !> @param parameters The trial solutions for which the action is to be calculated
-  !> @param act The action vectors
-  subroutine action(this, parameters, actions)
+  !> @param actions The action vectors
+  !> @param range The range of the space for which actions should be computed. It's OK to provide also the values outside this range (which will happen in a multiprocessing context), but they will be ignored by the solver.
+  subroutine action(this, parameters, actions, range)
     class(Problem), intent(in) :: this
     double precision, intent(in), dimension(:, :) :: parameters
     double precision, intent(inout), dimension(:, :) :: actions
+    integer, dimension(2), intent(in) :: range
   end subroutine action
 
-  subroutine matrix_action(this, parameters, actions)
-    class(Matrix_Problem), intent(in) :: this
-    double precision, intent(in), dimension(:, :) :: parameters
-    double precision, intent(inout), dimension(:, :) :: actions
-    actions = matmul(this%matrix, parameters)
-  end subroutine matrix_action
+  !> @brief Provide the inhomogeneous part of one of the sets of linear equations. Implementation required only for linear equation solver.
+  !> @param vector Will contain the requested RHS on exit
+  !> @param instance Which equation set for which the RHS should be provided
+  !> @param range The range of the space for which actions should be computed. It's OK to provide also the values outside this range (which will happen in a multiprocessing context), but they will be ignored by the solver.
+  !> @return Whether the requested instance exists
+  logical function RHS(this, vector, instance, range)
+    class(Problem), intent(in) :: this
+    double precision, intent(inout), dimension(:) :: vector
+    integer, dimension(2), intent(in) :: range
+    integer, intent(in) :: instance
+    RHS = .false.
+  end function RHS
 
   !> @brief Report progress at the end of each iteration, or at the end of the calculation
-  !> @return .true. if the information was used, and therefore the caller should be silent
+  !> @return .true. if the information was used, and therefore the caller should be silent. This is a complete implementation that can be used, but can be overridden if desired.
   logical function report(this, iteration, verbosity, errors, value, eigenvalues)
     class(Problem), intent(in) :: this
     integer, intent(in) :: iteration !< The iteration number if positive, or zero indicating successful convergence, or a negative number indicating failure to converge
@@ -136,16 +137,58 @@ contains
     report = .true.
   end function report
 
+  !> @brief Calculate the representation of the kernel matrix in the P space. Implementation required only for linear hermitian problems for which P-space acceleration is wanted.
+  function pp_action_matrix(this) result(matrix)
+    class(Problem), intent(in) :: this
+    double precision, dimension(:, :), allocatable :: matrix
+    allocate(matrix(this%p_space%size, this%p_space%size))
+    if (this%p_space%size.le.0) return
+    error stop 'P-space unavailable: unimplemented pp_action_matrix() in Problem class'
+!    do i = 1, this%p_space%size
+!      do j = 1, this%p_space%size
+!        matrix(i, j) = 0d0
+!        do ic = this%p_space%offsets(i - 1) + 1, this%p_space%offsets(i)
+!          do jc = this%p_space%offsets(j - 1) + 1, this%p_space%offsets(j)
+!            matrix(i, j) = matrix(i, j) + this%matrix(this%p_space%indices(ic), this%p_space%indices(jc)) * this%p_space%coefficients(ic) * this%p_space%coefficients(jc)
+!          end do
+!        end do
+!      end do
+!    end do
+  end function pp_action_matrix
+
+  !> @brief Calculate the action of the kernel matrix on a set of vectors in the P space. Implementation required only for linear hermitian problems for which P-space acceleration is wanted.
+  !> @param p_coefficients The projection of the vectors onto to the P space
+  !> @param actions On exit, the computed action has been added to the original contents
+  !> @param range The range of the full space for which actions should be computed.
+  subroutine p_action(this, p_coefficients, actions, range)
+    class(Problem), intent(in) :: this
+    double precision, dimension(:, :), intent(in) :: p_coefficients
+    double precision, dimension(:, :), intent(inout) :: actions
+    integer, dimension(2), intent(in) :: range
+    if (this%p_space%size.le.0) return
+    error stop 'P-space unavailable: unimplemented p_action() in Problem class'
+    !    do i = lbound(actions, 2), ubound(actions, 2)
+    !      do k = 1, this%p_space%size
+    !        do kc = this%p_space%offsets(k - 1) + 1, this%p_space%offsets(k)
+    !          do j = range(1) + 1, range(2)
+    !            actions(j, i) = actions(j, i) + this%matrix(j, this%p_space%indices(kc)) * this%p_space%coefficients(kc) * p_coefficients(k, i)
+    !          end do
+    !        end do
+    !      end do
+    !    end do
+  end subroutine p_action
+
+  !> @brief Provide values of R vectors for testing the problem class.
+  !> For use in a non-linear solver, the first vector (instance=0) should be a reference point, and the remainder
+  !> (instance>0) should be close to it, such that meaningful numerical differentation can be done to test the residual
+  !> function.
+  !> @param instance
+  !> @param parameters
+  !> @return true if a vector has been provided
+  logical function test_parameters(instance, parameters)
+    integer, intent(in) :: instance
+    double precision, dimension(:), intent(inout) :: parameters
+    test_parameters = .false.
+  end function test_parameters
+
 end module Iterative_Solver_Problem
-
-module try_Iterative_Solver_Problem
-  use Iterative_Solver_Problem
-  type, extends(Problem) :: my_Problem
-
-  end type my_Problem
-
-contains
-  subroutine try
-    type(my_Problem) :: thing
-  end subroutine try
-end module try_Iterative_Solver_Problem

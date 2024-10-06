@@ -1,3 +1,23 @@
+module mod_linear_problem
+  use Iterative_Solver_Matrix_Problem
+  type, extends(matrix_Problem) :: linear_problem
+    double precision, dimension(:,:), pointer :: rhss
+    contains
+    procedure, pass :: RHS
+  end type linear_problem
+contains
+  logical function RHS(this, vector, instance, range)
+    class(linear_problem), intent(in) :: this
+    double precision, intent(inout), dimension(:) :: vector
+    integer, intent(in) :: instance
+    integer, dimension(2), intent(in) :: range
+    RHS = .false.
+    if (instance.lt.lbound(this%rhss,2).or.instance.gt.ubound(this%rhss,2)) return
+    RHS = .true.
+    vector(range(1)+1:range(2)) = this%rhss(range(1)+1:range(2),instance)
+  end function RHS
+
+end module mod_linear_problem
 function test_LinearEquationsF(matrix, rhs, n, np, nroot, hermitian, augmented_hessian) BIND(C)
   use iso_c_binding
   use Iterative_Solver
@@ -5,10 +25,9 @@ function test_LinearEquationsF(matrix, rhs, n, np, nroot, hermitian, augmented_h
   integer(c_int) test_LinearEquationsF
   integer(c_size_t), intent(in), value :: n, np, nroot
   integer(c_int), intent(in), value :: hermitian
-  double precision, intent(in), dimension(n, n) :: matrix
-  double precision, intent(in), dimension(n, nroot) :: rhs
+  double precision, intent(in), dimension(n, n), target :: matrix
+  double precision, intent(in), dimension(n, nroot), target :: rhs
   double precision, intent(in), value :: augmented_hessian
-
   double precision, dimension(n, nroot) :: c, g
   double precision :: error
   integer :: nwork, i, j, k
@@ -16,7 +35,6 @@ function test_LinearEquationsF(matrix, rhs, n, np, nroot, hermitian, augmented_h
   double precision :: guess_value
   double precision, parameter :: thresh = 1d-10
 
-  !  return ! TODO remove when fortran implementation is complete
   if (np .gt. 0) return
   !  write (6, *) 'test_linearEquationsF ', hermitian, n, nroot
   !    write (6, *) 'matrix'
@@ -82,6 +100,20 @@ function test_LinearEquationsF(matrix, rhs, n, np, nroot, hermitian, augmented_h
     test_LinearEquationsF = 0
   end if
   call Iterative_Solver_Finalize
+  call simplified_solver
   call flush(6)
-
+  return
+contains
+  subroutine simplified_solver
+    use mod_linear_problem, only : linear_problem
+    type(linear_problem) :: prob
+    call prob%attach(matrix, rhs)
+    call Solve_Linear_Equations(c, g, prob, augmented_hessian = augmented_hessian, &
+        hermitian = hermitian.ne.0, &
+        thresh = thresh, thresh_value = 1d50, verbosity=2)
+    if (.not. Iterative_Solver_Converged()) then
+      error stop  '!!! failure !!!'
+    end if
+    call Iterative_Solver_Finalize
+  end subroutine simplified_solver
 end function test_LinearEquationsF

@@ -5,7 +5,7 @@ LibraryManager_Append(${PROJECT_NAME}
         PRIVATE_HEADER itsolv/helper-implementation.h
         )
 if (FORTRAN)
-    LibraryManager_Append(${PROJECT_NAME} SOURCES IterativeSolverF.F90 Iterative_Solver_Problem.F90)
+    LibraryManager_Append(${PROJECT_NAME} SOURCES IterativeSolverF.F90 Iterative_Solver_Problem.F90 Iterative_Solver_PSpace.F90 Iterative_Solver_Matrix_Problem.F90)
 endif ()
 
 add_subdirectory(itsolv)

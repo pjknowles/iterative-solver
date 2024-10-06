@@ -7,6 +7,7 @@ import inspect
 class TestCase(unittest.TestCase):
     class RayleighQuotient(iterative_solver.Problem):
         def __init__(self, n, rho=0.1, **kwargs):
+            super().__init__(**kwargs)
             self.size = n
             self.rho = rho
 

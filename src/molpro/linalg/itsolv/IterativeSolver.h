@@ -137,6 +137,15 @@ public:
   }
 
   /*!
+   * @brief Return the inhomogeneous part of a linear equation system.
+   * @param RHS On return, will contain the requested right-hand-side of equations if available.
+   * @param instance Which RHS is required. If there are N sets of equations to solve, then 0,1,...N-1 number the instances.
+   * The solver will call this function repeatedly with instance=0,1,2,... until it receives a negative response.
+   * @return whether the requested RHS is available and has been provided
+   */
+  virtual bool RHS(R& RHS, unsigned int instance) const { return false;}
+
+  /*!
    * @brief Calculate the kernel matrix in the P space
    * @param pparams Specification of the P space
    * @return

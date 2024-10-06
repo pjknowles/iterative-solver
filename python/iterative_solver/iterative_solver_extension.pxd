@@ -32,9 +32,9 @@ cdef extern from "molpro/linalg/IterativeSolverC.h":
 
     int IterativeSolverEndIterationNeeded();
 
-    size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_t* offsets, const size_t* indices,
-    const double* coefficients, const double* pp, double* parameters, double* action,
-    int sync, void (*func)(const double*, double*, const size_t, const size_t*))
+    # size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_t* offsets, const size_t* indices,
+    # const double* coefficients, const double* pp, double* parameters, double* action,
+    # int sync, void (*func)(const double*, double*, const size_t, const size_t*))
 
     void IterativeSolverErrors(double* errors)
 
@@ -65,3 +65,5 @@ cdef extern from "molpro/linalg/IterativeSolverC.h":
 
     int IterativeSolver_mpicomm_self()
     int IterativeSolver_mpicomm_global()
+
+    int IterativeSolverConverged()

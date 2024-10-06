@@ -1,6 +1,5 @@
 #include "test.h"
 
-#include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 #include <numeric>
 
@@ -9,8 +8,6 @@
 #include <molpro/linalg/itsolv/SolverFactory.h>
 #include <molpro/linalg/itsolv/helper.h>
 
-using MatrixXdr = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-using Update = std::function<void(const std::vector<Rvector>& params, std::vector<Rvector>& actions, size_t n_work)>;
 using molpro::linalg::itsolv::CastOptions;
 using molpro::linalg::itsolv::LinearEquations;
 
@@ -19,8 +16,8 @@ public:
   Problem_(int n, int nroot = 1) {
     this->n = n;
     matrix.resize(n, n);
-    rhs.resize(nroot, n);
-    expected_solution.resize(nroot, n);
+    rhs.resize(n, nroot);
+    expected_solution.resize(n, nroot);
     for (int i = 0; i < n; ++i) {
       for (int j = 0; j < n; ++j)
         matrix(i, j) = i + j + 1;
@@ -28,8 +25,8 @@ public:
     }
     for (int i = 0; i < nroot; ++i)
       for (int j = 0; j < n; ++j) {
-        rhs(i, j) = (i + 1) * (n * (n + 1) / 2 + j * n + 1);
-        expected_solution(i, j) = i + 1;
+        rhs(j, i) = (i + 1) * (n * (n + 1) / 2 + j * n + 1);
+        expected_solution(j, i) = i + 1;
       }
   }
   int n;
@@ -37,7 +34,7 @@ public:
   Eigen::MatrixXd rhs;
   Eigen::MatrixXd expected_solution;
   void action(const CVecRef<Rvector>& parameters, const VecRef<Rvector>& action) const override {
-    for (int v = 0; v < parameters.size(); ++v) {
+    for (int v = 0; v <parameters.size(); ++v) {
       Eigen::Map<Eigen::VectorXd>(action[v].get().data(), n) =
           matrix * Eigen::Map<const Eigen::VectorXd>(parameters[v].get().data(), n);
 //      std::cout << "parameters: " << Eigen::Map<const Eigen::VectorXd>(parameters[v].get().data(), n) << std::endl;
@@ -48,6 +45,14 @@ public:
     for (int i = 0; i < n; ++i)
       d[i] = matrix(i, i);
     return true;
+  }
+
+  bool RHS(Rvector& r, unsigned int instance) const override {
+    if (instance < rhs.cols()) {
+      std::copy(rhs.col(instance).begin(), rhs.col(instance).end(), r.begin());
+      return true;
+    } else
+      return false;
   }
 };
 
@@ -65,10 +70,11 @@ TEST(LinearEquation, symmetric_system) {
       std::cout << "n=" << n << ", nroot=" << nroot << std::endl;
       Problem_ problem(n, nroot);
 //      std::cout << "rhs\n" << problem.rhs << std::endl;
-//      std::cout << "recreated rhs\n" << problem.expected_solution * problem.matrix << std::endl;
-      EXPECT_EQ(problem.expected_solution * problem.matrix, problem.rhs);
+//      std::cout << "expected_solution\n" << problem.expected_solution << std::endl;
+//      std::cout << "recreated rhs\n" <<  problem.matrix*problem.expected_solution  << std::endl;
+      ASSERT_EQ(  problem.matrix*problem.expected_solution, problem.rhs);
       auto solver = molpro::linalg::itsolv::create_LinearEquations<Rvector, Qvector, Pvector>();
-      for (int root = 0; root < nroot; ++root) {
+      for (int root = 0; false and root < nroot; ++root) {
         std::vector<double> r(problem.n);
         for (int i = 0; i < problem.n; ++i)
           r[i] = problem.rhs(root, i);
@@ -88,7 +94,7 @@ TEST(LinearEquation, symmetric_system) {
       for (int root = 0; root < nroot; ++root) {
 //        std::cout << "Solution\n" << Eigen::Map<const Eigen::VectorXd>(parameters[root].data(), n) << std::endl;
         for (int i = 0; i < n; ++i)
-          EXPECT_NEAR(parameters[root][i], problem.expected_solution(root, i), 1e-5);
+          EXPECT_NEAR(parameters[root][i], problem.expected_solution(i, root), 1e-5);
       }
       //            auto options = set_options(solver, mat.rows(), nroot, 0, hermitian, augmented_hessian);
 #ifndef NOFORTRAN

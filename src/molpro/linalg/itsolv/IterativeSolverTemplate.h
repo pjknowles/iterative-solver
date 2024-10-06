@@ -334,6 +334,7 @@ public:
     std::unique_ptr<Q> diagonals;
     if (use_diagonals)
       diagonals.reset(new Q{m_handlers->qr().copy(actions.at(0))});
+//    std::cout << "solve() generate_initial_guess "<<generate_initial_guess<<", roots "<<this->n_roots()<<std::endl;
     if (generate_initial_guess) {
       if (not use_diagonals)
         throw std::runtime_error("Default initial guess requested, but diagonal elements are not available");

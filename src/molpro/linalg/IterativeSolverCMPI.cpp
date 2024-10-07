@@ -531,7 +531,7 @@ extern "C" int64_t IterativeSolver_mpicomm_global() { return (int64_t)MPI_Comm_c
 /*!
  * @brief C binding of mpi::comm_self(), suitable for calling from Fortran
  */
-extern "C" int64_t IterativeSolver_mpi_comm_self() { return (int64_t)MPI_Comm_c2f(molpro::mpi::comm_self()); }
+extern "C" int64_t IterativeSolver_mpicomm_self() { return (int64_t)MPI_Comm_c2f(molpro::mpi::comm_self()); }
 
 /*!
  * @brief C binding of mpi::size_global(), suitable for calling from Fortran

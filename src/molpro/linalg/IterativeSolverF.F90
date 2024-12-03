@@ -119,7 +119,7 @@ CONTAINS
       guess = generate_initial_guess
     end if
     call Iterative_Solver_Solve(parameters, actions, problem, guess, max_iter, max_p)
-    call Iterative_Solver_Solution([(i, i = 1, min(ubound(parameters, 2) - lbound(parameters, 2) + 1, m_nroot))], &
+    call Iterative_Solver_Solution([(i, i = 1, min(ubound(parameters, 2) - lbound(parameters, 2) + 1, int(m_nroot)))], &
         parameters, actions, .true.)
   END SUBROUTINE Solve_Linear_Eigensystem
 
@@ -153,10 +153,10 @@ CONTAINS
     integer :: i, nq
     nq = ubound(parameters, 1) - lbound(parameters, 1) + 1
     m_nroot = 0
-    call Iterative_Solver_Linear_Equations_Initialize(nq, m_nroot, rhs, augmented_hessian, thresh, thresh_value, &
+    call Iterative_Solver_Linear_Equations_Initialize(nq, int(m_nroot), rhs, augmented_hessian, thresh, thresh_value, &
         hermitian, verbosity, pname, mpicomm, algorithm, range, options)
     call c_f_pointer(c_loc(parameters), buffer_1, [nq])
-    do while (problem%RHS(buffer_1, m_nroot + 1, range = Iterative_Solver_Range()))
+    do while (problem%RHS(buffer_1, int(m_nroot) + 1, range = Iterative_Solver_Range()))
       m_nroot = m_nroot + 1
       call Iterative_Solver_Add_Equations(buffer_1)
     end do

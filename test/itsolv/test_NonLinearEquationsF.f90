@@ -16,7 +16,7 @@ function test_OptimizeF(matrix, n) BIND(C)
 
   test_OptimizeF = 1
   write (6, *) 'test_OptimizeF '
-  call Iterative_Solver_Optimize_Initialize(n, verbosity = 2, &
+  call Iterative_Solver_Optimize_Initialize(int(n), verbosity = 2, &
       thresh = thresh, mpicomm = mpicomm_compute())
   nwork = 1
   c = 0

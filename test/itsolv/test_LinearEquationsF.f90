@@ -51,7 +51,7 @@ function test_LinearEquationsF(matrix, rhs, n, np, nroot, hermitian, augmented_h
   !  //    options->svd_thresh = 1.0e-10;
   !  options->max_size_qspace = std::max(std::min(n, 6 * nroot), std::min(n, std::min(1000, 6 * nroot)) - np);
   !  options->reset_D = 8;
-  call Iterative_Solver_Linear_Equations_Initialize(n, nroot, rhs, augmented_hessian = augmented_hessian, &
+  call Iterative_Solver_Linear_Equations_Initialize(int(n), int(nroot), rhs, augmented_hessian = augmented_hessian, &
       hermitian = hermitian.ne.0, &
       thresh = thresh, thresh_value = 1d50)
   nwork = nroot

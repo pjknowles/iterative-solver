@@ -15,9 +15,9 @@ conda install -c conda-forge -y --file $python_dir/requirements.txt $extra_requi
 cmake_build_dir=$python_dir/cmake-build-$(uname)-$(uname -m)
 mkdir -p $cmake_build_dir
 
+if [ $(uname) = Linux -a $(uname -m) = x86_64 ]; then  export CXXFLAGS="-fPIC -fpermissive" ; else export CXXFLAGS=-fPIC; fi
 cmake \
   -DCMAKE_INSTALL_PREFIX="$CONDA_PREFIX" \
-  -DCMAKE_CXX_FLAGS=-fPIC \
   -DCMAKE_BUILD_TYPE=Release \
   -DDEPENDENCYMANAGER_FETCHCONTENT=ON \
   -DLINEARALGEBRA_ARRAY_HDF5=OFF -DLINEARALGEBRA_ARRAY_GA=OFF \

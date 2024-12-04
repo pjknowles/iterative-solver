@@ -103,7 +103,7 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
     !< One gives a summary at the end; two gives a single progress-report line each iteration.
     CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
-    INTEGER, INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
+    INTEGER(KIND=mpicomm_kind), INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
     CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
     INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
     CHARACTER(*), INTENT(in), OPTIONAL :: options !< key1=value1, key2=value1,... to specify arbitrary options
@@ -143,7 +143,7 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
     !< One gives a summary at the end; two gives a single progress-report line each iteration.
     CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
-    INTEGER, INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
+    INTEGER(KIND=mpicomm_kind), INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
     CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
     INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
     CHARACTER(*), INTENT(in), OPTIONAL :: options !< key1=value1, key2=value1,... to specify arbitrary options
@@ -186,7 +186,7 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
     !< One gives a summary at the end; two gives a single progress-report line each iteration.
     CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
-    INTEGER, INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
+    INTEGER(KIND=mpicomm_kind), INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
     CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
     INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
     CHARACTER(*), INTENT(in), OPTIONAL :: options !< key1=value1, key2=value1,... to specify arbitrary options
@@ -224,7 +224,7 @@ CONTAINS
     !< One gives a summary at the end; two gives a single progress-report line each iteration.
     LOGICAL, INTENT(in), OPTIONAL :: minimize !< whether to minimize (default) or maximize
     CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
-    INTEGER, INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
+    INTEGER(KIND=mpicomm_kind), INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
     CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
     INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
     CHARACTER(*), INTENT(in), OPTIONAL :: options !< key1=value1, key2=value1,... to specify arbitrary options
@@ -362,7 +362,7 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
     !< One gives a single progress-report line each iteration.
     CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
-    INTEGER, INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
+    INTEGER(KIND=mpicomm_kind), INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
     CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm
     INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
     CHARACTER(*), INTENT(in), OPTIONAL :: options !< key1=value1, key2=value1,... to specify arbitrary options
@@ -466,7 +466,7 @@ CONTAINS
     !< One gives a single progress-report line each iteration.
     LOGICAL, INTENT(in), OPTIONAL :: minimize !< whether to minimize (default) or maximize
     CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
-    INTEGER, INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
+    INTEGER(KIND=mpicomm_kind), INTENT(in), OPTIONAL :: mpicomm !< MPI communicator
     CHARACTER(*), INTENT(in), OPTIONAL :: algorithm !< keyword specifying optimization algorithm
     INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
     DOUBLE PRECISION, INTENT(in), OPTIONAL :: thresh_value !< convergence threshold for function value
@@ -564,7 +564,7 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: verbosity !< how much to print. Default is zero, which prints nothing except errors.
     !< One gives a single progress-report line each iteration.
     CHARACTER(len = *), INTENT(in), OPTIONAL :: pname !< Profiler object name
-    INTEGER, INTENT(in), OPTIONAL :: mpicomm !< Profiler communicator
+    INTEGER(KIND=mpicomm_kind), INTENT(in), OPTIONAL :: mpicomm !< Profiler communicator
     CHARACTER(len = *), INTENT(in), OPTIONAL :: algorithm !< algorithm, eg DIIS
     INTEGER, DIMENSION(2), INTENT(inout), OPTIONAL :: range !< distributed array local range start and end indices
     CHARACTER(*), INTENT(in), OPTIONAL :: options !< key1=value1, key2=value1,... to specify arbitrary options

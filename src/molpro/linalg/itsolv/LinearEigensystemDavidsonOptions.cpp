@@ -14,7 +14,6 @@ LinearEigensystemDavidsonOptions::LinearEigensystemDavidsonOptions(const std::ma
   }
   if (auto key = facet.toupper("max_size_qspace"); opt_upper.count(key)) {
     max_size_qspace = std::stoi(opt_upper.at(key));
-    std::cout << "setting max_size_qspace="<<max_size_qspace.value()<<std::endl;
   }
   if (auto key = facet.toupper("norm_thresh"); opt_upper.count(key)) {
     norm_thresh = std::stod(opt_upper.at(key));

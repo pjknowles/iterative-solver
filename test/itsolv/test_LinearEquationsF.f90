@@ -65,7 +65,6 @@ function test_LinearEquationsF(matrix, rhs, n, np, nroot, hermitian, augmented_h
   !  do i = 1, nroot
   !    write (6, *) c(:, i)
   !  end do
-  call flush(6)
   do i = 1, 1000
     g = matmul(matrix, c)
     nwork = Iterative_Solver_Add_Vector(c, g);
@@ -101,7 +100,6 @@ function test_LinearEquationsF(matrix, rhs, n, np, nroot, hermitian, augmented_h
   end if
   call Iterative_Solver_Finalize
   call simplified_solver
-  call flush(6)
   return
 contains
   subroutine simplified_solver

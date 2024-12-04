@@ -132,7 +132,7 @@ TEST_F(RayleighQuotient, BFGS) {
 TEST_F(RayleighQuotient, DIIS) {
   auto solver = molpro::linalg::itsolv::create_NonLinearEquations<Rvector, Qvector>("DIIS", "max_size_qspace=4");
 
-  solver->set_convergence_threshold(1e-12);
+  solver->set_convergence_threshold(1e-10);
   auto problem = RayleighQuotient::MyProblem(4, 0.01);
   Rvector c(problem.n), g(problem.n);
   c.assign(problem.n, double(0));

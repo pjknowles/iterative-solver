@@ -28,6 +28,12 @@ jobs:
 #    defaults:
 #      run:
 #        shell: bash -el {0}
+    strategy:
+      matrix:
+        cmake-options:
+          - ""
+          - "-DFORTRAN_INTEGER8=OFF"
+          - "-DCMAKE_Fortran_COMPILER=/opt/conda/bin/gfortran -DCMAKE_Fortran_FLAGS=-std=f2023"
 
     steps:
     - uses: actions/checkout@v3
@@ -42,15 +48,15 @@ jobs:
 
     - name: Configure CMake
       if: steps.check_configuration.outputs.files_exists == 'true'
-      run: PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.CMAKE_BUILD_TYPE}} # -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_CXX_FLAGS=-fpermissive -DCMAKE_BUILD_TYPE=${{env.CMAKE_BUILD_TYPE}} ${{ matrix.cmake-options }} # -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
     - name: Build
       if: steps.check_configuration.outputs.files_exists == 'true'
-      run: PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin cmake --build ${{github.workspace}}/build --config ${{env.CMAKE_BUILD_TYPE}}
+      run: cmake --build ${{github.workspace}}/build --config ${{env.CMAKE_BUILD_TYPE}}
 
     - name: Test
       if: steps.check_configuration.outputs.files_exists == 'true'
-      run: cd ${{github.workspace}}/build && PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin ctest -C ${{env.CMAKE_BUILD_TYPE}} -VV || ctest -C ${{env.CMAKE_BUILD_TYPE}} --rerun-failed --output-on-failure -VV
+      run: cd ${{github.workspace}}/build && ctest -C ${{env.CMAKE_BUILD_TYPE}} -VV || ctest -C ${{env.CMAKE_BUILD_TYPE}} --rerun-failed --output-on-failure -VV
 
     - name: Build doxygen
       run: cmake --build ${{github.workspace}}/build --target DependencyManagerDocs

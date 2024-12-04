@@ -166,7 +166,7 @@ CONTAINS
       guess = generate_initial_guess
     end if
     call Iterative_Solver_Solve(parameters, actions, problem, guess, max_iter, max_p)
-    call Iterative_Solver_Solution([(i, i = 1, min(ubound(parameters, 2) - lbound(parameters, 2) + 1, m_nroot))], &
+    call Iterative_Solver_Solution([(i, i = 1, min(ubound(parameters, 2) - lbound(parameters, 2) + 1, int(m_nroot)))], &
         parameters, actions, .true.)
   END SUBROUTINE Solve_Linear_Equations
 
@@ -202,7 +202,7 @@ CONTAINS
       guess = generate_initial_guess
     end if
     call Iterative_Solver_Solve(parameters, actions, problem, guess, max_iter)
-    call Iterative_Solver_Solution([(i, i = 1, min(ubound(parameters, 2) - lbound(parameters, 2) + 1, m_nroot))], parameters, &
+    call Iterative_Solver_Solution([(i, i = 1, min(ubound(parameters, 2) - lbound(parameters, 2) + 1, int(m_nroot)))], parameters, &
      actions, .true.)
   END SUBROUTINE Solve_Nonlinear_Equations
 
@@ -240,7 +240,7 @@ CONTAINS
       guess = generate_initial_guess
     end if
     call Iterative_Solver_Solve(parameters, actions, problem, guess, max_iter)
-    call Iterative_Solver_Solution([(i, i = 1, min(ubound(parameters, 2) - lbound(parameters, 2) + 1, m_nroot))], &
+    call Iterative_Solver_Solution([(i, i = 1, min(ubound(parameters, 2) - lbound(parameters, 2) + 1, int(m_nroot)))], &
      parameters, actions, .true.)
   END SUBROUTINE Solve_Optimization
 
@@ -1091,7 +1091,7 @@ end select
     if (IterativeSolverNonLinear() .eq.0 .and. present(max_p) .and. problem%p_space%size.le.0) then
     if (max_p.ge.m_nroot) then
     !      call problem%p_space%add_simple([(i,i=1,min(max_p,m_nq))])
-    do i= 1, min(max_p, m_nq)
+    do i= 1, min(max_p, int(m_nq))
         loc = minloc(actions_(:, 1))
         call problem%p_space%add_simple([loc])
         actions_(loc, 1) = 1d50

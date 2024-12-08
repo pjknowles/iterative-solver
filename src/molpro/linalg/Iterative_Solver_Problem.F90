@@ -55,7 +55,7 @@ contains
       do i = lbound(action, 2), ubound(action, 2)
         if (present(shift)) then
           do j = range(1) + 1, range(2)
-            action(j, i) = action(j, i) / (diagonals(j) + shift(i) + small)
+            action(j, i) = action(j, i) / (diagonals(j) - shift(i) + small)
           end do
         else
           do j = range(1) + 1, range(2)

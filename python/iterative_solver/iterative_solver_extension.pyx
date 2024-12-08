@@ -189,7 +189,10 @@ class IterativeSolver:
                     IterativeSolverWorkingSetEigenvalues(&ev_[0])
                     if use_diagonals:
                         IterativeSolverDiagonals(&parameters_[0])
-                        problem.precondition(actions[:nwork,:], shift=ev[:nwork], diagonals=parameters.reshape([parameters.size])[:parameters.shape[-1]])
+                        if type(self) == LinearEigensystem:
+                            problem.precondition(actions[:nwork,:], shift=ev[:nwork], diagonals=parameters.reshape([parameters.size])[:parameters.shape[-1]])
+                        else:
+                            problem.precondition(actions[:nwork,:], diagonals=parameters.reshape([parameters.size])[:parameters.shape[-1]])
                     else:
                         problem.precondition(actions[:nwork,:], shift=ev[:nwork])
                 nwork = self.end_iteration(parameters,actions)

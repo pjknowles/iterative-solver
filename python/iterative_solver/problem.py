@@ -77,7 +77,7 @@ class Problem:
         if diagonals is not None:
             if shift is not None:
                 for j in range(residual.size):
-                    residual[j] = residual[j] / (diagonals[j] + shift + small)
+                    residual[j] = residual[j] / (diagonals[j] - shift + small)
             else:
                 for j in range(residual.size):
                     residual[j] = residual[j] / (diagonals[j] + small)

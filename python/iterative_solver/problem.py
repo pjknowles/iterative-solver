@@ -71,7 +71,8 @@ class Problem:
         small = 1e-14
         if len(residual.shape) > 1:
             for i in range(residual.shape[0]):
-                assert type(shift) == np.ndarray
+                if shift is not None:
+                    assert type(shift) == np.ndarray
                 self.precondition(residual[i, :], float(shift[i]) if shift is not None else None, diagonals)
             return
         if diagonals is not None:

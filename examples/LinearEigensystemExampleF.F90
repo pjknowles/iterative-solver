@@ -25,6 +25,7 @@ PROGRAM Linear_Eigensystem_Example
       call solve(m, nP, max_p)
     end do
   end do
+  DEALLOCATE(m)
   CALL MPI_Finalize
 CONTAINS
   subroutine solve(m, nP, max_P)

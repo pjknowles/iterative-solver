@@ -173,6 +173,9 @@ public:
       auto& xdata = xspace->data;
       const auto& H = xdata[subspace::EqnData::H];
       BFGS_update_2(z, xspace, H);
+      auto len_z = std::sqrt(this->m_handlers->rr().dot(z,z));
+      if (len_z > this->m_quasinewton_maximum_step)
+        this->m_handlers->rr().scal(this->m_quasinewton_maximum_step / len_z, z);
       this->m_handlers->rr().axpy(-1, z, parameters.front());
     } else {
       this->m_stats->line_search_steps++;
@@ -223,6 +226,8 @@ public:
         m_linesearch_tolerance = opt.linesearch_tolerance.value();
       if (opt.linesearch_grow_factor)
         m_linesearch_grow_factor = opt.linesearch_grow_factor.value();
+      if (opt.quasinewton_maximum_step)
+        m_quasinewton_maximum_step = opt.quasinewton_maximum_step.value();
     }
   }
 
@@ -235,6 +240,7 @@ public:
     opt->Wolfe_2 = m_Wolfe_2;
     opt->linesearch_tolerance = m_linesearch_tolerance;
     opt->linesearch_grow_factor = m_linesearch_grow_factor;
+    opt->quasinewton_maximum_step = m_quasinewton_maximum_step;
     return opt;
   }
 
@@ -263,6 +269,7 @@ protected:
                                       //!< point, don't bother taking it, but proceed to Quasi-Newton instead
   double m_linesearch_grow_factor =
       2; //!< If the predicted line search step is extrapolation, limit the step to this factor times the current step
+  double m_quasinewton_maximum_step = std::numeric_limits<double>::max();
 };
 
 } // namespace molpro::linalg::itsolv

@@ -19,6 +19,7 @@ struct OptimizeBFGSOptions : public OptimizeOptions {
       linesearch_tolerance; //!< If the predicted line search is within tolerance of 1, don't bother taking it
   std::optional<double> linesearch_grow_factor; //!< If the predicted line search step is extrapolation, limit the step
                                                 //!< to this factor times the current step
+  std::optional<double> quasinewton_maximum_step; //!< Quasi-Newton steps with an L-2 norm larger than this will be scaled down to this value
 };
 
 } // namespace molpro::linalg::itsolv

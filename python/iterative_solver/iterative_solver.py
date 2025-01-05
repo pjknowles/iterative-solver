@@ -1,5 +1,6 @@
 from .problem import Problem
 from .iterative_solver_extension import Optimize, LinearEigensystem, LinearEquations, NonLinearEquations
+from .natural_coordinate import NaturalCoordinateProblem
 
 
 def Solve_Linear_Eigensystem(parameters, actions, problem: Problem, nroot=1, generate_initial_guess=True,

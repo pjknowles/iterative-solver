@@ -38,10 +38,16 @@ class TestCase(unittest.TestCase):
                 diagonals[i] = self.matrix[i, i] - 0  # TODO underlying bug in that 1 is added to diagonals
             return True
 
+        def hessian(self, parameters):
+            expec = (parameters @ self.matrix @ parameters) / (parameters @ parameters)
+            hess = self.matrix[:, :] - expec * np.eye(self.size)[:, :]
+            return hess
+
         @property
         def eigenvalues(self):
             eigenvalues, eigenvectors = np.linalg.eigh(self.matrix)
             return eigenvalues
+
         @property
         def eigenvectors(self):
             eigenvalues, eigenvectors = np.linalg.eigh(self.matrix)
@@ -56,6 +62,7 @@ class TestCase(unittest.TestCase):
                 return self.verbosity
             frame = frame.f_back
         return 0
+
     def test_problem(self):
         problem = TestCase.RayleighQuotient(4, 0.01)
         parameters = np.ones(problem.size) * 77
@@ -82,7 +89,7 @@ class TestCase(unittest.TestCase):
         # print('initial parameters', parameters)
         solver.solve(parameters, residual, problem)
         answer = solver.solution([0], parameters, residual)
-        parameters = parameters * problem.eigenvectors[0,0] / parameters[0]
+        parameters = parameters * problem.eigenvectors[0, 0] / parameters[0]
         # print('final parameters', parameters)
         # print('final function value', answer)
         # print('final residual', residual)
@@ -91,7 +98,7 @@ class TestCase(unittest.TestCase):
         self.assertAlmostEqual(answer, problem.eigenvalues[0])
         for i in range(problem.size):
             self.assertAlmostEqual(residual[i], 0.0)
-            self.assertAlmostEqual(parameters[i], problem.eigenvectors[i,0])
+            self.assertAlmostEqual(parameters[i], problem.eigenvectors[i, 0])
 
     def test_nonlinear_equations(self):
         problem = TestCase.RayleighQuotient(4, 0.01)
@@ -104,7 +111,7 @@ class TestCase(unittest.TestCase):
         # print('initial parameters', parameters)
         solver.solve(parameters, residual, problem)
         solver.solution([0], parameters, residual)
-        parameters = parameters * problem.eigenvectors[0,0] / parameters[0]
+        parameters = parameters * problem.eigenvectors[0, 0] / parameters[0]
         # print('final parameters', parameters)
         # print('final residual', residual)
         value = problem.residual(parameters, residual)
@@ -114,7 +121,7 @@ class TestCase(unittest.TestCase):
         self.assertAlmostEqual(value, problem.eigenvalues[0])
         for i in range(problem.size):
             self.assertAlmostEqual(residual[i], 0.0)
-            self.assertAlmostEqual(parameters[i], problem.eigenvectors[i,0])
+            self.assertAlmostEqual(parameters[i], problem.eigenvectors[i, 0])
 
     def test_diagonalize(self):
         problem = TestCase.RayleighQuotient(8, 0.1)
@@ -224,6 +231,31 @@ class TestCase(unittest.TestCase):
             for i in range(problem.size):
                 self.assertAlmostEqual(parameters[root, i], float(root + 1))
                 self.assertAlmostEqual(residual[root, i], 0.0)
+
+    def test_natural_coordinate_optimize(self):
+        problem = TestCase.RayleighQuotient(4, 0.01)
+        parameters = np.zeros(problem.size)
+        parameters[:] = 1.0
+        parameters[0] = 2.0
+        residual = np.zeros(problem.size)
+
+        natural_problem = iterative_solver.NaturalCoordinateProblem(problem, parameters)
+        solver = iterative_solver.Optimize(problem.size, verbosity=self.verbosity)
+        self.assertEqual(type(solver), iterative_solver.Optimize)
+        # print('initial parameters', parameters)
+        solver.solve(parameters, residual, natural_problem)
+        answer = solver.solution([0], parameters, residual)
+        base_parameters = natural_problem.base_coordinates(parameters)
+        parameters = base_parameters * problem.eigenvectors[0, 0] / base_parameters[0]
+        # print('final parameters', parameters)
+        # print('final function value', answer)
+        # print('final residual', residual)
+        # print('eigenvalues', problem.eigenvalues)
+        # print('eigenvectors', problem.eigenvectors)
+        self.assertAlmostEqual(answer, problem.eigenvalues[0])
+        for i in range(problem.size):
+            self.assertAlmostEqual(residual[i], 0.0)
+            self.assertAlmostEqual(parameters[i], problem.eigenvectors[i, 0])
 
 
 if __name__ == '__main__':

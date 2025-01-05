@@ -235,14 +235,12 @@ class TestCase(unittest.TestCase):
     def test_natural_coordinate_optimize(self):
         problem = TestCase.RayleighQuotient(4, 0.01)
         parameters = np.zeros(problem.size)
-        parameters[:] = 1.0
-        parameters[0] = 2.0
+        parameters[:] = 10
         residual = np.zeros(problem.size)
 
         natural_problem = iterative_solver.NaturalCoordinateProblem(problem, parameters)
         solver = iterative_solver.Optimize(problem.size, verbosity=self.verbosity)
         self.assertEqual(type(solver), iterative_solver.Optimize)
-        # print('initial parameters', parameters)
         solver.solve(parameters, residual, natural_problem)
         answer = solver.solution([0], parameters, residual)
         base_parameters = natural_problem.base_coordinates(parameters)

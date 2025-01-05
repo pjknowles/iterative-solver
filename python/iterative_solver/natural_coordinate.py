@@ -35,21 +35,21 @@ class NaturalCoordinateProblem(iterative_solver.Problem):
         self.reset(problem, initial_parameters)
 
     def reset(self, problem: iterative_solver.Problem, initial_parameters: np.ndarray):
+        self.first = True
         self.problem = problem
         self.last_base_coordinates = np.array(initial_parameters, dtype=np.float64)
-        self.last_natural_coordinates = np.zeros_like(self.last_base_coordinates)
-        hessian = self.problem.hessian(self.last_base_coordinates)
-        hessian_eigensolution = aligned_eigensolution(hessian)
-        self.last_hessian_eigenvectors = np.copy(hessian_eigensolution[1])
-        self.hessian_diagonal = np.copy(hessian_eigensolution[0])
         if hasattr(self, 'history'):
             self.history = []
 
     def residual(self, natural_coordinates, residual):
-        base_coordinates_ = self.base_coordinates(natural_coordinates, refinements=self.coordinate_refinements)
+        if self.first:
+            base_coordinates_ = self.last_base_coordinates
+        else:
+            base_coordinates_ = self.base_coordinates(natural_coordinates, refinements=self.coordinate_refinements)
         hessian = self.problem.hessian(base_coordinates_)
         hessian_eigensolution = aligned_eigensolution(hessian,
-                                                      reference_eigenvectors=self.last_hessian_eigenvectors)
+                                                      reference_eigenvectors=None if self.first else self.last_hessian_eigenvectors)
+        self.first = False
 
         base_coordinate_gradient = np.zeros_like(base_coordinates_)
         value = self.problem.residual(base_coordinates_, base_coordinate_gradient)

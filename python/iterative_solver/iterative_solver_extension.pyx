@@ -8,9 +8,6 @@ cimport numpy as np
 m_mpicomm_compute = None
 
 cdef extern from "../src/molpro/linalg/IterativeSolverC.h":
-    ctypedef void (*cheesefunc)(char *name, void *user_data)
-    void find_cheeses(cheesefunc user_func, void *user_data)
-
     ctypedef void (*apply_on_p_t)(const double*, double*, const size_t, const size_t*)
     size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_t* offsets, const size_t* indices,
                              const double* coefficients, const double* pp, double* parameters, double* action,
@@ -133,6 +130,7 @@ class IterativeSolver:
             parameters_reshape = parameters.reshape([self.nroot, self.n])
             actions_reshape = actions.reshape([self.nroot, self.n])
             return self.solve(parameters_reshape, actions_reshape, problem, generate_initial_guess, max_iter)
+        self.iterations = 0
         nbuffer = parameters.shape[0] if len(parameters.shape) > 1 else 1
         cdef double[::1] parameters_ = parameters.reshape([parameters.shape[-1]*nbuffer])
         cdef double[::1] actions_ = actions.reshape([parameters.shape[-1]*nbuffer])
@@ -170,14 +168,14 @@ class IterativeSolver:
 
 
         nwork = nbuffer
-        for iter in range(IterativeSolverMaxIter()):
+        for self.iterations in range(IterativeSolverMaxIter()):
             if IterativeSolverNonLinear() > 0:
                 value = problem.residual(parameters.reshape([parameters.shape[-1]]), actions.reshape([parameters.shape[-1]]))
                 if type(self) == Optimize:
                     nwork = self.add_value(value, parameters, actions)
                 else:
                     nwork = self.add_vector(parameters[0,:], actions[0,:])
-            elif iter == 0 and problem.p_space.size> 0:
+            elif self.iterations == 0 and problem.p_space.size> 0:
                self.problem = problem # TODO ? needed
                pp=problem.pp_action_matrix()
                nwork = self.add_P(pp,parameters,actions)
@@ -199,14 +197,14 @@ class IterativeSolver:
             IterativeSolverErrors(&errors_[0])
             self.value = IterativeSolverValue()
             if IterativeSolverHasValues() != 0:
-                reported = problem.report(iter+1 if nwork > 0 else 0, verbosity, errors, value=value)
+                reported = problem.report(self.iterations+1 if nwork > 0 else 0, verbosity, errors, value=value)
             elif IterativeSolverHasEigenvalues() != 0:
                 IterativeSolverEigenvalues(&ev_[0])
-                reported = problem.report(iter+1 if nwork > 0 else 0, verbosity, errors, eigenvalues=ev[:self.nroot])
+                reported = problem.report(self.iterations+1 if nwork > 0 else 0, verbosity, errors, eigenvalues=ev[:self.nroot])
             else:
-                reported = problem.report(iter+1 if nwork > 0 else 0, verbosity, errors)
+                reported = problem.report(self.iterations+1 if nwork > 0 else 0, verbosity, errors)
             if not reported and verbosity >=2:
-                print('Iteration', iter,'log10(|residual|)=', np.log10(errors))
+                print('Iteration', self.iterations,'log10(|residual|)=', np.log10(errors))
                 if IterativeSolverHasValues() != 0:
                     print('Objective function value', value)
             if nwork < 1: break

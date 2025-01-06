@@ -26,6 +26,7 @@ MODULE Iterative_Solver
   INTEGER, PUBLIC, PARAMETER :: mpicomm_kind = KIND(c_int64_t)
   PUBLIC :: mpicomm_global, mpicomm_self, mpicomm_compute, mpi_init, mpi_finalize, mpi_rank_global, mpi_size_global
   PUBLIC :: set_mpicomm_compute
+  INTEGER, PUBLIC :: Iterative_Solver_Iterations
   PRIVATE
   INTEGER(kind = mpicomm_kind), SAVE :: s_mpicomm_compute = -9999999
   INTEGER(c_size_t) :: m_nroot
@@ -1041,7 +1042,7 @@ CONTAINS
     logical :: use_diagonals
     double precision, dimension(:, :), pointer :: parameters_, actions_
     double precision :: value
-    integer :: nq, nbuffer, nwork, iter
+    integer :: nq, nbuffer, nwork
     INTERFACE
       FUNCTION IterativeSolverHasValues() BIND(C, name = 'IterativeSolverHasValues')
         use iso_c_binding
@@ -1111,7 +1112,7 @@ CONTAINS
       end do
     end if
     nwork = nbuffer
-    do iter = 1, IterativeSolverMaxIter()
+    do Iterative_Solver_Iterations = 1, IterativeSolverMaxIter()
       if (IterativeSolverNonLinear().gt.0) then
         value = problem%residual(parameters_, actions_, Iterative_Solver_Range())
         if (IterativeSolverHasValues().gt.0) then
@@ -1119,7 +1120,7 @@ CONTAINS
         else
           nwork = Iterative_Solver_Add_Vector(parameters_, actions_)
         end if
-      else if (iter.eq.1 .and. problem%p_space%size.gt.0) then
+      else if (Iterative_Solver_Iterations.eq.1 .and. problem%p_space%size.gt.0) then
         current_problem => problem
         nwork = Iterative_Solver_Add_P(problem%p_space%size, problem%p_space%offsets, problem%p_space%indices, &
             problem%p_space%coefficients, problem%pp_action_matrix(), parameters_, actions_, &
@@ -1148,14 +1149,14 @@ CONTAINS
       end do
       if (nwork.le.0) verbosity = verbosity + 1
       if (IterativeSolverHasValues().ne.0) then
-        reported = problem%report(iter, verbosity, Iterative_Solver_Errors(), value = Iterative_Solver_Value())
+        reported = problem%report(Iterative_Solver_Iterations, verbosity, Iterative_Solver_Errors(), value = Iterative_Solver_Value())
       else if (IterativeSolverHasEigenvalues().ne.0) then
-        reported = problem%report(iter, verbosity, Iterative_Solver_Errors(), eigenvalues = Iterative_Solver_Eigenvalues())
+        reported = problem%report(Iterative_Solver_Iterations, verbosity, Iterative_Solver_Errors(), eigenvalues = Iterative_Solver_Eigenvalues())
       else
-        reported = problem%report(iter, verbosity, Iterative_Solver_Errors())
+        reported = problem%report(Iterative_Solver_Iterations, verbosity, Iterative_Solver_Errors())
       end if
       if (.not.reported .and. verbosity .ge. 2) then
-        write (6, '(A,I3,1X,A,(T32,10F7.2))') 'Iteration', iter, 'log10(|residual|)=', log10(Iterative_Solver_Errors())
+        write (6, '(A,I3,1X,A,(T32,10F7.2))') 'Iteration', Iterative_Solver_Iterations, 'log10(|residual|)=', log10(Iterative_Solver_Errors())
         if (IterativeSolverHasValues().gt.0) write (6, *) 'Objective function value ', Iterative_Solver_Value()
       end if
       if (nwork.lt.1) exit

@@ -8,9 +8,6 @@ cimport numpy as np
 m_mpicomm_compute = None
 
 cdef extern from "../src/molpro/linalg/IterativeSolverC.h":
-    ctypedef void (*cheesefunc)(char *name, void *user_data)
-    void find_cheeses(cheesefunc user_func, void *user_data)
-
     ctypedef void (*apply_on_p_t)(const double*, double*, const size_t, const size_t*)
     size_t IterativeSolverAddP(size_t buffer_size, size_t nP, const size_t* offsets, const size_t* indices,
                              const double* coefficients, const double* pp, double* parameters, double* action,

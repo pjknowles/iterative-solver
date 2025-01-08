@@ -249,6 +249,14 @@ extern "C" void IterativeSolverNonLinearEquationsInitialize(size_t n, size_t* ra
   // instance.solver->m_verbosity = verbosity;
   instance.solver->set_verbosity(verbosity);
   std::tie(*range_begin, *range_end) = DistrArrayDefaultRange();
+  molpro::linalg::itsolv::NonLinearEquationsDIIS<Rvector, Qvector, Pvector>* solver =
+      dynamic_cast<molpro::linalg::itsolv::NonLinearEquationsDIIS<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  solver->logger->max_trace_level =
+     verbosity > 3 ? molpro::linalg::itsolv::Logger::Info
+                   : (verbosity > 2 ? molpro::linalg::itsolv::Logger::Trace : molpro::linalg::itsolv::Logger::None);
+  solver->logger->max_warn_level =
+      verbosity > 1 ? molpro::linalg::itsolv::Logger::Warn : molpro::linalg::itsolv::Logger::Error;
+  solver->logger->data_dump = (verbosity > 0);
 }
 
 extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin, size_t* range_end, double thresh,
@@ -267,6 +275,15 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
   instance.solver->set_convergence_threshold(thresh);
   instance.solver->set_convergence_threshold_value(thresh_value);
   instance.solver->set_verbosity(verbosity);
+  molpro::linalg::itsolv::OptimizeBFGS<Rvector, Qvector, Pvector>* solver =
+      dynamic_cast<molpro::linalg::itsolv::OptimizeBFGS<Rvector, Qvector, Pvector>*>(instance.solver.get());
+  solver->logger->max_trace_level =
+     verbosity > 3 ? molpro::linalg::itsolv::Logger::Info
+                   : (verbosity > 2 ? molpro::linalg::itsolv::Logger::Trace : molpro::linalg::itsolv::Logger::None);
+  solver->logger->max_warn_level =
+      verbosity > 1 ? molpro::linalg::itsolv::Logger::Warn : molpro::linalg::itsolv::Logger::Error;
+  solver->logger->data_dump = (verbosity > 0);
+
   instance.has_values = true;
   std::tie(*range_begin, *range_end) = DistrArrayDefaultRange();
 }

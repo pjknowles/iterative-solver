@@ -1149,14 +1149,17 @@ CONTAINS
       end do
       if (nwork.le.0) verbosity = verbosity + 1
       if (IterativeSolverHasValues().ne.0) then
-        reported = problem%report(Iterative_Solver_Iterations, verbosity, Iterative_Solver_Errors(), value = Iterative_Solver_Value())
+        reported = problem%report(Iterative_Solver_Iterations, verbosity, Iterative_Solver_Errors(), &
+          value = Iterative_Solver_Value())
       else if (IterativeSolverHasEigenvalues().ne.0) then
-        reported = problem%report(Iterative_Solver_Iterations, verbosity, Iterative_Solver_Errors(), eigenvalues = Iterative_Solver_Eigenvalues())
+        reported = problem%report(Iterative_Solver_Iterations, verbosity, Iterative_Solver_Errors(), &
+          eigenvalues = Iterative_Solver_Eigenvalues())
       else
         reported = problem%report(Iterative_Solver_Iterations, verbosity, Iterative_Solver_Errors())
       end if
       if (.not.reported .and. verbosity .ge. 2) then
-        write (6, '(A,I3,1X,A,(T32,10F7.2))') 'Iteration', Iterative_Solver_Iterations, 'log10(|residual|)=', log10(Iterative_Solver_Errors())
+        write (6, '(A,I3,1X,A,(T32,10F7.2))') 'Iteration', Iterative_Solver_Iterations, &
+          'log10(|residual|)=', log10(Iterative_Solver_Errors())
         if (IterativeSolverHasValues().gt.0) write (6, *) 'Objective function value ', Iterative_Solver_Value()
       end if
       if (nwork.lt.1) exit

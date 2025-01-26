@@ -77,6 +77,7 @@ class NaturalCoordinateProblem(iterative_solver.Problem):
             self.last_natural_coordinates = np.copy(natural_coordinates)
             self.last_base_coordinates = np.copy(base_coordinates_)
             self.last_hessian_eigenvectors = np.copy(hessian_eigenvectors)
+        print('NaturalCoordinateProblem.residual()',natural_coordinates,value,residual)
         return value
 
     def base_coordinates(self, natural_coordinates, refinements=0):
@@ -103,6 +104,7 @@ class NaturalCoordinateProblem(iterative_solver.Problem):
                 self.precondition(residual[i, :], float(shift[i]) if shift is not None else None, diagonals)
             return
         residual[:] = residual[:] / self.hessian_diagonal[:]
+        print('NaturalCoordinateProblem.precondition()',self.hessian_diagonal,residual)
 
 
 def aligned_eigensolution(matrix, reference_eigenvectors=None):

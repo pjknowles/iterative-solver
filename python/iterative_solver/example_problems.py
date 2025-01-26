@@ -55,7 +55,7 @@ class Rosenbrock(Problem):
     Rosenbrock, H.H. (1960). An automatic method for finding the greatest or least value of a function. The Computer Journal. 3 (3): 175–184. doi:10.1093/comjnl/3.3.175
     """
 
-    def __init__(self, a=1, b=100):
+    def __init__(self, a=1, b=100, dimension=None):
         super().__init__()
         self.a = a
         self.b = b
@@ -69,6 +69,7 @@ class Rosenbrock(Problem):
             value += t1 * t1 + self.b * t2 * t2
             g[i] += -2 * t1 - 4 * self.b * t2 * x[i]
             g[i + 1] += 2 * self.b * t2
+        print('Rosenbrock.residual()',x,value,g)
         return value
 
     def diagonals(self, diag):
@@ -78,8 +79,8 @@ class Rosenbrock(Problem):
     def hessian(self, x):
         h = np.zeros([x.shape[0], x.shape[0]])
         for i in range(x.shape[0] - 1):
-            x0 = min(max(x[i], -10), 10)
-            x1 = min(max(x[i+1], -10), 10)
+            x0 = min(max(x[i], -1000), 1000)
+            x1 = min(max(x[i+1], -1000), 1000)
             h[i, i] += 1200 * x0 * x0 - 400 * x1 + 1
             h[i, i + 1] += -400 * x0
             h[i + 1, i] += - 400 * x0

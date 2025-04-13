@@ -8,8 +8,6 @@
 #endif
 #ifdef LINEARALGEBRA_ARRAY_GA
 #include <ga-mpi.h>
-#include <ga.h>
-#include <macdecls.h>
 #include <molpro/linalg/array/DistrArrayGA.h>
 #endif
 #include <molpro/Profiler.h>

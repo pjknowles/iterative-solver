@@ -7,7 +7,7 @@ MODULE Iterative_Solver
   PUBLIC :: Solve_Linear_Equations
   PUBLIC :: Solve_Nonlinear_Equations
   PUBLIC :: Solve_Optimization
-  PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize, Iterative_Solver_Finalize
+  PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize, Iterative_Solver_Finalize, Iterative_Solver_Finalize_All
   PUBLIC :: Iterative_Solver_Linear_Eigensystem_Initialize_Ranges
   PUBLIC :: Iterative_Solver_DIIS_Initialize, Iterative_Solver_Linear_Equations_Initialize
   PUBLIC :: Iterative_Solver_Optimize_Initialize
@@ -650,6 +650,16 @@ CONTAINS
     CALL IterativeSolverFinalize
   END SUBROUTINE Iterative_Solver_Finalize
 
+  !> \brief Terminate all instances of the iterative solver
+  SUBROUTINE Iterative_Solver_Finalize_All
+    INTERFACE
+      SUBROUTINE IterativeSolverFinalizeAll() BIND(C, name = 'IterativeSolverFinalizeAll')
+        USE iso_c_binding
+      END SUBROUTINE IterativeSolverFinalizeAll
+    END INTERFACE
+    CALL IterativeSolverFinalizeAll
+  END SUBROUTINE Iterative_Solver_Finalize_All
+
   FUNCTION Iterative_Solver_Range()
     INTERFACE
       SUBROUTINE IterativeSolverRange(range_begin, range_end) BIND(C, name = 'IterativeSolverRange')
@@ -878,10 +888,10 @@ CONTAINS
       FUNCTION Iterative_Solver_End_Iteration_Needed_C() &
           BIND(C, name = 'IterativeSolverEndIterationNeeded')
         USE iso_c_binding
-        INTEGER(c_size_t) Iterative_Solver_End_Iteration_Needed_C
+        INTEGER(c_int) Iterative_Solver_End_Iteration_Needed_C
       END FUNCTION Iterative_Solver_End_Iteration_Needed_C
     END INTERFACE
-    Iterative_Solver_End_Iteration_Needed = Iterative_Solver_End_Iteration_Needed_C() .NE. 0
+    Iterative_Solver_End_Iteration_Needed = Iterative_Solver_End_Iteration_Needed_C() .NE. 0_c_int
   END FUNCTION Iterative_Solver_End_Iteration_Needed
 
   !> \brief add P-space vectors to the expansion set, and return new solution.
@@ -1149,14 +1159,17 @@ CONTAINS
       end do
       if (nwork.le.0) verbosity = verbosity + 1
       if (IterativeSolverHasValues().ne.0) then
-        reported = problem%report(Iterative_Solver_Iterations, verbosity, Iterative_Solver_Errors(), value = Iterative_Solver_Value())
+        reported = problem%report(Iterative_Solver_Iterations, verbosity, Iterative_Solver_Errors(), &
+          value = Iterative_Solver_Value())
       else if (IterativeSolverHasEigenvalues().ne.0) then
-        reported = problem%report(Iterative_Solver_Iterations, verbosity, Iterative_Solver_Errors(), eigenvalues = Iterative_Solver_Eigenvalues())
+        reported = problem%report(Iterative_Solver_Iterations, verbosity, Iterative_Solver_Errors(), &
+          eigenvalues = Iterative_Solver_Eigenvalues())
       else
         reported = problem%report(Iterative_Solver_Iterations, verbosity, Iterative_Solver_Errors())
       end if
       if (.not.reported .and. verbosity .ge. 2) then
-        write (6, '(A,I3,1X,A,(T32,10F7.2))') 'Iteration', Iterative_Solver_Iterations, 'log10(|residual|)=', log10(Iterative_Solver_Errors())
+        write (6, '(A,I3,1X,A,(T32,10F7.2))') 'Iteration', Iterative_Solver_Iterations, &
+          'log10(|residual|)=', log10(Iterative_Solver_Errors())
         if (IterativeSolverHasValues().gt.0) write (6, *) 'Objective function value ', Iterative_Solver_Value()
       end if
       if (nwork.lt.1) exit

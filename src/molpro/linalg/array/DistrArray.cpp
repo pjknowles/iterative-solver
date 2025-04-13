@@ -192,7 +192,7 @@ std::map<size_t, double> select_max_dot_broadcast(size_t n, std::map<size_t, dou
     indices.resize(n_tot);
     values.resize(n_tot);
     MPI_Igather(MPI_IN_PLACE, n, MPI_UNSIGNED_LONG, &indices[0], n, MPI_UNSIGNED_LONG, 0, communicator, &requests[1]);
-    MPI_Igather(MPI_IN_PLACE, n, MPI_DOUBLE, &values[0], n, MPI_UNSIGNED_LONG, 0, communicator, &requests[2]);
+    MPI_Igather(MPI_IN_PLACE, n, MPI_DOUBLE, &values[0], n, MPI_DOUBLE, 0, communicator, &requests[2]);
     MPI_Waitall(3, requests, MPI_STATUSES_IGNORE);
     local_selection.clear();
     using pair_t = std::pair<double, size_t>;
@@ -318,7 +318,7 @@ std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> extrema(con
     MPI_Igather(&d, 1, MPI_INT, ndummy.data(), 1, MPI_INT, 0, x.communicator(), &requests[0]);
     MPI_Igather(MPI_IN_PLACE, n, MPI_UNSIGNED_LONG, indices_loc.data(), n, MPI_UNSIGNED_LONG, 0, x.communicator(),
                 &requests[1]);
-    MPI_Igather(MPI_IN_PLACE, n, MPI_DOUBLE, values_loc.data(), n, MPI_UNSIGNED_LONG, 0, x.communicator(),
+    MPI_Igather(MPI_IN_PLACE, n, MPI_DOUBLE, values_loc.data(), n, MPI_DOUBLE, 0, x.communicator(),
                 &requests[2]);
     MPI_Waitall(3, requests, MPI_STATUSES_IGNORE);
     auto tot_dummy = std::accumulate(begin(ndummy), end(ndummy), 0);

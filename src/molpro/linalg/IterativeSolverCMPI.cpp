@@ -290,6 +290,8 @@ extern "C" void IterativeSolverOptimizeInitialize(size_t n, size_t* range_begin,
 
 extern "C" void IterativeSolverFinalize() { instances.pop(); }
 
+extern "C" void IterativeSolverFinalizeAll() { for (; !instances.empty(); instances.pop()); }
+
 extern "C" void IterativeSolverAddEquation(double* rhs) {
   if (instances.empty())
     throw std::runtime_error("IterativeSolver not initialised properly");

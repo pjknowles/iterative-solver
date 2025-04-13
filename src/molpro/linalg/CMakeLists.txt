@@ -38,6 +38,7 @@ LibraryManager_LAPACK(${PROJECT_NAME} PUBLIC Intel10_64lp_seq Intel10_64lp)
 if (MKL_TYPE STREQUAL "lp64")
     message(STATUS "Eigen will use MKL")
     target_compile_definitions(${PROJECT_NAME} PUBLIC EIGEN_USE_MKL_ALL)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC EIGEN_MKL_NO_DIRECT_CALL)
 endif ()
 
 if (NOT TARGET Eigen3::Eigen)

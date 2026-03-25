@@ -390,6 +390,7 @@ public:
         if (nwork > 0) {
           if (use_diagonals) {
             m_handlers->rq().copy(parameters.at(0), *diagonals);
+            std::cout << "Use diagonal elements for preconditioning" << std::endl;
             problem.precondition(wrap(actions.begin(), actions.begin() + nwork), this->working_set_eigenvalues(),
                                  parameters.at(0));
           } else

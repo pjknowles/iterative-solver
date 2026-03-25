@@ -437,7 +437,7 @@ TEST_F(LinearEigensystemF, solution) {
 TEST_F(LinearEigensystemF, linearly_dependent_guess) {
   LinearEigensystemF::repeated_guess = true;
   LinearEigensystemF::verbosity = 99;
-  for (const size_t n : std::vector<size_t>{2}) {
+  for (const size_t n : std::vector<size_t>{2,3,4}) {
       load_matrix(n, "", (double)1);
       test_eigen(std::to_string(n));
   }

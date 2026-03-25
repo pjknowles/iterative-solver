@@ -19,6 +19,7 @@ void normalise(VecRef<R>& params, array::ArrayHandler<R, R>& handler, Logger& lo
   for (auto& p : params) {
     auto dot = handler.dot(p, p);
     dot = std::sqrt(std::abs(dot));
+    logger.msg("normalise dot = " + Logger::scientific(dot), Logger::Debug);
     if (dot > thresh) {
       handler.scal(1. / dot, p);
     } else {
@@ -533,6 +534,7 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
     xspace.update_dspace(wdparams, wdactions);
     auto eigenvalues_ref = subspace_solver.eigenvalues();
     subspace_solver.solve(xspace, solutions.rows());
+    logger.msg("eigenvalues of new D space = ", std::begin(eigenvalues_ref), std::end(eigenvalues_ref), Logger::Debug);
     auto eigval_error = std::vector<double>{};
     std::transform(std::begin(eigenvalues_ref), std::end(eigenvalues_ref), std::begin(subspace_solver.eigenvalues()),
                    std::back_inserter(eigval_error), [](auto& e_ref, auto& e_new) { return std::abs(e_ref - e_new); });

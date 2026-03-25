@@ -48,9 +48,15 @@ void precondition_default(const VecRef<T>& action, const std::vector<double>& sh
                           typename T::iterator* = nullptr // SFINAE
 ) {
   for (size_t k = 0; k < action.size(); k++) {
+  std::cout << "Preconditioning with default preconditioner, action vector:" << std::endl;
+    for (const auto& a : action[k].get()) std::cout << a << " ";
+    std::cout << std::endl;
     auto& a = action[k].get();
     std::transform(diagonals.begin(), diagonals.end(), a.begin(), a.begin(),
                    [shift, k](const auto& first, const auto& second) { return second / (first - shift[k] + 1e-15); });
+  std::cout << "Preconditioning with default preconditioner, result vector:" << std::endl;
+    for (const auto& a : action[k].get()) std::cout << a << " ";
+    std::cout << std::endl;
   }
 }
 

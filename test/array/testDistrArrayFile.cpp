@@ -197,7 +197,7 @@ TEST_F(DistrArrayFile_Fixture, gather) {
   int n = -2;
   std::generate(v.begin(), v.end(), [&n] { return n += 2; });
   a.put(left, right, &(*(v.cbegin() + left)));
-  std::vector<DistrArrayFile::index_type> x(size / mpi_size);
+  std::vector<DistrArrayFile::index_type> x(chunks[mpi_rank]);
   std::iota(x.begin(), x.end(), left);
   auto tmp = a.gather(x);
   for (size_t i = 0; i < x.size(); i++) {
@@ -213,9 +213,9 @@ TEST_F(DistrArrayFile_Fixture, scatter) {
   int n = -2;
   std::generate(w.begin(), w.end(), [&n] { return n += 2; });
   a.put(left, right, &(*(v.cbegin() + left)));
-  std::vector<DistrArrayFile::index_type> x(size / mpi_size);
+  std::vector<DistrArrayFile::index_type> x(chunks[mpi_rank]);
   std::iota(x.begin(), x.end(), left);
-  std::vector<double> tmp(size / mpi_size);
+  std::vector<double> tmp(chunks[mpi_rank]);
   for (size_t i = 0; i < x.size(); i++) {
     tmp[i] = w[i + left];
   }
@@ -232,9 +232,9 @@ TEST_F(DistrArrayFile_Fixture, scatter_acc) {
   int n = -2;
   std::generate(w.begin(), w.end(), [&n] { return n += 2; });
   a.put(left, right, &(*(v.cbegin() + left)));
-  std::vector<DistrArrayFile::index_type> x(size / mpi_size);
+  std::vector<DistrArrayFile::index_type> x(chunks[mpi_rank]);
   std::iota(x.begin(), x.end(), left);
-  std::vector<double> tmp(size / mpi_size);
+  std::vector<double> tmp(chunks[mpi_rank]);
   for (size_t i = 0; i < x.size(); i++) {
     tmp[i] = v[i + left];
   }

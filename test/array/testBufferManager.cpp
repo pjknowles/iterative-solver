@@ -120,12 +120,9 @@ using Implementations = ::testing::Types<
 //#ifdef LINEARALGEBRA_ARRAY_HDF5 // TODO implement when DistrArrayHDF5 can take the constructor pattern
 //    DistrArrayHDF5,
 //#endif
-// DistrArrayGA is temporarily disabled pending merge of https://github.com/GlobalArrays/ga/pull/395
-// which fixes MPI Win_flush issues with RMA completion in GA's comex/MPI3 backend.
-// TODO: Re-enable DistrArrayGA once GA has been updated with the fix.
-//#ifdef LINEARALGEBRA_ARRAY_GA
-//    DistrArrayGA,
-//#endif
+#ifdef LINEARALGEBRA_ARRAY_GA
+    DistrArrayGA,
+#endif
 #ifdef LINEARALGEBRA_ARRAY_MPI3
     DistrArrayMPI3,
 #endif

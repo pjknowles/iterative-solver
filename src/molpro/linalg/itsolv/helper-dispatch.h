@@ -137,6 +137,20 @@ inline lapack_int hegvx_lowest(int matrix_layout, char uplo, lapack_int n, std::
                         reinterpret_cast<lapack_complex_double*>(z), ldz, ifail);
 }
 
+//! Cholesky factorisation of a positive definite matrix (?potrf)
+inline lapack_int potrf(int matrix_layout, char uplo, lapack_int n, float* a, lapack_int lda) {
+  return LAPACKE_spotrf(matrix_layout, uplo, n, a, lda);
+}
+inline lapack_int potrf(int matrix_layout, char uplo, lapack_int n, double* a, lapack_int lda) {
+  return LAPACKE_dpotrf(matrix_layout, uplo, n, a, lda);
+}
+inline lapack_int potrf(int matrix_layout, char uplo, lapack_int n, std::complex<float>* a, lapack_int lda) {
+  return LAPACKE_cpotrf(matrix_layout, uplo, n, reinterpret_cast<lapack_complex_float*>(a), lda);
+}
+inline lapack_int potrf(int matrix_layout, char uplo, lapack_int n, std::complex<double>* a, lapack_int lda) {
+  return LAPACKE_zpotrf(matrix_layout, uplo, n, reinterpret_cast<lapack_complex_double*>(a), lda);
+}
+
 //! Reciprocal 1-norm condition number estimate of a positive definite matrix from its Cholesky factor (?pocon)
 inline lapack_int pocon(int matrix_layout, char uplo, lapack_int n, const float* a, lapack_int lda, float anorm,
                         float* rcond) {
@@ -346,6 +360,40 @@ real_type_t<value_type> one_norm(std::span<const value_type> a, size_t dimension
   return norm;
 }
 } // namespace detail
+
+/*!
+ * @brief Whether every eigenvalue of a hermitian matrix certainly exceeds @p threshold, established without its
+ * eigendecomposition.
+ *
+ * The matrix must factorise by Cholesky, and the estimate of its smallest eigenvalue from the factor, 1/||A^-1||_1
+ * with ||A^-1||_1 estimated by ?pocon, must exceed the threshold by a factor of @p margin. 1/||A^-1||_1 bounds the
+ * smallest eigenvalue from below; the estimate of ||A^-1||_1 can fall short of it, but only by a modest factor, which
+ * the margin absorbs. Only the scalar types LAPACK covers are decided; for the others this returns false.
+ *
+ * @param[in] matrix the matrix, column-major, dimension*dimension elements; only the lower triangle is referenced
+ */
+template <typename value_type>
+bool eigenvalues_certainly_above(std::span<const value_type> matrix, size_t dimension,
+                                 real_type_t<value_type> threshold, real_type_t<value_type> margin = 1e4) {
+#ifdef HAVE_LAPACKE
+  if constexpr (has_lapack_kernel_v<value_type>) {
+    using real_t = real_type_t<value_type>;
+    if (dimension == 0)
+      return false;
+    constexpr char store_lower_triangle = 'L';
+    const auto n = lapack_int(dimension);
+    const real_t anorm = detail::one_norm<value_type>(matrix, dimension);
+    std::vector<value_type> factor(matrix.begin(), matrix.end());
+    if (lapack::potrf(LAPACK_COL_MAJOR, store_lower_triangle, n, factor.data(), n) != 0)
+      return false;
+    real_t rcond = 0;
+    if (lapack::pocon(LAPACK_COL_MAJOR, store_lower_triangle, n, factor.data(), n, anorm, &rcond) != 0)
+      return false;
+    return rcond * anorm > margin * threshold;
+  }
+#endif
+  return false;
+}
 
 /*!
  * @brief The lowest @p nroots eigenpairs of the generalized hermitian problem H c = S c e, for a metric S that is

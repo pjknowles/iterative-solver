@@ -596,3 +596,49 @@ TEST(helper_implementation, eigensolver_hermitian_lowest_matches_full) {
   for (int k = 0; k < nroots; ++k)
     EXPECT_NEAR(double(evals_long[k]), evals_full[k], 1e-12);
 }
+
+TEST(helper_implementation, eigenvalues_certainly_above) {
+  using molpro::linalg::itsolv::eigenvalues_certainly_above;
+  using molpro::linalg::itsolv::has_lapack_kernel_v;
+  constexpr int n = 20;
+  auto decide = [](const Eigen::MatrixXd& m, double threshold) {
+    return eigenvalues_certainly_above<double>(std::span<const double>{m.data(), size_t(m.size())}, size_t(m.rows()),
+                                               threshold);
+  };
+  Eigen::VectorXd spectrum(n);
+  for (int i = 0; i < n; ++i)
+    spectrum(i) = 0.1 + i;
+  // positive definite, far above the threshold: decided where LAPACK is available
+  EXPECT_EQ(decide(with_spectrum(spectrum), 1e-12), has_lapack_kernel_v<double>);
+  // an eigenvalue near the threshold, singular, or negative: never
+  spectrum(3) = 1e-10;
+  EXPECT_FALSE(decide(with_spectrum(spectrum), 1e-12));
+  spectrum(3) = 0;
+  EXPECT_FALSE(decide(with_spectrum(spectrum), 1e-12));
+  spectrum(3) = -1;
+  EXPECT_FALSE(decide(with_spectrum(spectrum), 1e-12));
+  // and never for a scalar type without a LAPACK kernel
+  std::vector<long double> identity(n * n, 0);
+  for (int i = 0; i < n; ++i)
+    identity[i * n + i] = 1;
+  EXPECT_FALSE(eigenvalues_certainly_above<long double>(identity, n, 1e-12));
+}
+
+//! The null space svd_system reports for a hermitian matrix must not depend on whether the shortcut decided it
+TEST(helper_implementation, svd_system_hermitian_null_space) {
+  constexpr int n = 15;
+  Eigen::VectorXd spectrum(n);
+  for (int i = 0; i < n; ++i)
+    spectrum(i) = 0.5 + i;
+  auto null_space = [](Eigen::MatrixXd m) {
+    auto buffer = row_major(m);
+    return molpro::linalg::itsolv::svd_system(size_t(m.rows()), size_t(m.cols()),
+                                              molpro::linalg::array::Span<double>(buffer.data(), buffer.size()),
+                                              1e-12, true);
+  };
+  EXPECT_TRUE(null_space(with_spectrum(spectrum)).empty());
+  spectrum(5) = 1e-14;
+  const auto svd = null_space(with_spectrum(spectrum));
+  ASSERT_EQ(svd.size(), 1u);
+  EXPECT_NEAR(svd.front().value, 1e-14, 1e-13);
+}

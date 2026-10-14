@@ -232,6 +232,12 @@ std::list<SVD<value_type>> svd_system_impl(size_t nrows, size_t ncols, const arr
     using matrix_type = Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
     using row_major_type = Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
     const matrix_type a = Eigen::Map<const row_major_type>(m.data(), nrows, ncols);
+    // Only the eigenpairs at or below the threshold are kept, and a matrix comfortably positive definite, as the
+    // overlap of a well-conditioned subspace is, has none: a Cholesky factorisation shows that at a fraction of the
+    // cost of the eigendecomposition.
+    if (eigenvalues_certainly_above<value_type>(std::span<const value_type>{a.data(), size_t(a.size())}, nrows,
+                                                threshold))
+      return {};
     svds = eigensolver_hermitian<value_type>(nrows, std::span<const value_type>{a.data(), size_t(a.size())});
     for (auto s = svds.begin(); s != svds.end();)
       if (real_part(s->value) > threshold)

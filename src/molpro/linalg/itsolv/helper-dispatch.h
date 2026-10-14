@@ -70,20 +70,21 @@ inline constexpr bool has_lapack_kernel_v = has_lapack_kernel<T>::value;
  */
 namespace lapack {
 
-//! Eigen-decomposition of a real symmetric / complex hermitian matrix (?syev, ?heev)
+//! Eigen-decomposition of a real symmetric / complex hermitian matrix: divide and conquer (?syevd, ?heevd),
+//! several times faster than the QR iteration of ?syev/?heev once the eigenvectors are wanted
 inline lapack_int heev(int matrix_layout, char jobz, char uplo, lapack_int n, float* a, lapack_int lda, float* w) {
-  return LAPACKE_ssyev(matrix_layout, jobz, uplo, n, a, lda, w);
+  return LAPACKE_ssyevd(matrix_layout, jobz, uplo, n, a, lda, w);
 }
 inline lapack_int heev(int matrix_layout, char jobz, char uplo, lapack_int n, double* a, lapack_int lda, double* w) {
-  return LAPACKE_dsyev(matrix_layout, jobz, uplo, n, a, lda, w);
+  return LAPACKE_dsyevd(matrix_layout, jobz, uplo, n, a, lda, w);
 }
 inline lapack_int heev(int matrix_layout, char jobz, char uplo, lapack_int n, std::complex<float>* a, lapack_int lda,
                        float* w) {
-  return LAPACKE_cheev(matrix_layout, jobz, uplo, n, reinterpret_cast<lapack_complex_float*>(a), lda, w);
+  return LAPACKE_cheevd(matrix_layout, jobz, uplo, n, reinterpret_cast<lapack_complex_float*>(a), lda, w);
 }
 inline lapack_int heev(int matrix_layout, char jobz, char uplo, lapack_int n, std::complex<double>* a, lapack_int lda,
                        double* w) {
-  return LAPACKE_zheev(matrix_layout, jobz, uplo, n, reinterpret_cast<lapack_complex_double*>(a), lda, w);
+  return LAPACKE_zheevd(matrix_layout, jobz, uplo, n, reinterpret_cast<lapack_complex_double*>(a), lda, w);
 }
 
 //! Singular value decomposition, divide and conquer (?gesdd)
@@ -190,7 +191,7 @@ int eigensolver_hermitian_kernel(std::true_type /*use_lapack*/, std::span<value_
 /*!
  * @brief Eigen-decomposition of a real symmetric / complex hermitian matrix.
  *
- * Dispatches to ?syev/?heev for the scalar types LAPACK covers and to Eigen::SelfAdjointEigenSolver
+ * Dispatches to ?syevd/?heevd for the scalar types LAPACK covers and to Eigen::SelfAdjointEigenSolver
  * for every other precision; both branches produce the same layout and ordering.
  *
  * @param[in] matrix the input matrix (will not be altered). Must be square, dimension*dimension elements long.

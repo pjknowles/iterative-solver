@@ -215,7 +215,7 @@ namespace detail {
  * @brief Implementation of svd_system(), shared by its real and complex overloads.
  *
  * The two overloads exist only to give the public declarations distinct signatures; the algorithm is
- * the same for both, and the hermitian branch dispatches to ?syev/?heev or to Eigen depending on the
+ * the same for both, and the hermitian branch dispatches to ?syevd/?heevd or to Eigen depending on the
  * scalar type.
  */
 template <typename value_type>
@@ -483,12 +483,17 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
     // compiler-dependent floating-point contraction can make large enough for the general eigensolver to return a
     // complex pair for (near-)degenerate eigenvalues. Solving the symmetric part with the self-adjoint solver rules that
     // out.
+    // eigensolver_hermitian dispatches to LAPACK where this build has it: Eigen's SelfAdjointEigenSolver is not
+    // threaded, and its QR iteration is slower than divide and conquer even serially.
     const MatrixT Hsym = (Hbar + Hbar.transpose()) / value_type(2);
-    Eigen::SelfAdjointEigenSolver<MatrixT> s(Hsym);
-    if (s.info() != Eigen::Success)
+    VectorT evals(rank);
+    MatrixT evecs(rank, rank);
+    if (eigensolver_hermitian<value_type>(std::span<const value_type>{Hsym.data(), size_t(Hsym.size())},
+                                          {evecs.data(), size_t(evecs.size())}, {evals.data(), size_t(rank)},
+                                          size_t(rank)) != 0)
       throw std::runtime_error("Eigensolver of the subspace matrix did not converge");
-    subspaceEigenvalues = s.eigenvalues().template cast<std::complex<value_type>>();
-    subspaceEigenvectors = (subspace.transformation * s.eigenvectors()).template cast<std::complex<value_type>>();
+    subspaceEigenvalues = evals.template cast<std::complex<value_type>>();
+    subspaceEigenvectors = (subspace.transformation * evecs).template cast<std::complex<value_type>>();
   } else {
     // Perform an eigendecomposition of the transformed matrix
     Eigen::EigenSolver<MatrixT> s(Hbar);

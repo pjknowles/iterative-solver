@@ -87,6 +87,74 @@ inline lapack_int heev(int matrix_layout, char jobz, char uplo, lapack_int n, st
   return LAPACKE_zheevd(matrix_layout, jobz, uplo, n, reinterpret_cast<lapack_complex_double*>(a), lda, w);
 }
 
+//! The lowest eigenpairs il..iu (1-based) of a real symmetric / complex hermitian matrix, by relatively robust
+//! representations (?syevr, ?heevr), which skips the eigenvectors that are not wanted
+inline lapack_int heevr_lowest(int matrix_layout, char uplo, lapack_int n, float* a, lapack_int lda, lapack_int iu,
+                               lapack_int* m, float* w, float* z, lapack_int ldz, lapack_int* isuppz) {
+  return LAPACKE_ssyevr(matrix_layout, 'V', 'I', uplo, n, a, lda, 0, 0, 1, iu, 0, m, w, z, ldz, isuppz);
+}
+inline lapack_int heevr_lowest(int matrix_layout, char uplo, lapack_int n, double* a, lapack_int lda, lapack_int iu,
+                               lapack_int* m, double* w, double* z, lapack_int ldz, lapack_int* isuppz) {
+  return LAPACKE_dsyevr(matrix_layout, 'V', 'I', uplo, n, a, lda, 0, 0, 1, iu, 0, m, w, z, ldz, isuppz);
+}
+inline lapack_int heevr_lowest(int matrix_layout, char uplo, lapack_int n, std::complex<float>* a, lapack_int lda,
+                               lapack_int iu, lapack_int* m, float* w, std::complex<float>* z, lapack_int ldz,
+                               lapack_int* isuppz) {
+  return LAPACKE_cheevr(matrix_layout, 'V', 'I', uplo, n, reinterpret_cast<lapack_complex_float*>(a), lda, 0, 0, 1, iu,
+                        0, m, w, reinterpret_cast<lapack_complex_float*>(z), ldz, isuppz);
+}
+inline lapack_int heevr_lowest(int matrix_layout, char uplo, lapack_int n, std::complex<double>* a, lapack_int lda,
+                               lapack_int iu, lapack_int* m, double* w, std::complex<double>* z, lapack_int ldz,
+                               lapack_int* isuppz) {
+  return LAPACKE_zheevr(matrix_layout, 'V', 'I', uplo, n, reinterpret_cast<lapack_complex_double*>(a), lda, 0, 0, 1, iu,
+                        0, m, w, reinterpret_cast<lapack_complex_double*>(z), ldz, isuppz);
+}
+
+//! The lowest eigenpairs 1..iu of the generalized problem A z = B z w, B positive definite, by Cholesky reduction
+//! (?sygvx, ?hegvx). On exit b holds the Cholesky factor.
+inline lapack_int hegvx_lowest(int matrix_layout, char uplo, lapack_int n, float* a, lapack_int lda, float* b,
+                               lapack_int ldb, lapack_int iu, lapack_int* m, float* w, float* z, lapack_int ldz,
+                               lapack_int* ifail) {
+  return LAPACKE_ssygvx(matrix_layout, 1, 'V', 'I', uplo, n, a, lda, b, ldb, 0, 0, 1, iu, 0, m, w, z, ldz, ifail);
+}
+inline lapack_int hegvx_lowest(int matrix_layout, char uplo, lapack_int n, double* a, lapack_int lda, double* b,
+                               lapack_int ldb, lapack_int iu, lapack_int* m, double* w, double* z, lapack_int ldz,
+                               lapack_int* ifail) {
+  return LAPACKE_dsygvx(matrix_layout, 1, 'V', 'I', uplo, n, a, lda, b, ldb, 0, 0, 1, iu, 0, m, w, z, ldz, ifail);
+}
+inline lapack_int hegvx_lowest(int matrix_layout, char uplo, lapack_int n, std::complex<float>* a, lapack_int lda,
+                               std::complex<float>* b, lapack_int ldb, lapack_int iu, lapack_int* m, float* w,
+                               std::complex<float>* z, lapack_int ldz, lapack_int* ifail) {
+  return LAPACKE_chegvx(matrix_layout, 1, 'V', 'I', uplo, n, reinterpret_cast<lapack_complex_float*>(a), lda,
+                        reinterpret_cast<lapack_complex_float*>(b), ldb, 0, 0, 1, iu, 0, m, w,
+                        reinterpret_cast<lapack_complex_float*>(z), ldz, ifail);
+}
+inline lapack_int hegvx_lowest(int matrix_layout, char uplo, lapack_int n, std::complex<double>* a, lapack_int lda,
+                               std::complex<double>* b, lapack_int ldb, lapack_int iu, lapack_int* m, double* w,
+                               std::complex<double>* z, lapack_int ldz, lapack_int* ifail) {
+  return LAPACKE_zhegvx(matrix_layout, 1, 'V', 'I', uplo, n, reinterpret_cast<lapack_complex_double*>(a), lda,
+                        reinterpret_cast<lapack_complex_double*>(b), ldb, 0, 0, 1, iu, 0, m, w,
+                        reinterpret_cast<lapack_complex_double*>(z), ldz, ifail);
+}
+
+//! Reciprocal 1-norm condition number estimate of a positive definite matrix from its Cholesky factor (?pocon)
+inline lapack_int pocon(int matrix_layout, char uplo, lapack_int n, const float* a, lapack_int lda, float anorm,
+                        float* rcond) {
+  return LAPACKE_spocon(matrix_layout, uplo, n, a, lda, anorm, rcond);
+}
+inline lapack_int pocon(int matrix_layout, char uplo, lapack_int n, const double* a, lapack_int lda, double anorm,
+                        double* rcond) {
+  return LAPACKE_dpocon(matrix_layout, uplo, n, a, lda, anorm, rcond);
+}
+inline lapack_int pocon(int matrix_layout, char uplo, lapack_int n, const std::complex<float>* a, lapack_int lda,
+                        float anorm, float* rcond) {
+  return LAPACKE_cpocon(matrix_layout, uplo, n, reinterpret_cast<const lapack_complex_float*>(a), lda, anorm, rcond);
+}
+inline lapack_int pocon(int matrix_layout, char uplo, lapack_int n, const std::complex<double>* a, lapack_int lda,
+                        double anorm, double* rcond) {
+  return LAPACKE_zpocon(matrix_layout, uplo, n, reinterpret_cast<const lapack_complex_double*>(a), lda, anorm, rcond);
+}
+
 //! Singular value decomposition, divide and conquer (?gesdd)
 inline lapack_int gesdd(int matrix_layout, char jobz, lapack_int m, lapack_int n, float* a, lapack_int lda, float* s,
                         float* u, lapack_int ldu, float* vt, lapack_int ldvt) {
@@ -186,7 +254,142 @@ int eigensolver_hermitian_kernel(std::true_type /*use_lapack*/, std::span<value_
 }
 #endif
 
+/*!
+ * @brief The lowest @p nroots eigenpairs of a hermitian matrix: without a partial kernel, the whole decomposition,
+ * truncated.
+ *
+ * @param[in,out] a on entry the matrix in column-major order; overwritten
+ * @param[out] z the eigenvectors as the columns of a column-major dimension x nroots matrix
+ * @param[out] w the eigenvalues in ascending order, @p nroots of them
+ */
+template <typename value_type>
+int eigensolver_hermitian_lowest_kernel(std::false_type /*use_lapack*/, std::span<value_type> a,
+                                        std::span<value_type> z, std::span<real_type_t<value_type>> w,
+                                        size_t dimension, size_t nroots) {
+  std::vector<real_type_t<value_type>> all(dimension);
+  const int info = eigensolver_hermitian_kernel<value_type>(std::false_type{}, a, all, dimension);
+  std::copy_n(all.begin(), nroots, w.begin());
+  std::copy_n(a.begin(), dimension * nroots, z.begin());
+  return info;
+}
+
+#if defined(HAVE_LAPACKE) || defined(MOLPRO)
+//! LAPACK implementation of the partial hermitian eigenproblem, @see the Eigen overload for the contract
+template <typename value_type>
+int eigensolver_hermitian_lowest_kernel(std::true_type /*use_lapack*/, std::span<value_type> a,
+                                        std::span<value_type> z, std::span<real_type_t<value_type>> w,
+                                        size_t dimension, size_t nroots) {
+#ifdef HAVE_LAPACKE
+  constexpr char store_lower_triangle = 'L';
+  lapack_int found = 0;
+  std::vector<lapack_int> support(2 * std::max<size_t>(nroots, 1));
+  const auto info = lapack::heevr_lowest(LAPACK_COL_MAJOR, store_lower_triangle, lapack_int(dimension), a.data(),
+                                         lapack_int(dimension), lapack_int(nroots), &found, w.data(), z.data(),
+                                         lapack_int(dimension), support.data());
+  return info != 0 ? int(info) : (size_t(found) == nroots ? 0 : 1);
+#else
+  // MOLPRO's own ?syev has no partial counterpart
+  std::vector<real_type_t<value_type>> all(dimension);
+  const int info = eigensolver_hermitian_kernel<value_type>(std::true_type{}, a, all, dimension);
+  std::copy_n(all.begin(), nroots, w.begin());
+  std::copy_n(a.begin(), dimension * nroots, z.begin());
+  return info;
+#endif
+}
+#endif
+
 } // namespace detail
+
+/*!
+ * @brief The lowest @p nroots eigenpairs of a real symmetric / complex hermitian matrix.
+ *
+ * Dispatches like eigensolver_hermitian(), to ?syevr/?heevr where LAPACK covers the scalar type, which reduces the
+ * matrix to tridiagonal form as the full decomposition does but then computes and back-transforms only the wanted
+ * eigenvectors.
+ *
+ * @param[in] matrix the input matrix (will not be altered), dimension*dimension elements, column-major. Only the
+ *                   lower triangle is referenced.
+ * @param[out] eigenvectors the eigenvectors as the columns of a column-major dimension x nroots matrix.
+ * @param[out] eigenvalues the lowest @p nroots eigenvalues in ascending order.
+ * @param[in] dimension length of one axis of the matrix.
+ * @param[in] nroots how many of the lowest eigenpairs to compute, at most @p dimension.
+ * \returns status. If 0, successful exit; otherwise the algorithm failed.
+ */
+template <typename value_type>
+int eigensolver_hermitian_lowest(std::span<const value_type> matrix, std::span<value_type> eigenvectors,
+                                 std::span<real_type_t<value_type>> eigenvalues, const size_t dimension,
+                                 const size_t nroots) {
+  if (matrix.size() != dimension * dimension || eigenvectors.size() != dimension * nroots ||
+      eigenvalues.size() != nroots || nroots > dimension) {
+    throw std::runtime_error("Sizes of matrix/eigenvectors/eigenvalues do not match dimension and nroots!");
+  }
+  if (nroots == 0)
+    return 0;
+  // the decomposition overwrites its input
+  std::vector<value_type> a(matrix.begin(), matrix.end());
+  return detail::eigensolver_hermitian_lowest_kernel<value_type>(has_lapack_kernel<value_type>{}, a, eigenvectors,
+                                                                 eigenvalues, dimension, nroots);
+}
+
+namespace detail {
+//! The 1-norm, the largest absolute column sum, of a square column-major matrix
+template <typename value_type>
+real_type_t<value_type> one_norm(std::span<const value_type> a, size_t dimension) {
+  using std::abs;
+  real_type_t<value_type> norm = 0;
+  for (size_t j = 0; j < dimension; ++j) {
+    real_type_t<value_type> column = 0;
+    for (size_t i = 0; i < dimension; ++i)
+      column += abs(a[i + j * dimension]);
+    norm = std::max(norm, column);
+  }
+  return norm;
+}
+} // namespace detail
+
+/*!
+ * @brief The lowest @p nroots eigenpairs of the generalized hermitian problem H c = S c e, for a metric S that is
+ * safely positive definite, by Cholesky reduction (?sygvx/?hegvx).
+ *
+ * Only the scalar types LAPACK covers take this route; for the others, and whenever S is not safely positive
+ * definite -- its Cholesky factorisation fails, or the estimated reciprocal 1-norm condition number of S falls
+ * below @p min_rcond -- this returns false and the caller falls back on reducing S by its eigendecomposition.
+ *
+ * @param[in] matrix H, column-major, dimension*dimension elements; only the lower triangle is referenced
+ * @param[in] metric S, column-major, dimension*dimension elements; only the lower triangle is referenced
+ * @param[out] eigenvectors the eigenvectors, S-orthonormal, as the columns of a column-major dimension x nroots matrix
+ * @param[out] eigenvalues the lowest @p nroots eigenvalues in ascending order
+ * \returns whether the eigenpairs were computed
+ */
+template <typename value_type>
+bool generalized_eigensolver_hermitian_lowest(std::span<const value_type> matrix, std::span<const value_type> metric,
+                                              std::span<value_type> eigenvectors,
+                                              std::span<real_type_t<value_type>> eigenvalues, size_t dimension,
+                                              size_t nroots, real_type_t<value_type> min_rcond) {
+#ifdef HAVE_LAPACKE
+  if constexpr (has_lapack_kernel_v<value_type>) {
+    using real_t = real_type_t<value_type>;
+    if (nroots == 0 || nroots > dimension)
+      return false;
+    constexpr char store_lower_triangle = 'L';
+    const auto n = lapack_int(dimension);
+    const real_t anorm = detail::one_norm<value_type>(metric, dimension);
+    // the reduction overwrites both matrices, and leaves the Cholesky factor of S in place of S
+    std::vector<value_type> a(matrix.begin(), matrix.end()), b(metric.begin(), metric.end());
+    std::vector<lapack_int> ifail(dimension);
+    lapack_int found = 0;
+    if (lapack::hegvx_lowest(LAPACK_COL_MAJOR, store_lower_triangle, n, a.data(), n, b.data(), n, lapack_int(nroots),
+                             &found, eigenvalues.data(), eigenvectors.data(), n, ifail.data()) != 0 ||
+        size_t(found) != nroots)
+      return false;
+    real_t rcond = 0;
+    if (lapack::pocon(LAPACK_COL_MAJOR, store_lower_triangle, n, b.data(), n, anorm, &rcond) != 0)
+      return false;
+    return rcond >= min_rcond;
+  }
+#endif
+  return false;
+}
 
 /*!
  * @brief Eigen-decomposition of a real symmetric / complex hermitian matrix.

@@ -488,3 +488,111 @@ TEST(helper_implementation, eigenproblem_hermitian_degenerate_with_rounding_erro
   }
   ASSERT_NO_THROW(molpro::linalg::itsolv::eigenproblem(evecs, evals, H, S, n, true, 1e-12, 0));
 }
+
+namespace {
+
+//! A symmetric matrix V diag(d) V^T, with V from orthogonal_matrix
+Eigen::MatrixXd with_spectrum(const Eigen::VectorXd& d) {
+  const auto V = orthogonal_matrix(int(d.size()));
+  return V * d.asDiagonal() * V.transpose();
+}
+
+//! A symmetric matrix that couples everything, with well separated diagonal elements
+Eigen::MatrixXd coupled_hamiltonian(int n) {
+  Eigen::MatrixXd h(n, n);
+  for (int i = 0; i < n; ++i)
+    for (int j = 0; j < n; ++j)
+      h(i, j) = i == j ? 1.0 + 0.5 * i : 0.05 * std::cos(1.0 + i + j);
+  return h;
+}
+
+} // namespace
+
+/*!
+ * @brief Asking a hermitian eigenproblem for its lowest roots only must reproduce them as the full solution has them.
+ *
+ * A well-conditioned metric takes the Cholesky reduction, a singular one the symmetric orthogonalisation that
+ * discards its null space; both must agree with the full spectrum computed by the original route.
+ */
+TEST(helper_implementation, eigenproblem_hermitian_lowest_roots_match_full_solution) {
+  constexpr int n = 40, nroots = 3;
+  Eigen::VectorXd well(n), singular(n);
+  for (int i = 0; i < n; ++i) {
+    well(i) = 0.5 + 1.5 * i / (n - 1);
+    singular(i) = i == 0 ? 0.0 : well(i);
+  }
+  const Eigen::MatrixXd H = coupled_hamiltonian(n);
+  for (const auto& metric : {with_spectrum(well), with_spectrum(singular)}) {
+    std::vector<double> evecs_full, evals_full, evecs, evals;
+    molpro::linalg::itsolv::eigenproblem(evecs_full, evals_full, row_major(H), row_major(metric), n, true, 1e-10, 0);
+    molpro::linalg::itsolv::eigenproblem<double>(evecs, evals, row_major(H), row_major(metric), n, true, 1e-10, 0,
+                                                 nullptr, nroots);
+    ASSERT_EQ(evals.size(), size_t(nroots));
+    ASSERT_EQ(evecs.size(), size_t(n * nroots));
+    for (int k = 0; k < nroots; ++k) {
+      EXPECT_NEAR(evals[k], evals_full[k], 1e-10) << "root " << k;
+      // both have the phase fixed by their largest component
+      for (int i = 0; i < n; ++i)
+        EXPECT_NEAR(evecs[k * n + i], evecs_full[k * n + i], 1e-8) << "root " << k << " component " << i;
+    }
+  }
+}
+
+//! The same for a complex hermitian problem, which now takes the hermitian solvers instead of the general one
+TEST(helper_implementation, eigenproblem_complex_hermitian_lowest_roots) {
+  using complex = std::complex<double>;
+  constexpr int n = 12, nroots = 2;
+  Eigen::MatrixXcd H(n, n), S = Eigen::MatrixXcd::Identity(n, n);
+  for (int i = 0; i < n; ++i)
+    for (int j = 0; j < n; ++j) {
+      H(i, j) = i == j ? complex(1.0 + i) : complex(0.1 * std::cos(1.0 + i + j), 0.1 * std::sin(1.0 + 2 * i - j));
+      if (i != j)
+        S(i, j) = complex(0.02 * std::cos(2.0 + i * j), 0.0);
+    }
+  H = ((H + H.adjoint()) / 2.0).eval();
+  S = ((S + S.adjoint()) / 2.0).eval();
+  std::vector<complex> h(n * n), s(n * n);
+  for (int i = 0; i < n; ++i)
+    for (int j = 0; j < n; ++j) {
+      h[i * n + j] = H(i, j);
+      s[i * n + j] = S(i, j);
+    }
+  // the reference: the generalized problem through Eigen
+  Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXcd> reference(H, S);
+  std::vector<complex> evecs, evals;
+  molpro::linalg::itsolv::eigenproblem<complex>(evecs, evals, h, s, n, true, 1e-10, 0, nullptr, nroots);
+  ASSERT_EQ(evals.size(), size_t(nroots));
+  for (int k = 0; k < nroots; ++k) {
+    EXPECT_NEAR(evals[k].real(), reference.eigenvalues()(k), 1e-10);
+    EXPECT_EQ(evals[k].imag(), 0.0);
+    const Eigen::Map<const Eigen::VectorXcd> c(evecs.data() + k * n, n);
+    EXPECT_NEAR(((H - evals[k].real() * S) * c).norm(), 0.0, 1e-10) << "root " << k;
+    EXPECT_NEAR(std::abs(c.dot(S * c) - 1.0), 0.0, 1e-10) << "root " << k;
+  }
+}
+
+TEST(helper_implementation, eigensolver_hermitian_lowest_matches_full) {
+  constexpr int n = 30, nroots = 4;
+  const Eigen::MatrixXd H = coupled_hamiltonian(n);
+  std::vector<double> evecs_full(n * n), evals_full(n), evecs(n * nroots), evals(nroots);
+  ASSERT_EQ(molpro::linalg::itsolv::eigensolver_hermitian<double>(std::span<const double>{H.data(), size_t(n * n)},
+                                                                  evecs_full, evals_full, n),
+            0);
+  ASSERT_EQ(molpro::linalg::itsolv::eigensolver_hermitian_lowest<double>(
+                std::span<const double>{H.data(), size_t(n * n)}, evecs, evals, n, nroots),
+            0);
+  for (int k = 0; k < nroots; ++k) {
+    EXPECT_NEAR(evals[k], evals_full[k], 1e-12);
+    double overlap = 0;
+    for (int i = 0; i < n; ++i)
+      overlap += evecs[k * n + i] * evecs_full[k * n + i];
+    EXPECT_NEAR(std::abs(overlap), 1.0, 1e-10) << "root " << k;
+  }
+  // the Eigen branch, which every precision LAPACK lacks takes
+  std::vector<long double> h_long(H.data(), H.data() + n * n), evecs_long(n * nroots), evals_long(nroots);
+  ASSERT_EQ(molpro::linalg::itsolv::eigensolver_hermitian_lowest<long double>(h_long, evecs_long, evals_long, n,
+                                                                             nroots),
+            0);
+  for (int k = 0; k < nroots; ++k)
+    EXPECT_NEAR(double(evals_long[k]), evals_full[k], 1e-12);
+}

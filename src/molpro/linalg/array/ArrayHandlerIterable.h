@@ -114,6 +114,14 @@ protected:
   using ArrayHandler<AL, AR>::error;
   using ArrayHandler<AL, AR>::lazy_handle;
   using ArrayHandler<AL, AR>::m_lazy_handles;
+
+  //! Creates a copy of source as an array of type T
+  template <typename T, typename S>
+  [[deprecated("use util::allocate_like() followed by copy() instead")]] T copyAny(const S &source) {
+    auto result = util::allocate_like<T>(source.size());
+    copy(result, source);
+    return result;
+  }
 };
 
 } // namespace molpro::linalg::array

@@ -1,12 +1,14 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <molpro/linalg/array/DistrArrayFile.h>
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/SolverFactory.h>
 #include <molpro/mpi.h>
 
 #include <Eigen/Dense>
 
+#include <cmath>
 #include <vector>
 
 namespace {
@@ -101,6 +103,56 @@ TEST(LinearEigensystem, Davidson_complex_roots) {
   }
 }
 
+//! A symmetric, diagonally dominant matrix
+class SymmetricProblem : public molpro::linalg::itsolv::Problem<std::vector<double>> {
+public:
+  static constexpr size_t n = 60;
+  double element(size_t i, size_t j) const { return i == j ? 1. + i : 0.1 / (1. + std::abs(double(i) - double(j))); }
+
+  bool diagonals(std::vector<double> &d) const override {
+    for (size_t i = 0; i < n; ++i)
+      d[i] = element(i, i);
+    return true;
+  }
+
+  void action(const molpro::linalg::itsolv::CVecRef<std::vector<double>> &parameters,
+              const molpro::linalg::itsolv::VecRef<std::vector<double>> &actions) const override {
+    for (size_t k = 0; k < parameters.size(); ++k)
+      for (size_t i = 0; i < n; ++i) {
+        actions[k].get()[i] = 0;
+        for (size_t j = 0; j < n; ++j)
+          actions[k].get()[i] += element(i, j) * parameters[k].get()[j];
+      }
+  }
+};
+
+template <class Qvector>
+std::vector<double> solve_symmetric_problem() {
+  SymmetricProblem problem;
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>, Qvector>("Davidson");
+  solver->set_n_roots(3);
+  solver->set_max_iter(100);
+  solver->set_hermiticity(true);
+  solver->set_convergence_threshold(1e-10);
+  auto params = std::vector<std::vector<double>>(solver->n_roots(), std::vector<double>(problem.n));
+  auto actions = params;
+  EXPECT_TRUE(solver->solve(params, actions, problem, true));
+  return solver->eigenvalues();
+}
+
+// The R vectors are contiguous in memory and the Q vectors on disk, as handled by ArrayHandlerIterableDDisk and
+// ArrayHandlerDDiskIterable
+TEST(LinearEigensystem, Davidson_vector_R_disk_Q) {
+  molpro::mpi::init();
+  const auto reference = solve_symmetric_problem<std::vector<double>>();
+  const auto result = solve_symmetric_problem<molpro::linalg::array::DistrArrayFile>();
+  ASSERT_EQ(result.size(), reference.size());
+  for (size_t i = 0; i < reference.size(); ++i)
+    EXPECT_NEAR(result[i], reference[i], 1e-9);
+}
+
 #include <molpro/linalg/itsolv/SolverFactory-implementation.h>
 template class molpro::linalg::itsolv::SolverFactory<std::vector<double>, std::vector<double>,
+                                                     std::map<size_t, double>>;
+template class molpro::linalg::itsolv::SolverFactory<std::vector<double>, molpro::linalg::array::DistrArrayFile,
                                                      std::map<size_t, double>>;

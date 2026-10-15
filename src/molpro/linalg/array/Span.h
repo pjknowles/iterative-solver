@@ -42,6 +42,9 @@ public:
   Span() = default;
   ~Span() = default;
   Span(T* data, size_type size) : m_buffer{data}, m_size{size} {}
+  //! A view of constant elements from a view of modifiable ones, as for std::span
+  template <typename U, typename = std::enable_if_t<std::is_same_v<const U, T>>>
+  Span(const Span<U>& source) : m_buffer{source.data()}, m_size{source.size()} {}
   Span(const Span& source) = default;
   Span(Span<T>&& source) noexcept : m_buffer{source.m_buffer}, m_size{source.m_size} {
     Span<T> t{};

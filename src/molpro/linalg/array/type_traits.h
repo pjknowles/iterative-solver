@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_TYPE_TRAITS_H
 #include <cmath>
 #include <cstdlib>
+#include <iterator>
 #include <type_traits>
 
 namespace molpro::linalg::array {
@@ -46,6 +47,19 @@ struct is_iterable<T, void_t<decltype(std::begin(std::declval<T>())), decltype(s
 
 template <class T>
 constexpr bool is_iterable_v = is_iterable<T>{};
+
+//! Checks that class T holds its elements in contiguous memory, which std::data() points to, and has std::size()
+template <class T, typename = void>
+struct is_contiguous : std::false_type {};
+
+template <class T>
+struct is_contiguous<
+    T, void_t<decltype(std::size(std::declval<const T&>())),
+              std::enable_if_t<std::is_pointer_v<decltype(std::data(std::declval<const T&>()))> && !is_sparse_v<T>>>>
+    : std::true_type {};
+
+template <class T>
+constexpr bool is_contiguous_v = is_contiguous<T>{};
 
 //! Checks if class T has a tag marking it as a distributed array
 template <class T, typename = void>

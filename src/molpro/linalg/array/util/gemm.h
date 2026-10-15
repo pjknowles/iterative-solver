@@ -4,7 +4,9 @@
 #include <mpi.h>
 #endif
 #include "BufferManager.h"
+#include "gather_all.h"
 #include <functional>
+#include <iterator>
 #include <future>
 #include <iostream>
 #include <molpro/Options.h>
@@ -67,6 +69,15 @@ std::vector<T*> local_buffer_pointers(const std::vector<std::reference_wrapper<A
   std::vector<T*> p;
   for (const auto& a : aa)
     p.push_back(const_cast<T*>(a.get().local_buffer()->data()));
+  return p;
+}
+
+//! Pointers to the elements of contiguous arrays, offset to the start of the local section [lo, ...)
+template <class T, class R>
+std::vector<T*> contiguous_pointers(const std::vector<std::reference_wrapper<R>>& rr, size_t lo) {
+  std::vector<T*> p;
+  for (const auto& r : rr)
+    p.push_back(const_cast<T*>(std::data(r.get())) + lo);
   return p;
 }
 
@@ -309,6 +320,56 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
   DistrChunks<AL> chunks(yy, gemm_type::outer);
   gemm_buffered(const_cast<typename array::mapped_or_value_type_t<AL>*>(alphas.data().data()), xx,
                 chunks.pointers_function(), chunks.done_function(), gemm_type::outer);
+}
+
+// Contiguous arrays rr, e.g. std::vector, holding all elements on every process, with distributed arrays qq.
+// Each process works on the local section of qq; rr updated by gemm_outer are then replicated over all processes.
+
+//! The overlap matrix (rr.size(), qq.size()) between contiguous arrays rr and distributed arrays qq. Collective.
+template <class R, class AD>
+Matrix<typename AD::value_type> gemm_inner_contiguous_distr(const CVecRef<R>& rr, const CVecRef<AD>& qq) {
+  using T = typename AD::value_type;
+  if (rr.empty() or qq.empty())
+    return Matrix<T>({rr.size(), qq.size()});
+  const auto lo = local_range(qq.front().get()).first;
+  const auto bases = contiguous_pointers<T>(rr, lo);
+  return gemm_inner_buffered(rr.size(), qq, [&bases, lo](size_t g, size_t) { return offset_pointers(bases, lo, g); });
+}
+
+//! The overlap matrix (qq.size(), rr.size()) between distributed arrays qq and contiguous arrays rr. Collective.
+template <class AD, class R>
+Matrix<typename AD::value_type> gemm_inner_distr_contiguous(const CVecRef<AD>& qq, const CVecRef<R>& rr) {
+  return conjugate_transpose(gemm_inner_contiguous_distr(rr, qq));
+}
+
+//! rr += alphas^T qq for contiguous arrays rr and distributed arrays qq. Collective.
+template <class AD, class R>
+void gemm_outer_distr_contiguous(const Matrix<typename AD::value_type>& alphas, const CVecRef<AD>& qq,
+                                 const VecRef<R>& rr) {
+  using T = typename AD::value_type;
+  if (rr.empty() or qq.empty())
+    return;
+  check_gemm_outer_dimensions(alphas, qq.size(), rr.size(), "gemm_outer_distr_contiguous");
+  auto prof = molpro::Profiler::single()->push("gemm_outer_distr_contiguous");
+  const auto& q = qq.front().get();
+  const auto lo = local_range(q).first;
+  prof += qq.size() * rr.size() * (local_range(q).second - lo) * 2;
+  const auto bases = contiguous_pointers<T>(rr, lo);
+  gemm_buffered(
+      const_cast<T*>(alphas.data().data()), qq,
+      [&bases, lo](size_t g, size_t) { return offset_pointers(bases, lo, g); }, {}, gemm_type::outer);
+  for (const auto& r : rr)
+    gather_all(q.distribution(), q.communicator(), std::data(r.get()));
+}
+
+//! qq += alphas^T rr for contiguous arrays rr and distributed arrays qq. Local.
+template <class R, class AD>
+void gemm_outer_contiguous_distr(const Matrix<typename AD::value_type>& alphas, const CVecRef<R>& rr,
+                                 const VecRef<AD>& qq) {
+  using T = typename AD::value_type;
+  if (rr.empty() or qq.empty())
+    return;
+  gemm_outer_to_distr(alphas, contiguous_pointers<T>(rr, local_range(qq.front().get()).first), qq);
 }
 
 // Without buffers, for arrays held in memory

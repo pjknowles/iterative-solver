@@ -4,6 +4,7 @@
 #include <mpi.h>
 #endif
 #include "BufferManager.h"
+#include <functional>
 #include <future>
 #include <iostream>
 #include <molpro/Options.h>
@@ -36,36 +37,212 @@ auto local_range(const A& a) {
   return a.distribution().range(BufferManager<std::decay_t<A>>::rank_in(a));
 }
 
+// Building blocks for the buffered operations
+
+//! Returns the constant, positive distance between consecutive arrays at pointers p, or 0 if there is none. A single
+//! array is given the stride n, the length of the section of it addressed.
+template <class T>
+size_t constant_stride(const std::vector<T*>& p, size_t n) {
+  if (p.size() < 2)
+    return n;
+  const auto stride = p[1] - p[0];
+  for (size_t j = 1; j + 1 < p.size(); ++j)
+    if (p[j + 1] - p[j] != stride)
+      return 0;
+  return stride > 0 ? size_t(stride) : 0;
+}
+
+//! Pointers to elements [g, ...) of arrays whose local sections, starting at global index lo, are at bases
+template <class T>
+std::vector<T*> offset_pointers(const std::vector<T*>& bases, size_t lo, size_t g) {
+  auto p = bases;
+  for (auto& el : p)
+    el += g - lo;
+  return p;
+}
+
+//! Pointers to the start of the local sections of distributed arrays held in memory
+template <class T, class A>
+std::vector<T*> local_buffer_pointers(const std::vector<std::reference_wrapper<A>>& aa) {
+  std::vector<T*> p;
+  for (const auto& a : aa)
+    p.push_back(const_cast<T*>(a.get().local_buffer()->data()));
+  return p;
+}
+
+/*!
+ * @brief One chunk of n elements of a gemm between the arrays xx, which are the nx columns of x with leading
+ * dimension ldx, and the arrays yy at pointers y.
+ *
+ * inner: alphadata[i + k * nx] += x_i . y_k
+ * outer: y_k += sum_i alphadata[i * ny + k] * x_i
+ *
+ * If yy are evenly spaced this is a single dgemm, otherwise one dgemv for each of yy.
+ */
+template <class T>
+void gemm_chunk(gemm_type type, size_t n, const T* x, size_t ldx, size_t nx, T* alphadata, const std::vector<T*>& y) {
+  const size_t ny = y.size();
+  if (n == 0 or nx == 0 or ny == 0)
+    return;
+  const auto dims = std::to_string(nx) + ", " + std::to_string(ny) + ", " + std::to_string(n);
+  const auto y_stride = constant_stride(y, n);
+  if (type == gemm_type::outer) {
+    if (y_stride > 0) {
+      auto prof = molpro::Profiler::single()->push("gemm_outer: cblas_dgemm dimensions " + dims);
+      cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, n, ny, nx, 1, x, ldx, alphadata, ny, 1, y[0], y_stride);
+    } else {
+      auto prof = molpro::Profiler::single()->push("gemm_outer: cblas_dgemv dimensions " + dims);
+      for (size_t k = 0; k < ny; ++k)
+        cblas_dgemv(CblasColMajor, CblasNoTrans, n, nx, 1, x, ldx, alphadata + k, ny, 1, y[k], 1);
+    }
+  } else {
+    if (y_stride > 0) {
+      auto prof = molpro::Profiler::single()->push("gemm_inner: cblas_dgemm dimensions " + dims);
+      cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, nx, ny, n, 1, x, ldx, y[0], y_stride, 1, alphadata, nx);
+    } else {
+      auto prof = molpro::Profiler::single()->push("gemm_inner: cblas_dgemv dimensions " + dims);
+      for (size_t k = 0; k < ny; ++k)
+        cblas_dgemv(CblasColMajor, CblasTrans, n, nx, 1, x, ldx, y[k], 1, 1, alphadata + k * nx, 1);
+    }
+  }
+}
+
+/*!
+ * @brief gemm between distributed arrays xx, read through a BufferManager, and arrays yy, which can be held anywhere.
+ *
+ * Only the local section of xx is processed, chunk by chunk. For each chunk of global indices [g, g+n), y_pointers(g,
+ * n) returns pointers to the same elements of each of yy, and y_done(g, n) is called once the chunk is complete, e.g.
+ * to write back yy updated by gemm_type::outer.
+ *
+ * @param alphadata see gemm_chunk(), with nx = xx.size() and ny the number of yy
+ */
+template <class AD, class T = typename AD::value_type>
+void gemm_buffered(T* alphadata, const CVecRef<AD>& xx,
+                   const std::type_identity_t<std::function<std::vector<T*>(size_t g, size_t n)>>& y_pointers,
+                   const std::function<void(size_t g, size_t n)>& y_done, gemm_type type) {
+  auto prof = molpro::Profiler::single()->push("gemm_buffered");
+  if (xx.empty())
+    return;
+  const auto [lo, hi] = local_range(xx.front().get());
+  if (hi <= lo)
+    return;
+  auto options = molpro::linalg::options();
+  auto number_of_buffers = options->parameter("GEMM_BUFFERS", 2);
+  // BufferManager's buffer_size parameter is the size of ONE chunk (it already multiplies
+  // by number_of_buffers internally to size the total pool) -- do not multiply by
+  // number_of_buffers again here, or each chunk silently grows number_of_buffers-fold.
+  const int buf_size = std::min(int(hi - lo), options->parameter("GEMM_PAGESIZE", 8192));
+  molpro::Profiler::single()->start("gemm: buffer setup");
+  BufferManager buffer(xx, buf_size, number_of_buffers);
+  molpro::Profiler::single()->stop("gemm: buffer setup");
+  for (auto buffer_iterator = buffer.begin(); buffer_iterator != buffer.end(); ++buffer_iterator) {
+    const size_t g = lo + buffer.buffer_offset();
+    const size_t n = buffer.buffer_size();
+    gemm_chunk(type, n, buffer_iterator->data(), buffer.buffer_stride(), xx.size(), alphadata, y_pointers(g, n));
+    if (y_done)
+      y_done(g, n);
+  }
+}
+
+/*!
+ * @brief The overlap matrix between arrays yy, accessed as described in gemm_buffered(), and distributed arrays xx,
+ * which are read through a BufferManager. Collective.
+ * @return matrix of dimensions (ny, xx.size())
+ */
+template <class AD, class T = typename AD::value_type>
+Matrix<T>
+gemm_inner_buffered(size_t ny, const CVecRef<AD>& xx,
+                    const std::type_identity_t<std::function<std::vector<T*>(size_t g, size_t n)>>& y_pointers,
+                    const std::function<void(size_t g, size_t n)>& y_done = {}) {
+  auto prof = molpro::Profiler::single()->push("gemm_inner (buffered)");
+  auto alphas = Matrix<T>({ny, xx.size()});
+  alphas.fill(0);
+  if (ny == 0 or xx.empty())
+    return alphas;
+  const auto [lo, hi] = local_range(xx.front().get());
+  prof += xx.size() * ny * (hi - lo) * 2;
+  auto alphadata = const_cast<T*>(alphas.data().data());
+  gemm_buffered(alphadata, xx, y_pointers, y_done, gemm_type::inner);
+#ifdef HAVE_MPI_H
+  // reduce over the arrays' own communicator, which need not be the global one
+  MPI_Allreduce(MPI_IN_PLACE, alphadata, alphas.size(), MPI_DOUBLE, MPI_SUM, xx.front().get().communicator());
+#endif
+  return alphas;
+}
+
+//! Checks the dimensions of the coefficient matrix of gemm_outer
+template <class T>
+void check_gemm_outer_dimensions(const Matrix<T>& alphas, size_t nx, size_t ny, const std::string& name) {
+  if (alphas.rows() != nx)
+    throw std::out_of_range(name + ": dimensions of xx and alphas are different: " + std::to_string(alphas.rows()) +
+                            " " + std::to_string(nx));
+  if (alphas.cols() != ny)
+    throw std::out_of_range(name + ": dimensions of yy and alphas are different: " + std::to_string(alphas.cols()) +
+                            " " + std::to_string(ny));
+}
+
+//! The transpose of an overlap matrix, which for the hermitian inner product is its conjugate transpose
+template <class T>
+Matrix<T> conjugate_transpose(const Matrix<T>& m) {
+  Matrix<T> result({m.cols(), m.rows()});
+  molpro::linalg::itsolv::subspace::conjugate_transpose_copy(result, m);
+  return result;
+}
+
 // Buffered: the disk arrays xx are read in chunks through a BufferManager
+
+//! The pointers to, and on completion the write-back of, chunks of distributed arrays yy for gemm_buffered()
+template <class AL, class T = typename array::mapped_or_value_type_t<AL>>
+struct DistrChunks {
+  DistrChunks(const VecRef<AL>& yy, gemm_type type) : yy(yy), type(type) {
+    if (not yy.empty() and yy.front().get().disk_page_size() == 0) {
+      lo = local_range(yy.front().get()).first;
+      bases = local_buffer_pointers<T>(yy);
+    }
+  }
+  std::vector<T*> pointers(size_t g, size_t n) {
+    if (not bases.empty())
+      return offset_pointers(bases, lo, g);
+    // on disk: each chunk is read into memory, and written back after an outer product
+    chunk.resize(yy.size() * n);
+    std::vector<T*> p;
+    for (size_t j = 0; j < yy.size(); ++j) {
+      p.push_back(chunk.data() + j * n);
+      yy[j].get().get(g, g + n, p.back());
+    }
+    return p;
+  }
+  void done(size_t g, size_t n) {
+    if (bases.empty() and type == gemm_type::outer)
+      for (size_t j = 0; j < yy.size(); ++j)
+        yy[j].get().put(g, g + n, chunk.data() + j * n);
+  }
+  std::function<std::vector<T*>(size_t, size_t)> pointers_function() {
+    return [this](size_t g, size_t n) { return pointers(g, n); };
+  }
+  std::function<void(size_t, size_t)> done_function() {
+    return [this](size_t g, size_t n) { done(g, n); };
+  }
+  const VecRef<AL>& yy;
+  const gemm_type type;
+  size_t lo = 0;
+  std::vector<T*> bases;
+  std::vector<T> chunk;
+};
 
 template <class AL, class AD, std::enable_if_t<is_disk_array_v<AD>, int> = 0>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AL>& yy,
                                                                           const CVecRef<AD>& xx) {
-  auto prof = molpro::Profiler::single()->push("gemm_inner_distr_distr (buffered)");
-  if (not yy.empty())
-    prof += xx.size() * yy.size() * (local_range(yy[0].get()).second - local_range(yy[0].get()).first) * 2;
-  using value_type = typename array::mapped_or_value_type_t<AL>;
-  auto alphas = Matrix<value_type>({yy.size(), xx.size()});
-  alphas.fill(0);
   auto non_const_yy = molpro::linalg::itsolv::const_cast_wrap(yy);
-  auto alphadata = const_cast<value_type*>(alphas.data().data());
-  gemm_distr_distr(alphadata, xx, non_const_yy, gemm_type::inner);
-#ifdef HAVE_MPI_H
-  // reduce over the arrays' own communicator, which need not be the global one
-  if (alphas.size() > 0)
-    MPI_Allreduce(MPI_IN_PLACE, alphadata, alphas.size(), MPI_DOUBLE, MPI_SUM, xx.front().get().communicator());
-#endif
-  return alphas;
+  DistrChunks<AL> chunks(non_const_yy, gemm_type::inner);
+  return gemm_inner_buffered(yy.size(), xx, chunks.pointers_function());
 }
 
 template <class AD, class AL, std::enable_if_t<is_disk_array_v<AD> and not is_disk_array_v<AL>, int> = 0>
 Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const CVecRef<AD>& xx,
                                                                           const CVecRef<AL>& yy) {
   // gemm_inner is the hermitian inner product, so the two orders are conjugate transposes
-  auto result_transpose = gemm_inner_distr_distr(yy, xx);
-  Matrix<typename array::mapped_or_value_type_t<AL>> result({result_transpose.cols(), result_transpose.rows()});
-  molpro::linalg::itsolv::subspace::conjugate_transpose_copy(result, result_transpose);
-  return result;
+  return conjugate_transpose(gemm_inner_distr_distr(yy, xx));
 }
 
 template <class AL, class AD, std::enable_if_t<is_disk_array_v<AD>, int> = 0>
@@ -73,117 +250,12 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
                             const VecRef<AL>& yy) {
   if (yy.empty() or xx.empty())
     return;
+  check_gemm_outer_dimensions(alphas, xx.size(), yy.size(), "gemm_outer_distr_distr");
   auto prof = molpro::Profiler::single()->push("gemm_outer_distr_distr (buffered)");
-  if (not yy.empty())
-    prof += xx.size() * yy.size() * (local_range(yy[0].get()).second - local_range(yy[0].get()).first) * 2;
-  if (alphas.rows() != xx.size())
-    throw std::out_of_range(std::string{"gemm_outer_distr_distr: dimensions of xx and alphas are different: "} +
-                            std::to_string(alphas.rows()) + " " + std::to_string(xx.size()));
-  if (alphas.cols() != yy.size())
-    throw std::out_of_range(std::string{"gemm_outer_distr_distr: dimensions of yy and alphas are different: "} +
-                            std::to_string(alphas.cols()) + " " + std::to_string(yy.size()));
-  gemm_distr_distr(const_cast<typename array::mapped_or_value_type_t<AL>*>(alphas.data().data()), xx, yy,
-                   gemm_type::outer);
-}
-
-template <class AL, class AD>
-void gemm_distr_distr(array::mapped_or_value_type_t<AL>* alphadata, const CVecRef<AD>& xx, const VecRef<AL>& yy,
-                      gemm_type gemm_type) {
-
-  auto prof = molpro::Profiler::single()->push("gemm_distr_distr");
-  if (xx.size() == 0 || yy.size() == 0) {
-    return;
-  }
-
-  // yy may be held in memory, and addressed in place, or on disk, when each chunk of it is read into yy_chunk (and for
-  // gemm_outer written back afterwards)
-  using value_type = array::mapped_or_value_type_t<AL>;
-  const bool yy_on_disk = yy.front().get().disk_page_size() > 0;
-  const auto [lo, hi] = local_range(xx.front().get());
-  std::vector<value_type> yy_chunk;
-  bool yy_constant_stride = true;
-  int yy_stride = hi - lo;
-  if (not yy_on_disk) {
-    int previous_stride = 0;
-    for (size_t j = 0; j < std::max((size_t)1, yy.size()) - 1; ++j) {
-      auto unique_ptr_j = yy.at(j).get().local_buffer()->data();
-      auto unique_ptr_jp1 = yy.at(j + 1).get().local_buffer()->data();
-      yy_stride = unique_ptr_jp1 - unique_ptr_j;
-      //        std::cout << "j="<<j<<" yy_stride="<<yy_stride<<std::endl;
-      if (j > 0)
-        yy_constant_stride = yy_constant_stride && (yy_stride == previous_stride);
-      previous_stride = yy_stride;
-    }
-    yy_constant_stride = yy_constant_stride && (yy_stride > 0);
-  }
-
-  auto options = molpro::linalg::options();
-  auto number_of_buffers = options->parameter("GEMM_BUFFERS", 2);
-  // BufferManager's buffer_size parameter is the size of ONE chunk (it already multiplies
-  // by number_of_buffers internally to size the total pool) -- do not multiply by
-  // number_of_buffers again here, or each chunk silently grows number_of_buffers-fold.
-  const int buf_size = std::min(int(hi - lo), options->parameter("GEMM_PAGESIZE", 8192));
-//      std::cout << "buf_size=" << buf_size << " number_of_buffers=" << number_of_buffers << std::endl;
-
-  molpro::Profiler::single()->start("gemm: buffer setup");
-  BufferManager buffer(xx, buf_size, number_of_buffers);
-  molpro::Profiler::single()->stop("gemm: buffer setup");
-  for (auto buffer_iterator = buffer.begin(); buffer_iterator != buffer.end(); ++buffer_iterator) {
-    auto container_offset = buffer.buffer_offset();
-    int current_buf_size = buffer.buffer_size();
-//    std::cout << "container_offset="<<container_offset<<", current_buf_size="<<current_buf_size<<std::endl;
-    value_type* yy_data;
-    if (yy_on_disk) {
-      yy_chunk.resize(yy.size() * current_buf_size);
-      for (size_t j = 0; j < yy.size(); ++j)
-        yy[j].get().get(lo + container_offset, lo + container_offset + current_buf_size,
-                        yy_chunk.data() + j * current_buf_size);
-      yy_data = yy_chunk.data();
-      yy_stride = current_buf_size;
-    } else
-      yy_data = yy[0].get().local_buffer()->data() + container_offset;
-    if (gemm_type == gemm_type::outer) {
-      if (yy_constant_stride and not yy.empty()) {
-        auto prof =
-            molpro::Profiler::single()->push("gemm_outer: cblas_dgemm dimensions " + std::to_string(xx.size()) + ", " +
-                                             std::to_string(yy.size()) + ", " + std::to_string(current_buf_size));
-//        std::cout << "outer dgemm container_offset="<<container_offset<<std::endl;
-        cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, current_buf_size, yy.size(), xx.size(), 1,
-                    buffer_iterator->data(), buffer.buffer_stride(), alphadata, yy.size(), 1, yy_data, yy_stride);
-      } else { // non-uniform stride:
-        auto prof =
-            molpro::Profiler::single()->push("gemm_outer: cblas_dgemv dimensions " + std::to_string(xx.size()) + ", " +
-                                             std::to_string(yy.size()) + ", " + std::to_string(current_buf_size));
-//        std::cout << "outer dgemv"<<std::endl;
-        for (size_t i = 0; i < yy.size(); ++i) {
-          cblas_dgemv(CblasColMajor, CblasNoTrans, current_buf_size, xx.size(), 1, buffer_iterator->data(), buffer.buffer_stride(),
-                      alphadata + i, yy.size(), 1, yy[i].get().local_buffer()->data() + container_offset, 1);
-        }
-      }
-    } else if (gemm_type == gemm_type::inner) {
-      if (yy_constant_stride and not yy.empty()) {
-        auto prof =
-            molpro::Profiler::single()->push("gemm_inner: cblas_dgemm dimensions " + std::to_string(xx.size()) + ", " +
-                                             std::to_string(yy.size()) + ", " + std::to_string(current_buf_size));
-//        std::cout << "inner dgemm"<<std::endl;
-        cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, xx.size(), yy.size(), current_buf_size, 1,
-                    buffer_iterator->data(), buffer.buffer_stride(), yy_data, yy_stride, 1, alphadata, xx.size());
-      } else { // non-uniform stride:
-        auto prof =
-            molpro::Profiler::single()->push("gemm_inner: cblas_dgemv dimensions " + std::to_string(xx.size()) + ", " +
-                                             std::to_string(yy.size()) + ", " + std::to_string(current_buf_size));
-//        std::cout << "inner dgemv"<<std::endl;
-        for (size_t k = 0; k < yy.size(); ++k) {
-          cblas_dgemv(CblasColMajor, CblasTrans, current_buf_size, xx.size(), 1, buffer_iterator->data(), buffer.buffer_stride(),
-                      yy[k].get().local_buffer()->data() + container_offset, 1, 1, alphadata + k * xx.size(), 1);
-        }
-      }
-    }
-    if (yy_on_disk and gemm_type == gemm_type::outer)
-      for (size_t j = 0; j < yy.size(); ++j)
-        yy[j].get().put(lo + container_offset, lo + container_offset + current_buf_size,
-                        yy_chunk.data() + j * current_buf_size);
-  }
+  prof += xx.size() * yy.size() * (local_range(xx[0].get()).second - local_range(xx[0].get()).first) * 2;
+  DistrChunks<AL> chunks(yy, gemm_type::outer);
+  gemm_buffered(const_cast<typename array::mapped_or_value_type_t<AL>*>(alphas.data().data()), xx,
+                chunks.pointers_function(), chunks.done_function(), gemm_type::outer);
 }
 
 // Without buffers, for arrays held in memory

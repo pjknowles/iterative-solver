@@ -4,6 +4,7 @@
 #include <molpro/linalg/array/ArrayHandlerWithCopyFunc.h>
 #include <molpro/linalg/array/util/gemm.h>
 #include <molpro/mpi.h>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 
@@ -30,11 +31,22 @@ public:
   static_assert(std::is_same_v<value_type, typename AL::value_type>,
                 "ArrayHandlerDDiskIterable: the arrays must have the same value type");
 
-  //! New arrays are created on molpro::mpi::comm_self(), with any file in directory
+  /*!
+   * @brief New arrays are created on molpro::mpi::comm_self(), with any file in directory
+   *
+   * As for any distributed array on a communicator other than molpro::mpi::comm_global(), MPI must have been
+   * initialised before an array is created.
+   */
   explicit ArrayHandlerDDiskIterable(const std::string &directory = ".")
       : ArrayHandlerWithCopyFunc<AL, AR>([directory](const AR &source) -> AL {
           if constexpr (std::is_constructible_v<AL, size_t, MPI_Comm, std::string>) {
-            auto result = AL(std::size(source), molpro::mpi::comm_self(), directory);
+            const auto comm = molpro::mpi::comm_self();
+#ifdef HAVE_MPI_H
+            if (comm == MPI_COMM_NULL)
+              throw std::logic_error("ArrayHandlerDDiskIterable: MPI must be initialised before a distributed array is "
+                                     "created as a copy of a contiguous one");
+#endif
+            auto result = AL(std::size(source), comm, directory);
             result.copy(util::contiguous_span(source));
             return result;
           } else

@@ -16,7 +16,8 @@ array::ArrayHandlerDDiskIterable (qr). Every operation is available in both dire
   reads it through a double-buffered array::util::BufferManager and does the arithmetic with dgemm, or dgemv for R
   vectors that are not evenly spaced in memory.
 - A Q made as a copy of an R by the qr handler is created on molpro::mpi::comm_self(), because R is not distributed.
-  The directory for its file, or a function that creates the copy, can be given to the handler's constructor.
+  The directory for its file, or a function that creates the copy, can be given to the handler's constructor. As for
+  any distributed array on a communicator other than molpro::mpi::comm_global(), MPI must have been initialised.
 - If a Q is distributed over several processes, the R arrays hold all elements on every process. Each process works
   on the local section of Q, and an R written to is then replicated over all processes.
 

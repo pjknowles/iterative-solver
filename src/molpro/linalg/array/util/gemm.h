@@ -189,6 +189,59 @@ Matrix<T> conjugate_transpose(const Matrix<T>& m) {
   return result;
 }
 
+/*!
+ * @brief yy += alphas^T xx, for arrays xx held in memory and distributed arrays yy held anywhere.
+ *
+ * Only the local section of yy is processed, in pages. Pages of yy without a local buffer are read with get() and
+ * written back with put(), so that each element is read and written once. x_bases are pointers to the starts of the
+ * local sections of xx; unless they are evenly spaced, each page of them is first packed into one matrix, so that the
+ * update is always a single dgemm.
+ */
+template <class AD, class T = typename AD::value_type>
+void gemm_outer_to_distr(const Matrix<T>& alphas, const std::vector<T*>& x_bases, const VecRef<AD>& yy) {
+  if (x_bases.empty() or yy.empty())
+    return;
+  check_gemm_outer_dimensions(alphas, x_bases.size(), yy.size(), "gemm_outer_to_distr");
+  auto prof = molpro::Profiler::single()->push("gemm_outer_to_distr");
+  const auto [lo, hi] = local_range(yy.front().get());
+  prof += x_bases.size() * yy.size() * (hi - lo) * 2;
+  const auto nx = x_bases.size();
+  const auto ny = yy.size();
+  const bool yy_on_disk = yy.front().get().disk_page_size() > 0;
+  const size_t page = yy_on_disk ? yy.front().get().disk_page_size()
+                                 : size_t(molpro::linalg::options()->parameter("GEMM_PAGESIZE", 8192));
+  std::vector<T*> y_bases;
+  if (not yy_on_disk)
+    y_bases = local_buffer_pointers<T>(yy);
+  std::vector<T> y_page, x_page;
+  for (size_t g = lo; g < hi; g += page) {
+    const size_t n = std::min(page, hi - g);
+    std::vector<T*> y;
+    if (yy_on_disk) {
+      y_page.resize(n * ny);
+      for (size_t k = 0; k < ny; ++k) {
+        y.push_back(y_page.data() + k * n);
+        yy[k].get().get(g, g + n, y.back());
+      }
+    } else
+      y = offset_pointers(y_bases, lo, g);
+    const auto x = offset_pointers(x_bases, lo, g);
+    auto x_stride = constant_stride(x, n);
+    const T* x_data = x[0];
+    if (x_stride == 0) {
+      x_page.resize(n * nx);
+      for (size_t i = 0; i < nx; ++i)
+        std::copy_n(x[i], n, x_page.data() + i * n);
+      x_data = x_page.data();
+      x_stride = n;
+    }
+    gemm_chunk(gemm_type::outer, n, x_data, x_stride, nx, const_cast<T*>(alphas.data().data()), y);
+    if (yy_on_disk)
+      for (size_t k = 0; k < ny; ++k)
+        yy[k].get().put(g, g + n, y[k]);
+  }
+}
+
 // Buffered: the disk arrays xx are read in chunks through a BufferManager
 
 //! The pointers to, and on completion the write-back of, chunks of distributed arrays yy for gemm_buffered()
@@ -289,8 +342,11 @@ Matrix<typename array::mapped_or_value_type_t<AL>> gemm_inner_distr_distr(const 
 template <class AL, class AR = AL, std::enable_if_t<not is_disk_array_v<AR>, int> = 0>
 void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<AL>> alphas, const CVecRef<AR>& xx,
                             const VecRef<AL>& yy) {
-  if (is_disk_array_v<AL>) {
-    throw std::runtime_error("gemm_outer_distr_distr (unbuffered) called to update disk arrays (should never happen!)");
+  if constexpr (is_disk_array_v<AL>) {
+    // the arrays xx are in memory, and so can be addressed in place, while yy are on disk
+    if (not xx.empty())
+      gemm_outer_to_distr(alphas, local_buffer_pointers<typename array::mapped_or_value_type_t<AL>>(xx), yy);
+    return;
   }
   auto prof = molpro::Profiler::single()->push("gemm_outer_distr_distr (unbuffered)");
   if (not yy.empty())

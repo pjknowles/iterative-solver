@@ -3,21 +3,13 @@
 #include <algorithm>
 #include <iterator>
 #include <molpro/linalg/array/ArrayHandler.h>
-#include <molpro/linalg/array/ArrayHandlerIterable.h>
 #include <molpro/linalg/array/Span.h>
+#include <molpro/linalg/array/util.h>
 #include <molpro/linalg/array/util/gemm.h>
 #include <molpro/linalg/array/util/select.h>
 #include <molpro/linalg/scalar_traits.h>
 
 namespace molpro::linalg::array {
-
-namespace util {
-//! A view of all the elements of a contiguous array
-template <class R>
-auto contiguous_span(R &r) {
-  return Span<std::remove_pointer_t<decltype(std::data(r))>>(std::data(r), std::size(r));
-}
-} // namespace util
 
 /*!
  * @brief Array handler between a contiguous array (left), e.g. std::vector or Span, and a distributed array (right),

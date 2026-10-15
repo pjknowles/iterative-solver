@@ -271,7 +271,9 @@ public:
     fill();
     scal();
     copy_construct();
-    copyout();
+    // a DistrArraySpan, which is a view of memory supplied by the caller, cannot be constructed from a disk array
+    if constexpr (not array::is_disk_v<Slow>)
+      copyout();
     dot();
     // axpy(); // TODO make axpy work with DistrArraySpan
     gemm_inner();

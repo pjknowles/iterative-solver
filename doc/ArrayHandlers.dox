@@ -5,6 +5,24 @@ namespace linalg{
 
 Work in Progress.
 
+@section ArrayHandlersContiguousDisk Contiguous arrays and disk arrays
+
+When the R space is held in contiguous memory, e.g. @c std::vector<double> or array::Span<double>, and the Q space on
+disk, e.g. array::DistrArrayFile, the default handlers are array::ArrayHandlerIterableDDisk (rq) and
+array::ArrayHandlerDDiskIterable (qr). Every operation is available in both directions.
+
+- The contiguous array is addressed in place; there are no per-element proxies.
+- The disk array is paged through @c get() and @c put(), so that the memory used does not scale with its size. gemm
+  reads it through a double-buffered array::util::BufferManager and does the arithmetic with dgemm, or dgemv for R
+  vectors that are not evenly spaced in memory.
+- A Q made as a copy of an R by the qr handler is created on molpro::mpi::comm_self(), because R is not distributed.
+  The directory for its file, or a function that creates the copy, can be given to the handler's constructor.
+- If a Q is distributed over several processes, the R arrays hold all elements on every process. Each process works
+  on the local section of Q, and an R written to is then replicated over all processes.
+
+The handlers forward to array::DistrArray members taking a Span, e.g. @c dot(Span<const double>), and to the
+contiguous gemm functions in array::util, so the same operations are available for any distributed array.
+
 */
 }
 }

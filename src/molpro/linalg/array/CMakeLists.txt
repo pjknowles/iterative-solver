@@ -20,8 +20,8 @@ endif ()
 LibraryManager_Append(${PROJECT_NAME}
         PUBLIC_HEADER ArrayHandler.h ArrayHandlerIterable.h ArrayHandlerSparse.h
         ArrayHandlerIterableSparse.h ArrayHandlerDefault.h ArrayHandlerDDisk.h ArrayHandlerDDiskDistr.h
-        ArrayHandlerDistrDDisk.h ArrayHandlerDDiskSparse.h ArrayHandlerWithCopyFunc.h Span.h
-        type_traits.h
+        ArrayHandlerDistrDDisk.h ArrayHandlerDDiskSparse.h ArrayHandlerWithCopyFunc.h ArrayHandlerIterableDDisk.h
+        ArrayHandlerDDiskIterable.h Span.h type_traits.h
         default_handler.h
         )
 if (MPI)

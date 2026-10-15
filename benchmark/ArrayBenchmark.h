@@ -24,12 +24,15 @@
 #include <molpro/linalg/array/util/temp_phdf5_handle.h>
 #endif
 #include "molpro/linalg/array/ArrayHandlerDDiskDistr.h"
+#include "molpro/linalg/array/ArrayHandlerDDiskIterable.h"
 #include "molpro/linalg/array/ArrayHandlerDistrDDisk.h"
+#include "molpro/linalg/array/ArrayHandlerIterableDDisk.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <numeric>
 #include <ostream>
+#include <type_traits>
 #include <vector>
 namespace molpro {
 namespace linalg {
@@ -80,6 +83,45 @@ result.reserve(nvec);
     result.back().fill(1.0);
   }
   return result;
+}
+/*!
+ * The Fast arrays: DistrArraySpan views into buffer; contiguous arrays holding all n elements, such as std::vector; or
+ * views of n elements each, such as Span, into buffer, the vector of them first and then the single one, so that the
+ * vector of them is evenly spaced
+ */
+template <class F>
+constexpr bool is_view_v = not std::is_same_v<F, Fast> and not std::is_constructible_v<F, size_t, double>;
+template <class F>
+size_t fast_buffer_size(size_t n, size_t nvec) {
+  if constexpr (std::is_same_v<F, Fast>)
+    return fast_local_size(n) * nvec;
+  else if constexpr (is_view_v<F>)
+    return n * (nvec + 1);
+  else
+    return 0;
+}
+template <class F>
+std::unique_ptr<F> allocate_fast(std::vector<typename Fast::value_type>& buffer, size_t n) {
+  if constexpr (std::is_same_v<F, Fast>)
+    return allocateFast(buffer, n);
+  else if constexpr (is_view_v<F>) {
+    std::fill(buffer.end() - n, buffer.end(), 1.0);
+    return std::make_unique<F>(buffer.data() + buffer.size() - n, n);
+  } else
+    return std::make_unique<F>(n, 1.0);
+}
+template <class F>
+std::vector<F> allocatev_fast(std::vector<typename Fast::value_type>& buffer, size_t n, size_t nvec) {
+  if constexpr (std::is_same_v<F, Fast>)
+    return allocatevFast(buffer, n, nvec);
+  else if constexpr (is_view_v<F>) {
+    std::fill(buffer.begin(), buffer.begin() + n * nvec, 1.0);
+    std::vector<F> result;
+    for (size_t i = 0; i < nvec; ++i)
+      result.emplace_back(buffer.data() + i * n, n);
+    return result;
+  } else
+    return std::vector<F>(nvec, F(n, 1.0));
 }
 #ifdef LINEARALGEBRA_ARRAY_MPI3
 template <>
@@ -149,8 +191,9 @@ auto allocatev<array::DistrArrayHDF5>(size_t n, size_t nvec) {
 /*!
  * @brief
  * @tparam Slow slow class
+ * @tparam FastT fast class, either Fast or a contiguous array holding all elements, such as std::vector
  */
-template <class Slow = Fast>
+template <class Slow = Fast, class FastT = Fast>
 class ArrayBenchmark {
 public:
   std::string m_title;
@@ -160,24 +203,25 @@ private:
   double m_target_seconds;
   std::vector<typename Fast::value_type> m_fast_buffer;
   std::unique_ptr<Slow> m_bufferSlow;
-  std::unique_ptr<Fast> m_bufferFast;
+  std::unique_ptr<FastT> m_bufferFast;
   std::vector<Slow> m_buffervSlow;
-  std::vector<Fast> m_buffervFast;
+  std::vector<FastT> m_buffervFast;
   molpro::Profiler& m_profiler;
-  std::unique_ptr<array::ArrayHandler<Fast, Slow>> m_fast_slow_handler;
-  std::unique_ptr<array::ArrayHandler<Slow, Fast>> m_slow_fast_handler;
+  std::unique_ptr<array::ArrayHandler<FastT, Slow>> m_fast_slow_handler;
+  std::unique_ptr<array::ArrayHandler<Slow, FastT>> m_slow_fast_handler;
   bool m_profile_individual;
   int m_mpi_size;
 
 public:
   size_t m_repeat;
-  explicit ArrayBenchmark(const std::string& title, std::unique_ptr<array::ArrayHandler<Fast, Slow>> fast_slow_handler,
-                          std::unique_ptr<array::ArrayHandler<Slow, Fast>> slow_fast_handler, size_t n = 10000000,
+  explicit ArrayBenchmark(const std::string& title, std::unique_ptr<array::ArrayHandler<FastT, Slow>> fast_slow_handler,
+                          std::unique_ptr<array::ArrayHandler<Slow, FastT>> slow_fast_handler, size_t n = 10000000,
                           size_t n_Slow = 1, size_t n_Fast = 1, bool profile_individual = false,
                           double target_seconds = 1)
-      : m_title(title), m_size(n), m_target_seconds(target_seconds), m_fast_buffer(fast_local_size(n)*n_Fast), m_bufferSlow(allocate<Slow>(n)),
-        m_bufferFast(allocateFast(m_fast_buffer, n)),  m_buffervSlow(allocatev<Slow>(n, n_Slow)),
-        m_buffervFast(allocatevFast(m_fast_buffer, n, n_Fast)), m_profiler(*molpro::Profiler::single()),
+      : m_title(title), m_size(n), m_target_seconds(target_seconds),
+        m_fast_buffer(fast_buffer_size<FastT>(n, n_Fast)), m_bufferSlow(allocate<Slow>(n)),
+        m_bufferFast(allocate_fast<FastT>(m_fast_buffer, n)), m_buffervSlow(allocatev<Slow>(n, n_Slow)),
+        m_buffervFast(allocatev_fast<FastT>(m_fast_buffer, n, n_Fast)), m_profiler(*molpro::Profiler::single()),
         m_fast_slow_handler(std::move(fast_slow_handler)), m_slow_fast_handler(std::move(slow_fast_handler)),
         m_profile_individual(profile_individual), m_mpi_size(molpro::mpi::size_global()),
         m_repeat(std::max(1, int(1e9 * m_target_seconds / m_size))) {
@@ -272,7 +316,7 @@ public:
     scal();
     copy_construct();
     // a DistrArraySpan, which is a view of memory supplied by the caller, cannot be constructed from a disk array
-    if constexpr (not array::is_disk_v<Slow>)
+    if constexpr (not(std::is_same_v<FastT, Fast> and array::is_disk_v<Slow>))
       copyout();
     dot();
     // axpy(); // TODO make axpy work with DistrArraySpan
@@ -280,12 +324,73 @@ public:
     gemm_inner_transpose();
     gemm_outer();
   }
+
+  // Further operations, in both directions between Fast and Slow
+
+  void copy_to_fast() {
+    auto prof = m_profiler.push("copy Slow -> Fast (existing)");
+    for (size_t i = 0; i < m_repeat; i++)
+      m_fast_slow_handler->copy(*m_bufferFast, *m_bufferSlow);
+    prof += m_size * m_repeat / m_mpi_size;
+  }
+
+  void copy_to_slow() {
+    auto prof = m_profiler.push("copy Fast -> Slow (existing)");
+    for (size_t i = 0; i < m_repeat; i++)
+      m_slow_fast_handler->copy(*m_bufferSlow, *m_bufferFast);
+    prof += m_size * m_repeat / m_mpi_size;
+  }
+
+  void dot_transpose() {
+    auto prof = m_profiler.push("dot (transpose)");
+    for (size_t i = 0; i < m_repeat; i++)
+      m_slow_fast_handler->dot(*m_bufferSlow, *m_bufferFast);
+    prof += m_size * m_repeat / m_mpi_size;
+  }
+
+  void axpy_transpose() {
+    auto prof = m_profiler.push("axpy (transpose)");
+    for (size_t i = 0; i < m_repeat; i++)
+      m_slow_fast_handler->axpy(1.0, *m_bufferFast, *m_bufferSlow);
+    prof += m_size * m_repeat / m_mpi_size;
+  }
+
+  void gemm_outer_transpose() {
+    auto prof = m_profiler.push("gemm_outer (transpose)");
+    const size_t rep = std::max(size_t(1), m_repeat / m_buffervFast.size() / m_buffervSlow.size());
+    itsolv::subspace::Matrix<double> alpha({m_buffervFast.size(), m_buffervSlow.size()});
+    alpha.fill(1.0);
+    for (size_t i = 0; i < rep; i++)
+      m_slow_fast_handler->gemm_outer(alpha, itsolv::cwrap(m_buffervFast), itsolv::wrap(m_buffervSlow));
+  }
+
+  /*!
+   * The operations of all() other than scal(), which can be optimised away for some Fast types, together with the
+   * further ones. Copy construction comes last, because it replaces the Slow array, e.g. by one on another
+   * communicator, and Fast arrays that are views of memory cannot be constructed.
+   */
+  void all_both_directions() {
+    fill();
+    dot();
+    dot_transpose();
+    axpy();
+    axpy_transpose();
+    copy_to_fast();
+    copy_to_slow();
+    gemm_inner();
+    gemm_inner_transpose();
+    gemm_outer();
+    gemm_outer_transpose();
+    if constexpr (not is_view_v<FastT> and not(std::is_same_v<FastT, Fast> and array::is_disk_v<Slow>))
+      copyout();
+    copy_construct();
+  }
   molpro::Profiler& profiler() { return m_profiler; }
 
   //  friend std::ostream& operator<<(std::ostream& os, ArrayBenchmark<Slow, Fast>& obj);
 };
-template <class Slow>
-std::ostream& operator<<(std::ostream& os, ArrayBenchmark<Slow>& obj) {
+template <class Slow, class FastT>
+std::ostream& operator<<(std::ostream& os, ArrayBenchmark<Slow, FastT>& obj) {
   os << obj.profiler();
   return os;
 }
@@ -316,6 +421,16 @@ ArrayBenchmark<Slow> ArrayBenchmarkDDisk(std::string title, size_t n = 10000000,
   return ArrayBenchmark<Slow>(title, std::make_unique<array::ArrayHandlerDistrDDisk<Fast, Slow>>(),
                               std::make_unique<array::ArrayHandlerDDiskDistr<Slow, Fast>>(), n, n_Slow, n_Fast,
                               profile_individual, target_seconds);
+}
+
+//! Benchmark between contiguous arrays (e.g. std::vector) holding all elements and disk arrays
+template <class Slow = array::DistrArrayFile, class Contiguous = std::vector<double>>
+ArrayBenchmark<Slow, Contiguous> ArrayBenchmarkIterableDDisk(std::string title, size_t n = 10000000, size_t n_Slow = 1,
+                                                             size_t n_Fast = 1, bool profile_individual = false,
+                                                             double target_seconds = 1) {
+  return ArrayBenchmark<Slow, Contiguous>(title, std::make_unique<array::ArrayHandlerIterableDDisk<Contiguous, Slow>>(),
+                                          std::make_unique<array::ArrayHandlerDDiskIterable<Slow, Contiguous>>(), n,
+                                          n_Slow, n_Fast, profile_individual, target_seconds);
 }
 
 /*!

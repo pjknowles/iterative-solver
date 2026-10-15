@@ -5,6 +5,7 @@
 #include <cmath>
 #include <filesystem>
 #include <numeric>
+#include <type_traits>
 #include <vector>
 
 #include "parallel_util.h"
@@ -259,6 +260,38 @@ TYPED_TEST(ArrayHandlerIterableDDiskF, gemm_empty) {
     expect_near(this->to_vector(this->rr[i]), this->ref_r[i]);
   for (size_t j = 0; j < this->nq; ++j)
     expect_near(full(this->qq[j]), this->ref_q[j]);
+}
+
+// An empty contiguous array need not have any memory, i.e. its data() may be nullptr
+TYPED_TEST(ArrayHandlerIterableDDiskF, empty_arrays) {
+  using R = typename TestFixture::R;
+  using Q = typename TestFixture::Q;
+  auto rr = std::vector<R>(2);
+  auto qq = std::vector<Q>();
+  qq.emplace_back(0, this->comm);
+  qq.emplace_back(0, this->comm);
+  this->rq.copy(rr[0], qq[0]);
+  this->qr.copy(qq[0], rr[0]);
+  this->rq.axpy(2., qq[0], rr[0]);
+  this->qr.axpy(2., rr[0], qq[0]);
+  EXPECT_EQ(this->rq.dot(rr[0], qq[0]), 0.);
+  EXPECT_EQ(this->qr.dot(qq[0], rr[0]), 0.);
+  EXPECT_TRUE(this->rq.select_max_dot(0, rr[0], qq[0]).empty());
+  EXPECT_TRUE(this->qr.select_max_dot(0, qq[0], rr[0]).empty());
+  EXPECT_EQ(this->qr.copy(rr[0]).size(), 0);
+  if constexpr (std::is_same_v<R, std::vector<double>>)
+    EXPECT_TRUE(this->rq.copy(qq[0]).empty());
+  const auto inner = this->rq.gemm_inner(cwrap(rr), cwrap(qq));
+  ASSERT_EQ(inner.rows(), 2);
+  ASSERT_EQ(inner.cols(), 2);
+  for (size_t i = 0; i < 2; ++i)
+    for (size_t j = 0; j < 2; ++j)
+      EXPECT_EQ(inner(i, j), 0.);
+  EXPECT_EQ(this->qr.gemm_inner(cwrap(qq), cwrap(rr)).size(), 4);
+  auto alphas = Matrix<double>({2, 2});
+  alphas.fill(1.);
+  this->rq.gemm_outer(alphas, cwrap(qq), wrap(rr));
+  this->qr.gemm_outer(alphas, cwrap(rr), wrap(qq));
 }
 
 TYPED_TEST(ArrayHandlerIterableDDiskF, select_max_dot) {

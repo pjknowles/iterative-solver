@@ -62,8 +62,8 @@ void for_each_local_chunk(std::initializer_list<Operand> operands,
   std::vector<bool> on_disk(ops.size(), false);
   size_t page = 0;
   for (size_t k = 0; k < ops.size(); ++k) {
-    if (ops[k].memory) {
-      base[k] = ops[k].memory + lo;
+    if (not ops[k].array) {
+      base[k] = ops[k].memory + lo; // an empty contiguous array may have no memory, but then lo == 0
       continue;
     }
     const auto& a = *ops[k].array;

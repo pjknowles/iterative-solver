@@ -19,6 +19,9 @@
 #include <molpro/linalg/itsolv/wrap_util.h>
 #include <molpro/linalg/options.h>
 #include <numeric>
+#include <stdexcept>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace molpro::linalg::array::util {
@@ -72,12 +75,30 @@ std::vector<T*> local_buffer_pointers(const std::vector<std::reference_wrapper<A
   return p;
 }
 
-//! Pointers to the elements of contiguous arrays, offset to the start of the local section [lo, ...)
-template <class T, class R>
-std::vector<T*> contiguous_pointers(const std::vector<std::reference_wrapper<R>>& rr, size_t lo) {
+//! Checks that the distributed arrays aa all have the local section range, so that they can be processed together
+template <class A, class Range>
+void check_local_ranges(const std::vector<std::reference_wrapper<A>>& aa, const Range& range, const std::string& name) {
+  for (const auto& a : aa)
+    if (local_range(a.get()) != range)
+      throw std::out_of_range(name + ": the distributed arrays are distributed differently");
+}
+
+/*!
+ * @brief Pointers to the elements of contiguous arrays rr, offset to the start of the local section of the
+ * distributed array q
+ * @throws std::out_of_range if any of rr differs from q in size
+ */
+template <class T, class R, class A>
+std::vector<T*> contiguous_pointers(const std::vector<std::reference_wrapper<R>>& rr, const A& q,
+                                    const std::string& name) {
+  const auto lo = local_range(q).first;
   std::vector<T*> p;
-  for (const auto& r : rr)
+  for (const auto& r : rr) {
+    if (size_t(std::size(r.get())) != size_t(q.size()))
+      throw std::out_of_range(name + ": contiguous and distributed arrays are of different size: " +
+                              std::to_string(std::size(r.get())) + " " + std::to_string(q.size()));
     p.push_back(const_cast<T*>(std::data(r.get())) + lo);
+  }
   return p;
 }
 
@@ -215,6 +236,7 @@ void gemm_outer_to_distr(const Matrix<T>& alphas, const std::vector<T*>& x_bases
   check_gemm_outer_dimensions(alphas, x_bases.size(), yy.size(), "gemm_outer_to_distr");
   auto prof = molpro::Profiler::single()->push("gemm_outer_to_distr");
   const auto [lo, hi] = local_range(yy.front().get());
+  check_local_ranges(yy, std::make_pair(lo, hi), "gemm_outer_to_distr");
   prof += x_bases.size() * yy.size() * (hi - lo) * 2;
   const auto nx = x_bases.size();
   const auto ny = yy.size();
@@ -331,8 +353,10 @@ Matrix<typename AD::value_type> gemm_inner_contiguous_distr(const CVecRef<R>& rr
   using T = typename AD::value_type;
   if (rr.empty() or qq.empty())
     return Matrix<T>({rr.size(), qq.size()});
-  const auto lo = local_range(qq.front().get()).first;
-  const auto bases = contiguous_pointers<T>(rr, lo);
+  const auto& q = qq.front().get();
+  check_local_ranges(qq, local_range(q), "gemm_inner_contiguous_distr");
+  const auto lo = local_range(q).first;
+  const auto bases = contiguous_pointers<T>(rr, q, "gemm_inner_contiguous_distr");
   return gemm_inner_buffered(rr.size(), qq, [&bases, lo](size_t g, size_t) { return offset_pointers(bases, lo, g); });
 }
 
@@ -352,9 +376,10 @@ void gemm_outer_distr_contiguous(const Matrix<typename AD::value_type>& alphas, 
   check_gemm_outer_dimensions(alphas, qq.size(), rr.size(), "gemm_outer_distr_contiguous");
   auto prof = molpro::Profiler::single()->push("gemm_outer_distr_contiguous");
   const auto& q = qq.front().get();
+  check_local_ranges(qq, local_range(q), "gemm_outer_distr_contiguous");
   const auto lo = local_range(q).first;
   prof += qq.size() * rr.size() * (local_range(q).second - lo) * 2;
-  const auto bases = contiguous_pointers<T>(rr, lo);
+  const auto bases = contiguous_pointers<T>(rr, q, "gemm_outer_distr_contiguous");
   gemm_buffered(
       const_cast<T*>(alphas.data().data()), qq,
       [&bases, lo](size_t g, size_t) { return offset_pointers(bases, lo, g); }, {}, gemm_type::outer);
@@ -369,7 +394,7 @@ void gemm_outer_contiguous_distr(const Matrix<typename AD::value_type>& alphas, 
   using T = typename AD::value_type;
   if (rr.empty() or qq.empty())
     return;
-  gemm_outer_to_distr(alphas, contiguous_pointers<T>(rr, local_range(qq.front().get()).first), qq);
+  gemm_outer_to_distr(alphas, contiguous_pointers<T>(rr, qq.front().get(), "gemm_outer_contiguous_distr"), qq);
 }
 
 // Without buffers, for arrays held in memory
@@ -405,8 +430,10 @@ void gemm_outer_distr_distr(const Matrix<typename array::mapped_or_value_type_t<
                             const VecRef<AL>& yy) {
   if constexpr (is_disk_array_v<AL>) {
     // the arrays xx are in memory, and so can be addressed in place, while yy are on disk
-    if (not xx.empty())
-      gemm_outer_to_distr(alphas, local_buffer_pointers<typename array::mapped_or_value_type_t<AL>>(xx), yy);
+    if (xx.empty() or yy.empty())
+      return;
+    check_local_ranges(xx, local_range(yy.front().get()), "gemm_outer_distr_distr");
+    gemm_outer_to_distr(alphas, local_buffer_pointers<typename array::mapped_or_value_type_t<AL>>(xx), yy);
     return;
   }
   auto prof = molpro::Profiler::single()->push("gemm_outer_distr_distr (unbuffered)");

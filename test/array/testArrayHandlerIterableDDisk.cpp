@@ -5,6 +5,7 @@
 #include <cmath>
 #include <filesystem>
 #include <numeric>
+#include <stdexcept>
 #include <type_traits>
 #include <vector>
 
@@ -292,6 +293,24 @@ TYPED_TEST(ArrayHandlerIterableDDiskF, empty_arrays) {
   alphas.fill(1.);
   this->rq.gemm_outer(alphas, cwrap(qq), wrap(rr));
   this->qr.gemm_outer(alphas, cwrap(rr), wrap(qq));
+}
+
+TYPED_TEST(ArrayHandlerIterableDDiskF, gemm_size_mismatch) {
+  using R = typename TestFixture::R;
+  auto storage = std::vector<double>(this->nr * (this->dim - 1));
+  auto rr = std::vector<R>();
+  for (size_t i = 0; i < this->nr; ++i) {
+    if constexpr (std::is_same_v<R, std::vector<double>>)
+      rr.emplace_back(this->dim - 1);
+    else
+      rr.emplace_back(storage.data() + i * (this->dim - 1), this->dim - 1);
+  }
+  EXPECT_THROW(this->rq.gemm_inner(cwrap(rr), cwrap(this->qq)), std::out_of_range);
+  EXPECT_THROW(this->qr.gemm_inner(cwrap(this->qq), cwrap(rr)), std::out_of_range);
+  EXPECT_THROW(this->rq.gemm_outer(Matrix<double>({this->nq, this->nr}), cwrap(this->qq), wrap(rr)), std::out_of_range);
+  EXPECT_THROW(this->qr.gemm_outer(Matrix<double>({this->nr, this->nq}), cwrap(rr), wrap(this->qq)), std::out_of_range);
+  for (size_t j = 0; j < this->nq; ++j)
+    expect_near(full(this->qq[j]), this->ref_q[j]);
 }
 
 TYPED_TEST(ArrayHandlerIterableDDiskF, select_max_dot) {

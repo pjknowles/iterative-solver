@@ -39,8 +39,8 @@ auto local_range(const A& a) {
 
 // Building blocks for the buffered operations
 
-//! Returns the constant, positive distance between consecutive arrays at pointers p, or 0 if there is none. A single
-//! array is given the stride n, the length of the section of it addressed.
+//! Returns the constant distance between consecutive arrays at pointers p, if they are the columns of a matrix with n
+//! rows, or 0 if they are not. A single array is given the stride n.
 template <class T>
 size_t constant_stride(const std::vector<T*>& p, size_t n) {
   if (p.size() < 2)
@@ -49,7 +49,7 @@ size_t constant_stride(const std::vector<T*>& p, size_t n) {
   for (size_t j = 1; j + 1 < p.size(); ++j)
     if (p[j + 1] - p[j] != stride)
       return 0;
-  return stride > 0 ? size_t(stride) : 0;
+  return stride >= std::ptrdiff_t(n) and stride > 0 ? size_t(stride) : 0;
 }
 
 //! Pointers to elements [g, ...) of arrays whose local sections, starting at global index lo, are at bases

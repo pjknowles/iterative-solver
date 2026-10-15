@@ -3,10 +3,28 @@
 
 #include <molpro/linalg/itsolv/IterativeSolver.h>
 #include <molpro/linalg/itsolv/SolverFactory.h>
+#include <molpro/mpi.h>
 
 #include <Eigen/Dense>
 
 #include <vector>
+
+namespace {
+//! MPI is initialised by the tests that need it, and finalised once, after all tests have run
+class MPIEnvironment : public ::testing::Environment {
+public:
+  void TearDown() override {
+#ifdef HAVE_MPI_H
+    int initialized, finalized;
+    MPI_Initialized(&initialized);
+    MPI_Finalized(&finalized);
+    if (initialized and not finalized)
+      molpro::mpi::finalize();
+#endif
+  }
+};
+[[maybe_unused]] auto *const mpi_environment = ::testing::AddGlobalTestEnvironment(new MPIEnvironment);
+} // namespace
 
 template <typename Container = std::vector<double>>
 class ComplexRootsProblem : public molpro::linalg::itsolv::Problem<Container> {
@@ -81,8 +99,6 @@ TEST(LinearEigensystem, Davidson_complex_roots) {
     ASSERT_THAT(eigvals.at(2), ::testing::DoubleNear(2.3814541296, tol));
     ASSERT_THAT(eigvals.at(3), ::testing::DoubleNear(2.3814541296, tol));
   }
-
-  molpro::mpi::finalize();
 }
 
 #include <molpro/linalg/itsolv/SolverFactory-implementation.h>

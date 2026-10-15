@@ -67,6 +67,24 @@ T allocate_array(std::size_t size) {
           + "' - you have to provide an explicit template specialization for this function & type");
 }
 
+namespace util {
+/*!
+ * @brief Creates an array of type T able to hold size elements
+ *
+ * Fixed-size arrays are default constructed, types constructible from a size are constructed from it, and any other
+ * type is created by the customization point allocate_array().
+ */
+template <typename T>
+T allocate_like(std::size_t size) {
+  if constexpr (is_array_v<T>)
+    return T();
+  else if constexpr (is_allocatable_v<T>)
+    return T(size);
+  else
+    return allocate_array<T>(size);
+}
+} // namespace util
+
 /*!
  * @brief Array handler for two containers both of which can be iterated through using begin() and end() member
  * functions, and have a copy constructor.
@@ -83,7 +101,11 @@ public:
   ArrayHandlerIterable() = default;
   ArrayHandlerIterable(const ArrayHandlerIterable<AL, AR> &) = default;
 
-  AL copy(const AR &source) override { return copyAny<AL, AR>(source); };
+  AL copy(const AR &source) override {
+    auto result = util::allocate_like<AL>(source.size());
+    copy(result, source);
+    return result;
+  };
 
   void copy(AL &x, const AR &y) override {
     using std::begin;
@@ -163,27 +185,6 @@ protected:
   using ArrayHandler<AL, AR>::error;
   using ArrayHandler<AL, AR>::lazy_handle;
   using ArrayHandler<AL, AR>::m_lazy_handles;
-
-  template <typename T, typename S, typename std::enable_if_t<util::is_array_v<T>, std::nullptr_t> = nullptr>
-  T copyAny(const S &source) {
-    auto result = T();
-    copy(result, source);
-    return result;
-  }
-
-  template <typename T, typename S, typename std::enable_if_t<!util::is_array_v<T> && util::is_allocatable_v<T>, int> = 0>
-  T copyAny(const S &source) {
-    auto result = T(source.size());
-    copy(result, source);
-    return result;
-  }
-
-  template <typename T, typename S, typename std::enable_if_t<!util::is_array_v<T> && !util::is_allocatable_v<T>, int> = 0>
-  T copyAny(const S &source) {
-    T result = allocate_array<T>(source.size());
-    copy(result, source);
-    return result;
-  }
 };
 
 } // namespace molpro::linalg::array

@@ -100,6 +100,58 @@ void keep_largest(std::map<size_t, value_type>& selection, size_t n) {
                    [](const auto& a, const auto& b) { return a.second > b.second; });
   selection = std::map<size_t, value_type>(entries.begin(), entries.begin() + n);
 }
+
+//! The hermitian inner product <x|y> of two operands, reduced over the communicator
+value_type dot(const Operand& x, const Operand& y, MPI_Comm communicator) {
+  value_type a = 0;
+  for_each_local_chunk({x, y}, [&a](index_type, size_t n, value_type* const* p) {
+    a = std::inner_product(p[0], p[0] + n, p[1], a, std::plus<value_type>{}, [](const auto& elx, const auto& ely) {
+      return molpro::linalg::conjugate(value_type(elx)) * value_type(ely);
+    });
+  });
+#ifdef HAVE_MPI_H
+  MPI_Allreduce(MPI_IN_PLACE, &a, 1, MPI_DOUBLE, MPI_SUM, communicator);
+#endif
+  return a;
+}
+
+//! x[:] += a * y[:] over the local section; x is the first operand
+void axpy(value_type a, const Operand& x, const Operand& y) {
+  if (a == 0)
+    return;
+  for_each_local_chunk({x, y}, [a](index_type, size_t n, value_type* const* p) {
+    auto xx = p[0];
+    const auto yy = p[1];
+    if (a == 1)
+      for (size_t i = 0; i < n; ++i)
+        xx[i] += yy[i];
+    else if (a == -1)
+      for (size_t i = 0; i < n; ++i)
+        xx[i] -= yy[i];
+    else
+      for (size_t i = 0; i < n; ++i)
+        xx[i] += a * yy[i];
+  });
+}
+
+//! x[:] = y[:] over the local section; x is the first operand
+void copy(const Operand& x, const Operand& y) {
+  for_each_local_chunk({x, y}, [](index_type, size_t n, value_type* const* p) { std::copy_n(p[1], n, p[0]); });
+}
+
+//! The n indices with the largest |x[i]*y[i]|, selected over all processes
+std::map<size_t, value_type> select_max_dot(size_t n, const Operand& x, const Operand& y, MPI_Comm communicator) {
+  auto shifted_local_selection = std::map<size_t, value_type>();
+  for_each_local_chunk({x, y}, [n, &shifted_local_selection](index_type start, size_t m, value_type* const* p) {
+    const auto xs = Span<value_type>(p[0], m);
+    const auto ys = Span<value_type>(p[1], m);
+    for (const auto& el :
+         util::select_max_dot<Span<value_type>, Span<value_type>, value_type, value_type>(std::min(n, m), xs, ys))
+      shifted_local_selection.emplace(start + el.first, el.second);
+    keep_largest(shifted_local_selection, n);
+  });
+  return util::select_max_dot_broadcast(n, shifted_local_selection, communicator);
+}
 } // namespace
 
 DistrArray::DistrArray(size_t dimension, MPI_Comm commun) : m_dimension(dimension), m_communicator(commun) {}
@@ -153,21 +205,7 @@ void DistrArray::axpy(value_type a, const DistrArray& y) {
   auto name = std::string{"Array::axpy"};
   if (!compatible(y))
     error(name + " incompatible arrays");
-  if (a == 0)
-    return;
-  for_each_local_chunk({{*this, true, true}, {y, true, false}}, [a](index_type, size_t n, value_type* const* p) {
-    auto x = p[0];
-    const auto yy = p[1];
-    if (a == 1)
-      for (size_t i = 0; i < n; ++i)
-        x[i] += yy[i];
-    else if (a == -1)
-      for (size_t i = 0; i < n; ++i)
-        x[i] -= yy[i];
-    else
-      for (size_t i = 0; i < n; ++i)
-        x[i] += a * yy[i];
-  });
+  array::axpy(a, {*this, true, true}, {y, true, false});
   prof->stop();
 }
 
@@ -226,16 +264,7 @@ DistrArray::value_type DistrArray::dot(const DistrArray& y) const {
   auto name = std::string{"Array::dot"};
   if (!compatible(y))
     error(name + " array x is incompatible");
-  value_type a = 0;
-  for_each_local_chunk({{*this, true, false}, {y, true, false}}, [&a](index_type, size_t n, value_type* const* p) {
-    a = std::inner_product(p[0], p[0] + n, p[1], a, std::plus<value_type>{}, [](const auto& elx, const auto& ely) {
-      return molpro::linalg::conjugate(value_type(elx)) * value_type(ely);
-    });
-  });
-#ifdef HAVE_MPI_H
-  MPI_Allreduce(MPI_IN_PLACE, &a, 1, MPI_DOUBLE, MPI_SUM, communicator());
-#endif
-  return a;
+  return array::dot({*this, true, false}, {y, true, false}, communicator());
 }
 
 void DistrArray::_divide(const DistrArray& y, const DistrArray& z, DistrArray::value_type shift, bool append,
@@ -337,17 +366,7 @@ std::map<size_t, DistrArray::value_type> DistrArray::select_max_dot(size_t n, co
     error("DistrArray::select_max_dot: incompatible arrays");
   if (n > size() || n > y.size())
     error("DistrArray::select_max_dot: n is too large");
-  auto shifted_local_selection = std::map<size_t, value_type>();
-  for_each_local_chunk({{*this, true, false}, {y, true, false}},
-                       [n, &shifted_local_selection](index_type start, size_t m, value_type* const* p) {
-                         const auto xs = Span<value_type>(p[0], m);
-                         const auto ys = Span<value_type>(p[1], m);
-                         for (const auto& el : util::select_max_dot<Span<value_type>, Span<value_type>, value_type,
-                                                                    value_type>(std::min(n, m), xs, ys))
-                           shifted_local_selection.emplace(start + el.first, el.second);
-                         keep_largest(shifted_local_selection, n);
-                       });
-  return util::select_max_dot_broadcast(n, shifted_local_selection, communicator());
+  return array::select_max_dot(n, {*this, true, false}, {y, true, false}, communicator());
 }
 
 std::map<size_t, DistrArray::value_type> DistrArray::select_max_dot(size_t n, const DistrArray::SparseArray& y) const {
@@ -508,9 +527,7 @@ void DistrArray::copy(const DistrArray& y) {
   auto name = std::string{"Array::copy"};
   if (!compatible(y))
     error(name + " incompatible arrays");
-  for_each_local_chunk({{*this, false, true}, {y, true, false}}, [](index_type, size_t n, value_type* const* p) {
-    std::copy_n(p[1], n, p[0]);
-  });
+  array::copy({*this, false, true}, {y, true, false});
 }
 
 void DistrArray::copy_patch(const DistrArray& y, DistrArray::index_type start, DistrArray::index_type end) {

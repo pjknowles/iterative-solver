@@ -167,7 +167,7 @@ protected:
               lo, hi, &m_buffer.at(buffer_id * m_buffer_size * m_arrays.size() + iarray * m_buffer_size));
         }
       } else {
-        m_read_future.wait();
+        m_read_future.get(); // get() rather than wait() so that an exception thrown by the read propagates
       }
     }
 

@@ -24,6 +24,19 @@ array::ArrayHandlerDDiskIterable (qr). Every operation is available in both dire
 The handlers forward to array::DistrArray members taking a Span, e.g. @c dot(Span<const double>), and to the
 contiguous gemm functions in array::util, so the same operations are available for any distributed array.
 
+@subsection ArrayHandlersChoosingR Choosing the R array type
+
+- On a single process, or with an independent solve on each process, a contiguous R such as @c std::vector<double>
+  or array::Span<double> is the simplest choice. It needs no distribution or communicator, and performs as well as
+  array::DistrArraySpan, apart from gemm with separately allocated R vectors, which uses dgemv instead of dgemm.
+- For a solve shared by several processes, use a distributed R, e.g. array::DistrArraySpan, distributed like Q.
+  Each process then does only its share of the work on R, and nothing has to be gathered after an operation. A
+  contiguous R is replicated instead: every operation on R alone is done in full on every process, and every
+  operation that writes R ends with an @c MPI_Allgatherv over Q's communicator.
+- If the caller holds full vectors on every process, wrap the local section of each in an array::DistrArraySpan and
+  gather the vectors once when they are handed back, as the C and Fortran interface does
+  (@c CreateDistrArray and @c DistrArraySynchronize in IterativeSolverCMPI.cpp).
+
 */
 }
 }

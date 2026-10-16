@@ -13,10 +13,12 @@
 #endif
 #include <molpro/mpi.h>
 
+// DistrArrayFile unconditionally: the Qvector selection below falls back to it
+// whenever LINEARALGEBRA_Q_HDF5 is not defined, which is always, so an #else here
+// left it undeclared in exactly the builds that do have HDF5.
+#include <molpro/linalg/array/DistrArrayFile.h>
 #ifdef LINEARALGEBRA_ARRAY_HDF5
 #include <molpro/linalg/array/DistrArrayHDF5.h>
-#else
-#include <molpro/linalg/array/DistrArrayFile.h>
 #endif
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/array/DistrArrayMPI3.h>

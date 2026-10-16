@@ -335,7 +335,9 @@ static std::string stringify(T &&t) {
 
   if constexpr (formattable<T>) {
     static constexpr auto fmt = FOpts::format_string();
-    return std::format(fmt.as_view(), t);
+    // std::format's format string is a consteval std::format_string, which a string_view
+    // out of a constexpr object does not satisfy; std::vformat is the runtime-string form.
+    return std::vformat(fmt.as_view(), std::make_format_args(t));
   } else if constexpr (streamable<T>) {
     std::stringstream sstream;
     FOpts::prepare_stream(sstream);

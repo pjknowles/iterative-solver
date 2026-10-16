@@ -1,0 +1,142 @@
+namespace molpro{
+namespace linalg{
+/*!
+@page TopicSpaces Spaces
+
+The iterative solvers work by expanding the solution in a small subspace of the full vector space, solving the problem
+projected onto that subspace, and using the residual to propose new expansion vectors. The vectors involved are
+organised into several (sub)spaces. Their names appear throughout the code (e.g. `nP`, `nQ`, `nD`, `cparamsq()`,
+`handlers.rq()`) and are described here.
+
+| Space | Container type | Owned by    | Content                                                                      |
+|-------|----------------|-------------|------------------------------------------------------------------------------|
+| R     | `R`            | user        | working-set vectors: current solutions, residuals and new expansion vectors |
+| P     | `P`            | solver      | sparse vectors spanning a few selected coordinates of the full space        |
+| Q     | `Q`            | solver      | history of previous expansion vectors and their actions                      |
+| D     | `Q`            | solver      | compressed remainder of deleted Q vectors needed to reproduce the solutions |
+| X     | –              | solver      | the full subspace P+Q+D in which the subspace problem is solved              |
+
+@section SpacesContainers The container types R, Q and P
+
+`IterativeSolver<R, Q, P>` is templated on three container types, one for each kind of space (see also
+@ref TopicArrayHandlers).
+
+- `R` is the container for the working-set vectors. These are typically held in memory and are created by the
+  client program; `IterativeSolver` never creates `R` vectors itself.
+- `Q` is the container for all other full-length vectors that the solver has to keep, i.e. the Q and D spaces and the
+  right-hand-side vectors of linear equations. As there can be many of them they are typically held on backing store
+  and/or distributed across processes. The solver creates them as copies of `R` vectors.
+- `P` specifies a single P-space vector, which is a strictly sparse vector in the underlying space, e.g.
+  `std::map<size_t, double>` mapping a coordinate index to its coefficient.
+
+Operations between vectors of different spaces are performed by the corresponding array handler of
+`ArrayHandlers<R, Q, P>`: `rr()`, `qq()`, `pp()`, `rq()`, `rp()`, `qr()` and `qp()`. For example, the overlap of a
+new R vector with a Q vector is calculated with `handlers.rq().dot(r, q)`.
+
+@section SpacesR R space (working set)
+
+The R space consists of the vectors that are exchanged between the solver and the user in every iteration: the user
+passes the current parameters and their actions (linear problems) or residuals (non-linear problems) to
+`add_vector()`, preconditions the returned residuals, and gets back from `end_iteration()` the new parameters for which
+the action has to be calculated next. There is one R vector per root in the *working set*, i.e. per root that has
+not converged yet (`IterativeSolver::working_set()`).
+
+R vectors are not stored by the solver between iterations. When a new set of R parameters is added to the subspace,
+copies of the parameters and their actions are made in the Q space (`IXSpace::update_qspace()`).
+
+Before new R parameters are proposed (`detail::propose_rspace()`), the preconditioned residuals are normalised,
+orthogonalised against P+Q+D and each other, and any that turn out to be linearly dependent are removed. The
+thresholds for this are in `RSpaceOptions`:
+
+- `norm_thresh`: vectors with a norm below this are considered null,
+- `svd_thresh`: smallest singular value of the overlap matrix allowed when constructing the working set.
+
+@section SpacesP P space
+
+The P space is spanned by a small number of sparse vectors, typically unit vectors along selected coordinates of the
+full space. For these the kernel matrix is not applied through `action()`. Instead, the user provides the matrix
+projected onto the P space (`Problem::pp_action_matrix()`) and a function evaluating the action of the matrix on
+vectors that are linear combinations of P vectors (`Problem::p_action()`). This allows the part of the problem that
+is most important (e.g. the coordinates with the lowest diagonal elements in an eigenvalue problem) to be treated
+exactly from the start.
+
+- The P space can only be used with linear problems with hermitian kernels.
+- It must be set up while the subspace is still empty, i.e. before the first call to `add_vector()`, by calling
+  `add_p()`. Its size must be zero or at least the number of roots sought.
+- When solving through `IterativeSolver::solve()` and the problem provides `diagonals()`, a P space is selected
+  automatically from the coordinates with the lowest diagonal elements. Its size is limited by `max_p`, and only
+  coordinates whose diagonal element lies within `p_threshold` of the lowest one are included.
+- `suggest_p()` proposes coordinates that would be good candidates for extending the P space.
+
+@section SpacesQ Q space
+
+The Q space holds the history of previous expansion vectors (*Q parameters*) together with their actions, both
+stored in `Q` containers (`subspace::QSpace`). New parameters are prepended, so the most recent vectors come first.
+New parameters that are linearly dependent among themselves are discarded when they are added.
+
+In the linear solvers the size of the Q space can be controlled through `QSpaceOptions` (exposed as solver options):
+
+- `max_size_qspace`: maximum number of Q vectors. If the Q space grows beyond this, the vectors with the smallest
+  contribution to any of the current solutions are deleted and replaced by a D space (see @ref SpacesD).
+- `min_size_qspace`: deletions that would shrink the Q space below this size are cancelled.
+- `contrib_thresh`: Q vectors whose largest contribution to any current solution is smaller than this are considered
+  redundant and deleted even if the Q space is not full.
+
+The non-linear solvers (`NonLinearEquationsDIIS`, `OptimizeBFGS`) also store their history in the Q space and have a
+`max_size_qspace` option, but delete old vectors directly without building a D space.
+
+@section SpacesD D space
+
+Deleting Q vectors from the subspace would change the solutions of the subspace problem and lose the progress made so
+far. To prevent this, the linear Davidson solvers keep a D space (`subspace::DSpace`), which stores the complement of
+the P+Q+R subspace that is needed to reproduce the previous solutions exactly.
+
+When Q vectors are deleted (`detail::construct_dspace()`), the current solutions are projected onto the space spanned
+by the deleted Q vectors and the old D vectors. After removing null and linearly dependent combinations, the
+projections are normalised and become the new D space; the old D space is discarded. D vectors and their actions are
+stored in `Q` containers. As a result the D space never holds more vectors than there are solutions, and the
+subspace still contains the previous solutions, even though the Q vectors that contributed to them are gone.
+
+Because the D space is built from linear combinations of stored vectors, numerical noise accumulates in it over many
+iterations. It can therefore be reset periodically (`reset_D` option, `detail::DSpaceResetter`): the full current
+solutions are moved into the Q space as new parameters, the Q vectors that overlap most with them are deleted, and
+the D space is cleared. If the working set is smaller than the number of solutions, the reset is spread over several
+iterations. The size of the Q space after a reset can be limited separately with `reset_D_max_Q_size`.
+
+@section SpacesX X space (full subspace)
+
+The X space is the union of the P, Q and D spaces, in which the subspace problem is solved
+(`subspace::IXSpace`, `subspace::XSpace`). It owns the containers of the individual spaces as well as the equation
+data projected onto the subspace (`subspace::SubspaceData`):
+
+- `EqnData::H`: the kernel matrix (for DIIS the matrix of residual overlaps),
+- `EqnData::S`: the overlap matrix,
+- `EqnData::rhs`: the projected right-hand-side vectors (linear equations only).
+
+The rows and columns of these matrices are ordered as P, then Q, then D. The sizes and offsets of the three blocks are
+given by `subspace::Dimensions`:
+
+@code{.unparsed}
+ 0          oQ()=nP      oD()=nP+nQ        nX()=nP+nQ+nD
+ |---- P ----|----- Q -----|------ D ------|
+@endcode
+
+The subspace solver (`subspace::ISubspaceSolver`) solves the projected problem in the X space and returns the
+solutions as coefficient matrices. The full solutions and residuals are then constructed in R containers as linear
+combinations of the P, Q and D vectors (for P vectors through `p_action()`).
+
+@section SpacesIteration Overview of an iteration
+
+For the linear Davidson solvers, a single iteration involves the spaces as follows:
+
+1. The user evaluates the action of the kernel on the current R parameters and calls `add_vector()`.
+2. The R parameters and actions are copied into the Q space, and the equation data of the X space is extended.
+3. The subspace problem is solved in X = P+Q+D, and solutions and residuals are constructed in the R vectors.
+4. The user preconditions the residuals and calls `end_iteration()`.
+5. If the Q space is too large, Q vectors are deleted and a new D space is constructed from the current solutions
+   (or the D space is reset if requested).
+6. The preconditioned residuals are orthonormalised against P+Q+D and returned as the new R parameters.
+
+*/
+}
+}

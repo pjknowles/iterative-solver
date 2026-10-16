@@ -5,6 +5,7 @@
 #endif
 #include "BufferManager.h"
 #include "gather_all.h"
+#include <algorithm>
 #include <functional>
 #include <iterator>
 #include <future>
@@ -109,15 +110,32 @@ std::vector<T*> contiguous_pointers(const std::vector<std::reference_wrapper<R>>
  * inner: alphadata[i + k * nx] += x_i . y_k
  * outer: y_k += sum_i alphadata[i * ny + k] * x_i
  *
- * If yy are evenly spaced this is a single dgemm, otherwise one dgemv for each of yy.
+ * This is a single dgemm. If yy are not evenly spaced, they are first packed into one matrix, which an outer product
+ * then updates before it is copied back.
  */
 template <class T>
 void gemm_chunk(gemm_type type, size_t n, const T* x, size_t ldx, size_t nx, T* alphadata, const std::vector<T*>& y) {
   const size_t ny = y.size();
   if (n == 0 or nx == 0 or ny == 0)
     return;
-  const auto dims = std::to_string(nx) + ", " + std::to_string(ny) + ", " + std::to_string(n);
   const auto y_stride = constant_stride(y, n);
+  if (y_stride == 0 and ny > 1) {
+    // yy are not evenly spaced: pack them into one matrix, so that the product is a single dgemm rather than one dgemv
+    // for each of yy
+    thread_local std::vector<T> packed;
+    packed.resize(n * ny);
+    std::vector<T*> p(ny);
+    for (size_t k = 0; k < ny; ++k) {
+      p[k] = packed.data() + k * n;
+      std::copy_n(y[k], n, p[k]);
+    }
+    gemm_chunk(type, n, x, ldx, nx, alphadata, p);
+    if (type == gemm_type::outer)
+      for (size_t k = 0; k < ny; ++k)
+        std::copy_n(p[k], n, y[k]);
+    return;
+  }
+  const auto dims = std::to_string(nx) + ", " + std::to_string(ny) + ", " + std::to_string(n);
   if (type == gemm_type::outer) {
     if (y_stride > 0) {
       auto prof = molpro::Profiler::single()->push("gemm_outer: cblas_dgemm dimensions " + dims);

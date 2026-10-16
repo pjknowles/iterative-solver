@@ -13,8 +13,9 @@ array::ArrayHandlerDDiskIterable (qr). Every operation is available in both dire
 
 - The contiguous array is addressed in place; there are no per-element proxies.
 - The disk array is paged through @c get() and @c put(), so that the memory used does not scale with its size. gemm
-  reads it through a double-buffered array::util::BufferManager and does the arithmetic with dgemm, or dgemv for R
-  vectors that are not evenly spaced in memory.
+  reads it through a double-buffered array::util::BufferManager and does the arithmetic with dgemm. R vectors that
+  are not evenly spaced in memory are first copied, a page at a time, into one buffer, which each thread keeps for
+  later calls.
 - A Q made as a copy of an R by the qr handler is created on molpro::mpi::comm_self(), because R is not distributed.
   The directory for its file, or a function that creates the copy, can be given to the handler's constructor. As for
   any distributed array on a communicator other than molpro::mpi::comm_global(), MPI must have been initialised.
@@ -28,7 +29,7 @@ contiguous gemm functions in array::util, so the same operations are available f
 
 - On a single process, or with an independent solve on each process, a contiguous R such as @c std::vector<double>
   or array::Span<double> is the simplest choice. It needs no distribution or communicator, and performs as well as
-  array::DistrArraySpan, apart from gemm with separately allocated R vectors, which uses dgemv instead of dgemm.
+  array::DistrArraySpan.
 - For a solve shared by several processes, use a distributed R, e.g. array::DistrArraySpan, distributed like Q.
   Each process then does only its share of the work on R, and nothing has to be gathered after an operation. A
   contiguous R is replicated instead: every operation on R alone is done in full on every process, and every

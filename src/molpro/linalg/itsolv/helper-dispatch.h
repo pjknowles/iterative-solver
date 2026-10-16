@@ -297,9 +297,12 @@ int eigensolver_hermitian_lowest_kernel(std::true_type /*use_lapack*/, std::span
   constexpr char store_lower_triangle = 'L';
   lapack_int found = 0;
   std::vector<lapack_int> support(2 * std::max<size_t>(nroots, 1));
+  // ?syevr/?heevr need room for all dimension eigenvalues, though only the first nroots are returned
+  std::vector<real_type_t<value_type>> all(dimension);
   const auto info = lapack::heevr_lowest(LAPACK_COL_MAJOR, store_lower_triangle, lapack_int(dimension), a.data(),
-                                         lapack_int(dimension), lapack_int(nroots), &found, w.data(), z.data(),
+                                         lapack_int(dimension), lapack_int(nroots), &found, all.data(), z.data(),
                                          lapack_int(dimension), support.data());
+  std::copy_n(all.begin(), nroots, w.begin());
   return info != 0 ? int(info) : (size_t(found) == nroots ? 0 : 1);
 #else
   // MOLPRO's own ?syev has no partial counterpart
@@ -425,11 +428,14 @@ bool generalized_eigensolver_hermitian_lowest(std::span<const value_type> matrix
     // the reduction overwrites both matrices, and leaves the Cholesky factor of S in place of S
     std::vector<value_type> a(matrix.begin(), matrix.end()), b(metric.begin(), metric.end());
     std::vector<lapack_int> ifail(dimension);
+    // ?sygvx/?hegvx need room for all dimension eigenvalues, though only the first nroots are returned
+    std::vector<real_t> all(dimension);
     lapack_int found = 0;
     if (lapack::hegvx_lowest(LAPACK_COL_MAJOR, store_lower_triangle, n, a.data(), n, b.data(), n, lapack_int(nroots),
-                             &found, eigenvalues.data(), eigenvectors.data(), n, ifail.data()) != 0 ||
+                             &found, all.data(), eigenvectors.data(), n, ifail.data()) != 0 ||
         size_t(found) != nroots)
       return false;
+    std::copy_n(all.begin(), nroots, eigenvalues.begin());
     real_t rcond = 0;
     if (lapack::pocon(LAPACK_COL_MAJOR, store_lower_triangle, n, b.data(), n, anorm, &rcond) != 0)
       return false;

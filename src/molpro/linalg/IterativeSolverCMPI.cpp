@@ -13,9 +13,15 @@
 #endif
 #include <molpro/mpi.h>
 
-// DistrArrayFile unconditionally: the Qvector selection below falls back to it
-// whenever LINEARALGEBRA_Q_HDF5 is not defined, which is always, so an #else here
-// left it undeclared in exactly the builds that do have HDF5.
+// LINEARALGEBRA_ARRAY_HDF5 and LINEARALGEBRA_Q_HDF5 are deliberately different
+// symbols, and both matter here. The first says the HDF5 containers are built; the
+// second says to use them for the Q space of the C, Fortran and Python bindings in
+// place of flat files. Nothing sets the second, by design: HDF5 measured slower than
+// flat files for storage that is private to the solver and never seen by the client,
+// so the Q space uses files, and using HDF5 instead would need a CMake option of its
+// own. DistrArrayFile is therefore included unconditionally, because that is what the
+// selection below resolves to; putting it in an #else left it undeclared in precisely
+// those builds that do have HDF5.
 #include <molpro/linalg/array/DistrArrayFile.h>
 #ifdef LINEARALGEBRA_ARRAY_HDF5
 #include <molpro/linalg/array/DistrArrayHDF5.h>
@@ -50,6 +56,8 @@ using molpro::linalg::itsolv::wrap;
 
 // using Rvector = molpro::linalg::array::DistrArrayMPI3;
 using Rvector = molpro::linalg::array::DistrArraySpan;
+// Not LINEARALGEBRA_ARRAY_HDF5: see the note on the includes above. Flat files are
+// the faster choice here, so this resolves to DistrArrayFile unless someone opts in.
 #ifdef LINEARALGEBRA_Q_HDF5
 using Qvector = molpro::linalg::array::DistrArrayHDF5;
 #else

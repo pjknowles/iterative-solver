@@ -42,8 +42,11 @@ jobs:
           - "-DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang"
           # The serial build. Fortran needs MPI, so it has to come off too.
           - "-DMPI=OFF -DFORTRAN=OFF"
-          # The HDF5 DistrArray family defaults off and so was never compiled.
-          - "-DLINEARALGEBRA_ARRAY_HDF5=ON"
+          # Which BLAS/LAPACK gets picked is otherwise indeterminate: the image carries
+          # Debian reference LAPACK, OpenBLAS and MKL. #656 was an MKL-only bug.
+          - "-DBLA_VENDOR=Generic"
+          - "-DBLA_VENDOR=OpenBLAS"
+          - "-DBLA_VENDOR=Intel10_64lp_seq"
 
     steps:
     - uses: actions/checkout@v5

@@ -10,4 +10,7 @@ ENV CMAKE_GENERATOR=Ninja
 RUN export VERSION=5.9.2 && wget https://github.com/GlobalArrays/ga/releases/download/v${VERSION}/ga-${VERSION}.tar.gz && tar xzf ga-${VERSION}.tar.gz && cd ga-${VERSION} && ./configure --disable-f77 --with-mpi3 --without-blas --without-lapack CFLAGS="-O2 -Wno-error=incompatible-pointer-types" && make install && cd .. && rm -rf ga-${VERSION}*
 COPY python/requirements.txt .
 RUN CONDA_PLUGINS_AUTO_ACCEPT_TOS=true conda install --solver=classic conda-forge::conda-libmamba-solver conda-forge::libmamba conda-forge::libmambapy conda-forge::libarchive
-RUN CONDA_PLUGINS_AUTO_ACCEPT_TOS=true conda install --file requirements.txt -y -c conda-forge mkl mkl-include gcc=14 fortran-compiler
+# hdf5 comes from conda rather than only apt: the build uses the conda toolchain and
+# conda's cmake, which did not find the apt HDF5, so -DLINEARALGEBRA_ARRAY_HDF5=ON
+# could not be covered.
+RUN CONDA_PLUGINS_AUTO_ACCEPT_TOS=true conda install --file requirements.txt -y -c conda-forge mkl mkl-include hdf5 gcc=14 fortran-compiler

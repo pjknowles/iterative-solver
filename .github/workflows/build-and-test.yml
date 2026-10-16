@@ -19,6 +19,15 @@ jobs:
     permissions:
       contents: write
       packages: write
+    # ccache is in the image. Only C and C++ go through it: ccache does not
+    # support Fortran. Source and build paths are the same on every run, so
+    # cached objects (debug info included) are reusable as they stand. A fixed
+    # path, because in a container job github.workspace names the host's path.
+    env:
+      CCACHE_DIR: /tmp/ccache
+      CCACHE_MAXSIZE: 400M
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
     container:
       # relies on repository name being all lower case
       image: ghcr.io/${{ github.repository }}
@@ -56,12 +65,16 @@ jobs:
       with:
         files: "CMakeLists.txt"
 
-#    - name: ccache
-#      uses: hendrikmuhs/ccache-action@v1.2
+    - name: Restore the compiler cache
+      uses: actions/cache/restore@v4
+      with:
+        path: /tmp/ccache
+        key: ccache-cmake-build-${{ strategy.job-index }}-${{ github.sha }}
+        restore-keys: ccache-cmake-build-${{ strategy.job-index }}-
 
     - name: Configure CMake
       if: steps.check_configuration.outputs.files_exists == 'true'
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_CXX_FLAGS=-fpermissive -DCMAKE_BUILD_TYPE=${{env.CMAKE_BUILD_TYPE}} ${{ matrix.cmake-options }} # -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_CXX_FLAGS=-fpermissive -DCMAKE_BUILD_TYPE=${{env.CMAKE_BUILD_TYPE}} ${{ matrix.cmake-options }}
 
     # The container is pinned, but the conda and apt packages inside it are resolved
     # when the image is built, so record what this run actually used. Without this the
@@ -78,6 +91,19 @@ jobs:
     - name: Build
       if: steps.check_configuration.outputs.files_exists == 'true'
       run: cmake --build ${{github.workspace}}/build --config ${{env.CMAKE_BUILD_TYPE}}
+
+    - name: Compiler cache statistics
+      if: always()
+      run: ccache --show-stats
+
+    # Saved even when the build fails: the objects that did compile are still
+    # good, and a broken build is exactly when the next push wants a fast rebuild.
+    - name: Save the compiler cache
+      if: always()
+      uses: actions/cache/save@v4
+      with:
+        path: /tmp/ccache
+        key: ccache-cmake-build-${{ strategy.job-index }}-${{ github.sha }}
 
     - name: Test
       if: steps.check_configuration.outputs.files_exists == 'true'
@@ -141,10 +167,26 @@ jobs:
   sanitizers:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # ccache is in the image. Only C and C++ go through it: ccache does not
+    # support Fortran. Source and build paths are the same on every run, so
+    # cached objects (debug info included) are reusable as they stand. A fixed
+    # path, because in a container job github.workspace names the host's path.
+    env:
+      CCACHE_DIR: /tmp/ccache
+      CCACHE_MAXSIZE: 400M
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
     container:
       image: ghcr.io/${{ github.repository }}
     steps:
       - uses: actions/checkout@v5
+
+      - name: Restore the compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/ccache
+          key: ccache-sanitizers-${{ github.sha }}
+          restore-keys: ccache-sanitizers-
 
       - name: Configure CMake
         run: >
@@ -154,6 +196,19 @@ jobs:
 
       - name: Build
         run: cmake --build build -j 2
+
+      - name: Compiler cache statistics
+        if: always()
+        run: ccache --show-stats
+
+      # Saved even when the build fails: the objects that did compile are still
+      # good, and a broken build is exactly when the next push wants a fast rebuild.
+      - name: Save the compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/ccache
+          key: ccache-sanitizers-${{ github.sha }}
 
       - name: Test
         env:

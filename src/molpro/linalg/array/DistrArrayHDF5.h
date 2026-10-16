@@ -71,9 +71,10 @@ public:
    * @param source array to be copied
    * @param base_name base name for the temporary file. It will form the first part of the temporary array name. The
    * middle will be chosen to be unique and the suffix will be ".hdf5". If base_name is an existing directory, the file
-   * is created in it, with the base name ".temp_array".
+   * is created in it, with the base name ".temp_array". If base_name is empty, the file is created like that in the
+   * directory of the file of source if it is a disk array, otherwise in the current directory.
    */
-  static DistrArrayHDF5 CreateTempCopy(const DistrArray &source, const std::string &base_name = ".temp_array");
+  static DistrArrayHDF5 CreateTempCopy(const DistrArray &source, const std::string &base_name = "");
   /*!
    * @brief Create a copy of a contiguous array using a temporary file which will be erased on destruction
    * @param source all elements of the array, the same on every process of comm

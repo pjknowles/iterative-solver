@@ -38,8 +38,8 @@ bool same_processes(MPI_Comm a, MPI_Comm b) {
 } // namespace
 
 /*!
- * New disk arrays made by the disk array handlers or by DistrArrayFile::CreateTempCopy() have their files in the
- * directory given, which is shared by the processes, and leave no files behind
+ * New disk arrays made by the disk array handlers, by DistrArrayFile::CreateTempCopy() or by the copy constructors of
+ * DistrArrayFile have their files in the directory given, which is shared by the processes, and leave no files behind
  */
 class TempCopyDirectoryF : public ::testing::Test {
 public:
@@ -98,6 +98,24 @@ TEST_F(TempCopyDirectoryF, ArrayHandlerDDisk) {
     auto handler = ArrayHandlerDDisk<DistrArrayFile>(directory.string());
     auto a = handler.copy(source);
     check(a);
+  }
+  check_removed();
+}
+
+// Without a directory, a copy of a disk array is made in the directory of its file
+TEST_F(TempCopyDirectoryF, default_directory_of_source) {
+  {
+    auto source = DistrArrayFile(dim, mpi_comm, directory.string());
+    source.copy(Span<const double>(values.data(), values.size()));
+    EXPECT_EQ(source.file_directory(), directory.string());
+    auto a = DistrArrayFile::CreateTempCopy(source);
+    check(a);
+    auto b = ArrayHandlerDDisk<DistrArrayFile>().copy(source);
+    check(b);
+    auto c = DistrArrayFile(source);
+    check(c);
+    auto d = DistrArrayFile(static_cast<const molpro::linalg::array::DistrArray&>(source));
+    check(d);
   }
   check_removed();
 }

@@ -19,7 +19,7 @@ public:
   using typename ArrayHandler<AL, AR>::value_type_abs;
   using typename ArrayHandler<AL, AR>::ProxyHandle;
 
-  //! New arrays are created by AL::CreateTempCopy(), with any file in its default location
+  //! New arrays are created by AL::CreateTempCopy(), with any file next to that of the source, if it has one
   ArrayHandlerDDiskDistr()
       : ArrayHandlerWithCopyFunc<AL, AR>([](const AR &source) { return AL::CreateTempCopy(source); }) {}
 

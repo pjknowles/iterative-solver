@@ -30,6 +30,7 @@ private:
   local_bounds() const; //! returns local array boundaries and size
 public:
   DistrArrayFile() = delete;
+  //! Creates a copy of source, with its file in the directory of the file of source
   DistrArrayFile(const DistrArrayFile& source);
   DistrArrayFile(DistrArrayFile&& source);
   explicit DistrArrayFile(size_t dimension, MPI_Comm comm = molpro::mpi::comm_global(),
@@ -37,6 +38,8 @@ public:
   explicit DistrArrayFile(std::unique_ptr<Distribution> distribution,
                           MPI_Comm comm = molpro::mpi::comm_global(),
                           const std::string& directory = ".");
+  //! Creates a copy of source, with its file next to that of source if it is a disk array, otherwise in the current
+  //! directory
   explicit DistrArrayFile(const DistrArray& source);
 
   DistrArrayFile& operator=(const DistrArrayFile& source) = delete;
@@ -46,9 +49,10 @@ public:
    * @brief Creates a copy of source, with the same distribution and communicator, in a file which is erased on
    * destruction
    * @param source array to be copied
-   * @param directory directory for the file
+   * @param directory directory for the file. If empty, the directory of the file of source is used if it is a disk
+   * array, otherwise the current directory.
    */
-  static DistrArrayFile CreateTempCopy(const DistrArray& source, const std::string& directory = ".");
+  static DistrArrayFile CreateTempCopy(const DistrArray& source, const std::string& directory = "");
   /*!
    * @brief Creates a copy of a contiguous array in a file which is erased on destruction
    * @param source all elements of the array, the same on every process of comm

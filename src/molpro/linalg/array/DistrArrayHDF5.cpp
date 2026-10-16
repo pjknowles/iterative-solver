@@ -57,7 +57,8 @@ DistrArrayHDF5::~DistrArrayHDF5() {
 }
 
 DistrArrayHDF5 DistrArrayHDF5::CreateTempCopy(const DistrArray &source, const std::string &base_name) {
-  return DistrArrayHDF5(source, temp_file_handle(base_name, source.communicator()));
+  const auto name = base_name.empty() ? temp_copy_directory(source, base_name) : base_name;
+  return DistrArrayHDF5(source, temp_file_handle(name, source.communicator()));
 }
 
 DistrArrayHDF5 DistrArrayHDF5::CreateTempCopy(Span<const value_type> source, MPI_Comm comm,

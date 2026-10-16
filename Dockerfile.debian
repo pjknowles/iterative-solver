@@ -19,6 +19,7 @@ ARG MPI_FLAVOUR=mpich
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     build-essential gcc g++ gfortran clang \
     cmake ninja-build make git wget curl rsync bash ccache pkg-config \
+    openssh-client \
     liblapacke-dev libeigen3-dev libhdf5-dev \
     python3-dev python3-numpy python3-pip cython3 \
     doxygen graphviz valgrind \

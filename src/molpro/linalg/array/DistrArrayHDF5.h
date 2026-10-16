@@ -117,6 +117,8 @@ public:
   //! @returns a copy of a file handle
   std::shared_ptr<util::PHDF5Handle> file_handle() const;
 
+  [[nodiscard]] std::string file_directory() const override;
+
   //! @returns id of dataset object.
   hid_t dataset() const;
   //! Checks that the array dataset exists in the file. The group must be already open.

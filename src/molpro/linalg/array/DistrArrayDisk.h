@@ -5,6 +5,7 @@
 #include <molpro/Profiler.h>
 #include <molpro/linalg/array/DistrArray.h>
 #include <molpro/linalg/array/Span.h>
+#include <string>
 
 namespace molpro::linalg::array {
 /*!
@@ -56,6 +57,9 @@ public:
   using DistrArray::dot;
   void set_buffer_size(size_t buffer_size) { m_buffer_size = buffer_size; }
   [[nodiscard]] size_t disk_page_size() const override { return m_buffer_size; }
+
+  //! The directory of the file holding this array, or an empty string if that is not known
+  [[nodiscard]] virtual std::string file_directory() const { return {}; }
 
   //! Not available: an array on disk is not held in memory. @throws std::logic_error
   [[nodiscard]] std::unique_ptr<LocalBuffer> local_buffer() override;

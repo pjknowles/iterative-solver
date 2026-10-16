@@ -48,6 +48,8 @@ public:
 
   ~DistrArrayFile() override;
 
+  [[nodiscard]] std::string file_directory() const override { return m_directory.string(); }
+
   bool compatible(const DistrArrayFile& source) const;
 
   //! Dummy

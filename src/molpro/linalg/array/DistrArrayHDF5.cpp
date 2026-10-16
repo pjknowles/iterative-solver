@@ -4,6 +4,7 @@
 
 #include "PHDF5Handle.h"
 #include "util/TempHandle.h"
+#include "util/fs.h"
 #include "util/temp_phdf5_handle.h"
 namespace molpro::linalg::array {
 namespace {
@@ -244,6 +245,12 @@ void DistrArrayHDF5::scatter_acc(std::vector<index_type> &indices, const std::ve
 std::vector<DistrArrayHDF5::value_type> DistrArrayHDF5::vec() const { return get(0, m_dimension); }
 
 std::shared_ptr<util::PHDF5Handle> DistrArrayHDF5::file_handle() const { return m_file_handle; }
+
+std::string DistrArrayHDF5::file_directory() const {
+  if (not m_file_handle)
+    return {};
+  return fs::absolute(fs::path(m_file_handle->file_name())).parent_path().string();
+}
 
 hid_t DistrArrayHDF5::dataset() const { return m_dataset; }
 

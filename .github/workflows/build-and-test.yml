@@ -122,6 +122,16 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runs-on }}
     timeout-minutes: 30
+    # As in the container jobs. Here the compiler is checked by its reported
+    # version, not its file: these runners swap toolchains under a fixed label,
+    # and on macOS /usr/bin/c++ is an xcrun shim whose file never changes when
+    # the Xcode behind it does.
+    env:
+      CCACHE_DIR: ${{ runner.temp }}/ccache
+      CCACHE_MAXSIZE: 400M
+      CCACHE_COMPILERCHECK: "%compiler% --version"
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
     strategy:
       fail-fast: false
       matrix:
@@ -135,11 +145,18 @@ jobs:
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install eigen lapack
+        run: brew install eigen lapack ccache
 
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libeigen3-dev liblapacke-dev
+        run: sudo apt-get update && sudo apt-get install -y libeigen3-dev liblapacke-dev ccache
+
+      - name: Restore the compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-${{ matrix.runs-on }}-${{ github.sha }}
+          restore-keys: ccache-${{ matrix.runs-on }}-
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DMPI=OFF -DFORTRAN=OFF
@@ -157,6 +174,19 @@ jobs:
 
       - name: Build
         run: cmake --build build
+
+      - name: Compiler cache statistics
+        if: always()
+        run: ccache --show-stats
+
+      # Saved even when the build fails: the objects that did compile are still
+      # good, and a broken build is exactly when the next push wants a fast rebuild.
+      - name: Save the compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-${{ matrix.runs-on }}-${{ github.sha }}
 
       - name: Test
         run: cd build && ctest --output-on-failure

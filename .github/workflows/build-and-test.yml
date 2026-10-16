@@ -118,9 +118,14 @@ jobs:
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DMPI=OFF -DFORTRAN=OFF
 
+      # The compiler version, not just its path: these runners change their
+      # command-line tools under a fixed label, and without the version a result
+      # that flips cannot be explained afterwards.
       - name: Record the toolchain
         run: |
           cmake --version | head -1
+          c++ --version | head -2
+          sw_vers 2>/dev/null || true
           grep -E '^CMAKE_(C|CXX)_COMPILER:' build/CMakeCache.txt || true
           grep -E '^(BLAS|LAPACK)[A-Za-z_]*:' build/CMakeCache.txt || true
 

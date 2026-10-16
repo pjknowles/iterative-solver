@@ -16,9 +16,9 @@ array::ArrayHandlerDDiskIterable (qr). Every operation is available in both dire
   reads it through a double-buffered array::util::BufferManager and does the arithmetic with dgemm. R vectors that
   are not evenly spaced in memory are first copied, a page at a time, into one buffer, which each thread keeps for
   later calls.
-- A Q made as a copy of an R by the qr handler is created on molpro::mpi::comm_self(), because R is not distributed.
-  The directory for its file, or a function that creates the copy, can be given to the handler's constructor. As for
-  any distributed array on a communicator other than molpro::mpi::comm_global(), MPI must have been initialised.
+- A Q made as a copy of an R by the qr handler is created by @c CreateTempCopy() of the Q type on
+  molpro::mpi::comm_self(), because R is not distributed. As for any distributed array on a communicator other than
+  molpro::mpi::comm_global(), MPI must have been initialised.
 - If a Q is distributed over several processes, the R arrays hold all elements on every process. Each process works
   on the local section of Q, and an R written to is then replicated over all processes.
 
@@ -37,6 +37,28 @@ contiguous gemm functions in array::util, so the same operations are available f
 - If the caller holds full vectors on every process, wrap the local section of each in an array::DistrArraySpan and
   gather the vectors once when they are handed back, as the C and Fortran interface does
   (@c CreateDistrArray and @c DistrArraySynchronize in IterativeSolverCMPI.cpp).
+
+@section ArrayHandlersTempFiles Files of new disk arrays
+
+The handlers that create disk arrays, array::ArrayHandlerDDisk, array::ArrayHandlerDDiskDistr and
+array::ArrayHandlerDDiskIterable, do so with the @c CreateTempCopy() functions of the disk array types, e.g.
+array::DistrArrayFile::CreateTempCopy(). The files are erased with the arrays. Each of these handlers can be
+constructed with
+
+- no argument: a copy of a disk array is put next to the file of the source, and any other copy into the current
+  directory;
+- a directory, into which all files are put, e.g. a scratch directory local to the node;
+- a copy function, which creates the new array in any way it likes, e.g. on another communicator.
+
+For example, to have all Q files in @c /scratch/run :
+@code{.cpp}
+using R = std::vector<double>;
+using Q = molpro::linalg::array::DistrArrayFile;
+auto handlers = molpro::linalg::itsolv::ArrayHandlers<R, Q>::create()
+                    .qq(std::make_shared<molpro::linalg::array::ArrayHandlerDDisk<Q>>("/scratch/run"))
+                    .qr(std::make_shared<molpro::linalg::array::ArrayHandlerDDiskIterable<Q, R>>("/scratch/run"))
+                    .build();
+@endcode
 
 */
 }

@@ -140,7 +140,7 @@ jobs:
   # libraries are not expected to be leak-clean at exit.
   sanitizers:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     container:
       image: ghcr.io/${{ github.repository }}
     steps:

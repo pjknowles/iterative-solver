@@ -35,8 +35,10 @@ PHDF5Handle& PHDF5Handle::operator=(PHDF5Handle&& source) noexcept {
   m_group_name = source.m_group_name;
   m_file_owner = source.m_file_owner;
   m_group_owner = source.m_group_owner;
+  m_erase_file_on_destroy = source.m_erase_file_on_destroy;
   source.m_file_owner = false;
   source.m_group_owner = false;
+  source.m_erase_file_on_destroy = false;
   auto dummy = PHDF5Handle{source.m_comm};
   source = dummy;
   return *this;

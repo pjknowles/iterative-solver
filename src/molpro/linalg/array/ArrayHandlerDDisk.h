@@ -3,6 +3,7 @@
 #include <molpro/Profiler.h>
 #include <molpro/linalg/array/ArrayHandlerWithCopyFunc.h>
 #include <molpro/linalg/array/util/gemm.h>
+#include <string>
 
 namespace molpro::linalg::array {
 using molpro::linalg::array::util::gemm_inner_distr_distr;
@@ -17,7 +18,13 @@ public:
   using typename ArrayHandler<AL, AR>::value_type_abs;
   using typename ArrayHandler<AL, AR>::ProxyHandle;
 
+  //! New arrays are created by AL::CreateTempCopy(), with any file in its default location
   ArrayHandlerDDisk() : ArrayHandlerWithCopyFunc<AL, AR>([](const AR &source) { return AL::CreateTempCopy(source); }) {}
+
+  //! New arrays are created by AL::CreateTempCopy(), with any file in directory
+  explicit ArrayHandlerDDisk(const std::string &directory)
+      : ArrayHandlerWithCopyFunc<AL, AR>(
+            [directory](const AR &source) { return AL::CreateTempCopy(source, directory); }) {}
 
   //! Constructor taking a copy function, which can e.g. specify the file underlying the new array
   ArrayHandlerDDisk(std::function<AL(const AR &)> copy_func) : ArrayHandlerWithCopyFunc<AL, AR>(std::move(copy_func)) {}

@@ -6,14 +6,20 @@
 #include <vector>
 
 #include "parallel_util.h"
+#include <molpro/linalg/array/ArrayHandlerDDisk.h>
+#include <molpro/linalg/array/ArrayHandlerDDiskDistr.h>
 #include <molpro/linalg/array/ArrayHandlerDDiskIterable.h>
 #include <molpro/linalg/array/DistrArrayFile.h>
+#include <molpro/linalg/array/DistrArrayMPI3.h>
 #include <molpro/linalg/array/Span.h>
 #include <molpro/linalg/array/util/gemm.h>
 #include <molpro/mpi.h>
 
+using molpro::linalg::array::ArrayHandlerDDisk;
+using molpro::linalg::array::ArrayHandlerDDiskDistr;
 using molpro::linalg::array::ArrayHandlerDDiskIterable;
 using molpro::linalg::array::DistrArrayFile;
+using molpro::linalg::array::DistrArrayMPI3;
 using molpro::linalg::array::Span;
 using molpro::linalg::test::mpi_comm;
 
@@ -32,7 +38,7 @@ bool same_processes(MPI_Comm a, MPI_Comm b) {
 } // namespace
 
 /*!
- * New disk arrays made by ArrayHandlerDDiskIterable or by DistrArrayFile::CreateTempCopy() have their files in the
+ * New disk arrays made by the disk array handlers or by DistrArrayFile::CreateTempCopy() have their files in the
  * directory given, which is shared by the processes, and leave no files behind
  */
 class TempCopyDirectoryF : public ::testing::Test {
@@ -83,6 +89,29 @@ TEST_F(TempCopyDirectoryF, DistrArrayFile_CreateTempCopy_contiguous) {
     check(a);
   }
   check_removed();
+}
+
+TEST_F(TempCopyDirectoryF, ArrayHandlerDDisk) {
+  auto source = DistrArrayFile(dim, mpi_comm);
+  source.copy(Span<const double>(values.data(), values.size()));
+  {
+    auto handler = ArrayHandlerDDisk<DistrArrayFile>(directory.string());
+    auto a = handler.copy(source);
+    check(a);
+  }
+  check_removed();
+}
+
+TEST_F(TempCopyDirectoryF, ArrayHandlerDDiskDistr) {
+  auto source = DistrArrayMPI3(dim, mpi_comm);
+  source.copy(Span<const double>(values.data(), values.size()));
+  {
+    auto handler = ArrayHandlerDDiskDistr<DistrArrayFile, DistrArrayMPI3>(directory.string());
+    auto a = handler.copy(source);
+    check(a);
+  }
+  check_removed();
+  source.sync();
 }
 
 TEST_F(TempCopyDirectoryF, ArrayHandlerDDiskIterable) {

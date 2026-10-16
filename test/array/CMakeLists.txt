@@ -43,7 +43,7 @@ if (MPI)
         target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayMPI3.cpp testDistrArrayFile.cpp testBufferManager.cpp
                         testDistrArraySpan.cpp parallel_util.cpp
                         testArrayHandlerDistr.cpp testArrayHandlerDistrSparse.cpp testArrayHandlers.cpp
-                        testArrayHandlerIterableDDisk.cpp)
+                        testArrayHandlerIterableDDisk.cpp testTempCopyDirectory.cpp)
     endif ()
     if (LINEARALGEBRA_ARRAY_GA)
         target_sources(test-${PROJECT_NAME}-parallel PRIVATE testDistrArrayGA.cpp)

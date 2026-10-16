@@ -73,6 +73,14 @@ public:
    * middle will be chosen to be unique and the suffix will be ".hdf5"
    */
   static DistrArrayHDF5 CreateTempCopy(const DistrArray &source, const std::string &base_name = ".temp_array");
+  /*!
+   * @brief Create a copy of a contiguous array using a temporary file which will be erased on destruction
+   * @param source all elements of the array, the same on every process of comm
+   * @param comm the processes over which the new array is distributed
+   * @param base_name base name for the temporary file, as for CreateTempCopy(const DistrArray&, const std::string&)
+   */
+  static DistrArrayHDF5 CreateTempCopy(Span<const value_type> source, MPI_Comm comm,
+                                       const std::string &base_name = ".temp_array");
 
   /*!
    * @brief Copies the array from source.

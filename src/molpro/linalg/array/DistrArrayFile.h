@@ -42,7 +42,21 @@ public:
   DistrArrayFile& operator=(const DistrArrayFile& source) = delete;
   DistrArrayFile& operator=(DistrArrayFile&& source) noexcept;
 
+  /*!
+   * @brief Creates a copy of source, with the same distribution and communicator, in a file which is erased on
+   * destruction
+   * @param source array to be copied
+   * @param directory directory for the file
+   */
   static DistrArrayFile CreateTempCopy(const DistrArray& source, const std::string& directory = ".");
+  /*!
+   * @brief Creates a copy of a contiguous array in a file which is erased on destruction
+   * @param source all elements of the array, the same on every process of comm
+   * @param comm the processes over which the new array is distributed
+   * @param directory directory for the file
+   */
+  static DistrArrayFile CreateTempCopy(Span<const value_type> source, MPI_Comm comm,
+                                       const std::string& directory = ".");
 
   friend void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept;
 

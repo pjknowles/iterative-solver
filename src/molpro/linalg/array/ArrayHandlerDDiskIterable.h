@@ -16,8 +16,9 @@ namespace molpro::linalg::array {
  *
  * This is ArrayHandlerIterableDDisk the other way round, see there for how the arrays are accessed.
  *
- * A new distributed array made as a copy of a contiguous one is created by a copy function. By default, the new array
- * is constructed from its size, molpro::mpi::comm_self() (the contiguous array is not distributed) and a directory.
+ * A new distributed array made as a copy of a contiguous one is created by a copy function. By default, this is
+ * AL::CreateTempCopy() on molpro::mpi::comm_self(), because the contiguous array is not distributed, optionally with a
+ * directory for the file.
  */
 template <class AL, class AR>
 class ArrayHandlerDDiskIterable : public ArrayHandlerWithCopyFunc<AL, AR> {
@@ -31,31 +32,19 @@ public:
   static_assert(std::is_same_v<value_type, typename AL::value_type>,
                 "ArrayHandlerDDiskIterable: the arrays must have the same value type");
 
-  /*!
-   * @brief New arrays are created on molpro::mpi::comm_self(), with any file in directory
-   *
-   * As for any distributed array on a communicator other than molpro::mpi::comm_global(), MPI must have been
-   * initialised before an array is created.
-   */
-  explicit ArrayHandlerDDiskIterable(const std::string &directory = ".")
-      : ArrayHandlerWithCopyFunc<AL, AR>([directory](const AR &source) -> AL {
-          if constexpr (std::is_constructible_v<AL, size_t, MPI_Comm, std::string>) {
-            const auto comm = molpro::mpi::comm_self();
-#ifdef HAVE_MPI_H
-            if (comm == MPI_COMM_NULL)
-              throw std::logic_error("ArrayHandlerDDiskIterable: MPI must be initialised before a distributed array is "
-                                     "created as a copy of a contiguous one");
-#endif
-            auto result = AL(std::size(source), comm, directory);
-            result.copy(util::contiguous_span(source));
-            return result;
-          } else
-            throw std::logic_error("ArrayHandlerDDiskIterable: cannot construct the distributed array from its size, "
-                                   "communicator and directory; a copy function must be given");
+  //! New arrays are created by AL::CreateTempCopy() on molpro::mpi::comm_self(), with any file in its default location
+  ArrayHandlerDDiskIterable()
+      : ArrayHandlerWithCopyFunc<AL, AR>(
+            [](const AR &source) { return AL::CreateTempCopy(util::contiguous_span(source), comm_self()); }) {}
+
+  //! New arrays are created by AL::CreateTempCopy() on molpro::mpi::comm_self(), with any file in directory
+  explicit ArrayHandlerDDiskIterable(const std::string &directory)
+      : ArrayHandlerWithCopyFunc<AL, AR>([directory](const AR &source) {
+          return AL::CreateTempCopy(util::contiguous_span(source), comm_self(), directory);
         }) {}
 
   //! Constructor taking a copy function, which returns a new distributed array as a copy of a contiguous one
-  explicit ArrayHandlerDDiskIterable(std::function<AL(const AR &)> copy_func)
+  ArrayHandlerDDiskIterable(std::function<AL(const AR &)> copy_func)
       : ArrayHandlerWithCopyFunc<AL, AR>(std::move(copy_func)) {}
 
   ProxyHandle lazy_handle() override { return this->lazy_handle(*this); };
@@ -102,6 +91,23 @@ public:
 
   std::map<size_t, value_type> select(size_t n, const AL &x, bool max = false, bool ignore_sign = false) override {
     return x.select(n, max, ignore_sign);
+  }
+
+private:
+  /*!
+   * @brief The communicator of new arrays, molpro::mpi::comm_self()
+   *
+   * As for any distributed array on a communicator other than molpro::mpi::comm_global(), MPI must have been
+   * initialised by then.
+   */
+  static MPI_Comm comm_self() {
+    const auto comm = molpro::mpi::comm_self();
+#ifdef HAVE_MPI_H
+    if (comm == MPI_COMM_NULL)
+      throw std::logic_error("ArrayHandlerDDiskIterable: MPI must be initialised before a distributed array is "
+                             "created as a copy of a contiguous one");
+#endif
+    return comm;
   }
 };
 

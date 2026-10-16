@@ -121,6 +121,13 @@ DistrArrayFile DistrArrayFile::CreateTempCopy(const DistrArray& source, const st
   return t;
 }
 
+DistrArrayFile DistrArrayFile::CreateTempCopy(Span<const value_type> source, MPI_Comm comm,
+                                              const std::string& directory) {
+  DistrArrayFile t(source.size(), comm, directory);
+  t.copy(source);
+  return t;
+}
+
 void swap(DistrArrayFile& x, DistrArrayFile& y) noexcept {
   using std::swap;
   swap(x.m_dimension, y.m_dimension);

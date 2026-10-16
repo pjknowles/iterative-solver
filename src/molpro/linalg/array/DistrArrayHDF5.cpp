@@ -13,6 +13,13 @@ int mpi_size(MPI_Comm comm) {
   MPI_Comm_size(comm, &rank);
   return rank;
 }
+
+//! A handle to a new temporary file, named after base_name
+std::shared_ptr<util::PHDF5Handle> temp_file_handle(const std::string &base_name, MPI_Comm comm) {
+  auto handle = std::make_shared<util::PHDF5Handle>(util::temp_phdf5_handle(base_name, comm));
+  handle->assign_group("/");
+  return handle;
+}
 } // namespace
 
 DistrArrayHDF5::DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle,
@@ -49,9 +56,14 @@ DistrArrayHDF5::~DistrArrayHDF5() {
 }
 
 DistrArrayHDF5 DistrArrayHDF5::CreateTempCopy(const DistrArray &source, const std::string &base_name) {
-  auto handle = std::make_shared<util::PHDF5Handle>(util::temp_phdf5_handle(base_name, source.communicator()));
-  handle->assign_group("/");
-  return DistrArrayHDF5(source, handle);
+  return DistrArrayHDF5(source, temp_file_handle(base_name, source.communicator()));
+}
+
+DistrArrayHDF5 DistrArrayHDF5::CreateTempCopy(Span<const value_type> source, MPI_Comm comm,
+                                              const std::string &base_name) {
+  auto t = DistrArrayHDF5(temp_file_handle(base_name, comm), source.size());
+  t.copy(source);
+  return t;
 }
 
 bool DistrArrayHDF5::compatible(const DistrArrayHDF5 &source) const {

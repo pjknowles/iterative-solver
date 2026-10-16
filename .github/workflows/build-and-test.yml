@@ -50,6 +50,18 @@ jobs:
       if: steps.check_configuration.outputs.files_exists == 'true'
       run: cmake -B ${{github.workspace}}/build -DCMAKE_CXX_FLAGS=-fpermissive -DCMAKE_BUILD_TYPE=${{env.CMAKE_BUILD_TYPE}} ${{ matrix.cmake-options }} # -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
+    # The container is pinned, but the conda and apt packages inside it are resolved
+    # when the image is built, so record what this run actually used. Without this the
+    # numerical library behind a failure cannot be identified after the fact.
+    - name: Record the toolchain
+      if: steps.check_configuration.outputs.files_exists == 'true'
+      run: |
+        cmake --version | head -1
+        g++ --version | head -1
+        gfortran --version | head -1
+        conda list 2>/dev/null | grep -E '^(mkl|openblas|libblas|liblapack|numpy|gcc|gfortran)' || true
+        grep -E '^(BLAS|LAPACK)[A-Za-z_]*:' ${{github.workspace}}/build/CMakeCache.txt || true
+
     - name: Build
       if: steps.check_configuration.outputs.files_exists == 'true'
       run: cmake --build ${{github.workspace}}/build --config ${{env.CMAKE_BUILD_TYPE}}

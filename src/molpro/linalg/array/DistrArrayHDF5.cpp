@@ -14,9 +14,10 @@ int mpi_size(MPI_Comm comm) {
   return rank;
 }
 
-//! A handle to a new temporary file, named after base_name
+//! A handle to a new temporary file, named after base_name, or in base_name if that is an existing directory
 std::shared_ptr<util::PHDF5Handle> temp_file_handle(const std::string &base_name, MPI_Comm comm) {
-  auto handle = std::make_shared<util::PHDF5Handle>(util::temp_phdf5_handle(base_name, comm));
+  const auto name = fs::is_directory(base_name) ? (fs::path(base_name) / ".temp_array").string() : base_name;
+  auto handle = std::make_shared<util::PHDF5Handle>(util::temp_phdf5_handle(name, comm));
   handle->assign_group("/");
   return handle;
 }

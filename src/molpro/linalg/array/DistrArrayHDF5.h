@@ -70,7 +70,8 @@ public:
    * @brief Create a copy of source array using a temporary file which will be erased on destruction
    * @param source array to be copied
    * @param base_name base name for the temporary file. It will form the first part of the temporary array name. The
-   * middle will be chosen to be unique and the suffix will be ".hdf5"
+   * middle will be chosen to be unique and the suffix will be ".hdf5". If base_name is an existing directory, the file
+   * is created in it, with the base name ".temp_array".
    */
   static DistrArrayHDF5 CreateTempCopy(const DistrArray &source, const std::string &base_name = ".temp_array");
   /*!

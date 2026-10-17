@@ -14,7 +14,14 @@ DistrFlags::DistrFlags(MPI_Comm comm, int value) : m_comm{comm} {
   int size_of_type = sizeof(int);
   int *data = nullptr;
   MPI_Win_allocate(size_of_type, size_of_type, MPI_INFO_NULL, m_comm, &data, &m_win);
+  // The store goes through a lock epoch so that it is visible to RMA, and no rank may
+  // access any flag until every rank has stored its own: MPI_Win_allocate returning on
+  // one rank says nothing about how far the others have got.
+  auto rank = mpi_rank(m_comm);
+  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, m_win);
   *data = value;
+  MPI_Win_unlock(rank, m_win);
+  MPI_Barrier(m_comm);
   m_counter = std::make_shared<int>(0);
 }
 

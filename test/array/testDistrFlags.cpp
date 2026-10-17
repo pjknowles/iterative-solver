@@ -34,13 +34,17 @@ TEST(DistrFlags, MPI_RMA) {
   MPI_Win win;
   MPI_Win_allocate(sizeof(int), sizeof(int), MPI_INFO_NULL, mpi_comm, &a, &win);
   const int reference[3] = {420, 421, 422};
+  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, mpi_rank(), 0, win);
   *a = reference[0];
+  MPI_Win_unlock(mpi_rank(), win);
+  MPI_Barrier(mpi_comm);
 
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target_rank, 0, win);
   int val2 = 12345;
   MPI_Get(&val2, 1, MPI_INT, target_rank, 0, 1, MPI_INT, win);
   MPI_Win_unlock(target_rank, win);
   EXPECT_EQ(val2, reference[0]);
+  MPI_Barrier(mpi_comm);
 
   if (mpi_rank() == client_rank) {
     int val1 = 42;

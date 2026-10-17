@@ -57,10 +57,8 @@ jobs:
             cmake-options: "-DCMAKE_Fortran_FLAGS=-std=f2023"
           # clang is installed in the image but was never used, so clang-only
           # errors reached review (#593).
-          # CMake scans C++20 sources for modules with clang-scan-deps, which
-          # Debian's clang package does not include. The project has no modules.
           - image: -debian-mpich
-            cmake-options: "-DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_SCAN_FOR_MODULES=OFF"
+            cmake-options: "-DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang"
           # The serial build. Fortran needs MPI, so it has to come off too.
           - image: -debian-mpich
             cmake-options: "-DMPI=OFF -DFORTRAN=OFF"

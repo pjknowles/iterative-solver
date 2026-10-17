@@ -26,19 +26,8 @@ PHDF5Handle::PHDF5Handle(PHDF5Handle&& source, MPI_Comm comm) noexcept : PHDF5Ha
 }
 PHDF5Handle::PHDF5Handle(PHDF5Handle&& source) noexcept : PHDF5Handle{std::move(source), source.m_comm} {}
 PHDF5Handle& PHDF5Handle::operator=(PHDF5Handle&& source) noexcept {
-  if (file_is_open())
-    close_file();
+  static_cast<HDF5Handle&>(*this) = static_cast<HDF5Handle&&>(source);
   m_comm = source.m_comm;
-  m_file_hid = source.m_file_hid;
-  m_group_hid = source.m_group_hid;
-  m_file_name = source.m_file_name;
-  m_group_name = source.m_group_name;
-  m_file_owner = source.m_file_owner;
-  m_group_owner = source.m_group_owner;
-  source.m_file_owner = false;
-  source.m_group_owner = false;
-  auto dummy = PHDF5Handle{source.m_comm};
-  source = dummy;
   return *this;
 }
 PHDF5Handle::~PHDF5Handle() {

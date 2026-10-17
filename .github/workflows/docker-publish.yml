@@ -57,12 +57,13 @@ jobs:
         uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # The suffix is given per tag, not as a flavor: this pinned metadata-action
+          # predates flavor's onlatest, and reads "-x,onlatest=true" as the suffix
+          # itself, which then splits into a stray "onlatest" tag on docker.io.
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            latest
-          flavor: |
-            suffix=${{ matrix.suffix }},onlatest=true
+            type=ref,event=branch,suffix=${{ matrix.suffix }}
+            type=ref,event=pr,suffix=${{ matrix.suffix }}
+            type=raw,value=latest${{ matrix.suffix }}
 
       - name: Build and push Docker image
         id: build-and-push

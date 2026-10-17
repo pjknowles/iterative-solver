@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.5...4.0)
 project(iterative-solver CXX)
 
+# The C++20 requirement makes CMake scan every source for modules, which needs
+# clang-scan-deps alongside clang, and Debian's clang package does not provide it.
+# The project has no modules, so the scan only costs time or fails the build.
+if (NOT DEFINED CMAKE_CXX_SCAN_FOR_MODULES)
+    set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+endif ()
+
 include(FetchContent)
 FetchContent_Declare(
         LibraryManager

@@ -340,13 +340,13 @@ public:
   void iteration_report() const {
     std::stringstream sstream;
     report(sstream, false);
-    this->m_logger->info<log::IterationReport>(sstream.str());
+    this->m_logger->template info<log::IterationReport>(sstream.str());
   }
 
   void summary_report() const {
     std::stringstream sstream;
     report(sstream, false);
-    this->m_logger->info<log::SummaryReport>(sstream.str());
+    this->m_logger->template info<log::SummaryReport>(sstream.str());
   }
 
   void report() const override {
@@ -471,7 +471,7 @@ public:
     }
     for (auto iter = 0; iter < this->m_max_iter && nwork > 0; iter++) {
       // the logging context carries the errors as doubles: a log line only needs their magnitude
-      m_logger->info<log::NewIteration>("Iteration, Current errors", iter,
+      m_logger->template info<log::NewIteration>("Iteration, Current errors", iter,
                                         std::vector<double>(m_errors.begin(), m_errors.end()));
       value_type value;
       if (this->nonlinear()) {

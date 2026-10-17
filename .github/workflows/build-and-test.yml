@@ -19,6 +19,15 @@ jobs:
     permissions:
       contents: write
       packages: write
+    # ccache is in the image. Only C and C++ go through it: ccache does not
+    # support Fortran. Source and build paths are the same on every run, so
+    # cached objects (debug info included) are reusable as they stand. A fixed
+    # path, because in a container job github.workspace names the host's path.
+    env:
+      CCACHE_DIR: /tmp/ccache
+      CCACHE_MAXSIZE: 400M
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
     container:
       # relies on repository name being all lower case
       image: ghcr.io/${{ github.repository }}
@@ -29,11 +38,24 @@ jobs:
 #      run:
 #        shell: bash -el {0}
     strategy:
+      # One configuration failing should not cancel the others: the point of a
+      # matrix is to learn which configurations are broken, not just that one is.
+      fail-fast: false
       matrix:
         cmake-options:
           - ""
           - "-DFORTRAN_INTEGER8=OFF"
           - "-DCMAKE_Fortran_COMPILER=/opt/conda/bin/gfortran -DCMAKE_Fortran_FLAGS=-std=f2023"
+          # clang is installed in the image but was never used, so clang-only
+          # errors reached review (#593).
+          - "-DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang"
+          # The serial build. Fortran needs MPI, so it has to come off too.
+          - "-DMPI=OFF -DFORTRAN=OFF"
+          # Which BLAS/LAPACK gets picked is otherwise indeterminate: the image carries
+          # Debian reference LAPACK, OpenBLAS and MKL. #656 was an MKL-only bug.
+          - "-DBLA_VENDOR=Generic"
+          - "-DBLA_VENDOR=OpenBLAS"
+          - "-DBLA_VENDOR=Intel10_64lp_seq"
 
     steps:
     - uses: actions/checkout@v5
@@ -43,19 +65,186 @@ jobs:
       with:
         files: "CMakeLists.txt"
 
-#    - name: ccache
-#      uses: hendrikmuhs/ccache-action@v1.2
+    - name: Restore the compiler cache
+      uses: actions/cache/restore@v4
+      with:
+        path: /tmp/ccache
+        key: ccache-cmake-build-${{ strategy.job-index }}-${{ github.sha }}
+        restore-keys: ccache-cmake-build-${{ strategy.job-index }}-
 
     - name: Configure CMake
       if: steps.check_configuration.outputs.files_exists == 'true'
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_CXX_FLAGS=-fpermissive -DCMAKE_BUILD_TYPE=${{env.CMAKE_BUILD_TYPE}} ${{ matrix.cmake-options }} # -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_CXX_FLAGS=-fpermissive -DCMAKE_BUILD_TYPE=${{env.CMAKE_BUILD_TYPE}} ${{ matrix.cmake-options }}
+
+    # The container is pinned, but the conda and apt packages inside it are resolved
+    # when the image is built, so record what this run actually used. Without this the
+    # numerical library behind a failure cannot be identified after the fact.
+    - name: Record the toolchain
+      if: steps.check_configuration.outputs.files_exists == 'true'
+      run: |
+        cmake --version | head -1
+        grep -E '^CMAKE_(C|CXX|Fortran)_COMPILER:' ${{github.workspace}}/build/CMakeCache.txt || true
+        gfortran --version | head -1 || true
+        conda list 2>/dev/null | grep -E '^(mkl|openblas|libblas|liblapack|numpy|gcc|gfortran)' || true
+        grep -E '^(BLAS|LAPACK)[A-Za-z_]*:' ${{github.workspace}}/build/CMakeCache.txt || true
 
     - name: Build
       if: steps.check_configuration.outputs.files_exists == 'true'
       run: cmake --build ${{github.workspace}}/build --config ${{env.CMAKE_BUILD_TYPE}}
+
+    - name: Compiler cache statistics
+      if: always()
+      run: ccache --show-stats
+
+    # Saved even when the build fails: the objects that did compile are still
+    # good, and a broken build is exactly when the next push wants a fast rebuild.
+    - name: Save the compiler cache
+      if: always()
+      uses: actions/cache/save@v4
+      with:
+        path: /tmp/ccache
+        key: ccache-cmake-build-${{ strategy.job-index }}-${{ github.sha }}
 
     - name: Test
       if: steps.check_configuration.outputs.files_exists == 'true'
       run: cd ${{github.workspace}}/build && ctest -C ${{env.CMAKE_BUILD_TYPE}} --output-on-failure
     - name: Build doxygen
       run: cmake --build ${{github.workspace}}/build --target DependencyManagerDocs
+
+  # The container image is x86-64 Linux only, so these jobs install their own
+  # dependencies. They build the serial C++ library: Fortran needs MPI here
+  # (MPI=OFF with Fortran on is a fatal error) and neither runner has it.
+  # Together with the container job this covers all three long double ABIs --
+  # 80-bit on x86-64, binary128 on aarch64 Linux, binary64 on macOS arm64 --
+  # which is the axis that broke four tests in #590, found by hand rather than
+  # by CI.
+  portability:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 30
+    # As in the container jobs. Here the compiler is checked by its reported
+    # version, not its file: these runners swap toolchains under a fixed label,
+    # and on macOS /usr/bin/c++ is an xcrun shim whose file never changes when
+    # the Xcode behind it does. CCACHE_DIR is set in the first step, because the
+    # runner context (runner.temp) is not available in job-level env.
+    env:
+      CCACHE_MAXSIZE: 400M
+      CCACHE_COMPILERCHECK: "%compiler% --version"
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "macOS arm64 (AppleClang, Accelerate)"
+            runs-on: macos-14
+          - name: "Linux aarch64 (gcc)"
+            runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Locate the compiler cache
+        run: echo "CCACHE_DIR=$RUNNER_TEMP/ccache" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install eigen lapack ccache
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libeigen3-dev liblapacke-dev ccache
+
+      - name: Restore the compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-${{ matrix.runs-on }}-${{ github.sha }}
+          restore-keys: ccache-${{ matrix.runs-on }}-
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DMPI=OFF -DFORTRAN=OFF
+
+      # The compiler version, not just its path: these runners change their
+      # command-line tools under a fixed label, and without the version a result
+      # that flips cannot be explained afterwards.
+      - name: Record the toolchain
+        run: |
+          cmake --version | head -1
+          c++ --version | head -2
+          sw_vers 2>/dev/null || true
+          grep -E '^CMAKE_(C|CXX)_COMPILER:' build/CMakeCache.txt || true
+          grep -E '^(BLAS|LAPACK)[A-Za-z_]*:' build/CMakeCache.txt || true
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Compiler cache statistics
+        if: always()
+        run: ccache --show-stats
+
+      # Saved even when the build fails: the objects that did compile are still
+      # good, and a broken build is exactly when the next push wants a fast rebuild.
+      - name: Save the compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-${{ matrix.runs-on }}-${{ github.sha }}
+
+      - name: Test
+        run: cd build && ctest --output-on-failure
+
+  # #656 was a heap overflow that reached master, and nothing in CI would have
+  # caught it. Leak detection is off: the profiler singleton and the numerical
+  # libraries are not expected to be leak-clean at exit.
+  sanitizers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # ccache is in the image. Only C and C++ go through it: ccache does not
+    # support Fortran. Source and build paths are the same on every run, so
+    # cached objects (debug info included) are reusable as they stand. A fixed
+    # path, because in a container job github.workspace names the host's path.
+    env:
+      CCACHE_DIR: /tmp/ccache
+      CCACHE_MAXSIZE: 400M
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+    container:
+      image: ghcr.io/${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Restore the compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/ccache
+          key: ccache-sanitizers-${{ github.sha }}
+          restore-keys: ccache-sanitizers-
+
+      - name: Configure CMake
+        run: >
+          cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DMPI=OFF -DFORTRAN=OFF
+          -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g"
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+
+      - name: Build
+        run: cmake --build build -j 2
+
+      - name: Compiler cache statistics
+        if: always()
+        run: ccache --show-stats
+
+      # Saved even when the build fails: the objects that did compile are still
+      # good, and a broken build is exactly when the next push wants a fast rebuild.
+      - name: Save the compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/ccache
+          key: ccache-sanitizers-${{ github.sha }}
+
+      - name: Test
+        env:
+          ASAN_OPTIONS: detect_leaks=0
+          UBSAN_OPTIONS: print_stacktrace=1
+        run: cd build && ctest --output-on-failure

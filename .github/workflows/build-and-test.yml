@@ -30,7 +30,7 @@ jobs:
       CMAKE_CXX_COMPILER_LAUNCHER: ccache
     container:
       # relies on repository name being all lower case
-      image: ghcr.io/${{ github.repository }}
+      image: ghcr.io/${{ github.repository }}:latest${{ matrix.image }}
 #      credentials:
 #        username: ${{ github.actor }}
 #        password: ${{ secrets.GITHUB_TOKEN }}
@@ -42,20 +42,35 @@ jobs:
       # matrix is to learn which configurations are broken, not just that one is.
       fail-fast: false
       matrix:
-        cmake-options:
-          - ""
-          - "-DFORTRAN_INTEGER8=OFF"
-          - "-DCMAKE_Fortran_COMPILER=/opt/conda/bin/gfortran -DCMAKE_Fortran_FLAGS=-std=f2023"
+        # image is the tag suffix from docker-publish.yml. Most configurations run in
+        # the all-Debian images, where compilers and libraries come from one package
+        # manager. The conda image ("") keeps only what Debian does not provide.
+        include:
+          - image: -debian-mpich
+            cmake-options: ""
+          - image: -debian-mpich
+            cmake-options: "-DFORTRAN_INTEGER8=OFF"
+          - image: -debian-mpich
+            cmake-options: "-DCMAKE_Fortran_FLAGS=-std=f2023"
           # clang is installed in the image but was never used, so clang-only
           # errors reached review (#593).
-          - "-DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang"
+          - image: -debian-mpich
+            cmake-options: "-DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang"
           # The serial build. Fortran needs MPI, so it has to come off too.
-          - "-DMPI=OFF -DFORTRAN=OFF"
-          # Which BLAS/LAPACK gets picked is otherwise indeterminate: the image carries
-          # Debian reference LAPACK, OpenBLAS and MKL. #656 was an MKL-only bug.
-          - "-DBLA_VENDOR=Generic"
-          - "-DBLA_VENDOR=OpenBLAS"
-          - "-DBLA_VENDOR=Intel10_64lp_seq"
+          - image: -debian-mpich
+            cmake-options: "-DMPI=OFF -DFORTRAN=OFF"
+          # MPI_Comm is an int in MPICH and a pointer in OpenMPI, so communicator
+          # handle conversion can pass under one and fail under the other.
+          - image: -debian-openmpi
+            cmake-options: ""
+          - image: -debian-openmpi
+            cmake-options: "-DFORTRAN_INTEGER8=OFF"
+          # Debian's own BLAS/LAPACK is the reference implementation, so the
+          # vendor-specific builds stay in the conda image. #656 was an MKL-only bug.
+          - image: ""
+            cmake-options: "-DBLA_VENDOR=OpenBLAS"
+          - image: ""
+            cmake-options: "-DBLA_VENDOR=Intel10_64lp_seq"
 
     steps:
     - uses: actions/checkout@v5

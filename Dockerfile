@@ -1,9 +1,13 @@
 # Pinned by digest so that a CI result only changes when this repository does.
-# This is the image that docker.io/continuumio/miniconda3:latest resolved to on
-# 2026-10-16 (built 2026-08-28), so pinning it changes nothing about what CI runs
-# today. Bump it deliberately; note that the newest version tag (v25.11.1-1) is a
-# different image from latest.
-FROM continuumio/miniconda3@sha256:eca594d684f495c1a02beff33a9fab53aec8c5830eaf431bb149912dc6c9e4c1
+# This is docker.io/anaconda/miniconda:26.7.1, the successor to the deprecated
+# continuumio/miniconda3. It carries the same Miniconda as the continuumio image
+# previously pinned here (conda 26.7.1, Python 3.14.7, Debian 13), so the move changes
+# where the image comes from, not what is in it. Bump it deliberately.
+FROM anaconda/miniconda@sha256:38939b55a6cdca3b5cb24eb8dd9f7f7bcf49cd4ec9e6d72760f8161b906f9085
+# This image installs conda in /opt/miniconda3, not /opt/conda, and unlike the
+# continuumio one it does not put conda.sh in /etc/profile.d. Without that a login
+# shell has no conda function, and test-python.yml's `conda activate base` fails.
+RUN ln -s /opt/miniconda3/etc/profile.d/conda.sh /etc/profile.d/conda.sh
 RUN apt update
 RUN DEBIAN_FRONTEND=noninteractive apt install -y cmake git g++ gfortran doxygen graphviz bash rsync curl mpich libblas-dev liblapack-dev liblapacke-dev libeigen3-dev libhdf5-dev libhdf5-mpich-dev clang ccache ninja-build wget valgrind
 ENV CMAKE_GENERATOR=Ninja

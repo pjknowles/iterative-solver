@@ -349,7 +349,7 @@ struct std::formatter<molpro::linalg::itsolv::subspace::Matrix<T>> : std::format
 
     ++it;
 
-    if (it == ctx.end() || ( *it < '0' && *it > '9' )) {
+    if (it == ctx.end() || ( *it < '0' || *it > '9' )) {
       throw std::format_error("Format string uses precision quantifier '.' without giving a (numeric) precision");
     }
 
@@ -367,7 +367,9 @@ struct std::formatter<molpro::linalg::itsolv::subspace::Matrix<T>> : std::format
     return Base::parse(ctx);
   }
 
-  auto format(const molpro::linalg::itsolv::subspace::Matrix<T> &mat, std::format_context &ctx) const {
+  // Generic in the context: libc++ checks formattability against a context other than std::format_context
+  template <class FormatContext>
+  auto format(const molpro::linalg::itsolv::subspace::Matrix<T> &mat, FormatContext &ctx) const {
     std::string tmp = molpro::linalg::itsolv::subspace::as_string(mat, precision);
 
     return Base::format(tmp, ctx);

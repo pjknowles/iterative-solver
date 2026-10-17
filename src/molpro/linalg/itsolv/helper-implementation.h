@@ -215,7 +215,7 @@ namespace detail {
  * @brief Implementation of svd_system(), shared by its real and complex overloads.
  *
  * The two overloads exist only to give the public declarations distinct signatures; the algorithm is
- * the same for both, and the hermitian branch dispatches to ?syev/?heev or to Eigen depending on the
+ * the same for both, and the hermitian branch dispatches to ?syevd/?heevd or to Eigen depending on the
  * scalar type.
  */
 template <typename value_type>
@@ -232,6 +232,12 @@ std::list<SVD<value_type>> svd_system_impl(size_t nrows, size_t ncols, const arr
     using matrix_type = Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
     using row_major_type = Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
     const matrix_type a = Eigen::Map<const row_major_type>(m.data(), nrows, ncols);
+    // Only the eigenpairs at or below the threshold are kept, and a matrix comfortably positive definite, as the
+    // overlap of a well-conditioned subspace is, has none: a Cholesky factorisation shows that at a fraction of the
+    // cost of the eigendecomposition.
+    if (eigenvalues_certainly_above<value_type>(std::span<const value_type>{a.data(), size_t(a.size())}, nrows,
+                                                threshold))
+      return {};
     svds = eigensolver_hermitian<value_type>(nrows, std::span<const value_type>{a.data(), size_t(a.size())});
     for (auto s = svds.begin(); s != svds.end();)
       if (real_part(s->value) > threshold)
@@ -371,13 +377,57 @@ orthogonalised_subspace<value_type> orthogonalise_subspace(const std::vector<val
   return result;
 }
 
+/*!
+ * @brief The lowest @p nroots eigenpairs of a hermitian H C = S C E by Cholesky reduction, where that is safe.
+ *
+ * orthogonalise_subspace() decomposes the whole metric and transforms H with it, then the whole reduced matrix is
+ * diagonalized, all to O(dimension^3) work, even though the solvers want only a few roots. When S is comfortably
+ * positive definite, symmetric orthogonalisation would keep every one of its directions, so the Cholesky reduction
+ * of LAPACK's ?sygvx/?hegvx solves the same problem, computing only the wanted eigenvectors. That holds when the
+ * estimated reciprocal condition number of S, which is at most the ratio of its extreme eigenvalues (bounded below
+ * by the true one, and estimated to within a modest factor), exceeds the rank threshold with a wide margin; it is
+ * also held well above the working precision, so the factorisation stays accurate.
+ *
+ * Applies only to the scalar types LAPACK covers, and only when fewer roots than the dimension are wanted, so a
+ * caller asking for the whole spectrum keeps the behaviour it had.
+ *
+ * @param matrix H, row-major, as subspace::Matrix stores it
+ * @param metric S, row-major, as subspace::Matrix stores it
+ * \returns whether @p eigenvectors (dimension x wanted, S-orthonormal) and @p eigenvalues (ascending) were computed
+ */
+template <typename value_type, typename matrix_type, typename vector_type>
+bool hermitian_lowest_by_cholesky(const std::vector<value_type>& matrix, const std::vector<value_type>& metric,
+                                  size_t dimension, size_t nroots, real_type_t<value_type> svdThreshold,
+                                  matrix_type& eigenvectors, vector_type& eigenvalues) {
+  using real_t = real_type_t<value_type>;
+  using colmajor_type = Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
+  using row_major_type = Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+  if (!has_lapack_kernel_v<value_type> || nroots == 0 || nroots >= dimension)
+    return false;
+  const auto Hr = Eigen::Map<const row_major_type>(matrix.data(), dimension, dimension);
+  const auto Sr = Eigen::Map<const row_major_type>(metric.data(), dimension, dimension);
+  const colmajor_type H = (Hr + Hr.adjoint()) / value_type(2);
+  const colmajor_type S = (Sr + Sr.adjoint()) / value_type(2);
+  const real_t min_rcond = std::max(precision_scaled<value_type>(1e-8), real_t(1e4) * svdThreshold);
+  colmajor_type evecs(dimension, nroots);
+  Eigen::Vector<real_t, Eigen::Dynamic> evals(nroots);
+  if (!generalized_eigensolver_hermitian_lowest<value_type>(
+          std::span<const value_type>{H.data(), size_t(H.size())}, std::span<const value_type>{S.data(), size_t(S.size())},
+          std::span<value_type>{evecs.data(), size_t(evecs.size())},
+          std::span<real_t>{evals.data(), nroots}, dimension, nroots, min_rcond))
+    return false;
+  eigenvectors = std::move(evecs);
+  eigenvalues = evals.template cast<typename vector_type::Scalar>();
+  return true;
+}
+
 } // namespace detail
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int>>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, size_t dimension,
                   bool hermitian, real_type_t<value_type> svdThreshold, int verbosity,
-                  std::vector<std::pair<std::size_t, value_type>>* imag_eval_parts) {
+                  std::vector<std::pair<std::size_t, value_type>>* imag_eval_parts, size_t nroots) {
   using std::abs;
   using std::sqrt;
   using real_t = real_type_t<value_type>;
@@ -391,24 +441,53 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
 
   auto prof = molpro::Profiler::single();
   prof->start("itsolv::eigenproblem");
-  const auto subspace = detail::orthogonalise_subspace<value_type>(matrix, metric, dimension, svdThreshold, verbosity);
-  const int rank = subspace.rank;
-  eigenvectors.resize(dimension * rank);
-  eigenvalues.resize(rank);
-  if (rank == 0) {
-    prof->stop();
-    return;
-  }
+  vector_type subspaceEigenvalues;
+  matrix_type subspaceEigenvectors;
+  matrix_type S; // the metric, which only a non-hermitian problem needs again
+  {
+    matrix_type lowest_evecs;
+    Eigen::Vector<real_t, Eigen::Dynamic> lowest_evals;
+    if (hermitian && detail::hermitian_lowest_by_cholesky<value_type>(matrix, metric, dimension, nroots, svdThreshold,
+                                                                      lowest_evecs, lowest_evals)) {
+      subspaceEigenvalues = lowest_evals.template cast<value_type>();
+      subspaceEigenvectors = std::move(lowest_evecs);
+    } else {
+      const auto subspace = detail::orthogonalise_subspace<value_type>(matrix, metric, dimension, svdThreshold, verbosity);
+      const int rank = subspace.rank;
+      if (rank == 0) {
+        eigenvectors.clear();
+        eigenvalues.clear();
+        prof->stop();
+        return;
+      }
+      if (!hermitian)
+        S = subspace.S;
 
-  // Perform an eigendecomposition of the transformed matrix. Hbar is not self-adjoint in general, so
-  // its spectrum is complex -- which is exactly what the scalar type of this overload can hold.
-  Eigen::ComplexEigenSolver<matrix_type> s(subspace.Hbar);
-  if (s.info() != Eigen::Success) {
-    throw std::runtime_error("Eigensolver of the subspace matrix did not converge");
+      if (hermitian) {
+        // A self-adjoint Hbar has a real spectrum, and only the lowest nroots eigenpairs are wanted
+        const auto wanted = std::min<size_t>(nroots, size_t(rank));
+        const matrix_type Hsym = (subspace.Hbar + subspace.Hbar.adjoint()) / value_type(2);
+        Eigen::Vector<real_t, Eigen::Dynamic> evals(wanted);
+        matrix_type evecs(rank, wanted);
+        if (eigensolver_hermitian_lowest<value_type>(std::span<const value_type>{Hsym.data(), size_t(Hsym.size())},
+                                                     {evecs.data(), size_t(evecs.size())}, {evals.data(), wanted},
+                                                     size_t(rank), wanted) != 0)
+          throw std::runtime_error("Eigensolver of the subspace matrix did not converge");
+        subspaceEigenvalues = evals.template cast<value_type>();
+        subspaceEigenvectors = subspace.transformation * evecs;
+      } else {
+        // Perform an eigendecomposition of the transformed matrix. Hbar is not self-adjoint in general, so
+        // its spectrum is complex -- which is exactly what the scalar type of this overload can hold.
+        Eigen::ComplexEigenSolver<matrix_type> s(subspace.Hbar);
+        if (s.info() != Eigen::Success) {
+          throw std::runtime_error("Eigensolver of the subspace matrix did not converge");
+        }
+        subspaceEigenvalues = s.eigenvalues();
+        // Convert eigenvectors back into original basis (minus singular dimensions)
+        subspaceEigenvectors = subspace.transformation * s.eigenvectors();
+      }
+    }
   }
-  vector_type subspaceEigenvalues = s.eigenvalues();
-  // Convert eigenvectors back into original basis (minus singular dimensions)
-  matrix_type subspaceEigenvectors = subspace.transformation * s.eigenvectors();
 
   // Determine order of eigenvalues such that they come in non-descending order of their real part
   // (and non-descending order of imaginary part, in case of equal real parts)
@@ -423,7 +502,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
     // The eigenvectors of a self-adjoint Hbar are orthonormal, so back-transforming them already
     // yields an S-orthonormal set; otherwise they have to be normalised explicitly.
     for (Eigen::Index k = 0; k < subspaceEigenvectors.cols(); k++) {
-      const auto ovl = subspaceEigenvectors.col(k).dot(subspace.S * subspaceEigenvectors.col(k));
+      const auto ovl = subspaceEigenvectors.col(k).dot(S * subspaceEigenvectors.col(k));
       // S is supposed to be positive (semi-)definite implying that ovl must be a non-negative real number
       assert(abs(ovl.imag()) < precision_scaled<value_type>(1e-10));
       if (ovl.real() > null_eigenvalue_tol)
@@ -442,8 +521,11 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
       subspaceEigenvectors.col(i) *= conjugate(subspaceEigenvectors(pivot, i)) / value_type(magnitude);
   }
 
-  Eigen::Map<matrix_type>(eigenvectors.data(), dimension, rank) = subspaceEigenvectors;
-  Eigen::Map<vector_type>(eigenvalues.data(), rank) = subspaceEigenvalues;
+  const auto nsolutions = subspaceEigenvectors.cols();
+  eigenvectors.resize(dimension * nsolutions);
+  eigenvalues.resize(nsolutions);
+  Eigen::Map<matrix_type>(eigenvectors.data(), dimension, nsolutions) = subspaceEigenvectors;
+  Eigen::Map<vector_type>(eigenvalues.data(), nsolutions) = subspaceEigenvalues;
   prof->stop();
 }
 
@@ -451,7 +533,7 @@ template <typename value_type, typename std::enable_if_t<!is_complex<value_type>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, size_t dimension,
                   bool hermitian, real_type_t<value_type> svdThreshold, int verbosity,
-                  std::vector<std::pair<std::size_t, value_type>>* imag_eval_parts) {
+                  std::vector<std::pair<std::size_t, value_type>>* imag_eval_parts, size_t nroots) {
   // let ADL pick up the overloads of extended- and arbitrary-precision scalar types
   using std::abs;
   using std::sqrt;
@@ -465,72 +547,90 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
 
   auto prof = molpro::Profiler::single();
   prof->start("itsolv::eigenproblem");
-  const auto subspace = detail::orthogonalise_subspace<value_type>(matrix, metric, dimension, svdThreshold, verbosity);
-  const int rank = subspace.rank;
-  const auto& S = subspace.S;
-  const auto& Hbar = subspace.Hbar;
   ComplexMatrixT subspaceEigenvectors;
   ComplexVectorT subspaceEigenvalues;
-  if (rank == 0) {
-    eigenvectors.clear();
-    eigenvalues.clear();
-    prof->stop();
-    return;
-  }
-
-  if (hermitian) {
-    // A hermitian problem has real eigenvalues and eigenvectors. Hbar is then symmetric up to rounding, which
-    // compiler-dependent floating-point contraction can make large enough for the general eigensolver to return a
-    // complex pair for (near-)degenerate eigenvalues. Solving the symmetric part with the self-adjoint solver rules that
-    // out.
-    const MatrixT Hsym = (Hbar + Hbar.transpose()) / value_type(2);
-    Eigen::SelfAdjointEigenSolver<MatrixT> s(Hsym);
-    if (s.info() != Eigen::Success)
-      throw std::runtime_error("Eigensolver of the subspace matrix did not converge");
-    subspaceEigenvalues = s.eigenvalues().template cast<std::complex<value_type>>();
-    subspaceEigenvectors = (subspace.transformation * s.eigenvectors()).template cast<std::complex<value_type>>();
-  } else {
-    // Perform an eigendecomposition of the transformed matrix
-    Eigen::EigenSolver<MatrixT> s(Hbar);
-    subspaceEigenvalues = s.eigenvalues();
-    if (s.eigenvalues().imag().norm() < zero_tol) {
-      // real eigenvalues
-      subspaceEigenvalues = subspaceEigenvalues.real();
-      subspaceEigenvectors = s.eigenvectors();
-      // complex eigenvectors need to be rotated
-      // assume that they come in consecutive pairs
-      for (int i = 0; i < subspaceEigenvectors.cols() - 1; i++) {
-        if (subspaceEigenvectors.col(i).imag().norm() <= zero_tol) {
-            continue;
-        }
-
-        const int j = i + 1;
-        if (abs(subspaceEigenvalues(i) - subspaceEigenvalues(j)) >= zero_tol or
-            subspaceEigenvectors.col(j).imag().norm() <= zero_tol) {
-            continue;
-        }
-
-        // For a real-valued matrix, eigenvectors can always be chosen to be real. If we have a complex eigenvector,
-        // it's complex conjugate must also be an eigenvector with the same eigenvalue. We can combine these two
-        // vectors as either u + u^* = 2 Re(u) or i*(u - u^*) = -2 Im(u).
-        // In other words, the real and imaginary part of u are the corresponding real-valued eigenvectors.
-        subspaceEigenvectors.col(j) = subspaceEigenvectors.col(i).imag() / subspaceEigenvectors.col(i).imag().norm();
-        subspaceEigenvectors.col(i) = subspaceEigenvectors.col(i).real() / subspaceEigenvectors.col(i).real().norm();
-      }
-
-      // Convert eigenvectors back into original basis (minus singular dimensions)
-      subspaceEigenvectors = subspace.transformation * subspaceEigenvectors;
+  MatrixT S; // the metric, which only a non-hermitian problem needs again
+  {
+    MatrixT lowest_evecs;
+    VectorT lowest_evals;
+    if (hermitian && detail::hermitian_lowest_by_cholesky<value_type>(matrix, metric, dimension, nroots, svdThreshold,
+                                                                      lowest_evecs, lowest_evals)) {
+      subspaceEigenvalues = lowest_evals.template cast<std::complex<value_type>>();
+      subspaceEigenvectors = lowest_evecs.template cast<std::complex<value_type>>();
     } else {
-      // complex eigenvalues
-  #ifdef __INTEL_COMPILER
-      molpro::cout << "Hbar\n" << Hbar << std::endl;
-      molpro::cout << "Eigenvalues\n" << s.eigenvalues() << std::endl;
-      molpro::cout << "Eigenvectors\n" << s.eigenvectors() << std::endl;
-      throw std::runtime_error("Intel compiler does not support working with complex eigen3 entities properly");
-  #endif
+      const auto subspace = detail::orthogonalise_subspace<value_type>(matrix, metric, dimension, svdThreshold, verbosity);
+      const int rank = subspace.rank;
+      const auto& Hbar = subspace.Hbar;
+      if (rank == 0) {
+        eigenvectors.clear();
+        eigenvalues.clear();
+        prof->stop();
+        return;
+      }
+      if (!hermitian)
+        S = subspace.S;
 
-      // Convert eigenvectors back into original basis (minus singular dimensions)
-      subspaceEigenvectors = subspace.transformation * s.eigenvectors();
+      if (hermitian) {
+        // A hermitian problem has real eigenvalues and eigenvectors. Hbar is then symmetric up to rounding, which
+        // compiler-dependent floating-point contraction can make large enough for the general eigensolver to return a
+        // complex pair for (near-)degenerate eigenvalues. Solving the symmetric part with the self-adjoint solver rules that
+        // out.
+        // Only the lowest nroots eigenpairs are wanted, which LAPACK computes without the full decomposition: once a P
+        // space makes the subspace large, the full one would dominate every iteration.
+        const auto wanted = std::min<size_t>(nroots, size_t(rank));
+        const MatrixT Hsym = (Hbar + Hbar.transpose()) / value_type(2);
+        VectorT evals(wanted);
+        MatrixT evecs(rank, wanted);
+        if (eigensolver_hermitian_lowest<value_type>(std::span<const value_type>{Hsym.data(), size_t(Hsym.size())},
+                                                     {evecs.data(), size_t(evecs.size())}, {evals.data(), wanted},
+                                                     size_t(rank), wanted) != 0)
+          throw std::runtime_error("Eigensolver of the subspace matrix did not converge");
+        subspaceEigenvalues = evals.template cast<std::complex<value_type>>();
+        subspaceEigenvectors = (subspace.transformation * evecs).template cast<std::complex<value_type>>();
+      } else {
+        // Perform an eigendecomposition of the transformed matrix
+        Eigen::EigenSolver<MatrixT> s(Hbar);
+        subspaceEigenvalues = s.eigenvalues();
+        if (s.eigenvalues().imag().norm() < zero_tol) {
+          // real eigenvalues
+          subspaceEigenvalues = subspaceEigenvalues.real();
+          subspaceEigenvectors = s.eigenvectors();
+          // complex eigenvectors need to be rotated
+          // assume that they come in consecutive pairs
+          for (int i = 0; i < subspaceEigenvectors.cols() - 1; i++) {
+            if (subspaceEigenvectors.col(i).imag().norm() <= zero_tol) {
+                continue;
+            }
+
+            const int j = i + 1;
+            if (abs(subspaceEigenvalues(i) - subspaceEigenvalues(j)) >= zero_tol or
+                subspaceEigenvectors.col(j).imag().norm() <= zero_tol) {
+                continue;
+            }
+
+            // For a real-valued matrix, eigenvectors can always be chosen to be real. If we have a complex eigenvector,
+            // it's complex conjugate must also be an eigenvector with the same eigenvalue. We can combine these two
+            // vectors as either u + u^* = 2 Re(u) or i*(u - u^*) = -2 Im(u).
+            // In other words, the real and imaginary part of u are the corresponding real-valued eigenvectors.
+            subspaceEigenvectors.col(j) = subspaceEigenvectors.col(i).imag() / subspaceEigenvectors.col(i).imag().norm();
+            subspaceEigenvectors.col(i) = subspaceEigenvectors.col(i).real() / subspaceEigenvectors.col(i).real().norm();
+          }
+
+          // Convert eigenvectors back into original basis (minus singular dimensions)
+          subspaceEigenvectors = subspace.transformation * subspaceEigenvectors;
+        } else {
+          // complex eigenvalues
+      #ifdef __INTEL_COMPILER
+          molpro::cout << "Hbar\n" << Hbar << std::endl;
+          molpro::cout << "Eigenvalues\n" << s.eigenvalues() << std::endl;
+          molpro::cout << "Eigenvectors\n" << s.eigenvectors() << std::endl;
+          throw std::runtime_error("Intel compiler does not support working with complex eigen3 entities properly");
+      #endif
+
+          // Convert eigenvectors back into original basis (minus singular dimensions)
+          subspaceEigenvectors = subspace.transformation * s.eigenvectors();
+        }
+      }
     }
   }
 
@@ -581,7 +681,7 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
     // by real-valued vectors
     imag_eval_parts->clear();
 
-    for (Eigen::Index root = 0; root < Hbar.cols(); ++root) {
+    for (Eigen::Index root = 0; root < subspaceEigenvalues.size(); ++root) {
       if (subspaceEigenvalues(root).imag() == 0) {
         continue;
       }
@@ -615,12 +715,12 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
     throw std::runtime_error("unexpected complex solution found");
   }
 
-  eigenvectors.resize(dimension * Hbar.cols());
-  eigenvalues.resize(Hbar.cols());
+  const auto nsolutions = subspaceEigenvalues.size();
+  eigenvectors.resize(dimension * nsolutions);
+  eigenvalues.resize(nsolutions);
 
-  Eigen::Map<MatrixT>(eigenvectors.data(), dimension, Hbar.cols()) =
-      subspaceEigenvectors.real();
-  Eigen::Map<VectorT> ev(eigenvalues.data(), Hbar.cols());
+  Eigen::Map<MatrixT>(eigenvectors.data(), dimension, nsolutions) = subspaceEigenvectors.real();
+  Eigen::Map<VectorT> ev(eigenvalues.data(), nsolutions);
   ev = subspaceEigenvalues.real();
 
   prof->stop();

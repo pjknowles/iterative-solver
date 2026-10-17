@@ -127,10 +127,6 @@ jobs:
 
     - name: Test
       if: steps.check_configuration.outputs.files_exists == 'true'
-      # A known RMA failure in the Debian MPICH image, skipped there only until it is
-      # fixed (#670). mpiexec passes this to every rank.
-      env:
-        GTEST_FILTER: ${{ matrix.image == '-debian-mpich' && '-GA/DistrArrayRangeRMAF/*' || '*' }}
       run: cd ${{github.workspace}}/build && ctest -C ${{env.CMAKE_BUILD_TYPE}} --output-on-failure
     - name: Build doxygen
       run: cmake --build ${{github.workspace}}/build --target DependencyManagerDocs

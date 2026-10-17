@@ -20,7 +20,7 @@ template void eigenproblem<value_type>(std::vector<value_type>& eigenvectors, st
                                        const std::vector<value_type>& matrix, const std::vector<value_type>& metric,
                                        size_t dimension, bool hermitian, real_type_t<value_type> svdThreshold,
                                        int verbosity,
-                                       std::vector<std::pair<std::size_t, value_type>> *imag_eval_parts);
+                                       std::vector<std::pair<std::size_t, value_type>> *imag_eval_parts, size_t nroots);
 
 template void solve_LinearEquations<value_type>(std::vector<value_type>& solution, std::vector<value_type>& eigenvalues,
                                                 const std::vector<value_type>& matrix,

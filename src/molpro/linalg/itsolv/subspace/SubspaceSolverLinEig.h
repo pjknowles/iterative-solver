@@ -59,7 +59,7 @@ protected:
     auto evec = std::vector<value_type>{};
     int verbosity = convert_verbosity(m_logger->verbosity());
     itsolv::eigenproblem(evec, m_eigenvalues, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, verbosity,
-                         &m_imag_eigval_comps);
+                         &m_imag_eigval_comps, nroots_max);
     size_t n_solutions = 0;
     if (dim)
       n_solutions = evec.size() / dim;

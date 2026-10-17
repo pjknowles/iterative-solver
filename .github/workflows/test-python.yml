@@ -6,13 +6,18 @@ on:
   pull_request:
     branches: [ "main" , "master"]
   workflow_dispatch:
+    inputs:
+      image-tag:
+        description: "Container image tag to test in place of latest, such as a branch name that docker-publish.yml has published"
+        required: false
+        default: latest
 
 jobs:
   python-test:
     runs-on: ubuntu-latest
     container:
       # relies on repository name being all lower case
-      image: ghcr.io/${{ github.repository }}
+      image: ghcr.io/${{ github.repository }}:${{ inputs.image-tag || 'latest' }}
     defaults:
       run:
         shell: bash -el {0}

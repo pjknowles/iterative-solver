@@ -60,10 +60,13 @@ jobs:
           # The suffix is given per tag, not as a flavor: this pinned metadata-action
           # predates flavor's onlatest, and reads "-x,onlatest=true" as the suffix
           # itself, which then splits into a stray "onlatest" tag on docker.io.
+          # Only master moves the latest tags, which every CI job uses. Any other branch
+          # publishes under its own name, to be tried through build-and-test's image-tag
+          # input before it is merged.
           tags: |
             type=ref,event=branch,suffix=${{ matrix.suffix }}
             type=ref,event=pr,suffix=${{ matrix.suffix }}
-            type=raw,value=latest${{ matrix.suffix }}
+            type=raw,value=latest${{ matrix.suffix }},enable=${{ github.ref == 'refs/heads/master' }}
 
       - name: Build and push Docker image
         id: build-and-push

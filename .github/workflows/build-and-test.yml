@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ "main" , "master"]
   workflow_dispatch:
+    inputs:
+      image-tag:
+        description: "Container image tag to test in place of latest, such as a branch name that docker-publish.yml has published"
+        required: false
+        default: latest
 
 env:
   CMAKE_BUILD_TYPE: Release
@@ -33,7 +38,7 @@ jobs:
       PRTE_MCA_rmaps_default_mapping_policy: ":oversubscribe"
     container:
       # relies on repository name being all lower case
-      image: ghcr.io/${{ github.repository }}:latest${{ matrix.image }}
+      image: ghcr.io/${{ github.repository }}:${{ inputs.image-tag || 'latest' }}${{ matrix.image }}
 #      credentials:
 #        username: ${{ github.actor }}
 #        password: ${{ secrets.GITHUB_TOKEN }}
@@ -230,7 +235,7 @@ jobs:
       CMAKE_C_COMPILER_LAUNCHER: ccache
       CMAKE_CXX_COMPILER_LAUNCHER: ccache
     container:
-      image: ghcr.io/${{ github.repository }}
+      image: ghcr.io/${{ github.repository }}:${{ inputs.image-tag || 'latest' }}
     steps:
       - uses: actions/checkout@v5
 

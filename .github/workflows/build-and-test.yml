@@ -70,6 +70,13 @@ jobs:
             cmake-options: ""
           - image: -debian-openmpi
             cmake-options: "-DFORTRAN_INTEGER8=OFF"
+          # The HDF5 arrays need parallel HDF5 built against the same MPI, which each
+          # Debian image provides and the conda image does not. MPI and HDF5 on
+          # together never compiled until #662.
+          - image: -debian-mpich
+            cmake-options: "-DLINEARALGEBRA_ARRAY_HDF5=ON"
+          - image: -debian-openmpi
+            cmake-options: "-DLINEARALGEBRA_ARRAY_HDF5=ON"
           # Debian's own BLAS/LAPACK is the reference implementation, so the
           # vendor-specific builds stay in the conda image. #656 was an MKL-only bug.
           - image: ""

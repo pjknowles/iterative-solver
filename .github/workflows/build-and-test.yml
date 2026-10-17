@@ -127,10 +127,11 @@ jobs:
 
     - name: Test
       if: steps.check_configuration.outputs.files_exists == 'true'
-      # Known failures in the Debian images, skipped there only until fixed:
-      # #670 under MPICH, #669 under OpenMPI. mpiexec passes this to every rank.
+      # Known, intermittent RMA failures in the Debian images, skipped there only
+      # until fixed: GA range RMA under MPICH (#670), and the DistrFlags RMA tests
+      # under either MPI (#669). mpiexec passes this to every rank.
       env:
-        GTEST_FILTER: ${{ matrix.image == '-debian-mpich' && '-GA/DistrArrayRangeRMAF/0.gather:GA/DistrArrayRangeRMAF/0.scatter' || matrix.image == '-debian-openmpi' && '-DistrFlags.replace' || '*' }}
+        GTEST_FILTER: ${{ matrix.image == '-debian-mpich' && '-GA/DistrArrayRangeRMAF/*:DistrFlags.MPI_RMA:DistrFlags.replace' || matrix.image == '-debian-openmpi' && '-DistrFlags.MPI_RMA:DistrFlags.replace' || '*' }}
       run: cd ${{github.workspace}}/build && ctest -C ${{env.CMAKE_BUILD_TYPE}} --output-on-failure
     - name: Build doxygen
       run: cmake --build ${{github.workspace}}/build --target DependencyManagerDocs

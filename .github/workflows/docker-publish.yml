@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - Dockerfile
+      - Dockerfile.debian
+      - python/requirements.txt
       - .github/workflows/docker-publish.yml
   workflow_dispatch:
 env:
@@ -12,11 +14,28 @@ env:
 
 jobs:
   build:
-
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The conda image keeps the unsuffixed tags, so existing jobs are unaffected.
+          - name: conda
+            dockerfile: Dockerfile
+            build-args: ""
+            suffix: ""
+          - name: debian-mpich
+            dockerfile: Dockerfile.debian
+            build-args: MPI_FLAVOUR=mpich
+            suffix: "-debian-mpich"
+          - name: debian-openmpi
+            dockerfile: Dockerfile.debian
+            build-args: MPI_FLAVOUR=openmpi
+            suffix: "-debian-openmpi"
 
     steps:
       - name: Checkout repository
@@ -42,12 +61,16 @@ jobs:
             type=ref,event=branch
             type=ref,event=pr
             latest
+          flavor: |
+            suffix=${{ matrix.suffix }},onlatest=true
 
       - name: Build and push Docker image
         id: build-and-push
         uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a
         with:
           context: .
+          file: ${{ matrix.dockerfile }}
+          build-args: ${{ matrix.build-args }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

@@ -1,0 +1,52 @@
+# An all-Debian build environment: every compiler and library comes from apt, so
+# nothing is resolved against a second package manager. This is how a distribution
+# user builds the project.
+#
+# Its counterpart is Dockerfile, which is all-conda. Keeping the two stacks in
+# separate images is deliberate. When they were mixed, conda's compilers were used
+# against apt's libraries, and HDF5 could then be neither found nor linked: apt's
+# libhdf5 needs Debian's libaec and Debian's libcurl symbol versions, which conda's
+# sysroot does not provide.
+#
+# MPI_FLAVOUR selects mpich or openmpi. Both are worth building, because MPI_Comm is
+# an int in MPICH and a pointer in OpenMPI, so the MPI_Comm_c2f/f2c round trips in
+# IterativeSolverCMPI.cpp and the int64 communicator handles in IterativeSolverF.F90
+# exercise genuinely different code in the two.
+FROM debian:stable-slim@sha256:eb593cf2c358cacef45ca0a424bbc7d30cfa3466265fc2662b9466a0ca6ba1c5
+
+ARG MPI_FLAVOUR=mpich
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    build-essential gcc g++ gfortran clang \
+    cmake ninja-build make git wget curl rsync bash ccache pkg-config \
+    openssh-client \
+    liblapacke-dev libeigen3-dev libhdf5-dev \
+    python3-dev python3-numpy python3-pip cython3 \
+    doxygen graphviz valgrind \
+ && if [ "$MPI_FLAVOUR" = "openmpi" ]; then \
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            openmpi-bin libopenmpi-dev libhdf5-openmpi-dev; \
+    else \
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            mpich libmpich-dev libhdf5-mpich-dev; \
+    fi \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV CMAKE_GENERATOR=Ninja
+# OpenMPI refuses to run as root, and its shared-memory transport cannot use CMA in
+# an unprivileged container. Harmless with MPICH.
+ENV OMPI_ALLOW_RUN_AS_ROOT=1 \
+    OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 \
+    OMPI_MCA_btl_vader_single_copy_mechanism=none
+
+# Global Arrays, built with the same apt toolchain and the same apt MPI that the
+# project is then built with. In the mixed image GA was compiled before conda's
+# compilers and MPI were installed, so it linked one MPI while the tests used another.
+RUN export VERSION=5.9.2 \
+ && wget -q https://github.com/GlobalArrays/ga/releases/download/v${VERSION}/ga-${VERSION}.tar.gz \
+ && tar xzf ga-${VERSION}.tar.gz \
+ && cd ga-${VERSION} \
+ && ./configure --disable-f77 --with-mpi3 --without-blas --without-lapack \
+      CFLAGS="-O2 -Wno-error=incompatible-pointer-types" \
+ && make install \
+ && cd .. && rm -rf ga-${VERSION}*

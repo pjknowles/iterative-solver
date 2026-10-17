@@ -171,8 +171,13 @@ TEST_F(HDF5HandleDummyF, open_close_group_reassignment) {
   EXPECT_TRUE(H5Iis_valid(gid_first) == 0) << "previous group should have been closed";
 }
 
+//! Each test has its own file, so that tests can run concurrently, as ctest does with -j
 struct HDF5HandleOpenFileCreatF : public HDF5HandleDummyF {
-  HDF5HandleOpenFileCreatF() : file_name{"test_new_file.hdf5"} { remove_file(); }
+  HDF5HandleOpenFileCreatF()
+      : file_name{"test_new_file-" + std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
+                  ".hdf5"} {
+    remove_file();
+  }
   ~HDF5HandleOpenFileCreatF() { remove_file(); }
   void remove_file() {
     if (file_exists(file_name))

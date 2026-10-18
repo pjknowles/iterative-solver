@@ -79,8 +79,7 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
  * @brief Constructs overlap matrix for projected solutions
  *
  * x_i = \sum_j C_ij u_j
- * <x_i, x_i> = \sum_j \sum_k C_ij C_ik <u_j, u_k>
- * <x_i, x_j> = \sum_k \sum_l C_ik C_jl <u_j, u_l>
+ * <x_i, x_j> = \sum_k \sum_l conj(C_ik) C_jl <u_k, u_l>
  *
  * @param solutions_proj solutions matrix projected onto Qd+D space
  * @param dims dimensions for partitioning of subspace
@@ -102,25 +101,25 @@ auto construct_projected_solutions_overlap(const subspace::Matrix<value_type>& s
     for (size_t ii = 0; ii <= i; ++ii) {
       for (size_t j = 0; j < nQd; ++j) {
         for (size_t k = 0; k < nQd; ++k) {
-          overlap_proj(i, ii) += solutions_proj(i, j) * solutions_proj(ii, k) *
+          overlap_proj(i, ii) += conjugate(solutions_proj(i, j)) * solutions_proj(ii, k) *
                                  overlap(dims.oQ() + remove_qspace[j], dims.oQ() + remove_qspace[k]);
         }
         for (size_t k = 0; k < dims.nD; ++k) {
-          overlap_proj(i, ii) +=
-              solutions_proj(i, j) * solutions_proj(ii, nQd + k) * overlap(dims.oQ() + remove_qspace[j], dims.oD() + k);
+          overlap_proj(i, ii) += conjugate(solutions_proj(i, j)) * solutions_proj(ii, nQd + k) *
+                                 overlap(dims.oQ() + remove_qspace[j], dims.oD() + k);
         }
       }
       for (size_t j = 0; j < dims.nD; ++j) {
         for (size_t k = 0; k < dims.nD; ++k) {
           overlap_proj(i, ii) +=
-              solutions_proj(i, nQd + j) * solutions_proj(ii, nQd + k) * overlap(dims.oD() + j, dims.oD() + k);
+              conjugate(solutions_proj(i, nQd + j)) * solutions_proj(ii, nQd + k) * overlap(dims.oD() + j, dims.oD() + k);
         }
         for (size_t k = 0; k < nQd; ++k) {
-          overlap_proj(i, ii) +=
-              solutions_proj(i, nQd + j) * solutions_proj(ii, k) * overlap(dims.oD() + j, dims.oQ() + remove_qspace[k]);
+          overlap_proj(i, ii) += conjugate(solutions_proj(i, nQd + j)) * solutions_proj(ii, k) *
+                                 overlap(dims.oD() + j, dims.oQ() + remove_qspace[k]);
         }
       }
-      overlap_proj(ii, i) = overlap_proj(i, ii);
+      overlap_proj(ii, i) = conjugate(overlap_proj(i, ii));
     }
   }
   return overlap_proj;
@@ -229,15 +228,15 @@ auto construct_full_subspace_overlap(const subspace::Matrix<value_type>& solutio
   /*
    * append overlap with solutions_proj
    * x_i = \sum_j c_ij v_j
-   * <x_i, v_j> = \sum_k c_ik <v_k, v_j>
-   * <x_i, x_j> = \sum_kl c_ik c_jl <v_k, v_l>
+   * <x_i, v_j> = \sum_k conj(c_ik) <v_k, v_j>
+   * <x_i, x_j> = \sum_kl conj(c_ik) c_jl <v_k, v_l>
    */
   auto accumulate_ov_offdiag = [&](size_t i, size_t j, size_t jj) {
     for (size_t k = 0; k < nQd; ++k)
-      ov(oDnew + i, j) += solutions_proj(i, k) * overlap(jj, dims.oQ() + remove_qspace[k]);
+      ov(oDnew + i, j) += conjugate(solutions_proj(i, k)) * overlap(dims.oQ() + remove_qspace[k], jj);
     for (size_t k = 0; k < dims.nD; ++k)
-      ov(oDnew + i, j) += solutions_proj(i, nQd + k) * overlap(jj, dims.oD() + k);
-    ov(j, oDnew + i) = ov(oDnew + i, j);
+      ov(oDnew + i, j) += conjugate(solutions_proj(i, nQd + k)) * overlap(dims.oD() + k, jj);
+    ov(j, oDnew + i) = conjugate(ov(oDnew + i, j));
   };
   for (size_t i = 0; i < nDnew; ++i) {
     for (size_t j = 0; j < dims.nP; ++j)
@@ -252,21 +251,21 @@ auto construct_full_subspace_overlap(const subspace::Matrix<value_type>& solutio
     for (size_t j = 0; j <= i; ++j) {
       for (size_t k = 0; k < nQd; ++k) {
         for (size_t l = 0; l < nQd; ++l)
-          ov(oDnew + i, oDnew + j) += solutions_proj(i, k) * solutions_proj(j, l) *
+          ov(oDnew + i, oDnew + j) += conjugate(solutions_proj(i, k)) * solutions_proj(j, l) *
                                       overlap(dims.oQ() + remove_qspace[k], dims.oQ() + remove_qspace[l]);
         for (size_t l = 0; l < dims.nD; ++l)
-          ov(oDnew + i, oDnew + j) +=
-              solutions_proj(i, k) * solutions_proj(j, nQd + l) * overlap(dims.oQ() + remove_qspace[k], dims.oD() + l);
+          ov(oDnew + i, oDnew + j) += conjugate(solutions_proj(i, k)) * solutions_proj(j, nQd + l) *
+                                      overlap(dims.oQ() + remove_qspace[k], dims.oD() + l);
       }
       for (size_t k = 0; k < dims.nD; ++k) {
         for (size_t l = 0; l < nQd; ++l)
-          ov(oDnew + i, oDnew + j) +=
-              solutions_proj(i, nQd + k) * solutions_proj(j, l) * overlap(dims.oD() + k, dims.oQ() + remove_qspace[l]);
+          ov(oDnew + i, oDnew + j) += conjugate(solutions_proj(i, nQd + k)) * solutions_proj(j, l) *
+                                      overlap(dims.oD() + k, dims.oQ() + remove_qspace[l]);
         for (size_t l = 0; l < dims.nD; ++l)
-          ov(oDnew + i, oDnew + j) +=
-              solutions_proj(i, nQd + k) * solutions_proj(j, nQd + l) * overlap(dims.oD() + k, dims.oD() + l);
+          ov(oDnew + i, oDnew + j) += conjugate(solutions_proj(i, nQd + k)) * solutions_proj(j, nQd + l) *
+                                      overlap(dims.oD() + k, dims.oD() + l);
       }
-      ov(oDnew + j, oDnew + i) = ov(oDnew + i, oDnew + j);
+      ov(oDnew + j, oDnew + i) = conjugate(ov(oDnew + i, oDnew + j));
     }
   }
   return ov;

@@ -74,6 +74,15 @@ protected:
       n_solutions = evec.size() / dim;
     auto full_matrix = Matrix<value_type>{std::move(evec), {n_solutions, dim}};
     auto nroots = std::min(nroots_max, n_solutions);
+    m_split_partner_solution.clear();
+    if (nroots > 0) {
+      // Without its partner the residual of a pair member never vanishes. The partner's coefficients are kept, but not
+      // the partner itself, so that the number of solutions never exceeds the number of roots requested.
+      const auto partner = complex_partner(nroots - 1);
+      if (partner && *partner >= nroots && *partner < n_solutions)
+        for (size_t j = 0; j < dim; ++j)
+          m_split_partner_solution.push_back(full_matrix(*partner, j));
+    }
     m_eigenvalues.resize(nroots);
     auto [first, last] = std::ranges::remove_if(
         m_imag_eigval_comps, [nroots](std::size_t idx) { return idx >= nroots; },
@@ -114,6 +123,7 @@ protected:
     m_eigenvalues.assign(n_solutions, 0);
     m_imag_eigval_comps.clear();
     m_complex_partners.clear();
+    m_split_partner_solution.clear();
     int verbosity = convert_verbosity(m_logger->verbosity());
     itsolv::solve_LinearEquations(solution, m_eigenvalues, h.data(), s.data(), rhs.data(), dim, n_solutions,
                                   m_augmented_hessian, m_svd_solver_threshold, verbosity);
@@ -144,6 +154,11 @@ public:
       return std::nullopt;
     return it->second;
   }
+  /*!
+   * @brief Subspace coefficients of the complex partner of the last root, if the partner was truncated away (empty
+   * otherwise)
+   */
+  const std::vector<value_type>& split_partner_solution() const { return m_split_partner_solution; }
   const std::vector<value_type_abs>& errors() const override { return m_errors; }
 
   //! Number of solutions
@@ -164,6 +179,7 @@ protected:
   std::vector<value_type> m_eigenvalues;                               //!< eigenvalues
   std::vector<std::pair<std::size_t, value_type>> m_imag_eigval_comps; //!< eigenvalues
   std::map<std::size_t, std::size_t> m_complex_partners;               //!< root -> other member of its complex pair
+  std::vector<value_type> m_split_partner_solution;                    //!< truncated partner of the last root
   std::vector<value_type_abs> m_errors;                                //!< errors in subspace solutions
   std::shared_ptr<Logger> m_logger{};
 

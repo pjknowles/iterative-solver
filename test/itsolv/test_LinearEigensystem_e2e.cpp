@@ -8,7 +8,9 @@
 
 #include <Eigen/Dense>
 
+#include <algorithm>
 #include <cmath>
+#include <complex>
 #include <vector>
 
 namespace {
@@ -101,6 +103,62 @@ TEST(LinearEigensystem, Davidson_complex_roots) {
     ASSERT_THAT(eigvals.at(2), ::testing::DoubleNear(2.3814541296, tol));
     ASSERT_THAT(eigvals.at(3), ::testing::DoubleNear(2.3814541296, tol));
   }
+}
+
+//! A non-symmetric, diagonally dominant matrix whose third eigenvalue (by real part) is a member of a complex pair
+class SplitComplexPairProblem : public molpro::linalg::itsolv::Problem<std::vector<double>> {
+public:
+  static constexpr size_t n = 30;
+  double element(size_t i, size_t j) const {
+    if (i == 2 and j == 3)
+      return 1.;
+    if (i == 3 and j == 2)
+      return -1.;
+    return i == j ? 1. + i : 0.01 / (1. + std::abs(double(i) - double(j)));
+  }
+
+  bool diagonals(std::vector<double> &d) const override {
+    for (size_t i = 0; i < n; ++i)
+      d[i] = element(i, i);
+    return true;
+  }
+
+  void action(const molpro::linalg::itsolv::CVecRef<std::vector<double>> &parameters,
+              const molpro::linalg::itsolv::VecRef<std::vector<double>> &actions) const override {
+    for (size_t k = 0; k < parameters.size(); ++k)
+      for (size_t i = 0; i < n; ++i) {
+        actions[k].get()[i] = 0;
+        for (size_t j = 0; j < n; ++j)
+          actions[k].get()[i] += element(i, j) * parameters[k].get()[j];
+      }
+  }
+};
+
+TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots) {
+  molpro::mpi::init();
+  SplitComplexPairProblem problem;
+  Eigen::MatrixXd matrix(problem.n, problem.n);
+  for (size_t i = 0; i < problem.n; ++i)
+    for (size_t j = 0; j < problem.n; ++j)
+      matrix(i, j) = problem.element(i, j);
+  const Eigen::VectorXcd reference_complex = Eigen::EigenSolver<Eigen::MatrixXd>(matrix).eigenvalues();
+  std::vector<std::complex<double>> reference(reference_complex.begin(), reference_complex.end());
+  std::ranges::sort(reference, {}, [](const auto &e) { return e.real(); });
+  ASSERT_NEAR(std::abs(reference.at(2) - std::conj(reference.at(3))), 0., 1e-12);
+  ASSERT_GT(std::abs(reference.at(2).imag()), 0.5);
+
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>("Davidson");
+  solver->set_n_roots(3);
+  solver->set_max_iter(100);
+  solver->set_hermiticity(false);
+  solver->set_convergence_threshold(1e-8);
+  auto params = std::vector<std::vector<double>>(solver->n_roots(), std::vector<double>(problem.n));
+  auto actions = params;
+  ASSERT_TRUE(solver->solve(params, actions, problem, true));
+  const auto eigvals = solver->eigenvalues();
+  ASSERT_EQ(eigvals.size(), solver->n_roots());
+  for (size_t i = 0; i < eigvals.size(); ++i)
+    EXPECT_NEAR(eigvals[i], reference[i].real(), 1e-8);
 }
 
 //! A symmetric, diagonally dominant matrix

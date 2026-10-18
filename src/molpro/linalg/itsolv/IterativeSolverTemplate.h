@@ -394,69 +394,17 @@ public:
     std::unique_ptr<Q> diagonals;
     if (use_diagonals)
       diagonals.reset(new Q{m_handlers->qr().copy(actions.at(0))});
-//    std::cout << "solve() generate_initial_guess "<<generate_initial_guess<<", roots "<<this->n_roots()<<std::endl;
     if (generate_initial_guess) {
       if (not use_diagonals)
         throw std::runtime_error("Default initial guess requested, but diagonal elements are not available");
-      // add_vector() takes up no more vectors than there are in the working set
-      auto guess = m_handlers->qq().select(std::min(parameters.size(), m_working_set.size()), *diagonals);
-      size_t root = 0;
-      if (verbosity_at_least(Verbosity::Summary)) {
-        this->m_logger->info("Initial guess generated from diagonal elements");
-      }
-      for (const auto& g : guess) {
-        m_handlers->rp().copy(parameters[root], P{{g.first, 1}});
-        if (verbosity_at_least(Verbosity::Detailed)) {
-          m_logger->debug("-> initial guess with index ", g.first);
-        }
-        root++;
-      }
+      generate_initial_guess_from_diagonals(parameters, *diagonals);
     }
     int nwork = parameters.size();
     std::vector<P> pspace;
-    if (use_diagonals and m_max_p > 0) {
-      auto selectp = m_handlers->qq().select(m_max_p, *diagonals);
-      if (!selectp.empty()) {
-        // selectp is keyed by index, not value; find the smallest selected
-        // diagonal explicitly before applying the threshold.
-        // the diagonal of a hermitian operator is real, so it is orderable
-        auto min_val = real_part(std::min_element(selectp.begin(), selectp.end(),
-                                                  [](const auto& a, const auto& b) {
-                                                    return real_part(a.second) < real_part(b.second);
-                                                  })
-                                     ->second);
-        for (auto s = selectp.begin(); s != selectp.end();) {
-          if (real_part(s->second) > min_val + m_p_threshold)
-            s = selectp.erase(s);
-          else
-            ++s;
-        }
-      }
-      if (!selectp.empty() && selectp.size() < n_roots()) {
-        this->m_logger->warn("P space smaller than number of roots is not used; dimension and number of roots",
-                             selectp.size(), n_roots());
-        selectp.clear();
-      }
-      if (!selectp.empty() && verbosity_at_least(Verbosity::Summary)) {
-        this->m_logger->info("P-space dimension, threshold and limit", selectp.size(), m_p_threshold, m_max_p);
-      }
-      if (verbosity_at_least(Verbosity::Detailed)) {
-        for (const auto& s : selectp) {
-          this->m_logger->debug(std::format("P space element {}: {:.6e}", s.first, double(real_part(s.second))));
-        }
-      }
-      for (const auto& s : selectp)
-        pspace.emplace_back((P){{s.first, 1}});
-      if (!pspace.empty()) {
-        fapply_on_p_type apply_on_p = [&problem](const std::vector<std::vector<value_type>>& pcoeff,
-                                                 const CVecRef<P>& pparams, const VecRef<R>& actions) {
-          problem.p_action(pcoeff, pparams, actions);
-        };
-        auto action_matrix = problem.pp_action_matrix(pspace);
-        nwork = add_p(cwrap(pspace), array::Span<value_type>(action_matrix.data(), action_matrix.size()), parameters,
-                      actions, apply_on_p);
-      }
-    }
+    if (use_diagonals and m_max_p > 0)
+      pspace = select_pspace(*diagonals);
+    if (!pspace.empty())
+      nwork = initialise_pspace(pspace, problem, parameters, actions);
     for (auto iter = 0; iter < this->m_max_iter && nwork > 0; iter++) {
       // the logging context carries the errors as doubles: a log line only needs their magnitude
       m_logger->template info<log::NewIteration>("Iteration, Current errors", iter,
@@ -472,10 +420,10 @@ public:
                        wrap(actions.begin(), actions.begin() + naction));
         nwork = this->add_vector(parameters, actions);
       }
-      //      std::cout << "** nwork="<<nwork<<"use_diagonals="<<use_diagonals<<std::endl;
       while (this->end_iteration_needed()) {
         if (nwork > 0) {
           if (use_diagonals) {
+            // parameters[0] is scratch space to hand the diagonals over; end_iteration() writes the new parameters
             m_handlers->rq().copy(parameters.at(0), *diagonals);
             problem.precondition(wrap(actions.begin(), actions.begin() + nwork), this->working_set_eigenvalues(),
                                  parameters.at(0));
@@ -684,6 +632,76 @@ protected:
 
   //! Whether output of verbosity v is printed in solve(); everything is printed if no verbosity was set
   bool verbosity_at_least(Verbosity v) const { return !m_verbosity.has_value() || m_verbosity >= v; }
+
+  //! Fills parameters with unit vectors at the positions of the lowest diagonal elements
+  void generate_initial_guess_from_diagonals(const VecRef<R>& parameters, const Q& diagonals) {
+    // add_vector() takes up no more vectors than there are in the working set
+    auto guess = m_handlers->qq().select(std::min(parameters.size(), m_working_set.size()), diagonals);
+    size_t root = 0;
+    if (verbosity_at_least(Verbosity::Summary)) {
+      this->m_logger->info("Initial guess generated from diagonal elements");
+    }
+    for (const auto& g : guess) {
+      m_handlers->rp().copy(parameters[root], P{{g.first, 1}});
+      if (verbosity_at_least(Verbosity::Detailed)) {
+        m_logger->debug("-> initial guess with index ", g.first);
+      }
+      root++;
+    }
+  }
+
+  /*!
+   * @brief Selects the P space from the lowest diagonal elements, subject to max_p and p_threshold
+   * @return the P-space vectors, empty if fewer than n_roots() elements were selected
+   */
+  std::vector<P> select_pspace(const Q& diagonals) {
+    auto selectp = m_handlers->qq().select(m_max_p, diagonals);
+    if (!selectp.empty()) {
+      // selectp is keyed by index, not value; find the smallest selected
+      // diagonal explicitly before applying the threshold.
+      // the diagonal of a hermitian operator is real, so it is orderable
+      auto min_val = real_part(std::min_element(selectp.begin(), selectp.end(),
+                                                [](const auto& a, const auto& b) {
+                                                  return real_part(a.second) < real_part(b.second);
+                                                })
+                                   ->second);
+      for (auto s = selectp.begin(); s != selectp.end();) {
+        if (real_part(s->second) > min_val + m_p_threshold)
+          s = selectp.erase(s);
+        else
+          ++s;
+      }
+    }
+    if (!selectp.empty() && selectp.size() < n_roots()) {
+      this->m_logger->warn("P space smaller than number of roots is not used; dimension and number of roots",
+                           selectp.size(), n_roots());
+      selectp.clear();
+    }
+    if (!selectp.empty() && verbosity_at_least(Verbosity::Summary)) {
+      this->m_logger->info("P-space dimension, threshold and limit", selectp.size(), m_p_threshold, m_max_p);
+    }
+    if (verbosity_at_least(Verbosity::Detailed)) {
+      for (const auto& s : selectp) {
+        this->m_logger->debug(std::format("P space element {}: {:.6e}", s.first, double(real_part(s.second))));
+      }
+    }
+    std::vector<P> pspace;
+    for (const auto& s : selectp)
+      pspace.emplace_back((P){{s.first, 1}});
+    return pspace;
+  }
+
+  //! Adds the P space to the subspace using the P-space kernel provided by problem; returns the working-set size
+  size_t initialise_pspace(const std::vector<P>& pspace, const Problem<R>& problem, const VecRef<R>& parameters,
+                           const VecRef<R>& actions) {
+    fapply_on_p_type apply_on_p = [&problem](const std::vector<std::vector<value_type>>& pcoeff,
+                                             const CVecRef<P>& pparams, const VecRef<R>& actions) {
+      problem.p_action(pcoeff, pparams, actions);
+    };
+    auto action_matrix = problem.pp_action_matrix(pspace);
+    return add_p(cwrap(pspace), array::Span<value_type>(action_matrix.data(), action_matrix.size()), parameters,
+                 actions, apply_on_p);
+  }
 
 
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers

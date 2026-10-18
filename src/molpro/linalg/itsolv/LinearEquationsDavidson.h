@@ -51,7 +51,6 @@ public:
                            std::make_shared<subspace::SubspaceSolverLinEig<R, Q, P>>(logger_)),
                        handlers, std::make_shared<Statistics>(), logger_) {
     set_hermiticity(m_hermiticity);
-    this->m_normalise_solution = false;
   }
 
   bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,

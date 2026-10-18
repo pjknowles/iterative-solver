@@ -80,24 +80,6 @@ std::vector<std::vector<T>> construct_vectorP(const std::vector<int>& roots, con
   return vectorP;
 }
 
-template <class R>
-void normalise(const size_t n_roots, const VecRef<R>& params, const VecRef<R>& actions,
-               array::ArrayHandler<R, R>& handler, Logger& logger) {
-  assert(params.size() >= n_roots && actions.size() >= n_roots);
-  // a solution shorter than this is taken to be null; the threshold follows the working precision
-  const auto norm_thresh = precision_scaled<typename array::ArrayHandler<R, R>::value_type_abs>(1e-14);
-  for (size_t i = 0; i < n_roots; ++i) {
-    const typename array::ArrayHandler<R, R>::value_type_abs dot =
-        std::sqrt(std::abs(handler.dot(params.at(i), params.at(i))));
-    if (dot > norm_thresh) {
-      handler.scal(1. / dot, params.at(i));
-      handler.scal(1. / dot, actions.at(i));
-    } else {
-      logger.warn("solution parameter's length is too small, dot = " + std::format("{:.2e}", double(dot)));
-    }
-  }
-}
-
 template <class R, typename T>
 void update_errors(std::vector<T>& errors, const CVecRef<R>& residual, array::ArrayHandler<R, R>& handler) {
   assert(residual.size() >= errors.size());
@@ -248,8 +230,6 @@ public:
     prof->start("apply");
     auto pvectors = detail::construct_vectorP(roots, m_subspace_solver->solutions(), m_xspace->dimensions().oP(),
                                               m_xspace->dimensions().nP);
-    if (m_normalise_solution)
-      detail::normalise(roots.size(), parameters, residual, m_handlers->rr(), *m_logger);
     if (m_apply_p)
       m_apply_p(pvectors, m_xspace->cparamsp(), residual);
     construct_residual(roots, cwrap(parameters), residual);
@@ -715,7 +695,6 @@ protected:
       std::numeric_limits<value_type_abs>::max()}; //!< value changes less than this mark a converged solution
   std::shared_ptr<Statistics> m_stats;          //!< accumulates statistics of operations performed by the solver
   std::shared_ptr<Logger> m_logger;             //!< logger
-  bool m_normalise_solution = false;            //!< whether to normalise the solutions
   fapply_on_p_type m_apply_p = {};              //!< function that evaluates effect of action on the P space projection
   std::optional<Verbosity> m_verbosity = {};    //!< how much output to print in solve()
   int m_max_iter = 100;                         //!< maximum number of iterations in solve()

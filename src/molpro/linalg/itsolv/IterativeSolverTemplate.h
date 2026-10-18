@@ -41,10 +41,10 @@ void construct_solution(const VecRef<R>& params, const std::vector<int>& roots,
                         const std::vector<std::reference_wrapper<Q>>& qparams,
                         const std::vector<std::reference_wrapper<Q>>& dparams, size_t oP, size_t oQ, size_t oD,
                         ArrayHandlers<R, Q, P>& handlers) {
-  auto prof = molpro::Profiler::single();
-  prof->start("get rd_mat");
   if (roots.empty())
     return;
+  auto prof = molpro::Profiler::single();
+  prof->start("get rd_mat");
   assert(params.size() >= roots.size());
   for (size_t i = 0; i < roots.size(); ++i) {
     handlers.rr().fill(0, params.at(i));

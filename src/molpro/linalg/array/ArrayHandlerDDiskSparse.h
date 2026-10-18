@@ -31,9 +31,9 @@ public:
     x.axpy(1, y);
   };
 
-  void scal(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerDistr for unary operations"); };
+  void scal(value_type alpha, AL &x) override { throw std::logic_error("Use ArrayHandlerDDisk for unary operations"); };
 
-  void fill(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerDistr for unary operations"); };
+  void fill(value_type alpha, AL &x) override { throw std::logic_error("Use ArrayHandlerDDisk for unary operations"); };
 
   void axpy(value_type alpha, const AR &x, AL &y) override {
     this->m_counter->axpy++;

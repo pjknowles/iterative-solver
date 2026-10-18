@@ -8,6 +8,7 @@
 #include <molpro/linalg/array/DistrArrayMPI3.h>
 #include <molpro/linalg/array/DistrArraySpan.h>
 #include <molpro/linalg/array/util.h>
+#include <stdexcept>
 
 using molpro::linalg::array::ArrayHandlerDDiskSparse;
 using molpro::linalg::array::ArrayHandlerDistrSparse;
@@ -65,6 +66,13 @@ TEST(TestArrayHandlerDistrSparse, dot) {
   ASSERT_DOUBLE_EQ(result, ref);
 }
 
+TEST(TestArrayHandlerDistrSparse, unary_operations_throw) {
+  auto x = DistrArrayMPI3(20, mpi_comm);
+  auto handler = ArrayHandlerDistrSparse<decltype(x), std::map<size_t, double>>{};
+  EXPECT_THROW(handler.scal(2., x), std::logic_error);
+  EXPECT_THROW(handler.fill(2., x), std::logic_error);
+}
+
 TEST(TestArrayHandlerDDiskSparse, copy) {
   const size_t dim = 20;
   auto x = DistrArrayFile(dim, mpi_comm);
@@ -78,4 +86,11 @@ TEST(TestArrayHandlerDDiskSparse, copy) {
   const auto [lo, hi] = molpro::linalg::array::util::local_range(x);
   auto result = x.get(lo, hi);
   ASSERT_THAT(result, Pointwise(DoubleEq(), std::vector<double>(ref.begin() + lo, ref.begin() + hi)));
+}
+
+TEST(TestArrayHandlerDDiskSparse, unary_operations_throw) {
+  auto x = DistrArrayFile(20, mpi_comm);
+  auto handler = ArrayHandlerDDiskSparse<decltype(x), std::map<size_t, double>>{};
+  EXPECT_THROW(handler.scal(2., x), std::logic_error);
+  EXPECT_THROW(handler.fill(2., x), std::logic_error);
 }

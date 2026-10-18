@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
+#include <stdexcept>
 
 using molpro::linalg::array::ArrayHandlerIterableSparse;
 
@@ -37,7 +38,14 @@ TYPED_TEST_P(TestArrayHandlerIterableSparse, select_max_dot) {
   ASSERT_THAT(select, ContainerEq(ref_result));
 }
 
-REGISTER_TYPED_TEST_SUITE_P(TestArrayHandlerIterableSparse, constructor, dot, select_max_dot);
+TYPED_TEST_P(TestArrayHandlerIterableSparse, unary_operations_throw) {
+  auto x = std::vector<typename TypeParam::first_type>{1, 2, 3};
+  auto handler = ArrayHandlerIterableSparse<decltype(x), std::map<size_t, typename TypeParam::second_type>>{};
+  EXPECT_THROW(handler.scal(2, x), std::logic_error);
+  EXPECT_THROW(handler.fill(2, x), std::logic_error);
+}
+
+REGISTER_TYPED_TEST_SUITE_P(TestArrayHandlerIterableSparse, constructor, dot, select_max_dot, unary_operations_throw);
 
 using FloatTypes = ::testing::Types<std::pair<double, double>, std::pair<double, float>>;
 INSTANTIATE_TYPED_TEST_SUITE_P(Float, TestArrayHandlerIterableSparse, FloatTypes);

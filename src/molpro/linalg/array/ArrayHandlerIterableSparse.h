@@ -5,6 +5,7 @@
 #include <molpro/linalg/array/util/select.h>
 #include <molpro/linalg/array/util/select_max_dot.h>
 #include <numeric>
+#include <stdexcept>
 
 namespace molpro::linalg::array {
 using molpro::linalg::array::util::gemm_inner_default;
@@ -38,9 +39,13 @@ public:
       *(x.begin() + s.first) = s.second;
   }
 
-  void scal(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerIterable for unary operations"); };
+  void scal(value_type alpha, AL &x) override {
+    throw std::logic_error("Use ArrayHandlerIterable for unary operations");
+  };
 
-  void fill(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerIterable for unary operations"); };
+  void fill(value_type alpha, AL &x) override {
+    throw std::logic_error("Use ArrayHandlerIterable for unary operations");
+  };
 
   void axpy(value_type alpha, const AR &x, AL &y) override {
     for (const auto &el_x : x)

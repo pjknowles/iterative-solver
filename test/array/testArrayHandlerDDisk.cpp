@@ -1,6 +1,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <filesystem>
+#include <numeric>
+#include <vector>
+
+#include <molpro/linalg/array/ArrayHandlerDDiskIterable.h>
 #include <molpro/linalg/array/DistrArrayHDF5.h>
 #include <molpro/linalg/array/DistrArrayMPI3.h>
 #include <molpro/linalg/array/DistrArrayFile.h>
@@ -14,6 +19,7 @@
 
 using molpro::linalg::array::ArrayHandlerDDisk;
 using molpro::linalg::array::ArrayHandlerDDiskDistr;
+using molpro::linalg::array::ArrayHandlerDDiskIterable;
 using molpro::linalg::array::ArrayHandlerDistrDDisk;
 using molpro::linalg::array::default_handler;
 using molpro::linalg::array::DistrArrayHDF5;
@@ -79,6 +85,30 @@ TEST_F(ArrayHandlerDDiskF, constructor_erase_on_default) {
   auto l = lock.scope();
   EXPECT_TRUE(fhandle_n2->erase_file_on_destroy());
   ASSERT_EQ(y.file_handle(), fhandle_n2);
+}
+
+// New arrays are created in the directory given to the handler
+TEST_F(ArrayHandlerDDiskF, constructor_directory) {
+  int rank;
+  MPI_Comm_rank(mpi_comm, &rank);
+  const auto directory = std::filesystem::absolute("ArrayHandlerDDisk-HDF5-directory");
+  if (rank == 0)
+    std::filesystem::create_directories(directory);
+  MPI_Barrier(mpi_comm);
+  {
+    auto values = std::vector<double>(size);
+    std::iota(values.begin(), values.end(), 1.);
+    auto x = DistrArrayHDF5(fhandle_n1, size);
+    auto y = ArrayHandlerDDisk<DistrArrayHDF5>(directory.string()).copy(x);
+    EXPECT_EQ(std::filesystem::absolute(y.file_handle()->file_name()).parent_path(), directory);
+    auto q = ArrayHandlerDDiskIterable<DistrArrayHDF5, std::vector<double>>(directory.string()).copy(values);
+    EXPECT_EQ(std::filesystem::absolute(q.file_handle()->file_name()).parent_path(), directory);
+    EXPECT_EQ(q.vec(), values);
+  }
+  MPI_Barrier(mpi_comm);
+  if (rank == 0)
+    std::filesystem::remove_all(directory);
+  MPI_Barrier(mpi_comm);
 }
 
 TEST(ArrayHandlerDDisk, default_handler) {

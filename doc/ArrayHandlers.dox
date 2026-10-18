@@ -5,6 +5,61 @@ namespace linalg{
 
 Work in Progress.
 
+@section ArrayHandlersContiguousDisk Contiguous arrays and disk arrays
+
+When the R space is held in contiguous memory, e.g. @c std::vector<double> or array::Span<double>, and the Q space on
+disk, e.g. array::DistrArrayFile, the default handlers are array::ArrayHandlerIterableDDisk (rq) and
+array::ArrayHandlerDDiskIterable (qr). Every operation is available in both directions.
+
+- The contiguous array is addressed in place; there are no per-element proxies.
+- The disk array is paged through @c get() and @c put(), so that the memory used does not scale with its size. gemm
+  reads it through a double-buffered array::util::BufferManager and does the arithmetic with dgemm. R vectors that
+  are not evenly spaced in memory are first copied, a page at a time, into one buffer, which each thread keeps for
+  later calls.
+- A Q made as a copy of an R by the qr handler is created by @c CreateTempCopy() of the Q type on
+  molpro::mpi::comm_self(), because R is not distributed. As for any distributed array on a communicator other than
+  molpro::mpi::comm_global(), MPI must have been initialised.
+- If a Q is distributed over several processes, the R arrays hold all elements on every process. Each process works
+  on the local section of Q, and an R written to is then replicated over all processes.
+
+The handlers forward to array::DistrArray members taking a Span, e.g. @c dot(Span<const double>), and to the
+contiguous gemm functions in array::util, so the same operations are available for any distributed array.
+
+@subsection ArrayHandlersChoosingR Choosing the R array type
+
+- On a single process, or with an independent solve on each process, a contiguous R such as @c std::vector<double>
+  or array::Span<double> is the simplest choice. It needs no distribution or communicator, and performs as well as
+  array::DistrArraySpan.
+- For a solve shared by several processes, use a distributed R, e.g. array::DistrArraySpan, distributed like Q.
+  Each process then does only its share of the work on R, and nothing has to be gathered after an operation. A
+  contiguous R is replicated instead: every operation on R alone is done in full on every process, and every
+  operation that writes R ends with an @c MPI_Allgatherv over Q's communicator.
+- If the caller holds full vectors on every process, wrap the local section of each in an array::DistrArraySpan and
+  gather the vectors once when they are handed back, as the C and Fortran interface does
+  (@c CreateDistrArray and @c DistrArraySynchronize in IterativeSolverCMPI.cpp).
+
+@section ArrayHandlersTempFiles Files of new disk arrays
+
+The handlers that create disk arrays, array::ArrayHandlerDDisk, array::ArrayHandlerDDiskDistr and
+array::ArrayHandlerDDiskIterable, do so with the @c CreateTempCopy() functions of the disk array types, e.g.
+array::DistrArrayFile::CreateTempCopy(). The files are erased with the arrays. Each of these handlers can be
+constructed with
+
+- no argument: a copy of a disk array is put next to the file of the source, and any other copy into the current
+  directory;
+- a directory, into which all files are put, e.g. a scratch directory local to the node;
+- a copy function, which creates the new array in any way it likes, e.g. on another communicator.
+
+For example, to have all Q files in @c /scratch/run :
+@code{.cpp}
+using R = std::vector<double>;
+using Q = molpro::linalg::array::DistrArrayFile;
+auto handlers = molpro::linalg::itsolv::ArrayHandlers<R, Q>::create()
+                    .qq(std::make_shared<molpro::linalg::array::ArrayHandlerDDisk<Q>>("/scratch/run"))
+                    .qr(std::make_shared<molpro::linalg::array::ArrayHandlerDDiskIterable<Q, R>>("/scratch/run"))
+                    .build();
+@endcode
+
 */
 }
 }

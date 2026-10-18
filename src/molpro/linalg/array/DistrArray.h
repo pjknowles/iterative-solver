@@ -5,6 +5,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <string>
 #include <molpro/mpi.h>
 #include <vector>
 #include <type_traits>
@@ -259,6 +260,32 @@ public:
    */
   virtual void axpy(value_type a, const DistrArray &y);
   virtual void axpy(value_type a, const SparseArray &y);
+  //! @}
+
+  /*! @name Operations with a contiguous array
+   * The contiguous array y holds all size() elements on every process, i.e. it is replicated rather than distributed.
+   * The distributed array is accessed only in its local section, which is paged through get() and put() if it has no
+   * local buffer. y is addressed in place.
+   */
+  //! @{
+  //! this[:] = y[:] over the local section. Local.
+  void copy(Span<const value_type> y);
+  //! this[:] += a * y[:] over the local section. Local.
+  void axpy(value_type a, Span<const value_type> y);
+  //! y[:] = this[:]. Collective: each process copies its local section, and then y is replicated over all of them.
+  void copy_to(Span<value_type> y) const;
+  //! y[:] += a * this[:]. Collective: each process updates its local section, and then y is replicated over all of
+  //! them. y must hold the same values on all processes on entry.
+  void axpy_to(value_type a, Span<value_type> y) const;
+  //! Scalar product <this|y>. Collective, the result is available to each process.
+  [[nodiscard]] value_type dot(Span<const value_type> y) const;
+  //! The n indices with the largest |this[i]*y[i]|. Collective.
+  [[nodiscard]] std::map<size_t, value_type> select_max_dot(size_t n, Span<const value_type> y) const;
+  //! @}
+
+  /*! @name Asynchronous linear algebra. No synchronisation on entry or exit.
+   */
+  //! @{
   //! Scale by a constant. Local.
   virtual void scal(value_type a);
   //! Add another array to this. Local. Throws error if any array is empty.
@@ -351,6 +378,8 @@ public:
   virtual void error(const std::string &message) const;
 
 protected:
+  //! Stops with an error unless the contiguous array y has as many elements as this
+  void check_compatible(Span<const value_type> y, const std::string &name) const;
   virtual void _divide(const DistrArray &y, const DistrArray &z, value_type shift, bool append, bool negative);
 };
 

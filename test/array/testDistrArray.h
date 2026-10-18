@@ -852,6 +852,64 @@ TYPED_TEST_P(DistrArrayCollectiveLinAlgF, divide_overwrite_positive) {
   this->a.sync();
 }
 
+// Operations with a contiguous array, which holds all elements on every process
+
+TYPED_TEST_P(DistrArrayCollectiveLinAlgF, span_copy_and_copy_to) {
+  using molpro::linalg::array::Span;
+  const auto &x = this->range_alpha;
+  this->a.copy(Span<const double>(x.data(), x.size()));
+  auto y = std::vector<double>(this->dim, -1.);
+  this->a.copy_to(Span<double>(y.data(), y.size()));
+  auto [lo, hi] = this->a.distribution().range(this->p_rank);
+  auto from_a = this->a.get(lo, hi);
+  auto proxy = this->lock.scope();
+  ASSERT_THAT(from_a, Pointwise(DoubleEq(), std::vector<double>(x.begin() + lo, x.begin() + hi)));
+  ASSERT_THAT(y, Pointwise(DoubleEq(), x));
+}
+
+TYPED_TEST_P(DistrArrayCollectiveLinAlgF, span_axpy_and_axpy_to) {
+  using molpro::linalg::array::Span;
+  const double scale = -3.;
+  const auto &x = this->range_alpha;
+  this->a.fill(this->alpha);
+  this->a.axpy(scale, Span<const double>(x.data(), x.size()));
+  auto y = std::vector<double>(this->dim, this->beta);
+  this->a.axpy_to(scale, Span<double>(y.data(), y.size()));
+  auto ref_a = std::vector<double>(this->dim), ref_y = std::vector<double>(this->dim);
+  for (size_t i = 0; i < this->dim; ++i) {
+    ref_a[i] = this->alpha + scale * x[i];
+    ref_y[i] = this->beta + scale * ref_a[i];
+  }
+  auto [lo, hi] = this->a.distribution().range(this->p_rank);
+  auto from_a = this->a.get(lo, hi);
+  auto proxy = this->lock.scope();
+  ASSERT_THAT(from_a, Pointwise(DoubleEq(), std::vector<double>(ref_a.begin() + lo, ref_a.begin() + hi)));
+  ASSERT_THAT(y, Pointwise(DoubleEq(), ref_y));
+}
+
+TYPED_TEST_P(DistrArrayCollectiveLinAlgF, span_dot_and_select_max_dot) {
+  using molpro::linalg::array::Span;
+  auto x = std::vector<double>(this->dim), y = std::vector<double>(this->dim);
+  for (size_t i = 0; i < this->dim; ++i) {
+    x[i] = double(i % 7) - 3.;
+    y[i] = 0.5 * double(i) - 4.;
+  }
+  this->a.copy(Span<const double>(x.data(), x.size()));
+  auto result_dot = this->a.dot(Span<const double>(y.data(), y.size()));
+  auto ref_dot = std::inner_product(x.begin(), x.end(), y.begin(), 0.);
+  const size_t n = 4;
+  auto result_select = this->a.select_max_dot(n, Span<const double>(y.data(), y.size()));
+  auto products = std::vector<std::pair<double, size_t>>();
+  for (size_t i = 0; i < this->dim; ++i)
+    products.emplace_back(std::abs(x[i] * y[i]), i);
+  std::sort(products.begin(), products.end(), std::greater<>{});
+  auto proxy = this->lock.scope();
+  ASSERT_THAT(result_dot, DoubleEq(ref_dot));
+  ASSERT_EQ(result_select.size(), n);
+  for (size_t i = 0; i < n; ++i)
+    ASSERT_EQ(result_select.count(products[i].second), 1) << "index " << products[i].second;
+}
+
 REGISTER_TYPED_TEST_SUITE_P(DistArrayBasicF, size, zero, fill);
 REGISTER_TYPED_TEST_SUITE_P(DistArrayBasicRMAF, vec, get, put);
 REGISTER_TYPED_TEST_SUITE_P(DistrArrayRangeRMAF, gather, scatter, scatter_acc, at, set, iteration, stl_algorithms);
@@ -861,6 +919,7 @@ REGISTER_TYPED_TEST_SUITE_P(TestDistrArray, constructor, constructor_copy, const
                             copy_assignment_op_allocated, constructor_move, constructor_move_allocated,
                             move_assignment_op_allocated, select_max_dot);
 REGISTER_TYPED_TEST_SUITE_P(DistrArrayCollectiveLinAlgF, add, sub, axpy, axpy_map, dot_array, dot_map, times,
-                            divide_append_negative, divide_append_positive, divide_overwrite_positive);
+                            divide_append_negative, divide_append_positive, divide_overwrite_positive,
+                            span_copy_and_copy_to, span_axpy_and_axpy_to, span_dot_and_select_max_dot);
 
 #endif // LINEARALGEBRA_TEST_ARRAY_TESTDISTRARRAY_H

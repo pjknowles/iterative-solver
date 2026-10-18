@@ -2,15 +2,16 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERDDISKDISTR_H
 
 #include <map>
-#include <molpro/linalg/array/ArrayHandler.h>
+#include <molpro/linalg/array/ArrayHandlerWithCopyFunc.h>
 #include <molpro/linalg/array/util/gemm.h>
+#include <string>
 
 namespace molpro::linalg::array {
 using molpro::linalg::array::util::gemm_inner_distr_distr;
 using molpro::linalg::array::util::gemm_outer_distr_distr;
 
 template <class AL, class AR = AL>
-class ArrayHandlerDDiskDistr : public ArrayHandler<AL, AR> {
+class ArrayHandlerDDiskDistr : public ArrayHandlerWithCopyFunc<AL, AR> {
 public:
   using typename ArrayHandler<AL, AR>::value_type_L;
   using typename ArrayHandler<AL, AR>::value_type_R;
@@ -18,29 +19,25 @@ public:
   using typename ArrayHandler<AL, AR>::value_type_abs;
   using typename ArrayHandler<AL, AR>::ProxyHandle;
 
+  //! New arrays are created by AL::CreateTempCopy(), with any file next to that of the source, if it has one
   ArrayHandlerDDiskDistr()
-      : ArrayHandler<AL, AR>(), m_copy_func([](const AR &source) { return AL::CreateTempCopy(source); }) {}
+      : ArrayHandlerWithCopyFunc<AL, AR>([](const AR &source) { return AL::CreateTempCopy(source); }) {}
 
-  /*!
-   * @brief Constructor taking a copy function.
-   *
-   * Disk arrays may require extra arguments in the copy constructor to specify the underlying filename.
-   * The user can pass copy_func which implements
-   *
-   * @param copy_func copy function
-   */
+  //! New arrays are created by AL::CreateTempCopy(), with any file in directory
+  explicit ArrayHandlerDDiskDistr(const std::string &directory)
+      : ArrayHandlerWithCopyFunc<AL, AR>(
+            [directory](const AR &source) { return AL::CreateTempCopy(source, directory); }) {}
+
+  //! Constructor taking a copy function, which can e.g. specify the file underlying the new array
   ArrayHandlerDDiskDistr(std::function<AL(const AR &)> copy_func)
-      : ArrayHandler<AL, AR>(), m_copy_func(std::move(copy_func)){};
+      : ArrayHandlerWithCopyFunc<AL, AR>(std::move(copy_func)) {}
 
   ProxyHandle lazy_handle() override { return this->lazy_handle(*this); };
 
   using ArrayHandler<AL, AR>::lazy_handle;
   using ArrayHandler<AL, AR>::error;
 
-  AL copy(const AR &source) override {
-    this->m_counter->copy++;
-    return m_copy_func(source);
-  };
+  using ArrayHandlerWithCopyFunc<AL, AR>::copy;
 
   void copy(AL &x, const AR &y) override {
     this->m_counter->copy++;
@@ -82,9 +79,6 @@ public:
   std::map<size_t, value_type_abs> select(size_t n, const AL &x, bool max = false, bool ignore_sign = false) override {
     return x.select(n, max, ignore_sign);
   }
-
-protected:
-  std::function<AL(const AR &)> m_copy_func; //!< function for making a copy
 };
 
 } // namespace molpro::linalg::array

@@ -2,6 +2,7 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_ARRAYHANDLERITERABLE_H
 #include <cstddef>
 #include <molpro/linalg/array/ArrayHandler.h>
+#include <molpro/linalg/array/util.h>
 #include <molpro/linalg/array/util/gemm.h>
 #include <molpro/linalg/array/util/select.h>
 #include <molpro/linalg/array/util/select_max_dot.h>
@@ -12,60 +13,6 @@
 namespace molpro::linalg::array {
 using molpro::linalg::array::util::gemm_inner_default;
 using molpro::linalg::array::util::gemm_outer_default;
-
-namespace util {
-
-template <typename T>
-struct is_std_array : std::false_type {};
-
-template <typename T, std::size_t N>
-struct is_std_array<std::array<T, N>> : std::true_type {};
-
-template <typename T>
-constexpr bool is_std_array_v = is_std_array<T>::value;
-
-template <typename T>
-constexpr bool is_array_v = std::is_array<T>::value || is_std_array_v<T>;
-
-template <typename T, typename = void>
-struct is_allocatable : std::false_type {};
-
-// We use the existence of a constructor taking a size-type as a proxy
-// for whether the given type is "allocatable", that is it can be newly
-// constructed by simply telling it how many elements it shall contain.
-template <typename T>
-struct is_allocatable<T, std::enable_if_t<std::is_constructible_v<T, std::size_t>>> : std::true_type {};
-
-template <typename T>
-constexpr bool is_allocatable_v = is_allocatable<T>::value;
-
-} // namespace util
-
-/*!
- * @brief Allocates an array of type T to hold the specified amount of items
- *
- * This function serves as a customization point for array types that don't support
- * allocation via a constructor that takes in a size. The default implementation will
- * throw an exception for such types and is hence only viable in case no such allocations
- * are required during any point of execution.
- *
- * @param size The number of objects the to-be-allocated array should encompass
- * @returns The allocated array
- *
- * @note There exists no hook for deallocation. It is assumed that the memory allocated by
- * specializations of this function is managed and tracked externally and freed once
- * this library has done all requested work (or in between solver invocations).
- */
-template<typename T>
-T allocate_array(std::size_t size) {
-  if constexpr (util::is_allocatable_v<T>) {
-    return T(size);
-  }
-
-  throw std::runtime_error("Required molpro::linalg::array::allocate_array for type '"
-          + std::string(typeid(T).name())
-          + "' - you have to provide an explicit template specialization for this function & type");
-}
 
 /*!
  * @brief Array handler for two containers both of which can be iterated through using begin() and end() member
@@ -83,7 +30,11 @@ public:
   ArrayHandlerIterable() = default;
   ArrayHandlerIterable(const ArrayHandlerIterable<AL, AR> &) = default;
 
-  AL copy(const AR &source) override { return copyAny<AL, AR>(source); };
+  AL copy(const AR &source) override {
+    auto result = util::allocate_like<AL>(source.size());
+    copy(result, source);
+    return result;
+  };
 
   void copy(AL &x, const AR &y) override {
     using std::begin;
@@ -164,23 +115,10 @@ protected:
   using ArrayHandler<AL, AR>::lazy_handle;
   using ArrayHandler<AL, AR>::m_lazy_handles;
 
-  template <typename T, typename S, typename std::enable_if_t<util::is_array_v<T>, std::nullptr_t> = nullptr>
-  T copyAny(const S &source) {
-    auto result = T();
-    copy(result, source);
-    return result;
-  }
-
-  template <typename T, typename S, typename std::enable_if_t<!util::is_array_v<T> && util::is_allocatable_v<T>, int> = 0>
-  T copyAny(const S &source) {
-    auto result = T(source.size());
-    copy(result, source);
-    return result;
-  }
-
-  template <typename T, typename S, typename std::enable_if_t<!util::is_array_v<T> && !util::is_allocatable_v<T>, int> = 0>
-  T copyAny(const S &source) {
-    T result = allocate_array<T>(source.size());
+  //! Creates a copy of source as an array of type T
+  template <typename T, typename S>
+  [[deprecated("use util::allocate_like() followed by copy() instead")]] T copyAny(const S &source) {
+    auto result = util::allocate_like<T>(source.size());
     copy(result, source);
     return result;
   }

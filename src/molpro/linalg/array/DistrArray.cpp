@@ -1,5 +1,6 @@
 #include <molpro/linalg/scalar_traits.h>
 #include "DistrArray.h"
+#include "util/gather_all.h"
 #include "util/select.h"
 #include "util/select_max_dot.h"
 #include <algorithm>
@@ -16,7 +17,13 @@ using index_type = DistrArray::index_type;
 
 //! One operand of an elementwise operation
 struct Operand {
-  const DistrArray& array;
+  //! A distributed array, of which the local section is operated on
+  Operand(const DistrArray& array, bool read, bool write) : array(&array), read(read), write(write) {}
+  //! An array held in full in contiguous memory, as many elements as the distributed operands, and addressed in place
+  Operand(const value_type* memory, bool read, bool write)
+      : memory(const_cast<value_type*>(memory)), read(read), write(write) {}
+  const DistrArray* array = nullptr;
+  value_type* memory = nullptr;
   bool read;  //!< whether the operation reads the operand
   bool write; //!< whether the operation writes the operand
 };
@@ -37,15 +44,17 @@ std::pair<index_type, index_type> local_range(const DistrArray& a) {
  * @brief Applies f(start, n, p) to the local sections of the operands, where p[k] addresses elements [start, start+n)
  * of operand k.
  *
- * Operands held in memory are addressed in place through their local buffers, and if none of the operands is held on
- * disk, f is called once for the whole local section. Operands on disk, which have no local buffer, are paged through
- * buffers of disk_page_size() elements: each page is read before f is called if the operation reads the operand, and
- * written back afterwards if it writes it.
+ * The local section is that of the distributed operands, of which there must be at least one. Operands held in
+ * memory, i.e. distributed arrays with a local buffer and contiguous arrays, are addressed in place, and if none of the
+ * operands is held on disk, f is called once for the whole local section. Operands on disk, which have no local buffer,
+ * are paged through buffers of disk_page_size() elements: each page is read before f is called if the operation reads
+ * the operand, and written back afterwards if it writes it.
  */
 void for_each_local_chunk(std::initializer_list<Operand> operands,
                           const std::function<void(index_type start, size_t n, value_type* const* p)>& f) {
   const std::vector<Operand> ops(operands);
-  const auto [lo, hi] = local_range(ops.front().array);
+  const auto& distributed = *std::find_if(ops.begin(), ops.end(), [](const auto& op) { return op.array; })->array;
+  const auto [lo, hi] = local_range(distributed);
   // the local buffers of the operands in memory (DistrArray::LocalBuffer itself is not accessible here)
   std::vector<decltype(std::declval<DistrArray&>().local_buffer())> buffers;
   std::vector<decltype(std::declval<const DistrArray&>().local_buffer())> const_buffers;
@@ -53,9 +62,13 @@ void for_each_local_chunk(std::initializer_list<Operand> operands,
   std::vector<bool> on_disk(ops.size(), false);
   size_t page = 0;
   for (size_t k = 0; k < ops.size(); ++k) {
-    const auto& a = ops[k].array;
+    if (not ops[k].array) {
+      base[k] = ops[k].memory + lo; // an empty contiguous array may have no memory, but then lo == 0
+      continue;
+    }
+    const auto& a = *ops[k].array;
     if (local_range(a) != std::make_pair(lo, hi))
-      ops.front().array.error("DistrArray: operands are distributed differently");
+      distributed.error("DistrArray: operands are distributed differently");
     if (a.disk_page_size() > 0) {
       on_disk[k] = true;
       page = page == 0 ? a.disk_page_size() : std::min(page, a.disk_page_size());
@@ -79,7 +92,7 @@ void for_each_local_chunk(std::initializer_list<Operand> operands,
       if (on_disk[k]) {
         pages[k].resize(n);
         if (ops[k].read)
-          ops[k].array.get(start, start + n, pages[k].data());
+          ops[k].array->get(start, start + n, pages[k].data());
         p[k] = pages[k].data();
       } else
         p[k] = base[k] + (start - lo);
@@ -87,7 +100,7 @@ void for_each_local_chunk(std::initializer_list<Operand> operands,
     f(start, n, p.data());
     for (size_t k = 0; k < ops.size(); ++k)
       if (on_disk[k] and ops[k].write)
-        const_cast<DistrArray&>(ops[k].array).put(start, start + n, pages[k].data());
+        const_cast<DistrArray&>(*ops[k].array).put(start, start + n, pages[k].data());
   }
 }
 
@@ -99,6 +112,58 @@ void keep_largest(std::map<size_t, value_type>& selection, size_t n) {
   std::nth_element(entries.begin(), entries.begin() + n, entries.end(),
                    [](const auto& a, const auto& b) { return a.second > b.second; });
   selection = std::map<size_t, value_type>(entries.begin(), entries.begin() + n);
+}
+
+//! The hermitian inner product <x|y> of two operands, reduced over the communicator
+value_type dot(const Operand& x, const Operand& y, MPI_Comm communicator) {
+  value_type a = 0;
+  for_each_local_chunk({x, y}, [&a](index_type, size_t n, value_type* const* p) {
+    a = std::inner_product(p[0], p[0] + n, p[1], a, std::plus<value_type>{}, [](const auto& elx, const auto& ely) {
+      return molpro::linalg::conjugate(value_type(elx)) * value_type(ely);
+    });
+  });
+#ifdef HAVE_MPI_H
+  MPI_Allreduce(MPI_IN_PLACE, &a, 1, MPI_DOUBLE, MPI_SUM, communicator);
+#endif
+  return a;
+}
+
+//! x[:] += a * y[:] over the local section; x is the first operand
+void axpy(value_type a, const Operand& x, const Operand& y) {
+  if (a == 0)
+    return;
+  for_each_local_chunk({x, y}, [a](index_type, size_t n, value_type* const* p) {
+    auto xx = p[0];
+    const auto yy = p[1];
+    if (a == 1)
+      for (size_t i = 0; i < n; ++i)
+        xx[i] += yy[i];
+    else if (a == -1)
+      for (size_t i = 0; i < n; ++i)
+        xx[i] -= yy[i];
+    else
+      for (size_t i = 0; i < n; ++i)
+        xx[i] += a * yy[i];
+  });
+}
+
+//! x[:] = y[:] over the local section; x is the first operand
+void copy(const Operand& x, const Operand& y) {
+  for_each_local_chunk({x, y}, [](index_type, size_t n, value_type* const* p) { std::copy_n(p[1], n, p[0]); });
+}
+
+//! The n indices with the largest |x[i]*y[i]|, selected over all processes
+std::map<size_t, value_type> select_max_dot(size_t n, const Operand& x, const Operand& y, MPI_Comm communicator) {
+  auto shifted_local_selection = std::map<size_t, value_type>();
+  for_each_local_chunk({x, y}, [n, &shifted_local_selection](index_type start, size_t m, value_type* const* p) {
+    const auto xs = Span<value_type>(p[0], m);
+    const auto ys = Span<value_type>(p[1], m);
+    for (const auto& el :
+         util::select_max_dot<Span<value_type>, Span<value_type>, value_type, value_type>(std::min(n, m), xs, ys))
+      shifted_local_selection.emplace(start + el.first, el.second);
+    keep_largest(shifted_local_selection, n);
+  });
+  return util::select_max_dot_broadcast(n, shifted_local_selection, communicator);
 }
 } // namespace
 
@@ -153,21 +218,7 @@ void DistrArray::axpy(value_type a, const DistrArray& y) {
   auto name = std::string{"Array::axpy"};
   if (!compatible(y))
     error(name + " incompatible arrays");
-  if (a == 0)
-    return;
-  for_each_local_chunk({{*this, true, true}, {y, true, false}}, [a](index_type, size_t n, value_type* const* p) {
-    auto x = p[0];
-    const auto yy = p[1];
-    if (a == 1)
-      for (size_t i = 0; i < n; ++i)
-        x[i] += yy[i];
-    else if (a == -1)
-      for (size_t i = 0; i < n; ++i)
-        x[i] -= yy[i];
-    else
-      for (size_t i = 0; i < n; ++i)
-        x[i] += a * yy[i];
-  });
+  array::axpy(a, {*this, true, true}, {y, true, false});
   prof->stop();
 }
 
@@ -226,16 +277,7 @@ DistrArray::value_type DistrArray::dot(const DistrArray& y) const {
   auto name = std::string{"Array::dot"};
   if (!compatible(y))
     error(name + " array x is incompatible");
-  value_type a = 0;
-  for_each_local_chunk({{*this, true, false}, {y, true, false}}, [&a](index_type, size_t n, value_type* const* p) {
-    a = std::inner_product(p[0], p[0] + n, p[1], a, std::plus<value_type>{}, [](const auto& elx, const auto& ely) {
-      return molpro::linalg::conjugate(value_type(elx)) * value_type(ely);
-    });
-  });
-#ifdef HAVE_MPI_H
-  MPI_Allreduce(MPI_IN_PLACE, &a, 1, MPI_DOUBLE, MPI_SUM, communicator());
-#endif
-  return a;
+  return array::dot({*this, true, false}, {y, true, false}, communicator());
 }
 
 void DistrArray::_divide(const DistrArray& y, const DistrArray& z, DistrArray::value_type shift, bool append,
@@ -337,17 +379,7 @@ std::map<size_t, DistrArray::value_type> DistrArray::select_max_dot(size_t n, co
     error("DistrArray::select_max_dot: incompatible arrays");
   if (n > size() || n > y.size())
     error("DistrArray::select_max_dot: n is too large");
-  auto shifted_local_selection = std::map<size_t, value_type>();
-  for_each_local_chunk({{*this, true, false}, {y, true, false}},
-                       [n, &shifted_local_selection](index_type start, size_t m, value_type* const* p) {
-                         const auto xs = Span<value_type>(p[0], m);
-                         const auto ys = Span<value_type>(p[1], m);
-                         for (const auto& el : util::select_max_dot<Span<value_type>, Span<value_type>, value_type,
-                                                                    value_type>(std::min(n, m), xs, ys))
-                           shifted_local_selection.emplace(start + el.first, el.second);
-                         keep_largest(shifted_local_selection, n);
-                       });
-  return util::select_max_dot_broadcast(n, shifted_local_selection, communicator());
+  return array::select_max_dot(n, {*this, true, false}, {y, true, false}, communicator());
 }
 
 std::map<size_t, DistrArray::value_type> DistrArray::select_max_dot(size_t n, const DistrArray::SparseArray& y) const {
@@ -508,9 +540,7 @@ void DistrArray::copy(const DistrArray& y) {
   auto name = std::string{"Array::copy"};
   if (!compatible(y))
     error(name + " incompatible arrays");
-  for_each_local_chunk({{*this, false, true}, {y, true, false}}, [](index_type, size_t n, value_type* const* p) {
-    std::copy_n(p[1], n, p[0]);
-  });
+  array::copy({*this, false, true}, {y, true, false});
 }
 
 void DistrArray::copy_patch(const DistrArray& y, DistrArray::index_type start, DistrArray::index_type end) {
@@ -560,6 +590,49 @@ void DistrArray::axpy(value_type a, const SparseArray& y) {
     for (auto it = y.lower_bound(start); it != y.end() and it->first < start + n; ++it)
       p[0][it->first - start] += a * it->second;
   });
+}
+
+void DistrArray::check_compatible(Span<const value_type> y, const std::string& name) const {
+  if (y.size() != size())
+    error(name + ": contiguous array of size " + std::to_string(y.size()) +
+          " is incompatible with distributed array of size " + std::to_string(size()));
+}
+
+void DistrArray::copy(Span<const value_type> y) {
+  check_compatible(y, "DistrArray::copy");
+  array::copy({*this, false, true}, {y.data(), true, false});
+}
+
+void DistrArray::copy_to(Span<value_type> y) const {
+  check_compatible(y, "DistrArray::copy_to");
+  array::copy({y.data(), false, true}, {*this, true, false});
+  util::gather_all(distribution(), communicator(), y.data());
+}
+
+void DistrArray::axpy(value_type a, Span<const value_type> y) {
+  check_compatible(y, "DistrArray::axpy");
+  array::axpy(a, {*this, true, true}, {y.data(), true, false});
+}
+
+void DistrArray::axpy_to(value_type a, Span<value_type> y) const {
+  check_compatible(y, "DistrArray::axpy_to");
+  if (a == 0)
+    return;
+  array::axpy(a, {y.data(), true, true}, {*this, true, false});
+  util::gather_all(distribution(), communicator(), y.data());
+}
+
+DistrArray::value_type DistrArray::dot(Span<const value_type> y) const {
+  auto prof = molpro::Profiler::single()->push("DistrArray::dot(Span)");
+  check_compatible(y, "DistrArray::dot");
+  return array::dot({*this, true, false}, {y.data(), true, false}, communicator());
+}
+
+std::map<size_t, DistrArray::value_type> DistrArray::select_max_dot(size_t n, Span<const value_type> y) const {
+  check_compatible(y, "DistrArray::select_max_dot");
+  if (n > size())
+    error("DistrArray::select_max_dot: n is too large");
+  return array::select_max_dot(n, {*this, true, false}, {y.data(), true, false}, communicator());
 }
 
 } // namespace molpro::linalg::array

@@ -2,12 +2,14 @@
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_DEFAULT_HANDLER_H
 #include <molpro/linalg/array/ArrayHandlerDDisk.h>
 #include <molpro/linalg/array/ArrayHandlerDDiskDistr.h>
+#include <molpro/linalg/array/ArrayHandlerDDiskIterable.h>
 #include <molpro/linalg/array/ArrayHandlerDDiskSparse.h>
 #include <molpro/linalg/array/ArrayHandlerDefault.h>
 #include <molpro/linalg/array/ArrayHandlerDistr.h>
 #include <molpro/linalg/array/ArrayHandlerDistrDDisk.h>
 #include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
 #include <molpro/linalg/array/ArrayHandlerIterable.h>
+#include <molpro/linalg/array/ArrayHandlerIterableDDisk.h>
 #include <molpro/linalg/array/ArrayHandlerIterableSparse.h>
 #include <molpro/linalg/array/ArrayHandlerSparse.h>
 #include <molpro/linalg/array/type_traits.h>
@@ -62,6 +64,17 @@ struct default_handler<T, S, ArrayFamily::DistributedDisk, ArrayFamily::Sparse> 
 template <class T, class S>
 struct default_handler<T, S, ArrayFamily::DistributedDisk, ArrayFamily::DistributedDisk> {
   using value = ArrayHandlerDDisk<T, S>;
+};
+
+//! Contiguous arrays, e.g. std::vector or Span, work on their memory directly; other iterable ones get the default
+template <class T, class S>
+struct default_handler<T, S, ArrayFamily::Iterable, ArrayFamily::DistributedDisk> {
+  using value = std::conditional_t<is_contiguous_v<T>, ArrayHandlerIterableDDisk<T, S>, ArrayHandlerDefault<T, S>>;
+};
+
+template <class T, class S>
+struct default_handler<T, S, ArrayFamily::DistributedDisk, ArrayFamily::Iterable> {
+  using value = std::conditional_t<is_contiguous_v<S>, ArrayHandlerDDiskIterable<T, S>, ArrayHandlerDefault<T, S>>;
 };
 
 template <class T, class S>

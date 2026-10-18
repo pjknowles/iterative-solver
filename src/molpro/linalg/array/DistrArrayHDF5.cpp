@@ -4,6 +4,7 @@
 
 #include "PHDF5Handle.h"
 #include "util/TempHandle.h"
+#include "util/fs.h"
 #include "util/temp_phdf5_handle.h"
 namespace molpro::linalg::array {
 namespace {
@@ -11,6 +12,14 @@ int mpi_size(MPI_Comm comm) {
   int rank;
   MPI_Comm_size(comm, &rank);
   return rank;
+}
+
+//! A handle to a new temporary file, named after base_name, or in base_name if that is an existing directory
+std::shared_ptr<util::PHDF5Handle> temp_file_handle(const std::string &base_name, MPI_Comm comm) {
+  const auto name = fs::is_directory(base_name) ? (fs::path(base_name) / ".temp_array").string() : base_name;
+  auto handle = std::make_shared<util::PHDF5Handle>(util::temp_phdf5_handle(name, comm));
+  handle->assign_group("/");
+  return handle;
 }
 
 //! Reports an error through DistrArray::error() if an HDF5 call returned a negative value, which signals failure
@@ -86,9 +95,15 @@ DistrArrayHDF5::~DistrArrayHDF5() {
 }
 
 DistrArrayHDF5 DistrArrayHDF5::CreateTempCopy(const DistrArray &source, const std::string &base_name) {
-  auto handle = std::make_shared<util::PHDF5Handle>(util::temp_phdf5_handle(base_name, source.communicator()));
-  handle->assign_group("/");
-  return DistrArrayHDF5(source, handle);
+  const auto name = base_name.empty() ? temp_copy_directory(source, base_name) : base_name;
+  return DistrArrayHDF5(source, temp_file_handle(name, source.communicator()));
+}
+
+DistrArrayHDF5 DistrArrayHDF5::CreateTempCopy(Span<const value_type> source, MPI_Comm comm,
+                                              const std::string &base_name) {
+  auto t = DistrArrayHDF5(temp_file_handle(base_name, comm), source.size());
+  t.copy(source);
+  return t;
 }
 
 bool DistrArrayHDF5::compatible(const DistrArrayHDF5 &source) const {
@@ -262,6 +277,12 @@ void DistrArrayHDF5::scatter_acc(std::vector<index_type> &indices, const std::ve
 std::vector<DistrArrayHDF5::value_type> DistrArrayHDF5::vec() const { return get(0, m_dimension); }
 
 std::shared_ptr<util::PHDF5Handle> DistrArrayHDF5::file_handle() const { return m_file_handle; }
+
+std::string DistrArrayHDF5::file_directory() const {
+  if (not m_file_handle)
+    return {};
+  return fs::absolute(fs::path(m_file_handle->file_name())).parent_path().string();
+}
 
 hid_t DistrArrayHDF5::dataset() const { return m_dataset; }
 

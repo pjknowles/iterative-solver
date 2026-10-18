@@ -5,6 +5,7 @@
 #include <molpro/Profiler.h>
 #include <molpro/linalg/array/DistrArray.h>
 #include <molpro/linalg/array/Span.h>
+#include <string>
 
 namespace molpro::linalg::array {
 /*!
@@ -56,6 +57,18 @@ public:
   using DistrArray::dot;
   void set_buffer_size(size_t buffer_size) { m_buffer_size = buffer_size; }
   [[nodiscard]] size_t disk_page_size() const override { return m_buffer_size; }
+
+  //! The directory of the file holding this array, or an empty string if that is not known
+  [[nodiscard]] virtual std::string file_directory() const { return {}; }
+
+  /*!
+   * @brief The directory for the file of a temporary copy of source
+   * @param source the array to be copied
+   * @param directory the directory asked for, or an empty string if none was
+   * @return directory if not empty, otherwise the directory of the file of source if it is a disk array, otherwise
+   * the current directory
+   */
+  static std::string temp_copy_directory(const DistrArray& source, const std::string& directory);
 
   //! Not available: an array on disk is not held in memory. @throws std::logic_error
   [[nodiscard]] std::unique_ptr<LocalBuffer> local_buffer() override;

@@ -105,7 +105,8 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
 }
 
 DistrArrayFile::DistrArrayFile(const DistrArrayFile& source)
-    : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator()) {
+    : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator(),
+                     source.file_directory()) {
   auto prof = molpro::Profiler::single()->push("DistrArrayFile(const DistrArrayFile&)");
   DistrArrayFile::copy(source);
 }
@@ -117,7 +118,8 @@ DistrArrayFile::DistrArrayFile(DistrArrayFile&& source)
 }
 
 DistrArrayFile::DistrArrayFile(const DistrArray& source)
-    : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator()) {
+    : DistrArrayFile(std::make_unique<Distribution>(source.distribution()), source.communicator(),
+                     temp_copy_directory(source, "")) {
   DistrArrayFile::copy(source);
 }
 
@@ -128,7 +130,15 @@ DistrArrayFile& DistrArrayFile::operator=(DistrArrayFile&& source) noexcept {
 }
 
 DistrArrayFile DistrArrayFile::CreateTempCopy(const DistrArray& source, const std::string& directory) {
-  DistrArrayFile t(std::make_unique<Distribution>(source.distribution()), source.communicator(), directory);
+  DistrArrayFile t(std::make_unique<Distribution>(source.distribution()), source.communicator(),
+                   temp_copy_directory(source, directory));
+  t.copy(source);
+  return t;
+}
+
+DistrArrayFile DistrArrayFile::CreateTempCopy(Span<const value_type> source, MPI_Comm comm,
+                                              const std::string& directory) {
+  DistrArrayFile t(source.size(), comm, directory);
   t.copy(source);
   return t;
 }

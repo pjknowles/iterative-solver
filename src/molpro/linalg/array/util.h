@@ -1,12 +1,101 @@
 #ifndef LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_H
 #define LINEARALGEBRA_SRC_MOLPRO_LINALG_ARRAY_UTIL_H
+#include <array>
 #include <atomic>
+#include <cstddef>
 #include <future>
+#include <iterator>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <type_traits>
+#include <typeinfo>
 #include <vector>
 
+#include <molpro/linalg/array/Span.h>
 #include <molpro/mpi.h>
+
+namespace molpro::linalg::array {
+
+namespace util {
+
+template <typename T>
+struct is_std_array : std::false_type {};
+
+template <typename T, std::size_t N>
+struct is_std_array<std::array<T, N>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_std_array_v = is_std_array<T>::value;
+
+template <typename T>
+constexpr bool is_array_v = std::is_array<T>::value || is_std_array_v<T>;
+
+template <typename T, typename = void>
+struct is_allocatable : std::false_type {};
+
+// We use the existence of a constructor taking a size-type as a proxy
+// for whether the given type is "allocatable", that is it can be newly
+// constructed by simply telling it how many elements it shall contain.
+template <typename T>
+struct is_allocatable<T, std::enable_if_t<std::is_constructible_v<T, std::size_t>>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_allocatable_v = is_allocatable<T>::value;
+
+} // namespace util
+
+/*!
+ * @brief Allocates an array of type T to hold the specified amount of items
+ *
+ * This function serves as a customization point for array types that don't support
+ * allocation via a constructor that takes in a size. The default implementation will
+ * throw an exception for such types and is hence only viable in case no such allocations
+ * are required during any point of execution.
+ *
+ * @param size The number of objects the to-be-allocated array should encompass
+ * @returns The allocated array
+ *
+ * @note There exists no hook for deallocation. It is assumed that the memory allocated by
+ * specializations of this function is managed and tracked externally and freed once
+ * this library has done all requested work (or in between solver invocations).
+ */
+template<typename T>
+T allocate_array(std::size_t size) {
+  if constexpr (util::is_allocatable_v<T>) {
+    return T(size);
+  }
+
+  throw std::runtime_error("Required molpro::linalg::array::allocate_array for type '"
+          + std::string(typeid(T).name())
+          + "' - you have to provide an explicit template specialization for this function & type");
+}
+
+namespace util {
+/*!
+ * @brief Creates an array of type T able to hold size elements
+ *
+ * Fixed-size arrays are default constructed, types constructible from a size are constructed from it, and any other
+ * type is created by the customization point allocate_array().
+ */
+template <typename T>
+T allocate_like(std::size_t size) {
+  if constexpr (is_array_v<T>)
+    return T();
+  else if constexpr (is_allocatable_v<T>)
+    return T(size);
+  else
+    return allocate_array<T>(size);
+}
+
+//! A view of all the elements of a contiguous array
+template <class R>
+auto contiguous_span(R &r) {
+  return Span<std::remove_pointer_t<decltype(std::data(r))>>(std::data(r), std::size(r));
+}
+} // namespace util
+
+} // namespace molpro::linalg::array
 
 namespace molpro::linalg::array::util {
 

@@ -2,6 +2,10 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <filesystem>
+#include <numeric>
+#include <string>
+#include <vector>
 
 #include "data_util.h"
 #include "parallel_util.h"
@@ -111,6 +115,60 @@ TEST_F(DistrArrayHDF5_SetUp, CreateTempCopy) {
   }
   auto l = lock.scope();
   ASSERT_FALSE(file_exists(fname));
+}
+
+// A base name that is an existing directory puts the file in it; a contiguous array is copied in full
+TEST_F(DistrArrayHDF5_SetUp, CreateTempCopy_contiguous_in_directory) {
+  int rank;
+  MPI_Comm_rank(mpi_comm, &rank);
+  const auto directory = std::filesystem::absolute("DistrArrayHDF5-CreateTempCopy-directory");
+  if (rank == 0)
+    std::filesystem::create_directories(directory);
+  MPI_Barrier(mpi_comm);
+  auto values = std::vector<double>(size);
+  std::iota(values.begin(), values.end(), 1.);
+  std::string fname;
+  {
+    auto b = DistrArrayHDF5::CreateTempCopy(molpro::linalg::array::Span<const double>(values.data(), values.size()),
+                                            mpi_comm, directory.string());
+    fname = b.file_handle()->file_name();
+    EXPECT_EQ(std::filesystem::absolute(fname).parent_path(), directory);
+    EXPECT_EQ(b.size(), size);
+    b.sync(); // each process has written its own section
+    EXPECT_EQ(b.vec(), values); // vec() returns all elements
+    MPI_Barrier(mpi_comm);
+    EXPECT_TRUE(file_exists(fname));
+  }
+  MPI_Barrier(mpi_comm);
+  EXPECT_FALSE(file_exists(fname));
+  if (rank == 0)
+    std::filesystem::remove_all(directory);
+  MPI_Barrier(mpi_comm);
+}
+
+// Without a base name, a copy of a disk array is made in the directory of its file
+TEST_F(DistrArrayHDF5_SetUp, CreateTempCopy_default_directory_of_source) {
+  int rank;
+  MPI_Comm_rank(mpi_comm, &rank);
+  const auto directory = std::filesystem::absolute("DistrArrayHDF5-CreateTempCopy-source-directory");
+  if (rank == 0)
+    std::filesystem::create_directories(directory);
+  MPI_Barrier(mpi_comm);
+  {
+    auto values = std::vector<double>(size);
+    std::iota(values.begin(), values.end(), 1.);
+    auto source = DistrArrayHDF5::CreateTempCopy(
+        molpro::linalg::array::Span<const double>(values.data(), values.size()), mpi_comm, directory.string());
+    EXPECT_EQ(source.file_directory(), directory.string());
+    auto b = DistrArrayHDF5::CreateTempCopy(source);
+    EXPECT_EQ(b.file_directory(), directory.string());
+    b.sync(); // each process has written its own section
+    EXPECT_EQ(b.vec(), values);
+  }
+  MPI_Barrier(mpi_comm);
+  if (rank == 0)
+    std::filesystem::remove_all(directory);
+  MPI_Barrier(mpi_comm);
 }
 
 struct DistrArrayHDF5_Fixture : DistrArrayHDF5_SetUp {

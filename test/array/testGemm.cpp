@@ -418,8 +418,8 @@ TEST(TestGemm, ddiskdistr_outer) {
   std::iota(coeff.begin(), coeff.end(), 1);
   std::pair<size_t, size_t> mat_dim = std::make_pair(n, n);
   Matrix<double> alpha(coeff, mat_dim);
-  EXPECT_THROW(handler.gemm_outer(alpha, cwrap(cz), wrap(cx)), std::runtime_error);
-  /* this might be temporary
+  // the arrays cz in memory are addressed in place, while cx on disk are updated page by page
+  cx.front().set_buffer_size(3);
   handler.gemm_outer(alpha, cwrap(cz), wrap(cx));
   for (size_t i = 0; i < n; i++) {
     for (size_t j = 0; j < n; j++) {
@@ -433,7 +433,6 @@ TEST(TestGemm, ddiskdistr_outer) {
     cy[i].get(crange.first, crange.second, &(*(ty.begin() + crange.first)));
     EXPECT_THAT(ty, Pointwise(DoubleEq(), tx));
   }
-  */
 }
 
 TEST(TestGemm, ddisk_outer) {

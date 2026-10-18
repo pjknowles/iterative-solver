@@ -70,9 +70,19 @@ public:
    * @brief Create a copy of source array using a temporary file which will be erased on destruction
    * @param source array to be copied
    * @param base_name base name for the temporary file. It will form the first part of the temporary array name. The
-   * middle will be chosen to be unique and the suffix will be ".hdf5"
+   * middle will be chosen to be unique and the suffix will be ".hdf5". If base_name is an existing directory, the file
+   * is created in it, with the base name ".temp_array". If base_name is empty, the file is created like that in the
+   * directory of the file of source if it is a disk array, otherwise in the current directory.
    */
-  static DistrArrayHDF5 CreateTempCopy(const DistrArray &source, const std::string &base_name = ".temp_array");
+  static DistrArrayHDF5 CreateTempCopy(const DistrArray &source, const std::string &base_name = "");
+  /*!
+   * @brief Create a copy of a contiguous array using a temporary file which will be erased on destruction
+   * @param source all elements of the array, the same on every process of comm
+   * @param comm the processes over which the new array is distributed
+   * @param base_name base name for the temporary file, as for CreateTempCopy(const DistrArray&, const std::string&)
+   */
+  static DistrArrayHDF5 CreateTempCopy(Span<const value_type> source, MPI_Comm comm,
+                                       const std::string &base_name = ".temp_array");
 
   /*!
    * @brief Copies the array from source.
@@ -116,6 +126,8 @@ public:
 
   //! @returns a copy of a file handle
   std::shared_ptr<util::PHDF5Handle> file_handle() const;
+
+  [[nodiscard]] std::string file_directory() const override;
 
   //! @returns id of dataset object.
   hid_t dataset() const;

@@ -41,4 +41,13 @@ std::unique_ptr<const DistrArray::LocalBuffer> DistrArrayDisk::local_buffer() co
   throw std::logic_error("DistrArrayDisk::local_buffer(): an array on disk has no local buffer");
 }
 
+std::string DistrArrayDisk::temp_copy_directory(const DistrArray& source, const std::string& directory) {
+  if (not directory.empty())
+    return directory;
+  if (const auto* disk = dynamic_cast<const DistrArrayDisk*>(&source))
+    if (auto source_directory = disk->file_directory(); not source_directory.empty())
+      return source_directory;
+  return ".";
+}
+
 } // namespace molpro::linalg::array

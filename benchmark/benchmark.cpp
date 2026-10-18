@@ -62,6 +62,33 @@ int main(int argc, char* argv[]) {
 #endif
   }
 
+  // Operations in both directions between arrays in memory and on disk: std::vector and Span with the handlers for
+  // contiguous arrays, compared with DistrArraySpan with the handlers for distributed arrays
+  for (const auto& length : std::vector<size_t>{500, 1000, 10000, 100000, 1000000}) {
+    if (rank == 0)
+      std::cout << "Vector length = " << length << ", numbers of vectors = " << nFast << " / " << nSlow << std::endl;
+    {
+      auto bm = molpro::linalg::ArrayBenchmarkDDisk<molpro::linalg::array::DistrArrayFile>(
+          "DistrArraySpan-DistrArrayFile", length, nSlow, nFast, false, 0.1);
+      bm.all_both_directions();
+      std::cout << bm;
+    }
+    {
+      auto bm = molpro::linalg::ArrayBenchmarkIterableDDisk<molpro::linalg::array::DistrArrayFile>(
+          "vector-DistrArrayFile", length, nSlow, nFast, false, 0.1);
+      bm.all_both_directions();
+      std::cout << bm;
+    }
+    {
+      // views into one buffer, so evenly spaced, unlike separate std::vector
+      auto bm = molpro::linalg::ArrayBenchmarkIterableDDisk<molpro::linalg::array::DistrArrayFile,
+                                                            molpro::linalg::array::Span<double>>(
+          "Span-DistrArrayFile", length, nSlow, nFast, false, 0.1);
+      bm.all_both_directions();
+      std::cout << bm;
+    }
+  }
+
   // Compare accessing a DistrArray through the generic STL iterator interface against its own
   // native, optimized interface (local_buffer()/fill()). Kept to modest lengths since the
   // iterator does one remote-memory-access call per element.

@@ -451,6 +451,11 @@ public:
             ++s;
         }
       }
+      if (!selectp.empty() && selectp.size() < n_roots()) {
+        this->m_logger->warn("P space smaller than number of roots is not used; dimension and number of roots",
+                             selectp.size(), n_roots());
+        selectp.clear();
+      }
       if (!selectp.empty() && (!this->m_verbosity.has_value() || this->m_verbosity >= Verbosity::Summary)) {
         this->m_logger->info("P-space dimension, threshold and limit", selectp.size(), m_p_threshold, m_max_p);
       }
@@ -461,13 +466,15 @@ public:
       }
       for (const auto& s : selectp)
         pspace.emplace_back((P){{s.first, 1}});
-      fapply_on_p_type apply_on_p = [&problem](const std::vector<std::vector<value_type>>& pcoeff,
-                                               const CVecRef<P>& pparams, const VecRef<R>& actions) {
-        problem.p_action(pcoeff, pparams, actions);
-      };
-      auto action_matrix = problem.pp_action_matrix(pspace);
-      nwork = add_p(cwrap(pspace), array::Span<value_type>(action_matrix.data(), action_matrix.size()), parameters,
-                    actions, apply_on_p);
+      if (!pspace.empty()) {
+        fapply_on_p_type apply_on_p = [&problem](const std::vector<std::vector<value_type>>& pcoeff,
+                                                 const CVecRef<P>& pparams, const VecRef<R>& actions) {
+          problem.p_action(pcoeff, pparams, actions);
+        };
+        auto action_matrix = problem.pp_action_matrix(pspace);
+        nwork = add_p(cwrap(pspace), array::Span<value_type>(action_matrix.data(), action_matrix.size()), parameters,
+                      actions, apply_on_p);
+      }
     }
     for (auto iter = 0; iter < this->m_max_iter && nwork > 0; iter++) {
       // the logging context carries the errors as doubles: a log line only needs their magnitude

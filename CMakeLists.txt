@@ -63,12 +63,7 @@ add_subdirectory(src)
 
 if (NOT LIBRARY_ONLY)
 if (${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
-    # benchmark.cpp calls molpro::mpi::init()/finalize(), and molpro/mpi.h keys HAVE_MPI_H off
-    # __has_include(<mpi.h>) rather than this project's MPI option, so in a serial build on a
-    # machine that has MPI headers it compiles MPI calls that are never linked.
-    if (MPI)
-        add_subdirectory(benchmark)
-    endif ()
+    add_subdirectory(benchmark)
     enable_testing()
     add_subdirectory(examples)
     add_subdirectory(test)

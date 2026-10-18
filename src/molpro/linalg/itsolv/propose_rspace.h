@@ -633,8 +633,6 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
                     ArrayHandlers<R, Q, P>& handlers, Logger& logger,
                     const RSpaceOptions<typename array::ArrayHandler<R, R>::value_type_abs>& r_opts,
                     const QSpaceOptions& q_opts, molpro::profiler::Profiler& profiler) {
-  // auto prof = profiler.push("itsolv::propose_rspace"); // FIXME two separate profilers
-  auto prof = molpro::Profiler::single();
   logger.trace("itsolv::detail::propose_rspace");
   logger.trace("dimensions {nP, nQ, nD, nW} = ", xspace.dimensions().nP, xspace.dimensions().nQ, xspace.dimensions().nD,
                solver.working_set().size());
@@ -667,16 +665,14 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
   normalise(wresidual, handlers.rr(), logger);
   profiler.stop();
   profiler.start("append_overlap_with_r");
-  prof->start("append_overlap_with_r");
   const auto full_overlap =
       append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
                             xspace.cparamsq(), xspace.cparamsd(), handlers, logger);
   profiler.stop();
-  prof->stop();
-  prof->start("redundant_indices");
+  profiler.start("redundant_indices");
   auto redundant_indices =
       redundant_parameters(full_overlap, xspace.dimensions().nX(), wresidual.size(), r_opts.svd_thresh, logger);
-  prof->stop();
+  profiler.stop();
   logger.debug("redundant indices = ", redundant_indices);
   // overlaps of the remaining R parameters with P+Q+D, to save project_out_and_orthonormalise() from
   // recalculating them
@@ -691,12 +687,10 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
       rx_overlap(j, i) = full_overlap(nX + kept[j], i);
   util::delete_parameters(redundant_indices, wresidual);
   profiler.start("project_out_and_orthonormalise");
-  prof->start("project_out_and_orthonormalise");
   auto null_param_indices = project_out_and_orthonormalise(wresidual, xspace.data.at(subspace::EqnData::S), rx_overlap,
                                                            xspace.dimensions(), xspace.cparamsp(), xspace.cparamsq(),
                                                            xspace.cparamsd(), r_opts.norm_thresh, handlers, logger);
   profiler.stop();
-  prof->stop();
   // Now that there is SVD null_param_indices should always be empty
   logger.debug("null parameters = ", null_param_indices);
   util::delete_parameters(null_param_indices, wresidual);

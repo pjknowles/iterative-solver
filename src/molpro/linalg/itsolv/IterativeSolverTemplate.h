@@ -418,7 +418,8 @@ public:
     if (generate_initial_guess) {
       if (not use_diagonals)
         throw std::runtime_error("Default initial guess requested, but diagonal elements are not available");
-      auto guess = m_handlers->qq().select(parameters.size(), *diagonals);
+      // add_vector() takes up no more vectors than there are in the working set
+      auto guess = m_handlers->qq().select(std::min(parameters.size(), m_working_set.size()), *diagonals);
       size_t root = 0;
       if (!this->m_verbosity.has_value() || this->m_verbosity >= Verbosity::Summary) {
         this->m_logger->info("Initial guess generated from diagonal elements");
@@ -485,8 +486,10 @@ public:
         value = problem.residual(*parameters.begin(), *actions.begin());
         nwork = this->add_vector(*parameters.begin(), *actions.begin(), value);
       } else if (iter > 0 or pspace.empty()) {
-        problem.action(cwrap(parameters.begin(), parameters.begin() + nwork),
-                       wrap(actions.begin(), actions.begin() + nwork));
+        // add_vector() takes up no more vectors than there are in the working set
+        const auto naction = std::min(size_t(nwork), m_working_set.size());
+        problem.action(cwrap(parameters.begin(), parameters.begin() + naction),
+                       wrap(actions.begin(), actions.begin() + naction));
         nwork = this->add_vector(parameters, actions);
       }
       //      std::cout << "** nwork="<<nwork<<"use_diagonals="<<use_diagonals<<std::endl;

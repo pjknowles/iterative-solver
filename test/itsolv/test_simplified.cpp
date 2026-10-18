@@ -102,6 +102,17 @@ struct simplified : ::testing::Test {
     }
   };
 
+  class CountingProblem : public MyProblem {
+  public:
+    using MyProblem::MyProblem;
+    mutable std::vector<size_t> action_sizes; //!< number of vectors passed to each call of action()
+
+    void action(const CVecRef<Rvector> &parameters, const VecRef<Rvector> &actions) const override {
+      action_sizes.push_back(parameters.size());
+      MyProblem::action(parameters, actions);
+    }
+  };
+
   // solves for the lowest nroots eigenpairs and checks that they converged
   template <class Problem>
   static void solve_eigensystem(const Problem &problem, size_t nroots, size_t nbuffers, int max_p,
@@ -212,4 +223,22 @@ TEST_F(simplified, LinearEigensystem_pspace_max_p_smaller_than_n_roots) {
 TEST_F(simplified, LinearEigensystem_pspace_threshold_smaller_than_n_roots) {
   auto problem = simplified::PSpaceProblem(10);
   solve_eigensystem(problem, 3, 3, 5, 0.5);
+}
+
+TEST_F(simplified, LinearEigensystem_surplus_buffers) {
+  const size_t nroots = 3;
+  auto problem = simplified::CountingProblem(10);
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+  solver->set_n_roots(nroots);
+  std::vector<Rvector> c(2 * nroots, Rvector(problem.n)), g(2 * nroots, Rvector(problem.n));
+  EXPECT_TRUE(solver->solve(c, g, problem, true));
+  ASSERT_FALSE(problem.action_sizes.empty());
+  EXPECT_EQ(problem.action_sizes.front(), nroots);
+  // every computed action enters the subspace
+  EXPECT_EQ(std::accumulate(problem.action_sizes.begin(), problem.action_sizes.end(), size_t{0}),
+            solver->statistics().r_creations);
+  const auto eigenvalues = solver->eigenvalues();
+  ASSERT_EQ(eigenvalues.size(), nroots);
+  for (size_t i = 0; i < nroots; i++)
+    EXPECT_NEAR(eigenvalues[i], i + 1, 1e-3);
 }

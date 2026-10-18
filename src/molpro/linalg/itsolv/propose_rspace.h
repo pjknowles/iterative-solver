@@ -600,28 +600,31 @@ auto get_new_working_set(const std::vector<int>& working_set, const CVecRef<R>& 
  *
  * Outline
  * -------
- * Basic procedure:
- *  - Gram-schmidt orthonormalise residuals amongst themselves
- *  - Gram-schmidt orthogonalise residuals against the old Q space and current solutions
- *  - Ensure that the resultant Q space is not linearly dependent by removing Q parameters with large overlap
- *  - Ensure that the size of Q space is within limit, by removing Q parameters with smallest contributions to current
- *    solutions
- *  - Reconstruct C space
+ *  1. If the Q space is larger than allowed, or holds vectors contributing too little to all solutions (see
+ *     QSpaceOptions), the Q vectors with the smallest contributions are removed. Their part of the current solutions is
+ *     preserved in a new D space: the solutions are projected onto the removed Q vectors and the old D space, and made
+ *     normalised and linearly independent (construct_dspace()). The subspace problem is then solved again.
+ *  2. The residuals of the working set are normalised.
+ *  3. Residuals that are linearly dependent on P+Q+D or on each other are discarded: for each singular value of the
+ *     overlap matrix of P+Q+D and the residuals below the threshold, the residual with the largest component in the
+ *     singular vector is removed (redundant_parameters()).
+ *  4. The remaining residuals are projected out of the span of P+Q+D, using the inverse of its equilibrated overlap
+ *     matrix since P+Q+D need not be orthonormal, and Gram-Schmidt orthonormalised among themselves
+ *     (modified_gram_schmidt()). Residuals that become null are discarded.
+ *  5. The resulting vectors are copied into parameters, and the working set is reduced to the roots whose residuals
+ *     were kept.
  *
- * Various possibilities:
- *  1. Residuals are linearly dependent among themselves, worst case scenario there could be duplicates.
- *  2. Residuals are linearly dependent with the old Q space, orthonormalisation against Q would result in
- *     almost null vectors.
- *
- * Case 1 is handled at the start by normalising residuals and orthogonalising them among themselves. If it results in
- * vectors with norm less then **threshold** than they are discarded and their action does not need to be evaluated.
- *
- * Case 2 is handled during Gram-Schmidt procedure. Residuals are orthogonalised against the old Q space, if one of
- * them has a small norm than an old q vector with largest overlap is deleted.
- *
- * @param parameters output new parameters for the subspace.
- * @param residual preconditioned residuals.
- * @return number of significant parameters to calculate the action for
+ * @param solver solver providing the current working set
+ * @param parameters output new parameters for the subspace
+ * @param residuals preconditioned residuals, which are modified
+ * @param xspace X space container
+ * @param subspace_solver solver of the subspace problem
+ * @param handlers array handlers
+ * @param logger logger
+ * @param r_opts thresholds for screening the new parameters
+ * @param q_opts options limiting the size of the Q space
+ * @param profiler profiler
+ * @return new working set
  */
 template <class R, class Q, class P>
 auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameters, const VecRef<R>& residuals,

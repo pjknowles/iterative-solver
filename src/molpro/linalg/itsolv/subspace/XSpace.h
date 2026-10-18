@@ -48,10 +48,10 @@ auto update_qspace_data(const CVecRef<R>& params, const CVecRef<R>& actions, con
   qx[EqnData::S].slice({0, dims.oD()}, {nQnew, dims.oD() + dims.nD}) = util::overlap(params, dparams, handlers.rq());
   qq[EqnData::H] =
       action_dot_action ? util::overlap(actions, handlers.rr()) : util::overlap(params, actions, handlers.rr());
-  qx[EqnData::H].slice({0, dims.oQ()}, {nQnew, dims.oQ() + dims.nQ}) =
-      util::overlap(action_dot_action ? actions : params, qactions, handlers.rq());
-  qx[EqnData::H].slice({0, dims.oD()}, {nQnew, dims.oD() + dims.nD}) =
-      util::overlap(action_dot_action ? actions : params, dactions, handlers.rq());
+  // left-hand vectors of the H matrix elements with existing actions
+  const auto& h_left = action_dot_action ? actions : params;
+  qx[EqnData::H].slice({0, dims.oQ()}, {nQnew, dims.oQ() + dims.nQ}) = util::overlap(h_left, qactions, handlers.rq());
+  qx[EqnData::H].slice({0, dims.oD()}, {nQnew, dims.oD() + dims.nD}) = util::overlap(h_left, dactions, handlers.rq());
   if (hermitian) {
     xq[EqnData::H].slice({dims.oP(), 0}, {dims.oP() + dims.nP, nQnew}) = util::overlap(pparams, actions, handlers.rp());
     //    xq[EqnData::H].slice({dims.oQ(), 0}, {dims.oQ() + dims.nQ, nQnew}) = util::overlap(action_dot_action ? qactions :

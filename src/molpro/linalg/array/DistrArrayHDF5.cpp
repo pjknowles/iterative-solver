@@ -12,6 +12,41 @@ int mpi_size(MPI_Comm comm) {
   MPI_Comm_size(comm, &rank);
   return rank;
 }
+
+//! Reports an error through DistrArray::error() if an HDF5 call returned a negative value, which signals failure
+template <typename T>
+T check(const DistrArray &array, T result, const std::string &operation) {
+  if (result < 0)
+    array.error("DistrArrayHDF5: failed to " + operation);
+  return result;
+}
+
+//! Owns an HDF5 identifier and closes it on destruction, so that it is released when DistrArray::error() throws
+class Hid {
+public:
+  Hid(const DistrArray &array, hid_t id, herr_t (*close)(hid_t), const std::string &operation)
+      : m_id(check(array, id, operation)), m_close(close) {}
+  Hid(Hid &&source) noexcept : m_id(source.m_id), m_close(source.m_close) { source.m_id = H5I_INVALID_HID; }
+  Hid(const Hid &) = delete;
+  Hid &operator=(const Hid &) = delete;
+  Hid &operator=(Hid &&) = delete;
+  ~Hid() {
+    if (m_id >= 0)
+      m_close(m_id);
+  }
+  operator hid_t() const { return m_id; }
+
+private:
+  hid_t m_id;
+  herr_t (*m_close)(hid_t);
+};
+
+//! Transfer properties for independent parallel I/O
+Hid independent_transfer(const DistrArray &array) {
+  Hid plist(array, H5Pcreate(H5P_DATASET_XFER), H5Pclose, "create a transfer property list");
+  check(array, H5Pset_dxpl_mpio(plist, H5FD_MPIO_INDEPENDENT), "set independent transfer mode");
+  return plist;
+}
 } // namespace
 
 DistrArrayHDF5::DistrArrayHDF5(const std::shared_ptr<util::PHDF5Handle> &file_handle,
@@ -43,8 +78,11 @@ DistrArrayHDF5 &DistrArrayHDF5::operator=(DistrArrayHDF5 &&source) noexcept {
 }
 
 DistrArrayHDF5::~DistrArrayHDF5() {
-  if (dataset_is_open())
-    DistrArrayHDF5::close_access();
+  // Failures are not reported: a destructor must not throw, and the array is gone anyway
+  if (dataset_is_open()) {
+    H5Dclose(m_dataset);
+    m_file_handle->close_file();
+  }
 }
 
 DistrArrayHDF5 DistrArrayHDF5::CreateTempCopy(const DistrArray &source, const std::string &base_name) {
@@ -85,38 +123,42 @@ void DistrArrayHDF5::open_access() {
     error("must provide a file handle before openning access to disk array");
   auto id = m_file_handle->open_file(util::HDF5Handle::Access::read_write);
   if (id < 0)
-    error("Failed to open file");
+    error("DistrArrayHDF5: failed to open file " + m_file_handle->file_name());
   id = m_file_handle->open_group();
   if (id < 0)
-    error("Failed to open group");
-  auto exists = dataset_exists();
+    error("DistrArrayHDF5: failed to open group " + m_file_handle->group_name() + " in file " +
+          m_file_handle->file_name());
+  auto exists = check(*this, dataset_exists(), "check whether the dataset exists");
   if (exists > 0) {
     if (m_dataset == dataset_default)
-      m_dataset = H5Dopen(m_file_handle->group_id(), dataset_name.c_str(), H5P_DEFAULT);
-  } else if (exists == 0) {
+      m_dataset =
+          check(*this, H5Dopen(m_file_handle->group_id(), dataset_name.c_str(), H5P_DEFAULT), "open the dataset");
+  } else {
     hsize_t dimensions[1] = {m_dimension};
-    auto space = H5Screate_simple(1, dimensions, nullptr);
-    m_dataset = H5Dcreate(m_file_handle->group_id(), dataset_name.c_str(), H5T_NATIVE_DOUBLE, space, H5P_DEFAULT,
-                          H5P_DEFAULT, H5P_DEFAULT);
-    H5Sclose(space);
-  } else
-    MPI_Abort(communicator(), 1); // dataset failed to open
+    Hid space(*this, H5Screate_simple(1, dimensions, nullptr), H5Sclose, "create a dataspace");
+    m_dataset = check(*this,
+                      H5Dcreate(m_file_handle->group_id(), dataset_name.c_str(), H5T_NATIVE_DOUBLE, space, H5P_DEFAULT,
+                                H5P_DEFAULT, H5P_DEFAULT),
+                      "create the dataset");
+  }
 }
 
 void DistrArrayHDF5::close_access() {
-  if (m_dataset != dataset_default)
-    H5Dclose(m_dataset);
+  // Flushing first reports failures to write out cached data, which closing the file would not
+  const auto flushed = m_dataset == dataset_default ? 0 : H5Fflush(m_dataset, H5F_SCOPE_LOCAL);
+  const auto closed = m_dataset == dataset_default ? 0 : H5Dclose(m_dataset);
   m_dataset = dataset_default;
   m_file_handle->close_file();
+  check(*this, flushed, "flush the file");
+  check(*this, closed, "close the dataset");
 }
 
 void DistrArrayHDF5::erase() {
   open_access();
-  auto lapl_id = H5Dget_access_plist(m_dataset);
-  if (lapl_id < 0)
-    error("Failed to access property list of a group");
-  H5Ldelete(m_file_handle->group_id(), dataset_name.c_str(), lapl_id);
-  H5Pclose(lapl_id);
+  {
+    Hid lapl_id(*this, H5Dget_access_plist(m_dataset), H5Pclose, "access the property list of the dataset");
+    check(*this, H5Ldelete(m_file_handle->group_id(), dataset_name.c_str(), lapl_id), "delete the dataset");
+  }
   close_access();
 }
 
@@ -139,17 +181,11 @@ void DistrArrayHDF5::get(index_type lo, index_type hi, value_type *buf) const {
     error("call open_access() before RMA operations");
   hsize_t count[1] = {hi - lo};
   hsize_t offset[1] = {lo};
-  auto memspace = H5Screate_simple(1, count, nullptr);
-  auto fspace = H5Dget_space(m_dataset);
-  H5Sselect_hyperslab(fspace, H5S_SELECT_SET, offset, nullptr, count, nullptr);
-  auto plist_id = H5Pcreate(H5P_DATASET_XFER);
-  H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_INDEPENDENT);
-  auto ierr = H5Dread(m_dataset, H5T_NATIVE_DOUBLE, memspace, fspace, plist_id, buf);
-  H5Sclose(memspace);
-  H5Sclose(fspace);
-  H5Pclose(plist_id);
-  if (ierr < 0)
-    error("read failed");
+  Hid memspace(*this, H5Screate_simple(1, count, nullptr), H5Sclose, "create a dataspace");
+  Hid fspace(*this, H5Dget_space(m_dataset), H5Sclose, "get the dataspace of the dataset");
+  check(*this, H5Sselect_hyperslab(fspace, H5S_SELECT_SET, offset, nullptr, count, nullptr), "select a hyperslab");
+  check(*this, H5Dread(m_dataset, H5T_NATIVE_DOUBLE, memspace, fspace, independent_transfer(*this), buf),
+        "read the dataset");
 }
 
 std::vector<DistrArrayHDF5::value_type> DistrArrayHDF5::get(DistrArray::index_type lo,
@@ -168,17 +204,11 @@ void DistrArrayHDF5::put(DistrArray::index_type lo, DistrArray::index_type hi, c
     error("call open_access() before RMA operations");
   hsize_t count[1] = {hi - lo};
   hsize_t offset[1] = {lo};
-  auto memspace = H5Screate_simple(1, count, nullptr);
-  auto fspace = H5Dget_space(m_dataset);
-  H5Sselect_hyperslab(fspace, H5S_SELECT_SET, offset, nullptr, count, nullptr);
-  auto plist_id = H5Pcreate(H5P_DATASET_XFER);
-  H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_INDEPENDENT);
-  auto ierr = H5Dwrite(m_dataset, H5T_NATIVE_DOUBLE, memspace, fspace, plist_id, data);
-  H5Sclose(memspace);
-  H5Sclose(fspace);
-  H5Pclose(plist_id);
-  if (ierr < 0)
-    error("write failed");
+  Hid memspace(*this, H5Screate_simple(1, count, nullptr), H5Sclose, "create a dataspace");
+  Hid fspace(*this, H5Dget_space(m_dataset), H5Sclose, "get the dataspace of the dataset");
+  check(*this, H5Sselect_hyperslab(fspace, H5S_SELECT_SET, offset, nullptr, count, nullptr), "select a hyperslab");
+  check(*this, H5Dwrite(m_dataset, H5T_NATIVE_DOUBLE, memspace, fspace, independent_transfer(*this), data),
+        "write the dataset");
 }
 
 void DistrArrayHDF5::acc(index_type lo, index_type hi, const value_type *data) {
@@ -197,19 +227,13 @@ std::vector<DistrArrayHDF5::value_type> DistrArrayHDF5::gather(const std::vector
   if (sz == 0)
     return data;
   hsize_t count[] = {sz};
-  auto memspace = H5Screate_simple(1, count, nullptr);
-  auto fspace = H5Dget_space(m_dataset);
+  Hid memspace(*this, H5Screate_simple(1, count, nullptr), H5Sclose, "create a dataspace");
+  Hid fspace(*this, H5Dget_space(m_dataset), H5Sclose, "get the dataspace of the dataset");
   auto indices_copy = std::vector<hsize_t>(sz);
   std::copy(begin(indices), end(indices), begin(indices_copy));
-  H5Sselect_elements(fspace, H5S_SELECT_SET, sz, &indices_copy[0]);
-  auto plist_id = H5Pcreate(H5P_DATASET_XFER);
-  H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_INDEPENDENT);
-  auto ierr = H5Dread(m_dataset, H5T_NATIVE_DOUBLE, memspace, fspace, plist_id, &data[0]);
-  H5Sclose(memspace);
-  H5Sclose(fspace);
-  H5Pclose(plist_id);
-  if (ierr < 0)
-    error("read failed");
+  check(*this, H5Sselect_elements(fspace, H5S_SELECT_SET, sz, &indices_copy[0]), "select elements");
+  check(*this, H5Dread(m_dataset, H5T_NATIVE_DOUBLE, memspace, fspace, independent_transfer(*this), &data[0]),
+        "read the dataset");
   return data;
 }
 
@@ -220,19 +244,13 @@ void DistrArrayHDF5::scatter(const std::vector<index_type> &indices, const std::
   if (sz == 0)
     return;
   hsize_t count[] = {sz};
-  auto memspace = H5Screate_simple(1, count, nullptr);
-  auto fspace = H5Dget_space(m_dataset);
+  Hid memspace(*this, H5Screate_simple(1, count, nullptr), H5Sclose, "create a dataspace");
+  Hid fspace(*this, H5Dget_space(m_dataset), H5Sclose, "get the dataspace of the dataset");
   auto indices_copy = std::vector<hsize_t>(sz);
   std::copy(begin(indices), end(indices), begin(indices_copy));
-  H5Sselect_elements(fspace, H5S_SELECT_SET, sz, &indices_copy[0]);
-  auto plist_id = H5Pcreate(H5P_DATASET_XFER);
-  H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_INDEPENDENT);
-  auto ierr = H5Dwrite(m_dataset, H5T_NATIVE_DOUBLE, memspace, fspace, plist_id, &data[0]);
-  H5Sclose(memspace);
-  H5Sclose(fspace);
-  H5Pclose(plist_id);
-  if (ierr < 0)
-    error("write failed");
+  check(*this, H5Sselect_elements(fspace, H5S_SELECT_SET, sz, &indices_copy[0]), "select elements");
+  check(*this, H5Dwrite(m_dataset, H5T_NATIVE_DOUBLE, memspace, fspace, independent_transfer(*this), &data[0]),
+        "write the dataset");
 }
 
 void DistrArrayHDF5::scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data) {

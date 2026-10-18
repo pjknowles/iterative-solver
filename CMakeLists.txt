@@ -1,11 +1,18 @@
 cmake_minimum_required(VERSION 3.5...4.0)
 project(iterative-solver CXX)
 
+# The C++20 requirement makes CMake scan every source for modules, which needs
+# clang-scan-deps alongside clang, and Debian's clang package does not provide it.
+# The project has no modules, so the scan only costs time or fails the build.
+if (NOT DEFINED CMAKE_CXX_SCAN_FOR_MODULES)
+    set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+endif ()
+
 include(FetchContent)
 FetchContent_Declare(
         LibraryManager
         GIT_REPOSITORY https://github.com/molpro/library-manager.git
-        GIT_TAG 0.13.2
+        GIT_TAG 0.13.5
 )
 FetchContent_MakeAvailable(LibraryManager)
 
@@ -56,7 +63,12 @@ add_subdirectory(src)
 
 if (NOT LIBRARY_ONLY)
 if (${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
-    add_subdirectory(benchmark)
+    # benchmark.cpp calls molpro::mpi::init()/finalize(), and molpro/mpi.h keys HAVE_MPI_H off
+    # __has_include(<mpi.h>) rather than this project's MPI option, so in a serial build on a
+    # machine that has MPI headers it compiles MPI calls that are never linked.
+    if (MPI)
+        add_subdirectory(benchmark)
+    endif ()
     enable_testing()
     add_subdirectory(examples)
     add_subdirectory(test)

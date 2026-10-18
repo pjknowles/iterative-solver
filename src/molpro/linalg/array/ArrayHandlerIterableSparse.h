@@ -26,14 +26,12 @@ public:
   using typename ArrayHandler<AL, AR>::ProxyHandle;
 
   AL copy(const AR &source) override {
-    //    static_assert(true, "General copy from sparse to dense is ill-defined");
     AL result;
     copy(result, source);
     return result;
   };
 
   void copy(AL &x, const AR &y) override {
-    //    static_assert(true, "General copy from sparse to dense is ill-defined");
     std::fill(x.begin(), x.end(), 0);
     for (const auto &s : y)
       *(x.begin() + s.first) = s.second;

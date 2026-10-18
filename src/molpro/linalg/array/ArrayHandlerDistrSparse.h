@@ -27,7 +27,6 @@ public:
   };
 
   void copy(AL &x, const AR &y) override {
-    //    static_assert(true, "General copy from sparse to dense is ill-defined");
     x.fill(0);
     auto lb = x.local_buffer();
     auto start = lb->start();

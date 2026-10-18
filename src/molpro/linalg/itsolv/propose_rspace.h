@@ -457,8 +457,10 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
   const auto nD = solutions_proj.rows();
   const auto nQd = q_delete.size();
   assert(nQd + dims.nD == solutions_proj.cols());
-  const auto &qparams = xspace.cparamsq(), qactions = xspace.cactionsq();
-  const auto &dparams = xspace.cparamsd(), dactions = xspace.cactionsd();
+  const auto& qparams = xspace.cparamsq();
+  const auto& qactions = xspace.cactionsq();
+  const auto& dparams = xspace.cparamsd();
+  const auto& dactions = xspace.cactionsd();
   std::vector<Q> dparams_new, dactions_new;
   if (nD > 0) {
     const Q& q = !qparams.empty() ? qparams.front().get() : dparams.front().get();

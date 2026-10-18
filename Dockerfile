@@ -15,7 +15,8 @@ RUN ln -s /opt/miniconda3/etc/profile.d/conda.sh /etc/profile.d/conda.sh
 # apt's gcc against apt's MPICH but then run against conda's MPICH. Its counterpart
 # Dockerfile.debian is all-apt.
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    bash ca-certificates ccache curl doxygen git graphviz make ninja-build rsync valgrind wget \
+    bash ca-certificates ccache curl doxygen git graphviz make ninja-build openssh-client rsync \
+    valgrind wget \
  && rm -rf /var/lib/apt/lists/*
 ENV CMAKE_GENERATOR=Ninja
 COPY python/requirements.txt .
@@ -24,7 +25,8 @@ COPY python/requirements.txt .
 # did, ran for over 45 minutes and was then killed for lack of memory.
 RUN CONDA_PLUGINS_AUTO_ACCEPT_TOS=true conda install --file requirements.txt -y -c conda-forge mkl mkl-include hdf5 gcc=14 fortran-compiler
 # Global Arrays, built last, with conda's mpicc against conda's MPICH: the toolchain and
-# the MPI that the project is then built and tested with.
+# the MPI that the project is then built and tested with. Its configure insists on finding
+# a remote shell, which is why openssh-client is installed above.
 RUN export VERSION=5.9.2 \
  && wget -q https://github.com/GlobalArrays/ga/releases/download/v${VERSION}/ga-${VERSION}.tar.gz \
  && tar xzf ga-${VERSION}.tar.gz \

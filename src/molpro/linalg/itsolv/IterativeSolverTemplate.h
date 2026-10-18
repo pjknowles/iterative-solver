@@ -401,12 +401,12 @@ public:
       // add_vector() takes up no more vectors than there are in the working set
       auto guess = m_handlers->qq().select(std::min(parameters.size(), m_working_set.size()), *diagonals);
       size_t root = 0;
-      if (!this->m_verbosity.has_value() || this->m_verbosity >= Verbosity::Summary) {
+      if (verbosity_at_least(Verbosity::Summary)) {
         this->m_logger->info("Initial guess generated from diagonal elements");
       }
       for (const auto& g : guess) {
         m_handlers->rp().copy(parameters[root], P{{g.first, 1}});
-        if (!this->m_verbosity.has_value() || this->m_verbosity >= Verbosity::Detailed) {
+        if (verbosity_at_least(Verbosity::Detailed)) {
           m_logger->debug("-> initial guess with index ", g.first);
         }
         root++;
@@ -437,10 +437,10 @@ public:
                              selectp.size(), n_roots());
         selectp.clear();
       }
-      if (!selectp.empty() && (!this->m_verbosity.has_value() || this->m_verbosity >= Verbosity::Summary)) {
+      if (!selectp.empty() && verbosity_at_least(Verbosity::Summary)) {
         this->m_logger->info("P-space dimension, threshold and limit", selectp.size(), m_p_threshold, m_max_p);
       }
-      if (!this->m_verbosity.has_value() || this->m_verbosity >= Verbosity::Detailed) {
+      if (verbosity_at_least(Verbosity::Detailed)) {
         for (const auto& s : selectp) {
           this->m_logger->debug(std::format("P space element {}: {:.6e}", s.first, double(real_part(s.second))));
         }
@@ -484,20 +484,20 @@ public:
         }
         nwork = this->end_iteration(parameters, actions);
       }
-      if (!this->m_verbosity.has_value() || this->m_verbosity >= Verbosity::Iteration) {
+      if (verbosity_at_least(Verbosity::Iteration)) {
         iteration_report();
       }
     }
 
     this->finalize();
 
-    if (!this->m_verbosity.has_value() || this->m_verbosity >= Verbosity::Summary) {
+    if (verbosity_at_least(Verbosity::Summary)) {
       summary_report();
     }
     // without any errors (e.g. no iteration was done) nothing is known to have converged
     const bool errors_converged =
         !m_errors.empty() && *std::max_element(m_errors.begin(), m_errors.end()) <= m_convergence_threshold;
-    if (!this->m_verbosity.has_value() || this->m_verbosity >= Verbosity::Summary) {
+    if (verbosity_at_least(Verbosity::Summary)) {
       if (!errors_converged) {
         this->m_logger->warn("Solver has not converged to threshold ", m_convergence_threshold);
       } else {
@@ -681,6 +681,9 @@ protected:
   bool end_iteration_needed() override { return m_end_iteration_needed; }
 
   void finalize() override {}
+
+  //! Whether output of verbosity v is printed in solve(); everything is printed if no verbosity was set
+  bool verbosity_at_least(Verbosity v) const { return !m_verbosity.has_value() || m_verbosity >= v; }
 
 
   std::shared_ptr<ArrayHandlers<R, Q, P>> m_handlers;                    //!< Array handlers

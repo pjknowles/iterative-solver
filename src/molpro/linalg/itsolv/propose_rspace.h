@@ -609,8 +609,10 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
     xspace.update_dspace(wdparams, wdactions);
     auto eigenvalues_ref = subspace_solver.eigenvalues();
     subspace_solver.solve(xspace, solutions.rows());
+    const auto& eigenvalues_new = subspace_solver.eigenvalues();
+    const auto n_compare = std::min(eigenvalues_ref.size(), eigenvalues_new.size());
     auto eigval_error = std::vector<double>{};
-    std::transform(std::begin(eigenvalues_ref), std::end(eigenvalues_ref), std::begin(subspace_solver.eigenvalues()),
+    std::transform(std::begin(eigenvalues_ref), std::begin(eigenvalues_ref) + n_compare, std::begin(eigenvalues_new),
                    std::back_inserter(eigval_error), [](auto& e_ref, auto& e_new) { return std::abs(e_ref - e_new); });
     logger.debug("eigenvalue error due to new D space = ", eigval_error);
     // FIXME Optionally, solve the subspace problem again and get an estimate of the error due to new D

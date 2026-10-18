@@ -49,6 +49,22 @@ void normalise(VecRef<R>& params, array::ArrayHandler<R, R>& handler, Logger& lo
 namespace dspace {
 
 /*!
+ * @brief Returns subspace indices of the vectors u_k that the columns of a projected solutions matrix refer to: the Q
+ * vectors moved into Q_{delete}, followed by the current D vectors
+ * @param dims dimensions for partitioning of subspace
+ * @param remove_qspace indices to remove from current Q space and move into Q_{delete}
+ */
+inline std::vector<std::size_t> projected_solutions_basis(const subspace::Dimensions& dims,
+                                                          const std::vector<std::size_t>& remove_qspace) {
+  auto basis = std::vector<std::size_t>{};
+  for (auto iq : remove_qspace)
+    basis.push_back(dims.oQ() + iq);
+  for (size_t k = 0; k < dims.nD; ++k)
+    basis.push_back(dims.oD() + k);
+  return basis;
+}
+
+/*!
  * @brief Projects solution from the full subspace on to Q_{delete} and current D space.
  * @param solutions solution matrix in the full subspace
  * @param dims dimensions for partitioning of subspace
@@ -62,29 +78,74 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
   logger.trace("construct_projected_solution()");
   const auto nQd = remove_qspace.size();
   const auto nSol = solutions.rows();
-  auto solutions_proj = subspace::Matrix<value_type>({nSol, nQd + dims.nD});
-  for (size_t i = 0; i < nSol; ++i) {
-    for (size_t j = 0; j < nQd; ++j) {
-      solutions_proj(i, j) = solutions(i, dims.oQ() + remove_qspace[j]);
-    }
-    for (size_t j = 0; j < dims.nD; ++j) {
-      solutions_proj(i, nQd + j) = solutions(i, dims.oD() + j);
-    }
-  }
+  const auto basis = projected_solutions_basis(dims, remove_qspace);
+  auto solutions_proj = subspace::Matrix<value_type>({nSol, basis.size()});
+  for (size_t i = 0; i < nSol; ++i)
+    for (size_t j = 0; j < basis.size(); ++j)
+      solutions_proj(i, j) = solutions(i, basis[j]);
   logger.debug("nSol, nQd, nD", nSol, nQd, dims.nD);
   return solutions_proj;
 }
 
 /*!
+ * @brief Constructs overlaps of projected solutions with subspace vectors
+ *
+ * x_i = \sum_k C_ik u_k
+ * <x_i, v_m> = \sum_k conj(C_ik) <u_k, v_m>
+ *
+ * @param solutions_proj projected solutions C, with columns referring to the subspace vectors basis
+ * @param overlap overlap matrix of the current subspace, S(k, l) = <v_k, v_l>
+ * @param basis subspace indices of the vectors u_k
+ * @param indices subspace indices of the vectors v_m
+ * @return matrix with projected solutions as rows and the vectors v_m as columns
+ */
+template <typename value_type>
+auto projected_solutions_overlap(const subspace::Matrix<value_type>& solutions_proj,
+                                 const subspace::Matrix<value_type>& overlap, const std::vector<std::size_t>& basis,
+                                 const std::vector<std::size_t>& indices) {
+  assert(solutions_proj.cols() == basis.size());
+  const auto nSol = solutions_proj.rows();
+  auto ov = subspace::Matrix<value_type>({nSol, indices.size()});
+  for (size_t i = 0; i < nSol; ++i)
+    for (size_t m = 0; m < indices.size(); ++m)
+      for (size_t k = 0; k < basis.size(); ++k)
+        ov(i, m) += conjugate(solutions_proj(i, k)) * overlap(basis[k], indices[m]);
+  return ov;
+}
+
+/*!
+ * @brief Constructs the overlap matrix of projected solutions among themselves
+ *
+ * x_i = \sum_k C_ik u_k
+ * <x_i, x_j> = \sum_kl conj(C_ik) C_jl <u_k, u_l>
+ *
+ * @param solutions_proj projected solutions C, with columns referring to the subspace vectors basis
+ * @param overlap overlap matrix of the current subspace
+ * @param basis subspace indices of the vectors u_k
+ * @return hermitian overlap matrix
+ */
+template <typename value_type>
+auto projected_solutions_overlap(const subspace::Matrix<value_type>& solutions_proj,
+                                 const subspace::Matrix<value_type>& overlap, const std::vector<std::size_t>& basis) {
+  const auto nSol = solutions_proj.rows();
+  const auto xu = projected_solutions_overlap(solutions_proj, overlap, basis, basis);
+  auto ov = subspace::Matrix<value_type>({nSol, nSol});
+  for (size_t i = 0; i < nSol; ++i) {
+    for (size_t j = 0; j <= i; ++j) {
+      for (size_t l = 0; l < basis.size(); ++l)
+        ov(i, j) += xu(i, l) * solutions_proj(j, l);
+      ov(j, i) = conjugate(ov(i, j));
+    }
+  }
+  return ov;
+}
+
+/*!
  * @brief Constructs overlap matrix for projected solutions
- *
- * x_i = \sum_j C_ij u_j
- * <x_i, x_j> = \sum_k \sum_l conj(C_ik) C_jl <u_k, u_l>
- *
  * @param solutions_proj solutions matrix projected onto Qd+D space
+ * @param overlap overlap matrix of the current subspace
  * @param dims dimensions for partitioning of subspace
  * @param remove_qspace indices to remove from current Q space and move into Q_{delete}
- * @param overlap overlap matrix of the current subspace
  * @param logger logger
  * @return overlap matrix
  */
@@ -94,35 +155,7 @@ auto construct_projected_solutions_overlap(const subspace::Matrix<value_type>& s
                                            const subspace::Dimensions& dims,
                                            const std::vector<std::size_t>& remove_qspace, Logger& logger) {
   logger.trace("construct_projected_solution_overlap()");
-  const auto nSol = solutions_proj.rows();
-  const auto nQd = remove_qspace.size();
-  auto overlap_proj = subspace::Matrix<value_type>({nSol, nSol});
-  for (size_t i = 0; i < nSol; ++i) {
-    for (size_t ii = 0; ii <= i; ++ii) {
-      for (size_t j = 0; j < nQd; ++j) {
-        for (size_t k = 0; k < nQd; ++k) {
-          overlap_proj(i, ii) += conjugate(solutions_proj(i, j)) * solutions_proj(ii, k) *
-                                 overlap(dims.oQ() + remove_qspace[j], dims.oQ() + remove_qspace[k]);
-        }
-        for (size_t k = 0; k < dims.nD; ++k) {
-          overlap_proj(i, ii) += conjugate(solutions_proj(i, j)) * solutions_proj(ii, nQd + k) *
-                                 overlap(dims.oQ() + remove_qspace[j], dims.oD() + k);
-        }
-      }
-      for (size_t j = 0; j < dims.nD; ++j) {
-        for (size_t k = 0; k < dims.nD; ++k) {
-          overlap_proj(i, ii) +=
-              conjugate(solutions_proj(i, nQd + j)) * solutions_proj(ii, nQd + k) * overlap(dims.oD() + j, dims.oD() + k);
-        }
-        for (size_t k = 0; k < nQd; ++k) {
-          overlap_proj(i, ii) += conjugate(solutions_proj(i, nQd + j)) * solutions_proj(ii, k) *
-                                 overlap(dims.oD() + j, dims.oQ() + remove_qspace[k]);
-        }
-      }
-      overlap_proj(ii, i) = conjugate(overlap_proj(i, ii));
-    }
-  }
-  return overlap_proj;
+  return projected_solutions_overlap(solutions_proj, overlap, projected_solutions_basis(dims, remove_qspace));
 }
 
 /*!
@@ -225,48 +258,26 @@ auto construct_full_subspace_overlap(const subspace::Matrix<value_type>& solutio
   }
   const auto oDnew = dims.nP + nQ + nR;
   ov.resize({oDnew + nDnew, oDnew + nDnew});
-  /*
-   * append overlap with solutions_proj
-   * x_i = \sum_j c_ij v_j
-   * <x_i, v_j> = \sum_k conj(c_ik) <v_k, v_j>
-   * <x_i, x_j> = \sum_kl conj(c_ik) c_jl <v_k, v_l>
-   */
-  auto accumulate_ov_offdiag = [&](size_t i, size_t j, size_t jj) {
-    for (size_t k = 0; k < nQd; ++k)
-      ov(oDnew + i, j) += conjugate(solutions_proj(i, k)) * overlap(dims.oQ() + remove_qspace[k], jj);
-    for (size_t k = 0; k < dims.nD; ++k)
-      ov(oDnew + i, j) += conjugate(solutions_proj(i, nQd + k)) * overlap(dims.oD() + k, jj);
-    ov(j, oDnew + i) = conjugate(ov(oDnew + i, j));
-  };
+  // subspace indices of the remaining P+Q+R vectors, in their order in ov
+  auto remaining = std::vector<std::size_t>{};
+  for (size_t j = 0; j < dims.nP; ++j)
+    remaining.push_back(dims.oP() + j);
+  for (size_t j = 0; j < dims.nQ; ++j)
+    if (!is_Qdelete(j))
+      remaining.push_back(dims.oQ() + j);
+  for (size_t j = 0; j < nR; ++j)
+    remaining.push_back(dims.nX() + j);
+  assert(remaining.size() == oDnew);
+  const auto basis = projected_solutions_basis(dims, remove_qspace);
+  const auto ov_xv = projected_solutions_overlap(solutions_proj, overlap, basis, remaining);
+  const auto ov_xx = projected_solutions_overlap(solutions_proj, overlap, basis);
   for (size_t i = 0; i < nDnew; ++i) {
-    for (size_t j = 0; j < dims.nP; ++j)
-      accumulate_ov_offdiag(i, j, dims.oP() + j);
-    for (size_t j = 0, jj = 0; j < dims.nQ; ++j)
-      if (!is_Qdelete(j))
-        accumulate_ov_offdiag(i, dims.nP + jj++, dims.oQ() + j);
-    for (size_t j = 0; j < nR; ++j)
-      accumulate_ov_offdiag(i, dims.nP + nQ + j, dims.nX() + j);
-  }
-  for (size_t i = 0; i < nDnew; ++i) {
-    for (size_t j = 0; j <= i; ++j) {
-      for (size_t k = 0; k < nQd; ++k) {
-        for (size_t l = 0; l < nQd; ++l)
-          ov(oDnew + i, oDnew + j) += conjugate(solutions_proj(i, k)) * solutions_proj(j, l) *
-                                      overlap(dims.oQ() + remove_qspace[k], dims.oQ() + remove_qspace[l]);
-        for (size_t l = 0; l < dims.nD; ++l)
-          ov(oDnew + i, oDnew + j) += conjugate(solutions_proj(i, k)) * solutions_proj(j, nQd + l) *
-                                      overlap(dims.oQ() + remove_qspace[k], dims.oD() + l);
-      }
-      for (size_t k = 0; k < dims.nD; ++k) {
-        for (size_t l = 0; l < nQd; ++l)
-          ov(oDnew + i, oDnew + j) += conjugate(solutions_proj(i, nQd + k)) * solutions_proj(j, l) *
-                                      overlap(dims.oD() + k, dims.oQ() + remove_qspace[l]);
-        for (size_t l = 0; l < dims.nD; ++l)
-          ov(oDnew + i, oDnew + j) += conjugate(solutions_proj(i, nQd + k)) * solutions_proj(j, nQd + l) *
-                                      overlap(dims.oD() + k, dims.oD() + l);
-      }
-      ov(oDnew + j, oDnew + i) = conjugate(ov(oDnew + i, oDnew + j));
+    for (size_t j = 0; j < oDnew; ++j) {
+      ov(oDnew + i, j) = ov_xv(i, j);
+      ov(j, oDnew + i) = conjugate(ov_xv(i, j));
     }
+    for (size_t j = 0; j < nDnew; ++j)
+      ov(oDnew + i, oDnew + j) = ov_xx(i, j);
   }
   return ov;
 }

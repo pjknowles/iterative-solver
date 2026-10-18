@@ -504,14 +504,17 @@ public:
     if (!this->m_verbosity.has_value() || this->m_verbosity >= Verbosity::Summary) {
       summary_report();
     }
+    // without any errors (e.g. no iteration was done) nothing is known to have converged
+    const bool errors_converged =
+        !m_errors.empty() && *std::max_element(m_errors.begin(), m_errors.end()) <= m_convergence_threshold;
     if (!this->m_verbosity.has_value() || this->m_verbosity >= Verbosity::Summary) {
-      if (*std::max_element(m_errors.begin(), m_errors.end()) > m_convergence_threshold) {
+      if (!errors_converged) {
         this->m_logger->warn("Solver has not converged to threshold ", m_convergence_threshold);
       } else {
         this->m_logger->info("Solver converged");
       }
     }
-    return nwork == 0 and *std::max_element(m_errors.begin(), m_errors.end()) <= m_convergence_threshold;
+    return nwork == 0 and errors_converged;
   }
 
   bool solve(R& parameters, R& actions, const Problem<R>& problem, bool generate_initial_guess = false) override {

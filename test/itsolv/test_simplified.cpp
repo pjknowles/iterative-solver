@@ -138,3 +138,12 @@ TEST_F(simplified, LinearEquations) {
   EXPECT_THAT(g, ::testing::Pointwise(::testing::DoubleNear(1e-10), Rvector(problem.n, 0)));
   problem.action(molpro::linalg::itsolv::cwrap_arg(c), molpro::linalg::itsolv::wrap_arg(g));
 }
+TEST_F(simplified, LinearEigensystem_max_iter_zero) {
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+  solver->set_max_iter(0);
+  auto problem = simplified::MyProblem(10);
+  Rvector c(problem.n, 0), g(problem.n);
+  c[0] = 1;
+  EXPECT_FALSE(solver->solve(c, g, problem));
+  EXPECT_TRUE(solver->errors().empty());
+}

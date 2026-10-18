@@ -82,13 +82,15 @@ template <typename value_type, typename std::enable_if_t<is_complex<value_type>{
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, size_t dimension,
                   bool hermitian, real_type_t<value_type> svdThreshold, int verbosity,
-                  std::vector<std::pair<std::size_t, value_type>>* imag_eval_parts = nullptr);
+                  std::vector<std::pair<std::size_t, value_type>>* imag_eval_parts = nullptr,
+                  size_t nroots = std::numeric_limits<size_t>::max());
 
 template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t> = nullptr>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, size_t dimension,
                   bool hermitian, real_type_t<value_type> svdThreshold, int verbosity,
-				  std::vector<std::pair<std::size_t, value_type>> *imag_eval_parts = nullptr);
+                  std::vector<std::pair<std::size_t, value_type>>* imag_eval_parts = nullptr,
+                  size_t nroots = std::numeric_limits<size_t>::max());
 
 template <typename value_type, typename std::enable_if_t<is_complex<value_type>{}, int> = 0>
 void solve_LinearEquations(std::vector<value_type>& solution, std::vector<value_type>& eigenvalues,
@@ -126,7 +128,7 @@ extern template std::list<SVD<double>> svd_system(size_t nrows, size_t ncols, co
 extern template void eigenproblem<double>(std::vector<double>& eigenvectors, std::vector<double>& eigenvalues,
                                           const std::vector<double>& matrix, const std::vector<double>& metric,
                                           const size_t dimension, bool hermitian, double svdThreshold, int verbosity,
-                                          std::vector<std::pair<std::size_t, double>> *imag_eval_parts);
+                                          std::vector<std::pair<std::size_t, double>> *imag_eval_parts, size_t nroots);
 
 extern template void solve_LinearEquations<double>(std::vector<double>& solution, std::vector<double>& eigenvalues,
                                                    const std::vector<double>& matrix, const std::vector<double>& metric,
@@ -156,7 +158,7 @@ extern template void eigenproblem<long double>(std::vector<long double>& eigenve
                                                const std::vector<long double>& matrix,
                                                const std::vector<long double>& metric, const size_t dimension,
                                                bool hermitian, long double svdThreshold, int verbosity,
-                                               std::vector<std::pair<std::size_t, long double>> *imag_eval_parts);
+                                               std::vector<std::pair<std::size_t, long double>> *imag_eval_parts, size_t nroots);
 
 extern template void solve_LinearEquations<long double>(
     std::vector<long double>& solution, std::vector<long double>& eigenvalues, const std::vector<long double>& matrix,
@@ -180,7 +182,7 @@ extern template void eigenproblem<std::complex<double>>(
     std::vector<std::complex<double>>& eigenvectors, std::vector<std::complex<double>>& eigenvalues,
     const std::vector<std::complex<double>>& matrix, const std::vector<std::complex<double>>& metric,
     const size_t dimension, bool hermitian, double svdThreshold, int verbosity,
-    std::vector<std::pair<std::size_t, std::complex<double>>>* imag_eval_parts);
+    std::vector<std::pair<std::size_t, std::complex<double>>>* imag_eval_parts, size_t nroots);
 
 extern template void solve_LinearEquations<std::complex<double>>(
     std::vector<std::complex<double>>& solution, std::vector<std::complex<double>>& eigenvalues,

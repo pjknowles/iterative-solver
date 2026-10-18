@@ -22,6 +22,36 @@ int get_communicator_rank(MPI_Comm comm) {
   return rank;
 }
 
+enum class RMAType { gather, scatter, scatter_acc };
+
+/*!
+ * @brief Gather, scatter or accumulate single elements, one contiguous non-blocking operation each.
+ *
+ * NGA_Gather, NGA_Scatter and NGA_Scatter_acc are not used. GA's MPI3 runtime implements them
+ * as one request-based RMA call with a derived datatype, and takes completion of the request
+ * to mean the data has moved. MPICH's ch4:ucx before 5.0.2 completes such requests at once
+ * (pmodels/mpich#7896), so a gather returned without the remote elements. No GA call can
+ * flush the window of an array on a process group, so the derived datatype is avoided
+ * instead, as DistrArrayMPI3 does.
+ */
+void gather_scatter(int ga_handle, const std::vector<DistrArray::index_type> &indices,
+                    DistrArray::value_type *data, RMAType option) {
+  auto handles = std::vector<ga_nbhdl_t>(indices.size());
+  DistrArray::value_type alpha = 1;
+  int ld = 1;
+  for (size_t i = 0; i < indices.size(); ++i) {
+    int lo = indices[i], hi = indices[i];
+    if (option == RMAType::gather)
+      NGA_NbGet(ga_handle, &lo, &hi, &data[i], &ld, &handles[i]);
+    else if (option == RMAType::scatter)
+      NGA_NbPut(ga_handle, &lo, &hi, &data[i], &ld, &handles[i]);
+    else
+      NGA_NbAcc(ga_handle, &lo, &hi, &data[i], &ld, &alpha, &handles[i]);
+  }
+  for (auto &handle : handles)
+    NGA_NbWait(&handle);
+}
+
 } // namespace
 
 DistrArrayGA::DistrArrayGA(size_t dimension, MPI_Comm comm)
@@ -152,38 +182,21 @@ void DistrArrayGA::put(index_type lo, index_type hi, const value_type *data) {
 std::vector<DistrArrayGA::value_type> DistrArrayGA::gather(const std::vector<index_type> &indices) const {
   for (auto el : indices)
     check_ga_ind_overlow(el);
-  int n = indices.size();
-  auto data = std::vector<double>(n);
-  auto iind = std::vector<int>(indices.begin(), indices.end());
-  auto subsarray = std::vector<int *>(n);
-  for (int i = 0; i < n; ++i)
-    subsarray[i] = &(iind.at(i));
-  NGA_Gather(m_ga_handle, data.data(), subsarray.data(), n);
+  auto data = std::vector<double>(indices.size());
+  gather_scatter(m_ga_handle, indices, data.data(), RMAType::gather);
   return data;
 }
 
 void DistrArrayGA::scatter(const std::vector<index_type> &indices, const std::vector<value_type> &data) {
   for (auto el : indices)
     check_ga_ind_overlow(el);
-  int n = indices.size();
-  auto iind = std::vector<int>(indices.begin(), indices.end());
-  auto subsarray = std::vector<int *>(n);
-  for (int i = 0; i < n; ++i)
-    subsarray[i] = &(iind.at(i));
-  NGA_Scatter(m_ga_handle, const_cast<double *>(data.data()), subsarray.data(), n);
+  gather_scatter(m_ga_handle, indices, const_cast<double *>(data.data()), RMAType::scatter);
 }
 
 void DistrArrayGA::scatter_acc(std::vector<index_type> &indices, const std::vector<value_type> &data) {
   for (auto el : indices)
     check_ga_ind_overlow(el);
-  int n = indices.size();
-  auto iind = std::vector<int>(indices.begin(), indices.end());
-  auto subsarray = std::vector<int *>(n);
-  for (int i = 0; i < n; ++i) {
-    subsarray[i] = &(iind.at(i));
-  }
-  value_type alpha = 1;
-  NGA_Scatter_acc(m_ga_handle, const_cast<double *>(data.data()), subsarray.data(), n, &alpha);
+  gather_scatter(m_ga_handle, indices, const_cast<double *>(data.data()), RMAType::scatter_acc);
 }
 
 std::vector<DistrArrayGA::value_type> DistrArrayGA::vec() const {

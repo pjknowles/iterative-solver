@@ -268,34 +268,38 @@ TYPED_TEST_P(DistrArrayRangeRMAF, gather) {
   TypeParam::sync();
 }
 
+// A scatter or accumulate is only guaranteed to have reached the array after sync(), so the
+// result is read back after one, not straight after the call that wrote it.
 TYPED_TEST_P(DistrArrayRangeRMAF, scatter) {
   TypeParam::zero();
   TypeParam::sync();
-  {
-    auto proxy = this->lock.scope();
-    TypeParam::scatter(this->sub_indices, this->sub_values);
+  auto zero_values = std::vector<double>(this->sub_values.size(), 0.);
+  for (int rank = 0; rank < this->p_size; ++rank) {
+    if (rank == this->p_rank)
+      TypeParam::scatter(this->sub_indices, this->sub_values);
+    TypeParam::sync();
     auto from_ga_buffer = TypeParam::gather(this->sub_indices);
     EXPECT_THAT(from_ga_buffer, Pointwise(DoubleEq(), this->sub_values));
-    auto zero_values = std::vector<double>(this->sub_values.size(), 0.);
-    TypeParam::scatter(this->sub_indices, zero_values);
+    TypeParam::sync();
+    if (rank == this->p_rank)
+      TypeParam::scatter(this->sub_indices, zero_values);
+    TypeParam::sync();
   }
-  TypeParam::sync();
 }
 
 TYPED_TEST_P(DistrArrayRangeRMAF, scatter_acc) {
   TypeParam::sync();
-  {
-    auto proxy = this->lock.scope();
-    TypeParam::scatter_acc(this->sub_indices, this->sub_values);
-    auto from_ga_buffer = TypeParam::gather(this->sub_indices);
-    auto ref_values = this->sub_values;
-    for (auto &el : ref_values)
-      el *= 2;
-    EXPECT_THAT(from_ga_buffer, Pointwise(DoubleEq(), ref_values));
-    for (auto &el : this->sub_values)
-      el *= -1;
-    TypeParam::scatter_acc(this->sub_indices, this->sub_values);
-  }
+  TypeParam::scatter_acc(this->sub_indices, this->sub_values);
+  TypeParam::sync();
+  auto from_ga_buffer = TypeParam::gather(this->sub_indices);
+  auto ref_values = this->sub_values;
+  for (auto &el : ref_values)
+    el *= 1 + this->p_size;
+  EXPECT_THAT(from_ga_buffer, Pointwise(DoubleEq(), ref_values));
+  TypeParam::sync();
+  for (auto &el : this->sub_values)
+    el *= -1;
+  TypeParam::scatter_acc(this->sub_indices, this->sub_values);
   TypeParam::sync();
 }
 

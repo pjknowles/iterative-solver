@@ -259,13 +259,12 @@ protected:
         // the first vector in a pair is the one that has been transformed with the real and the second
         // with the imaginary part of c.
         // The above code has already dealt with the bulk of the necessary expression and we only need
-        // to add the part with the imaginary components of the eigenvalue pair. We use the knowledge
-        // about the ordering of vectors (which has been transformed with what eigenvector component)
-        // to compute the right thing without explicit access to the eigenvectors.
-        const auto distance = std::ranges::distance(imag_eigval_components.begin(), it);
-        const int offset = (distance % 2) == 0 ? 1 : -1;
+        // to add the part with the imaginary components of the eigenvalue pair, for which the vector of
+        // the partner root is used.
+        const auto partner = subspace_solver->complex_partner(roots[i]);
+        assert(partner);
 
-        auto root_it = std::ranges::find(roots, roots[i] + offset);
+        auto root_it = std::ranges::find(roots, int(*partner));
         if (root_it == roots.end()) {
           // We can only do this, if we have both components of a complex eigenvalue/eigenvector pair
           // available here.

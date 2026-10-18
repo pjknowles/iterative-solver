@@ -6,7 +6,9 @@
 #include <molpro/linalg/itsolv/Logger.h>
 #include <molpro/linalg/itsolv/helper.h>
 
+#include <map>
 #include <memory>
+#include <optional>
 
 namespace molpro::linalg::itsolv::subspace {
 
@@ -60,6 +62,13 @@ protected:
     int verbosity = convert_verbosity(m_logger->verbosity());
     itsolv::eigenproblem(evec, m_eigenvalues, h.data(), s.data(), dim, m_hermitian, m_svd_solver_threshold, verbosity,
                          &m_imag_eigval_comps, nroots_max);
+    m_complex_partners.clear();
+    for (size_t k = 0; k + 1 < m_imag_eigval_comps.size(); k += 2) {
+      const auto first = m_imag_eigval_comps[k].first;
+      const auto second = m_imag_eigval_comps[k + 1].first;
+      m_complex_partners[first] = second;
+      m_complex_partners[second] = first;
+    }
     size_t n_solutions = 0;
     if (dim)
       n_solutions = evec.size() / dim;
@@ -73,6 +82,7 @@ protected:
       m_logger->info("Complex eigenvalue pair split up due to truncation to requested number of roots");
     }
     m_imag_eigval_comps.erase(first, last);
+    std::erase_if(m_complex_partners, [nroots](const auto& entry) { return entry.first >= nroots; });
     m_solutions.resize({nroots, dim});
     m_solutions.slice() = full_matrix.slice({0, 0}, {nroots, dim});
     m_errors.assign(size(), std::numeric_limits<value_type_abs>::max());
@@ -103,6 +113,7 @@ protected:
     auto solution = std::vector<value_type>{};
     m_eigenvalues.assign(n_solutions, 0);
     m_imag_eigval_comps.clear();
+    m_complex_partners.clear();
     int verbosity = convert_verbosity(m_logger->verbosity());
     itsolv::solve_LinearEquations(solution, m_eigenvalues, h.data(), s.data(), rhs.data(), dim, n_solutions,
                                   m_augmented_hessian, m_svd_solver_threshold, verbosity);
@@ -123,6 +134,16 @@ public:
   const Matrix<value_type>& solutions() const override { return m_solutions; }
   const std::vector<value_type>& eigenvalues() const override { return m_eigenvalues; }
   const std::vector<std::pair<std::size_t, value_type>>& imag_eigval_components() const { return m_imag_eigval_comps; }
+  /*!
+   * @brief The other member of the complex conjugate eigenvalue pair that root belongs to, if any
+   * @note The partner can be >= size(), if it was truncated away
+   */
+  std::optional<std::size_t> complex_partner(std::size_t root) const {
+    const auto it = m_complex_partners.find(root);
+    if (it == m_complex_partners.end())
+      return std::nullopt;
+    return it->second;
+  }
   const std::vector<value_type_abs>& errors() const override { return m_errors; }
 
   //! Number of solutions
@@ -142,6 +163,7 @@ protected:
   Matrix<value_type> m_solutions;                                      //!< solution matrix with row vectors
   std::vector<value_type> m_eigenvalues;                               //!< eigenvalues
   std::vector<std::pair<std::size_t, value_type>> m_imag_eigval_comps; //!< eigenvalues
+  std::map<std::size_t, std::size_t> m_complex_partners;               //!< root -> other member of its complex pair
   std::vector<value_type_abs> m_errors;                                //!< errors in subspace solutions
   std::shared_ptr<Logger> m_logger{};
 

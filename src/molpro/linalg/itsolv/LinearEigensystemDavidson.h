@@ -112,24 +112,25 @@ public:
   void finalize() override {
     if constexpr (is_complex<typename R::value_type>::value) {
       return;
-    }
+    } else {
+      auto subspace_solver =
+          std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
+      assert(subspace_solver);
+      auto imag_eigval_components = subspace_solver->imag_eigval_components();
+      if (imag_eigval_components.empty()) {
+        return;
+      }
 
-    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
-    assert(subspace_solver);
-    auto imag_eigval_components = subspace_solver->imag_eigval_components();
-    if (imag_eigval_components.empty()) {
-      return;
-    }
+      // Convert to 1-based indexing for printout
+      for (auto& pair : imag_eigval_components) {
+        pair.first += 1;
+      }
 
-    // Convert to 1-based indexing for printout
-    for (auto& pair : imag_eigval_components) {
-      pair.first += 1;
+      this->m_logger->template warn<log::ComplexRootsDavidson<typename R::value_type>>(
+          "The following roots are complex-valued. Associated eigenvectors are the real and imaginary part "
+          "of the pairs and the imaginary parts of the eigenvalues are ",
+          imag_eigval_components);
     }
-
-    this->m_logger->template warn<log::ComplexRootsDavidson<typename R::value_type>>(
-        "The following roots are complex-valued. Associated eigenvectors are the real and imaginary part "
-        "of the pairs and the imaginary parts of the eigenvalues are ",
-        imag_eigval_components);
   }
 
   //! Applies the Davidson preconditioner

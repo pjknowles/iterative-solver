@@ -228,6 +228,32 @@ auto remove_null_projected_solutions(const subspace::Matrix<value_type>& solutio
 }
 
 /*!
+ * @brief Projects solutions onto Q_{delete} and the current D space, and transforms them to a normalised set without
+ * null space
+ * @param solutions solution matrix in the full subspace
+ * @param overlap overlap matrix of the current subspace
+ * @param dims dimensions for partitioning of subspace
+ * @param remove_qspace indices to remove from current Q space and move into Q_{delete}
+ * @param norm_thresh projected solutions with norm less than this threshold are considered null
+ * @param svd_thresh singular value threshold for marking the null space of projected solutions
+ * @param logger logger
+ * @return projected solutions as rows, with columns as given by projected_solutions_basis()
+ */
+template <typename value_type, typename value_type_abs>
+auto stable_projected_solutions(const subspace::Matrix<value_type>& solutions,
+                                const subspace::Matrix<value_type>& overlap, const subspace::Dimensions& dims,
+                                const std::vector<std::size_t>& remove_qspace, const value_type_abs norm_thresh,
+                                const value_type_abs svd_thresh, Logger& logger) {
+  auto solutions_proj = construct_projected_solution(solutions, dims, remove_qspace, logger);
+  auto overlap_proj = construct_projected_solutions_overlap(solutions_proj, overlap, dims, remove_qspace, logger);
+  remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
+  solutions_proj = remove_null_projected_solutions(solutions_proj, overlap_proj, svd_thresh, logger);
+  overlap_proj = construct_projected_solutions_overlap(solutions_proj, overlap, dims, remove_qspace, logger);
+  remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
+  return solutions_proj;
+}
+
+/*!
  * @brief Constructs overlap matrix of P+Q+R+(projected solutions) subspaces, where Q is without removed parameters
  * @param solutions_proj solutions matrix with Q deleted + current D space as columns
  * @param dims dimensions of the current subspace
@@ -410,12 +436,8 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
                       const value_type_abs svd_thresh, array::ArrayHandler<Q, Q>& handler, Logger& logger) {
   const auto dims = xspace.dimensions();
   const auto overlap = xspace.data.at(subspace::EqnData::S);
-  auto solutions_proj = dspace::construct_projected_solution(solutions, dims, q_delete, logger);
-  auto overlap_proj = dspace::construct_projected_solutions_overlap(solutions_proj, overlap, dims, q_delete, logger);
-  dspace::remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
-  solutions_proj = dspace::remove_null_projected_solutions(solutions_proj, overlap_proj, svd_thresh, logger);
-  overlap_proj = dspace::construct_projected_solutions_overlap(solutions_proj, overlap, dims, q_delete, logger);
-  dspace::remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
+  const auto solutions_proj =
+      dspace::stable_projected_solutions(solutions, overlap, dims, q_delete, norm_thresh, svd_thresh, logger);
 #ifndef NDEBUG
   // a decomposition of the whole subspace overlap, wanted only by this check
   auto overlap_full_subspace = dspace::construct_full_subspace_overlap(solutions_proj, dims, q_delete, overlap, 0);

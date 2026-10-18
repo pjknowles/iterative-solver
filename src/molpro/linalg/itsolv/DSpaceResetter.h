@@ -100,20 +100,14 @@ public:
     logger.trace("DSpaceResetter::run()");
     logger.trace("dimensions {nP, nQ, nD, nR} = ", xspace.dimensions().nP, xspace.dimensions().nQ,
                  xspace.dimensions().nD, rparams.size());
-    auto solutions_proj = solutions;
     if (solution_params.empty() && !rparams.empty()) {
       logger.debug("constructing solutions");
       const auto dims = xspace.dimensions();
       const auto overlap = xspace.data.at(subspace::EqnData::S);
       auto q_indices = std::vector<std::size_t>(xspace.dimensions().nQ);
       std::iota(q_indices.begin(), q_indices.end(), 0);
-      solutions_proj = dspace::construct_projected_solution(solutions, dims, q_indices, logger);
-      auto overlap_proj =
-          dspace::construct_projected_solutions_overlap(solutions_proj, overlap, dims, q_indices, logger);
-      dspace::remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
-      solutions_proj = dspace::remove_null_projected_solutions(solutions_proj, overlap_proj, svd_thresh, logger);
-      overlap_proj = dspace::construct_projected_solutions_overlap(solutions_proj, overlap, dims, q_indices, logger);
-      dspace::remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
+      const auto solutions_proj =
+          dspace::stable_projected_solutions(solutions, overlap, dims, q_indices, norm_thresh, svd_thresh, logger);
       const auto nC = solutions_proj.rows();
       for (size_t i = 0; i < nC; ++i)
         solution_params.emplace_back(util::construct_zeroed_copy(rparams.front().get(), handlers.qr()));

@@ -2,12 +2,16 @@
 #include <gtest/gtest.h>
 
 #include "parallel_util.h"
+#include <molpro/linalg/array/ArrayHandlerDDiskSparse.h>
 #include <molpro/linalg/array/ArrayHandlerDistrSparse.h>
+#include <molpro/linalg/array/DistrArrayFile.h>
 #include <molpro/linalg/array/DistrArrayMPI3.h>
 #include <molpro/linalg/array/DistrArraySpan.h>
 #include <molpro/linalg/array/util.h>
 
+using molpro::linalg::array::ArrayHandlerDDiskSparse;
 using molpro::linalg::array::ArrayHandlerDistrSparse;
+using molpro::linalg::array::DistrArrayFile;
 using molpro::linalg::array::DistrArrayMPI3;
 using molpro::linalg::array::DistrArraySpan;
 using molpro::linalg::array::util::LockMPI3;
@@ -59,4 +63,19 @@ TEST(TestArrayHandlerDistrSparse, dot) {
   LockMPI3 lock{mpi_comm};
   auto l = lock.scope();
   ASSERT_DOUBLE_EQ(result, ref);
+}
+
+TEST(TestArrayHandlerDDiskSparse, copy) {
+  const size_t dim = 20;
+  auto x = DistrArrayFile(dim, mpi_comm);
+  x.fill(0.5);
+  auto y = std::map<size_t, double>{{1, 1.0}, {3, 2.0}, {6, 3.0}, {11, 4.0}, {19, 5.0}};
+  auto ref = std::vector<double>(dim, 0.);
+  for (const auto& el : y)
+    ref[el.first] = el.second;
+  auto handler = ArrayHandlerDDiskSparse<decltype(x), decltype(y)>{};
+  handler.copy(x, y);
+  const auto [lo, hi] = molpro::linalg::array::util::local_range(x);
+  auto result = x.get(lo, hi);
+  ASSERT_THAT(result, Pointwise(DoubleEq(), std::vector<double>(ref.begin() + lo, ref.begin() + hi)));
 }

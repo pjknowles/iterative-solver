@@ -419,31 +419,32 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
   const auto &qparams = xspace.cparamsq(), qactions = xspace.cactionsq();
   const auto &dparams = xspace.cparamsd(), dactions = xspace.cactionsd();
   std::vector<Q> dparams_new, dactions_new;
-  {
-    // FIXME need a simpler mechanism for constructing null parameters
-    Q const* q = nullptr;
-    if (!qparams.empty())
-      q = &qparams.front().get();
-    else if (!dparams.empty())
-      q = &dparams.front().get();
-    if (q) {
-      for (size_t i = 0; i < nD; ++i) {
-        dparams_new.emplace_back(handler.copy(*q));
-        dactions_new.emplace_back(handler.copy(*q));
-        handler.fill(0, dparams_new.back());
-        handler.fill(0, dactions_new.back());
-      }
+  if (nD > 0) {
+    const Q& q = !qparams.empty() ? qparams.front().get() : dparams.front().get();
+    for (size_t i = 0; i < nD; ++i) {
+      dparams_new.emplace_back(util::construct_zeroed_copy(q, handler));
+      dactions_new.emplace_back(util::construct_zeroed_copy(q, handler));
     }
-  }
-  for (size_t i = 0; i < nD; ++i) {
-    for (size_t j = 0; j < q_delete.size(); ++j) {
-      handler.axpy(solutions_proj(i, j), qparams.at(q_delete[j]), dparams_new.at(i));
-      handler.axpy(solutions_proj(i, j), qactions.at(q_delete[j]), dactions_new.at(i));
+    // coefficient matrices with Q_{delete} or D vectors in rows and new D vectors in columns, as required by gemm_outer
+    auto qd_coeff = subspace::Matrix<value_type>({nQd, nD});
+    auto d_coeff = subspace::Matrix<value_type>({dims.nD, nD});
+    for (size_t i = 0; i < nD; ++i) {
+      for (size_t j = 0; j < nQd; ++j)
+        qd_coeff(j, i) = solutions_proj(i, j);
+      for (size_t j = 0; j < dims.nD; ++j)
+        d_coeff(j, i) = solutions_proj(i, nQd + j);
     }
-    for (size_t j = 0; j < dims.nD; ++j) {
-      handler.axpy(solutions_proj(i, nQd + j), dparams.at(j), dparams_new.at(i));
-      handler.axpy(solutions_proj(i, nQd + j), dactions.at(j), dactions_new.at(i));
+    auto qd_params = CVecRef<Q>{}, qd_actions = CVecRef<Q>{};
+    for (auto iq : q_delete) {
+      qd_params.emplace_back(qparams.at(iq));
+      qd_actions.emplace_back(qactions.at(iq));
     }
+    const auto wdparams_new = wrap(dparams_new);
+    const auto wdactions_new = wrap(dactions_new);
+    handler.gemm_outer(qd_coeff, qd_params, wdparams_new);
+    handler.gemm_outer(qd_coeff, qd_actions, wdactions_new);
+    handler.gemm_outer(d_coeff, dparams, wdparams_new);
+    handler.gemm_outer(d_coeff, dactions, wdactions_new);
   }
   for (size_t i = 0; i < nD; ++i) {
     auto norm = std::sqrt(std::abs(handler.dot(dparams_new.at(i), dparams_new.at(i))));

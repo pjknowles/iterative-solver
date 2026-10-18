@@ -75,16 +75,22 @@ void construct_solutions(const VecRef<R>& params, const std::vector<int>& roots,
   auto prof = molpro::Profiler::single();
   prof->start("itsolv::util::construct_solutions");
   assert(params.size() >= roots.size());
-  for (size_t i = 0; i < roots.size(); ++i)
+  const auto nroots = roots.size();
+  for (size_t i = 0; i < nroots; ++i)
     handler_rr.fill(0, params.at(i));
-  for (size_t i = 0; i < roots.size(); ++i) {
-    auto root = roots[i];
-    for (size_t j = 0; j < pparams.size(); ++j)
-      handler_rp.axpy(solutions(root, oP + j), pparams.at(j), params.at(i));
-    for (size_t j = 0; j < qparams.size(); ++j)
-      handler_rq.axpy(solutions(root, oQ + j), qparams.at(j), params.at(i));
-    for (size_t j = 0; j < dparams.size(); ++j)
-      handler_rq.axpy(solutions(root, oD + j), dparams.at(j), params.at(i));
+  // coefficient matrices with subspace vectors in rows and roots in columns, as required by gemm_outer
+  auto coefficients = [&](size_t offset, size_t n) {
+    auto coeff = subspace::Matrix<value_type>({n, nroots});
+    for (size_t i = 0; i < nroots; ++i)
+      for (size_t j = 0; j < n; ++j)
+        coeff(j, i) = solutions(roots[i], offset + j);
+    return coeff;
+  };
+  if (nroots > 0) {
+    const auto wparams = VecRef<R>(params.begin(), params.begin() + nroots);
+    handler_rp.gemm_outer(coefficients(oP, pparams.size()), pparams, wparams);
+    handler_rq.gemm_outer(coefficients(oQ, qparams.size()), qparams, wparams);
+    handler_rq.gemm_outer(coefficients(oD, dparams.size()), dparams, wparams);
   }
   prof->stop();
 }

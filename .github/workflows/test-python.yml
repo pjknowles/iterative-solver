@@ -23,7 +23,7 @@ jobs:
         shell: bash -el {0}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: echo 'conda activate base' >> ~/.bash_profile
       - run: git config --global --add safe.directory /__w/iterative-solver/iterative-solver
       - run: bash python/build.sh

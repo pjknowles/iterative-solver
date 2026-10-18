@@ -1,5 +1,6 @@
 #include <unistd.h>
 
+#include <cerrno>
 #include <cstring>
 #include <molpro/linalg/array/DistrArrayFile.h>
 #include <molpro/linalg/array/util/Distribution.h>
@@ -59,7 +60,21 @@ DistrArrayFile::DistrArrayFile(size_t dimension, MPI_Comm comm, const std::strin
 }
 
 namespace {
-std::mutex s_open_error_mutex;
+//! Reports a failed operation on the file through DistrArray::error(), with the reason taken from errno
+void io_error(const DistrArray& array, const fs::path& filename, const std::string& operation, int err) {
+  array.error("DistrArrayFile: failed to " + operation + " file " + filename.string() + ": " +
+              (err != 0 ? std::strerror(err) : "unknown error"));
+}
+
+//! Reports an error if the last operation on the stream failed, after clearing the error state of the stream
+void check_stream(const DistrArray& array, std::fstream& stream, const fs::path& filename,
+                  const std::string& operation) {
+  if (stream.fail()) {
+    const auto err = errno;
+    stream.clear();
+    io_error(array, filename, operation, err);
+  }
+}
 } // namespace
 DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_Comm comm, const std::string& directory)
     : DistrArrayDisk(std::move(distribution), comm), m_directory(fs::absolute(fs::path(directory))),
@@ -82,11 +97,8 @@ DistrArrayFile::DistrArrayFile(std::unique_ptr<Distribution> distribution, MPI_C
   }
   if (m_distribution->border().first != 0)
     DistrArray::error("Distribution of array must start from 0");
-  if (not m_stream->is_open()) {
-    std::lock_guard<std::mutex> lock(s_open_error_mutex);
-    std::cerr << "Failure to open file " << m_filename << ": " << std::strerror(errno) << std::endl;
-    DistrArray::error(std::string{"Failure to open file, "} + std::strerror(errno));
-  }
+  if (not m_stream->is_open())
+    io_error(*this, m_filename, "open", errno);
 #if !defined(_WIN32) && !defined(WIN32)
   fs::remove(m_filename);
 #endif
@@ -151,8 +163,8 @@ DistrArrayFile::~DistrArrayFile() {
     //    std::cout << "closing " << m_filename << std::endl;
     m_stream.release();
   }
-  if (fs::exists(m_filename))
-    fs::remove(m_filename);
+  std::error_code ec; // a destructor must not throw
+  fs::remove(m_filename, ec);
 #endif
 }
 
@@ -190,9 +202,12 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
         ":" + std::to_string(lo_loc) + "\nhi:hi_loc=" + std::to_string(hi) + ":" + std::to_string(hi_loc));
   }
   DistrArray::index_type offset = lo - lo_loc;
+  errno = 0;
   m_stream->seekg(0, std::ios::end);
+  const auto end = m_stream->tellg();
+  check_stream(*this, *m_stream, m_filename, "determine the size of");
   const auto wordlength = sizeof(DistrArray::value_type);
-  const size_t current = m_stream->tellg() / wordlength;
+  const size_t current = static_cast<size_t>(end) / wordlength;
   if (current <= offset) {
     std::fill(buf, buf + length, 0);
     return;
@@ -201,6 +216,7 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
     std::fill(buf + (current - offset), buf + length, 0);
   }
   m_stream->seekg(offset * wordlength);
+  check_stream(*this, *m_stream, m_filename, "seek in");
   const auto readlength = std::min(length, current - offset) * wordlength;
   //  if (readlength==0)
   //  std::cout << "current=" << current << ", offset=" << offset << ", length=" << length << ", readlength=" <<
@@ -209,11 +225,7 @@ void DistrArrayFile::get(DistrArray::index_type lo, DistrArray::index_type hi, D
   if (readlength == 0)
     return;
   m_stream->read((char*)buf, readlength);
-  if (m_stream->fail()) {
-    std::lock_guard<std::mutex> lock(s_open_error_mutex);
-    std::cerr << "Error in reading file " << m_filename << ": " << std::strerror(errno) << std::endl;
-    throw std::runtime_error(std::string{"Error in reading ,"} + std::strerror(errno));
-  }
+  check_stream(*this, *m_stream, m_filename, "read from");
 }
 
 std::vector<DistrArrayFile::value_type> DistrArrayFile::get(DistrArray::index_type lo,
@@ -241,8 +253,14 @@ void DistrArrayFile::put(DistrArray::index_type lo, DistrArray::index_type hi, c
   }
   DistrArray::index_type offset = lo - lo_loc;
   DistrArray::index_type length = hi - lo;
+  errno = 0;
   m_stream->seekp(offset * sizeof(DistrArray::value_type));
+  check_stream(*this, *m_stream, m_filename, "seek in");
   m_stream->write((const char*)data, length * sizeof(DistrArray::value_type));
+  // Flushing reports a failed write here rather than in whichever later access happens to write out the buffer. It
+  // costs no extra system calls, since the seek that starts the next access would write out the buffer anyway.
+  m_stream->flush();
+  check_stream(*this, *m_stream, m_filename, "write to");
 }
 
 void DistrArrayFile::acc(DistrArray::index_type lo, DistrArray::index_type hi, const DistrArray::value_type* data) {

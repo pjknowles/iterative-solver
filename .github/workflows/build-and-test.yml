@@ -104,7 +104,7 @@ jobs:
 
     - name: Configure CMake
       if: steps.check_configuration.outputs.files_exists == 'true'
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_CXX_FLAGS=-fpermissive -DCMAKE_BUILD_TYPE=${{env.CMAKE_BUILD_TYPE}} ${{ matrix.cmake-options }}
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.CMAKE_BUILD_TYPE}} ${{ matrix.cmake-options }}
 
     # The container is pinned, but the conda and apt packages inside it are resolved
     # when the image is built, so record what this run actually used. Without this the

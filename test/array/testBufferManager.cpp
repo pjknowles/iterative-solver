@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <stdexcept>
 #include <vector>
 
 #include "parallel_util.h"
@@ -129,3 +130,25 @@ using Implementations = ::testing::Types<
     DistrArrayFile>;
 
 INSTANTIATE_TYPED_TEST_SUITE_P(Implementations, TestBufferManager, Implementations);
+
+namespace {
+//! Fails to read anything beyond the start of the local section
+class FailingArray : public DistrArrayFile {
+public:
+  using DistrArrayFile::DistrArrayFile;
+  using DistrArrayFile::get;
+  void get(index_type lo, index_type hi, value_type* buf) const override {
+    if (lo > distribution().range(molpro::mpi::rank_global()).first)
+      throw std::runtime_error("read failure");
+    DistrArrayFile::get(lo, hi, buf);
+  }
+};
+} // namespace
+
+// The chunks after the first are read in a separate thread, and a failure there must reach the caller
+TEST(BufferManager, read_failure_throws) {
+  const FailingArray a(100, molpro::mpi::comm_global());
+  molpro::linalg::array::util::BufferManager manager(a, 1, 2);
+  EXPECT_THROW(
+      for (const auto& buf : manager) { (void)buf; }, std::runtime_error);
+}

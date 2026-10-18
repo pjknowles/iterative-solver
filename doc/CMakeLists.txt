@@ -10,7 +10,7 @@ foreach (f images/solvers.png images/dependency_inversion.png images/options.png
 endforeach ()
 
 DependencyManagerDocs_Add(${PROJECT_NAME}
-        FILES ../README.md LibraryDesign.md contributing/ConsistencyAudit.md IterativeSolver.dox Arrays.dox ArrayHandlers.dox VecRef.dox
+        FILES ../README.md LibraryDesign.md contributing/ConsistencyAudit.md IterativeSolver.dox Spaces.dox Arrays.dox ArrayHandlers.dox VecRef.dox
         DOC_URL "https://molpro.github.io/iterative-solver/${CMAKE_PROJECT_NAME}"
         DEPENDS profiler utilities # projects whose documentation has to be built before current project.
         )

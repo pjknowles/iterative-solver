@@ -6,6 +6,7 @@
 
 using molpro::linalg::itsolv::cwrap;
 using molpro::linalg::itsolv::wrap;
+using molpro::linalg::itsolv::detail::DSpaceResetter;
 using molpro::linalg::itsolv::detail::max_overlap_with_R;
 using molpro::linalg::itsolv::detail::resize_qspace;
 using molpro::linalg::itsolv::subspace::Matrix;
@@ -38,6 +39,22 @@ TEST(DSpaceResetter, resize_qspace) {
   const auto reference_erased_Q = std::vector<size_t>{2, 1, 0};
   ASSERT_EQ(xspace.nQ, max_Qsize_after_reset);
   ASSERT_THAT(xspace.erased_Q, ::testing::Pointwise(::testing::Eq(), reference_erased_Q));
+}
+
+TEST(DSpaceResetter, do_reset_periodic) {
+  auto resetter = DSpaceResetter<Q>{3, 10};
+  const auto dims = molpro::linalg::itsolv::subspace::Dimensions{0, 4, 2};
+  EXPECT_FALSE(resetter.do_reset(0, dims));
+  EXPECT_FALSE(resetter.do_reset(1, dims));
+  EXPECT_TRUE(resetter.do_reset(2, dims));
+  EXPECT_FALSE(resetter.do_reset(2, molpro::linalg::itsolv::subspace::Dimensions{0, 4, 0}));
+}
+
+TEST(DSpaceResetter, do_reset_never_if_nreset_zero) {
+  auto resetter = DSpaceResetter<Q>{0, 10};
+  const auto dims = molpro::linalg::itsolv::subspace::Dimensions{0, 4, 2};
+  for (size_t iter = 0; iter < 10; ++iter)
+    EXPECT_FALSE(resetter.do_reset(iter, dims));
 }
 
 struct DSpaceResetter_MaxOverlapWithR_TrivialF : ::testing::Test {

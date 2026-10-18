@@ -501,8 +501,10 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
 }
 
 /*!
- * @brief Orthogonalises R parameters against P+Q+D subspace (and themselves)
+ * @brief Projects R parameters out of the P+Q+D subspace and orthonormalises them among themselves
  *
+ * The projection subtracts V S^{-1} V^dagger r in one step, with S the overlap matrix of the P+Q+D vectors V, which
+ * therefore need not be orthonormal. The projected parameters are then Gram-Schmidt orthonormalised among themselves.
  * New vectors with norm less than threshold are considered null and are not normalised.
  * Their indices in params are returned.
  *
@@ -519,14 +521,13 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
  * @return indices of null parameters
  */
 template <class R, class Q, class P, typename value_type, typename value_type_abs>
-auto modified_gram_schmidt(const VecRef<R>& rparams, const subspace::Matrix<value_type>& overlap,
-                           const subspace::Matrix<value_type>& rx_overlap, const subspace::Dimensions& dims,
-                           const CVecRef<P>& pparams, const CVecRef<Q>& qparams, const CVecRef<Q>& dparams,
-                           const value_type_abs norm_thresh,
-                           ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
-  logger.trace("modified_gram_schmidt()");
+auto project_out_and_orthonormalise(const VecRef<R>& rparams, const subspace::Matrix<value_type>& overlap,
+                                    const subspace::Matrix<value_type>& rx_overlap, const subspace::Dimensions& dims,
+                                    const CVecRef<P>& pparams, const CVecRef<Q>& qparams, const CVecRef<Q>& dparams,
+                                    const value_type_abs norm_thresh, ArrayHandlers<R, Q, P>& handlers,
+                                    Logger& logger) {
+  logger.trace("project_out_and_orthonormalise()");
   const auto nR = rparams.size(), nP = pparams.size(), nQ = qparams.size(), nD = dparams.size();
-  // std::cout << "modified_gram_schmidt() nR="<<nR<<" nQ="<<nQ<<" nD="<<nD<<std::endl;
   assert(nP == dims.nP && nQ == dims.nQ && nD == dims.nD);
   assert(rx_overlap.rows() == nR && rx_overlap.cols() == dims.nX());
   // Project the new parameters out of the span of P+Q+D. The existing vectors need not be orthogonal to each other
@@ -610,7 +611,7 @@ auto get_new_working_set(const std::vector<int>& working_set, const CVecRef<R>& 
  *     singular vector is removed (redundant_parameters()).
  *  4. The remaining residuals are projected out of the span of P+Q+D, using the inverse of its equilibrated overlap
  *     matrix since P+Q+D need not be orthonormal, and Gram-Schmidt orthonormalised among themselves
- *     (modified_gram_schmidt()). Residuals that become null are discarded.
+ *     (project_out_and_orthonormalise()). Residuals that become null are discarded.
  *  5. The resulting vectors are copied into parameters, and the working set is reduced to the roots whose residuals
  *     were kept.
  *
@@ -660,7 +661,7 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
     logger.debug("eigenvalue error due to new D space = ", eigval_error);
     // FIXME Optionally, solve the subspace problem again and get an estimate of the error due to new D
   }
-  // Use modified GS to orthonormalise z against P+Q+D, removing any null parameters.
+  // Orthonormalise the residuals against P+Q+D and among themselves, removing redundant and null parameters.
   auto wresidual = wrap(residuals.begin(), residuals.begin() + solver.working_set().size());
   profiler.start("normalise");
   normalise(wresidual, handlers.rr(), logger);
@@ -677,7 +678,8 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
       redundant_parameters(full_overlap, xspace.dimensions().nX(), wresidual.size(), r_opts.svd_thresh, logger);
   prof->stop();
   logger.debug("redundant indices = ", redundant_indices);
-  // overlaps of the remaining R parameters with P+Q+D, to save modified_gram_schmidt() from recalculating them
+  // overlaps of the remaining R parameters with P+Q+D, to save project_out_and_orthonormalise() from
+  // recalculating them
   const auto nX = xspace.dimensions().nX();
   auto kept = std::vector<size_t>{};
   for (size_t j = 0; j < wresidual.size(); ++j)
@@ -688,12 +690,11 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
     for (size_t i = 0; i < nX; ++i)
       rx_overlap(j, i) = full_overlap(nX + kept[j], i);
   util::delete_parameters(redundant_indices, wresidual);
-  profiler.start("modified_gram_schmidt");
-  prof->start("modified_gram_schmidt");
-  auto null_param_indices =
-      modified_gram_schmidt(wresidual, xspace.data.at(subspace::EqnData::S), rx_overlap, xspace.dimensions(),
-                            xspace.cparamsp(), xspace.cparamsq(), xspace.cparamsd(), r_opts.norm_thresh, handlers,
-                            logger);
+  profiler.start("project_out_and_orthonormalise");
+  prof->start("project_out_and_orthonormalise");
+  auto null_param_indices = project_out_and_orthonormalise(wresidual, xspace.data.at(subspace::EqnData::S), rx_overlap,
+                                                           xspace.dimensions(), xspace.cparamsp(), xspace.cparamsq(),
+                                                           xspace.cparamsd(), r_opts.norm_thresh, handlers, logger);
   profiler.stop();
   prof->stop();
   // Now that there is SVD null_param_indices should always be empty

@@ -49,7 +49,7 @@ void check_orthogonal_to_nonorthogonal_space() {
   // <r_j|q_i>, as append_overlap_with_r() provides in propose_rspace()
   const auto rx_overlap = handlers.rq().gemm_inner(cwrap(r), cwrap(q));
   auto wr = wrap(r);
-  const auto null_params = molpro::linalg::itsolv::detail::modified_gram_schmidt(
+  const auto null_params = molpro::linalg::itsolv::detail::project_out_and_orthonormalise(
       wr, overlap, rx_overlap, Dimensions(0, nQ, 0), cwrap(p), cwrap(q), cwrap(d), 1e-10, handlers, logger);
   EXPECT_TRUE(null_params.empty());
   for (size_t j = 0; j < nR; ++j) {
@@ -62,9 +62,11 @@ void check_orthogonal_to_nonorthogonal_space() {
 }
 } // namespace
 
-TEST(propose_rspace, modified_gram_schmidt_nonorthogonal_space) { check_orthogonal_to_nonorthogonal_space<double>(); }
+TEST(propose_rspace, project_out_and_orthonormalise_nonorthogonal_space) {
+  check_orthogonal_to_nonorthogonal_space<double>();
+}
 
-TEST(propose_rspace, modified_gram_schmidt_nonorthogonal_space_complex) {
+TEST(propose_rspace, project_out_and_orthonormalise_nonorthogonal_space_complex) {
   check_orthogonal_to_nonorthogonal_space<std::complex<double>>();
 }
 

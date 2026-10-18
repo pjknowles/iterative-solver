@@ -21,9 +21,7 @@ void resize_qspace(subspace::IXSpace<R, Q, P>& xspace, const subspace::Matrix<va
   logger.trace("resize_qspace()");
   auto q_delete = limit_qspace_size(xspace.dimensions(), QSpaceOptions{.max_size = max_size}, solutions, logger);
   logger.debug("delete Q parameter indices = ", q_delete);
-  std::sort(begin(q_delete), end(q_delete), std::greater<int>());
-  for (auto iq : q_delete)
-    xspace.eraseq(iq);
+  erase_qspace(xspace, q_delete);
 }
 
 /*!
@@ -131,10 +129,10 @@ public:
     }
     const auto wparams = cwrap(begin(rparams), begin(rparams) + nR);
     auto q_delete = max_overlap_with_R(wparams, xspace.cparamsq(), handlers.rq(), logger);
-    for (auto i : q_delete) {
-      xspace.eraseq(i);
+    erase_qspace(xspace, q_delete);
+    // q_delete is in descending order
+    for (auto i : q_delete)
       solutions_xspace.remove_col(dims_entry.oQ() + i);
-    }
     if (xspace.dimensions().nQ + nR > m_max_Qsize_after_reset)
       resize_qspace(xspace, solutions_xspace, m_max_Qsize_after_reset > nR ? m_max_Qsize_after_reset - nR : 0, logger);
     auto new_working_set = std::vector<int>(nR);

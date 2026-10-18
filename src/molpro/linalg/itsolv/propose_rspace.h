@@ -46,6 +46,15 @@ void normalise(VecRef<R>& params, array::ArrayHandler<R, R>& handler, Logger& lo
     }
   }
 }
+
+//! Erases Q parameters with the given indices, in descending order so that the remaining indices stay valid
+template <class R, class Q, class P, typename Index>
+void erase_qspace(subspace::IXSpace<R, Q, P>& xspace, std::vector<Index> indices) {
+  std::sort(begin(indices), end(indices), std::greater<Index>());
+  for (auto i : indices)
+    xspace.eraseq(i);
+}
+
 namespace dspace {
 
 /*!
@@ -634,9 +643,7 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
     auto prof = profiler.push("construct_dspace");
     auto [dparams, dactions] =
         construct_dspace(solutions, xspace, q_delete, r_opts.norm_thresh, r_opts.svd_thresh, handlers.qq(), logger);
-    std::sort(begin(q_delete), end(q_delete), std::greater<int>());
-    for (auto iq : q_delete)
-      xspace.eraseq(iq);
+    erase_qspace(xspace, q_delete);
     auto wdparams = wrap(dparams);
     auto wdactions = wrap(dactions);
     xspace.update_dspace(wdparams, wdactions);

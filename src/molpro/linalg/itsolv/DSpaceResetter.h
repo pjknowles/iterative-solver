@@ -100,6 +100,9 @@ public:
     logger.trace("DSpaceResetter::run()");
     logger.trace("dimensions {nP, nQ, nD, nR} = ", xspace.dimensions().nP, xspace.dimensions().nQ,
                  xspace.dimensions().nD, rparams.size());
+    const auto dims_entry = xspace.dimensions();
+    // solutions with columns kept in step with the changes to xspace below
+    auto solutions_xspace = solutions;
     if (solution_params.empty() && !rparams.empty()) {
       logger.debug("constructing solutions");
       const auto dims = xspace.dimensions();
@@ -118,6 +121,8 @@ public:
                                 handlers.qq());
       VecRef<Q> null_params, null_actions;
       xspace.update_dspace(null_params, null_actions);
+      for (size_t i = 0; i < dims_entry.nD; ++i)
+        solutions_xspace.remove_col(dims_entry.oD());
     }
     const auto nR = std::min(rparams.size(), solution_params.size());
     for (size_t i = 0; i < nR; ++i) {
@@ -126,10 +131,12 @@ public:
     }
     const auto wparams = cwrap(begin(rparams), begin(rparams) + nR);
     auto q_delete = max_overlap_with_R(wparams, xspace.cparamsq(), handlers.rq(), logger);
-    for (auto i : q_delete)
+    for (auto i : q_delete) {
       xspace.eraseq(i);
+      solutions_xspace.remove_col(dims_entry.oQ() + i);
+    }
     if (xspace.dimensions().nQ + nR > m_max_Qsize_after_reset)
-      resize_qspace(xspace, solutions, m_max_Qsize_after_reset > nR ? m_max_Qsize_after_reset - nR : 0, logger);
+      resize_qspace(xspace, solutions_xspace, m_max_Qsize_after_reset > nR ? m_max_Qsize_after_reset - nR : 0, logger);
     auto new_working_set = std::vector<int>(nR);
     std::iota(begin(new_working_set), end(new_working_set), 0);
     return new_working_set;

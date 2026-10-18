@@ -390,9 +390,9 @@ public:
     return m_xspace->data.count(subspace::EqnData::value) > 0 ? m_xspace->data[subspace::EqnData::value](0, 0)
                                                               : nan("molpro::linalg::itsolv::IterativeSolver::value");
   }
-  //  void set_profiler(molpro::profiler::Profiler& profiler) override { m_profiler.reset(&profiler); }
   void set_profiler(molpro::profiler::Profiler& profiler) override {
-    m_profiler = std::shared_ptr<molpro::profiler::Profiler>(&profiler);
+    // non-owning: the profiler belongs to the caller and must not be deleted by the solver
+    m_profiler = std::shared_ptr<molpro::profiler::Profiler>(std::shared_ptr<molpro::profiler::Profiler>{}, &profiler);
   }
   const std::shared_ptr<molpro::profiler::Profiler>& profiler() const override { return m_profiler; }
 

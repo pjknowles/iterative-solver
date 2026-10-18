@@ -395,7 +395,7 @@ public:
   virtual bool nonlinear() const = 0;
   /*!
    * @brief Attach a profiler in order to collect performance data
-   * @param profiler
+   * @param profiler The profiler to use. It is not owned by the solver and must outlive it.
    */
   virtual void set_profiler(molpro::profiler::Profiler& profiler) = 0;
   virtual const std::shared_ptr<molpro::profiler::Profiler>& profiler() const = 0;

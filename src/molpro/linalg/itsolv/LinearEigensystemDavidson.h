@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <format>
 #include <iterator>
 #include <map>
@@ -290,12 +291,59 @@ protected:
     }
   }
 
+  /*!
+   * @brief The error of the last root, whose complex pair partner was truncated away, is the norm of its complex
+   * residual
+   *
+   * The residual of that root is only the real part of the complex residual. The imaginary part is the residual of
+   * the truncated partner, which is assembled from the subspace.
+   */
+  void compute_errors(const std::vector<int>& roots, const CVecRef<R>& params, const CVecRef<R>& residuals,
+                      std::vector<value_type_abs>& errors) override {
+    SolverTemplate::compute_errors(roots, params, residuals, errors);
+    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
+    assert(subspace_solver);
+    const auto nroots = subspace_solver->size();
+    if (nroots == 0)
+      return;
+    const auto partner = subspace_solver->complex_partner(nroots - 1);
+    const auto root_it = std::ranges::find(roots, int(nroots - 1));
+    if (!partner || *partner < nroots || root_it == roots.end())
+      return;
+    const auto i = std::ranges::distance(roots.begin(), root_it);
+    const auto& imag_eigval_components = subspace_solver->imag_eigval_components();
+    const auto it = std::ranges::find(imag_eigval_components, nroots - 1, [](const auto& pair) { return pair.first; });
+    if (it == imag_eigval_components.end())
+      throw std::logic_error("The imaginary part of the eigenvalue of a complex pair member is missing");
+    const auto& solutions = subspace_solver->retained_solutions();
+    auto partner_param = this->m_handlers->rr().copy(params.at(i));
+    auto partner_residual = this->m_handlers->rr().copy(params.at(i));
+    construct_subspace_vector(solutions, int(*partner), partner_param);
+    construct_subspace_action(solutions, int(*partner), partner_residual);
+    // The imaginary part of the partner's eigenvalue is the negative of the one of the last root
+    this->m_handlers->rr().axpy(-eigenvalues().at(nroots - 1), partner_param, partner_residual);
+    this->m_handlers->rr().axpy(-it->second, params.at(i), partner_residual);
+    errors.at(i) = std::sqrt(errors.at(i) * errors.at(i) +
+                             std::abs(this->m_handlers->rr().dot(partner_residual, partner_residual)));
+  }
+
   //! Constructs in param the subspace vector with the coefficients in the given row of solutions
   void construct_subspace_vector(const subspace::Matrix<scalar_type>& solutions, int row, R& param) {
     const auto& dims = this->m_xspace->dimensions();
     assert(solutions.cols() == dims.nX());
     detail::construct_solution(wrap_arg(param), {row}, solutions, this->m_xspace->paramsp(), this->m_xspace->paramsq(),
                                this->m_xspace->paramsd(), dims.oP(), dims.oQ(), dims.oD(), *this->m_handlers);
+  }
+
+  //! Constructs in action the action on the subspace vector with the coefficients in the given row of solutions
+  void construct_subspace_action(const subspace::Matrix<scalar_type>& solutions, int row, R& action) {
+    const auto& dims = this->m_xspace->dimensions();
+    assert(solutions.cols() == dims.nX());
+    detail::construct_solution(wrap_arg(action), {row}, solutions, {}, this->m_xspace->actionsq(),
+                               this->m_xspace->actionsd(), dims.oP(), dims.oQ(), dims.oD(), *this->m_handlers);
+    if (this->m_apply_p)
+      this->m_apply_p(detail::construct_vectorP({row}, solutions, dims.oP(), dims.nP), this->m_xspace->cparamsp(),
+                      wrap_arg(action));
   }
 
   detail::DSpaceResetter<Q> m_dspace_resetter; //!< resets D space

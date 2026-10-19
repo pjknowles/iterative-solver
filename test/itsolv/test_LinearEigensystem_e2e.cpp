@@ -112,12 +112,14 @@ TEST(LinearEigensystem, Davidson_complex_roots) {
 class SplitComplexPairProblem : public molpro::linalg::itsolv::Problem<std::vector<double>> {
 public:
   static constexpr size_t n = 30;
+  double coupling = 1.;      //!< couples the third and fourth diagonal element into the complex pair
+  double offdiagonal = 0.01; //!< scale of the remaining off-diagonal elements
   double element(size_t i, size_t j) const {
     if (i == 2 and j == 3)
-      return 1.;
+      return coupling;
     if (i == 3 and j == 2)
-      return -1.;
-    return i == j ? 1. + i : 0.01 / (1. + std::abs(double(i) - double(j)));
+      return -coupling;
+    return i == j ? 1. + i : offdiagonal / (1. + std::abs(double(i) - double(j)));
   }
 
   bool diagonals(std::vector<double> &d) const override {
@@ -162,6 +164,40 @@ TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots) {
   ASSERT_EQ(eigvals.size(), solver->n_roots());
   for (size_t i = 0; i < eigvals.size(); ++i)
     EXPECT_NEAR(eigvals[i], reference[i].real(), 1e-8);
+}
+
+//! The convergence of a root whose complex pair partner is truncated covers the imaginary part of its residual
+TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots_imaginary_residual) {
+  molpro::mpi::init();
+  SplitComplexPairProblem problem;
+  problem.offdiagonal = 0.1;
+  Eigen::MatrixXd matrix(problem.n, problem.n);
+  for (size_t i = 0; i < problem.n; ++i)
+    for (size_t j = 0; j < problem.n; ++j)
+      matrix(i, j) = problem.element(i, j);
+  const Eigen::VectorXcd reference_complex = Eigen::EigenSolver<Eigen::MatrixXd>(matrix).eigenvalues();
+  std::vector<std::complex<double>> reference(reference_complex.begin(), reference_complex.end());
+  std::ranges::sort(reference, {}, [](const auto &e) { return e.real(); });
+  ASSERT_NEAR(std::abs(reference.at(2) - std::conj(reference.at(3))), 0., 1e-12);
+
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>("Davidson");
+  solver->set_n_roots(3);
+  solver->set_max_iter(100);
+  solver->set_hermiticity(false);
+  const double threshold = 1e-8;
+  solver->set_convergence_threshold(threshold);
+  auto params = std::vector<std::vector<double>>(solver->n_roots(), std::vector<double>(problem.n));
+  auto actions = params;
+  ASSERT_TRUE(solver->solve(params, actions, problem, true));
+  solver->solution({0, 1, 2}, params, actions);
+  // With the residuals r = M x + e_imag y and r_imag = M y - e_imag x of the real and imaginary part x and y of the
+  // complex eigenvector, where M = A - e_real, y and r_imag follow from x and r
+  const Eigen::Map<const Eigen::VectorXd> x(params[2].data(), problem.n), r(actions[2].data(), problem.n);
+  const Eigen::MatrixXd m = matrix - reference[2].real() * Eigen::MatrixXd::Identity(problem.n, problem.n);
+  const double e_imag = reference[2].imag();
+  const Eigen::VectorXd y = (r - m * x) / e_imag;
+  const Eigen::VectorXd r_imag = m * y - e_imag * x;
+  EXPECT_LT(std::sqrt((r.squaredNorm() + r_imag.squaredNorm()) / (x.squaredNorm() + y.squaredNorm())), threshold);
 }
 
 //! Records the warnings issued through it

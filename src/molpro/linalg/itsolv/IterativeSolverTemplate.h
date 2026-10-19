@@ -620,6 +620,11 @@ protected:
   //! Constructs residual for given roots provided their parameters and actions
   virtual void construct_residual(const std::vector<int>& roots, const CVecRef<R>& params,
                                   const VecRef<R>& actions) = 0;
+  //! Computes the errors of roots, given their parameters and residuals; by default the norms of the residuals
+  virtual void compute_errors(const std::vector<int>& roots, const CVecRef<R>& params, const CVecRef<R>& residuals,
+                              std::vector<value_type_abs>& errors) {
+    detail::update_errors(errors, residuals, m_handlers->rr());
+  }
   virtual bool linearEigensystem() const { return false; }
   /*!
    * @brief Solves the subspace problems and selects the working set of roots, returning their parameters and residual
@@ -645,7 +650,7 @@ protected:
       std::iota(begin(roots), end(roots), start_sol);
       solution(roots, parameters, action);
       auto errors = std::vector<value_type_abs>(roots.size(), 0);
-      detail::update_errors(errors, cwrap(action), m_handlers->rr());
+      compute_errors(roots, cwrap(parameters), cwrap(action), errors);
       if (batches.size() > 1) {
         for (size_t i = 0; i < roots.size(); ++i)
           temp_solutions.emplace_back(m_handlers->qr().copy(parameters[i]), m_handlers->qr().copy(action[i]));

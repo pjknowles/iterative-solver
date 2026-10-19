@@ -282,26 +282,20 @@ protected:
           // The partner is not among roots, or was truncated away, so its vector is assembled from the subspace
           if (partner >= subspace_solver->retained_solutions().rows())
             throw std::logic_error("The complex conjugate partner of a root is not among the retained solutions");
-          add_subspace_vector(it->second, subspace_solver->retained_solutions(), partner, actions.at(i));
+          auto partner_param = this->m_handlers->rr().copy(actions.at(i));
+          construct_subspace_vector(subspace_solver->retained_solutions(), int(partner), partner_param);
+          this->m_handlers->rr().axpy(it->second, partner_param, actions.at(i));
         }
       }
     }
   }
 
-  //! Adds scale times the subspace vector with the coefficients in row of solutions to target
-  void add_subspace_vector(scalar_type scale, const subspace::Matrix<scalar_type>& solutions, size_t row,
-                           R& target) const {
+  //! Constructs in param the subspace vector with the coefficients in the given row of solutions
+  void construct_subspace_vector(const subspace::Matrix<scalar_type>& solutions, int row, R& param) {
     const auto& dims = this->m_xspace->dimensions();
-    const auto pparams = this->m_xspace->cparamsp();
-    const auto qparams = this->m_xspace->cparamsq();
-    const auto dparams = this->m_xspace->cparamsd();
     assert(solutions.cols() == dims.nX());
-    for (size_t j = 0; j < pparams.size(); ++j)
-      this->m_handlers->rp().axpy(scale * solutions(row, dims.oP() + j), pparams.at(j), target);
-    for (size_t j = 0; j < qparams.size(); ++j)
-      this->m_handlers->rq().axpy(scale * solutions(row, dims.oQ() + j), qparams.at(j), target);
-    for (size_t j = 0; j < dparams.size(); ++j)
-      this->m_handlers->rq().axpy(scale * solutions(row, dims.oD() + j), dparams.at(j), target);
+    detail::construct_solution(wrap_arg(param), {row}, solutions, this->m_xspace->paramsp(), this->m_xspace->paramsq(),
+                               this->m_xspace->paramsd(), dims.oP(), dims.oQ(), dims.oD(), *this->m_handlers);
   }
 
   detail::DSpaceResetter<Q> m_dspace_resetter; //!< resets D space

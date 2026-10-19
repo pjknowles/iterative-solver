@@ -115,6 +115,17 @@ TEST(TestArrayHandlerDDiskSparse, copy_paged) {
   ASSERT_THAT(result, Pointwise(DoubleEq(), std::vector<double>(ref.begin() + lo, ref.begin() + hi)));
 }
 
+TEST(TestArrayHandlerDDiskSparse, copy_incompatible) {
+  const size_t dim = 20;
+  auto x = DistrArrayFile(dim, mpi_comm);
+  x.fill(0.5);
+  auto y = std::map<size_t, double>{{1, 1.0}, {dim, 2.0}};
+  auto handler = ArrayHandlerDDiskSparse<decltype(x), decltype(y)>{};
+  EXPECT_THROW(handler.copy(x, y), molpro::linalg::array::util::ArrayHandlerError);
+  const auto [lo, hi] = molpro::linalg::array::util::local_range(x);
+  EXPECT_THAT(x.get(lo, hi), Each(DoubleEq(0.5)));
+}
+
 TEST(TestArrayHandlerDDiskSparse, unary_operations_throw) {
   auto x = DistrArrayFile(20, mpi_comm);
   auto handler = ArrayHandlerDDiskSparse<decltype(x), std::map<size_t, double>>{};

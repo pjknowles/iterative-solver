@@ -27,6 +27,9 @@ public:
   AL copy(const AR &source) override { throw std::logic_error("General copy from sparse to dense is ill-defined"); };
   void copy(AL &x, const AR &y) override {
     this->m_counter->copy++;
+    // checked before x is overwritten
+    if (not y.empty() and y.rbegin()->first >= x.size())
+      error("ArrayHandlerDDiskSparse::copy() sparse array y is incompatible");
     x.fill(0);
     x.axpy(1, y);
   };

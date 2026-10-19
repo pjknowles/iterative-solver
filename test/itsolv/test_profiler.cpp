@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <iostream>
+#include <sstream>
 #include <molpro/Profiler.h>
 #include <molpro/linalg/options.h>
 
@@ -37,4 +38,18 @@ TEST(Profiler, default) {
 //  std::stringstream buffer;
 //  buffer << t.rdbuf();
 //  EXPECT_EQ(buffer.str(),dotgraph);
+}
+TEST(Profiler, user_profiler) {
+  molpro::profiler::Profiler profiler("user");
+  {
+    auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>();
+    solver->set_profiler(profiler);
+    EXPECT_EQ(solver->profiler().get(), &profiler);
+    solver->profiler()->push("Some operation or other");
+  }
+  // the solver must not have destroyed the profiler
+  profiler.push("Another operation");
+  std::stringstream report;
+  report << profiler;
+  EXPECT_NE(report.str().find("Another operation"), std::string::npos);
 }

@@ -252,10 +252,19 @@ public:
    * @param generate_initial_guess Whether to start with a guess based on diagonal
    * elements (true) or on the contents of parameters (false)
    * @return true if the solution was found
+   *
+   * If a P space is used (max_p > 0, diagonal elements are available and the selected P space is at least as large as
+   * the number of roots), the initial subspace is the P space alone, and neither the contents of parameters on entry
+   * nor a generated initial guess are used. If max_p > 0 and diagonal elements are available but the selected P space
+   * is smaller than the number of roots, no P space is used and the initial guess is generated from the diagonal
+   * elements, irrespective of generate_initial_guess; the contents of parameters on entry are not used in this case
+   * either.
    */
   virtual bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
                      bool generate_initial_guess = false) = 0;
+  //! @copydoc solve(const VecRef<R>&, const VecRef<R>&, const Problem<R>&, bool)
   virtual bool solve(R& parameters, R& actions, const Problem<R>& problem, bool generate_initial_guess = false) = 0;
+  //! @copydoc solve(const VecRef<R>&, const VecRef<R>&, const Problem<R>&, bool)
   virtual bool solve(std::vector<R>& parameters, std::vector<R>& actions, const Problem<R>& problem,
                      bool generate_initial_guess = false) = 0;
 
@@ -395,7 +404,7 @@ public:
   virtual bool nonlinear() const = 0;
   /*!
    * @brief Attach a profiler in order to collect performance data
-   * @param profiler
+   * @param profiler The profiler to use. It is not owned by the solver and must outlive it.
    */
   virtual void set_profiler(molpro::profiler::Profiler& profiler) = 0;
   virtual const std::shared_ptr<molpro::profiler::Profiler>& profiler() const = 0;

@@ -6,6 +6,7 @@
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/SolverFactory.h>
 #include <molpro/linalg/itsolv/helper.h>
+#include <numeric>
 #include <vector>
 
 using molpro::linalg::array::Span;
@@ -72,6 +73,67 @@ struct simplified : ::testing::Test {
       return false;
     }
   };
+
+  class PSpaceProblem : public MyProblem {
+  public:
+    using MyProblem::MyProblem;
+
+    std::vector<double> pp_action_matrix(const std::vector<Pvector> &pparams) const override {
+      std::vector<double> result;
+      for (const auto &pi : pparams)
+        for (const auto &pj : pparams) {
+          result.push_back(0);
+          for (const auto &pie : pi)
+            for (const auto &pje : pj)
+              result.back() += matrix(pie.first, pje.first) * pie.second * pje.second;
+        }
+      return result;
+    }
+
+    void p_action(const std::vector<std::vector<double>> &p_coefficients, const CVecRef<Pvector> &pparams,
+                  const VecRef<Rvector> &actions) const override {
+      for (size_t k = 0; k < p_coefficients.size(); k++) {
+        auto &a = actions[k].get();
+        for (size_t pi = 0; pi < pparams.size(); pi++)
+          for (const auto &pie : pparams[pi].get())
+            for (size_t i = 0; i < a.size(); i++)
+              a[i] += matrix(i, pie.first) * pie.second * p_coefficients[k][pi];
+      }
+    }
+  };
+
+  class CountingProblem : public MyProblem {
+  public:
+    using MyProblem::MyProblem;
+    mutable std::vector<size_t> action_sizes; //!< number of vectors passed to each call of action()
+
+    void action(const CVecRef<Rvector> &parameters, const VecRef<Rvector> &actions) const override {
+      action_sizes.push_back(parameters.size());
+      MyProblem::action(parameters, actions);
+    }
+  };
+
+  // solves for the lowest nroots eigenpairs and checks that they converged
+  template <class Problem>
+  static void solve_eigensystem(const Problem &problem, size_t nroots, size_t nbuffers, int max_p,
+                                double p_threshold = 1e10) {
+    auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+    solver->set_hermiticity(true);
+    solver->set_n_roots(nroots);
+    solver->set_max_p(max_p);
+    solver->set_p_threshold(p_threshold);
+    std::vector<Rvector> c(nbuffers, Rvector(problem.n)), g(nbuffers, Rvector(problem.n));
+    ASSERT_TRUE(solver->solve(c, g, problem, true));
+    ASSERT_EQ(solver->eigenvalues().size(), nroots);
+    std::vector<int> roots(nroots);
+    std::iota(roots.begin(), roots.end(), 0);
+    c.resize(nroots, Rvector(problem.n));
+    g.resize(nroots, Rvector(problem.n));
+    solver->solution(roots, c, g);
+    for (size_t i = 0; i < nroots; i++)
+      EXPECT_THAT(g[i], ::testing::Pointwise(::testing::DoubleNear(solver->convergence_threshold()),
+                                             Rvector(problem.n, 0)));
+  }
 };
 
 TEST_F(simplified, Problem) {
@@ -137,4 +199,76 @@ TEST_F(simplified, LinearEquations) {
   EXPECT_THAT(c, ::testing::Pointwise(::testing::DoubleNear(1e-10), Rvector(problem.n, 1)));
   EXPECT_THAT(g, ::testing::Pointwise(::testing::DoubleNear(1e-10), Rvector(problem.n, 0)));
   problem.action(molpro::linalg::itsolv::cwrap_arg(c), molpro::linalg::itsolv::wrap_arg(g));
+}
+TEST_F(simplified, LinearEigensystem_max_iter_zero) {
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+  solver->set_max_iter(0);
+  auto problem = simplified::MyProblem(10);
+  Rvector c(problem.n, 0), g(problem.n);
+  c[0] = 1;
+  EXPECT_FALSE(solver->solve(c, g, problem));
+  EXPECT_TRUE(solver->errors().empty());
+}
+
+TEST_F(simplified, LinearEigensystem_pspace) {
+  auto problem = simplified::PSpaceProblem(10);
+  solve_eigensystem(problem, 3, 3, 4);
+}
+
+TEST_F(simplified, LinearEigensystem_pspace_max_p_smaller_than_n_roots) {
+  auto problem = simplified::PSpaceProblem(10);
+  solve_eigensystem(problem, 3, 3, 2);
+}
+
+TEST_F(simplified, LinearEigensystem_pspace_threshold_smaller_than_n_roots) {
+  auto problem = simplified::PSpaceProblem(10);
+  solve_eigensystem(problem, 3, 3, 5, 0.5);
+}
+
+TEST_F(simplified, LinearEigensystem_pspace_too_small_zero_parameters) {
+  // the parameters are not used with max_p > 0, so they need not hold an initial guess
+  const size_t nroots = 3;
+  auto problem = simplified::PSpaceProblem(10);
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+  solver->set_hermiticity(true);
+  solver->set_n_roots(nroots);
+  solver->set_max_p(2);
+  std::vector<Rvector> c(nroots, Rvector(problem.n, 0)), g(nroots, Rvector(problem.n));
+  EXPECT_TRUE(solver->solve(c, g, problem));
+  const auto eigenvalues = solver->eigenvalues();
+  ASSERT_EQ(eigenvalues.size(), nroots);
+  for (size_t i = 0; i < nroots; i++)
+    EXPECT_NEAR(eigenvalues[i], i + 1, 1e-3);
+}
+
+TEST_F(simplified, LinearEigensystem_surplus_buffers) {
+  const size_t nroots = 3;
+  auto problem = simplified::CountingProblem(10);
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+  solver->set_n_roots(nroots);
+  std::vector<Rvector> c(2 * nroots, Rvector(problem.n)), g(2 * nroots, Rvector(problem.n));
+  EXPECT_TRUE(solver->solve(c, g, problem, true));
+  ASSERT_FALSE(problem.action_sizes.empty());
+  EXPECT_EQ(problem.action_sizes.front(), nroots);
+  // every computed action enters the subspace
+  EXPECT_EQ(std::accumulate(problem.action_sizes.begin(), problem.action_sizes.end(), size_t{0}),
+            solver->statistics().r_creations);
+  const auto eigenvalues = solver->eigenvalues();
+  ASSERT_EQ(eigenvalues.size(), nroots);
+  for (size_t i = 0; i < nroots; i++)
+    EXPECT_NEAR(eigenvalues[i], i + 1, 1e-3);
+}
+
+TEST_F(simplified, LinearEigensystem_solve_converged) {
+  auto problem = simplified::CountingProblem(10);
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+  solver->set_n_roots(2);
+  std::vector<Rvector> c(2, Rvector(problem.n)), g(2, Rvector(problem.n));
+  ASSERT_TRUE(solver->solve(c, g, problem, true));
+  ASSERT_TRUE(solver->working_set().empty());
+  problem.action_sizes.clear();
+  EXPECT_TRUE(solver->solve(c, g, problem));
+  // nothing is left to compute, so action() is not called
+  EXPECT_TRUE(problem.action_sizes.empty());
+  EXPECT_TRUE(solver->working_set().empty());
 }

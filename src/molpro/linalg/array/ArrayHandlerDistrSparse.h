@@ -23,7 +23,7 @@ public:
   using typename ArrayHandler<AL, AR>::ProxyHandle;
 
   AL copy(const AR &source) override {
-    throw std::logic_error("General construction of sparse from dense is ill-defined");
+    throw std::logic_error("General copy from sparse to dense is ill-defined");
   };
 
   void copy(AL &x, const AR &y) override {

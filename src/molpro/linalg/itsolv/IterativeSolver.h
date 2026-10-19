@@ -262,7 +262,9 @@ public:
    */
   virtual bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
                      bool generate_initial_guess = false) = 0;
+  //! @copydoc solve(const VecRef<R>&, const VecRef<R>&, const Problem<R>&, bool)
   virtual bool solve(R& parameters, R& actions, const Problem<R>& problem, bool generate_initial_guess = false) = 0;
+  //! @copydoc solve(const VecRef<R>&, const VecRef<R>&, const Problem<R>&, bool)
   virtual bool solve(std::vector<R>& parameters, std::vector<R>& actions, const Problem<R>& problem,
                      bool generate_initial_guess = false) = 0;
 

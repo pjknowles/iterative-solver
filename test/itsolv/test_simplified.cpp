@@ -242,3 +242,17 @@ TEST_F(simplified, LinearEigensystem_surplus_buffers) {
   for (size_t i = 0; i < nroots; i++)
     EXPECT_NEAR(eigenvalues[i], i + 1, 1e-3);
 }
+
+TEST_F(simplified, LinearEigensystem_solve_converged) {
+  auto problem = simplified::CountingProblem(10);
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+  solver->set_n_roots(2);
+  std::vector<Rvector> c(2, Rvector(problem.n)), g(2, Rvector(problem.n));
+  ASSERT_TRUE(solver->solve(c, g, problem, true));
+  ASSERT_TRUE(solver->working_set().empty());
+  problem.action_sizes.clear();
+  EXPECT_TRUE(solver->solve(c, g, problem));
+  // nothing is left to compute, so action() is not called
+  EXPECT_TRUE(problem.action_sizes.empty());
+  EXPECT_TRUE(solver->working_set().empty());
+}

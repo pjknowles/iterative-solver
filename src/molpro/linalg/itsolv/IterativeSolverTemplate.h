@@ -416,8 +416,9 @@ public:
       } else if (iter > 0 or pspace.empty()) {
         // add_vector() takes up no more vectors than there are in the working set
         const auto naction = std::min(size_t(nwork), m_working_set.size());
-        problem.action(cwrap(parameters.begin(), parameters.begin() + naction),
-                       wrap(actions.begin(), actions.begin() + naction));
+        if (naction > 0)
+          problem.action(cwrap(parameters.begin(), parameters.begin() + naction),
+                         wrap(actions.begin(), actions.begin() + naction));
         nwork = this->add_vector(parameters, actions);
       }
       while (this->end_iteration_needed()) {

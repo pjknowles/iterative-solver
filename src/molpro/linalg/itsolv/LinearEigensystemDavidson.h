@@ -17,6 +17,8 @@
 #include <format>
 #include <iterator>
 #include <map>
+#include <optional>
+#include <stdexcept>
 
 namespace molpro::linalg::itsolv {
 
@@ -271,16 +273,16 @@ protected:
         // the partner root is used.
         // Note: The minus sign in above expression is implicitly taken into account as the
         // imaginary parts of the complex conjugate eigenvalue pair has flipped signs
-        const auto partner = subspace_solver->complex_partner(roots[i]);
-        assert(partner);
-        const auto root_it = std::ranges::find(roots, int(*partner));
+        const auto partner = subspace_solver->complex_partner(roots[i]).value();
+        const auto root_it = std::ranges::find(roots, int(partner));
         if (root_it != roots.end()) {
           this->m_handlers->rr().axpy(it->second, params.at(std::ranges::distance(roots.begin(), root_it)),
                                       actions.at(i));
         } else {
           // The partner is not among roots, or was truncated away, so its vector is assembled from the subspace
-          assert(*partner < subspace_solver->retained_solutions().rows());
-          add_subspace_vector(it->second, subspace_solver->retained_solutions(), *partner, actions.at(i));
+          if (partner >= subspace_solver->retained_solutions().rows())
+            throw std::logic_error("The complex conjugate partner of a root is not among the retained solutions");
+          add_subspace_vector(it->second, subspace_solver->retained_solutions(), partner, actions.at(i));
         }
       }
     }

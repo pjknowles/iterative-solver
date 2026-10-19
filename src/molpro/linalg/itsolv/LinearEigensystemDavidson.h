@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <format>
 #include <iterator>
 #include <map>
 
@@ -130,6 +131,12 @@ public:
           "The following roots are complex-valued. Associated eigenvectors are the real and imaginary part "
           "of the pairs and the imaginary parts of the eigenvalues are ",
           imag_eigval_components);
+
+      const auto nroots = subspace_solver->size();
+      if (const auto partner = subspace_solver->complex_partner(nroots - 1); partner && *partner >= nroots)
+        this->m_logger->warn(std::format("The complex conjugate partner of root {} is not among the requested roots, so "
+                                         "only the real part of its eigenvector is available",
+                                         nroots));
     }
   }
 

@@ -11,6 +11,9 @@
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -159,6 +162,37 @@ TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots) {
   ASSERT_EQ(eigvals.size(), solver->n_roots());
   for (size_t i = 0; i < eigvals.size(); ++i)
     EXPECT_NEAR(eigvals[i], reference[i].real(), 1e-8);
+}
+
+//! Records the warnings issued through it
+class WarningRecorder : public molpro::linalg::itsolv::Logger {
+public:
+  mutable std::vector<std::string> warnings;
+
+protected:
+  void default_message_handler(std::string_view ctx, molpro::linalg::itsolv::log::Severity severity,
+                               molpro::linalg::itsolv::log::Verbosity verbosity, std::string_view msg) const override {
+    if (severity == molpro::linalg::itsolv::log::Severity::Warning)
+      warnings.emplace_back(msg);
+  }
+};
+
+//! The user is told that only the real part of the eigenvector of a root with a truncated complex partner is available
+TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots_warning) {
+  molpro::mpi::init();
+  SplitComplexPairProblem problem;
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>("Davidson");
+  auto logger = std::make_shared<WarningRecorder>();
+  solver->set_logger(logger);
+  solver->set_n_roots(3);
+  solver->set_max_iter(100);
+  solver->set_hermiticity(false);
+  solver->set_convergence_threshold(1e-8);
+  auto params = std::vector<std::vector<double>>(solver->n_roots(), std::vector<double>(problem.n));
+  auto actions = params;
+  ASSERT_TRUE(solver->solve(params, actions, problem, true));
+  EXPECT_THAT(logger->warnings, ::testing::Contains(::testing::HasSubstr(
+                                    "partner of root 3 is not among the requested roots, so only the real part")));
 }
 
 //! A complex pair split by the number of roots with a reduced subspace, which has to keep the truncated partner

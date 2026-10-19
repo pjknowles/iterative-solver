@@ -468,26 +468,24 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
       dparams_new.emplace_back(util::construct_zeroed_copy(q, handler));
       dactions_new.emplace_back(util::construct_zeroed_copy(q, handler));
     }
-    // coefficient matrices with Q_{delete} or D vectors in rows and new D vectors in columns, as required by gemm_outer
-    auto qd_coeff = subspace::Matrix<value_type>({nQd, nD});
-    auto d_coeff = subspace::Matrix<value_type>({dims.nD, nD});
-    for (size_t i = 0; i < nD; ++i) {
-      for (size_t j = 0; j < nQd; ++j)
-        qd_coeff(j, i) = solutions_proj(i, j);
-      for (size_t j = 0; j < dims.nD; ++j)
-        d_coeff(j, i) = solutions_proj(i, nQd + j);
-    }
+    // coefficient matrix with Q_{delete} and D vectors in rows and new D vectors in columns, as required by gemm_outer
+    auto coeff = subspace::Matrix<value_type>({nQd + dims.nD, nD});
+    for (size_t i = 0; i < nD; ++i)
+      for (size_t j = 0; j < nQd + dims.nD; ++j)
+        coeff(j, i) = solutions_proj(i, j);
+    // Q_{delete} followed by D, as the columns of solutions_proj, so that one call per output passes over each new
+    // vector only once
     auto qd_params = CVecRef<Q>{}, qd_actions = CVecRef<Q>{};
     for (auto iq : q_delete) {
       qd_params.emplace_back(qparams.at(iq));
       qd_actions.emplace_back(qactions.at(iq));
     }
+    qd_params.insert(qd_params.end(), dparams.begin(), dparams.end());
+    qd_actions.insert(qd_actions.end(), dactions.begin(), dactions.end());
     const auto wdparams_new = wrap(dparams_new);
     const auto wdactions_new = wrap(dactions_new);
-    handler.gemm_outer(qd_coeff, qd_params, wdparams_new);
-    handler.gemm_outer(qd_coeff, qd_actions, wdactions_new);
-    handler.gemm_outer(d_coeff, dparams, wdparams_new);
-    handler.gemm_outer(d_coeff, dactions, wdactions_new);
+    handler.gemm_outer(coeff, qd_params, wdparams_new);
+    handler.gemm_outer(coeff, qd_actions, wdactions_new);
   }
   for (size_t i = 0; i < nD; ++i) {
     auto norm = std::sqrt(std::abs(handler.dot(dparams_new.at(i), dparams_new.at(i))));

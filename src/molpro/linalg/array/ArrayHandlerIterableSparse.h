@@ -32,6 +32,9 @@ public:
   };
 
   void copy(AL &x, const AR &y) override {
+    // checked before x is overwritten
+    if (not y.empty() and y.rbegin()->first >= x.size())
+      error("ArrayHandlerIterableSparse::copy() sparse array y is incompatible");
     std::fill(x.begin(), x.end(), 0);
     for (const auto &s : y)
       *(x.begin() + s.first) = s.second;

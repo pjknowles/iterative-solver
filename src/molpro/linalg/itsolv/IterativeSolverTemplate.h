@@ -423,7 +423,7 @@ public:
       while (this->end_iteration_needed()) {
         if (nwork > 0) {
           if (use_diagonals) {
-            // parameters[0] is scratch space to hand the diagonals over; end_iteration() writes the new parameters
+            // parameters[0] is overwritten to hand the diagonals to the preconditioner
             m_handlers->rq().copy(parameters.at(0), *diagonals);
             problem.precondition(wrap(actions.begin(), actions.begin() + nwork), this->working_set_eigenvalues(),
                                  parameters.at(0));

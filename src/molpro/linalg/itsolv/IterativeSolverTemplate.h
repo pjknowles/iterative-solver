@@ -634,10 +634,18 @@ protected:
   //! Whether output of verbosity v is printed in solve(); everything is printed if no verbosity was set
   bool verbosity_at_least(Verbosity v) const { return !m_verbosity.has_value() || m_verbosity >= v; }
 
-  //! Fills parameters with unit vectors at the positions of the lowest diagonal elements
+  /*!
+   * @brief Fills parameters with unit vectors at the positions of the lowest diagonal elements
+   *
+   * One vector is generated per root in the working set, as far as parameters can hold them; with an empty working
+   * set nothing is generated.
+   */
   void generate_initial_guess_from_diagonals(const VecRef<R>& parameters, const Q& diagonals) {
     // add_vector() takes up no more vectors than there are in the working set
-    auto guess = m_handlers->qq().select(std::min(parameters.size(), m_working_set.size()), diagonals);
+    const auto nguess = std::min(parameters.size(), m_working_set.size());
+    if (nguess == 0)
+      return;
+    auto guess = m_handlers->qq().select(nguess, diagonals);
     size_t root = 0;
     if (verbosity_at_least(Verbosity::Summary)) {
       this->m_logger->info("Initial guess generated from diagonal elements");

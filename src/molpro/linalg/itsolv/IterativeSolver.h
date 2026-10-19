@@ -259,6 +259,10 @@ public:
    * is smaller than the number of roots, no P space is used and the initial guess is generated from the diagonal
    * elements, irrespective of generate_initial_guess; the contents of parameters on entry are not used in this case
    * either.
+   *
+   * Starting vectors, whether generated or taken from parameters, are only used for the roots in the working set, at
+   * most one per root. On a solver that is used again after an earlier solve(), roots that have already converged are
+   * not in the working set, so fewer guesses, or none at all, are generated.
    */
   virtual bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
                      bool generate_initial_guess = false) = 0;

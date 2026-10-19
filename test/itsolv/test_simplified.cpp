@@ -304,3 +304,18 @@ TEST_F(simplified, LinearEigensystem_pspace_no_initial_guess) {
   EXPECT_EQ(logger->count("P-space dimension"), 1);
   EXPECT_EQ(logger->count("Initial guess generated"), 0);
 }
+
+TEST_F(simplified, LinearEigensystem_solve_converged_initial_guess) {
+  // a converged solver has an empty working set, which takes up no initial guess
+  auto problem = simplified::MyProblem(10);
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+  auto logger = std::make_shared<RecordingLogger>();
+  solver->set_logger(logger);
+  solver->set_n_roots(2);
+  std::vector<Rvector> c(2, Rvector(problem.n)), g(2, Rvector(problem.n));
+  ASSERT_TRUE(solver->solve(c, g, problem, true));
+  ASSERT_TRUE(solver->working_set().empty());
+  logger->messages.clear();
+  EXPECT_TRUE(solver->solve(c, g, problem, true));
+  EXPECT_EQ(logger->count("Initial guess generated"), 0);
+}

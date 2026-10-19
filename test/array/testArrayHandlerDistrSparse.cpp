@@ -83,6 +83,7 @@ TEST(TestArrayHandlerDistrSparse, copy) {
     ref[el.first] = el.second;
   auto handler = ArrayHandlerDistrSparse<decltype(x), decltype(y)>{};
   handler.copy(x, y);
+  EXPECT_EQ(handler.counter().copy, 1);
   auto lb = x.local_buffer();
   ASSERT_THAT(std::vector<double>(lb->begin(), lb->end()),
               Pointwise(DoubleEq(), std::vector<double>(ref.begin() + lb->start(), ref.begin() + lb->start() + lb->size())));

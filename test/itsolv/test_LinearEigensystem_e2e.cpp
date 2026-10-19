@@ -14,6 +14,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -139,24 +140,41 @@ public:
   }
 };
 
-TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots) {
-  molpro::mpi::init();
-  SplitComplexPairProblem problem;
+//! The matrix of problem
+Eigen::MatrixXd dense_matrix(const SplitComplexPairProblem &problem) {
   Eigen::MatrixXd matrix(problem.n, problem.n);
   for (size_t i = 0; i < problem.n; ++i)
     for (size_t j = 0; j < problem.n; ++j)
       matrix(i, j) = problem.element(i, j);
-  const Eigen::VectorXcd reference_complex = Eigen::EigenSolver<Eigen::MatrixXd>(matrix).eigenvalues();
-  std::vector<std::complex<double>> reference(reference_complex.begin(), reference_complex.end());
-  std::ranges::sort(reference, {}, [](const auto &e) { return e.real(); });
-  ASSERT_NEAR(std::abs(reference.at(2) - std::conj(reference.at(3))), 0., 1e-12);
-  ASSERT_GT(std::abs(reference.at(2).imag()), 0.5);
+  return matrix;
+}
 
-  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>("Davidson");
-  solver->set_n_roots(3);
+//! The eigenvalues of problem in the order of the solver, i.e. by real part and then by imaginary part
+std::vector<std::complex<double>> sorted_reference_eigenvalues(const SplitComplexPairProblem &problem) {
+  const Eigen::VectorXcd eigenvalues = Eigen::EigenSolver<Eigen::MatrixXd>(dense_matrix(problem)).eigenvalues();
+  std::vector<std::complex<double>> reference(eigenvalues.begin(), eigenvalues.end());
+  std::ranges::sort(reference, {}, [](const auto &e) { return std::pair{e.real(), e.imag()}; });
+  return reference;
+}
+
+//! A non-hermitian Davidson solver for n_roots roots, converging to 1e-8 within 100 iterations
+auto create_split_pair_solver(size_t n_roots, const std::string &options = "") {
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>("Davidson", options);
+  solver->set_n_roots(n_roots);
   solver->set_max_iter(100);
   solver->set_hermiticity(false);
   solver->set_convergence_threshold(1e-8);
+  return solver;
+}
+
+TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots) {
+  molpro::mpi::init();
+  SplitComplexPairProblem problem;
+  const auto reference = sorted_reference_eigenvalues(problem);
+  ASSERT_NEAR(std::abs(reference.at(2) - std::conj(reference.at(3))), 0., 1e-12);
+  ASSERT_GT(std::abs(reference.at(2).imag()), 0.5);
+
+  auto solver = create_split_pair_solver(3);
   auto params = std::vector<std::vector<double>>(solver->n_roots(), std::vector<double>(problem.n));
   auto actions = params;
   ASSERT_TRUE(solver->solve(params, actions, problem, true));
@@ -171,21 +189,11 @@ TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots_imaginary_residua
   molpro::mpi::init();
   SplitComplexPairProblem problem;
   problem.offdiagonal = 0.1;
-  Eigen::MatrixXd matrix(problem.n, problem.n);
-  for (size_t i = 0; i < problem.n; ++i)
-    for (size_t j = 0; j < problem.n; ++j)
-      matrix(i, j) = problem.element(i, j);
-  const Eigen::VectorXcd reference_complex = Eigen::EigenSolver<Eigen::MatrixXd>(matrix).eigenvalues();
-  std::vector<std::complex<double>> reference(reference_complex.begin(), reference_complex.end());
-  std::ranges::sort(reference, {}, [](const auto &e) { return e.real(); });
+  const Eigen::MatrixXd matrix = dense_matrix(problem);
+  const auto reference = sorted_reference_eigenvalues(problem);
   ASSERT_NEAR(std::abs(reference.at(2) - std::conj(reference.at(3))), 0., 1e-12);
 
-  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>("Davidson");
-  solver->set_n_roots(3);
-  solver->set_max_iter(100);
-  solver->set_hermiticity(false);
-  const double threshold = 1e-8;
-  solver->set_convergence_threshold(threshold);
+  auto solver = create_split_pair_solver(3);
   auto params = std::vector<std::vector<double>>(solver->n_roots(), std::vector<double>(problem.n));
   auto actions = params;
   ASSERT_TRUE(solver->solve(params, actions, problem, true));
@@ -197,7 +205,8 @@ TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots_imaginary_residua
   const double e_imag = reference[2].imag();
   const Eigen::VectorXd y = (r - m * x) / e_imag;
   const Eigen::VectorXd r_imag = m * y - e_imag * x;
-  EXPECT_LT(std::sqrt((r.squaredNorm() + r_imag.squaredNorm()) / (x.squaredNorm() + y.squaredNorm())), threshold);
+  EXPECT_LT(std::sqrt((r.squaredNorm() + r_imag.squaredNorm()) / (x.squaredNorm() + y.squaredNorm())),
+            solver->convergence_threshold());
 }
 
 //! Records the warnings issued through it
@@ -217,13 +226,9 @@ protected:
 TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots_warning) {
   molpro::mpi::init();
   SplitComplexPairProblem problem;
-  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>("Davidson");
+  auto solver = create_split_pair_solver(3);
   auto logger = std::make_shared<WarningRecorder>();
   solver->set_logger(logger);
-  solver->set_n_roots(3);
-  solver->set_max_iter(100);
-  solver->set_hermiticity(false);
-  solver->set_convergence_threshold(1e-8);
   auto params = std::vector<std::vector<double>>(solver->n_roots(), std::vector<double>(problem.n));
   auto actions = params;
   ASSERT_TRUE(solver->solve(params, actions, problem, true));
@@ -237,19 +242,9 @@ class Davidson_complex_pair_split_reduced_subspace : public ::testing::TestWithP
 TEST_P(Davidson_complex_pair_split_reduced_subspace, converges) {
   molpro::mpi::init();
   SplitComplexPairProblem problem;
-  Eigen::MatrixXd matrix(problem.n, problem.n);
-  for (size_t i = 0; i < problem.n; ++i)
-    for (size_t j = 0; j < problem.n; ++j)
-      matrix(i, j) = problem.element(i, j);
-  const Eigen::VectorXcd reference_complex = Eigen::EigenSolver<Eigen::MatrixXd>(matrix).eigenvalues();
-  std::vector<std::complex<double>> reference(reference_complex.begin(), reference_complex.end());
-  std::ranges::sort(reference, {}, [](const auto &e) { return e.real(); });
+  const auto reference = sorted_reference_eigenvalues(problem);
 
-  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>("Davidson", GetParam());
-  solver->set_n_roots(3);
-  solver->set_max_iter(100);
-  solver->set_hermiticity(false);
-  solver->set_convergence_threshold(1e-8);
+  auto solver = create_split_pair_solver(3, GetParam());
   auto params = std::vector<std::vector<double>>(solver->n_roots(), std::vector<double>(problem.n));
   auto actions = params;
   ASSERT_TRUE(solver->solve(params, actions, problem, true));
@@ -267,20 +262,10 @@ INSTANTIATE_TEST_SUITE_P(LinearEigensystem, Davidson_complex_pair_split_reduced_
 TEST(LinearEigensystem, Davidson_complex_pair_split_by_batches) {
   molpro::mpi::init();
   SplitComplexPairProblem problem;
-  Eigen::MatrixXd matrix(problem.n, problem.n);
-  for (size_t i = 0; i < problem.n; ++i)
-    for (size_t j = 0; j < problem.n; ++j)
-      matrix(i, j) = problem.element(i, j);
-  const Eigen::VectorXcd reference_complex = Eigen::EigenSolver<Eigen::MatrixXd>(matrix).eigenvalues();
-  std::vector<std::complex<double>> reference(reference_complex.begin(), reference_complex.end());
-  std::ranges::sort(reference, {}, [](const auto &e) { return e.real(); });
+  const auto reference = sorted_reference_eigenvalues(problem);
   ASSERT_NEAR(std::abs(reference.at(2) - std::conj(reference.at(3))), 0., 1e-12);
 
-  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>("Davidson");
-  solver->set_n_roots(4);
-  solver->set_max_iter(100);
-  solver->set_hermiticity(false);
-  solver->set_convergence_threshold(1e-8);
+  auto solver = create_split_pair_solver(4);
   auto params = std::vector<std::vector<double>>(3, std::vector<double>(problem.n));
   auto actions = params;
   ASSERT_TRUE(solver->solve(params, actions, problem, true));

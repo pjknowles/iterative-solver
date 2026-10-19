@@ -10,7 +10,10 @@
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/util.h>
 
+#include <algorithm>
+#include <cassert>
 #include <cstddef>
+#include <functional>
 #include <limits>
 
 namespace molpro::linalg::itsolv::detail {
@@ -22,6 +25,19 @@ void resize_qspace(subspace::IXSpace<R, Q, P>& xspace, const subspace::Matrix<va
   auto q_delete = limit_qspace_size(xspace.dimensions(), QSpaceOptions{.max_size = max_size}, solutions, logger);
   logger.debug("delete Q parameter indices = ", q_delete);
   erase_qspace(xspace, q_delete);
+}
+
+//! Erases Q parameters with the given indices together with the corresponding columns of a solutions matrix
+template <class R, class Q, class P, typename value_type, typename Index>
+void erase_qspace(subspace::IXSpace<R, Q, P>& xspace, subspace::Matrix<value_type>& solutions,
+                  std::vector<Index> indices) {
+  assert(solutions.cols() == xspace.dimensions().nX());
+  const auto oQ = xspace.dimensions().oQ();
+  std::sort(begin(indices), end(indices), std::greater<Index>());
+  for (auto i : indices) {
+    xspace.eraseq(i);
+    solutions.remove_col(oQ + i);
+  }
 }
 
 /*!
@@ -98,7 +114,6 @@ public:
     logger.trace("DSpaceResetter::run()");
     logger.trace("dimensions {nP, nQ, nD, nR} = ", xspace.dimensions().nP, xspace.dimensions().nQ,
                  xspace.dimensions().nD, rparams.size());
-    const auto dims_entry = xspace.dimensions();
     // solutions with columns kept in step with the changes to xspace below
     auto solutions_xspace = solutions;
     if (solution_params.empty() && !rparams.empty()) {
@@ -117,10 +132,11 @@ public:
       util::construct_solutions(wrap(begin(solution_params), end(solution_params)), roots, solutions_proj, {},
                                 xspace.cparamsq(), xspace.cparamsd(), 0, 0, dims.nQ, handlers.qq(), handlers.qp(),
                                 handlers.qq());
+      assert(solutions_xspace.cols() == dims.nX());
+      for (size_t i = 0; i < dims.nD; ++i)
+        solutions_xspace.remove_col(dims.oD());
       VecRef<Q> null_params, null_actions;
       xspace.update_dspace(null_params, null_actions);
-      for (size_t i = 0; i < dims_entry.nD; ++i)
-        solutions_xspace.remove_col(dims_entry.oD());
     }
     const auto nR = std::min(rparams.size(), solution_params.size());
     for (size_t i = 0; i < nR; ++i) {
@@ -129,10 +145,8 @@ public:
     }
     const auto wparams = cwrap(begin(rparams), begin(rparams) + nR);
     auto q_delete = max_overlap_with_R(wparams, xspace.cparamsq(), handlers.rq(), logger);
-    erase_qspace(xspace, q_delete);
-    // q_delete is in descending order
-    for (auto i : q_delete)
-      solutions_xspace.remove_col(dims_entry.oQ() + i);
+    erase_qspace(xspace, solutions_xspace, q_delete);
+    assert(solutions_xspace.cols() == xspace.dimensions().nX());
     if (xspace.dimensions().nQ + nR > m_max_Qsize_after_reset)
       resize_qspace(xspace, solutions_xspace, m_max_Qsize_after_reset > nR ? m_max_Qsize_after_reset - nR : 0, logger);
     auto new_working_set = std::vector<int>(nR);

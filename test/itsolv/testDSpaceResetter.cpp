@@ -9,6 +9,7 @@
 using molpro::linalg::itsolv::cwrap;
 using molpro::linalg::itsolv::wrap;
 using molpro::linalg::itsolv::detail::DSpaceResetter;
+using molpro::linalg::itsolv::detail::erase_qspace;
 using molpro::linalg::itsolv::detail::max_overlap_with_R;
 using molpro::linalg::itsolv::detail::resize_qspace;
 using molpro::linalg::itsolv::subspace::Matrix;
@@ -92,6 +93,20 @@ struct ResetXSpace : DummyXSpace<R, Q, P> {
   std::vector<Q> q, d;
   std::vector<size_t> erased_Q;
 };
+
+TEST(DSpaceResetter, erase_qspace_with_solutions) {
+  auto xspace = ResetXSpace{};
+  auto solutions = Matrix<double>{{0.1, 0.2, 0.3, 0.4, //
+                                   0.5, 0.6, 0.7, 0.8},
+                                  {2, 4}};
+  erase_qspace(xspace, solutions, std::vector<int>{0, 2});
+  EXPECT_THAT(xspace.erased_Q, ::testing::ElementsAre(2, 0));
+  ASSERT_EQ(xspace.q.size(), 1);
+  EXPECT_THAT(xspace.q.front(), ::testing::ElementsAre(0, 1, 0, 0));
+  ASSERT_EQ(solutions.rows(), 2);
+  ASSERT_EQ(solutions.cols(), 2);
+  EXPECT_THAT(solutions.data(), ::testing::ElementsAre(0.2, 0.4, 0.6, 0.8));
+}
 
 // The Q vector with the largest overlap with the solution is replaced by it, and the remaining Q space has to be
 // reduced by removing the vector with the smallest contribution to the solution, which must be identified in the

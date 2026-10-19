@@ -85,7 +85,7 @@ public:
     if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace->dimensions())) {
       m_resetting_in_progress = true;
       this->m_working_set =
-          m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->solutions(),
+          m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->retained_solutions(),
                                 rspace_opts.norm_thresh, rspace_opts.svd_thresh, *this->m_handlers, *this->m_logger);
     } else {
       m_resetting_in_progress = false;

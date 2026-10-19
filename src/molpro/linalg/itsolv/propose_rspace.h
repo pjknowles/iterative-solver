@@ -593,7 +593,7 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
   logger.trace("dimensions {nP, nQ, nD, nW} = ", xspace.dimensions().nP, xspace.dimensions().nQ, xspace.dimensions().nD,
                solver.working_set().size());
   profiler.start("itsolv::ISubspaceSolver::solutions");
-  auto solutions = subspace_solver.solutions();
+  auto solutions = subspace_solver.retained_solutions();
   profiler.stop();
   auto q_delete = limit_qspace_size(xspace.dimensions(), q_opts, solutions, logger);
   logger.debug("delete Q parameter indices = ", q_delete);
@@ -608,7 +608,7 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
     auto wdactions = wrap(dactions);
     xspace.update_dspace(wdparams, wdactions);
     auto eigenvalues_ref = subspace_solver.eigenvalues();
-    subspace_solver.solve(xspace, solutions.rows());
+    subspace_solver.solve(xspace, subspace_solver.size());
     auto eigval_error = std::vector<double>{};
     std::transform(std::begin(eigenvalues_ref), std::end(eigenvalues_ref), std::begin(subspace_solver.eigenvalues()),
                    std::back_inserter(eigval_error), [](auto& e_ref, auto& e_new) { return std::abs(e_ref - e_new); });

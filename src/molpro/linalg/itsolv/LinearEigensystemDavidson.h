@@ -262,29 +262,19 @@ protected:
         // The above code has already dealt with the bulk of the necessary expression and we only need
         // to add the part with the imaginary components of the eigenvalue pair, for which the vector of
         // the partner root is used.
-        const auto partner = subspace_solver->complex_partner(roots[i]);
-        assert(partner);
-
-        if (*partner >= eigvals.size() and *partner < subspace_solver->retained_solutions().rows()) {
-          // The partner was truncated away, so its vector is assembled from the subspace
-          add_subspace_vector(it->second, subspace_solver->retained_solutions(), *partner, actions.at(i));
-          continue;
-        }
-
-        auto root_it = std::ranges::find(roots, int(*partner));
-        if (root_it == roots.end()) {
-          // We can only do this, if we have both components of a complex eigenvalue/eigenvector pair
-          // available here.
-          this->m_logger->warn(
-              "Complex conjugate eigenvalue pair incomplete in construct_residual (this can lead to poor convergence)");
-          continue;
-        }
-
-        const std::size_t param_idx = std::ranges::distance(roots.begin(), root_it);
-
         // Note: The minus sign in above expression is implicitly taken into account as the
         // imaginary parts of the complex conjugate eigenvalue pair has flipped signs
-        this->m_handlers->rr().axpy(it->second, params.at(param_idx), actions.at(i));
+        const auto partner = subspace_solver->complex_partner(roots[i]);
+        assert(partner);
+        const auto root_it = std::ranges::find(roots, int(*partner));
+        if (root_it != roots.end()) {
+          this->m_handlers->rr().axpy(it->second, params.at(std::ranges::distance(roots.begin(), root_it)),
+                                      actions.at(i));
+        } else {
+          // The partner is not among roots, or was truncated away, so its vector is assembled from the subspace
+          assert(*partner < subspace_solver->retained_solutions().rows());
+          add_subspace_vector(it->second, subspace_solver->retained_solutions(), *partner, actions.at(i));
+        }
       }
     }
   }

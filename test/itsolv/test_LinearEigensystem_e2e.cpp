@@ -161,6 +161,34 @@ TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots) {
     EXPECT_NEAR(eigvals[i], reference[i].real(), 1e-8);
 }
 
+//! The two members of a complex pair end up in different batches of the solution when there are fewer parameter
+//! vectors than roots
+TEST(LinearEigensystem, Davidson_complex_pair_split_by_batches) {
+  molpro::mpi::init();
+  SplitComplexPairProblem problem;
+  Eigen::MatrixXd matrix(problem.n, problem.n);
+  for (size_t i = 0; i < problem.n; ++i)
+    for (size_t j = 0; j < problem.n; ++j)
+      matrix(i, j) = problem.element(i, j);
+  const Eigen::VectorXcd reference_complex = Eigen::EigenSolver<Eigen::MatrixXd>(matrix).eigenvalues();
+  std::vector<std::complex<double>> reference(reference_complex.begin(), reference_complex.end());
+  std::ranges::sort(reference, {}, [](const auto &e) { return e.real(); });
+  ASSERT_NEAR(std::abs(reference.at(2) - std::conj(reference.at(3))), 0., 1e-12);
+
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>("Davidson");
+  solver->set_n_roots(4);
+  solver->set_max_iter(100);
+  solver->set_hermiticity(false);
+  solver->set_convergence_threshold(1e-8);
+  auto params = std::vector<std::vector<double>>(3, std::vector<double>(problem.n));
+  auto actions = params;
+  ASSERT_TRUE(solver->solve(params, actions, problem, true));
+  const auto eigvals = solver->eigenvalues();
+  ASSERT_EQ(eigvals.size(), solver->n_roots());
+  for (size_t i = 0; i < eigvals.size(); ++i)
+    EXPECT_NEAR(eigvals[i], reference[i].real(), 1e-8);
+}
+
 //! A symmetric, diagonally dominant matrix
 class SymmetricProblem : public molpro::linalg::itsolv::Problem<std::vector<double>> {
 public:

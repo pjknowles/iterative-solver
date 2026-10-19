@@ -394,19 +394,15 @@ public:
     std::unique_ptr<Q> diagonals;
     if (use_diagonals)
       diagonals.reset(new Q{m_handlers->qr().copy(actions.at(0))});
-    if (generate_initial_guess) {
-      if (not use_diagonals)
-        throw std::runtime_error("Default initial guess requested, but diagonal elements are not available");
-      generate_initial_guess_from_diagonals(parameters, *diagonals);
-    }
+    if (generate_initial_guess and not use_diagonals)
+      throw std::runtime_error("Default initial guess requested, but diagonal elements are not available");
     int nwork = parameters.size();
     std::vector<P> pspace;
-    if (use_diagonals and m_max_p > 0) {
+    if (use_diagonals and m_max_p > 0)
       pspace = select_pspace(*diagonals);
-      // with max_p > 0 the contents of parameters are not used, whether or not the selected P space is used
-      if (pspace.empty() and not generate_initial_guess)
-        generate_initial_guess_from_diagonals(parameters, *diagonals);
-    }
+    // with max_p > 0 the contents of parameters are not used, whether or not the selected P space is used
+    if (pspace.empty() and (generate_initial_guess or (use_diagonals and m_max_p > 0)))
+      generate_initial_guess_from_diagonals(parameters, *diagonals);
     if (!pspace.empty())
       nwork = initialise_pspace(pspace, problem, parameters, actions);
     for (auto iter = 0; iter < this->m_max_iter && nwork > 0; iter++) {

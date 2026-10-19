@@ -225,6 +225,22 @@ TEST_F(simplified, LinearEigensystem_pspace_threshold_smaller_than_n_roots) {
   solve_eigensystem(problem, 3, 3, 5, 0.5);
 }
 
+TEST_F(simplified, LinearEigensystem_pspace_too_small_zero_parameters) {
+  // the parameters are not used with max_p > 0, so they need not hold an initial guess
+  const size_t nroots = 3;
+  auto problem = simplified::PSpaceProblem(10);
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+  solver->set_hermiticity(true);
+  solver->set_n_roots(nroots);
+  solver->set_max_p(2);
+  std::vector<Rvector> c(nroots, Rvector(problem.n, 0)), g(nroots, Rvector(problem.n));
+  EXPECT_TRUE(solver->solve(c, g, problem));
+  const auto eigenvalues = solver->eigenvalues();
+  ASSERT_EQ(eigenvalues.size(), nroots);
+  for (size_t i = 0; i < nroots; i++)
+    EXPECT_NEAR(eigenvalues[i], i + 1, 1e-3);
+}
+
 TEST_F(simplified, LinearEigensystem_surplus_buffers) {
   const size_t nroots = 3;
   auto problem = simplified::CountingProblem(10);

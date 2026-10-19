@@ -401,8 +401,12 @@ public:
     }
     int nwork = parameters.size();
     std::vector<P> pspace;
-    if (use_diagonals and m_max_p > 0)
+    if (use_diagonals and m_max_p > 0) {
       pspace = select_pspace(*diagonals);
+      // with max_p > 0 the contents of parameters are not used, whether or not the selected P space is used
+      if (pspace.empty() and not generate_initial_guess)
+        generate_initial_guess_from_diagonals(parameters, *diagonals);
+    }
     if (!pspace.empty())
       nwork = initialise_pspace(pspace, problem, parameters, actions);
     for (auto iter = 0; iter < this->m_max_iter && nwork > 0; iter++) {
@@ -674,7 +678,8 @@ protected:
       }
     }
     if (!selectp.empty() && selectp.size() < n_roots()) {
-      this->m_logger->warn("P space smaller than number of roots is not used; dimension and number of roots",
+      this->m_logger->warn("P space smaller than number of roots is not used, starting from the diagonal elements "
+                           "instead; dimension and number of roots",
                            selectp.size(), n_roots());
       selectp.clear();
     }

@@ -255,7 +255,10 @@ public:
    *
    * If a P space is used (max_p > 0, diagonal elements are available and the selected P space is at least as large as
    * the number of roots), the initial subspace is the P space alone, and neither the contents of parameters on entry
-   * nor a generated initial guess are used.
+   * nor a generated initial guess are used. If max_p > 0 and diagonal elements are available but the selected P space
+   * is smaller than the number of roots, no P space is used and the initial guess is generated from the diagonal
+   * elements, irrespective of generate_initial_guess; the contents of parameters on entry are not used in this case
+   * either.
    */
   virtual bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
                      bool generate_initial_guess = false) = 0;

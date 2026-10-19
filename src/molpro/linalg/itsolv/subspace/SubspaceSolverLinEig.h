@@ -79,7 +79,7 @@ protected:
       // Without its partner the residual of a pair member never vanishes. The partner's coefficients are kept, but not
       // the partner itself, so that the number of solutions never exceeds the number of roots requested.
       const auto partner = complex_partner(nroots - 1);
-      if (partner && *partner == nroots && *partner < n_solutions) {
+      if (partner && *partner == nroots) {
         m_retained_solutions.resize({nroots + 1, dim});
         m_retained_solutions.slice() = full_matrix.slice({0, 0}, {nroots + 1, dim});
       }

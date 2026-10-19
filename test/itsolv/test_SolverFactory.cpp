@@ -26,6 +26,7 @@ TEST(SolverFactory, string_constructor) {
       EXPECT_NE(options->norm_thresh.value_or(777), 777);
       EXPECT_EQ(options->max_size_qspace.value(), 73);
       EXPECT_EQ(options->n_roots.value(), 4);
+      EXPECT_EQ(options->reset_D.value(), 0);
     }
   }
 
@@ -39,6 +40,7 @@ TEST(SolverFactory, string_constructor) {
     EXPECT_TRUE(options->norm_thresh.has_value());
     EXPECT_NE(options->norm_thresh.value_or(777), 777);
     EXPECT_EQ(options->max_size_qspace.value(), 73);
+    EXPECT_EQ(options->reset_D.value(), 0);
   }
 
   for (const auto& method : std::vector<std::string>{"DIIS"}) {

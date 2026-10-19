@@ -70,9 +70,9 @@ public:
    * function to propose new Q space parameters orthonormal to the old space. They are returned in parameters so that
    * corresponding actions can be calculated and used in add_vector in the next iteration.
    *
-   * Every n_reset_D iterations the D space has to be reset. If working set does not cover all solutions than resetting
-   * is done over multiple iterations. During this time, there are no deletions from the Q space.
-   * This is done by temporarily increasing maximum allowed size of Q space.
+   * Every n_reset_D iterations, unless n_reset_D is 0 (the default), the D space is reset. If working set does not
+   * cover all solutions than resetting is done over multiple iterations. During this time, there are no deletions from
+   * the Q space. This is done by temporarily increasing maximum allowed size of Q space.
    *
    * @param parameters output new parameters for the subspace.
    * @param residual preconditioned residuals.
@@ -169,7 +169,7 @@ public:
       cout << std::endl;
   }
 
-  //! Set the period in iterations for resetting the D space
+  //! Set the period in iterations for resetting the D space, 0 for never
   void set_reset_D(size_t n) { m_dspace_resetter.set_nreset(n); }
   size_t get_reset_D() const { return m_dspace_resetter.get_nreset(); }
   //! Set the maximum size of Q space after resetting the D space

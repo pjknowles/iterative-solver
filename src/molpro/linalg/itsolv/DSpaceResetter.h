@@ -87,7 +87,7 @@ auto max_overlap_with_R(const CVecRef<R>& rparams, const CVecRef<Q>& qparams, ar
 template <class Q>
 class DSpaceResetter {
 protected:
-  std::size_t m_nreset = std::numeric_limits<std::size_t>::max(); //!< reset D space every n iterations, 0 for never
+  std::size_t m_nreset = 0; //!< reset D space every n iterations, 0 for never
   std::size_t m_max_Qsize_after_reset =
       std::numeric_limits<std::size_t>::max(); //!< maximum size of Q space after reset
   std::list<Q> solution_params;                //!< all current solutions that will be moved to the Q space

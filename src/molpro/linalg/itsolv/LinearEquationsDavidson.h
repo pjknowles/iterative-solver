@@ -113,7 +113,7 @@ public:
   //! constructing the working set. Smaller singular values will lead to deletion of parameters
   void set_svd_thresh(value_type_abs thresh) { rspace_opts.svd_thresh = thresh; }
   value_type_abs get_svd_thresh() const { return rspace_opts.svd_thresh; }
-  //! Set the period in iterations for resetting the D space
+  //! Set the period in iterations for resetting the D space, 0 for never
   void set_reset_D(size_t n) { m_dspace_resetter.set_nreset(n); }
   size_t get_reset_D() const { return m_dspace_resetter.get_nreset(); }
   //! Set the maximum size of Q space after resetting the D space

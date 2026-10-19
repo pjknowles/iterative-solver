@@ -88,6 +88,33 @@ TEST(TestArrayHandlerDDiskSparse, copy) {
   ASSERT_THAT(result, Pointwise(DoubleEq(), std::vector<double>(ref.begin() + lo, ref.begin() + hi)));
 }
 
+TEST(TestArrayHandlerDDiskSparse, copy_paged) {
+  const size_t dim = 40;
+  const size_t page = 4;
+  auto x = DistrArrayFile(dim, mpi_comm);
+  x.set_buffer_size(page);
+  x.fill(0.5);
+  // elements at the first and last index of every disk page on every rank
+  auto y = std::map<size_t, double>{};
+  const auto& distribution = x.distribution();
+  for (int rank = 0; rank < static_cast<int>(distribution.size()); ++rank) {
+    const auto [lo, hi] = distribution.range(rank);
+    for (size_t first = lo; first < size_t(hi); first += page) {
+      const size_t last = std::min(first + page, size_t(hi)) - 1;
+      y[first] = 1. + first;
+      y[last] = 1. + last;
+    }
+  }
+  auto ref = std::vector<double>(dim, 0.);
+  for (const auto& el : y)
+    ref[el.first] = el.second;
+  auto handler = ArrayHandlerDDiskSparse<decltype(x), decltype(y)>{};
+  handler.copy(x, y);
+  const auto [lo, hi] = molpro::linalg::array::util::local_range(x);
+  auto result = x.get(lo, hi);
+  ASSERT_THAT(result, Pointwise(DoubleEq(), std::vector<double>(ref.begin() + lo, ref.begin() + hi)));
+}
+
 TEST(TestArrayHandlerDDiskSparse, unary_operations_throw) {
   auto x = DistrArrayFile(20, mpi_comm);
   auto handler = ArrayHandlerDDiskSparse<decltype(x), std::map<size_t, double>>{};

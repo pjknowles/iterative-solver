@@ -73,6 +73,32 @@ TEST(TestArrayHandlerDistrSparse, unary_operations_throw) {
   EXPECT_THROW(handler.fill(2., x), std::logic_error);
 }
 
+TEST(TestArrayHandlerDistrSparse, copy) {
+  const size_t dim = 20;
+  auto x = DistrArrayMPI3(dim, mpi_comm);
+  x.fill(0.5);
+  auto y = std::map<size_t, double>{{1, 1.0}, {3, 2.0}, {6, 3.0}, {11, 4.0}, {19, 5.0}};
+  auto ref = std::vector<double>(dim, 0.);
+  for (const auto& el : y)
+    ref[el.first] = el.second;
+  auto handler = ArrayHandlerDistrSparse<decltype(x), decltype(y)>{};
+  handler.copy(x, y);
+  auto lb = x.local_buffer();
+  ASSERT_THAT(std::vector<double>(lb->begin(), lb->end()),
+              Pointwise(DoubleEq(), std::vector<double>(ref.begin() + lb->start(), ref.begin() + lb->start() + lb->size())));
+}
+
+TEST(TestArrayHandlerDistrSparse, copy_incompatible) {
+  const size_t dim = 20;
+  auto x = DistrArrayMPI3(dim, mpi_comm);
+  x.fill(0.5);
+  auto y = std::map<size_t, double>{{1, 1.0}, {dim, 2.0}};
+  auto handler = ArrayHandlerDistrSparse<decltype(x), decltype(y)>{};
+  EXPECT_THROW(handler.copy(x, y), molpro::linalg::array::util::ArrayHandlerError);
+  auto lb = x.local_buffer();
+  EXPECT_THAT(std::vector<double>(lb->begin(), lb->end()), Each(DoubleEq(0.5)));
+}
+
 TEST(TestArrayHandlerDDiskSparse, copy) {
   const size_t dim = 20;
   auto x = DistrArrayFile(dim, mpi_comm);

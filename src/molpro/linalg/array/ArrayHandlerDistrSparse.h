@@ -27,7 +27,6 @@ public:
   };
 
   void copy(AL &x, const AR &y) override {
-    //    static_assert(true, "General copy from sparse to dense is ill-defined");
     x.fill(0);
     auto lb = x.local_buffer();
     auto start = lb->start();
@@ -36,9 +35,9 @@ public:
         (*lb)[v.first - start] = v.second;
   };
 
-  void scal(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerDistr for unary operations"); };
+  void scal(value_type alpha, AL &x) override { throw std::logic_error("Use ArrayHandlerDistr for unary operations"); };
 
-  void fill(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerDistr for unary operations"); };
+  void fill(value_type alpha, AL &x) override { throw std::logic_error("Use ArrayHandlerDistr for unary operations"); };
 
   // TODO For now these functions are in DistrArray, but they should be moved into the handler.
   void axpy(value_type alpha, const AR &x, AL &y) override {

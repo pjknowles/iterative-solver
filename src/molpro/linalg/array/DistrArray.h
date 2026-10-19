@@ -260,6 +260,8 @@ public:
    */
   virtual void axpy(value_type a, const DistrArray &y);
   virtual void axpy(value_type a, const SparseArray &y);
+  //! this[:] = y[:], i.e. the elements of y, and zero elsewhere. Local, each process sets its local section.
+  void copy(const SparseArray &y);
   //! @}
 
   /*! @name Operations with a contiguous array

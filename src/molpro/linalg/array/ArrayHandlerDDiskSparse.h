@@ -30,8 +30,7 @@ public:
     // checked before x is overwritten
     if (not y.empty() and y.rbegin()->first >= x.size())
       error("ArrayHandlerDDiskSparse::copy() sparse array y is incompatible");
-    x.fill(0);
-    x.axpy(1, y);
+    x.copy(y);
   };
 
   void scal(value_type alpha, AL &x) override { throw std::logic_error("Use ArrayHandlerDDisk for unary operations"); };

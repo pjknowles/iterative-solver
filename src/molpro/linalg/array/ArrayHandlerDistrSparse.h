@@ -31,12 +31,7 @@ public:
     // checked before x is overwritten, and on every process, which each hold all of y
     if (not y.empty() and y.rbegin()->first >= x.size())
       error("ArrayHandlerDistrSparse::copy() sparse array y is incompatible");
-    x.fill(0);
-    auto lb = x.local_buffer();
-    auto start = lb->start();
-    for (const auto &v : y)
-      if (v.first >= start and v.first < start + lb->size())
-        (*lb)[v.first - start] = v.second;
+    x.copy(y);
   };
 
   void scal(value_type alpha, AL &x) override { throw std::logic_error("Use ArrayHandlerDistr for unary operations"); };

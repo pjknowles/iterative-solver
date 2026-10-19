@@ -592,6 +592,17 @@ void DistrArray::axpy(value_type a, const SparseArray& y) {
   });
 }
 
+void DistrArray::copy(const SparseArray& y) {
+  if (not y.empty() and size() < y.rbegin()->first + 1)
+    error("Array::copy SparseArray sparse array y is incompatible");
+  // write-only, so that an array on disk is written once and not read
+  for_each_local_chunk({{*this, false, true}}, [&y](index_type start, size_t n, value_type* const* p) {
+    std::fill_n(p[0], n, 0);
+    for (auto it = y.lower_bound(start); it != y.end() and it->first < start + n; ++it)
+      p[0][it->first - start] = it->second;
+  });
+}
+
 void DistrArray::check_compatible(Span<const value_type> y, const std::string& name) const {
   if (y.size() != size())
     error(name + ": contiguous array of size " + std::to_string(y.size()) +

@@ -265,9 +265,9 @@ protected:
         const auto partner = subspace_solver->complex_partner(roots[i]);
         assert(partner);
 
-        if (*partner >= eigvals.size() and not subspace_solver->split_partner_solution().empty()) {
+        if (*partner >= eigvals.size() and *partner < subspace_solver->retained_solutions().rows()) {
           // The partner was truncated away, so its vector is assembled from the subspace
-          add_subspace_vector(it->second, subspace_solver->split_partner_solution(), actions.at(i));
+          add_subspace_vector(it->second, subspace_solver->retained_solutions(), *partner, actions.at(i));
           continue;
         }
 
@@ -289,19 +289,20 @@ protected:
     }
   }
 
-  //! Adds scale times the subspace vector with the given coefficients to target
-  void add_subspace_vector(scalar_type scale, const std::vector<scalar_type>& coefficients, R& target) const {
+  //! Adds scale times the subspace vector with the coefficients in row of solutions to target
+  void add_subspace_vector(scalar_type scale, const subspace::Matrix<scalar_type>& solutions, size_t row,
+                           R& target) const {
     const auto& dims = this->m_xspace->dimensions();
     const auto pparams = this->m_xspace->cparamsp();
     const auto qparams = this->m_xspace->cparamsq();
     const auto dparams = this->m_xspace->cparamsd();
-    assert(coefficients.size() == dims.nX());
+    assert(solutions.cols() == dims.nX());
     for (size_t j = 0; j < pparams.size(); ++j)
-      this->m_handlers->rp().axpy(scale * coefficients[dims.oP() + j], pparams.at(j), target);
+      this->m_handlers->rp().axpy(scale * solutions(row, dims.oP() + j), pparams.at(j), target);
     for (size_t j = 0; j < qparams.size(); ++j)
-      this->m_handlers->rq().axpy(scale * coefficients[dims.oQ() + j], qparams.at(j), target);
+      this->m_handlers->rq().axpy(scale * solutions(row, dims.oQ() + j), qparams.at(j), target);
     for (size_t j = 0; j < dparams.size(); ++j)
-      this->m_handlers->rq().axpy(scale * coefficients[dims.oD() + j], dparams.at(j), target);
+      this->m_handlers->rq().axpy(scale * solutions(row, dims.oD() + j), dparams.at(j), target);
   }
 
   detail::DSpaceResetter<Q> m_dspace_resetter; //!< resets D space

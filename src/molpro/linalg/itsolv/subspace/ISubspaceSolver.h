@@ -47,6 +47,9 @@ struct ISubspaceSolver {
   virtual void set_error(const std::vector<int>& roots, const std::vector<value_type_abs>& errors) = 0;
   //! Access solutions from the last solve() call
   virtual const Matrix<value_type>& solutions() const = 0;
+  //! Solutions whose span has to be preserved when the subspace is reduced; these are the solutions themselves unless
+  //! a solver keeps additional ones
+  virtual const Matrix<value_type>& retained_solutions() const { return solutions(); }
   //! Access eigenvalues from the last solve() call
   virtual const std::vector<value_type>& eigenvalues() const = 0;
   //! Access errors corresponding to each solution

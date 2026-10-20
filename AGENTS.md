@@ -135,3 +135,16 @@ Guidance for AI agents (and humans) working on the iterative-solver repository.
 - Any text an agent posts on GitHub or another external platform (pull request descriptions, issues, comments,
   review comments, ...) starts with the line `🤖 **[AI agent]**`, so that it can be told apart from text written by
   the human whose account is used. This applies to every individual comment, including each inline review comment.
+
+## Reviews
+
+- Review against the guidelines in this file, in the order of the [priorities](#priorities): correctness first
+  (including all supported value types, more than one MPI process and the CI platforms), then efficiency and
+  maintainability, then style.
+- Verify every finding before reporting it, especially when reviewing someone else's code (e.g. a pull request)
+  rather than changes made in the current session. Read the surrounding code and the callers instead of judging the
+  diff in isolation, and confirm that the problematic path is actually reachable. Where feasible, demonstrate a bug
+  with a failing test or a concrete input.
+- For each finding, state the concrete scenario (inputs/state → wrong result, crash or performance regression) and
+  whether it was confirmed or is only suspected. Drop findings that cannot be backed up this way, and do not report
+  pure style preferences that `.clang-format` or the guidelines above do not cover.

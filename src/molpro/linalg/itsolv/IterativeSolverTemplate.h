@@ -374,6 +374,11 @@ public:
     // non-owning: the profiler belongs to the caller and must not be deleted by the solver
     m_profiler = std::shared_ptr<molpro::profiler::Profiler>(std::shared_ptr<molpro::profiler::Profiler>{}, &profiler);
   }
+  void set_profiler(std::shared_ptr<molpro::profiler::Profiler> profiler) override {
+    if (!profiler)
+      throw std::invalid_argument("IterativeSolver::set_profiler: null profiler");
+    m_profiler = std::move(profiler);
+  }
   const std::shared_ptr<molpro::profiler::Profiler>& profiler() const override { return m_profiler; }
 
   bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,
@@ -400,7 +405,7 @@ public:
     std::vector<P> pspace;
     if (use_diagonals and m_max_p > 0)
       pspace = select_pspace(*diagonals);
-    // with max_p > 0 the contents of parameters are not used, whether or not the selected P space is used
+    // a P space replaces any initial guess; without one, max_p > 0 still means the contents of parameters are not used
     if (pspace.empty() and (generate_initial_guess or (use_diagonals and m_max_p > 0)))
       generate_initial_guess_from_diagonals(parameters, *diagonals);
     if (!pspace.empty())
@@ -643,13 +648,15 @@ protected:
   void generate_initial_guess_from_diagonals(const VecRef<R>& parameters, const Q& diagonals) {
     // add_vector() takes up no more vectors than there are in the working set
     const auto nguess = std::min(parameters.size(), m_working_set.size());
-    if (nguess == 0)
+    if (nguess == 0) {
+      if (verbosity_at_least(Verbosity::Summary))
+        this->m_logger->info("No initial guess generated, as no roots remain in the working set");
       return;
+    }
     auto guess = m_handlers->qq().select(nguess, diagonals);
     size_t root = 0;
-    if (verbosity_at_least(Verbosity::Summary)) {
-      this->m_logger->info("Initial guess generated from diagonal elements");
-    }
+    if (verbosity_at_least(Verbosity::Summary))
+      this->m_logger->info("Initial guess generated from diagonal elements for ", guess.size(), " vectors");
     for (const auto& g : guess) {
       m_handlers->rp().copy(parameters[root], P{{g.first, 1}});
       if (verbosity_at_least(Verbosity::Detailed)) {

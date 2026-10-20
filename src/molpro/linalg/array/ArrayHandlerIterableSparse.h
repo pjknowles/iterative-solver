@@ -5,6 +5,7 @@
 #include <molpro/linalg/array/util/select.h>
 #include <molpro/linalg/array/util/select_max_dot.h>
 #include <numeric>
+#include <stdexcept>
 
 namespace molpro::linalg::array {
 using molpro::linalg::array::util::gemm_inner_default;
@@ -25,22 +26,27 @@ public:
   using typename ArrayHandler<AL, AR>::ProxyHandle;
 
   AL copy(const AR &source) override {
-    //    static_assert(true, "General copy from sparse to dense is ill-defined");
     AL result;
     copy(result, source);
     return result;
   };
 
   void copy(AL &x, const AR &y) override {
-    //    static_assert(true, "General copy from sparse to dense is ill-defined");
+    // checked before x is overwritten
+    if (not y.empty() and y.rbegin()->first >= x.size())
+      error("ArrayHandlerIterableSparse::copy() sparse array y is incompatible");
     std::fill(x.begin(), x.end(), 0);
     for (const auto &s : y)
       *(x.begin() + s.first) = s.second;
   }
 
-  void scal(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerIterable for unary operations"); };
+  void scal(value_type alpha, AL &x) override {
+    throw std::logic_error("Use ArrayHandlerIterable for unary operations");
+  };
 
-  void fill(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerIterable for unary operations"); };
+  void fill(value_type alpha, AL &x) override {
+    throw std::logic_error("Use ArrayHandlerIterable for unary operations");
+  };
 
   void axpy(value_type alpha, const AR &x, AL &y) override {
     for (const auto &el_x : x)

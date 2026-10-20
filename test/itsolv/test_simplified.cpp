@@ -6,6 +6,7 @@
 #include <molpro/linalg/itsolv/CastOptions.h>
 #include <molpro/linalg/itsolv/SolverFactory.h>
 #include <molpro/linalg/itsolv/helper.h>
+#include <algorithm>
 #include <numeric>
 #include <vector>
 
@@ -117,6 +118,22 @@ struct simplified : ::testing::Test {
   public:
     using MyProblem::MyProblem;
     bool diagonals(container_t &d) const override { return false; }
+  };
+
+  class RecordingLogger : public molpro::linalg::itsolv::Logger {
+  public:
+    mutable std::vector<std::string> messages;
+
+    size_t count(std::string_view text) const {
+      return std::count_if(messages.begin(), messages.end(),
+                           [text](const std::string &m) { return m.find(text) != std::string::npos; });
+    }
+
+  protected:
+    void default_message_handler(std::string_view, molpro::linalg::itsolv::log::Severity,
+                                 molpro::linalg::itsolv::log::Verbosity, std::string_view msg) const override {
+      messages.emplace_back(msg);
+    }
   };
 
   // solves for the lowest nroots eigenpairs and checks that they converged
@@ -286,4 +303,34 @@ TEST_F(simplified, LinearEigensystem_solve_converged) {
   // nothing is left to compute, so action() is not called
   EXPECT_TRUE(problem.action_sizes.empty());
   EXPECT_TRUE(solver->working_set().empty());
+}
+
+TEST_F(simplified, LinearEigensystem_pspace_no_initial_guess) {
+  // the P space replaces the initial guess, so none is generated
+  auto problem = simplified::PSpaceProblem(10);
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+  auto logger = std::make_shared<RecordingLogger>();
+  solver->set_logger(logger);
+  solver->set_hermiticity(true);
+  solver->set_n_roots(2);
+  solver->set_max_p(4);
+  std::vector<Rvector> c(2, Rvector(problem.n)), g(2, Rvector(problem.n));
+  EXPECT_TRUE(solver->solve(c, g, problem, true));
+  EXPECT_EQ(logger->count("P-space dimension"), 1);
+  EXPECT_EQ(logger->count("Initial guess generated"), 0);
+}
+
+TEST_F(simplified, LinearEigensystem_solve_converged_initial_guess) {
+  // a converged solver has an empty working set, which takes up no initial guess
+  auto problem = simplified::MyProblem(10);
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+  auto logger = std::make_shared<RecordingLogger>();
+  solver->set_logger(logger);
+  solver->set_n_roots(2);
+  std::vector<Rvector> c(2, Rvector(problem.n)), g(2, Rvector(problem.n));
+  ASSERT_TRUE(solver->solve(c, g, problem, true));
+  ASSERT_TRUE(solver->working_set().empty());
+  logger->messages.clear();
+  EXPECT_TRUE(solver->solve(c, g, problem, true));
+  EXPECT_EQ(logger->count("Initial guess generated"), 0);
 }

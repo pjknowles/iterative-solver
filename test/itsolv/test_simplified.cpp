@@ -113,6 +113,12 @@ struct simplified : ::testing::Test {
     }
   };
 
+  class NoDiagonalsProblem : public MyProblem {
+  public:
+    using MyProblem::MyProblem;
+    bool diagonals(container_t &d) const override { return false; }
+  };
+
   // solves for the lowest nroots eigenpairs and checks that they converged
   template <class Problem>
   static void solve_eigensystem(const Problem &problem, size_t nroots, size_t nbuffers, int max_p,
@@ -239,6 +245,15 @@ TEST_F(simplified, LinearEigensystem_pspace_too_small_zero_parameters) {
   ASSERT_EQ(eigenvalues.size(), nroots);
   for (size_t i = 0; i < nroots; i++)
     EXPECT_NEAR(eigenvalues[i], i + 1, 1e-3);
+}
+
+TEST_F(simplified, LinearEigensystem_initial_guess_without_diagonals) {
+  auto problem = simplified::NoDiagonalsProblem(10);
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<Rvector, Qvector>("Davidson");
+  solver->set_n_roots(2);
+  solver->set_max_p(5);
+  std::vector<Rvector> c(2, Rvector(problem.n)), g(2, Rvector(problem.n));
+  EXPECT_THROW(solver->solve(c, g, problem, true), std::runtime_error);
 }
 
 TEST_F(simplified, LinearEigensystem_surplus_buffers) {

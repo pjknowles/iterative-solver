@@ -108,7 +108,15 @@ Guidance for AI agents (and humans) working on the iterative-solver repository.
   exception: code that was deliberately changed into a non-obvious form may carry a brief reason, so that nobody
   "fixes" it back to the old version.
 - Document public API with Doxygen comments (`/*! @brief ... */`, `@param`, `@copydoc` for overloads that behave the
-  same). Keep the `.dox` files in `doc/` and the README in sync with behaviour changes.
+  same).
+
+### Keeping documentation in sync
+
+- Every change keeps the existing documentation of the affected code in sync: Doxygen comments, the `.dox` files and
+  `LibraryDesign.md` in `doc/`, the README, this file, and the documentation of examples, benchmarks and Python
+  bindings. Update it in the same commit as the change it describes.
+- If no documentation exists yet for the part of the code that is changed, do not create it on your own. Ask the user
+  whether it should be written, and if so, add it in a separate commit.
 
 ### Tests
 

@@ -644,7 +644,10 @@ protected:
     auto guess = m_handlers->qq().select(std::min(parameters.size(), m_working_set.size()), diagonals);
     size_t root = 0;
     if (verbosity_at_least(Verbosity::Summary)) {
-      this->m_logger->info("Initial guess generated from diagonal elements");
+      if (guess.empty())
+        this->m_logger->info("No initial guess generated, as no roots remain in the working set");
+      else
+        this->m_logger->info("Initial guess generated from diagonal elements for ", guess.size(), " vectors");
     }
     for (const auto& g : guess) {
       m_handlers->rp().copy(parameters[root], P{{g.first, 1}});

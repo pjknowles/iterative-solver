@@ -250,7 +250,8 @@ public:
    * @param actions A set of scratch vectors. It should have the same size as parameters.
    * @param problem A Problem object defining the problem to be solved
    * @param generate_initial_guess Whether to start with a guess based on diagonal
-   * elements (true) or on the contents of parameters (false)
+   * elements (true) or on the contents of parameters (false). A generated guess fills at most as many vectors as there
+   * are roots in the working set, so on a solver whose previous solve() has converged no guess is generated.
    * @return true if the solution was found
    *
    * If a P space is used (max_p > 0, diagonal elements are available and the selected P space is at least as large as

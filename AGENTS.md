@@ -129,3 +129,9 @@ Guidance for AI agents (and humans) working on the iterative-solver repository.
 - Commits that were produced with AI assistance end with the line `AI-assisted` - do not include tool-specific
   attribution.
 - Work happens on feature branches off `master`, merged via pull request.
+
+### Posting on external platforms
+
+- Any text an agent posts on GitHub or another external platform (pull request descriptions, issues, comments,
+  review comments, ...) starts with the line `🤖 **[AI agent]**`, so that it can be told apart from text written by
+  the human whose account is used. This applies to every individual comment, including each inline review comment.

@@ -53,3 +53,21 @@ TEST(Profiler, user_profiler) {
   report << profiler;
   EXPECT_NE(report.str().find("Another operation"), std::string::npos);
 }
+TEST(Profiler, shared_user_profiler) {
+  auto profiler = std::make_shared<molpro::profiler::Profiler>("shared");
+  std::weak_ptr<molpro::profiler::Profiler> observer = profiler;
+  {
+    auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>();
+    solver->set_profiler(profiler);
+    EXPECT_EQ(solver->profiler(), profiler);
+    // the solver keeps the profiler alive after the caller releases it
+    profiler.reset();
+    ASSERT_FALSE(observer.expired());
+    solver->profiler()->push("Some operation or other");
+  }
+  EXPECT_TRUE(observer.expired());
+}
+TEST(Profiler, null_profiler) {
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>();
+  EXPECT_THROW(solver->set_profiler(std::shared_ptr<molpro::profiler::Profiler>{}), std::invalid_argument);
+}

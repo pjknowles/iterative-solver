@@ -374,6 +374,11 @@ public:
     // non-owning: the profiler belongs to the caller and must not be deleted by the solver
     m_profiler = std::shared_ptr<molpro::profiler::Profiler>(std::shared_ptr<molpro::profiler::Profiler>{}, &profiler);
   }
+  void set_profiler(std::shared_ptr<molpro::profiler::Profiler> profiler) override {
+    if (!profiler)
+      throw std::invalid_argument("IterativeSolver::set_profiler: null profiler");
+    m_profiler = std::move(profiler);
+  }
   const std::shared_ptr<molpro::profiler::Profiler>& profiler() const override { return m_profiler; }
 
   bool solve(const VecRef<R>& parameters, const VecRef<R>& actions, const Problem<R>& problem,

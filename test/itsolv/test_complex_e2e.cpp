@@ -17,6 +17,7 @@
 #include <complex>
 #include <deque>
 #include <map>
+#include <string>
 #include <vector>
 
 namespace {
@@ -81,10 +82,10 @@ struct Outcome {
 };
 
 template <typename scalar>
-Outcome solve(size_t n, size_t nroot, bool complex_coupling, double threshold) {
+Outcome solve(size_t n, size_t nroot, bool complex_coupling, double threshold, const std::string& options = "") {
   using C = containers<scalar>;
-  auto solver =
-      molpro::linalg::itsolv::create_LinearEigensystem<typename C::R, typename C::Q, typename C::P>("Davidson");
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<typename C::R, typename C::Q, typename C::P>(
+      "Davidson", options);
   solver->set_n_roots(nroot);
   solver->set_convergence_threshold(threshold);
   solver->set_verbosity(0);
@@ -166,6 +167,26 @@ TEST(complex_e2e, imaginary_coupling_changes_the_spectrum) {
     differ = differ || std::abs(with_imaginary[i] - without[i]) > 1e-6;
   EXPECT_TRUE(differ) << "the two problems must not be the same, or the comparison above proves nothing";
 }
+
+namespace {
+//! Checks a complex hermitian Davidson run with the given options against the dense eigenvalues
+void check_davidson_hermitian(const std::string& options) {
+  const auto outcome = solve<std::complex<double>>(n, nroot, true, 1e-10, options);
+  EXPECT_TRUE(outcome.converged);
+  EXPECT_LT(outcome.largest_error, 1e-10);
+  const auto reference = reference_eigenvalues(n, nroot, true);
+  for (size_t i = 0; i < nroot; ++i) {
+    EXPECT_NEAR(outcome.eigenvalues[i], reference[i], 1e-9) << "root " << i;
+    EXPECT_NEAR(outcome.imaginary_parts[i], 0.0, 1e-12) << "root " << i << " of a hermitian problem must be real";
+  }
+}
+} // namespace
+
+//! A Q space too small to hold the expansion forces construction of a D space from deleted Q vectors
+TEST(complex_e2e, davidson_hermitian_dspace) { check_davidson_hermitian("max_size_qspace=4"); }
+
+//! As above, with the D space also being reset periodically
+TEST(complex_e2e, davidson_hermitian_dspace_reset) { check_davidson_hermitian("max_size_qspace=4,reset_D=3"); }
 
 namespace {
 

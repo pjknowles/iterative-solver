@@ -25,11 +25,17 @@ public:
   using typename ArrayHandler<AL, AR>::ProxyHandle;
 
   AL copy(const AR &source) override { throw std::logic_error("General copy from sparse to dense is ill-defined"); };
-  void copy(AL &x, const AR &y) override { static_assert(true, "General copy from sparse to dense is ill-defined"); };
+  void copy(AL &x, const AR &y) override {
+    this->m_counter->copy++;
+    // checked before x is overwritten
+    if (not y.empty() and y.rbegin()->first >= x.size())
+      error("ArrayHandlerDDiskSparse::copy() sparse array y is incompatible");
+    x.copy(y);
+  };
 
-  void scal(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerDistr for unary operations"); };
+  void scal(value_type alpha, AL &x) override { throw std::logic_error("Use ArrayHandlerDDisk for unary operations"); };
 
-  void fill(value_type alpha, AL &x) override { static_assert(true, "Use ArrayHandlerDistr for unary operations"); };
+  void fill(value_type alpha, AL &x) override { throw std::logic_error("Use ArrayHandlerDDisk for unary operations"); };
 
   void axpy(value_type alpha, const AR &x, AL &y) override {
     this->m_counter->axpy++;

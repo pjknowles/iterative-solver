@@ -46,7 +46,32 @@ void normalise(VecRef<R>& params, array::ArrayHandler<R, R>& handler, Logger& lo
     }
   }
 }
+
+//! Erases Q parameters with the given indices, in descending order so that the remaining indices stay valid
+template <class R, class Q, class P, typename Index>
+void erase_qspace(subspace::IXSpace<R, Q, P>& xspace, std::vector<Index> indices) {
+  std::sort(begin(indices), end(indices), std::greater<Index>());
+  for (auto i : indices)
+    xspace.eraseq(i);
+}
+
 namespace dspace {
+
+/*!
+ * @brief Returns subspace indices of the vectors u_k that the columns of a projected solutions matrix refer to: the Q
+ * vectors moved into Q_{delete}, followed by the current D vectors
+ * @param dims dimensions for partitioning of subspace
+ * @param remove_qspace indices to remove from current Q space and move into Q_{delete}
+ */
+inline std::vector<std::size_t> projected_solutions_basis(const subspace::Dimensions& dims,
+                                                          const std::vector<std::size_t>& remove_qspace) {
+  auto basis = std::vector<std::size_t>{};
+  for (auto iq : remove_qspace)
+    basis.push_back(dims.oQ() + iq);
+  for (size_t k = 0; k < dims.nD; ++k)
+    basis.push_back(dims.oD() + k);
+  return basis;
+}
 
 /*!
  * @brief Projects solution from the full subspace on to Q_{delete} and current D space.
@@ -62,30 +87,74 @@ auto construct_projected_solution(const subspace::Matrix<value_type>& solutions,
   logger.trace("construct_projected_solution()");
   const auto nQd = remove_qspace.size();
   const auto nSol = solutions.rows();
-  auto solutions_proj = subspace::Matrix<value_type>({nSol, nQd + dims.nD});
-  for (size_t i = 0; i < nSol; ++i) {
-    for (size_t j = 0; j < nQd; ++j) {
-      solutions_proj(i, j) = solutions(i, dims.oQ() + remove_qspace[j]);
-    }
-    for (size_t j = 0; j < dims.nD; ++j) {
-      solutions_proj(i, nQd + j) = solutions(i, dims.oD() + j);
-    }
-  }
+  const auto basis = projected_solutions_basis(dims, remove_qspace);
+  auto solutions_proj = subspace::Matrix<value_type>({nSol, basis.size()});
+  for (size_t i = 0; i < nSol; ++i)
+    for (size_t j = 0; j < basis.size(); ++j)
+      solutions_proj(i, j) = solutions(i, basis[j]);
   logger.debug("nSol, nQd, nD", nSol, nQd, dims.nD);
   return solutions_proj;
 }
 
 /*!
+ * @brief Constructs overlaps of projected solutions with subspace vectors
+ *
+ * x_i = \sum_k C_ik u_k
+ * <x_i, v_m> = \sum_k conj(C_ik) <u_k, v_m>
+ *
+ * @param solutions_proj projected solutions C, with columns referring to the subspace vectors basis
+ * @param overlap overlap matrix of the current subspace, S(k, l) = <v_k, v_l>
+ * @param basis subspace indices of the vectors u_k
+ * @param indices subspace indices of the vectors v_m
+ * @return matrix with projected solutions as rows and the vectors v_m as columns
+ */
+template <typename value_type>
+auto projected_solutions_overlap(const subspace::Matrix<value_type>& solutions_proj,
+                                 const subspace::Matrix<value_type>& overlap, const std::vector<std::size_t>& basis,
+                                 const std::vector<std::size_t>& indices) {
+  assert(solutions_proj.cols() == basis.size());
+  const auto nSol = solutions_proj.rows();
+  auto ov = subspace::Matrix<value_type>({nSol, indices.size()});
+  for (size_t i = 0; i < nSol; ++i)
+    for (size_t m = 0; m < indices.size(); ++m)
+      for (size_t k = 0; k < basis.size(); ++k)
+        ov(i, m) += conjugate(solutions_proj(i, k)) * overlap(basis[k], indices[m]);
+  return ov;
+}
+
+/*!
+ * @brief Constructs the overlap matrix of projected solutions among themselves
+ *
+ * x_i = \sum_k C_ik u_k
+ * <x_i, x_j> = \sum_kl conj(C_ik) C_jl <u_k, u_l>
+ *
+ * @param solutions_proj projected solutions C, with columns referring to the subspace vectors basis
+ * @param overlap overlap matrix of the current subspace
+ * @param basis subspace indices of the vectors u_k
+ * @return hermitian overlap matrix
+ */
+template <typename value_type>
+auto projected_solutions_overlap(const subspace::Matrix<value_type>& solutions_proj,
+                                 const subspace::Matrix<value_type>& overlap, const std::vector<std::size_t>& basis) {
+  const auto nSol = solutions_proj.rows();
+  const auto xu = projected_solutions_overlap(solutions_proj, overlap, basis, basis);
+  auto ov = subspace::Matrix<value_type>({nSol, nSol});
+  for (size_t i = 0; i < nSol; ++i) {
+    for (size_t j = 0; j <= i; ++j) {
+      for (size_t l = 0; l < basis.size(); ++l)
+        ov(i, j) += xu(i, l) * solutions_proj(j, l);
+      ov(j, i) = conjugate(ov(i, j));
+    }
+  }
+  return ov;
+}
+
+/*!
  * @brief Constructs overlap matrix for projected solutions
- *
- * x_i = \sum_j C_ij u_j
- * <x_i, x_i> = \sum_j \sum_k C_ij C_ik <u_j, u_k>
- * <x_i, x_j> = \sum_k \sum_l C_ik C_jl <u_j, u_l>
- *
  * @param solutions_proj solutions matrix projected onto Qd+D space
+ * @param overlap overlap matrix of the current subspace
  * @param dims dimensions for partitioning of subspace
  * @param remove_qspace indices to remove from current Q space and move into Q_{delete}
- * @param overlap overlap matrix of the current subspace
  * @param logger logger
  * @return overlap matrix
  */
@@ -95,35 +164,7 @@ auto construct_projected_solutions_overlap(const subspace::Matrix<value_type>& s
                                            const subspace::Dimensions& dims,
                                            const std::vector<std::size_t>& remove_qspace, Logger& logger) {
   logger.trace("construct_projected_solution_overlap()");
-  const auto nSol = solutions_proj.rows();
-  const auto nQd = remove_qspace.size();
-  auto overlap_proj = subspace::Matrix<value_type>({nSol, nSol});
-  for (size_t i = 0; i < nSol; ++i) {
-    for (size_t ii = 0; ii <= i; ++ii) {
-      for (size_t j = 0; j < nQd; ++j) {
-        for (size_t k = 0; k < nQd; ++k) {
-          overlap_proj(i, ii) += solutions_proj(i, j) * solutions_proj(ii, k) *
-                                 overlap(dims.oQ() + remove_qspace[j], dims.oQ() + remove_qspace[k]);
-        }
-        for (size_t k = 0; k < dims.nD; ++k) {
-          overlap_proj(i, ii) +=
-              solutions_proj(i, j) * solutions_proj(ii, nQd + k) * overlap(dims.oQ() + remove_qspace[j], dims.oD() + k);
-        }
-      }
-      for (size_t j = 0; j < dims.nD; ++j) {
-        for (size_t k = 0; k < dims.nD; ++k) {
-          overlap_proj(i, ii) +=
-              solutions_proj(i, nQd + j) * solutions_proj(ii, nQd + k) * overlap(dims.oD() + j, dims.oD() + k);
-        }
-        for (size_t k = 0; k < nQd; ++k) {
-          overlap_proj(i, ii) +=
-              solutions_proj(i, nQd + j) * solutions_proj(ii, k) * overlap(dims.oD() + j, dims.oQ() + remove_qspace[k]);
-        }
-      }
-      overlap_proj(ii, i) = overlap_proj(i, ii);
-    }
-  }
-  return overlap_proj;
+  return projected_solutions_overlap(solutions_proj, overlap, projected_solutions_basis(dims, remove_qspace));
 }
 
 /*!
@@ -196,6 +237,32 @@ auto remove_null_projected_solutions(const subspace::Matrix<value_type>& solutio
 }
 
 /*!
+ * @brief Projects solutions onto Q_{delete} and the current D space, and transforms them to a normalised set without
+ * null space
+ * @param solutions solution matrix in the full subspace
+ * @param overlap overlap matrix of the current subspace
+ * @param dims dimensions for partitioning of subspace
+ * @param remove_qspace indices to remove from current Q space and move into Q_{delete}
+ * @param norm_thresh projected solutions with norm less than this threshold are considered null
+ * @param svd_thresh singular value threshold for marking the null space of projected solutions
+ * @param logger logger
+ * @return projected solutions as rows, with columns as given by projected_solutions_basis()
+ */
+template <typename value_type, typename value_type_abs>
+auto stable_projected_solutions(const subspace::Matrix<value_type>& solutions,
+                                const subspace::Matrix<value_type>& overlap, const subspace::Dimensions& dims,
+                                const std::vector<std::size_t>& remove_qspace, const value_type_abs norm_thresh,
+                                const value_type_abs svd_thresh, Logger& logger) {
+  auto solutions_proj = construct_projected_solution(solutions, dims, remove_qspace, logger);
+  auto overlap_proj = construct_projected_solutions_overlap(solutions_proj, overlap, dims, remove_qspace, logger);
+  remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
+  solutions_proj = remove_null_projected_solutions(solutions_proj, overlap_proj, svd_thresh, logger);
+  overlap_proj = construct_projected_solutions_overlap(solutions_proj, overlap, dims, remove_qspace, logger);
+  remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
+  return solutions_proj;
+}
+
+/*!
  * @brief Constructs overlap matrix of P+Q+R+(projected solutions) subspaces, where Q is without removed parameters
  * @param solutions_proj solutions matrix with Q deleted + current D space as columns
  * @param dims dimensions of the current subspace
@@ -226,48 +293,26 @@ auto construct_full_subspace_overlap(const subspace::Matrix<value_type>& solutio
   }
   const auto oDnew = dims.nP + nQ + nR;
   ov.resize({oDnew + nDnew, oDnew + nDnew});
-  /*
-   * append overlap with solutions_proj
-   * x_i = \sum_j c_ij v_j
-   * <x_i, v_j> = \sum_k c_ik <v_k, v_j>
-   * <x_i, x_j> = \sum_kl c_ik c_jl <v_k, v_l>
-   */
-  auto accumulate_ov_offdiag = [&](size_t i, size_t j, size_t jj) {
-    for (size_t k = 0; k < nQd; ++k)
-      ov(oDnew + i, j) += solutions_proj(i, k) * overlap(jj, dims.oQ() + remove_qspace[k]);
-    for (size_t k = 0; k < dims.nD; ++k)
-      ov(oDnew + i, j) += solutions_proj(i, nQd + k) * overlap(jj, dims.oD() + k);
-    ov(j, oDnew + i) = ov(oDnew + i, j);
-  };
+  // subspace indices of the remaining P+Q+R vectors, in their order in ov
+  auto remaining = std::vector<std::size_t>{};
+  for (size_t j = 0; j < dims.nP; ++j)
+    remaining.push_back(dims.oP() + j);
+  for (size_t j = 0; j < dims.nQ; ++j)
+    if (!is_Qdelete(j))
+      remaining.push_back(dims.oQ() + j);
+  for (size_t j = 0; j < nR; ++j)
+    remaining.push_back(dims.nX() + j);
+  assert(remaining.size() == oDnew);
+  const auto basis = projected_solutions_basis(dims, remove_qspace);
+  const auto ov_xv = projected_solutions_overlap(solutions_proj, overlap, basis, remaining);
+  const auto ov_xx = projected_solutions_overlap(solutions_proj, overlap, basis);
   for (size_t i = 0; i < nDnew; ++i) {
-    for (size_t j = 0; j < dims.nP; ++j)
-      accumulate_ov_offdiag(i, j, dims.oP() + j);
-    for (size_t j = 0, jj = 0; j < dims.nQ; ++j)
-      if (!is_Qdelete(j))
-        accumulate_ov_offdiag(i, dims.nP + jj++, dims.oQ() + j);
-    for (size_t j = 0; j < nR; ++j)
-      accumulate_ov_offdiag(i, dims.nP + nQ + j, dims.nX() + j);
-  }
-  for (size_t i = 0; i < nDnew; ++i) {
-    for (size_t j = 0; j <= i; ++j) {
-      for (size_t k = 0; k < nQd; ++k) {
-        for (size_t l = 0; l < nQd; ++l)
-          ov(oDnew + i, oDnew + j) += solutions_proj(i, k) * solutions_proj(j, l) *
-                                      overlap(dims.oQ() + remove_qspace[k], dims.oQ() + remove_qspace[l]);
-        for (size_t l = 0; l < dims.nD; ++l)
-          ov(oDnew + i, oDnew + j) +=
-              solutions_proj(i, k) * solutions_proj(j, nQd + l) * overlap(dims.oQ() + remove_qspace[k], dims.oD() + l);
-      }
-      for (size_t k = 0; k < dims.nD; ++k) {
-        for (size_t l = 0; l < nQd; ++l)
-          ov(oDnew + i, oDnew + j) +=
-              solutions_proj(i, nQd + k) * solutions_proj(j, l) * overlap(dims.oD() + k, dims.oQ() + remove_qspace[l]);
-        for (size_t l = 0; l < dims.nD; ++l)
-          ov(oDnew + i, oDnew + j) +=
-              solutions_proj(i, nQd + k) * solutions_proj(j, nQd + l) * overlap(dims.oD() + k, dims.oD() + l);
-      }
-      ov(oDnew + j, oDnew + i) = ov(oDnew + i, oDnew + j);
+    for (size_t j = 0; j < oDnew; ++j) {
+      ov(oDnew + i, j) = ov_xv(i, j);
+      ov(j, oDnew + i) = conjugate(ov_xv(i, j));
     }
+    for (size_t j = 0; j < nDnew; ++j)
+      ov(oDnew + i, oDnew + j) = ov_xx(i, j);
   }
   return ov;
 }
@@ -400,12 +445,8 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
                       const value_type_abs svd_thresh, array::ArrayHandler<Q, Q>& handler, Logger& logger) {
   const auto dims = xspace.dimensions();
   const auto overlap = xspace.data.at(subspace::EqnData::S);
-  auto solutions_proj = dspace::construct_projected_solution(solutions, dims, q_delete, logger);
-  auto overlap_proj = dspace::construct_projected_solutions_overlap(solutions_proj, overlap, dims, q_delete, logger);
-  dspace::remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
-  solutions_proj = dspace::remove_null_projected_solutions(solutions_proj, overlap_proj, svd_thresh, logger);
-  overlap_proj = dspace::construct_projected_solutions_overlap(solutions_proj, overlap, dims, q_delete, logger);
-  dspace::remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
+  const auto solutions_proj =
+      dspace::stable_projected_solutions(solutions, overlap, dims, q_delete, norm_thresh, svd_thresh, logger);
 #ifndef NDEBUG
   // a decomposition of the whole subspace overlap, wanted only by this check
   auto overlap_full_subspace = dspace::construct_full_subspace_overlap(solutions_proj, dims, q_delete, overlap, 0);
@@ -416,34 +457,35 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
   const auto nD = solutions_proj.rows();
   const auto nQd = q_delete.size();
   assert(nQd + dims.nD == solutions_proj.cols());
-  const auto &qparams = xspace.cparamsq(), qactions = xspace.cactionsq();
-  const auto &dparams = xspace.cparamsd(), dactions = xspace.cactionsd();
+  const auto& qparams = xspace.cparamsq();
+  const auto& qactions = xspace.cactionsq();
+  const auto& dparams = xspace.cparamsd();
+  const auto& dactions = xspace.cactionsd();
   std::vector<Q> dparams_new, dactions_new;
-  {
-    // FIXME need a simpler mechanism for constructing null parameters
-    Q const* q = nullptr;
-    if (!qparams.empty())
-      q = &qparams.front().get();
-    else if (!dparams.empty())
-      q = &dparams.front().get();
-    if (q) {
-      for (size_t i = 0; i < nD; ++i) {
-        dparams_new.emplace_back(handler.copy(*q));
-        dactions_new.emplace_back(handler.copy(*q));
-        handler.fill(0, dparams_new.back());
-        handler.fill(0, dactions_new.back());
-      }
+  if (nD > 0) {
+    const Q& q = !qparams.empty() ? qparams.front().get() : dparams.front().get();
+    for (size_t i = 0; i < nD; ++i) {
+      dparams_new.emplace_back(util::construct_zeroed_copy(q, handler));
+      dactions_new.emplace_back(util::construct_zeroed_copy(q, handler));
     }
-  }
-  for (size_t i = 0; i < nD; ++i) {
-    for (size_t j = 0; j < q_delete.size(); ++j) {
-      handler.axpy(solutions_proj(i, j), qparams.at(q_delete[j]), dparams_new.at(i));
-      handler.axpy(solutions_proj(i, j), qactions.at(q_delete[j]), dactions_new.at(i));
+    // coefficient matrix with Q_{delete} and D vectors in rows and new D vectors in columns, as required by gemm_outer
+    auto coeff = subspace::Matrix<value_type>({nQd + dims.nD, nD});
+    for (size_t i = 0; i < nD; ++i)
+      for (size_t j = 0; j < nQd + dims.nD; ++j)
+        coeff(j, i) = solutions_proj(i, j);
+    // Q_{delete} followed by D, as the columns of solutions_proj, so that one call per output passes over each new
+    // vector only once
+    auto qd_params = CVecRef<Q>{}, qd_actions = CVecRef<Q>{};
+    for (auto iq : q_delete) {
+      qd_params.emplace_back(qparams.at(iq));
+      qd_actions.emplace_back(qactions.at(iq));
     }
-    for (size_t j = 0; j < dims.nD; ++j) {
-      handler.axpy(solutions_proj(i, nQd + j), dparams.at(j), dparams_new.at(i));
-      handler.axpy(solutions_proj(i, nQd + j), dactions.at(j), dactions_new.at(i));
-    }
+    qd_params.insert(qd_params.end(), dparams.begin(), dparams.end());
+    qd_actions.insert(qd_actions.end(), dactions.begin(), dactions.end());
+    const auto wdparams_new = wrap(dparams_new);
+    const auto wdactions_new = wrap(dactions_new);
+    handler.gemm_outer(coeff, qd_params, wdparams_new);
+    handler.gemm_outer(coeff, qd_actions, wdactions_new);
   }
   for (size_t i = 0; i < nD; ++i) {
     auto norm = std::sqrt(std::abs(handler.dot(dparams_new.at(i), dparams_new.at(i))));
@@ -459,8 +501,10 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
 }
 
 /*!
- * @brief Orthogonalises R parameters against P+Q+D subspace (and themselves)
+ * @brief Projects R parameters out of the P+Q+D subspace and orthonormalises them among themselves
  *
+ * The projection subtracts V S^{-1} V^dagger r in one step, with S the overlap matrix of the P+Q+D vectors V, which
+ * therefore need not be orthonormal. The projected parameters are then Gram-Schmidt orthonormalised among themselves.
  * New vectors with norm less than threshold are considered null and are not normalised.
  * Their indices in params are returned.
  *
@@ -477,14 +521,13 @@ auto construct_dspace(const subspace::Matrix<value_type>& solutions, const subsp
  * @return indices of null parameters
  */
 template <class R, class Q, class P, typename value_type, typename value_type_abs>
-auto modified_gram_schmidt(const VecRef<R>& rparams, const subspace::Matrix<value_type>& overlap,
-                           const subspace::Matrix<value_type>& rx_overlap, const subspace::Dimensions& dims,
-                           const CVecRef<P>& pparams, const CVecRef<Q>& qparams, const CVecRef<Q>& dparams,
-                           const value_type_abs norm_thresh,
-                           ArrayHandlers<R, Q, P>& handlers, Logger& logger) {
-  logger.trace("modified_gram_schmidt()");
+auto project_out_and_orthonormalise(const VecRef<R>& rparams, const subspace::Matrix<value_type>& overlap,
+                                    const subspace::Matrix<value_type>& rx_overlap, const subspace::Dimensions& dims,
+                                    const CVecRef<P>& pparams, const CVecRef<Q>& qparams, const CVecRef<Q>& dparams,
+                                    const value_type_abs norm_thresh, ArrayHandlers<R, Q, P>& handlers,
+                                    Logger& logger) {
+  logger.trace("project_out_and_orthonormalise()");
   const auto nR = rparams.size(), nP = pparams.size(), nQ = qparams.size(), nD = dparams.size();
-  // std::cout << "modified_gram_schmidt() nR="<<nR<<" nQ="<<nQ<<" nD="<<nD<<std::endl;
   assert(nP == dims.nP && nQ == dims.nQ && nD == dims.nD);
   assert(rx_overlap.rows() == nR && rx_overlap.cols() == dims.nX());
   // Project the new parameters out of the span of P+Q+D. The existing vectors need not be orthogonal to each other
@@ -558,28 +601,31 @@ auto get_new_working_set(const std::vector<int>& working_set, const CVecRef<R>& 
  *
  * Outline
  * -------
- * Basic procedure:
- *  - Gram-schmidt orthonormalise residuals amongst themselves
- *  - Gram-schmidt orthogonalise residuals against the old Q space and current solutions
- *  - Ensure that the resultant Q space is not linearly dependent by removing Q parameters with large overlap
- *  - Ensure that the size of Q space is within limit, by removing Q parameters with smallest contributions to current
- *    solutions
- *  - Reconstruct C space
+ *  1. If the Q space is larger than allowed, or holds vectors contributing too little to all solutions (see
+ *     QSpaceOptions), the Q vectors with the smallest contributions are removed. Their part of the current solutions is
+ *     preserved in a new D space: the solutions are projected onto the removed Q vectors and the old D space, and made
+ *     normalised and linearly independent (construct_dspace()). The subspace problem is then solved again.
+ *  2. The residuals of the working set are normalised.
+ *  3. Residuals that are linearly dependent on P+Q+D or on each other are discarded: for each singular value of the
+ *     overlap matrix of P+Q+D and the residuals below the threshold, the residual with the largest component in the
+ *     singular vector is removed (redundant_parameters()).
+ *  4. The remaining residuals are projected out of the span of P+Q+D, using the inverse of its equilibrated overlap
+ *     matrix since P+Q+D need not be orthonormal, and Gram-Schmidt orthonormalised among themselves
+ *     (project_out_and_orthonormalise()). Residuals that become null are discarded.
+ *  5. The resulting vectors are copied into parameters, and the working set is reduced to the roots whose residuals
+ *     were kept.
  *
- * Various possibilities:
- *  1. Residuals are linearly dependent among themselves, worst case scenario there could be duplicates.
- *  2. Residuals are linearly dependent with the old Q space, orthonormalisation against Q would result in
- *     almost null vectors.
- *
- * Case 1 is handled at the start by normalising residuals and orthogonalising them among themselves. If it results in
- * vectors with norm less then **threshold** than they are discarded and their action does not need to be evaluated.
- *
- * Case 2 is handled during Gram-Schmidt procedure. Residuals are orthogonalised against the old Q space, if one of
- * them has a small norm than an old q vector with largest overlap is deleted.
- *
- * @param parameters output new parameters for the subspace.
- * @param residual preconditioned residuals.
- * @return number of significant parameters to calculate the action for
+ * @param solver solver providing the current working set
+ * @param parameters output new parameters for the subspace
+ * @param residuals preconditioned residuals, which are modified
+ * @param xspace X space container
+ * @param subspace_solver solver of the subspace problem
+ * @param handlers array handlers
+ * @param logger logger
+ * @param r_opts thresholds for screening the new parameters
+ * @param q_opts options limiting the size of the Q space
+ * @param profiler profiler
+ * @return new working set
  */
 template <class R, class Q, class P>
 auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameters, const VecRef<R>& residuals,
@@ -587,8 +633,6 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
                     ArrayHandlers<R, Q, P>& handlers, Logger& logger,
                     const RSpaceOptions<typename array::ArrayHandler<R, R>::value_type_abs>& r_opts,
                     const QSpaceOptions& q_opts, molpro::profiler::Profiler& profiler) {
-  // auto prof = profiler.push("itsolv::propose_rspace"); // FIXME two separate profilers
-  auto prof = molpro::Profiler::single();
   logger.trace("itsolv::detail::propose_rspace");
   logger.trace("dimensions {nP, nQ, nD, nW} = ", xspace.dimensions().nP, xspace.dimensions().nQ, xspace.dimensions().nD,
                solver.working_set().size());
@@ -601,38 +645,37 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
     auto prof = profiler.push("construct_dspace");
     auto [dparams, dactions] =
         construct_dspace(solutions, xspace, q_delete, r_opts.norm_thresh, r_opts.svd_thresh, handlers.qq(), logger);
-    std::sort(begin(q_delete), end(q_delete), std::greater<int>());
-    for (auto iq : q_delete)
-      xspace.eraseq(iq);
+    erase_qspace(xspace, q_delete);
     auto wdparams = wrap(dparams);
     auto wdactions = wrap(dactions);
     xspace.update_dspace(wdparams, wdactions);
     auto eigenvalues_ref = subspace_solver.eigenvalues();
     subspace_solver.solve(xspace, subspace_solver.size());
+    const auto& eigenvalues_new = subspace_solver.eigenvalues();
+    const auto n_compare = std::min(eigenvalues_ref.size(), eigenvalues_new.size());
     auto eigval_error = std::vector<double>{};
-    std::transform(std::begin(eigenvalues_ref), std::end(eigenvalues_ref), std::begin(subspace_solver.eigenvalues()),
+    std::transform(std::begin(eigenvalues_ref), std::begin(eigenvalues_ref) + n_compare, std::begin(eigenvalues_new),
                    std::back_inserter(eigval_error), [](auto& e_ref, auto& e_new) { return std::abs(e_ref - e_new); });
     logger.debug("eigenvalue error due to new D space = ", eigval_error);
     // FIXME Optionally, solve the subspace problem again and get an estimate of the error due to new D
   }
-  // Use modified GS to orthonormalise z against P+Q+D, removing any null parameters.
+  // Orthonormalise the residuals against P+Q+D and among themselves, removing redundant and null parameters.
   auto wresidual = wrap(residuals.begin(), residuals.begin() + solver.working_set().size());
   profiler.start("normalise");
   normalise(wresidual, handlers.rr(), logger);
   profiler.stop();
   profiler.start("append_overlap_with_r");
-  prof->start("append_overlap_with_r");
   const auto full_overlap =
       append_overlap_with_r(xspace.data.at(subspace::EqnData::S), cwrap(wresidual), xspace.cparamsp(),
                             xspace.cparamsq(), xspace.cparamsd(), handlers, logger);
   profiler.stop();
-  prof->stop();
-  prof->start("redundant_indices");
+  profiler.start("redundant_indices");
   auto redundant_indices =
       redundant_parameters(full_overlap, xspace.dimensions().nX(), wresidual.size(), r_opts.svd_thresh, logger);
-  prof->stop();
+  profiler.stop();
   logger.debug("redundant indices = ", redundant_indices);
-  // overlaps of the remaining R parameters with P+Q+D, to save modified_gram_schmidt() from recalculating them
+  // overlaps of the remaining R parameters with P+Q+D, to save project_out_and_orthonormalise() from
+  // recalculating them
   const auto nX = xspace.dimensions().nX();
   auto kept = std::vector<size_t>{};
   for (size_t j = 0; j < wresidual.size(); ++j)
@@ -643,14 +686,11 @@ auto propose_rspace(IterativeSolver<R, Q, P>& solver, const VecRef<R>& parameter
     for (size_t i = 0; i < nX; ++i)
       rx_overlap(j, i) = full_overlap(nX + kept[j], i);
   util::delete_parameters(redundant_indices, wresidual);
-  profiler.start("modified_gram_schmidt");
-  prof->start("modified_gram_schmidt");
-  auto null_param_indices =
-      modified_gram_schmidt(wresidual, xspace.data.at(subspace::EqnData::S), rx_overlap, xspace.dimensions(),
-                            xspace.cparamsp(), xspace.cparamsq(), xspace.cparamsd(), r_opts.norm_thresh, handlers,
-                            logger);
+  profiler.start("project_out_and_orthonormalise");
+  auto null_param_indices = project_out_and_orthonormalise(wresidual, xspace.data.at(subspace::EqnData::S), rx_overlap,
+                                                           xspace.dimensions(), xspace.cparamsp(), xspace.cparamsq(),
+                                                           xspace.cparamsd(), r_opts.norm_thresh, handlers, logger);
   profiler.stop();
-  prof->stop();
   // Now that there is SVD null_param_indices should always be empty
   logger.debug("null parameters = ", null_param_indices);
   util::delete_parameters(null_param_indices, wresidual);

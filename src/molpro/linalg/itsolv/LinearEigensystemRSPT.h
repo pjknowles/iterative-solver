@@ -49,7 +49,6 @@ public:
     auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverRSPT<R, Q, P>>(this->m_subspace_solver);
     subspace_solver->set_hermiticity(true);
     this->set_n_roots(1);
-    this->m_normalise_solution = false;
   }
 
   bool nonlinear() const override { return false; }

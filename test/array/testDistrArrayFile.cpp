@@ -424,6 +424,13 @@ TEST(DistrArrayFile, paged_operations_match_memory) {
     EXPECT_NEAR(f.dot(sparse), m.dot(sparse), 1e-13);
     f.axpy(-0.5, sparse), m.axpy(-0.5, sparse);
     expect_same(f, m, "axpy sparse");
+    f.copy(sparse), m.copy(sparse);
+    expect_same(f, m, "copy sparse");
+    auto dense = std::vector<double>(dim, 0.);
+    for (const auto& [i, v] : sparse)
+      dense[i] = v;
+    EXPECT_THAT(local(f), Pointwise(DoubleEq(), std::vector<double>(dense.begin() + lo, dense.begin() + hi)))
+        << "copy sparse";
   }
   {
     // gemm with arrays on disk on both sides, and with sparse arrays, paging gemm as well

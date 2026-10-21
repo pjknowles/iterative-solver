@@ -8,6 +8,7 @@
 #include <locale>
 #include <map>
 #include <string>
+#include <vector>
 
 namespace molpro::linalg::itsolv::util {
 
@@ -75,16 +76,34 @@ void construct_solutions(const VecRef<R>& params, const std::vector<int>& roots,
   auto prof = molpro::Profiler::single();
   prof->start("itsolv::util::construct_solutions");
   assert(params.size() >= roots.size());
-  for (size_t i = 0; i < roots.size(); ++i)
+  const auto nroots = roots.size();
+  for (size_t i = 0; i < nroots; ++i)
     handler_rr.fill(0, params.at(i));
-  for (size_t i = 0; i < roots.size(); ++i) {
-    auto root = roots[i];
-    for (size_t j = 0; j < pparams.size(); ++j)
-      handler_rp.axpy(solutions(root, oP + j), pparams.at(j), params.at(i));
-    for (size_t j = 0; j < qparams.size(); ++j)
-      handler_rq.axpy(solutions(root, oQ + j), qparams.at(j), params.at(i));
-    for (size_t j = 0; j < dparams.size(); ++j)
-      handler_rq.axpy(solutions(root, oD + j), dparams.at(j), params.at(i));
+  // coefficient matrices with the subspace vectors at the given indices in rows and roots in columns, as required by
+  // gemm_outer
+  auto coefficients = [&](const std::vector<size_t>& indices) {
+    auto coeff = subspace::Matrix<value_type>({indices.size(), nroots});
+    for (size_t i = 0; i < nroots; ++i)
+      for (size_t j = 0; j < indices.size(); ++j)
+        coeff(j, i) = solutions(roots[i], indices[j]);
+    return coeff;
+  };
+  auto append_indices = [](std::vector<size_t>& indices, size_t offset, size_t n) {
+    for (size_t j = 0; j < n; ++j)
+      indices.push_back(offset + j);
+  };
+  if (nroots > 0) {
+    const auto wparams = VecRef<R>(params.begin(), params.begin() + nroots);
+    auto p_indices = std::vector<size_t>{};
+    append_indices(p_indices, oP, pparams.size());
+    handler_rp.gemm_outer(coefficients(p_indices), pparams, wparams);
+    // Q and D in one call, so that each solution is passed over only once
+    auto qd_indices = std::vector<size_t>{};
+    append_indices(qd_indices, oQ, qparams.size());
+    append_indices(qd_indices, oD, dparams.size());
+    auto qdparams = qparams;
+    qdparams.insert(qdparams.end(), dparams.begin(), dparams.end());
+    handler_rq.gemm_outer(coefficients(qd_indices), qdparams, wparams);
   }
   prof->stop();
 }

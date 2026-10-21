@@ -65,7 +65,9 @@ exactly from the start.
   `add_p()`. Its size must be zero or at least the number of roots sought.
 - When solving through `IterativeSolver::solve()` and the problem provides `diagonals()`, a P space is selected
   automatically from the coordinates with the lowest diagonal elements. Its size is limited by `max_p`, and only
-  coordinates whose diagonal element lies within `p_threshold` of the lowest one are included.
+  coordinates whose diagonal element lies within `p_threshold` of the lowest one are included. If this selection is
+  smaller than the number of roots, a warning is logged and no P space is used; the solver then starts from the
+  initial guess generated from the diagonal elements.
 - `suggest_p()` proposes coordinates that would be good candidates for extending the P space.
 
 @section SpacesQ Q space

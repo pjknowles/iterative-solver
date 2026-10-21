@@ -49,7 +49,7 @@ void check_orthogonal_to_nonorthogonal_space() {
   // <r_j|q_i>, as append_overlap_with_r() provides in propose_rspace()
   const auto rx_overlap = handlers.rq().gemm_inner(cwrap(r), cwrap(q));
   auto wr = wrap(r);
-  const auto null_params = molpro::linalg::itsolv::detail::modified_gram_schmidt(
+  const auto null_params = molpro::linalg::itsolv::detail::project_out_and_orthonormalise(
       wr, overlap, rx_overlap, Dimensions(0, nQ, 0), cwrap(p), cwrap(q), cwrap(d), 1e-10, handlers, logger);
   EXPECT_TRUE(null_params.empty());
   for (size_t j = 0; j < nR; ++j) {
@@ -62,8 +62,70 @@ void check_orthogonal_to_nonorthogonal_space() {
 }
 } // namespace
 
-TEST(propose_rspace, modified_gram_schmidt_nonorthogonal_space) { check_orthogonal_to_nonorthogonal_space<double>(); }
+TEST(propose_rspace, project_out_and_orthonormalise_nonorthogonal_space) {
+  check_orthogonal_to_nonorthogonal_space<double>();
+}
 
-TEST(propose_rspace, modified_gram_schmidt_nonorthogonal_space_complex) {
+TEST(propose_rspace, project_out_and_orthonormalise_nonorthogonal_space_complex) {
   check_orthogonal_to_nonorthogonal_space<std::complex<double>>();
 }
+
+namespace {
+// The overlaps of projected solutions x_i = \sum_k C_ik u_k, built from selected Q vectors and the D vectors u_k, must
+// equal the inner products of the explicitly constructed vectors, which for complex coefficients requires conjugation.
+template <typename T>
+void check_projected_solutions_overlap() {
+  using R = std::vector<T>;
+  using P = std::map<size_t, T>;
+  const size_t n = 9;
+  const auto dims = Dimensions(1, 4, 2);
+  const size_t nR = 1;
+  const auto remove_qspace = std::vector<size_t>{3, 1};
+  T phase = 1;
+  if constexpr (!std::is_same_v<T, double>)
+    phase = std::polar(1.0, 0.7);
+  // P+Q+D+R vectors in the order of the subspace
+  std::vector<R> v(dims.nX() + nR, R(n));
+  for (size_t i = 0; i < v.size(); ++i)
+    for (size_t k = 0; k < n; ++k)
+      v[i][k] = T(std::cos(0.3 * k * (i + 1) + i)) + T(0.2 * std::sin(1.1 * k + 0.5 * i)) * phase;
+  auto handlers = ArrayHandlers<R, R, P>();
+  Matrix<T> overlap({v.size(), v.size()});
+  for (size_t i = 0; i < v.size(); ++i)
+    for (size_t j = 0; j < v.size(); ++j)
+      overlap(i, j) = handlers.rr().dot(v[i], v[j]);
+  const size_t nQd = remove_qspace.size(), nSol = 2;
+  Matrix<T> solutions_proj({nSol, nQd + dims.nD});
+  for (size_t i = 0; i < nSol; ++i)
+    for (size_t k = 0; k < nQd + dims.nD; ++k)
+      solutions_proj(i, k) = T(0.5 + i - 0.3 * k) + T(0.4 * (k + 1) - 0.2 * i) * phase;
+  auto u = std::vector<R>{};
+  for (auto iq : remove_qspace)
+    u.push_back(v[dims.oQ() + iq]);
+  for (size_t k = 0; k < dims.nD; ++k)
+    u.push_back(v[dims.oD() + k]);
+  std::vector<R> x(nSol, R(n, T(0)));
+  for (size_t i = 0; i < nSol; ++i)
+    for (size_t k = 0; k < u.size(); ++k)
+      handlers.rr().axpy(solutions_proj(i, k), u[k], x[i]);
+  Logger logger;
+  const auto overlap_proj = molpro::linalg::itsolv::detail::dspace::construct_projected_solutions_overlap(
+      solutions_proj, overlap, dims, remove_qspace, logger);
+  for (size_t i = 0; i < nSol; ++i)
+    for (size_t j = 0; j < nSol; ++j)
+      EXPECT_NEAR(std::abs(overlap_proj(i, j) - handlers.rr().dot(x[i], x[j])), 0, 1e-12) << i << ", " << j;
+  // full subspace P + remaining Q + R + projected solutions
+  auto w = std::vector<R>{v[dims.oP()], v[dims.oQ()], v[dims.oQ() + 2], v[dims.nX()], x[0], x[1]};
+  const auto ov = molpro::linalg::itsolv::detail::dspace::construct_full_subspace_overlap(solutions_proj, dims,
+                                                                                          remove_qspace, overlap, nR);
+  ASSERT_EQ(ov.rows(), w.size());
+  ASSERT_EQ(ov.cols(), w.size());
+  for (size_t i = 0; i < w.size(); ++i)
+    for (size_t j = 0; j < w.size(); ++j)
+      EXPECT_NEAR(std::abs(ov(i, j) - handlers.rr().dot(w[i], w[j])), 0, 1e-12) << i << ", " << j;
+}
+} // namespace
+
+TEST(propose_rspace, projected_solutions_overlap) { check_projected_solutions_overlap<double>(); }
+
+TEST(propose_rspace, projected_solutions_overlap_complex) { check_projected_solutions_overlap<std::complex<double>>(); }

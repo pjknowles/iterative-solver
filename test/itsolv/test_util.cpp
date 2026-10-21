@@ -3,6 +3,11 @@
 
 #include <molpro/linalg/itsolv/util.h>
 
+#include <map>
+#include <numeric>
+#include <vector>
+
+using molpro::linalg::itsolv::util::construct_solutions;
 using molpro::linalg::itsolv::util::construct_zeroed_copy;
 using molpro::linalg::itsolv::util::delete_parameters;
 using molpro::linalg::itsolv::util::is_iota;
@@ -36,6 +41,27 @@ TEST(itsolv_util, construct_zeroed_copy) {
   auto q = construct_zeroed_copy(r, *handler);
   ASSERT_EQ(q.size(), r.size());
   ASSERT_THAT(q, ::testing::Each(::testing::DoubleEq(0)));
+}
+
+// P, Q and D vectors at offsets 0, 1 and 3 of the subspace, with the solutions taken from the rows given by roots
+TEST(itsolv_util, construct_solutions) {
+  using R = std::vector<double>;
+  using Q = std::vector<double>;
+  using P = std::map<size_t, double>;
+  using molpro::linalg::itsolv::cwrap;
+  using molpro::linalg::itsolv::wrap;
+  auto handlers = molpro::linalg::itsolv::ArrayHandlers<R, Q, P>{};
+  const auto pparams = std::vector<P>{{{0, 1.}}};
+  const auto qparams = std::vector<Q>{{0, 1, 0}, {0, 0, 1}};
+  const auto dparams = std::vector<Q>{{1, 1, 1}};
+  const auto solutions = molpro::linalg::itsolv::subspace::Matrix<double>{{9, 9, 9, 9, //
+                                                                           1, 2, 3, 4},
+                                                                          {2, 4}};
+  auto params = std::vector<R>(2, R(3, -1.));
+  construct_solutions(wrap(params), {1, 0}, solutions, cwrap(pparams), cwrap(qparams), cwrap(dparams), 0, 1, 3,
+                      handlers.rr(), handlers.rp(), handlers.rq());
+  EXPECT_THAT(params[0], ::testing::Pointwise(::testing::DoubleEq(), std::vector<double>{5, 6, 7}));
+  EXPECT_THAT(params[1], ::testing::Pointwise(::testing::DoubleEq(), std::vector<double>{18, 18, 18}));
 }
 
 TEST(itsolv_util, delete_parameters__empty_params) {

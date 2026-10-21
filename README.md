@@ -6,6 +6,8 @@ iterative-solver
 [//]: # (&#40;https://github.com/molpro/iterative-solver/commits/master&#41;)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/molpro/iterative-solver/blob/master/LICENSE)
 
+[![Online documentation - Docs](https://img.shields.io/badge/Online_documentation-Docs-2ea44f)](https://molpro.github.io/iterative-solver/)
+
 ## Overview
 
 Implements iterative solvers for linear and non-linear problems and

@@ -970,10 +970,10 @@ auto redundant_parameters(const subspace::Matrix<value_type>& overlap, const siz
       auto rspace_contribution = std::vector<value_type_abs>{};
       for (auto i : rspace_indices)
         rspace_contribution.push_back(std::abs(singular_system.v.at(oR + i)));
-      auto it_min = std::max_element(std::begin(rspace_contribution), std::end(rspace_contribution));
-      auto imin = std::distance(std::begin(rspace_contribution), it_min);
-      redundant_params.push_back(rspace_indices[imin]);
-      rspace_indices.erase(std::begin(rspace_indices) + imin);
+      auto it_max = std::max_element(std::begin(rspace_contribution), std::end(rspace_contribution));
+      auto imax = std::distance(std::begin(rspace_contribution), it_max);
+      redundant_params.push_back(rspace_indices[imax]);
+      rspace_indices.erase(std::begin(rspace_indices) + imax);
       std::stringstream ss;
       ss << std::setprecision(3) << "redundant parameter found, i = " << redundant_params.back()
          << ", svd.value = " << singular_system.value

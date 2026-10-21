@@ -10,7 +10,10 @@
 #include <molpro/linalg/itsolv/subspace/util.h>
 #include <molpro/linalg/itsolv/util.h>
 
+#include <algorithm>
+#include <cassert>
 #include <cstddef>
+#include <functional>
 #include <limits>
 
 namespace molpro::linalg::itsolv::detail {
@@ -21,9 +24,20 @@ void resize_qspace(subspace::IXSpace<R, Q, P>& xspace, const subspace::Matrix<va
   logger.trace("resize_qspace()");
   auto q_delete = limit_qspace_size(xspace.dimensions(), QSpaceOptions{.max_size = max_size}, solutions, logger);
   logger.debug("delete Q parameter indices = ", q_delete);
-  std::sort(begin(q_delete), end(q_delete), std::greater<int>());
-  for (auto iq : q_delete)
-    xspace.eraseq(iq);
+  erase_qspace(xspace, q_delete);
+}
+
+//! Erases Q parameters with the given indices together with the corresponding columns of a solutions matrix
+template <class R, class Q, class P, typename value_type, typename Index>
+void erase_qspace(subspace::IXSpace<R, Q, P>& xspace, subspace::Matrix<value_type>& solutions,
+                  std::vector<Index> indices) {
+  assert(solutions.cols() == xspace.dimensions().nX());
+  const auto oQ = xspace.dimensions().oQ();
+  std::sort(begin(indices), end(indices), std::greater<Index>());
+  for (auto i : indices) {
+    xspace.eraseq(i);
+    solutions.remove_col(oQ + i);
+  }
 }
 
 /*!
@@ -73,7 +87,7 @@ auto max_overlap_with_R(const CVecRef<R>& rparams, const CVecRef<Q>& qparams, ar
 template <class Q>
 class DSpaceResetter {
 protected:
-  std::size_t m_nreset = std::numeric_limits<std::size_t>::max(); //!< reset D space every n iterations
+  std::size_t m_nreset = 0; //!< reset D space every n iterations, 0 for never
   std::size_t m_max_Qsize_after_reset =
       std::numeric_limits<std::size_t>::max(); //!< maximum size of Q space after reset
   std::list<Q> solution_params;                //!< all current solutions that will be moved to the Q space
@@ -84,7 +98,7 @@ public:
 
   //! Whether reset operation should be run
   bool do_reset(size_t iter, const subspace::Dimensions& dims) {
-    return ((iter + 1) % m_nreset == 0 && dims.nD > 0) || !solution_params.empty();
+    return (m_nreset != 0 && (iter + 1) % m_nreset == 0 && dims.nD > 0) || !solution_params.empty();
   }
 
   void set_nreset(size_t i) { m_nreset = i; }
@@ -100,20 +114,16 @@ public:
     logger.trace("DSpaceResetter::run()");
     logger.trace("dimensions {nP, nQ, nD, nR} = ", xspace.dimensions().nP, xspace.dimensions().nQ,
                  xspace.dimensions().nD, rparams.size());
-    auto solutions_proj = solutions;
+    // solutions with columns kept in step with the changes to xspace below
+    auto solutions_xspace = solutions;
     if (solution_params.empty() && !rparams.empty()) {
       logger.debug("constructing solutions");
       const auto dims = xspace.dimensions();
       const auto overlap = xspace.data.at(subspace::EqnData::S);
       auto q_indices = std::vector<std::size_t>(xspace.dimensions().nQ);
       std::iota(q_indices.begin(), q_indices.end(), 0);
-      solutions_proj = dspace::construct_projected_solution(solutions, dims, q_indices, logger);
-      auto overlap_proj =
-          dspace::construct_projected_solutions_overlap(solutions_proj, overlap, dims, q_indices, logger);
-      dspace::remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
-      solutions_proj = dspace::remove_null_projected_solutions(solutions_proj, overlap_proj, svd_thresh, logger);
-      overlap_proj = dspace::construct_projected_solutions_overlap(solutions_proj, overlap, dims, q_indices, logger);
-      dspace::remove_null_norm_and_normalise(solutions_proj, overlap_proj, norm_thresh, logger);
+      const auto solutions_proj =
+          dspace::stable_projected_solutions(solutions, overlap, dims, q_indices, norm_thresh, svd_thresh, logger);
       const auto nC = solutions_proj.rows();
       for (size_t i = 0; i < nC; ++i)
         solution_params.emplace_back(util::construct_zeroed_copy(rparams.front().get(), handlers.qr()));
@@ -122,6 +132,9 @@ public:
       util::construct_solutions(wrap(begin(solution_params), end(solution_params)), roots, solutions_proj, {},
                                 xspace.cparamsq(), xspace.cparamsd(), 0, 0, dims.nQ, handlers.qq(), handlers.qp(),
                                 handlers.qq());
+      assert(solutions_xspace.cols() == dims.nX());
+      for (size_t i = 0; i < dims.nD; ++i)
+        solutions_xspace.remove_col(dims.oD());
       VecRef<Q> null_params, null_actions;
       xspace.update_dspace(null_params, null_actions);
     }
@@ -132,10 +145,10 @@ public:
     }
     const auto wparams = cwrap(begin(rparams), begin(rparams) + nR);
     auto q_delete = max_overlap_with_R(wparams, xspace.cparamsq(), handlers.rq(), logger);
-    for (auto i : q_delete)
-      xspace.eraseq(i);
+    erase_qspace(xspace, solutions_xspace, q_delete);
+    assert(solutions_xspace.cols() == xspace.dimensions().nX());
     if (xspace.dimensions().nQ + nR > m_max_Qsize_after_reset)
-      resize_qspace(xspace, solutions, m_max_Qsize_after_reset > nR ? m_max_Qsize_after_reset - nR : 0, logger);
+      resize_qspace(xspace, solutions_xspace, m_max_Qsize_after_reset > nR ? m_max_Qsize_after_reset - nR : 0, logger);
     auto new_working_set = std::vector<int>(nR);
     std::iota(begin(new_working_set), end(new_working_set), 0);
     return new_working_set;

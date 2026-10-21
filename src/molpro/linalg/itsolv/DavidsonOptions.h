@@ -12,7 +12,8 @@ struct DavidsonOptions {
   DavidsonOptions() = default;
   DavidsonOptions(const options_map& opt);
 
-  //! Every reset_D iterations, discard the D space and move the current solutions into the Q space. Default: never.
+  //! Every reset_D iterations, discard the D space and move the current solutions into the Q space. 0 means never.
+  //! Default: 0.
   std::optional<std::size_t> reset_D;
   //! Maximum size of the Q space immediately after a D-space reset. Default: unlimited, but never more than
   //! max_size_qspace.

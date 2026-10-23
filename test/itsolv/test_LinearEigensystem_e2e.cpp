@@ -275,6 +275,30 @@ TEST(LinearEigensystem, Davidson_complex_pair_split_by_batches) {
     EXPECT_NEAR(eigvals[i], reference[i].real(), 1e-8);
 }
 
+//! Both members of a complex pair among the roots have the norm of their complex residual as error, also when they end
+//! up in different batches because there are fewer parameter vectors than roots
+class Davidson_complex_pair_errors : public ::testing::TestWithParam<size_t> {};
+
+TEST_P(Davidson_complex_pair_errors, are_norm_of_complex_residual) {
+  molpro::mpi::init();
+  SplitComplexPairProblem problem;
+  problem.offdiagonal = 0.1;
+  auto solver = create_split_pair_solver(4);
+  auto params = std::vector<std::vector<double>>(GetParam(), std::vector<double>(problem.n));
+  auto actions = params;
+  ASSERT_TRUE(solver->solve(params, actions, problem, true));
+  auto solutions = std::vector<std::vector<double>>(solver->n_roots(), std::vector<double>(problem.n));
+  auto residuals = solutions;
+  solver->solution({0, 1, 2, 3}, solutions, residuals);
+  const Eigen::Map<const Eigen::VectorXd> r_real(residuals[2].data(), problem.n),
+      r_imag(residuals[3].data(), problem.n);
+  const auto errors = solver->errors();
+  EXPECT_EQ(errors.at(2), errors.at(3));
+  EXPECT_NEAR(errors.at(2), std::sqrt(r_real.squaredNorm() + r_imag.squaredNorm()), 1e-14);
+}
+
+INSTANTIATE_TEST_SUITE_P(LinearEigensystem, Davidson_complex_pair_errors, ::testing::Values(4, 3));
+
 //! A symmetric, diagonally dominant matrix
 class SymmetricProblem : public molpro::linalg::itsolv::Problem<std::vector<double>> {
 public:

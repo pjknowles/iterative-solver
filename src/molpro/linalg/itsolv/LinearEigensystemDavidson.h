@@ -291,6 +291,26 @@ protected:
   }
 
   /*!
+   * @brief The error of both members of a complex pair is the norm of their complex residual
+   *
+   * The residuals of the two members are the real and imaginary part of the complex residual. A pair whose second
+   * member was truncated away is handled by compute_errors().
+   */
+  void combine_errors() override {
+    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
+    assert(subspace_solver);
+    const auto& errors = subspace_solver->errors();
+    for (size_t root = 0; root < subspace_solver->size(); ++root) {
+      const auto partner = subspace_solver->complex_partner(root);
+      if (partner && root < *partner && *partner < subspace_solver->size()) {
+        const auto error = std::sqrt(errors[root] * errors[root] + errors[*partner] * errors[*partner]);
+        subspace_solver->set_error(int(root), error);
+        subspace_solver->set_error(int(*partner), error);
+      }
+    }
+  }
+
+  /*!
    * @brief The error of the last root, whose complex pair partner was truncated away, is the norm of its complex
    * residual
    *

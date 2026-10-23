@@ -14,8 +14,12 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
+#include <format>
 #include <iterator>
 #include <map>
+#include <optional>
+#include <stdexcept>
 
 namespace molpro::linalg::itsolv {
 
@@ -84,7 +88,7 @@ public:
     if (m_dspace_resetter.do_reset(this->m_stats->iterations, this->m_xspace->dimensions())) {
       m_resetting_in_progress = true;
       this->m_working_set =
-          m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->solutions(),
+          m_dspace_resetter.run(parameters, *this->m_xspace, this->m_subspace_solver->retained_solutions(),
                                 rspace_opts.norm_thresh, rspace_opts.svd_thresh, *this->m_handlers, *this->m_logger);
     } else {
       m_resetting_in_progress = false;
@@ -111,24 +115,31 @@ public:
   void finalize() override {
     if constexpr (is_complex<typename R::value_type>::value) {
       return;
-    }
+    } else {
+      auto subspace_solver =
+          std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
+      assert(subspace_solver);
+      auto imag_eigval_components = subspace_solver->imag_eigval_components();
+      if (imag_eigval_components.empty()) {
+        return;
+      }
 
-    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
-    assert(subspace_solver);
-    auto imag_eigval_components = subspace_solver->imag_eigval_components();
-    if (imag_eigval_components.empty()) {
-      return;
-    }
+      // Convert to 1-based indexing for printout
+      for (auto& pair : imag_eigval_components) {
+        pair.first += 1;
+      }
 
-    // Convert to 1-based indexing for printout
-    for (auto& pair : imag_eigval_components) {
-      pair.first += 1;
-    }
+      this->m_logger->template warn<log::ComplexRootsDavidson<typename R::value_type>>(
+          "The following roots are complex-valued. Associated eigenvectors are the real and imaginary part "
+          "of the pairs and the imaginary parts of the eigenvalues are ",
+          imag_eigval_components);
 
-    this->m_logger->template warn<log::ComplexRootsDavidson<typename R::value_type>>(
-        "The following roots are complex-valued. Associated eigenvectors are the real and imaginary part "
-        "of the pairs and the imaginary parts of the eigenvalues are ",
-        imag_eigval_components);
+      const auto nroots = subspace_solver->size();
+      if (const auto partner = subspace_solver->complex_partner(nroots - 1); partner && *partner >= nroots)
+        this->m_logger->warn(std::format("The complex conjugate partner of root {} is not among the requested roots, so "
+                                         "only the real part of its eigenvector is available",
+                                         nroots));
+    }
   }
 
   //! Applies the Davidson preconditioner
@@ -258,28 +269,80 @@ protected:
         // the first vector in a pair is the one that has been transformed with the real and the second
         // with the imaginary part of c.
         // The above code has already dealt with the bulk of the necessary expression and we only need
-        // to add the part with the imaginary components of the eigenvalue pair. We use the knowledge
-        // about the ordering of vectors (which has been transformed with what eigenvector component)
-        // to compute the right thing without explicit access to the eigenvectors.
-        const auto distance = std::ranges::distance(imag_eigval_components.begin(), it);
-        const int offset = (distance % 2) == 0 ? 1 : -1;
-
-        auto root_it = std::ranges::find(roots, roots[i] + offset);
-        if (root_it == roots.end()) {
-          // We can only do this, if we have both components of a complex eigenvalue/eigenvector pair
-          // available here.
-          this->m_logger->warn(
-              "Complex conjugate eigenvalue pair incomplete in construct_residual (this can lead to poor convergence)");
-          continue;
-        }
-
-        const std::size_t param_idx = std::ranges::distance(roots.begin(), root_it);
-
+        // to add the part with the imaginary components of the eigenvalue pair, for which the vector of
+        // the partner root is used.
         // Note: The minus sign in above expression is implicitly taken into account as the
         // imaginary parts of the complex conjugate eigenvalue pair has flipped signs
-        this->m_handlers->rr().axpy(it->second, params.at(param_idx), actions.at(i));
+        const auto partner = subspace_solver->complex_partner(roots[i]).value();
+        const auto root_it = std::ranges::find(roots, int(partner));
+        if (root_it != roots.end()) {
+          this->m_handlers->rr().axpy(it->second, params.at(std::ranges::distance(roots.begin(), root_it)),
+                                      actions.at(i));
+        } else {
+          // The partner is not among roots, or was truncated away, so its vector is assembled from the subspace
+          if (partner >= subspace_solver->retained_solutions().rows())
+            throw std::logic_error("The complex conjugate partner of a root is not among the retained solutions");
+          auto partner_param = this->m_handlers->rr().copy(actions.at(i));
+          construct_subspace_vector(subspace_solver->retained_solutions(), int(partner), partner_param);
+          this->m_handlers->rr().axpy(it->second, partner_param, actions.at(i));
+        }
       }
     }
+  }
+
+  /*!
+   * @brief The error of the last root, whose complex pair partner was truncated away, is the norm of its complex
+   * residual
+   *
+   * The residual of that root is only the real part of the complex residual. The imaginary part is the residual of
+   * the truncated partner, which is assembled from the subspace.
+   */
+  void compute_errors(const std::vector<int>& roots, const CVecRef<R>& params, const CVecRef<R>& residuals,
+                      std::vector<value_type_abs>& errors) override {
+    SolverTemplate::compute_errors(roots, params, residuals, errors);
+    auto subspace_solver = std::dynamic_pointer_cast<subspace::SubspaceSolverLinEig<R, Q, P>>(this->m_subspace_solver);
+    assert(subspace_solver);
+    const auto nroots = subspace_solver->size();
+    if (nroots == 0)
+      return;
+    const auto partner = subspace_solver->complex_partner(nroots - 1);
+    const auto root_it = std::ranges::find(roots, int(nroots - 1));
+    if (!partner || *partner < nroots || root_it == roots.end())
+      return;
+    const auto i = std::ranges::distance(roots.begin(), root_it);
+    const auto& imag_eigval_components = subspace_solver->imag_eigval_components();
+    const auto it = std::ranges::find(imag_eigval_components, nroots - 1, [](const auto& pair) { return pair.first; });
+    if (it == imag_eigval_components.end())
+      throw std::logic_error("The imaginary part of the eigenvalue of a complex pair member is missing");
+    const auto& solutions = subspace_solver->retained_solutions();
+    auto partner_param = this->m_handlers->rr().copy(params.at(i));
+    auto partner_residual = this->m_handlers->rr().copy(params.at(i));
+    construct_subspace_vector(solutions, int(*partner), partner_param);
+    construct_subspace_action(solutions, int(*partner), partner_residual);
+    // The imaginary part of the partner's eigenvalue is the negative of the one of the last root
+    this->m_handlers->rr().axpy(-eigenvalues().at(nroots - 1), partner_param, partner_residual);
+    this->m_handlers->rr().axpy(-it->second, params.at(i), partner_residual);
+    errors.at(i) = std::sqrt(errors.at(i) * errors.at(i) +
+                             std::abs(this->m_handlers->rr().dot(partner_residual, partner_residual)));
+  }
+
+  //! Constructs in param the subspace vector with the coefficients in the given row of solutions
+  void construct_subspace_vector(const subspace::Matrix<scalar_type>& solutions, int row, R& param) {
+    const auto& dims = this->m_xspace->dimensions();
+    assert(solutions.cols() == dims.nX());
+    detail::construct_solution(wrap_arg(param), {row}, solutions, this->m_xspace->paramsp(), this->m_xspace->paramsq(),
+                               this->m_xspace->paramsd(), dims.oP(), dims.oQ(), dims.oD(), *this->m_handlers);
+  }
+
+  //! Constructs in action the action on the subspace vector with the coefficients in the given row of solutions
+  void construct_subspace_action(const subspace::Matrix<scalar_type>& solutions, int row, R& action) {
+    const auto& dims = this->m_xspace->dimensions();
+    assert(solutions.cols() == dims.nX());
+    detail::construct_solution(wrap_arg(action), {row}, solutions, {}, this->m_xspace->actionsq(),
+                               this->m_xspace->actionsd(), dims.oP(), dims.oQ(), dims.oD(), *this->m_handlers);
+    if (this->m_apply_p)
+      this->m_apply_p(detail::construct_vectorP({row}, solutions, dims.oP(), dims.nP), this->m_xspace->cparamsp(),
+                      wrap_arg(action));
   }
 
   detail::DSpaceResetter<Q> m_dspace_resetter; //!< resets D space

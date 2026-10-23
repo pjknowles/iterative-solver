@@ -85,6 +85,12 @@ void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>
                   std::vector<std::pair<std::size_t, value_type>>* imag_eval_parts = nullptr,
                   size_t nroots = std::numeric_limits<size_t>::max());
 
+/*!
+ * @param imag_eval_parts if not null, receives a (root, imaginary part) record for every eigenvalue that is a member of a
+ * complex conjugate pair. The members of a pair are adjacent roots and their records are consecutive, first member
+ * first. Their eigenvalues are set to the common real part and their eigenvectors to the real and imaginary part of the
+ * first member's complex eigenvector.
+ */
 template <typename value_type, typename std::enable_if_t<!is_complex<value_type>{}, std::nullptr_t> = nullptr>
 void eigenproblem(std::vector<value_type>& eigenvectors, std::vector<value_type>& eigenvalues,
                   const std::vector<value_type>& matrix, const std::vector<value_type>& metric, size_t dimension,

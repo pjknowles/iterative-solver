@@ -8,7 +8,13 @@
 
 #include <Eigen/Dense>
 
+#include <algorithm>
 #include <cmath>
+#include <complex>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -101,6 +107,172 @@ TEST(LinearEigensystem, Davidson_complex_roots) {
     ASSERT_THAT(eigvals.at(2), ::testing::DoubleNear(2.3814541296, tol));
     ASSERT_THAT(eigvals.at(3), ::testing::DoubleNear(2.3814541296, tol));
   }
+}
+
+//! A non-symmetric, diagonally dominant matrix whose third eigenvalue (by real part) is a member of a complex pair
+class SplitComplexPairProblem : public molpro::linalg::itsolv::Problem<std::vector<double>> {
+public:
+  static constexpr size_t n = 30;
+  double coupling = 1.;      //!< couples the third and fourth diagonal element into the complex pair
+  double offdiagonal = 0.01; //!< scale of the remaining off-diagonal elements
+  double element(size_t i, size_t j) const {
+    if (i == 2 and j == 3)
+      return coupling;
+    if (i == 3 and j == 2)
+      return -coupling;
+    return i == j ? 1. + i : offdiagonal / (1. + std::abs(double(i) - double(j)));
+  }
+
+  bool diagonals(std::vector<double> &d) const override {
+    for (size_t i = 0; i < n; ++i)
+      d[i] = element(i, i);
+    return true;
+  }
+
+  void action(const molpro::linalg::itsolv::CVecRef<std::vector<double>> &parameters,
+              const molpro::linalg::itsolv::VecRef<std::vector<double>> &actions) const override {
+    for (size_t k = 0; k < parameters.size(); ++k)
+      for (size_t i = 0; i < n; ++i) {
+        actions[k].get()[i] = 0;
+        for (size_t j = 0; j < n; ++j)
+          actions[k].get()[i] += element(i, j) * parameters[k].get()[j];
+      }
+  }
+};
+
+//! The matrix of problem
+Eigen::MatrixXd dense_matrix(const SplitComplexPairProblem &problem) {
+  Eigen::MatrixXd matrix(problem.n, problem.n);
+  for (size_t i = 0; i < problem.n; ++i)
+    for (size_t j = 0; j < problem.n; ++j)
+      matrix(i, j) = problem.element(i, j);
+  return matrix;
+}
+
+//! The eigenvalues of problem in the order of the solver, i.e. by real part and then by imaginary part
+std::vector<std::complex<double>> sorted_reference_eigenvalues(const SplitComplexPairProblem &problem) {
+  const Eigen::VectorXcd eigenvalues = Eigen::EigenSolver<Eigen::MatrixXd>(dense_matrix(problem)).eigenvalues();
+  std::vector<std::complex<double>> reference(eigenvalues.begin(), eigenvalues.end());
+  std::ranges::sort(reference, {}, [](const auto &e) { return std::pair{e.real(), e.imag()}; });
+  return reference;
+}
+
+//! A non-hermitian Davidson solver for n_roots roots, converging to 1e-8 within 100 iterations
+auto create_split_pair_solver(size_t n_roots, const std::string &options = "") {
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<std::vector<double>>("Davidson", options);
+  solver->set_n_roots(n_roots);
+  solver->set_max_iter(100);
+  solver->set_hermiticity(false);
+  solver->set_convergence_threshold(1e-8);
+  return solver;
+}
+
+TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots) {
+  molpro::mpi::init();
+  SplitComplexPairProblem problem;
+  const auto reference = sorted_reference_eigenvalues(problem);
+  ASSERT_NEAR(std::abs(reference.at(2) - std::conj(reference.at(3))), 0., 1e-12);
+  ASSERT_GT(std::abs(reference.at(2).imag()), 0.5);
+
+  auto solver = create_split_pair_solver(3);
+  auto params = std::vector<std::vector<double>>(solver->n_roots(), std::vector<double>(problem.n));
+  auto actions = params;
+  ASSERT_TRUE(solver->solve(params, actions, problem, true));
+  const auto eigvals = solver->eigenvalues();
+  ASSERT_EQ(eigvals.size(), solver->n_roots());
+  for (size_t i = 0; i < eigvals.size(); ++i)
+    EXPECT_NEAR(eigvals[i], reference[i].real(), 1e-8);
+}
+
+//! The convergence of a root whose complex pair partner is truncated covers the imaginary part of its residual
+TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots_imaginary_residual) {
+  molpro::mpi::init();
+  SplitComplexPairProblem problem;
+  problem.offdiagonal = 0.1;
+  const Eigen::MatrixXd matrix = dense_matrix(problem);
+  const auto reference = sorted_reference_eigenvalues(problem);
+  ASSERT_NEAR(std::abs(reference.at(2) - std::conj(reference.at(3))), 0., 1e-12);
+
+  auto solver = create_split_pair_solver(3);
+  auto params = std::vector<std::vector<double>>(solver->n_roots(), std::vector<double>(problem.n));
+  auto actions = params;
+  ASSERT_TRUE(solver->solve(params, actions, problem, true));
+  solver->solution({0, 1, 2}, params, actions);
+  // With the residuals r = M x + e_imag y and r_imag = M y - e_imag x of the real and imaginary part x and y of the
+  // complex eigenvector, where M = A - e_real, y and r_imag follow from x and r
+  const Eigen::Map<const Eigen::VectorXd> x(params[2].data(), problem.n), r(actions[2].data(), problem.n);
+  const Eigen::MatrixXd m = matrix - reference[2].real() * Eigen::MatrixXd::Identity(problem.n, problem.n);
+  const double e_imag = reference[2].imag();
+  const Eigen::VectorXd y = (r - m * x) / e_imag;
+  const Eigen::VectorXd r_imag = m * y - e_imag * x;
+  EXPECT_LT(std::sqrt((r.squaredNorm() + r_imag.squaredNorm()) / (x.squaredNorm() + y.squaredNorm())),
+            solver->convergence_threshold());
+}
+
+//! Records the warnings issued through it
+class WarningRecorder : public molpro::linalg::itsolv::Logger {
+public:
+  mutable std::vector<std::string> warnings;
+
+protected:
+  void default_message_handler(std::string_view ctx, molpro::linalg::itsolv::log::Severity severity,
+                               molpro::linalg::itsolv::log::Verbosity verbosity, std::string_view msg) const override {
+    if (severity == molpro::linalg::itsolv::log::Severity::Warning)
+      warnings.emplace_back(msg);
+  }
+};
+
+//! The user is told that only the real part of the eigenvector of a root with a truncated complex partner is available
+TEST(LinearEigensystem, Davidson_complex_pair_split_by_n_roots_warning) {
+  molpro::mpi::init();
+  SplitComplexPairProblem problem;
+  auto solver = create_split_pair_solver(3);
+  auto logger = std::make_shared<WarningRecorder>();
+  solver->set_logger(logger);
+  auto params = std::vector<std::vector<double>>(solver->n_roots(), std::vector<double>(problem.n));
+  auto actions = params;
+  ASSERT_TRUE(solver->solve(params, actions, problem, true));
+  EXPECT_THAT(logger->warnings, ::testing::Contains(::testing::HasSubstr(
+                                    "partner of root 3 is not among the requested roots, so only the real part")));
+}
+
+//! A complex pair split by the number of roots with a reduced subspace, which has to keep the truncated partner
+class Davidson_complex_pair_split_reduced_subspace : public ::testing::TestWithParam<std::string> {};
+
+TEST_P(Davidson_complex_pair_split_reduced_subspace, converges) {
+  molpro::mpi::init();
+  SplitComplexPairProblem problem;
+  const auto reference = sorted_reference_eigenvalues(problem);
+
+  auto solver = create_split_pair_solver(3, GetParam());
+  auto params = std::vector<std::vector<double>>(solver->n_roots(), std::vector<double>(problem.n));
+  auto actions = params;
+  ASSERT_TRUE(solver->solve(params, actions, problem, true));
+  const auto eigvals = solver->eigenvalues();
+  ASSERT_EQ(eigvals.size(), solver->n_roots());
+  for (size_t i = 0; i < eigvals.size(); ++i)
+    EXPECT_NEAR(eigvals[i], reference[i].real(), 1e-8);
+}
+
+INSTANTIATE_TEST_SUITE_P(LinearEigensystem, Davidson_complex_pair_split_reduced_subspace,
+                         ::testing::Values("max_size_qspace=4", "contrib_thresh=1e-3", "max_size_qspace=4,reset_D=3"));
+
+//! The two members of a complex pair end up in different batches of the solution when there are fewer parameter
+//! vectors than roots
+TEST(LinearEigensystem, Davidson_complex_pair_split_by_batches) {
+  molpro::mpi::init();
+  SplitComplexPairProblem problem;
+  const auto reference = sorted_reference_eigenvalues(problem);
+  ASSERT_NEAR(std::abs(reference.at(2) - std::conj(reference.at(3))), 0., 1e-12);
+
+  auto solver = create_split_pair_solver(4);
+  auto params = std::vector<std::vector<double>>(3, std::vector<double>(problem.n));
+  auto actions = params;
+  ASSERT_TRUE(solver->solve(params, actions, problem, true));
+  const auto eigvals = solver->eigenvalues();
+  ASSERT_EQ(eigvals.size(), solver->n_roots());
+  for (size_t i = 0; i < eigvals.size(); ++i)
+    EXPECT_NEAR(eigvals[i], reference[i].real(), 1e-8);
 }
 
 //! A symmetric, diagonally dominant matrix

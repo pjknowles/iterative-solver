@@ -302,11 +302,11 @@ protected:
     const auto& errors = subspace_solver->errors();
     for (size_t root = 0; root < subspace_solver->size(); ++root) {
       const auto partner = subspace_solver->complex_partner(root);
-      if (partner && root < *partner && *partner < subspace_solver->size()) {
-        const auto error = std::sqrt(errors[root] * errors[root] + errors[*partner] * errors[*partner]);
-        subspace_solver->set_error(int(root), error);
-        subspace_solver->set_error(int(*partner), error);
-      }
+      if (!partner || *partner <= root || *partner >= subspace_solver->size())
+        continue;
+      const auto error = std::sqrt(errors[root] * errors[root] + errors[*partner] * errors[*partner]);
+      subspace_solver->set_error(int(root), error);
+      subspace_solver->set_error(int(*partner), error);
     }
   }
 

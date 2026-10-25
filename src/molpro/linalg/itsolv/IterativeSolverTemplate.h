@@ -562,6 +562,8 @@ protected:
     molpro::Profiler::single()->set_max_depth(m_profiler_saved_depth);
   }
 
+  //! Implementation class can overload this to combine the errors of solutions, once those of all are known
+  virtual void combine_errors() {}
   //! Implementation class should overload this to set errors in the current values (e.g. change in eigenvalues)
   virtual void set_value_errors() {}
   //! Constructs residual for given roots provided their parameters and actions
@@ -606,6 +608,7 @@ protected:
       m_subspace_solver->set_error(roots, errors);
     }
     prof->stop();
+    combine_errors();
     set_value_errors();
     m_errors = m_subspace_solver->errors();
     m_working_set = detail::select_working_set(parameters.size(), m_errors, m_convergence_threshold, m_value_errors,

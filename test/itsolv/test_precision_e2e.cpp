@@ -214,3 +214,65 @@ TEST(precision_e2e, davidson_precisions_agree) {
   for (size_t i = 0; i < in_double.eigenvalues.size(); ++i)
     EXPECT_NEAR(double(in_double.eigenvalues[i]), double(in_long_double.eigenvalues[i]), 1e-11);
 }
+
+namespace {
+
+//! A non-symmetric matrix whose second and third eigenvalue are a complex pair
+template <typename scalar>
+struct ComplexPairProblem : molpro::linalg::itsolv::Problem<typename containers<scalar>::R> {
+  using R = typename containers<scalar>::R;
+
+  size_t n;
+  explicit ComplexPairProblem(size_t n) : n(n) {}
+
+  scalar matrix(size_t i, size_t j) const {
+    if (i == 1 and j == 2)
+      return 1;
+    if (i == 2 and j == 1)
+      return -1;
+    return i == j ? scalar(i + 1) : scalar(0.01L) / scalar(1 + (i > j ? i - j : j - i));
+  }
+
+  bool diagonals(R& d) const override {
+    for (size_t i = 0; i < d.size(); i++)
+      d[i] = matrix(i, i);
+    return true;
+  }
+
+  void action(const molpro::linalg::itsolv::CVecRef<R>& parameters,
+              const molpro::linalg::itsolv::VecRef<R>& actions) const override {
+    for (size_t k = 0; k < parameters.size(); k++) {
+      const auto& v = parameters[k].get();
+      auto& a = actions[k].get();
+      for (size_t i = 0; i < a.size(); i++) {
+        a[i] = 0;
+        for (size_t j = 0; j < a.size(); j++)
+          a[i] += matrix(i, j) * v[j];
+      }
+    }
+  }
+};
+
+} // namespace
+
+//! Both members of a complex pair have the same error, the norm of their complex residual, in long double too
+TEST(precision_e2e, davidson_long_double_complex_pair_errors) {
+  using C = containers<long double>;
+  auto solver = molpro::linalg::itsolv::create_LinearEigensystem<C::R, C::Q, C::P>("Davidson");
+  solver->set_n_roots(3);
+  solver->set_hermiticity(false);
+  solver->set_convergence_threshold(1e-10L);
+  solver->set_verbosity(0);
+  ComplexPairProblem<long double> problem(n);
+  std::vector<C::R> params(3, C::R(n, 0)), actions(3, C::R(n, 0));
+  ASSERT_TRUE(solver->solve(params, actions, problem, true));
+  solver->solution({0, 1, 2}, params, actions);
+  long double r_real = 0, r_imag = 0;
+  for (size_t i = 0; i < n; i++) {
+    r_real += actions[1][i] * actions[1][i];
+    r_imag += actions[2][i] * actions[2][i];
+  }
+  const auto errors = solver->errors();
+  EXPECT_EQ(errors.at(1), errors.at(2));
+  EXPECT_NEAR(errors.at(1), std::sqrt(r_real + r_imag), 1e-17L);
+}

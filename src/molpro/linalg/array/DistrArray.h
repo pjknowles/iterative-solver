@@ -394,6 +394,14 @@ template <class Compare>
 [[nodiscard]] std::list<std::pair<DistrArray::index_type, DistrArray::value_type>> extrema(const DistrArray &x, int n);
 std::map<size_t, double> select_max_dot_broadcast(size_t n, std::map<size_t, double> &local_selection,
                                                   MPI_Comm communicator);
+#ifdef HAVE_MPI_H
+//! MPI datatype of DistrArray::index_type; unsigned long is narrower than size_t on Windows
+inline MPI_Datatype mpi_index_type() {
+  static_assert(sizeof(DistrArray::index_type) == sizeof(unsigned long) ||
+                sizeof(DistrArray::index_type) == sizeof(unsigned long long));
+  return sizeof(DistrArray::index_type) == sizeof(unsigned long) ? MPI_UNSIGNED_LONG : MPI_UNSIGNED_LONG_LONG;
+}
+#endif
 
 template<bool is_const>
 class DistrArrayIteratorImpl {
